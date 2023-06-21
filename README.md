@@ -6,22 +6,22 @@
 > 
 > 软件就像性，免费的比花钱的好得多。——林纳斯·托瓦兹
 
-* [在线阅读](https://py.apachecn.org)
+* [在线阅读](https://py.flygon.net)
 ## 下载
 
 ### Docker
 
 ```
-docker pull apachecn0/apachecn-python-zh
-docker run -tid -p <port>:80 apachecn0/apachecn-python-zh
+docker pull apachecn0/flygon-python-zh
+docker run -tid -p <port>:80 apachecn0/flygon-python-zh
 # 访问 http://localhost:{port} 查看文档
 ```
 
 ### NPM
 
 ```
-npm install -g apachecn-python-zh
-apachecn-python-zh <port>
+npm install -g flygon-python-zh
+flygon-python-zh <port>
 # 访问 http://localhost:{port} 查看文档
 ```
 
