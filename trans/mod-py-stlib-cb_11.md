@@ -1,42 +1,42 @@
-# Web开发
+# Web 开发
 
 在本章中，我们将介绍以下配方：
 
-+   处理JSON - 如何解析和编写JSON对象
++   处理 JSON - 如何解析和编写 JSON 对象
 
-+   解析URL - 如何解析URL的路径、查询和其他部分
++   解析 URL - 如何解析 URL 的路径、查询和其他部分
 
-+   消费HTTP - 如何从HTTP端点读取数据
++   消费 HTTP - 如何从 HTTP 端点读取数据
 
-+   提交表单到HTTP - 如何将HTML表单提交到HTTP端点
++   提交表单到 HTTP - 如何将 HTML 表单提交到 HTTP 端点
 
-+   构建HTML - 如何生成带有适当转义的HTML
++   构建 HTML - 如何生成带有适当转义的 HTML
 
-+   提供HTTP - 在HTTP上提供动态内容
++   提供 HTTP - 在 HTTP 上提供动态内容
 
-+   提供静态文件 - 如何通过HTTP提供静态文件
++   提供静态文件 - 如何通过 HTTP 提供静态文件
 
-+   Web应用程序中的错误 - 如何报告Web应用程序中的错误
++   Web 应用程序中的错误 - 如何报告 Web 应用程序中的错误
 
-+   处理表单和文件 - 解析从HTML表单和上传的文件接收到的数据
++   处理表单和文件 - 解析从 HTML 表单和上传的文件接收到的数据
 
-+   REST API - 提供基本的REST/JSON API
++   REST API - 提供基本的 REST/JSON API
 
-+   处理cookies - 如何处理cookies以识别返回用户
++   处理 cookies - 如何处理 cookies 以识别返回用户
 
 # 介绍
 
-HTTP协议，更一般地说，Web技术集，被认为是创建分布式系统的一种有效和健壮的方式，可以利用一种广泛和可靠的方式来实现进程间通信，具有可用的技术和缓存、错误传播、可重复请求的范例，以及在服务可能失败而不影响整体系统状态的情况下的最佳实践。
+HTTP 协议，更一般地说，Web 技术集，被认为是创建分布式系统的一种有效和健壮的方式，可以利用一种广泛和可靠的方式来实现进程间通信，具有可用的技术和缓存、错误传播、可重复请求的范例，以及在服务可能失败而不影响整体系统状态的情况下的最佳实践。
 
-Python有许多非常好的和可靠的Web框架，从全栈解决方案，如Django和TurboGears，到更精细调整的框架，如Pyramid和Flask。然而，对于许多情况来说，标准库可能已经提供了您需要实现基于HTTP的软件的工具，而无需依赖外部库和框架。
+Python 有许多非常好的和可靠的 Web 框架，从全栈解决方案，如 Django 和 TurboGears，到更精细调整的框架，如 Pyramid 和 Flask。然而，对于许多情况来说，标准库可能已经提供了您需要实现基于 HTTP 的软件的工具，而无需依赖外部库和框架。
 
-在本章中，我们将介绍标准库提供的一些常见配方和工具，这些工具在HTTP和基于Web的应用程序的上下文中非常方便。
+在本章中，我们将介绍标准库提供的一些常见配方和工具，这些工具在 HTTP 和基于 Web 的应用程序的上下文中非常方便。
 
-# 处理JSON
+# 处理 JSON
 
-在使用基于Web的解决方案时，最常见的需求之一是解析和处理JSON。Python内置支持XML和HTML，还支持JSON编码和解码。
+在使用基于 Web 的解决方案时，最常见的需求之一是解析和处理 JSON。Python 内置支持 XML 和 HTML，还支持 JSON 编码和解码。
 
-JSON编码器也可以被专门化以处理非标准类型，如日期。
+JSON 编码器也可以被专门化以处理非标准类型，如日期。
 
 # 如何做...
 
@@ -71,7 +71,7 @@ class CustomJSONEncoder(json.JSONEncoder):
             return super().default(obj)
 ```
 
-1.  然后，我们可以将我们的自定义编码器传递给`json.dumps`，以根据我们的规则对JSON输出进行编码：
+1.  然后，我们可以将我们的自定义编码器传递给`json.dumps`，以根据我们的规则对 JSON 输出进行编码：
 
 ```py
 jsonstr = json.dumps({'s': 'Hello World',
@@ -109,7 +109,7 @@ class Person:
         }
 ```
 
-1.  结果将是一个包含提供数据的JSON对象：
+1.  结果将是一个包含提供数据的 JSON 对象：
 
 ```py
 >>> print(json.dumps({'person': Person('Simone', 'Marzola')}, 
@@ -117,7 +117,7 @@ class Person:
 {"person": {"name": "Simone", "surname": "Marzola"}}
 ```
 
-1.  加载回编码值将导致纯字符串被解码，因为它们不是JSON类型：
+1.  加载回编码值将导致纯字符串被解码，因为它们不是 JSON 类型：
 
 ```py
 >>> print(json.loads(jsonstr))
@@ -129,7 +129,7 @@ class Person:
  'dt': '2018-06-29T10:56:30'}
 ```
 
-1.  如果我们还想解析回日期，我们可以尝试专门化`JSONDecoder`来猜测字符串是否包含ISO 8601格式的日期，并尝试解析它：
+1.  如果我们还想解析回日期，我们可以尝试专门化`JSONDecoder`来猜测字符串是否包含 ISO 8601 格式的日期，并尝试解析它：
 
 ```py
 class CustomJSONDecoder(json.JSONDecoder):
@@ -187,7 +187,7 @@ class CustomJSONDecoder(json.JSONDecoder):
 
 # 它是如何工作的...
 
-要生成Python对象的JSON表示，使用`json.dumps`方法。该方法接受一个额外的参数`cls`，可以提供自定义编码器类：
+要生成 Python 对象的 JSON 表示，使用`json.dumps`方法。该方法接受一个额外的参数`cls`，可以提供自定义编码器类：
 
 ```py
 json.dumps({'key': 'value', cls=CustomJSONEncoder)
@@ -225,9 +225,9 @@ if hasattr(obj, '__json__') and callable(obj.__json__):
     return obj.__json__()
 ```
 
-对于具有`__json__`属性的任何对象，该属性是可调用的，我们将依赖调用它来检索对象的JSON表示。`__json__`方法所需做的就是返回任何JSON编码器知道如何编码的对象，通常是一个`dict`，其中对象的属性将被存储。
+对于具有`__json__`属性的任何对象，该属性是可调用的，我们将依赖调用它来检索对象的 JSON 表示。`__json__`方法所需做的就是返回任何 JSON 编码器知道如何编码的对象，通常是一个`dict`，其中对象的属性将被存储。
 
-对于日期的情况，我们将使用简化的ISO 8601格式对其进行编码：
+对于日期的情况，我们将使用简化的 ISO 8601 格式对其进行编码：
 
 ```py
 elif isinstance(obj, (datetime.datetime, datetime.time)):
@@ -236,9 +236,9 @@ elif isinstance(obj, datetime.date):
     return obj.isoformat()
 ```
 
-这通常允许来自客户端的轻松解析，例如JavaScript解释器可能需要从提供的数据中构建`date`对象。
+这通常允许来自客户端的轻松解析，例如 JavaScript 解释器可能需要从提供的数据中构建`date`对象。
 
-`Decimal`只是为了方便转换为浮点数。这在大多数情况下足够了，并且与任何JSON解码器完全兼容，无需任何额外的机制。当然，我们可以返回更复杂的对象，例如字典，以保留固定的精度：
+`Decimal`只是为了方便转换为浮点数。这在大多数情况下足够了，并且与任何 JSON 解码器完全兼容，无需任何额外的机制。当然，我们可以返回更复杂的对象，例如字典，以保留固定的精度：
 
 ```py
 elif isinstance(obj, decimal.Decimal):
@@ -259,19 +259,19 @@ else:
     return super().default(obj)
 ```
 
-这将只是抱怨对象不可JSON序列化，并通知开发人员我们不知道如何处理它。
+这将只是抱怨对象不可 JSON 序列化，并通知开发人员我们不知道如何处理它。
 
 自定义解码器支持的工作方式略有不同。
 
-虽然编码器将接收它知道的对象和它不知道的对象（因为Python对象比JSON对象更丰富），但很容易看出它只能请求对它不知道的对象进行额外的指导，并对它知道如何处理的对象以标准方式进行处理。
+虽然编码器将接收它知道的对象和它不知道的对象（因为 Python 对象比 JSON 对象更丰富），但很容易看出它只能请求对它不知道的对象进行额外的指导，并对它知道如何处理的对象以标准方式进行处理。
 
-解码器只接收有效的JSON对象；否则，提供的字符串根本就不是有效的JSON。
+解码器只接收有效的 JSON 对象；否则，提供的字符串根本就不是有效的 JSON。
 
 它如何知道提供的字符串必须解码为普通字符串，还是应该要求额外的指导？
 
 它不能，因此它要求对任何单个解码的对象进行指导。
 
-这就是为什么解码器基于一个`object_hook`可调用，它将接收每个单独解码的JSON对象，并可以检查它以执行其他转换，或者如果正常解码是正确的，它可以让它继续。
+这就是为什么解码器基于一个`object_hook`可调用，它将接收每个单独解码的 JSON 对象，并可以检查它以执行其他转换，或者如果正常解码是正确的，它可以让它继续。
 
 在我们的实现中，我们对解码器进行了子类化，并提供了一个基于本地类方法`parse_object`的默认`object_hook`参数：
 
@@ -283,7 +283,7 @@ class CustomJSONDecoder(json.JSONDecoder):
         )
 ```
 
-然后，`parse_object`方法将接收到解码JSON（顶级或嵌套的）中找到的任何JSON对象；因此，它将接收到一堆字典，可以以任何需要的方式检查它们，并编辑它们的内容以执行JSON解码器本身执行的其他转换：
+然后，`parse_object`方法将接收到解码 JSON（顶级或嵌套的）中找到的任何 JSON 对象；因此，它将接收到一堆字典，可以以任何需要的方式检查它们，并编辑它们的内容以执行 JSON 解码器本身执行的其他转换：
 
 ```py
 def parse_object(self, values):
@@ -316,7 +316,7 @@ def parse_object(self, values):
     return values
 ```
 
-接收到的参数实际上是一个完整的JSON对象，因此它永远不会是单个字段；它总是一个对象（因此，一个完整的Python字典，具有多个键值）。
+接收到的参数实际上是一个完整的 JSON 对象，因此它永远不会是单个字段；它总是一个对象（因此，一个完整的 Python 字典，具有多个键值）。
 
 看看以下对象：
 
@@ -326,9 +326,9 @@ def parse_object(self, values):
  's': 'Hello World', 
 ```
 
-您不会收到一个`g`键，但您将收到整个Python字典。这意味着如果您的JSON文档没有嵌套的JSON对象，您的`object_hook`将被调用一次，并且不会再有其他调用。
+您不会收到一个`g`键，但您将收到整个 Python 字典。这意味着如果您的 JSON 文档没有嵌套的 JSON 对象，您的`object_hook`将被调用一次，并且不会再有其他调用。
 
-因此，我们的`parse_object`方法提供的自定义`object_hook`会迭代解码后的JSON对象的所有属性：
+因此，我们的`parse_object`方法提供的自定义`object_hook`会迭代解码后的 JSON 对象的所有属性：
 
 ```py
 for k, v in values.items():
@@ -336,7 +336,7 @@ for k, v in values.items():
         continue
 ```
 
-由于JSON中的日期和时间通常以ISO 8601格式的字符串表示，因此它会忽略一切不是字符串的内容。
+由于 JSON 中的日期和时间通常以 ISO 8601 格式的字符串表示，因此它会忽略一切不是字符串的内容。
 
 我们对数字、列表和字典的转换非常满意（如果您期望日期被放在列表中，可能需要转到列表），因此如果值不是字符串，我们就跳过它。
 
@@ -350,7 +350,7 @@ elif (len(v) == 19 and v.count('-') == 2 and
     # Probably contains a datetime
 ```
 
-如果匹配该定义，我们实际上会尝试将其解码为Python的`datetime`对象，并在解码后的JSON对象中替换该值：
+如果匹配该定义，我们实际上会尝试将其解码为 Python 的`datetime`对象，并在解码后的 JSON 对象中替换该值：
 
 ```py
 # Probably contains a datetime
@@ -362,31 +362,31 @@ except:
 
 # 还有更多...
 
-您可能已经注意到，将Python编码为JSON是相当合理和健壮的，但返回的过程中充满了问题。
+您可能已经注意到，将 Python 编码为 JSON 是相当合理和健壮的，但返回的过程中充满了问题。
 
-JSON不是一种非常表达性的语言；它不提供任何用于自定义类型的机制，因此您有一种标准方法可以向解码器提供关于您期望将某些内容解码为的类型的提示。
+JSON 不是一种非常表达性的语言；它不提供任何用于自定义类型的机制，因此您有一种标准方法可以向解码器提供关于您期望将某些内容解码为的类型的提示。
 
-虽然我们可以*猜测*像`2017-01-01T13:21:17`这样的东西是一个日期，但我们根本没有任何保证。也许最初它实际上是一些文本，碰巧包含可以解码为日期的内容，但从未打算成为Python中的`datetime`对象。
+虽然我们可以*猜测*像`2017-01-01T13:21:17`这样的东西是一个日期，但我们根本没有任何保证。也许最初它实际上是一些文本，碰巧包含可以解码为日期的内容，但从未打算成为 Python 中的`datetime`对象。
 
-因此，通常只在受限环境中实现自定义解码是安全的。如果您知道并控制将接收数据的源，通常可以安全地提供自定义解码。您可能希望通过使用自定义属性来扩展JSON，这些属性可能会指导解码器（例如具有告诉您它是日期还是字符串的`__type__`键），但在开放的网络世界中，通常不明智地尝试猜测人们发送给您的内容，因为网络非常多样化。
+因此，通常只在受限环境中实现自定义解码是安全的。如果您知道并控制将接收数据的源，通常可以安全地提供自定义解码。您可能希望通过使用自定义属性来扩展 JSON，这些属性可能会指导解码器（例如具有告诉您它是日期还是字符串的`__type__`键），但在开放的网络世界中，通常不明智地尝试猜测人们发送给您的内容，因为网络非常多样化。
 
-有一些扩展的标准JSON版本试图解决解码数据中的这种歧义，例如JSON-LD和JSON Schema，它们允许您在JSON中表示更复杂的实体。
+有一些扩展的标准 JSON 版本试图解决解码数据中的这种歧义，例如 JSON-LD 和 JSON Schema，它们允许您在 JSON 中表示更复杂的实体。
 
 如果有必要，您应该依赖这些标准，以避免重新发明轮子的风险，并面对您的解决方案已经由现有标准解决的限制。
 
-# 解析URL
+# 解析 URL
 
-在处理基于Web的软件时，经常需要了解链接、协议和路径。
+在处理基于 Web 的软件时，经常需要了解链接、协议和路径。
 
-您可能会倾向于依赖正则表达式或字符串拆分来解析URL，但是如果考虑到URL可能包含的所有奇特之处（例如凭据或特定协议等），它可能并不像您期望的那样容易。
+您可能会倾向于依赖正则表达式或字符串拆分来解析 URL，但是如果考虑到 URL 可能包含的所有奇特之处（例如凭据或特定协议等），它可能并不像您期望的那样容易。
 
-Python提供了`urllib`和`cgi`模块中的实用工具，当您想要考虑URL可能具有的所有可能不同的格式时，这些工具可以使生活更轻松。
+Python 提供了`urllib`和`cgi`模块中的实用工具，当您想要考虑 URL 可能具有的所有可能不同的格式时，这些工具可以使生活更轻松。
 
 依靠它们可以使生活更轻松，使您的软件更健壮。
 
 # 如何做...
 
-`urllib.parse`模块具有多种工具可用于解析URL。最常用的解决方案是依赖于`urllib.parse.urlparse`，它可以处理最常见的URL类型：
+`urllib.parse`模块具有多种工具可用于解析 URL。最常用的解决方案是依赖于`urllib.parse.urlparse`，它可以处理最常见的 URL 类型：
 
 ```py
 import urllib.parse
@@ -417,11 +417,11 @@ OrderedDict([('scheme', 'http'),
              ('fragment', 'fragment')])
 ```
 
-返回的`OrderedDict`包含组成我们的URL的所有部分，并且对于查询参数，它们已经被解析。
+返回的`OrderedDict`包含组成我们的 URL 的所有部分，并且对于查询参数，它们已经被解析。
 
 # 还有更多...
 
-如今，URI还支持在每个路径段中提供参数。这在实践中很少使用，但如果您的代码预期接收此类URI，则不应依赖于`urllib.parse.urlparse`，因为它尝试从URL中解析参数，而这对于这些URI来说并不受支持：
+如今，URI 还支持在每个路径段中提供参数。这在实践中很少使用，但如果您的代码预期接收此类 URI，则不应依赖于`urllib.parse.urlparse`，因为它尝试从 URL 中解析参数，而这对于这些 URI 来说并不受支持：
 
 ```py
 >>> url = 'http://user:pwd@host.com:80/root;para1/subpath;para2?arg1=val1#fragment'
@@ -436,7 +436,7 @@ ParseResult(scheme='http', netloc='user:pwd@host.com:80',
 
 您可能已经注意到，路径的最后一部分的参数在`params`中被正确解析，但是第一部分的参数保留在`path`中。
 
-在这种情况下，您可能希望依赖于`urllib.parse.urlsplit`，它不会解析参数，而会将它们保留下来供您解析。因此，您可以自行拆分URL段和参数：
+在这种情况下，您可能希望依赖于`urllib.parse.urlsplit`，它不会解析参数，而会将它们保留下来供您解析。因此，您可以自行拆分 URL 段和参数：
 
 ```py
 >>> parsed = urllib.parse.urlsplit(url)
@@ -449,17 +449,17 @@ SplitResult(scheme='http', netloc='user:pwd@host.com:80',
 
 请注意，在这种情况下，所有参数都保留在“路径”中，然后您可以自行拆分它们。
 
-# HTTP消费
+# HTTP 消费
 
-您可能正在与基于HTTP REST API的第三方服务进行交互，或者可能正在从第三方获取内容或仅下载软件需要的文件。这并不重要。如今，几乎不可能编写一个应用程序并忽略HTTP；您迟早都会面对它。人们期望各种应用程序都支持HTTP。如果您正在编写图像查看器，他们可能希望能够将指向图像的URL传递给它并看到图像出现。
+您可能正在与基于 HTTP REST API 的第三方服务进行交互，或者可能正在从第三方获取内容或仅下载软件需要的文件。这并不重要。如今，几乎不可能编写一个应用程序并忽略 HTTP；您迟早都会面对它。人们期望各种应用程序都支持 HTTP。如果您正在编写图像查看器，他们可能希望能够将指向图像的 URL 传递给它并看到图像出现。
 
-虽然它们从来没有真正用户友好和明显，但Python标准库一直有与HTTP交互的方式，并且这些方式可以直接使用。
+虽然它们从来没有真正用户友好和明显，但 Python 标准库一直有与 HTTP 交互的方式，并且这些方式可以直接使用。
 
 # 如何做到这一点...
 
 此处的步骤如下：
 
-1.  `urllib.request`模块提供了提交HTTP请求所需的机制。它的轻量级包装可以解决大多数HTTP使用需求：
+1.  `urllib.request`模块提供了提交 HTTP 请求所需的机制。它的轻量级包装可以解决大多数 HTTP 使用需求：
 
 ```py
 import urllib.request
@@ -493,7 +493,7 @@ def http_request(url, query=None, method=None, headers={}, data=None):
 application/octet-stream b'k\xe3\x05\x06=\x17\x1a9%#\xd0\xae\xd8\xdc\xf9>'
 ```
 
-1.  我们还可以使用它与基于JSON的API进行交互：
+1.  我们还可以使用它与基于 JSON 的 API 进行交互：
 
 ```py
 >>> msg, resp = http_request('https://httpbin.org/get', query={
@@ -538,9 +538,9 @@ application/json
 
 `http_request`方法负责创建`urllib.request.Request`实例，通过网络发送它并获取响应。
 
-向指定的URL发送请求，其中附加了查询参数。
+向指定的 URL 发送请求，其中附加了查询参数。
 
-函数的第一件事是解析URL，以便能够替换其中的部分。这样做是为了能够用提供的部分替换/追加查询参数：
+函数的第一件事是解析 URL，以便能够替换其中的部分。这样做是为了能够用提供的部分替换/追加查询参数：
 
 ```py
 parts = vars(urllib.parse.urlparse(url))
@@ -574,11 +574,11 @@ with urllib.request.urlopen(r) as resp:
     msg, resp = resp.info(), resp.read()
 ```
 
-响应以`urllib.response.addinfourl`对象的形式返回，其中包括两个相关部分：响应的主体和一个`http.client.HTTPMessage`，我们可以从中获取所有响应信息，如标头、URL等。
+响应以`urllib.response.addinfourl`对象的形式返回，其中包括两个相关部分：响应的主体和一个`http.client.HTTPMessage`，我们可以从中获取所有响应信息，如标头、URL 等。
 
 通过像读取文件一样读取响应来检索主体，而通过`info()`方法检索`HTTPMessage`。
 
-通过检索的信息，我们可以检查响应是否为JSON响应，在这种情况下，我们将其解码回字典，以便我们可以浏览响应而不仅仅是接收纯字节：
+通过检索的信息，我们可以检查响应是否为 JSON 响应，在这种情况下，我们将其解码回字典，以便我们可以浏览响应而不仅仅是接收纯字节：
 
 ```py
 if msg.get_content_type() == 'application/json':
@@ -593,13 +593,13 @@ return msg, resp
 
 # 还有更多...
 
-对于简单的情况来说，进行HTTP请求可能非常简单，但对于更复杂的情况来说可能非常复杂。完美地处理HTTP协议可能是一项漫长而复杂的工作，特别是因为协议规范本身并不总是清楚地规定事物应该如何工作，很多都来自于对现有的网络服务器和客户端工作方式的经验。
+对于简单的情况来说，进行 HTTP 请求可能非常简单，但对于更复杂的情况来说可能非常复杂。完美地处理 HTTP 协议可能是一项漫长而复杂的工作，特别是因为协议规范本身并不总是清楚地规定事物应该如何工作，很多都来自于对现有的网络服务器和客户端工作方式的经验。
 
-因此，如果您的需求超出了仅仅获取简单端点的范围，您可能希望依赖于第三方库来执行HTTP请求，例如几乎适用于所有Python环境的requests库。
+因此，如果您的需求超出了仅仅获取简单端点的范围，您可能希望依赖于第三方库来执行 HTTP 请求，例如几乎适用于所有 Python 环境的 requests 库。
 
-# 向HTTP提交表单
+# 向 HTTP 提交表单
 
-有时您必须与HTML表单交互或上传文件。这通常需要处理`multipart/form-data`编码。
+有时您必须与 HTML 表单交互或上传文件。这通常需要处理`multipart/form-data`编码。
 
 表单可以混合文件和文本数据，并且表单中可以有多个不同的字段。因此，它需要一种方式来在同一个请求中表示多个字段，其中一些字段可以是二进制文件。
 
@@ -689,7 +689,7 @@ Some Content
 --6c5109dfa19a450695013d4eecac2b0b--
 ```
 
-1.  使用我们先前食谱中的`http_request`方法，我们可以通过HTTP提交任何`form`：
+1.  使用我们先前食谱中的`http_request`方法，我们可以通过 HTTP 提交任何`form`：
 
 ```py
 >>> _, resp = http_request('https://httpbin.org/post', method='POST',
@@ -806,21 +806,21 @@ return content_type, self._generate_bytes(boundary)
 
 多年来，关于在多部分内容中对字段名称和文件名称进行正确编码的方式已经多次更改和讨论。
 
-从历史上看，在这些字段中只依赖于纯ASCII名称是安全的，因此，如果您想确保您提交的数据的服务器能够正确接收您的数据，您可能希望坚持使用简单的文件名和字段，不涉及Unicode字符。
+从历史上看，在这些字段中只依赖于纯 ASCII 名称是安全的，因此，如果您想确保您提交的数据的服务器能够正确接收您的数据，您可能希望坚持使用简单的文件名和字段，不涉及 Unicode 字符。
 
-多年来，提出了多种其他编码这些字段和文件名的方法。UTF-8 是 HTML5 的官方支持的后备之一。建议的食谱依赖于UTF-8来编码文件名和字段，以便与使用纯ASCII名称的情况兼容，但仍然可以在服务器支持它们时依赖于Unicode字符。
+多年来，提出了多种其他编码这些字段和文件名的方法。UTF-8 是 HTML5 的官方支持的后备之一。建议的食谱依赖于 UTF-8 来编码文件名和字段，以便与使用纯 ASCII 名称的情况兼容，但仍然可以在服务器支持它们时依赖于 Unicode 字符。
 
-# 构建HTML
+# 构建 HTML
 
-每当您构建网页、电子邮件或报告时，您可能会依赖用实际值替换HTML模板中的占位符，以便向用户显示所需的内容。
+每当您构建网页、电子邮件或报告时，您可能会依赖用实际值替换 HTML 模板中的占位符，以便向用户显示所需的内容。
 
-我们已经在[第2章](eef0828f-f070-4a09-b37e-db0d62134ac5.xhtml)中看到了*文本管理*，如何实现一个最小的简单模板引擎，但它并不特定于HTML。
+我们已经在第二章中看到了*文本管理*，如何实现一个最小的简单模板引擎，但它并不特定于 HTML。
 
-在处理HTML时，特别重要的是要注意对用户提供的值进行转义，因为这可能导致页面损坏甚至XSS攻击。
+在处理 HTML 时，特别重要的是要注意对用户提供的值进行转义，因为这可能导致页面损坏甚至 XSS 攻击。
 
 显然，您不希望您的用户因为您在网站上注册时使用姓氏`"<script>alert('You are hacked!')</script>"`而对您生气。
 
-出于这个原因，Python标准库提供了可以用于正确准备内容以插入HTML的转义工具。
+出于这个原因，Python 标准库提供了可以用于正确准备内容以插入 HTML 的转义工具。
 
 # 如何做...
 
@@ -858,7 +858,7 @@ class Markup:
 Hello &lt;strong&gt;Name&lt;/strong&gt;, you are <em>a developer</em>
 ```
 
-我们还可以轻松地将此配方与有关文本模板引擎的配方相结合，以实现一个具有转义功能的极简HTML模板引擎。
+我们还可以轻松地将此配方与有关文本模板引擎的配方相结合，以实现一个具有转义功能的极简 HTML 模板引擎。
 
 # 它是如何工作的...
 
@@ -869,7 +869,7 @@ if hasattr(val, '__html__'):
     val = val.__html__()
 ```
 
-如果存在该方法，则预计返回值的HTML表示。并且预计是一个完全有效和转义的HTML。
+如果存在该方法，则预计返回值的 HTML 表示。并且预计是一个完全有效和转义的 HTML。
 
 否则，预计值将是需要转义的字符串：
 
@@ -898,19 +898,19 @@ Hello <strong>Name</strong>
 
 这是因为我们的`Markup`对象实现了一个`__html__`方法，该方法返回原样的字符串。由于我们的`HTMLFormatter`忽略了任何具有`__html__`方法的值，因此我们的字符串将无需任何形式的转义而通过。
 
-虽然`Markup`允许我们根据需要禁用转义，但是当我们知道实际上需要HTML时，我们可以将HTML方法应用于任何其他对象。需要在网页中表示的任何对象都可以提供一个`__html__`方法，并将根据它自动转换为HTML。
+虽然`Markup`允许我们根据需要禁用转义，但是当我们知道实际上需要 HTML 时，我们可以将 HTML 方法应用于任何其他对象。需要在网页中表示的任何对象都可以提供一个`__html__`方法，并将根据它自动转换为 HTML。
 
 例如，您可以向您的`User`类添加`__html__`，并且每当您想要将用户放在网页中时，您只需要提供`User`实例本身。
 
-# 提供HTTP
+# 提供 HTTP
 
-通过HTTP进行交互是分布式应用程序或完全分离的软件之间最常见的通信手段之一，也是所有现有Web应用程序和基于Web的工具的基础。
+通过 HTTP 进行交互是分布式应用程序或完全分离的软件之间最常见的通信手段之一，也是所有现有 Web 应用程序和基于 Web 的工具的基础。
 
-虽然Python有数十个出色的Web框架可以满足大多数不同的需求，但标准库本身具有您可能需要实现基本Web应用程序的所有基础。
+虽然 Python 有数十个出色的 Web 框架可以满足大多数不同的需求，但标准库本身具有您可能需要实现基本 Web 应用程序的所有基础。
 
 # 如何做...
 
-Python有一个方便的协议名为WSGI来实现基于HTTP的应用程序。对于更高级的需求，可能需要一个Web框架；对于非常简单的需求，Python本身内置的`wsgiref`实现可以满足我们的需求：
+Python 有一个方便的协议名为 WSGI 来实现基于 HTTP 的应用程序。对于更高级的需求，可能需要一个 Web 框架；对于非常简单的需求，Python 本身内置的`wsgiref`实现可以满足我们的需求：
 
 ```py
 import re
@@ -1014,11 +1014,11 @@ def name(request, resp):
 app.serve()
 ```
 
-如果一切正常，通过将浏览器指向`http://localhost:8000`，您应该会看到一个Hello World文本和一个链接，引导您到进一步提供查询参数，URL参数并在各种URL上提供服务的页面。
+如果一切正常，通过将浏览器指向`http://localhost:8000`，您应该会看到一个 Hello World 文本和一个链接，引导您到进一步提供查询参数，URL 参数并在各种 URL 上提供服务的页面。
 
 # 它是如何工作的...
 
-`WSGIApplication`创建一个负责提供Web应用程序本身（`self`）的WSGI服务器：
+`WSGIApplication`创建一个负责提供 Web 应用程序本身（`self`）的 WSGI 服务器：
 
 ```py
 def serve(self):
@@ -1029,7 +1029,7 @@ def serve(self):
 
 在每个请求上，服务器都会调用`WSGIApplication.__call__`来检索该请求的响应。
 
-`WSGIApplication.__call__`扫描所有注册的路由（每个路由可以使用`app.route(path)`注册，其中`path`是正则表达式）。当正则表达式与当前URL路径匹配时，将调用注册的函数以生成该路由的响应：
+`WSGIApplication.__call__`扫描所有注册的路由（每个路由可以使用`app.route(path)`注册，其中`path`是正则表达式）。当正则表达式与当前 URL 路径匹配时，将调用注册的函数以生成该路由的响应：
 
 ```py
 def __call__(self, environ, start_response):
@@ -1054,29 +1054,29 @@ resp.send(start_response)
 return [body]
 ```
 
-在返回主体之前，将调用`Response.send`通过`start_response`可调用发送响应HTTP标头和状态。
+在返回主体之前，将调用`Response.send`通过`start_response`可调用发送响应 HTTP 标头和状态。
 
-`Response`和`Request`对象用于保留当前请求的环境（以及从URL解析的任何附加参数）、响应的标头和状态。这样，处理请求的操作可以接收它们并检查请求或在发送之前添加/删除响应的标头。
+`Response`和`Request`对象用于保留当前请求的环境（以及从 URL 解析的任何附加参数）、响应的标头和状态。这样，处理请求的操作可以接收它们并检查请求或在发送之前添加/删除响应的标头。
 
 # 还有更多...
 
-虽然基本的基于HTTP的应用程序可以使用提供的`WSGIApplication`实现，但完整功能的应用程序还有很多缺失或不完整的地方。
+虽然基本的基于 HTTP 的应用程序可以使用提供的`WSGIApplication`实现，但完整功能的应用程序还有很多缺失或不完整的地方。
 
-在涉及更复杂的Web应用程序时，通常需要缓存、会话、身份验证、授权、管理数据库连接、事务和管理等部分，并且大多数Python Web框架都可以轻松为您提供这些部分。
+在涉及更复杂的 Web 应用程序时，通常需要缓存、会话、身份验证、授权、管理数据库连接、事务和管理等部分，并且大多数 Python Web 框架都可以轻松为您提供这些部分。
 
-实现完整的Web框架不在本书的范围之内，当Python环境中有许多出色的Web框架可用时，您可能应该尽量避免重复造轮子。
+实现完整的 Web 框架不在本书的范围之内，当 Python 环境中有许多出色的 Web 框架可用时，您可能应该尽量避免重复造轮子。
 
-Python拥有广泛的Web框架，涵盖了从用于快速开发的全栈框架（如Django）到面向API的微框架（如Flask）以及灵活的解决方案（如Pyramid和TurboGears），其中所需的部分可以根据需要启用、禁用或替换，从全栈解决方案到微框架。
+Python 拥有广泛的 Web 框架，涵盖了从用于快速开发的全栈框架（如 Django）到面向 API 的微框架（如 Flask）以及灵活的解决方案（如 Pyramid 和 TurboGears），其中所需的部分可以根据需要启用、禁用或替换，从全栈解决方案到微框架。
 
 # 提供静态文件
 
-有时在处理基于JavaScript的应用程序或静态网站时，有必要能够直接从磁盘上提供目录的内容。
+有时在处理基于 JavaScript 的应用程序或静态网站时，有必要能够直接从磁盘上提供目录的内容。
 
-Python标准库提供了一个现成的HTTP服务器，用于处理请求，并将它们映射到目录中的文件，因此我们可以快速地编写自己的HTTP服务器来编写网站，而无需安装任何其他工具。
+Python 标准库提供了一个现成的 HTTP 服务器，用于处理请求，并将它们映射到目录中的文件，因此我们可以快速地编写自己的 HTTP 服务器来编写网站，而无需安装任何其他工具。
 
 # 如何做...
 
-`http.server`模块提供了实现负责提供目录内容的HTTP服务器所需的大部分内容：
+`http.server`模块提供了实现负责提供目录内容的 HTTP 服务器所需的大部分内容：
 
 ```py
 import os.path
@@ -1117,9 +1117,9 @@ serve_directory('/tmp')
 
 `ThreadingHTTPServer`将`HTTPServer`与`ThreadingMixin`结合在一起，这允许您一次提供多个请求。
 
-这在提供静态网站时尤其重要，因为浏览器经常保持连接时间比需要的更长，当一次只提供一个请求时，您可能无法获取您的CSS或JavaScript文件，直到浏览器关闭前一个连接。
+这在提供静态网站时尤其重要，因为浏览器经常保持连接时间比需要的更长，当一次只提供一个请求时，您可能无法获取您的 CSS 或 JavaScript 文件，直到浏览器关闭前一个连接。
 
-对于每个请求，`HTTPServer`将其转发到指定的处理程序进行处理。`SimpleHTTPRequestHandler`能够提供请求，将其映射到磁盘上的本地文件，但在大多数Python版本中，它只能从当前目录提供服务。
+对于每个请求，`HTTPServer`将其转发到指定的处理程序进行处理。`SimpleHTTPRequestHandler`能够提供请求，将其映射到磁盘上的本地文件，但在大多数 Python 版本中，它只能从当前目录提供服务。
 
 为了能够从任何目录提供请求，我们提供了一个自定义的`translate_path`方法，它替换了相对于`SERVED_DIRECTORY`类变量的标准实现产生的路径。
 
@@ -1127,19 +1127,19 @@ serve_directory('/tmp')
 
 # 还有更多...
 
-在较新的Python版本中，关于`http.server`模块已经发生了很多变化。最新版本Python 3.7已经提供了`ThreadingHTTPServer`类，并且现在可以配置特定目录由`SimpleHTTPRequestHandler`提供服务，因此无需自定义`translate_path`方法来提供特定目录的服务。
+在较新的 Python 版本中，关于`http.server`模块已经发生了很多变化。最新版本 Python 3.7 已经提供了`ThreadingHTTPServer`类，并且现在可以配置特定目录由`SimpleHTTPRequestHandler`提供服务，因此无需自定义`translate_path`方法来提供特定目录的服务。
 
-# Web应用程序中的错误
+# Web 应用程序中的错误
 
-通常，当Python WSGI Web应用程序崩溃时，您会在终端中获得一个回溯，浏览器中的路径为空。
+通常，当 Python WSGI Web 应用程序崩溃时，您会在终端中获得一个回溯，浏览器中的路径为空。
 
 这并不是很容易调试发生了什么，除非您明确检查终端，否则很容易错过页面没有显示出来的情况，因为它实际上崩溃了。
 
-幸运的是，Python标准库为Web应用程序提供了一些基本的调试工具，使得可以将崩溃报告到浏览器中，这样您就可以在不离开浏览器的情况下查看并修复它们。
+幸运的是，Python 标准库为 Web 应用程序提供了一些基本的调试工具，使得可以将崩溃报告到浏览器中，这样您就可以在不离开浏览器的情况下查看并修复它们。
 
 # 如何做...
 
-`cgitb`模块提供了将异常及其回溯格式化为HTML的工具，因此我们可以利用它来实现一个WSGI中间件，该中间件可以包装任何Web应用程序，以在浏览器中提供更好的错误报告：
+`cgitb`模块提供了将异常及其回溯格式化为 HTML 的工具，因此我们可以利用它来实现一个 WSGI 中间件，该中间件可以包装任何 Web 应用程序，以在浏览器中提供更好的错误报告：
 
 ```py
 import cgitb
@@ -1177,9 +1177,9 @@ class ErrorMiddleware:
                 app_iter.close()
 ```
 
-`ErrorMiddleware`可以用于包装任何WSGI应用程序，以便在出现错误时将错误显示在Web浏览器中。
+`ErrorMiddleware`可以用于包装任何 WSGI 应用程序，以便在出现错误时将错误显示在 Web 浏览器中。
 
-例如，我们可以从上一个示例中重新获取我们的`WSGIApplication`，添加一个将导致崩溃的路由，并提供包装后的应用程序以查看错误如何报告到Web浏览器中：
+例如，我们可以从上一个示例中重新获取我们的`WSGIApplication`，添加一个将导致崩溃的路由，并提供包装后的应用程序以查看错误如何报告到 Web 浏览器中：
 
 ```py
 from web_06 import WSGIApplication
@@ -1204,7 +1204,7 @@ httpd.serve_forever()
 
 `ErrorMiddleware`接收原始应用程序并替换请求处理。
 
-所有HTTP请求都将被`ErrorMiddleware`接收，然后将其代理到应用程序，返回应用程序提供的结果响应。
+所有 HTTP 请求都将被`ErrorMiddleware`接收，然后将其代理到应用程序，返回应用程序提供的结果响应。
 
 如果在消耗应用程序响应时出现异常，它将停止标准流程，而不是进一步消耗应用程序的响应，它将格式化异常并将其作为响应发送回浏览器。
 
@@ -1265,11 +1265,11 @@ finally:
 
 # 还有更多...
 
-Python标准库之外还提供了更完整的Web应用程序错误报告解决方案。如果您有进一步的需求或希望通过电子邮件或通过Sentry等云错误报告解决方案通知错误，您可能需要提供一个错误报告WSGI库。
+Python 标准库之外还提供了更完整的 Web 应用程序错误报告解决方案。如果您有进一步的需求或希望通过电子邮件或通过 Sentry 等云错误报告解决方案通知错误，您可能需要提供一个错误报告 WSGI 库。
 
-来自Flask的`Werkzeug`调试器，来自Pylons项目的`WebError`库，以及来自TurboGears项目的`Backlash`库可能是这个目的最常见的解决方案。
+来自 Flask 的`Werkzeug`调试器，来自 Pylons 项目的`WebError`库，以及来自 TurboGears 项目的`Backlash`库可能是这个目的最常见的解决方案。
 
-您可能还想检查您的Web框架是否提供了一些高级的错误报告配置，因为其中许多提供了这些功能，依赖于这些库或其他工具。
+您可能还想检查您的 Web 框架是否提供了一些高级的错误报告配置，因为其中许多提供了这些功能，依赖于这些库或其他工具。
 
 # 处理表单和文件
 
@@ -1281,7 +1281,7 @@ Python标准库之外还提供了更完整的Web应用程序错误报告解决�
 
 标准库中的`cgi.FieldStorage`类已经提供了解析多部分数据并以易于处理的方式发送回数据所需的所有机制。
 
-我们将创建一个简单的Web应用程序（基于`WSGIApplication`），以展示如何使用`cgi.FieldStorage`来解析上传的文件并将其显示给用户：
+我们将创建一个简单的 Web 应用程序（基于`WSGIApplication`），以展示如何使用`cgi.FieldStorage`来解析上传的文件并将其显示给用户：
 
 ```py
 import cgi
@@ -1355,7 +1355,7 @@ b'  <input type="file" name="uploadedfile"/>'
 
 该特定字段将可以通过`form['uploadedfile']`访问。
 
-因为它是一个文件，它将返回一个对象，通过该对象我们可以检查上传文件的MIME类型，以确定它是否是一张图片：
+因为它是一个文件，它将返回一个对象，通过该对象我们可以检查上传文件的 MIME 类型，以确定它是否是一张图片：
 
 ```py
 if uploadedfile.type.startswith('image'):
@@ -1375,19 +1375,19 @@ return b'You uploaded %b' % uploadedfile.filename.encode('utf-8')
 
 # REST API
 
-REST与JSON已成为基于Web的应用程序之间的跨应用程序通信技术的事实标准。
+REST 与 JSON 已成为基于 Web 的应用程序之间的跨应用程序通信技术的事实标准。
 
 这是一个非常有效的协议，而且它的定义可以被每个人理解，这使得它很快就变得流行起来。
 
-与其他更复杂的通信协议相比，快速的REST实现可以相对快速地推出。
+与其他更复杂的通信协议相比，快速的 REST 实现可以相对快速地推出。
 
-由于Python标准库提供了我们构建基于WSGI的应用程序所需的基础，因此很容易扩展我们现有的配方以支持基于REST的请求分发。
+由于 Python 标准库提供了我们构建基于 WSGI 的应用程序所需的基础，因此很容易扩展我们现有的配方以支持基于 REST 的请求分发。
 
 # 如何做...
 
 我们将使用我们之前的配方中的`WSGIApplication`，但是不是为根注册一个函数，而是注册一个能够根据请求方法进行分发的特定类。
 
-1.  我们想要实现的所有REST类都必须继承自单个`RestController`实现：
+1.  我们想要实现的所有 REST 类都必须继承自单个`RestController`实现：
 
 ```py
 class RestController:
@@ -1511,7 +1511,7 @@ RESOURCES #1:  b'{"surname": "Mario", "id": "1", "name": "Mario"}'
 ALL RESOURCES b'{"1": {"surname": "Mario", "id": "1", "name": "Mario"}}'
 ```
 
-这应该允许我们为大多数简单情况提供REST接口，依赖于Python标准库中已经可用的内容。
+这应该允许我们为大多数简单情况提供 REST 接口，依赖于 Python 标准库中已经可用的内容。
 
 # 工作原理...
 
@@ -1525,9 +1525,9 @@ class RestController:
         return action(req, resp)
 ```
 
-每当调用`RestController`的子类时，它将查看HTTP请求方法，并查找一个命名类似于HTTP方法的实例方法。
+每当调用`RestController`的子类时，它将查看 HTTP 请求方法，并查找一个命名类似于 HTTP 方法的实例方法。
 
-如果有的话，将调用该方法，并返回方法本身提供的响应。如果没有，则调用`self._not_found`，它将只响应404错误。
+如果有的话，将调用该方法，并返回方法本身提供的响应。如果没有，则调用`self._not_found`，它将只响应 404 错误。
 
 这依赖于`WSGIApplication.__call__`对类而不是函数的支持。
 
@@ -1541,9 +1541,9 @@ body = routed_action(request, resp)
 
 如果`routed_action`是`RestController`的子类，那么将会发生的是`routed_action = routed_action()`将用其实例替换类，然后`routed_action(request, resp)`将调用`RestController.__call__`方法来实际处理请求。
 
-然后，`RestController.__call__`方法可以根据HTTP方法将请求转发到正确的实例方法。
+然后，`RestController.__call__`方法可以根据 HTTP 方法将请求转发到正确的实例方法。
 
-请注意，由于REST资源是通过在URL中提供资源标识符来识别的，因此分配给`RestController`的路由必须具有一个`id`参数和一个可选的`/`：
+请注意，由于 REST 资源是通过在 URL 中提供资源标识符来识别的，因此分配给`RestController`的路由必须具有一个`id`参数和一个可选的`/`：
 
 ```py
 @app.route('/resources/?(?P<id>\\w*)')
@@ -1573,17 +1573,17 @@ def POST(self, req, resp):
     data = req.environ['wsgi.input'].read(content_length).decode('utf-8')
 ```
 
-# 处理cookie
+# 处理 cookie
 
-在Web应用程序中，cookie经常用于在浏览器中存储数据。最常见的用例是用户识别。
+在 Web 应用程序中，cookie 经常用于在浏览器中存储数据。最常见的用例是用户识别。
 
-我们将实现一个非常简单且不安全的基于cookie的身份识别系统，以展示如何使用它们。
+我们将实现一个非常简单且不安全的基于 cookie 的身份识别系统，以展示如何使用它们。
 
 # 如何做...
 
-`http.cookies.SimpleCookie`类提供了解析和生成cookie所需的所有设施。
+`http.cookies.SimpleCookie`类提供了解析和生成 cookie 所需的所有设施。
 
-1.  我们可以依赖它来创建一个将设置cookie的Web应用程序端点：
+1.  我们可以依赖它来创建一个将设置 cookie 的 Web 应用程序端点：
 
 ```py
 from web_06 import WSGIApplication
@@ -1605,7 +1605,7 @@ def identity(req, resp):
     return b'Go back to <a href="/">index</a> to check your identity'
 ```
 
-1.  我们可以使用它来创建一个解析cookie并告诉我们当前用户是谁的cookie：
+1.  我们可以使用它来创建一个解析 cookie 并告诉我们当前用户是谁的 cookie：
 
 ```py
 @app.route('/')
@@ -1617,41 +1617,41 @@ def index(req, resp):
     return b'Visit <a href="/identity">/identity</a> to get an identity'
 ```
 
-1.  一旦启动应用程序，您可以将浏览器指向`http://localhost:8000`，然后您应该看到Web应用程序抱怨您缺少身份：
+1.  一旦启动应用程序，您可以将浏览器指向`http://localhost:8000`，然后您应该看到 Web 应用程序抱怨您缺少身份：
 
 ```py
 app.serve()
 ```
 
-点击建议的链接后，您应该得到一个，返回到索引页面，它应该通过cookie识别您。
+点击建议的链接后，您应该得到一个，返回到索引页面，它应该通过 cookie 识别您。
 
 # 它是如何工作的...
 
-`SimpleCookie`类表示一个或多个值的cookie。
+`SimpleCookie`类表示一个或多个值的 cookie。
 
-每个值都可以像字典一样设置到cookie中：
+每个值都可以像字典一样设置到 cookie 中：
 
 ```py
 cookie = SimpleCookie()
 cookie['identity'] = 'USER: {}'.format(identity)
 ```
 
-如果cookie`morsel`必须接受更多选项，那么可以使用字典语法进行设置：
+如果 cookie`morsel`必须接受更多选项，那么可以使用字典语法进行设置：
 
 ```py
 cookie['identity']['Path'] = '/'
 ```
 
-每个cookie可以包含多个值，每个值都应该使用`Set-Cookie` HTTP头进行设置。
+每个 cookie 可以包含多个值，每个值都应该使用`Set-Cookie` HTTP 头进行设置。
 
-迭代cookie将检索构成cookie的所有键/值对，然后在它们上调用`OutputString()`将返回编码为`Set-Cookie`头部所期望的cookie值，以及所有其他属性：
+迭代 cookie 将检索构成 cookie 的所有键/值对，然后在它们上调用`OutputString()`将返回编码为`Set-Cookie`头部所期望的 cookie 值，以及所有其他属性：
 
 ```py
 for set_cookie in cookie.values():
     resp.headers.add_header('Set-Cookie', set_cookie.OutputString())
 ```
 
-实际上，一旦设置了cookie，调用`OutputString()`将会将您发送回浏览器的字符串：
+实际上，一旦设置了 cookie，调用`OutputString()`将会将您发送回浏览器的字符串：
 
 ```py
 >>> cookie = SimpleCookie()
@@ -1661,13 +1661,13 @@ for set_cookie in cookie.values():
 'somevalue=42; Path=/'
 ```
 
-读取cookie与从`environ['HTTP_COOKIE']`值构建cookie一样简单，如果它可用的话：
+读取 cookie 与从`environ['HTTP_COOKIE']`值构建 cookie 一样简单，如果它可用的话：
 
 ```py
 cookies = SimpleCookie(req.environ['HTTP_COOKIE'])
 ```
 
-一旦cookie被解析，其中存储的值可以通过字典语法访问：
+一旦 cookie 被解析，其中存储的值可以通过字典语法访问：
 
 ```py
 cookies['identity']
@@ -1675,10 +1675,10 @@ cookies['identity']
 
 # 还有更多...
 
-在处理cookie时，您应该注意的一个特定条件是它们的生命周期。
+在处理 cookie 时，您应该注意的一个特定条件是它们的生命周期。
 
-Cookie可以有一个`Expires`属性，它将说明它们应该在哪个日期死亡（浏览器将丢弃它们），实际上，这就是您删除cookie的方式。使用过去日期的`Expires`日期再次设置cookie将删除它。
+Cookie 可以有一个`Expires`属性，它将说明它们应该在哪个日期死亡（浏览器将丢弃它们），实际上，这就是您删除 cookie 的方式。使用过去日期的`Expires`日期再次设置 cookie 将删除它。
 
-但是cookie也可以有一个`Max-Age`属性，它规定它们应该保留多长时间，或者可以创建为会话cookie，当浏览器窗口关闭时它们将消失。
+但是 cookie 也可以有一个`Max-Age`属性，它规定它们应该保留多长时间，或者可以创建为会话 cookie，当浏览器窗口关闭时它们将消失。
 
-因此，如果您遇到cookie随机消失或未正确加载回来的问题，请始终检查这些属性，因为cookie可能刚刚被浏览器删除。
+因此，如果您遇到 cookie 随机消失或未正确加载回来的问题，请始终检查这些属性，因为 cookie 可能刚刚被浏览器删除。

@@ -1,22 +1,22 @@
 # 使用模型-视图类创建数据接口
 
-绝大多数应用软件都是用来查看和操作组织好的数据。即使在不是显式*数据库应用程序*的应用程序中，通常也需要以较小的规模与数据集进行交互，比如用选项填充组合框或显示一系列设置。如果没有某种组织范式，GUI和一组数据之间的交互很快就会变成一团乱麻的代码噩梦。**模型-视图**模式就是这样一种范式。
+绝大多数应用软件都是用来查看和操作组织好的数据。即使在不是显式*数据库应用程序*的应用程序中，通常也需要以较小的规模与数据集进行交互，比如用选项填充组合框或显示一系列设置。如果没有某种组织范式，GUI 和一组数据之间的交互很快就会变成一团乱麻的代码噩梦。**模型-视图**模式就是这样一种范式。
 
-在本章中，我们将学习如何使用Qt的模型-视图小部件以及如何在应用程序中优雅地处理数据。我们将涵盖以下主题：
+在本章中，我们将学习如何使用 Qt 的模型-视图小部件以及如何在应用程序中优雅地处理数据。我们将涵盖以下主题：
 
 +   理解模型-视图设计
 
-+   PyQt中的模型和视图
++   PyQt 中的模型和视图
 
 +   构建一个**逗号分隔值**（**CSV**）编辑器
 
 # 技术要求
 
-本章具有与前几章相同的技术要求。您可能还希望从[https://github.com/PacktPublishing/Mastering-GUI-Programming-with-Python/tree/master/Chapter05](https://github.com/PacktPublishing/Mastering-GUI-Programming-with-Python/tree/master/Chapter05)获取示例代码。
+本章具有与前几章相同的技术要求。您可能还希望从[`github.com/PacktPublishing/Mastering-GUI-Programming-with-Python/tree/master/Chapter05`](https://github.com/PacktPublishing/Mastering-GUI-Programming-with-Python/tree/master/Chapter05)获取示例代码。
 
-您还需要一个或两个CSV文件来使用我们的CSV编辑器。这些可以在任何电子表格程序中制作，并且应该以列标题作为第一行创建。
+您还需要一个或两个 CSV 文件来使用我们的 CSV 编辑器。这些可以在任何电子表格程序中制作，并且应该以列标题作为第一行创建。
 
-查看以下视频，看看代码是如何运行的：[http://bit.ly/2M66bnv](http://bit.ly/2M66bnv)
+查看以下视频，看看代码是如何运行的：[`bit.ly/2M66bnv`](http://bit.ly/2M66bnv)
 
 # 理解模型-视图设计
 
@@ -24,7 +24,7 @@
 
 在模型-视图设计中，**模型**是保存应用程序数据并包含检索、存储和操作数据逻辑的组件。**视图**组件向用户呈现数据，并提供输入和操作数据的界面。通过将应用程序的这些组件分离，我们将它们的相互依赖性降到最低，使它们更容易重用或重构。
 
-让我们通过一个简单的例子来说明这个过程。从[第4章](9281bd2a-64a1-4128-92b0-e4871b79c040.xhtml)的应用程序模板开始，*使用QMainWindow构建应用程序*，让我们构建一个简单的文本文件编辑器：
+让我们通过一个简单的例子来说明这个过程。从第四章的应用程序模板开始，*使用 QMainWindow 构建应用程序*，让我们构建一个简单的文本文件编辑器：
 
 ```py
     # This code goes in MainWindow.__init__()
@@ -95,11 +95,11 @@ class Model(qtc.QObject):
       self.error.emit(error)
 ```
 
-我们通过子类化`QObject`来构建我们的模型。模型不应参与显示GUI，因此不需要基于`QWidget`类。然而，由于模型将使用信号和槽进行通信，我们使用`QObject`作为基类。模型实现了我们在前面示例中的`save()`方法，但有两个变化：
+我们通过子类化`QObject`来构建我们的模型。模型不应参与显示 GUI，因此不需要基于`QWidget`类。然而，由于模型将使用信号和槽进行通信，我们使用`QObject`作为基类。模型实现了我们在前面示例中的`save()`方法，但有两个变化：
 
 +   首先，它期望用户数据作为参数传入，不知道这些数据来自哪些小部件
 
-+   其次，当遇到错误时，它仅仅发出一个Qt信号，而不采取任何特定于GUI的操作
++   其次，当遇到错误时，它仅仅发出一个 Qt 信号，而不采取任何特定于 GUI 的操作
 
 接下来，让我们创建我们的`View`类：
 
@@ -156,9 +156,9 @@ class View(qtw.QWidget):
 
 在这些情况下，使用模型视图模式意味着我们不必从头开始。例如，在第一种情况下，我们不需要重写任何保存文件的代码；我们只需要创建用户界面代码，发射相同的`submitted`信号。随着你的代码扩展和你的应用程序变得更加复杂，这种关注点的分离将帮助你保持秩序。
 
-# PyQt中的模型和视图
+# PyQt 中的模型和视图
 
-模型视图模式不仅在设计大型应用程序时有用，而且在包含数据的小部件上也同样有用。从[第4章](9281bd2a-64a1-4128-92b0-e4871b79c040.xhtml)中复制应用程序模板，*使用QMainWindow构建应用程序*，让我们看一个模型视图在小部件级别上是如何工作的简单示例。
+模型视图模式不仅在设计大型应用程序时有用，而且在包含数据的小部件上也同样有用。从第四章中复制应用程序模板，*使用 QMainWindow 构建应用程序*，让我们看一个模型视图在小部件级别上是如何工作的简单示例。
 
 在`MainWindow`类中，创建一个项目列表，并将它们添加到`QListWidget`和`QComboBox`对象中：
 
@@ -187,9 +187,9 @@ class View(qtw.QWidget):
 
 通过迭代列表小部件中的项目，并在每个项目上设置`Qt.ItemIsEditable`标志，小部件变得可编辑，我们可以改变项目的文本。运行应用程序，尝试编辑列表小部件中的项目。即使你改变了列表小部件中的项目，组合框中的项目仍然保持不变。每个小部件都有自己的内部列表模型，它存储了最初传入的项目的副本。在一个列表的副本中改变项目对另一个副本没有影响。
 
-我们如何保持这两个列表同步？我们可以连接一些信号和插槽，或者添加类方法来做到这一点，但Qt提供了更好的方法。
+我们如何保持这两个列表同步？我们可以连接一些信号和插槽，或者添加类方法来做到这一点，但 Qt 提供了更好的方法。
 
-`QListWidget`实际上是另外两个Qt类的组合：`QListView`和`QStringListModel`。正如名称所示，这些都是模型视图类。我们可以直接使用这些类来构建我们自己的带有离散模型和视图的列表小部件：
+`QListWidget`实际上是另外两个 Qt 类的组合：`QListView`和`QStringListModel`。正如名称所示，这些都是模型视图类。我们可以直接使用这些类来构建我们自己的带有离散模型和视图的列表小部件：
 
 ```py
     model = qtc.QStringListModel(data)
@@ -212,17 +212,17 @@ class View(qtw.QWidget):
 
 `QTableWidget`和`QTreeWidget`也有类似的视图类：`QTableView`和`QTreeView`。然而，没有现成的模型类可以与这些视图一起使用。相反，我们必须通过分别继承`QAbstractTableModel`和`QAbstractTreeModel`来创建自己的自定义模型类。
 
-在下一节中，我们将通过构建自己的CSV编辑器来介绍如何创建和使用自定义模型类。
+在下一节中，我们将通过构建自己的 CSV 编辑器来介绍如何创建和使用自定义模型类。
 
-# 构建CSV编辑器
+# 构建 CSV 编辑器
 
-逗号分隔值（CSV）是一种存储表格数据的纯文本格式。任何电子表格程序都可以导出为CSV，或者您可以在文本编辑器中手动创建。我们的程序将被设计成可以打开任意的CSV文件并在`QTableView`中显示数据。通常在CSV的第一行用于保存列标题，因此我们的应用程序将假定这一点并使该行不可变。
+逗号分隔值（CSV）是一种存储表格数据的纯文本格式。任何电子表格程序都可以导出为 CSV，或者您可以在文本编辑器中手动创建。我们的程序将被设计成可以打开任意的 CSV 文件并在`QTableView`中显示数据。通常在 CSV 的第一行用于保存列标题，因此我们的应用程序将假定这一点并使该行不可变。
 
 # 创建表格模型
 
 在开发数据驱动的模型-视图应用程序时，模型通常是最好的起点，因为这里是最复杂的代码。一旦我们把这个后端放在适当的位置，实现前端就相当简单了。
 
-在这种情况下，我们需要设计一个可以读取和写入CSV数据的模型。从[第4章](9281bd2a-64a1-4128-92b0-e4871b79c040.xhtml)的应用程序模板中复制应用程序模板，*使用* *QMainWindow*，并在顶部添加Python `csv`库的导入。
+在这种情况下，我们需要设计一个可以读取和写入 CSV 数据的模型。从第四章的应用程序模板中复制应用程序模板，*使用* *QMainWindow*，并在顶部添加 Python `csv`库的导入。
 
 现在，让我们通过继承`QAbstractTableModel`来开始构建我们的模型：
 
@@ -239,7 +239,7 @@ class CsvTableModel(qtc.QAbstractTableModel):
       self._data = list(csvreader)
 ```
 
-我们的模型将以CSV文件的名称作为参数，并立即打开文件并将其读入内存（对于大文件来说不是一个很好的策略，但这只是一个示例程序）。我们将假定第一行是标题行，并在将其余行放入模型的`_data`属性之前使用`next()`函数检索它。
+我们的模型将以 CSV 文件的名称作为参数，并立即打开文件并将其读入内存（对于大文件来说不是一个很好的策略，但这只是一个示例程序）。我们将假定第一行是标题行，并在将其余行放入模型的`_data`属性之前使用`next()`函数检索它。
 
 # 实现读取功能
 
@@ -285,9 +285,9 @@ class CsvTableModel(qtc.QAbstractTableModel):
 
 如果没有特定角色的数据需要返回，`data()`应该返回空。
 
-在这种情况下，我们只对`DisplayRole`角色感兴趣。要实际返回数据，我们需要获取索引的行和列，然后使用它来从我们的CSV数据中提取适当的行和列。
+在这种情况下，我们只对`DisplayRole`角色感兴趣。要实际返回数据，我们需要获取索引的行和列，然后使用它来从我们的 CSV 数据中提取适当的行和列。
 
-在这一点上，我们有一个最小功能的只读CSV模型，但我们可以添加更多内容。
+在这一点上，我们有一个最小功能的只读 CSV 模型，但我们可以添加更多内容。
 
 # 添加标题和排序
 
@@ -328,7 +328,7 @@ class CsvTableModel(qtc.QAbstractTableModel):
     self.layoutChanged.emit() # needs to be emitted after a sort
 ```
 
-`sort()`接受一个`column`号和`order`，它可以是`QtCore.Qt.DescendingOrder`或`QtCore.Qt.AscendingOrder`，该方法的目的是相应地对数据进行排序。在这种情况下，我们使用Python的`list.sort()`方法来就地对数据进行排序，使用`column`参数来确定每行的哪一列将被返回进行排序。如果请求降序排序，我们将使用`reverse()`来相应地改变排序顺序。
+`sort()`接受一个`column`号和`order`，它可以是`QtCore.Qt.DescendingOrder`或`QtCore.Qt.AscendingOrder`，该方法的目的是相应地对数据进行排序。在这种情况下，我们使用 Python 的`list.sort()`方法来就地对数据进行排序，使用`column`参数来确定每行的哪一列将被返回进行排序。如果请求降序排序，我们将使用`reverse()`来相应地改变排序顺序。
 
 `sort()`还必须发出两个信号：
 
@@ -340,7 +340,7 @@ class CsvTableModel(qtc.QAbstractTableModel):
 
 # 实现写入功能
 
-我们的模型目前是只读的，但因为我们正在实现CSV编辑器，我们需要实现写入数据。首先，我们需要重写一些方法以启用对现有数据行的编辑：`flags()`和`setData()`。
+我们的模型目前是只读的，但因为我们正在实现 CSV 编辑器，我们需要实现写入数据。首先，我们需要重写一些方法以启用对现有数据行的编辑：`flags()`和`setData()`。
 
 `flags()`接受一个`QModelIndex`值，并为给定索引处的项目返回一组`QtCore.Qt.ItemFlag`常量。这些标志用于指示项目是否可以被选择、拖放、检查，或者——对我们来说最有趣的是——编辑。
 
@@ -448,7 +448,7 @@ class CsvTableModel(qtc.QAbstractTableModel):
       writer.writerows(self._data)
 ```
 
-这个方法只是打开我们的文件，并使用Python的`csv`库写入标题和所有数据行。
+这个方法只是打开我们的文件，并使用 Python 的`csv`库写入标题和所有数据行。
 
 # 在视图中使用模型
 
@@ -480,7 +480,7 @@ class CsvTableModel(qtc.QAbstractTableModel):
       self.tableview.setModel(self.model)
 ```
 
-我们的方法使用`QFileDialog`类来询问用户要打开的CSV文件。如果选择了一个文件，它将使用CSV文件来创建我们模型类的一个实例。然后使用`setModel()`访问方法将模型类分配给视图。
+我们的方法使用`QFileDialog`类来询问用户要打开的 CSV 文件。如果选择了一个文件，它将使用 CSV 文件来创建我们模型类的一个实例。然后使用`setModel()`访问方法将模型类分配给视图。
 
 回到`MainWindow.__init__()`，让我们为应用程序创建一个主菜单，并添加一个“打开”操作：
 
@@ -490,7 +490,7 @@ class CsvTableModel(qtc.QAbstractTableModel):
     file_menu.addAction('Open', self.select_file)
 ```
 
-如果您现在运行脚本，您应该能够通过转到“文件|打开”并选择有效的CSV文件来打开文件。您应该能够查看甚至编辑数据，并且如果单击标题单元格，数据应该按列排序。
+如果您现在运行脚本，您应该能够通过转到“文件|打开”并选择有效的 CSV 文件来打开文件。您应该能够查看甚至编辑数据，并且如果单击标题单元格，数据应该按列排序。
 
 接下来，让我们添加用户界面组件，以便保存我们的文件。首先，创建一个调用`MainWindow`方法`save_file()`的菜单项：
 
@@ -522,7 +522,7 @@ class CsvTableModel(qtc.QAbstractTableModel):
     self.model.insertRows(row + 1, 1, None)
 ```
 
-在这两种方法中，我们通过调用表视图的`selectedIndexes()`方法来获取所选单元格的列表。这些列表从左上角的单元格到右下角的单元格排序。因此，对于插入上方，我们检索列表中第一个索引的行（如果列表为空，则为0）。对于插入下方，我们检索列表中最后一个索引的行（如果列表为空，则为表中的最后一个索引）。最后，在这两种方法中，我们使用模型的`insertRows()`方法将一行插入到适当的位置。
+在这两种方法中，我们通过调用表视图的`selectedIndexes()`方法来获取所选单元格的列表。这些列表从左上角的单元格到右下角的单元格排序。因此，对于插入上方，我们检索列表中第一个索引的行（如果列表为空，则为 0）。对于插入下方，我们检索列表中最后一个索引的行（如果列表为空，则为表中的最后一个索引）。最后，在这两种方法中，我们使用模型的`insertRows()`方法将一行插入到适当的位置。
 
 删除行类似，如下所示：
 
@@ -544,15 +544,15 @@ class CsvTableModel(qtc.QAbstractTableModel):
     edit_menu.addAction('Remove Row(s)', self.remove_rows)
 ```
 
-此时，请尝试加载CSV文件。您应该能够在表中插入和删除行，编辑字段并保存结果。恭喜，您已经创建了一个CSV编辑器！
+此时，请尝试加载 CSV 文件。您应该能够在表中插入和删除行，编辑字段并保存结果。恭喜，您已经创建了一个 CSV 编辑器！
 
 # 总结
 
-在本章中，您学习了模型视图编程。您学习了如何在常规小部件中使用模型，以及如何在Qt中使用特殊的模型视图类。您创建了一个自定义表模型，并通过利用模型视图类的功能快速构建了一个CSV编辑器。
+在本章中，您学习了模型视图编程。您学习了如何在常规小部件中使用模型，以及如何在 Qt 中使用特殊的模型视图类。您创建了一个自定义表模型，并通过利用模型视图类的功能快速构建了一个 CSV 编辑器。
 
-我们将学习更高级的模型视图概念，包括委托和数据映射在[第9章](af85c1e5-39e9-47fd-a999-16f2728fe464.xhtml)中，*使用QtSQL探索SQL*。
+我们将学习更高级的模型视图概念，包括委托和数据映射在第九章中，*使用 QtSQL 探索 SQL*。
 
-在下一章中，您将学习如何为您的PyQt应用程序设置样式。我们将使用图像、动态图标、花哨的字体和颜色来装扮我们的单调表单，并学习控制Qt GUI整体外观和感觉的多种方法。
+在下一章中，您将学习如何为您的 PyQt 应用程序设置样式。我们将使用图像、动态图标、花哨的字体和颜色来装扮我们的单调表单，并学习控制 Qt GUI 整体外观和感觉的多种方法。
 
 # 问题
 
@@ -568,13 +568,13 @@ class CsvTableModel(qtc.QAbstractTableModel):
 
 1.  您能否至少说出模型不应该做的两件事和视图不应该做的两件事？
 
-1.  `QAbstractTableModel`和`QAbstractTreeModel`都在名称中有*Abstract*。在这种情况下，*Abstract*在这里是什么意思？在C++中，它的意思是否与Python中的意思不同？
+1.  `QAbstractTableModel`和`QAbstractTreeModel`都在名称中有*Abstract*。在这种情况下，*Abstract*在这里是什么意思？在 C++中，它的意思是否与 Python 中的意思不同？
 
 1.  哪种模型类型——列表、表格或树——最适合以下数据集：
 
 +   用户最近的文件
 
-+   Windows注册表
++   Windows 注册表
 
 +   Linux `syslog`记录
 
@@ -610,6 +610,6 @@ class CsvTableModel(qtc.QAbstractTableModel):
 
 您可能希望查看以下资源：
 
-+   有关模型视图编程的Qt文档在[https://doc.qt.io/qt-5/model-view-programming.html](https://doc.qt.io/qt-5/model-view-programming.html)
++   有关模型视图编程的 Qt 文档在[`doc.qt.io/qt-5/model-view-programming.html`](https://doc.qt.io/qt-5/model-view-programming.html)
 
-+   马丁·福勒在[https://martinfowler.com/eaaDev/uiArchs.html](https://martinfowler.com/eaaDev/uiArchs.html)上介绍了**模型-视图-控制器**（**MVC**）及相关模式的概述。
++   马丁·福勒在[`martinfowler.com/eaaDev/uiArchs.html`](https://martinfowler.com/eaaDev/uiArchs.html)上介绍了**模型-视图-控制器**（**MVC**）及相关模式的概述。

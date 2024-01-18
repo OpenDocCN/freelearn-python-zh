@@ -2,15 +2,15 @@
 
 在上一章中，我们学习了如何有效地使用标记和参数化来跳过测试，将其标记为预期失败，并对其进行参数化，以避免重复。
 
-现实世界中的测试通常需要创建资源或数据来进行操作：一个临时目录来输出一些文件，一个数据库连接来测试应用程序的I/O层，一个用于集成测试的Web服务器。这些都是更复杂的测试场景中所需的资源的例子。更复杂的资源通常需要在测试会话结束时进行清理：删除临时目录，清理并断开与数据库的连接，关闭Web服务器。此外，这些资源应该很容易地在测试之间共享，因为在测试过程中我们经常需要为不同的测试场景重用资源。一些资源创建成本很高，但因为它们是不可变的或者可以恢复到原始状态，所以应该只创建一次，并与需要它的所有测试共享，在最后一个需要它们的测试完成时销毁。
+现实世界中的测试通常需要创建资源或数据来进行操作：一个临时目录来输出一些文件，一个数据库连接来测试应用程序的 I/O 层，一个用于集成测试的 Web 服务器。这些都是更复杂的测试场景中所需的资源的例子。更复杂的资源通常需要在测试会话结束时进行清理：删除临时目录，清理并断开与数据库的连接，关闭 Web 服务器。此外，这些资源应该很容易地在测试之间共享，因为在测试过程中我们经常需要为不同的测试场景重用资源。一些资源创建成本很高，但因为它们是不可变的或者可以恢复到原始状态，所以应该只创建一次，并与需要它的所有测试共享，在最后一个需要它们的测试完成时销毁。
 
-pytest最重要的功能之一是覆盖所有先前的要求和更多内容。
+pytest 最重要的功能之一是覆盖所有先前的要求和更多内容。
 
 本章我们将涵盖以下内容：
 
-+   引入fixtures
++   引入 fixtures
 
-+   使用`conftest.py`文件共享fixtures
++   使用`conftest.py`文件共享 fixtures
 
 +   作用域
 
@@ -18,13 +18,13 @@ pytest最重要的功能之一是覆盖所有先前的要求和更多内容。
 
 +   参数化
 
-+   使用fixtures中的标记
++   使用 fixtures 中的标记
 
-+   内置fixtures概述
++   内置 fixtures 概述
 
 +   提示/讨论
 
-# 引入fixtures
+# 引入 fixtures
 
 大多数测试需要某种数据或资源来操作：
 
@@ -60,11 +60,11 @@ def test_oldest():
 
 但这很快就会变得老套—此外，复制和粘贴东西会在长期内影响可维护性，例如，如果数据布局发生变化（例如，添加一个新项目到元组或演员阵容大小）。
 
-# 进入fixtures
+# 进入 fixtures
 
-pytest对这个问题的解决方案是fixtures。fixtures用于提供测试所需的函数和方法。
+pytest 对这个问题的解决方案是 fixtures。fixtures 用于提供测试所需的函数和方法。
 
-它们是使用普通的Python函数和`@pytest.fixture`装饰器创建的：
+它们是使用普通的 Python 函数和`@pytest.fixture`装饰器创建的：
 
 ```py
 @pytest.fixture
@@ -78,9 +78,9 @@ def comedy_series():
     ]
 ```
 
-在这里，我们创建了一个名为`comedy_series`的fixture，它返回我们在上一节中使用的相同列表。
+在这里，我们创建了一个名为`comedy_series`的 fixture，它返回我们在上一节中使用的相同列表。
 
-测试可以通过在其参数列表中声明fixture名称来访问fixtures。然后测试函数会接收fixture函数的返回值作为参数。这里是`comedy_series` fixture的使用：
+测试可以通过在其参数列表中声明 fixture 名称来访问 fixtures。然后测试函数会接收 fixture 函数的返回值作为参数。这里是`comedy_series` fixture 的使用：
 
 ```py
 def test_highest_rated(comedy_series):
@@ -92,15 +92,15 @@ def test_oldest(comedy_series):
 
 事情是这样的：
 
-+   pytest在调用测试函数之前查看测试函数的参数。这里，我们有一个参数：`comedy_series`。
++   pytest 在调用测试函数之前查看测试函数的参数。这里，我们有一个参数：`comedy_series`。
 
-+   对于每个参数，pytest获取相同名称的fixture函数并执行它。
++   对于每个参数，pytest 获取相同名称的 fixture 函数并执行它。
 
-+   每个fixture函数的返回值成为一个命名参数，并调用测试函数。
++   每个 fixture 函数的返回值成为一个命名参数，并调用测试函数。
 
 请注意，`test_highest_rated`和`test_oldest`各自获得喜剧系列列表的副本，因此如果它们在测试中更改列表，它们不会相互干扰。
 
-还可以使用方法在类中创建fixtures：
+还可以使用方法在类中创建 fixtures：
 
 ```py
 class Test:
@@ -115,7 +115,7 @@ class Test:
         ]
 ```
 
-在测试类中定义的fixtures只能被类或子类的测试方法访问：
+在测试类中定义的 fixtures 只能被类或子类的测试方法访问：
 
 ```py
 class Test:
@@ -134,11 +134,11 @@ class Test:
 
 正如我们在介绍中看到的，测试中使用的资源通常需要在测试完成后进行某种清理。
 
-在我们之前的例子中，我们有一个非常小的数据集，所以在fixture中内联它是可以的。然而，假设我们有一个更大的数据集（比如，1000个条目），那么在代码中写入它会影响可读性。通常，数据集在外部文件中，例如CSV格式，因此将其移植到Python代码中是一件痛苦的事情。
+在我们之前的例子中，我们有一个非常小的数据集，所以在 fixture 中内联它是可以的。然而，假设我们有一个更大的数据集（比如，1000 个条目），那么在代码中写入它会影响可读性。通常，数据集在外部文件中，例如 CSV 格式，因此将其移植到 Python 代码中是一件痛苦的事情。
 
-解决方法是将包含系列数据集的CSV文件提交到存储库中，并在测试中使用内置的`csv`模块进行读取；有关更多详细信息，请访问[https://docs.python.org/3/library/csv.html](https://docs.python.org/3/library/csv.html)。
+解决方法是将包含系列数据集的 CSV 文件提交到存储库中，并在测试中使用内置的`csv`模块进行读取；有关更多详细信息，请访问[`docs.python.org/3/library/csv.html`](https://docs.python.org/3/library/csv.html)。
 
-我们可以更改`comedy_series` fixture来实现这一点：
+我们可以更改`comedy_series` fixture 来实现这一点：
 
 ```py
 @pytest.fixture
@@ -147,9 +147,9 @@ def comedy_series():
     return list(csv.reader(file))
 ```
 
-这样做是有效的，但是我们作为认真的开发人员，希望能够正确关闭该文件。我们如何使用fixtures做到这一点呢？
+这样做是有效的，但是我们作为认真的开发人员，希望能够正确关闭该文件。我们如何使用 fixtures 做到这一点呢？
 
-Fixture清理通常被称为**teardown**，并且可以使用`yield`语句轻松支持：
+Fixture 清理通常被称为**teardown**，并且可以使用`yield`语句轻松支持：
 
 ```py
 @pytest.fixture
@@ -161,15 +161,15 @@ def some_fixture():
 
 通过使用`yield`而不是`return`，会发生以下情况：
 
-+   fixture函数被调用
++   fixture 函数被调用
 
-+   它执行直到yield语句，其中暂停并产生fixture值
++   它执行直到 yield 语句，其中暂停并产生 fixture 值
 
-+   测试执行，接收fixture值作为参数
++   测试执行，接收 fixture 值作为参数
 
 +   无论测试是否通过，函数都会恢复执行，以执行其清理操作
 
-对于熟悉它的人来说，这与**上下文管理器**（[https://docs.python.org/3/library/contextlib.html#contextlib.contextmanager](https://docs.python.org/3/library/contextlib.html#contextlib.contextmanager)）非常相似，只是您不需要用try/except子句将yield语句包围起来，以确保在发生异常时仍执行yield后的代码块。
+对于熟悉它的人来说，这与**上下文管理器**（[`docs.python.org/3/library/contextlib.html#contextlib.contextmanager`](https://docs.python.org/3/library/contextlib.html#contextlib.contextmanager)）非常相似，只是您不需要用 try/except 子句将 yield 语句包围起来，以确保在发生异常时仍执行 yield 后的代码块。
 
 让我们回到我们的例子；现在我们可以使用`yield`而不是`return`并关闭文件：
 
@@ -190,15 +190,15 @@ def comedy_series():
         return list(csv.reader(file))
 ```
 
-测试完成后，`with`语句会自动关闭文件，这更短，被认为更符合Python风格。
+测试完成后，`with`语句会自动关闭文件，这更短，被认为更符合 Python 风格。
 
 太棒了。
 
 # 可组合性
 
-假设我们收到一个新的series.csv文件，其中包含更多的电视系列，包括以前的喜剧系列和许多其他类型。我们希望为一些其他测试使用这些新数据，但我们希望保持现有的测试与以前一样工作。
+假设我们收到一个新的 series.csv 文件，其中包含更多的电视系列，包括以前的喜剧系列和许多其他类型。我们希望为一些其他测试使用这些新数据，但我们希望保持现有的测试与以前一样工作。
 
-在pytest中，fixture可以通过声明它们为参数轻松依赖于其他fixtures。利用这一特性，我们能够创建一个新的series fixture，从`series.csv`中读取所有数据（现在包含更多类型），并将我们的`comedy_series` fixture更改为仅过滤出喜剧系列：
+在 pytest 中，fixture 可以通过声明它们为参数轻松依赖于其他 fixtures。利用这一特性，我们能够创建一个新的 series fixture，从`series.csv`中读取所有数据（现在包含更多类型），并将我们的`comedy_series` fixture 更改为仅过滤出喜剧系列：
 
 ```py
 @pytest.fixture
@@ -221,13 +221,13 @@ def test_oldest(comedy_series):
     assert oldest(comedy_series) == "Seinfeld"
 ```
 
-请注意，由于这些特性，fixtures是依赖注入的一个典型例子，这是一种技术，其中函数或对象声明其依赖关系，但否则不知道或不关心这些依赖关系将如何创建，或者由谁创建。这使它们非常模块化和可重用。
+请注意，由于这些特性，fixtures 是依赖注入的一个典型例子，这是一种技术，其中函数或对象声明其依赖关系，但否则不知道或不关心这些依赖关系将如何创建，或者由谁创建。这使它们非常模块化和可重用。
 
-# 使用conftest.py文件共享fixtures
+# 使用 conftest.py 文件共享 fixtures
 
-假设我们需要在其他测试模块中使用前一节中的`comedy_series` fixture。在pytest中，通过将fixture代码移动到`conftest.py`文件中，可以轻松共享fixtures。
+假设我们需要在其他测试模块中使用前一节中的`comedy_series` fixture。在 pytest 中，通过将 fixture 代码移动到`conftest.py`文件中，可以轻松共享 fixtures。
 
-`conftest.py`文件是一个普通的Python模块，只是它会被pytest自动加载，并且其中定义的任何fixtures都会自动对同一目录及以下的测试模块可用。考虑一下这个测试模块的层次结构：
+`conftest.py`文件是一个普通的 Python 模块，只是它会被 pytest 自动加载，并且其中定义的任何 fixtures 都会自动对同一目录及以下的测试模块可用。考虑一下这个测试模块的层次结构：
 
 ```py
 tests/
@@ -241,9 +241,9 @@ tests/
 
 ```
 
-`tests/conftest.py`文件位于层次结构的根目录，因此在该项目中，任何在其中定义的fixtures都会自动对所有其他测试模块可用。在`tests/io/conftest.py`中定义的fixtures将仅对`tests/io`及以下模块可用，因此目前仅对`test_formats.py`可用。
+`tests/conftest.py`文件位于层次结构的根目录，因此在该项目中，任何在其中定义的 fixtures 都会自动对所有其他测试模块可用。在`tests/io/conftest.py`中定义的 fixtures 将仅对`tests/io`及以下模块可用，因此目前仅对`test_formats.py`可用。
 
-这可能看起来不像什么大不了的事，但它使共享fixtures变得轻而易举：当编写测试模块时，能够从小处开始使用一些fixtures，知道如果将来这些fixtures对其他测试有用，只需将fixtures移动到`conftest.py`中即可。这避免了复制和粘贴测试数据的诱惑，或者花费太多时间考虑如何从一开始组织测试支持代码，以避免以后进行大量重构。
+这可能看起来不像什么大不了的事，但它使共享 fixtures 变得轻而易举：当编写测试模块时，能够从小处开始使用一些 fixtures，知道如果将来这些 fixtures 对其他测试有用，只需将 fixtures 移动到`conftest.py`中即可。这避免了复制和粘贴测试数据的诱惑，或者花费太多时间考虑如何从一开始组织测试支持代码，以避免以后进行大量重构。
 
 # 作用域
 
@@ -253,11 +253,11 @@ tests/
 
 +   初始化数据库表
 
-+   例如，从磁盘读取缓存数据，大型CSV数据
++   例如，从磁盘读取缓存数据，大型 CSV 数据
 
 +   启动外部服务
 
-为了解决这个问题，pytest中的夹具可以具有不同的**范围**。夹具的范围定义了夹具应该在何时清理。在夹具没有清理的情况下，请求夹具的测试将收到相同的夹具值。
+为了解决这个问题，pytest 中的夹具可以具有不同的**范围**。夹具的范围定义了夹具应该在何时清理。在夹具没有清理的情况下，请求夹具的测试将收到相同的夹具值。
 
 `@pytest.fixture`装饰器的范围参数用于设置夹具的范围：
 
@@ -281,7 +281,7 @@ def db_connection():
 
 # 范围的作用
 
-为了展示作用域，让我们看一下在测试涉及某种数据库时使用的常见模式。在即将到来的示例中，不要关注数据库API（无论如何都是虚构的），而是关注涉及的夹具的概念和设计。
+为了展示作用域，让我们看一下在测试涉及某种数据库时使用的常见模式。在即将到来的示例中，不要关注数据库 API（无论如何都是虚构的），而是关注涉及的夹具的概念和设计。
 
 通常，连接到数据库和表的创建都很慢。如果数据库支持事务，即执行可以原子地应用或丢弃的一组更改的能力，那么可以使用以下模式。
 
@@ -482,7 +482,7 @@ def test_currency_br():
 
 # 内置装置概述
 
-让我们来看一些内置的pytest装置。
+让我们来看一些内置的 pytest 装置。
 
 # tmpdir
 
@@ -494,9 +494,9 @@ def test_empty(tmpdir):
     assert os.listdir(tmpdir) == []
 ```
 
-作为`function`-scoped装置，每个测试都有自己的目录，因此它们不必担心清理或生成唯一的目录。
+作为`function`-scoped 装置，每个测试都有自己的目录，因此它们不必担心清理或生成唯一的目录。
 
-装置提供了一个`py.local`对象（[http://py.readthedocs.io/en/latest/path.html](http://py.readthedocs.io/en/latest/path.html)），来自`py`库（[http://py.readthedocs.io](http://py.readthedocs.io)），它提供了方便的方法来处理文件路径，比如连接，读取，写入，获取扩展名等等；它在哲学上类似于标准库中的`pathlib.Path`对象（[https://docs.python.org/3/library/pathlib.html](https://docs.python.org/3/library/pathlib.html)）：
+装置提供了一个`py.local`对象（[`py.readthedocs.io/en/latest/path.html`](http://py.readthedocs.io/en/latest/path.html)），来自`py`库（[`py.readthedocs.io`](http://py.readthedocs.io)），它提供了方便的方法来处理文件路径，比如连接，读取，写入，获取扩展名等等；它在哲学上类似于标准库中的`pathlib.Path`对象（[`docs.python.org/3/library/pathlib.html`](https://docs.python.org/3/library/pathlib.html)）：
 
 ```py
 def test_save_curves(tmpdir):
@@ -506,15 +506,15 @@ def test_save_curves(tmpdir):
     assert fn.read() == '{"status_code": 200, "values": [225, 300]}'
 ```
 
-为什么pytest使用`py.local`而不是`pathlib.Path`？
+为什么 pytest 使用`py.local`而不是`pathlib.Path`？
 
-在`pathlib.Path`出现并被合并到标准库之前，Pytest已经存在多年了，而`py`库是当时路径类对象的最佳解决方案之一。核心pytest开发人员正在研究如何使pytest适应现在标准的`pathlib.Path`API。
+在`pathlib.Path`出现并被合并到标准库之前，Pytest 已经存在多年了，而`py`库是当时路径类对象的最佳解决方案之一。核心 pytest 开发人员正在研究如何使 pytest 适应现在标准的`pathlib.Path`API。
 
 # tmpdir_factory
 
-`tmpdir`装置非常方便，但它只有`function`*-*scoped：这样做的缺点是它只能被其他`function`-scoped装置使用。
+`tmpdir`装置非常方便，但它只有`function`*-*scoped：这样做的缺点是它只能被其他`function`-scoped 装置使用。
 
-`tmpdir_factory`装置是一个*session-scoped*装置，允许在任何范围内创建空的唯一目录。当我们需要在其他范围的装置中存储数据时，例如`session`-scoped缓存或数据库文件时，这可能很有用。
+`tmpdir_factory`装置是一个*session-scoped*装置，允许在任何范围内创建空的唯一目录。当我们需要在其他范围的装置中存储数据时，例如`session`-scoped 缓存或数据库文件时，这可能很有用。
 
 为了展示它的作用，接下来显示的`images_dir`装置使用`tmpdir_factory`创建一个唯一的目录，整个测试会话中包含一系列示例图像文件：
 
@@ -543,11 +543,11 @@ def test_blur_filter(images_dir):
 
 在某些情况下，测试需要复杂或难以在测试环境中设置的功能，例如：
 
-+   对外部资源的客户端（例如GitHub的API）需要在测试期间访问可能不切实际或成本太高
++   对外部资源的客户端（例如 GitHub 的 API）需要在测试期间访问可能不切实际或成本太高
 
 +   强制代码表现得好像在另一个平台上，比如错误处理
 
-+   复杂的条件或难以在本地或CI中重现的环境
++   复杂的条件或难以在本地或 CI 中重现的环境
 
 `monkeypatch`装置允许您使用其他对象和函数干净地覆盖正在测试的系统的函数、对象和字典条目，并在测试拆卸期间撤消所有更改。例如：
 
@@ -560,7 +560,7 @@ def user_login(name):
     ...
 ```
 
-在这段代码中，`user_login`使用标准库中的`getpass.getpass()`函数（[https://docs.python.org/3/library/getpass.html](https://docs.python.org/3/library/getpass.html)）以系统中最安全的方式提示用户输入密码。在测试期间很难模拟实际输入密码，因为`getpass`尝试直接从终端读取（而不是从`sys.stdin`）。
+在这段代码中，`user_login`使用标准库中的`getpass.getpass()`函数（[`docs.python.org/3/library/getpass.html`](https://docs.python.org/3/library/getpass.html)）以系统中最安全的方式提示用户输入密码。在测试期间很难模拟实际输入密码，因为`getpass`尝试直接从终端读取（而不是从`sys.stdin`）。
 
 我们可以使用`monkeypatch`装置来在测试中绕过对`getpass`的调用，透明地而不改变应用程序代码：
 
@@ -581,7 +581,7 @@ def test_login_wrong_password(monkeypatch):
 
 `monkeypatch`装置通过用另一个对象（通常称为*模拟*）替换对象的属性来工作，在测试结束时恢复原始对象。使用此装置的常见问题是修补错误的对象，这会导致调用原始函数/对象而不是模拟函数/对象。
 
-要理解问题，我们需要了解Python中`import`和`import from`的工作原理。
+要理解问题，我们需要了解 Python 中`import`和`import from`的工作原理。
 
 考虑一个名为`services.py`的模块：
 
@@ -634,11 +634,11 @@ def test_start_service(monkeypatch):
     assert commands == ["docker run web"]
 ```
 
-被测试代码导入需要进行monkeypatch的代码是人们经常被绊倒的原因，所以确保您首先查看代码。
+被测试代码导入需要进行 monkeypatch 的代码是人们经常被绊倒的原因，所以确保您首先查看代码。
 
 # capsys/capfd
 
-`capsys` fixture捕获了写入`sys.stdout`和`sys.stderr`的所有文本，并在测试期间使其可用。
+`capsys` fixture 捕获了写入`sys.stdout`和`sys.stderr`的所有文本，并在测试期间使其可用。
 
 假设我们有一个小的命令行脚本，并且希望在调用脚本时没有参数时检查使用说明是否正确：
 
@@ -656,7 +656,7 @@ def show_usage():
     print(" Usage: hooks REPO URL")
 ```
 
-在测试期间，我们可以使用`capsys` fixture访问捕获的输出。这个fixture有一个`capsys.readouterr()`方法，返回一个`namedtuple`([https://docs.python.org/3/library/collections.html#collections.namedtuple](https://docs.python.org/3/library/collections.html#collections.namedtuple))，其中包含从`sys.stdout`和`sys.stderr`捕获的文本。
+在测试期间，我们可以使用`capsys` fixture 访问捕获的输出。这个 fixture 有一个`capsys.readouterr()`方法，返回一个`namedtuple`([`docs.python.org/3/library/collections.html#collections.namedtuple`](https://docs.python.org/3/library/collections.html#collections.namedtuple))，其中包含从`sys.stdout`和`sys.stderr`捕获的文本。
 
 ```py
 def test_usage(capsys):
@@ -672,25 +672,25 @@ def test_usage(capsys):
 
 # 二进制模式
 
-`capsysbinary`和`capfdbinary`是与`capsys`和`capfd`相同的fixtures，不同之处在于它们以二进制模式捕获输出，并且它们的`readouterr()`方法返回原始字节而不是文本。在特殊情况下可能会有用，例如运行生成二进制输出的外部进程时，如`tar`。
+`capsysbinary`和`capfdbinary`是与`capsys`和`capfd`相同的 fixtures，不同之处在于它们以二进制模式捕获输出，并且它们的`readouterr()`方法返回原始字节而不是文本。在特殊情况下可能会有用，例如运行生成二进制输出的外部进程时，如`tar`。
 
 # request
 
-`request` fixture是一个内部pytest fixture，提供有关请求测试的有用信息。它可以在测试函数和fixtures中声明，并提供以下属性：
+`request` fixture 是一个内部 pytest fixture，提供有关请求测试的有用信息。它可以在测试函数和 fixtures 中声明，并提供以下属性：
 
 +   `function`：Python `test`函数对象，可用于`function`-scoped fixtures。
 
-+   `cls`/`instance`：Python类/实例的`test`方法对象，可用于`function`和`class`-scoped fixtures。如果fixture是从`test`函数请求的，而不是测试方法，则可以为`None`。
++   `cls`/`instance`：Python 类/实例的`test`方法对象，可用于`function`和`class`-scoped fixtures。如果 fixture 是从`test`函数请求的，而不是测试方法，则可以为`None`。
 
-+   `module`：请求测试方法的Python模块对象，可用于`module`，`function`和`class`-scoped fixtures。
++   `module`：请求测试方法的 Python 模块对象，可用于`module`，`function`和`class`-scoped fixtures。
 
-+   `session`：pytest的内部`Session`对象，它是测试会话的单例，代表集合树的根。它可用于所有范围的fixtures。
++   `session`：pytest 的内部`Session`对象，它是测试会话的单例，代表集合树的根。它可用于所有范围的 fixtures。
 
-+   `node`：pytest集合节点，它包装了与fixture范围匹配的Python对象之一。
++   `node`：pytest 集合节点，它包装了与 fixture 范围匹配的 Python 对象之一。
 
-+   `addfinalizer(func)`: 添加一个将在测试结束时调用的`new finalizer`函数。finalizer函数将在不带参数的情况下调用。`addfinalizer`是在fixtures中执行拆卸的原始方法，但后来已被`yield`语句取代，主要用于向后兼容。
++   `addfinalizer(func)`: 添加一个将在测试结束时调用的`new finalizer`函数。finalizer 函数将在不带参数的情况下调用。`addfinalizer`是在 fixtures 中执行拆卸的原始方法，但后来已被`yield`语句取代，主要用于向后兼容。
 
-fixtures可以使用这些属性根据正在执行的测试自定义自己的行为。例如，我们可以创建一个fixture，使用当前测试名称作为临时目录的前缀，类似于内置的`tmpdir` fixture：
+fixtures 可以使用这些属性根据正在执行的测试自定义自己的行为。例如，我们可以创建一个 fixture，使用当前测试名称作为临时目录的前缀，类似于内置的`tmpdir` fixture：
 
 ```py
 @pytest.fixture
@@ -869,12 +869,12 @@ def test_store_deploy_token(bot):
     assert bot.store["TEST"]["token"] == "ASLKM8KJAN"
 ```
 
-`bot` fixture允许开发人员与机器人交谈，验证响应，并检查框架处理的内部存储的内容，等等。它提供了一个高级接口，使得测试更容易编写和理解，即使对于那些不了解框架内部的人也是如此。
+`bot` fixture 允许开发人员与机器人交谈，验证响应，并检查框架处理的内部存储的内容，等等。它提供了一个高级接口，使得测试更容易编写和理解，即使对于那些不了解框架内部的人也是如此。
 
 这种技术对应用程序很有用，因为它将使开发人员轻松愉快地添加新的测试。对于库来说也很有用，因为它们将为库的用户提供高级测试支持。
 
 # 总结
 
-在本章中，我们深入了解了pytest最著名的功能之一：fixtures。我们看到了它们如何被用来提供资源和测试功能，以及如何简洁地表达设置/拆卸代码。我们学会了如何共享fixtures，使用`conftest.py`文件；如何使用fixture scopes，避免为每个测试创建昂贵的资源；以及如何自动使用fixtures，这些fixtures会在同一模块或层次结构中的所有测试中执行。然后，我们学会了如何对fixtures进行参数化，并从中使用标记。我们对各种内置fixtures进行了概述，并在最后对fixtures进行了一些简短的讨论。希望您喜欢这一过程！
+在本章中，我们深入了解了 pytest 最著名的功能之一：fixtures。我们看到了它们如何被用来提供资源和测试功能，以及如何简洁地表达设置/拆卸代码。我们学会了如何共享 fixtures，使用`conftest.py`文件；如何使用 fixture scopes，避免为每个测试创建昂贵的资源；以及如何自动使用 fixtures，这些 fixtures 会在同一模块或层次结构中的所有测试中执行。然后，我们学会了如何对 fixtures 进行参数化，并从中使用标记。我们对各种内置 fixtures 进行了概述，并在最后对 fixtures 进行了一些简短的讨论。希望您喜欢这一过程！
 
-在下一章中，我们将探索一下广阔的pytest插件生态系统，这些插件都可以供您使用。
+在下一章中，我们将探索一下广阔的 pytest 插件生态系统，这些插件都可以供您使用。

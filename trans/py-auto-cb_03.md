@@ -1,20 +1,20 @@
-# 构建您的第一个Web抓取应用程序
+# 构建您的第一个 Web 抓取应用程序
 
 在本章中，我们将涵盖以下内容：
 
 +   下载网页
 
-+   解析HTML
++   解析 HTML
 
 +   爬取网络
 
 +   订阅源
 
-+   访问Web API
++   访问 Web API
 
 +   与表单交互
 
-+   使用Selenium进行高级交互
++   使用 Selenium 进行高级交互
 
 +   访问受密码保护的页面
 
@@ -22,29 +22,29 @@
 
 # 介绍
 
-互联网和**WWW**（**万维网**）可能是当今最重要的信息来源。大部分信息可以通过HTTP协议检索。**HTTP**最初是为了共享超文本页面而发明的（因此称为**超文本传输协议**），这开创了WWW。
+互联网和**WWW**（**万维网**）可能是当今最重要的信息来源。大部分信息可以通过 HTTP 协议检索。**HTTP**最初是为了共享超文本页面而发明的（因此称为**超文本传输协议**），这开创了 WWW。
 
-这个操作非常熟悉，因为它是任何网络浏览器中发生的事情。但我们也可以以编程方式执行这些操作，自动检索和处理信息。Python在标准库中包含了一个HTTP客户端，但是fantastic `requests`模块使它变得非常容易。在本章中，我们将看到如何做到这一点。
+这个操作非常熟悉，因为它是任何网络浏览器中发生的事情。但我们也可以以编程方式执行这些操作，自动检索和处理信息。Python 在标准库中包含了一个 HTTP 客户端，但是 fantastic `requests`模块使它变得非常容易。在本章中，我们将看到如何做到这一点。
 
 # 下载网页
 
-下载网页的基本能力涉及对URL发出HTTP `GET`请求。这是任何网络浏览器的基本操作。让我们快速回顾一下这个操作的不同部分：
+下载网页的基本能力涉及对 URL 发出 HTTP `GET`请求。这是任何网络浏览器的基本操作。让我们快速回顾一下这个操作的不同部分：
 
-1.  使用HTTP协议。
+1.  使用 HTTP 协议。
 
-1.  使用最常见的HTTP方法`GET`。我们将在*访问Web API*配方中看到更多。
+1.  使用最常见的 HTTP 方法`GET`。我们将在*访问 Web API*配方中看到更多。
 
-1.  URL描述页面的完整地址，包括服务器和路径。
+1.  URL 描述页面的完整地址，包括服务器和路径。
 
-该请求将由服务器处理，并发送回一个响应。这个响应将包含一个**状态码**，通常是200，如果一切顺利的话，以及一个包含结果的body，通常是一个包含HTML页面的文本。
+该请求将由服务器处理，并发送回一个响应。这个响应将包含一个**状态码**，通常是 200，如果一切顺利的话，以及一个包含结果的 body，通常是一个包含 HTML 页面的文本。
 
-大部分由用于执行请求的HTTP客户端自动处理。在这个配方中，我们将看到如何发出简单的请求以获取网页。
+大部分由用于执行请求的 HTTP 客户端自动处理。在这个配方中，我们将看到如何发出简单的请求以获取网页。
 
-HTTP请求和响应也可以包含头部。头部包含额外的信息，如请求的总大小，内容的格式，请求的日期以及使用的浏览器或服务器。
+HTTP 请求和响应也可以包含头部。头部包含额外的信息，如请求的总大小，内容的格式，请求的日期以及使用的浏览器或服务器。
 
 # 准备工作
 
-使用fantastic `requests`模块，获取网页非常简单。安装模块：
+使用 fantastic `requests`模块，获取网页非常简单。安装模块：
 
 ```py
 $ echo "requests==2.18.3" >> requirements.txt
@@ -52,7 +52,7 @@ $ source .venv/bin/activate
 (.venv) $ pip install -r requirements.txt 
 ```
 
-我们将下载页面在[http://www.columbia.edu/~fdc/sample.html](http://www.columbia.edu/~fdc/sample.html)，因为它是一个简单的HTML页面，很容易在文本模式下阅读。
+我们将下载页面在[`www.columbia.edu/~fdc/sample.html`](http://www.columbia.edu/~fdc/sample.html)，因为它是一个简单的 HTML 页面，很容易在文本模式下阅读。
 
 # 如何做...
 
@@ -62,7 +62,7 @@ $ source .venv/bin/activate
 >>> import requests
 ```
 
-1.  对URL发出请求，这将花费一两秒钟：
+1.  对 URL 发出请求，这将花费一两秒钟：
 
 ```py
 >>> url = 'http://www.columbia.edu/~fdc/sample.html'
@@ -98,7 +98,7 @@ FULL BODY
 
 # 它是如何工作的...
 
-`requests`的操作非常简单；在URL上执行操作，这种情况下是`GET`，返回一个可以分析的`result`对象。主要元素是`status_code`和body内容，可以呈现为`text`。
+`requests`的操作非常简单；在 URL 上执行操作，这种情况下是`GET`，返回一个可以分析的`result`对象。主要元素是`status_code`和 body 内容，可以呈现为`text`。
 
 可以在`request`字段中检查完整的请求：
 
@@ -109,33 +109,33 @@ FULL BODY
 'http://www.columbia.edu/~fdc/sample.html'
 ```
 
-完整的请求文档可以在这里找到：[http://docs.python-requests.org/en/master/](http://docs.python-requests.org/en/master/)。在本章中，我们将展示更多功能。
+完整的请求文档可以在这里找到：[`docs.python-requests.org/en/master/`](http://docs.python-requests.org/en/master/)。在本章中，我们将展示更多功能。
 
 # 还有更多...
 
-所有HTTP状态码可以在这个网页上检查：[https://httpstatuses.com/](https://httpstatuses.com/)。它们也在`httplib`模块中以方便的常量名称进行描述，如`OK`，`NOT_FOUND`或`FORBIDDEN`。
+所有 HTTP 状态码可以在这个网页上检查：[`httpstatuses.com/`](https://httpstatuses.com/)。它们也在`httplib`模块中以方便的常量名称进行描述，如`OK`，`NOT_FOUND`或`FORBIDDEN`。
 
-最著名的错误状态码可能是404，当URL未找到时会发生。通过执行`requests.get('http://www.columbia.edu/invalid')`来尝试。
+最著名的错误状态码可能是 404，当 URL 未找到时会发生。通过执行`requests.get('http://www.columbia.edu/invalid')`来尝试。
 
-请求可以使用**HTTPS**协议（**安全HTTP**）。它是等效的，但确保请求和响应的内容是私有的。`requests`会自动处理它。
+请求可以使用**HTTPS**协议（**安全 HTTP**）。它是等效的，但确保请求和响应的内容是私有的。`requests`会自动处理它。
 
-任何处理任何私人信息的网站都将使用HTTPS来确保信息没有泄漏。HTTP容易受到窃听。尽可能使用HTTPS。
+任何处理任何私人信息的网站都将使用 HTTPS 来确保信息没有泄漏。HTTP 容易受到窃听。尽可能使用 HTTPS。
 
 # 另请参阅
 
-+   在[第1章](e139aa50-5631-4b75-9257-d4eb2e12ef90.xhtml)的*让我们开始自动化之旅*中的*安装第三方包*配方中
++   在第一章的*让我们开始自动化之旅*中的*安装第三方包*配方中
 
-+   *解析HTML*配方
++   *解析 HTML*配方
 
-# 解析HTML
+# 解析 HTML
 
-下载原始文本或二进制文件是一个很好的起点，但是网页的主要语言是HTML。
+下载原始文本或二进制文件是一个很好的起点，但是网页的主要语言是 HTML。
 
-HTML是一种结构化语言，定义文档的不同部分，如标题和段落。HTML也是分层的，定义了子元素。将原始文本解析为结构化文档的能力基本上是能够从网页中自动提取信息的能力。例如，如果在特定的`class div`中或在标题`h3`标签后面包含一些文本，则该文本可能是相关的。
+HTML 是一种结构化语言，定义文档的不同部分，如标题和段落。HTML 也是分层的，定义了子元素。将原始文本解析为结构化文档的能力基本上是能够从网页中自动提取信息的能力。例如，如果在特定的`class div`中或在标题`h3`标签后面包含一些文本，则该文本可能是相关的。
 
 # 准备就绪
 
-我们将使用优秀的Beautiful Soup模块将HTML文本解析为可以分析的内存对象。我们需要使用`beautifulsoup4`包来使用可用的最新Python 3版本。将包添加到您的`requirements.txt`并在虚拟环境中安装依赖项：
+我们将使用优秀的 Beautiful Soup 模块将 HTML 文本解析为可以分析的内存对象。我们需要使用`beautifulsoup4`包来使用可用的最新 Python 3 版本。将包添加到您的`requirements.txt`并在虚拟环境中安装依赖项：
 
 ```py
 $ echo "beautifulsoup4==4.6.0" >> requirements.txt
@@ -150,7 +150,7 @@ $ pip install -r requirements.txt
 >>> import requests >>> from bs4 import BeautifulSoup
 ```
 
-1.  设置要下载并检索的页面的URL：
+1.  设置要下载并检索的页面的 URL：
 
 ```py
 >>> URL = 'http://www.columbia.edu/~fdc/sample.html'
@@ -196,19 +196,19 @@ $ pip install -r requirements.txt
 '7\. Links\n\nLinks can be internal within a Web page (like to\nthe Table of ContentsTable of Contents at the top), or they\ncan be to external web pages or pictures on the same website, or they\ncan be to websites, pages, or pictures anywhere else in the world.\n\n\n\nHere is a link to the Kermit\nProject home pageKermit\nProject home page.\n\n\n\nHere is a link to Section 5Section 5 of this document.\n\n\n\nHere is a link to\nSection 4.0Section 4.0\nof the C-Kermit\nfor Unix Installation InstructionsC-Kermit\nfor Unix Installation Instructions.\n\n\n\nHere is a link to a picture:\nCLICK HERECLICK HERE to see it.\n\n\n'
 ```
 
-注意没有HTML标记；这都是原始文本。
+注意没有 HTML 标记；这都是原始文本。
 
 # 它是如何工作的...
 
-第一步是下载页面。然后，可以像第3步那样解析原始文本。生成的`page`对象包含解析的信息。
+第一步是下载页面。然后，可以像第 3 步那样解析原始文本。生成的`page`对象包含解析的信息。
 
-`html.parser`解析器是默认的，但是对于特定操作可能会出现问题。例如，对于大页面，它可能会很慢，或者在渲染高度动态的网页时可能会出现问题。您可以使用其他解析器，例如`lxml`，它速度更快，或者`html5lib`，它将更接近浏览器的操作，包括HTML5产生的动态更改。它们是外部模块，需要添加到`requirements.txt`文件中。
+`html.parser`解析器是默认的，但是对于特定操作可能会出现问题。例如，对于大页面，它可能会很慢，或者在渲染高度动态的网页时可能会出现问题。您可以使用其他解析器，例如`lxml`，它速度更快，或者`html5lib`，它将更接近浏览器的操作，包括 HTML5 产生的动态更改。它们是外部模块，需要添加到`requirements.txt`文件中。
 
-`BeautifulSoup`允许我们搜索HTML元素。它可以使用`.find()`搜索第一个元素，或者使用`.find_all()`返回一个列表。在第5步中，它搜索了一个具有特定属性`name=link`的特定标签`<a>`。之后，它继续在`.next_elements`上迭代，直到找到下一个`h3`标签，标志着该部分的结束。
+`BeautifulSoup`允许我们搜索 HTML 元素。它可以使用`.find()`搜索第一个元素，或者使用`.find_all()`返回一个列表。在第 5 步中，它搜索了一个具有特定属性`name=link`的特定标签`<a>`。之后，它继续在`.next_elements`上迭代，直到找到下一个`h3`标签，标志着该部分的结束。
 
 提取每个元素的文本，最后组合成单个文本。注意`or`，它避免存储`None`，当元素没有文本时返回。
 
-HTML非常灵活，可以有多种结构。本配方中介绍的情况是典型的，但是在划分部分方面的其他选项可能是将相关部分组合在一个大的`<div>`标签或其他元素内，甚至是原始文本。需要进行一些实验，直到找到从网页中提取重要部分的特定过程。不要害怕尝试！
+HTML 非常灵活，可以有多种结构。本配方中介绍的情况是典型的，但是在划分部分方面的其他选项可能是将相关部分组合在一个大的`<div>`标签或其他元素内，甚至是原始文本。需要进行一些实验，直到找到从网页中提取重要部分的特定过程。不要害怕尝试！
 
 # 还有更多...
 
@@ -223,15 +223,15 @@ HTML非常灵活，可以有多种结构。本配方中介绍的情况是典型�
 <h3><a name="tables">8\. Tables</a></h3>, <h3><a name="install">9\. Installing Your Web Page on the Internet</a></h3>, <h3><a name="more">10\. Where to go from here</a></h3>]
 ```
 
-另一个有用的find参数是包含`class_`参数的CSS类。这将在本书的后面显示。
+另一个有用的 find 参数是包含`class_`参数的 CSS 类。这将在本书的后面显示。
 
-完整的Beautiful Soup文档可以在这里找到：[https://www.crummy.com/software/BeautifulSoup/bs4/doc/](https://www.crummy.com/software/BeautifulSoup/bs4/doc/)。
+完整的 Beautiful Soup 文档可以在这里找到：[`www.crummy.com/software/BeautifulSoup/bs4/doc/`](https://www.crummy.com/software/BeautifulSoup/bs4/doc/)。
 
 # 另请参阅
 
-+   在[第1章](e139aa50-5631-4b75-9257-d4eb2e12ef90.xhtml)的*让我们开始自动化之旅*中的*安装第三方包*配方
++   在第一章的*让我们开始自动化之旅*中的*安装第三方包*配方
 
-+   在[第1章](e139aa50-5631-4b75-9257-d4eb2e12ef90.xhtml)的*让我们开始自动化之旅*中的*介绍正则表达式*配方
++   在第一章的*让我们开始自动化之旅*中的*介绍正则表达式*配方
 
 +   *下载网页*配方
 
@@ -239,7 +239,7 @@ HTML非常灵活，可以有多种结构。本配方中介绍的情况是典型�
 
 考虑到超链接页面的性质，从已知位置开始并跟随链接到其他页面是在抓取网页时的重要工具。
 
-为此，我们爬取页面寻找一个小短语，并打印包含它的任何段落。我们只会在属于同一网站的页面中搜索。即只有以www.somesite.com开头的URL。我们不会跟踪外部网站的链接。
+为此，我们爬取页面寻找一个小短语，并打印包含它的任何段落。我们只会在属于同一网站的页面中搜索。即只有以 www.somesite.com 开头的 URL。我们不会跟踪外部网站的链接。
 
 # 准备工作
 
@@ -247,19 +247,19 @@ HTML非常灵活，可以有多种结构。本配方中介绍的情况是典型�
 
 在爬取网页时，记得在下载时设置限制。很容易爬取太多页面。任何查看维基百科的人都可以证实，互联网是潜在无限的。
 
-我们将使用一个准备好的示例，该示例可在GitHub存储库中找到：[https://github.com/PacktPublishing/Python-Automation-Cookbook/tree/master/Chapter03/test_site](https://github.com/PacktPublishing/Python-Automation-Cookbook/tree/master/Chapter03/test_site)。下载整个站点并运行包含的脚本。
+我们将使用一个准备好的示例，该示例可在 GitHub 存储库中找到：[`github.com/PacktPublishing/Python-Automation-Cookbook/tree/master/Chapter03/test_site`](https://github.com/PacktPublishing/Python-Automation-Cookbook/tree/master/Chapter03/test_site)。下载整个站点并运行包含的脚本。
 
 ```py
 $ python simple_delay_server.py
 ```
 
-它在URL`http://localhost:8000`中提供站点。您可以在浏览器上查看它。这是一个简单的博客，有三篇文章。大部分内容都不那么有趣，但我们添加了一些包含关键字`python`的段落。
+它在 URL`http://localhost:8000`中提供站点。您可以在浏览器上查看它。这是一个简单的博客，有三篇文章。大部分内容都不那么有趣，但我们添加了一些包含关键字`python`的段落。
 
-![](assets/28ceb1d7-d5a3-47b8-b776-e6a0d1bf8bcb.png)
+![](img/28ceb1d7-d5a3-47b8-b776-e6a0d1bf8bcb.png)
 
 # 如何做到这一点...
 
-1.  完整的脚本`crawling_web_step1.py`可以在GitHub的以下链接找到：[https://github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter03/crawling_web_step1.py](https://github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter03/crawling_web_step1.py)。最相关的部分显示在这里：
+1.  完整的脚本`crawling_web_step1.py`可以在 GitHub 的以下链接找到：[`github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter03/crawling_web_step1.py`](https://github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter03/crawling_web_step1.py)。最相关的部分显示在这里：
 
 ```py
 ...
@@ -285,7 +285,7 @@ def get_links(parsed_source, page):
     return links
 ```
 
-1.  搜索对`python`的引用，返回包含它和段落的URL列表。请注意，由于损坏的链接，有一些错误：
+1.  搜索对`python`的引用，返回包含它和段落的 URL 列表。请注意，由于损坏的链接，有一些错误：
 
 ```py
 $ python crawling_web_step1.py https://localhost:8000/ -p python
@@ -308,15 +308,15 @@ $ python crawling_web_step1.py http://localhost:8000/ -p crocodile
 
 1.  一个循环，遍历`main`函数中找到的所有链接：
 
-请注意，有10页的检索限制，并且正在检查是否已经添加了要添加的任何新链接。
+请注意，有 10 页的检索限制，并且正在检查是否已经添加了要添加的任何新链接。
 
 请注意这两件事是有限制的。我们不会下载相同的链接两次，我们会在某个时候停止。
 
 1.  在`process_link`函数中下载和解析链接：
 
-它下载文件，并检查状态是否正确，以跳过诸如损坏链接之类的错误。它还检查类型（如`Content-Type`中描述的）是否为HTML页面，以跳过PDF和其他格式。最后，它将原始HTML解析为`BeautifulSoup`对象。
+它下载文件，并检查状态是否正确，以跳过诸如损坏链接之类的错误。它还检查类型（如`Content-Type`中描述的）是否为 HTML 页面，以跳过 PDF 和其他格式。最后，它将原始 HTML 解析为`BeautifulSoup`对象。
 
-它还使用`urlparse`解析源链接，以便在步骤4中跳过所有对外部来源的引用。`urlparse`将URL分解为其组成元素：
+它还使用`urlparse`解析源链接，以便在步骤 4 中跳过所有对外部来源的引用。`urlparse`将 URL 分解为其组成元素：
 
 ```py
 >>> from urllib.parse import urlparse
@@ -326,7 +326,7 @@ ParseResult(scheme='http', netloc='localhost:8000', path='/files/b93bec5d9681df8
 
 1.  在`search_text`函数中找到要搜索的文本：
 
-它在解析的对象中搜索指定的文本。请注意，搜索是作为`regex`进行的，仅在文本中进行。它打印出结果的匹配项，包括`source_link`，引用找到匹配项的URL：
+它在解析的对象中搜索指定的文本。请注意，搜索是作为`regex`进行的，仅在文本中进行。它打印出结果的匹配项，包括`source_link`，引用找到匹配项的 URL：
 
 ```py
 for element in page.find_all(text=re.compile(text)):
@@ -335,17 +335,17 @@ for element in page.find_all(text=re.compile(text)):
 
 1.  **`get_links`**函数检索页面上的所有链接：
 
-它在解析页面中搜索所有`<a>`元素，并检索`href`元素，但只有具有这些`href`元素并且是完全合格的URL（以`http`开头）的元素。这将删除不是URL的链接，例如`'#'`链接，或者是页面内部的链接。
+它在解析页面中搜索所有`<a>`元素，并检索`href`元素，但只有具有这些`href`元素并且是完全合格的 URL（以`http`开头）的元素。这将删除不是 URL 的链接，例如`'#'`链接，或者是页面内部的链接。
 
-还进行了额外的检查，以检查它们是否与原始链接具有相同的来源，然后将它们注册为有效链接。`netloc`属性允许检测链接是否来自与步骤2中生成的解析URL相同的URL域。
+还进行了额外的检查，以检查它们是否与原始链接具有相同的来源，然后将它们注册为有效链接。`netloc`属性允许检测链接是否来自与步骤 2 中生成的解析 URL 相同的 URL 域。
 
-我们不会跟踪指向不同地址的链接（例如[http://www.google.com](http://www.google.com)）。
+我们不会跟踪指向不同地址的链接（例如[`www.google.com`](http://www.google.com)）。
 
-最后，链接被返回，它们将被添加到步骤1中描述的循环中。
+最后，链接被返回，它们将被添加到步骤 1 中描述的循环中。
 
 # 还有更多...
 
-还可以进一步强制执行其他过滤器，例如丢弃所有以`.pdf`结尾的链接，这意味着它们是PDF文件：
+还可以进一步强制执行其他过滤器，例如丢弃所有以`.pdf`结尾的链接，这意味着它们是 PDF 文件：
 
 ```py
 # In get_links
@@ -353,23 +353,23 @@ if link.endswith('pdf'):
   continue
 ```
 
-还可以使用`Content-Type`来确定以不同方式解析返回的对象。例如，PDF结果（`Content-Type: application/pdf`）将没有有效的`response.text`对象进行解析，但可以用其他方式解析。其他类型也是如此，例如CSV文件（`Content-Type: text/csv`）或可能需要解压缩的ZIP文件（`Content-Type: application/zip`）。我们将在后面看到如何处理这些。
+还可以使用`Content-Type`来确定以不同方式解析返回的对象。例如，PDF 结果（`Content-Type: application/pdf`）将没有有效的`response.text`对象进行解析，但可以用其他方式解析。其他类型也是如此，例如 CSV 文件（`Content-Type: text/csv`）或可能需要解压缩的 ZIP 文件（`Content-Type: application/zip`）。我们将在后面看到如何处理这些。
 
 # 另请参阅
 
 +   *下载网页*食谱
 
-+   *解析HTML*食谱
++   *解析 HTML*食谱
 
-# 订阅Feed
+# 订阅 Feed
 
-RSS可能是互联网上最大的“秘密”。虽然它的辉煌时刻似乎是在2000年代，现在它不再处于聚光灯下，但它可以轻松订阅网站。它存在于许多地方，非常有用。
+RSS 可能是互联网上最大的“秘密”。虽然它的辉煌时刻似乎是在 2000 年代，现在它不再处于聚光灯下，但它可以轻松订阅网站。它存在于许多地方，非常有用。
 
-在其核心，RSS是一种呈现有序引用（通常是文章，但也包括其他元素，如播客剧集或YouTube出版物）和发布时间的方式。这使得很自然地知道自上次检查以来有哪些新文章，以及呈现一些关于它们的结构化数据，如标题和摘要。
+在其核心，RSS 是一种呈现有序引用（通常是文章，但也包括其他元素，如播客剧集或 YouTube 出版物）和发布时间的方式。这使得很自然地知道自上次检查以来有哪些新文章，以及呈现一些关于它们的结构化数据，如标题和摘要。
 
-在这个食谱中，我们将介绍`feedparser`模块，并确定如何从RSS Feed中获取数据。
+在这个食谱中，我们将介绍`feedparser`模块，并确定如何从 RSS Feed 中获取数据。
 
-**RSS**不是唯一可用的Feed格式。还有一种称为**Atom**的格式，但两者几乎是等效的。`feedparser`也能够解析它，因此两者可以不加区分地使用。
+**RSS**不是唯一可用的 Feed 格式。还有一种称为**Atom**的格式，但两者几乎是等效的。`feedparser`也能够解析它，因此两者可以不加区分地使用。
 
 # 准备工作
 
@@ -380,13 +380,13 @@ $ echo "feedparser==5.2.1" >> requirements.txt
 $ pip install -r requirements.txt
 ```
 
-几乎所有涉及出版物的页面上都可以找到Feed URL，包括博客、新闻、播客等。有时很容易找到它们，但有时它们会隐藏得有点深。可以通过“feed”或“RSS”进行搜索。
+几乎所有涉及出版物的页面上都可以找到 Feed URL，包括博客、新闻、播客等。有时很容易找到它们，但有时它们会隐藏得有点深。可以通过“feed”或“RSS”进行搜索。
 
-大多数报纸和新闻机构都将它们的RSS Feed按主题划分。我们将使用**纽约时报**主页Feed作为示例，[http://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml](http://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml)。主要Feed页面上还有更多可用的Feed：[https://archive.nytimes.com/www.nytimes.com/services/xml/rss/index.html](https://archive.nytimes.com/www.nytimes.com/services/xml/rss/index.html?mcubz=0)。
+大多数报纸和新闻机构都将它们的 RSS Feed 按主题划分。我们将使用**纽约时报**主页 Feed 作为示例，[`rss.nytimes.com/services/xml/rss/nyt/HomePage.xml`](http://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml)。主要 Feed 页面上还有更多可用的 Feed：[`archive.nytimes.com/www.nytimes.com/services/xml/rss/index.html`](https://archive.nytimes.com/www.nytimes.com/services/xml/rss/index.html?mcubz=0)。
 
-请注意，Feed可能受到使用条款和条件的约束。在纽约时报的情况下，它们在主要Feed页面的末尾有描述。
+请注意，Feed 可能受到使用条款和条件的约束。在纽约时报的情况下，它们在主要 Feed 页面的末尾有描述。
 
-请注意，此Feed经常更改，这意味着链接的条目将与本书中的示例不同。
+请注意，此 Feed 经常更改，这意味着链接的条目将与本书中的示例不同。
 
 # 如何做...
 
@@ -399,7 +399,7 @@ import delorean
 import requests
 ```
 
-1.  解析Feed（它将自动下载）并检查其上次更新时间。Feed信息，如Feed的标题，可以在`feed`属性中获取：
+1.  解析 Feed（它将自动下载）并检查其上次更新时间。Feed 信息，如 Feed 的标题，可以在`feed`属性中获取：
 
 ```py
 >>> rss = feedparser.parse('http://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml')
@@ -426,7 +426,7 @@ import requests
 44
 ```
 
-1.  检索条目的信息，如`title`。完整的条目URL可作为`link`获取。探索此特定Feed中的可用信息：
+1.  检索条目的信息，如`title`。完整的条目 URL 可作为`link`获取。探索此特定 Feed 中的可用信息：
 
 ```py
 >>> entries[5]['title']
@@ -439,7 +439,7 @@ import requests
 
 # 工作原理...
 
-解析的`feed`对象包含条目的信息，以及有关Feed本身的一般信息，例如更新时间。`feed`信息可以在`feed`属性中找到：
+解析的`feed`对象包含条目的信息，以及有关 Feed 本身的一般信息，例如更新时间。`feed`信息可以在`feed`属性中找到：
 
 ```py
 >>> rss.feed.title
@@ -453,37 +453,37 @@ import requests
 dict_keys(['title', 'title_detail', 'links', 'link', 'id', 'guidislink', 'media_content', 'summary', 'summary_detail', 'media_credit', 'credit', 'content', 'authors', 'author', 'author_detail', 'published', 'published_parsed', 'tags'])
 ```
 
-处理Feed的基本策略是解析它们并浏览条目，快速检查它们是否有趣，例如通过检查*描述*或*摘要*。如果它们有趣，就使用“链接”字段下载整个页面。然后，为了避免重新检查条目，存储最新的发布日期，下次只检查更新的条目。
+处理 Feed 的基本策略是解析它们并浏览条目，快速检查它们是否有趣，例如通过检查*描述*或*摘要*。如果它们有趣，就使用“链接”字段下载整个页面。然后，为了避免重新检查条目，存储最新的发布日期，下次只检查更新的条目。
 
 # 还有更多...
 
-完整的`feedparser`文档可以在这里找到：[https://pythonhosted.org/feedparser/](https://pythonhosted.org/feedparser/)。
+完整的`feedparser`文档可以在这里找到：[`pythonhosted.org/feedparser/`](https://pythonhosted.org/feedparser/)。
 
 可用的信息可能因源而异。在纽约时报的例子中，有一个带有标签信息的`tag`字段，但这不是标准的。至少，条目将有一个标题，一个描述和一个链接。
 
-RSS订阅也是筛选自己的新闻来源的好方法。有很好的订阅阅读器。
+RSS 订阅也是筛选自己的新闻来源的好方法。有很好的订阅阅读器。
 
 # 另请参阅
 
-+   [第1章](e139aa50-5631-4b75-9257-d4eb2e12ef90.xhtml)中的*安装第三方软件包*配方，*让我们开始我们的自动化之旅*
++   第一章中的*安装第三方软件包*配方，*让我们开始我们的自动化之旅*
 
 +   *下载网页*的配方
 
-# 访问Web API
+# 访问 Web API
 
-通过Web可以创建丰富的接口，通过HTTP进行强大的交互。最常见的接口是使用JSON的RESTful API。这些基于文本的接口易于理解和编程，并使用通用技术，**与语言无关**，这意味着它们可以在任何具有HTTP`client`模块的编程语言中访问，当然包括Python。
+通过 Web 可以创建丰富的接口，通过 HTTP 进行强大的交互。最常见的接口是使用 JSON 的 RESTful API。这些基于文本的接口易于理解和编程，并使用通用技术，**与语言无关**，这意味着它们可以在任何具有 HTTP`client`模块的编程语言中访问，当然包括 Python。
 
-除了JSON之外，还使用了其他格式，例如XML，但JSON是一种非常简单和可读的格式，非常适合转换为Python字典（以及其他语言的等价物）。JSON目前是RESTful API中最常见的格式。在这里了解更多关于JSON的信息：[https://www.json.org/](https://www.json.org/)。
+除了 JSON 之外，还使用了其他格式，例如 XML，但 JSON 是一种非常简单和可读的格式，非常适合转换为 Python 字典（以及其他语言的等价物）。JSON 目前是 RESTful API 中最常见的格式。在这里了解更多关于 JSON 的信息：[`www.json.org/`](https://www.json.org/)。
 
-RESTful的严格定义需要一些特征，但更非正式的定义可能是通过URL访问资源。这意味着URL代表特定的资源，例如报纸上的文章或房地产网站上的属性。然后可以通过HTTP方法（`GET`查看，`POST`创建，`PUT`/`PATCH`编辑和`DELETE`删除）来操作资源。
+RESTful 的严格定义需要一些特征，但更非正式的定义可能是通过 URL 访问资源。这意味着 URL 代表特定的资源，例如报纸上的文章或房地产网站上的属性。然后可以通过 HTTP 方法（`GET`查看，`POST`创建，`PUT`/`PATCH`编辑和`DELETE`删除）来操作资源。
 
-适当的RESTful接口需要具有某些特征，并且是创建接口的一种方式，不严格限于HTTP接口。您可以在这里阅读更多信息：[https://codewords.recurse.com/issues/five/what-restful-actually-means](https://codewords.recurse.com/issues/five/what-restful-actually-means)。
+适当的 RESTful 接口需要具有某些特征，并且是创建接口的一种方式，不严格限于 HTTP 接口。您可以在这里阅读更多信息：[`codewords.recurse.com/issues/five/what-restful-actually-means`](https://codewords.recurse.com/issues/five/what-restful-actually-means)。
 
-使用`requests`与它们非常容易，因为它包含本机JSON支持。
+使用`requests`与它们非常容易，因为它包含本机 JSON 支持。
 
 # 准备就绪
 
-为了演示如何操作RESTful API，我们将使用示例站点[https://jsonplaceholder.typicode.com/](https://jsonplaceholder.typicode.com/)。它模拟了帖子，评论和其他常见资源的常见情况。我们将使用帖子和评论。要使用的URL如下：
+为了演示如何操作 RESTful API，我们将使用示例站点[`jsonplaceholder.typicode.com/`](https://jsonplaceholder.typicode.com/)。它模拟了帖子，评论和其他常见资源的常见情况。我们将使用帖子和评论。要使用的 URL 如下：
 
 ```py
 # The collection of all posts
@@ -518,7 +518,7 @@ RESTful的严格定义需要一些特征，但更非正式的定义可能是通�
 {'userId': 10, 'id': 100, 'title': 'at nam consequatur ea labore ea harum', 'body': 'cupiditate quo est a modi nesciunt soluta\nipsa voluptas error itaque dicta in\nautem qui minus magnam et distinctio eum\naccusamus ratione error aut'}
 ```
 
-1.  创建一个新帖子。查看新创建资源的URL。调用还返回资源：
+1.  创建一个新帖子。查看新创建资源的 URL。调用还返回资源：
 
 ```py
 >>> new_post = {'userId': 10, 'title': 'a title', 'body': 'something something'}
@@ -532,7 +532,7 @@ RESTful的严格定义需要一些特征，但更非正式的定义可能是通�
 'http://jsonplaceholder.typicode.com/posts/101'
 ```
 
-注意，创建资源的`POST`请求返回201，这是创建的适当状态。
+注意，创建资源的`POST`请求返回 201，这是创建的适当状态。
 
 1.  使用`GET`获取现有帖子：
 
@@ -563,27 +563,27 @@ RESTful的严格定义需要一些特征，但更非正式的定义可能是通�
 
 +   单个元素接受`GET`以获取元素，`PUT`和`PATCH`以编辑，`DELETE`以删除它们
 
-所有可用的HTTP方法都可以在`requests`中调用。在以前的配方中，我们使用了`.get()`，但`.post()`，`.patch()`，`.put()`和`.delete()`也可用。
+所有可用的 HTTP 方法都可以在`requests`中调用。在以前的配方中，我们使用了`.get()`，但`.post()`，`.patch()`，`.put()`和`.delete()`也可用。
 
-返回的响应对象具有`.json()`方法，用于解码JSON结果。
+返回的响应对象具有`.json()`方法，用于解码 JSON 结果。
 
-同样，发送信息时，有一个`json`参数可用。这将字典编码为JSON并将其发送到服务器。数据需要遵循资源的格式，否则可能会引发错误。
+同样，发送信息时，有一个`json`参数可用。这将字典编码为 JSON 并将其发送到服务器。数据需要遵循资源的格式，否则可能会引发错误。
 
 `GET`和`DELETE`不需要数据，而`PATCH`、`PUT`和`POST`需要数据。
 
-将返回所引用的资源，其URL在标头位置可用。这在创建新资源时非常有用，因为其URL事先是未知的。
+将返回所引用的资源，其 URL 在标头位置可用。这在创建新资源时非常有用，因为其 URL 事先是未知的。
 
 `PATCH`和`PUT`之间的区别在于后者替换整个资源，而前者进行部分更新。
 
 # 还有更多...
 
-RESTful API非常强大，但也具有巨大的可变性。请查看特定API的文档，了解其详细信息。
+RESTful API 非常强大，但也具有巨大的可变性。请查看特定 API 的文档，了解其详细信息。
 
 # 另请参阅
 
 +   *下载网页*配方
 
-+   [第1章](e139aa50-5631-4b75-9257-d4eb2e12ef90.xhtml)中的*安装第三方软件包*配方，*让我们开始我们的自动化之旅*
++   第一章中的*安装第三方软件包*配方，*让我们开始我们的自动化之旅*
 
 # 与表单交互
 
@@ -595,25 +595,25 @@ RESTful API非常强大，但也具有巨大的可变性。请查看特定API的
 
 # 准备就绪
 
-我们将针对测试服务器[https://httpbin.org/forms/post](https://httpbin.org/forms/post)进行操作，该服务器允许我们发送测试表单并返回提交的信息。
+我们将针对测试服务器[`httpbin.org/forms/post`](https://httpbin.org/forms/post)进行操作，该服务器允许我们发送测试表单并返回提交的信息。
 
 以下是一个订购比萨的示例表单：
 
-![](assets/3fe93fc3-a5a2-450e-ba88-003566953c79.png)
+![](img/3fe93fc3-a5a2-450e-ba88-003566953c79.png)
 
-您可以手动填写表单并查看它以JSON格式返回信息，包括浏览器使用等额外信息。
+您可以手动填写表单并查看它以 JSON 格式返回信息，包括浏览器使用等额外信息。
 
-以下是生成的Web表单的前端：
+以下是生成的 Web 表单的前端：
 
-![](assets/32f55d90-7967-4733-9b79-a3a6eca11557.png)
+![](img/32f55d90-7967-4733-9b79-a3a6eca11557.png)
 
-以下图像是生成的Web表单的后端：
+以下图像是生成的 Web 表单的后端：
 
-![](assets/1f516fd0-d5de-484c-8875-9369cbe29b1b.png)
+![](img/1f516fd0-d5de-484c-8875-9369cbe29b1b.png)
 
-我们需要分析HTML以查看表单的接受数据。检查源代码，显示如下：
+我们需要分析 HTML 以查看表单的接受数据。检查源代码，显示如下：
 
-![](assets/a2f505fc-424b-47f5-a94f-93541d72e0b8.png)源代码
+![](img/a2f505fc-424b-47f5-a94f-93541d72e0b8.png)源代码
 
 检查输入的名称，`custname`、`custtel`、`custemail`、`size`（单选按钮选项）、`topping`（多选复选框）、`delivery`（时间）和`comments`。
 
@@ -627,7 +627,7 @@ RESTful API非常强大，但也具有巨大的可变性。请查看特定API的
 >>> import re
 ```
 
-1.  检索表单页面，解析它，并打印输入字段。检查发布URL是否为`/post`（而不是`/forms/post`）：
+1.  检索表单页面，解析它，并打印输入字段。检查发布 URL 是否为`/post`（而不是`/forms/post`）：
 
 ```py
 >>> response = requests.get('https://httpbin.org/forms/post')
@@ -637,7 +637,7 @@ RESTful API非常强大，但也具有巨大的可变性。请查看特定API的
 {'delivery', 'topping', 'size', 'custemail', 'comments', 'custtel', 'custname'}
 ```
 
-请注意，`textarea`是有效输入，也是在HTML格式中定义的。
+请注意，`textarea`是有效输入，也是在 HTML 格式中定义的。
 
 1.  准备要发布的数据作为字典。检查值是否与表单中定义的相同：
 
@@ -663,9 +663,9 @@ RESTful API非常强大，但也具有巨大的可变性。请查看特定API的
 
 `requests`直接接受以正确方式发送数据。默认情况下，它以`application/x-www-form-urlencoded`格式发送`POST`数据。
 
-将其与*访问Web API*配方进行比较，其中数据是使用参数`json`以JSON格式明确发送的。这使得`Content-Type`为`application/json`而不是`application/x-www-form-urlencoded`。
+将其与*访问 Web API*配方进行比较，其中数据是使用参数`json`以 JSON 格式明确发送的。这使得`Content-Type`为`application/json`而不是`application/x-www-form-urlencoded`。
 
-这里的关键是尊重表单的格式和可能返回错误的可能值，通常是400错误。
+这里的关键是尊重表单的格式和可能返回错误的可能值，通常是 400 错误。
 
 # 还有更多...
 
@@ -673,9 +673,9 @@ RESTful API非常强大，但也具有巨大的可变性。请查看特定API的
 
 非常常见的限制是确保在提交表单之前下载了表单，以避免提交多个表单或**跨站点请求伪造**（**CSRF**）。
 
-CSRF，意味着从一个页面对另一个页面发出恶意调用，利用您的浏览器已经经过身份验证，这是一个严重的问题。例如，进入一个利用您已经登录到银行页面执行操作的小狗网站。这是一个很好的描述：[https://stackoverflow.com/a/33829607](https://stackoverflow.com/a/33829607)。浏览器中的新技术默认情况下有助于解决这些问题。
+CSRF，意味着从一个页面对另一个页面发出恶意调用，利用您的浏览器已经经过身份验证，这是一个严重的问题。例如，进入一个利用您已经登录到银行页面执行操作的小狗网站。这是一个很好的描述：[`stackoverflow.com/a/33829607`](https://stackoverflow.com/a/33829607)。浏览器中的新技术默认情况下有助于解决这些问题。
 
-要获取特定令牌，您需要首先下载表单，如配方中所示，获取CSRF令牌的值，并重新提交。请注意，令牌可以有不同的名称；这只是一个例子：
+要获取特定令牌，您需要首先下载表单，如配方中所示，获取 CSRF 令牌的值，并重新提交。请注意，令牌可以有不同的名称；这只是一个例子：
 
 ```py
 >>> form.find(attrs={'name': 'token'}).get('value')
@@ -686,17 +686,17 @@ CSRF，意味着从一个页面对另一个页面发出恶意调用，利用您�
 
 +   *下载网页*的配方
 
-+   *解析HTML*的配方
++   *解析 HTML*的配方
 
-# 使用Selenium进行高级交互
+# 使用 Selenium 进行高级交互
 
-有时，除了真实的东西外，什么都行不通。 Selenium是一个实现Web浏览器自动化的项目。它被构想为一种自动测试的方式，但也可以用于自动化与网站的交互。
+有时，除了真实的东西外，什么都行不通。 Selenium 是一个实现 Web 浏览器自动化的项目。它被构想为一种自动测试的方式，但也可以用于自动化与网站的交互。
 
-Selenium可以控制Safari、Chrome、Firefox、Internet Explorer或Microsoft Edge，尽管它需要为每种情况安装特定的驱动程序。我们将使用Chrome。
+Selenium 可以控制 Safari、Chrome、Firefox、Internet Explorer 或 Microsoft Edge，尽管它需要为每种情况安装特定的驱动程序。我们将使用 Chrome。
 
 # 准备工作
 
-我们需要为Chrome安装正确的驱动程序，称为`chromedriver`。它在这里可用：[https://sites.google.com/a/chromium.org/chromedriver/](https://sites.google.com/a/chromium.org/chromedriver/)。它适用于大多数平台。它还要求您已安装Chrome：[https://www.google.com/chrome/](https://www.google.com/chrome/)。
+我们需要为 Chrome 安装正确的驱动程序，称为`chromedriver`。它在这里可用：[`sites.google.com/a/chromium.org/chromedriver/`](https://sites.google.com/a/chromium.org/chromedriver/)。它适用于大多数平台。它还要求您已安装 Chrome：[`www.google.com/chrome/`](https://www.google.com/chrome/)。
 
 将`selenium`模块添加到`requirements.txt`并安装它：
 
@@ -707,7 +707,7 @@ $ pip install -r requirements.txt
 
 # 如何做...
 
-1.  导入Selenium，启动浏览器，并加载表单页面。将打开一个反映操作的页面：
+1.  导入 Selenium，启动浏览器，并加载表单页面。将打开一个反映操作的页面：
 
 ```py
 >>> from selenium import webdriver
@@ -715,7 +715,7 @@ $ pip install -r requirements.txt
 >>> browser.get('https://httpbin.org/forms/post')
 ```
 
-请注意，Chrome中的横幅由自动化测试软件控制。
+请注意，Chrome 中的横幅由自动化测试软件控制。
 
 1.  在“客户名称”字段中添加一个值。请记住它被称为`custname`：
 
@@ -727,7 +727,7 @@ $ pip install -r requirements.txt
 
 表单将更新：
 
-![](assets/13d8d74f-9f2e-4ef9-87e1-29deb1c70b95.png)
+![](img/13d8d74f-9f2e-4ef9-87e1-29deb1c70b95.png)
 
 1.  选择披萨大小为`medium`：
 
@@ -753,7 +753,7 @@ $ pip install -r requirements.txt
 
 最后，复选框将显示为已标记：
 
-![](assets/789403c5-3c8f-4c14-b9c5-6318286ae9c1.png)
+![](img/789403c5-3c8f-4c14-b9c5-6318286ae9c1.png)
 
 1.  提交表单。页面将提交，结果将显示：
 
@@ -763,7 +763,7 @@ $ pip install -r requirements.txt
 
 表单将被提交，服务器的结果将显示：
 
-![](assets/b9063025-2521-4820-a446-90e9d89b4dbd.png)
+![](img/b9063025-2521-4820-a446-90e9d89b4dbd.png)
 
 1.  关闭浏览器：
 
@@ -773,19 +773,19 @@ $ pip install -r requirements.txt
 
 # 它是如何工作的...
 
-*如何做...*部分的第1步显示了如何创建一个Selenium页面并转到特定的URL。
+*如何做...*部分的第 1 步显示了如何创建一个 Selenium 页面并转到特定的 URL。
 
-Selenium的工作方式与Beautiful Soup类似。选择适当的元素，然后操纵它。 Selenium中的选择器的工作方式与Beautiful Soup中的选择器的工作方式类似，最常见的选择器是`find_element_by_id`、`find_element_by_class_name`、`find_element_by_name`、`find_element_by_tag_name`和`find_element_by_css_selector`。还有等效的`find_elements_by_X`，它们返回一个列表而不是第一个找到的元素（`find_elements_by_tag_name`、`find_elements_by_name`等）。当检查元素是否存在时，这也很有用。如果没有元素，`find_element`将引发错误，而`find_elements`将返回一个空列表。
+Selenium 的工作方式与 Beautiful Soup 类似。选择适当的元素，然后操纵它。 Selenium 中的选择器的工作方式与 Beautiful Soup 中的选择器的工作方式类似，最常见的选择器是`find_element_by_id`、`find_element_by_class_name`、`find_element_by_name`、`find_element_by_tag_name`和`find_element_by_css_selector`。还有等效的`find_elements_by_X`，它们返回一个列表而不是第一个找到的元素（`find_elements_by_tag_name`、`find_elements_by_name`等）。当检查元素是否存在时，这也很有用。如果没有元素，`find_element`将引发错误，而`find_elements`将返回一个空列表。
 
-可以通过`.get_attribute()`获取元素上的数据，用于HTML属性（例如表单元素上的值）或`.text`。
+可以通过`.get_attribute()`获取元素上的数据，用于 HTML 属性（例如表单元素上的值）或`.text`。
 
 可以通过模拟发送按键输入文本来操作元素，方法是`.send_keys()`，点击是`.click()`，如果它们接受，可以使用`.submit()`进行提交。`.submit()`将在表单上搜索适当的提交，`.click()`将以与鼠标点击相同的方式选择/取消选择。
 
-最后，第6步关闭浏览器。
+最后，第 6 步关闭浏览器。
 
 # 还有更多...
 
-这是完整的Selenium文档：[http://selenium-python.readthedocs.io/](http://selenium-python.readthedocs.io/)。
+这是完整的 Selenium 文档：[`selenium-python.readthedocs.io/`](http://selenium-python.readthedocs.io/)。
 
 对于每个元素，都可以提取额外的信息，例如`.is_displayed()`或`.is_selected()`。可以使用`.find_element_by_link_text()`和`.find_element_by_partial_link_text()`来搜索文本。
 
@@ -807,17 +807,17 @@ Selenium的工作方式与Beautiful Soup类似。选择适当的元素，然后�
 
 # 另请参阅
 
-+   *解析HTML*配方
++   *解析 HTML*配方
 
 +   *与表单交互*配方
 
 # 访问受密码保护的页面
 
-有时，网页对公众不开放，而是以某种方式受到保护。最基本的方面是使用基本的HTTP身份验证，它集成到几乎每个Web服务器中，并且是用户/密码模式。
+有时，网页对公众不开放，而是以某种方式受到保护。最基本的方面是使用基本的 HTTP 身份验证，它集成到几乎每个 Web 服务器中，并且是用户/密码模式。
 
 # 准备就绪
 
-我们可以在[https://httpbin.org](https://httpbin.org)中测试这种身份验证。
+我们可以在[`httpbin.org`](https://httpbin.org)中测试这种身份验证。
 
 它有一个路径，“/basic-auth/{user}/{password}”，强制进行身份验证，用户和密码已声明。这对于理解身份验证的工作原理非常方便。
 
@@ -829,7 +829,7 @@ Selenium的工作方式与Beautiful Soup类似。选择适当的元素，然后�
 >>> import requests
 ```
 
-1.  使用错误的凭据对URL进行`GET`请求。注意，我们在URL上设置了凭据为`user`和`psswd`：
+1.  使用错误的凭据对 URL 进行`GET`请求。注意，我们在 URL 上设置了凭据为`user`和`psswd`：
 
 ```py
 >>> requests.get('https://httpbin.org/basic-auth/user/psswd', 
@@ -837,7 +837,7 @@ Selenium的工作方式与Beautiful Soup类似。选择适当的元素，然后�
 <Response [200]>
 ```
 
-1.  使用错误的凭据返回401状态码（未经授权）：
+1.  使用错误的凭据返回 401 状态码（未经授权）：
 
 ```py
 >>> requests.get('https://httpbin.org/basic-auth/user/psswd', 
@@ -845,7 +845,7 @@ Selenium的工作方式与Beautiful Soup类似。选择适当的元素，然后�
 <Response [401]>
 ```
 
-1.  凭据也可以直接通过URL传递，在服务器之前用冒号和`@`符号分隔，就像这样：
+1.  凭据也可以直接通过 URL 传递，在服务器之前用冒号和`@`符号分隔，就像这样：
 
 ```py
 >>> requests.get('https://user:psswd@httpbin.org/basic-auth/user/psswd')
@@ -856,19 +856,19 @@ Selenium的工作方式与Beautiful Soup类似。选择适当的元素，然后�
 
 # 它的工作原理...
 
-由于HTTP基本身份验证在各处都受支持，因此从“请求”获得支持非常容易。
+由于 HTTP 基本身份验证在各处都受支持，因此从“请求”获得支持非常容易。
 
-*如何做...*部分的第2步和第4步显示了如何提供正确的密码。第3步显示了密码错误时会发生什么。
+*如何做...*部分的第 2 步和第 4 步显示了如何提供正确的密码。第 3 步显示了密码错误时会发生什么。
 
-请记住始终使用HTTPS，以确保密码的发送保密。如果使用HTTP，密码将在网络上以明文发送。
+请记住始终使用 HTTPS，以确保密码的发送保密。如果使用 HTTP，密码将在网络上以明文发送。
 
 # 还有更多...
 
-将用户和密码添加到URL中也适用于浏览器。尝试直接访问页面，看到一个框显示要求输入用户名和密码：
+将用户和密码添加到 URL 中也适用于浏览器。尝试直接访问页面，看到一个框显示要求输入用户名和密码：
 
-![](assets/b0d91d6e-fa37-4084-82f1-d825d15441bc.png)用户凭据页面
+![](img/b0d91d6e-fa37-4084-82f1-d825d15441bc.png)用户凭据页面
 
-在使用包含用户和密码的URL时，`https://user:psswd@httpbin.org/basic-auth/user/psswd`，对话框不会出现，它会自动进行身份验证。
+在使用包含用户和密码的 URL 时，`https://user:psswd@httpbin.org/basic-auth/user/psswd`，对话框不会出现，它会自动进行身份验证。
 
 如果您需要访问多个页面，可以在“请求”中创建一个会话，并将身份验证参数设置为避免在各处输入它们：
 
@@ -883,7 +883,7 @@ Selenium的工作方式与Beautiful Soup类似。选择适当的元素，然后�
 
 +   *下载网页*配方
 
-+   *访问Web API*配方
++   *访问 Web API*配方
 
 # 加快网页抓取速度
 
@@ -893,25 +893,25 @@ Selenium的工作方式与Beautiful Soup类似。选择适当的元素，然后�
 
 # 准备就绪
 
-我们将获得代码来爬取和搜索关键字，利用Python 3的`futures`功能同时下载多个页面。
+我们将获得代码来爬取和搜索关键字，利用 Python 3 的`futures`功能同时下载多个页面。
 
 `future`是表示值承诺的对象。这意味着在代码在后台执行时，您立即收到一个对象。只有在明确请求其`.result()`时，代码才会阻塞，直到获取它。
 
 要生成一个`future`，你需要一个后台引擎，称为**executor**。一旦创建，`submit`一个函数和参数给它以检索一个`future`。结果的检索可以被延迟，直到需要，允许连续生成多个`futures`，并等待直到所有都完成，以并行执行它们，而不是创建一个，等待它完成，再创建另一个，依此类推。
 
-有几种方法可以创建一个executor；在这个示例中，我们将使用`ThreadPoolExecutor`，它将使用线程。
+有几种方法可以创建一个 executor；在这个示例中，我们将使用`ThreadPoolExecutor`，它将使用线程。
 
-我们将以一个准备好的示例为例，该示例可在GitHub存储库中找到：[https://github.com/PacktPublishing/Python-Automation-Cookbook/tree/master/Chapter03/test_site](https://github.com/PacktPublishing/Python-Automation-Cookbook/tree/master/Chapter03/test_site)。下载整个站点并运行包含的脚本。
+我们将以一个准备好的示例为例，该示例可在 GitHub 存储库中找到：[`github.com/PacktPublishing/Python-Automation-Cookbook/tree/master/Chapter03/test_site`](https://github.com/PacktPublishing/Python-Automation-Cookbook/tree/master/Chapter03/test_site)。下载整个站点并运行包含的脚本。
 
 ```py
 $ python simple_delay_server.py -d 2
 ```
 
-这是URL为`http://localhost:8000`的站点。你可以在浏览器上查看它。这是一个简单的博客，有三篇文章。大部分内容都不那么有趣，但我们添加了几段包含关键字`python`的段落。参数`-d 2`使服务器故意变慢，模拟一个糟糕的连接。
+这是 URL 为`http://localhost:8000`的站点。你可以在浏览器上查看它。这是一个简单的博客，有三篇文章。大部分内容都不那么有趣，但我们添加了几段包含关键字`python`的段落。参数`-d 2`使服务器故意变慢，模拟一个糟糕的连接。
 
 # 如何做...
 
-1.  编写以下脚本`speed_up_step1.py`。完整的代码可以在GitHub的`Chapter03`目录下找到：[https://github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter03/speed_up_step1.py](https://github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter03/speed_up_step1.py)。这里只列出了最相关的部分。它基于`crawling_web_step1.py`。
+1.  编写以下脚本`speed_up_step1.py`。完整的代码可以在 GitHub 的`Chapter03`目录下找到：[`github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter03/speed_up_step1.py`](https://github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter03/speed_up_step1.py)。这里只列出了最相关的部分。它基于`crawling_web_step1.py`。
 
 ```py
 ...
@@ -1021,23 +1021,23 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
                 return
 ```
 
-`with`上下文创建了一个指定数量的工作人员池。在内部，创建了一个包含所有要检索的URL的`futures`列表。`.as_completed()`函数返回已完成的`futures`，然后进行一些工作，处理获取到的新链接，并检查它们是否需要被添加到检索中。这个过程类似于*Crawling the web*示例中呈现的过程。
+`with`上下文创建了一个指定数量的工作人员池。在内部，创建了一个包含所有要检索的 URL 的`futures`列表。`.as_completed()`函数返回已完成的`futures`，然后进行一些工作，处理获取到的新链接，并检查它们是否需要被添加到检索中。这个过程类似于*Crawling the web*示例中呈现的过程。
 
 该过程会再次开始，直到检索到足够的链接或没有链接可检索为止。请注意，链接是批量检索的；第一次，处理基本链接并检索所有链接。在第二次迭代中，将请求所有这些链接。一旦它们都被下载，将处理一个新的批次。
 
-处理并发请求时，请记住它们可以在两次执行之间改变顺序。如果一个请求花费的时间稍微多一点或少一点，那可能会影响检索信息的顺序。因为我们在下载10页后停止，这也意味着这10页可能是不同的。
+处理并发请求时，请记住它们可以在两次执行之间改变顺序。如果一个请求花费的时间稍微多一点或少一点，那可能会影响检索信息的顺序。因为我们在下载 10 页后停止，这也意味着这 10 页可能是不同的。
 
 # 还有更多...
 
-Python的完整`futures`文档可以在这里找到：[https://docs.python.org/3/library/concurrent.futures.html](https://docs.python.org/3/library/concurrent.futures.html)。
+Python 的完整`futures`文档可以在这里找到：[`docs.python.org/3/library/concurrent.futures.html`](https://docs.python.org/3/library/concurrent.futures.html)。
 
-正如您在*如何做…*部分的第4和第5步中所看到的，正确确定工作人员的数量可能需要一些测试。一些数字可能会使过程变慢，因为管理增加了。不要害怕尝试！
+正如您在*如何做…*部分的第 4 和第 5 步中所看到的，正确确定工作人员的数量可能需要一些测试。一些数字可能会使过程变慢，因为管理增加了。不要害怕尝试！
 
-在Python世界中，还有其他方法可以进行并发的HTTP请求。有一个原生请求模块，允许我们使用`futures`，名为`requests-futures`。它可以在这里找到：[https://github.com/ross/requests-futures](https://github.com/ross/requests-futures)。
+在 Python 世界中，还有其他方法可以进行并发的 HTTP 请求。有一个原生请求模块，允许我们使用`futures`，名为`requests-futures`。它可以在这里找到：[`github.com/ross/requests-futures`](https://github.com/ross/requests-futures)。
 
-另一种选择是使用异步编程。最近，这种工作方式引起了很多关注，因为在处理许多并发调用时可以非常高效，但编码的方式与传统方式不同，需要一些时间来适应。Python包括`asyncio`模块来进行这种工作，还有一个名为`aiohttp`的好模块来处理HTTP请求。您可以在这里找到有关`aiohttp`的更多信息：[https://aiohttp.readthedocs.io/en/stable/client_quickstart.html](https://aiohttp.readthedocs.io/en/stable/client_quickstart.html)。
+另一种选择是使用异步编程。最近，这种工作方式引起了很多关注，因为在处理许多并发调用时可以非常高效，但编码的方式与传统方式不同，需要一些时间来适应。Python 包括`asyncio`模块来进行这种工作，还有一个名为`aiohttp`的好模块来处理 HTTP 请求。您可以在这里找到有关`aiohttp`的更多信息：[`aiohttp.readthedocs.io/en/stable/client_quickstart.html`](https://aiohttp.readthedocs.io/en/stable/client_quickstart.html)。
 
-关于异步编程的良好介绍可以在这篇文章中找到：[https://djangostars.com/blog/asynchronous-programming-in-python-asyncio/](https://djangostars.com/blog/asynchronous-programming-in-python-asyncio/)。
+关于异步编程的良好介绍可以在这篇文章中找到：[`djangostars.com/blog/asynchronous-programming-in-python-asyncio/`](https://djangostars.com/blog/asynchronous-programming-in-python-asyncio/)。
 
 # 另请参阅
 

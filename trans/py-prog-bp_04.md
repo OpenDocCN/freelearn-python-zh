@@ -1,28 +1,28 @@
 # 汇率和货币转换工具
 
-在上一章中，我们构建了一个非常酷的应用程序，用于在Twitter上计算投票，并学习了如何使用Python进行身份验证和消费Twitter API。我们还对如何在Python中使用响应式扩展有了很好的介绍。在本章中，我们将创建一个终端工具，该工具将从`fixer.io`获取当天的汇率，并使用这些信息来在不同货币之间进行价值转换。
+在上一章中，我们构建了一个非常酷的应用程序，用于在 Twitter 上计算投票，并学习了如何使用 Python 进行身份验证和消费 Twitter API。我们还对如何在 Python 中使用响应式扩展有了很好的介绍。在本章中，我们将创建一个终端工具，该工具将从`fixer.io`获取当天的汇率，并使用这些信息来在不同货币之间进行价值转换。
 
-`Fixer.io`是由[https://github.com/hakanensari](https://github.com/hakanensari)创建的一个非常好的项目；它每天从欧洲央行获取外汇汇率数据。他创建的API使用起来简单，并且运行得很好。
+`Fixer.io`是由[`github.com/hakanensari`](https://github.com/hakanensari)创建的一个非常好的项目；它每天从欧洲央行获取外汇汇率数据。他创建的 API 使用起来简单，并且运行得很好。
 
-我们的项目首先通过创建围绕API的框架来开始；当框架就位后，我们将创建一个终端应用程序，可以在其中执行货币转换。我们从`fixer.io`获取的所有数据都将存储在MongoDB数据库中，因此我们可以在不一直请求`fixer.io`的情况下执行转换。这将提高我们应用程序的性能。
+我们的项目首先通过创建围绕 API 的框架来开始；当框架就位后，我们将创建一个终端应用程序，可以在其中执行货币转换。我们从`fixer.io`获取的所有数据都将存储在 MongoDB 数据库中，因此我们可以在不一直请求`fixer.io`的情况下执行转换。这将提高我们应用程序的性能。
 
 在本章中，我们将涵盖以下内容：
 
 +   如何使用`pipenv`来安装和管理项目的依赖项
 
-+   使用PyMongo模块与MongoDB一起工作
++   使用 PyMongo 模块与 MongoDB 一起工作
 
-+   使用Requests消费REST API
++   使用 Requests 消费 REST API
 
 说了这么多，让我们开始吧！
 
 # 设置环境
 
-像往常一样，我们将从设置环境开始；我们需要做的第一件事是设置一个虚拟环境，这将允许我们轻松安装项目依赖项，而不会干扰Python的全局安装。
+像往常一样，我们将从设置环境开始；我们需要做的第一件事是设置一个虚拟环境，这将允许我们轻松安装项目依赖项，而不会干扰 Python 的全局安装。
 
 在之前的章节中，我们使用`virtualenv`来创建我们的虚拟环境；然而，Kenneth Reitz（流行包*requests*的创建者）创建了`pipenv`。
 
-`pipenv`对于Python来说就像NPM对于Node.js一样。但是，`pipenv`用于远不止包管理，它还为您创建和管理虚拟环境。在我看来，旧的开发工作流有很多优势，但对我来说，有两个方面很突出：第一个是您不再需要两种不同的工具（`pip`，`virtualenv`），第二个是在一个地方拥有所有这些强大功能变得更加简单。
+`pipenv`对于 Python 来说就像 NPM 对于 Node.js 一样。但是，`pipenv`用于远不止包管理，它还为您创建和管理虚拟环境。在我看来，旧的开发工作流有很多优势，但对我来说，有两个方面很突出：第一个是您不再需要两种不同的工具（`pip`，`virtualenv`），第二个是在一个地方拥有所有这些强大功能变得更加简单。
 
 我非常喜欢`pipenv`的另一点是使用`Pipfile`。有时，使用要求文件真的很困难。我们的生产环境和开发环境具有相同的依赖关系，您最终需要维护两个不同的文件；而且，每次需要删除一个依赖项时，您都需要手动编辑要求文件。
 
@@ -42,7 +42,7 @@ pipenv --help
 
 您应该看到以下输出：
 
-![](assets/b92b58f8-cc44-4f22-9c04-0e761751af85.png)
+![](img/b92b58f8-cc44-4f22-9c04-0e761751af85.png)
 
 我们不会详细介绍所有不同的选项，因为这超出了本书的范围，但在创建环境时，您将掌握基础知识。
 
@@ -58,11 +58,11 @@ mkdir currency_converter && cd currency_converter
 pipenv --python python3.6
 ```
 
-这将为当前目录中的项目创建一个虚拟环境，并使用Python 3.6。`--python`选项还接受您安装Python的路径。在我的情况下，我总是下载Python源代码，构建它，并将其安装在不同的位置，因此这对我非常有用。
+这将为当前目录中的项目创建一个虚拟环境，并使用 Python 3.6。`--python`选项还接受您安装 Python 的路径。在我的情况下，我总是下载 Python 源代码，构建它，并将其安装在不同的位置，因此这对我非常有用。
 
-您还可以使用`--three`选项，它将使用系统上默认的Python3安装。运行命令后，您应该看到以下输出：
+您还可以使用`--three`选项，它将使用系统上默认的 Python3 安装。运行命令后，您应该看到以下输出：
 
-![](assets/8784ad3b-7ce3-4d9e-bc95-e01455d19615.png)
+![](img/8784ad3b-7ce3-4d9e-bc95-e01455d19615.png)
 
 如果你查看`Pipfile`的内容，你应该会看到类似以下的内容：
 
@@ -82,15 +82,15 @@ name = "pypi"
 python_version = "3.6"
 ```
 
-这个文件开始定义从哪里获取包，而在这种情况下，它将从`pypi`下载包。然后，我们有一个地方用于项目的开发依赖项，在`packages`中是生产依赖项。最后，它说这个项目需要Python版本3.6。
+这个文件开始定义从哪里获取包，而在这种情况下，它将从`pypi`下载包。然后，我们有一个地方用于项目的开发依赖项，在`packages`中是生产依赖项。最后，它说这个项目需要 Python 版本 3.6。
 
 太棒了！现在你可以使用一些命令。例如，如果你想知道项目使用哪个虚拟环境，你可以运行`pipenv --venv`；你将看到以下输出：
 
-![](assets/f729d03d-b885-4866-a3f1-f69689ba4168.png)
+![](img/f729d03d-b885-4866-a3f1-f69689ba4168.png)
 
 如果你想为项目激活虚拟环境，你可以使用`shell`命令，如下所示：
 
-![](assets/17b5e4d5-1962-4054-afd5-50748321d710.png)
+![](img/17b5e4d5-1962-4054-afd5-50748321d710.png)
 
 完美！有了虚拟环境，我们可以开始添加项目的依赖项。
 
@@ -104,13 +104,13 @@ pipenv install requests
 
 我们将得到以下输出：
 
-![](assets/fef2a704-9e32-4cd2-b6e1-21d2a29d20a7.png)
+![](img/fef2a704-9e32-4cd2-b6e1-21d2a29d20a7.png)
 
 正如你所看到的，`pipenv`安装了`requests`以及它的所有依赖项。
 
-`pipenv`的作者是创建流行的requests库的同一个开发者。在安装输出中，你可以看到一个彩蛋，上面写着`PS: You have excellent taste!`。
+`pipenv`的作者是创建流行的 requests 库的同一个开发者。在安装输出中，你可以看到一个彩蛋，上面写着`PS: You have excellent taste!`。
 
-我们需要添加到我们的项目中的另一个依赖是`pymongo`，这样我们就可以连接和操作MongoDB数据库中的数据。
+我们需要添加到我们的项目中的另一个依赖是`pymongo`，这样我们就可以连接和操作 MongoDB 数据库中的数据。
 
 运行以下命令：
 
@@ -120,7 +120,7 @@ pipenv install pymongo
 
 我们将得到以下输出：
 
-![](assets/cd80273e-1faa-4667-835c-54d65e0bfdd6.png)
+![](img/cd80273e-1faa-4667-835c-54d65e0bfdd6.png)
 
 让我们来看看`Pipfile`，看看它现在是什么样子：
 
@@ -155,7 +155,7 @@ pipenv graph
 
 我们将得到以下输出：
 
-![](assets/4b513feb-d291-4c36-abce-6d7272159f16.png)
+![](img/4b513feb-d291-4c36-abce-6d7272159f16.png)
 
 正如你所看到的，`graph`命令在你想知道你安装的包的依赖关系时非常有帮助。在我们的项目中，我们可以看到`pymongo`没有任何额外的依赖项。然而，`requests`有四个依赖项：`certifi`、`chardet`、`idna`和`urllib3`。
 
@@ -172,36 +172,36 @@ currency_converter
 
 在`currency_converter`模块目录中，我们有一个核心，其中包含应用程序的核心功能，例如命令行参数解析器，处理数据的辅助函数等。
 
-我们还配置了，与其他项目一样，哪个项目将包含读取YAML配置文件的函数；最后，我们有HTTP，其中包含所有将执行HTTP请求到`fixer.io` REST API的函数。
+我们还配置了，与其他项目一样，哪个项目将包含读取 YAML 配置文件的函数；最后，我们有 HTTP，其中包含所有将执行 HTTP 请求到`fixer.io` REST API 的函数。
 
-现在我们已经学会了如何使用`pipenv`以及它如何帮助我们提高生产力，我们可以安装项目的初始依赖项。我们也创建了项目的目录结构。拼图的唯一缺失部分就是安装MongoDB。
+现在我们已经学会了如何使用`pipenv`以及它如何帮助我们提高生产力，我们可以安装项目的初始依赖项。我们也创建了项目的目录结构。拼图的唯一缺失部分就是安装 MongoDB。
 
-我正在使用Linux Debian 9，我可以很容易地使用Debian的软件包管理工具来安装它：
+我正在使用 Linux Debian 9，我可以很容易地使用 Debian 的软件包管理工具来安装它：
 
 ```py
 sudo apt install mongodb
 ```
 
-你会在大多数流行的Linux发行版的软件包存储库中找到MongoDB，如果你使用Windows或macOS，你可以在以下链接中看到说明：
+你会在大多数流行的 Linux 发行版的软件包存储库中找到 MongoDB，如果你使用 Windows 或 macOS，你可以在以下链接中看到说明：
 
-对于macOS：[https://docs.mongodb.com/manual/tutorial/install-mongodb-on-os-x/](https://docs.mongodb.com/manual/tutorial/install-mongodb-on-os-x/)
+对于 macOS：[`docs.mongodb.com/manual/tutorial/install-mongodb-on-os-x/`](https://docs.mongodb.com/manual/tutorial/install-mongodb-on-os-x/)
 
-对于Windows：[https://docs.mongodb.com/manual/tutorial/install-mongodb-on-windows/](https://docs.mongodb.com/manual/tutorial/install-mongodb-on-windows/)
+对于 Windows：[`docs.mongodb.com/manual/tutorial/install-mongodb-on-windows/`](https://docs.mongodb.com/manual/tutorial/install-mongodb-on-windows/)
 
-安装完成后，您可以使用MongoDB客户端验证一切是否正常工作。打开终端，然后运行`mongo`命令。
+安装完成后，您可以使用 MongoDB 客户端验证一切是否正常工作。打开终端，然后运行`mongo`命令。
 
-然后你应该进入MongoDB shell：
+然后你应该进入 MongoDB shell：
 
 ```py
 MongoDB shell version: 3.2.11
 connecting to: test
 ```
 
-要退出MongoDB shell，只需键入*CTRL *+ *D.*
+要退出 MongoDB shell，只需键入*CTRL *+ *D.*
 
 太棒了！现在我们准备开始编码！
 
-# 创建API包装器
+# 创建 API 包装器
 
 在这一部分，我们将创建一组函数，这些函数将包装`fixer.io` API，并帮助我们在项目中以简单的方式使用它。
 
@@ -213,9 +213,9 @@ from http import HTTPStatus
 import json
 ```
 
-显然，我们需要`requests`，以便我们可以向`fixer.io`端点发出请求，并且我们还从HTTP模块导入`HTTPStatus`，以便我们可以返回正确的HTTP状态码；在我们的代码中也更加详细。在代码中，`HTTPStatus.OK`的返回要比只有`200`更加清晰和易读。
+显然，我们需要`requests`，以便我们可以向`fixer.io`端点发出请求，并且我们还从 HTTP 模块导入`HTTPStatus`，以便我们可以返回正确的 HTTP 状态码；在我们的代码中也更加详细。在代码中，`HTTPStatus.OK`的返回要比只有`200`更加清晰和易读。
 
-最后，我们导入`json`包，以便我们可以将从`fixer.io`获取的JSON内容解析为Python对象。
+最后，我们导入`json`包，以便我们可以将从`fixer.io`获取的 JSON 内容解析为 Python 对象。
 
 接下来，我们将添加我们的第一个函数。这个函数将返回特定货币的当前汇率：
 
@@ -237,9 +237,9 @@ def fetch_exchange_rates_by_currency(currency):
                          f' the exchange rates for: {currency}'))
 ```
 
-这个函数以货币作为参数，并通过向`fixer.io` API发送请求来获取使用该货币作为基础的最新汇率信息，这是作为参数给出的。
+这个函数以货币作为参数，并通过向`fixer.io` API 发送请求来获取使用该货币作为基础的最新汇率信息，这是作为参数给出的。
 
-如果响应是`HTTPStatus.OK`（`200`），我们使用JSON模块的load函数来解析JSON响应；否则，我们根据发生的错误引发异常。
+如果响应是`HTTPStatus.OK`（`200`），我们使用 JSON 模块的 load 函数来解析 JSON 响应；否则，我们根据发生的错误引发异常。
 
 我们还可以在`currency_converter/currency_converter/core`目录中创建一个名为`__init__.py`的文件，并导入我们刚刚创建的函数：
 
@@ -247,7 +247,7 @@ def fetch_exchange_rates_by_currency(currency):
 from .request import fetch_exchange_rates_by_currency
 ```
 
-太好了！让我们在Python REPL中试一下：
+太好了！让我们在 Python REPL 中试一下：
 
 ```py
 Python 3.6.3 (default, Nov 21 2017, 06:53:07)
@@ -298,7 +298,7 @@ Type "help", "copyright", "credits" or "license" for more information.
 
 # 添加数据库辅助类
 
-现在我们已经实现了从`fixer.io`获取汇率信息的函数，我们需要添加一个类，该类将检索并保存我们获取的信息到我们的MongoDB中。
+现在我们已经实现了从`fixer.io`获取汇率信息的函数，我们需要添加一个类，该类将检索并保存我们获取的信息到我们的 MongoDB 中。
 
 那么，让我们继续在`currency_converter/currency_converter/core`目录中创建一个名为`db.py`的文件；让我们添加一些`import`语句：
 
@@ -319,11 +319,11 @@ class DbClient:
         self._db = None
 ```
 
-一个名为`DbClient`的类，它的构造函数有两个参数，`db_name`和`default_collection`。请注意，在MongoDB中，我们不需要在使用之前创建数据库和集合。当我们第一次尝试插入数据时，数据库和集合将被自动创建。
+一个名为`DbClient`的类，它的构造函数有两个参数，`db_name`和`default_collection`。请注意，在 MongoDB 中，我们不需要在使用之前创建数据库和集合。当我们第一次尝试插入数据时，数据库和集合将被自动创建。
 
-如果您习惯于使用MySQL或MSSQL等SQL数据库，这可能看起来有些奇怪，在那里您必须连接到服务器实例，创建数据库，并在使用之前创建所有表。
+如果您习惯于使用 MySQL 或 MSSQL 等 SQL 数据库，这可能看起来有些奇怪，在那里您必须连接到服务器实例，创建数据库，并在使用之前创建所有表。
 
-在这个例子中，我们不关心安全性，因为MongoDB超出了本书的范围，我们只关注Python。
+在这个例子中，我们不关心安全性，因为 MongoDB 超出了本书的范围，我们只关注 Python。
 
 然后，我们将向数据库添加两个方法，`connect`和`disconnect`：
 
@@ -336,7 +336,7 @@ class DbClient:
         self._client.close()
 ```
 
-`connect`方法将使用`MongoClient`连接到我们的本地主机上的数据库实例，使用端口`27017`，这是MongoDB安装后默认运行的端口。这两个值可能在您的环境中有所不同。`disconnect`方法只是调用客户端的close方法，并且，顾名思义，它关闭连接。
+`connect`方法将使用`MongoClient`连接到我们的本地主机上的数据库实例，使用端口`27017`，这是 MongoDB 安装后默认运行的端口。这两个值可能在您的环境中有所不同。`disconnect`方法只是调用客户端的 close 方法，并且，顾名思义，它关闭连接。
 
 现在，我们将添加两个特殊函数，`__enter__`和`__exit__`：
 
@@ -354,7 +354,7 @@ class DbClient:
         return self
 ```
 
-我们希望`DbClient`类在其自己的上下文中使用，并且这是通过使用上下文管理器和`with`语句来实现的。上下文管理器的基本实现是通过实现这两个函数`__enter__`和`__exit__`。当我们进入`DbClient`正在运行的上下文时，将调用`__enter__`。在这种情况下，我们将调用`connect`方法来连接到我们的MongoDB实例。
+我们希望`DbClient`类在其自己的上下文中使用，并且这是通过使用上下文管理器和`with`语句来实现的。上下文管理器的基本实现是通过实现这两个函数`__enter__`和`__exit__`。当我们进入`DbClient`正在运行的上下文时，将调用`__enter__`。在这种情况下，我们将调用`connect`方法来连接到我们的 MongoDB 实例。
 
 另一方面，`__exit__`方法在当前上下文终止时被调用。上下文可以由正常原因或抛出的异常终止。在我们的情况下，我们从数据库断开连接，如果`exec_type`不等于`None`，这意味着如果发生了异常，我们会引发该异常。这是必要的，否则在`DbClient`上下文中发生的异常将被抑制。
 
@@ -386,9 +386,9 @@ class DbClient:
             upsert=upsert)
 ```
 
-`find_one`方法有一个可选参数叫做filter，它是一个带有条件的字典，将用于执行搜索。如果省略，它将只返回集合中的第一项。
+`find_one`方法有一个可选参数叫做 filter，它是一个带有条件的字典，将用于执行搜索。如果省略，它将只返回集合中的第一项。
 
-在update方法中还有一些其他事情。它有三个参数：`filter`，`document`，以及可选参数`upsert`。
+在 update 方法中还有一些其他事情。它有三个参数：`filter`，`document`，以及可选参数`upsert`。
 
 `filter`参数与`find_one`方法完全相同；它是一个用于搜索我们想要更新的集合项的条件。
 
@@ -408,11 +408,11 @@ from .db import DbClient
 
 # 创建命令行解析器
 
-我必须坦白一件事：我是一个命令行类型的人。是的，我知道有些人认为它已经过时了，但我喜欢在终端上工作。我绝对更有生产力，如果你使用Linux或macOS，你可以结合工具来获得你想要的结果。这就是我们要为这个项目添加命令行解析器的原因。
+我必须坦白一件事：我是一个命令行类型的人。是的，我知道有些人认为它已经过时了，但我喜欢在终端上工作。我绝对更有生产力，如果你使用 Linux 或 macOS，你可以结合工具来获得你想要的结果。这就是我们要为这个项目添加命令行解析器的原因。
 
 我们需要实现一些东西才能开始创建命令行解析器。我们要添加的一个功能是设置默认货币的可能性，这将避免我们的应用用户总是需要指定基础货币来执行货币转换。
 
-为了做到这一点，我们将创建一个动作，我们已经在[第1章](760a1425-6ef8-4e6b-ba1e-0f936d046aee.xhtml)中看到了动作是如何工作的，*实现天气应用程序*，但是为了提醒我们，动作是可以绑定到命令行参数以执行某个任务的类。当命令行中使用参数时，这些动作会自动调用。
+为了做到这一点，我们将创建一个动作，我们已经在第一章中看到了动作是如何工作的，*实现天气应用程序*，但是为了提醒我们，动作是可以绑定到命令行参数以执行某个任务的类。当命令行中使用参数时，这些动作会自动调用。
 
 在进行自定义操作的开发之前，我们需要创建一个函数，从数据库中获取我们应用程序的配置。首先，我们将创建一个自定义异常，用于在无法从数据库中检索配置时引发错误。在`currency_converter/currency_converter/config`目录中创建一个名为`config_error.py`的文件，内容如下：
 
@@ -448,7 +448,7 @@ def get_config():
 
 在这里，我们首先从`import`语句开始。我们开始导入我们刚刚创建的`ConfigError`自定义异常，还导入`DbClient`类，以便我们可以访问数据库来检索应用程序的配置。
 
-然后，我们定义了`get_config`函数。这个函数不会接受任何参数，函数首先定义了一个值为`None`的变量config。然后，我们使用`DbClient`连接到`exchange_rate`数据库，并使用名为`config`的集合。在`DbClient`上下文中，我们使用`find_one`方法，没有任何参数，这意味着将返回该配置集合中的第一项。
+然后，我们定义了`get_config`函数。这个函数不会接受任何参数，函数首先定义了一个值为`None`的变量 config。然后，我们使用`DbClient`连接到`exchange_rate`数据库，并使用名为`config`的集合。在`DbClient`上下文中，我们使用`find_one`方法，没有任何参数，这意味着将返回该配置集合中的第一项。
 
 如果`config`变量仍然是`None`，我们会引发一个异常，告诉用户数据库中还没有配置，需要再次运行应用程序并使用`--setbasecurrency`参数。我们将很快实现命令行参数。如果我们有配置的值，我们只需返回它。
 
@@ -472,7 +472,7 @@ from .config import get_config
 
 首先，我们导入`sys`，这样我们就可以在程序出现问题时终止执行。然后，我们从`argparse`模块中导入`Action`。在创建自定义操作时，我们需要从`Action`继承一个类。我们还导入`datetime`，因为我们将添加功能来检查我们将要使用的汇率是否过时。
 
-然后，我们导入了一些我们创建的类和函数。我们首先导入`DbClient`，这样我们就可以从MongoDB中获取和存储数据，然后导入`fetch_exchange_rates_by_currency`以在必要时从`fixer.io`获取最新数据。最后，我们导入一个名为`get_config`的辅助函数，这样我们就可以从数据库的配置集合中获取默认货币。
+然后，我们导入了一些我们创建的类和函数。我们首先导入`DbClient`，这样我们就可以从 MongoDB 中获取和存储数据，然后导入`fetch_exchange_rates_by_currency`以在必要时从`fixer.io`获取最新数据。最后，我们导入一个名为`get_config`的辅助函数，这样我们就可以从数据库的配置集合中获取默认货币。
 
 让我们首先添加`SetBaseCurrency`类：
 
@@ -503,11 +503,11 @@ class SetBaseCurrency(Action):
             sys.exit(0)
 ```
 
-这个方法有四个参数，解析器是我们即将创建的`ArgumentParser`的一个实例。`namespace`是参数解析器的结果的对象；我们在[第1章](760a1425-6ef8-4e6b-ba1e-0f936d046aee.xhtml)中详细介绍了命名空间对象，*实现天气应用程序*。值是传递给基础参数的值，最后，`option_string`是操作绑定到的参数。
+这个方法有四个参数，解析器是我们即将创建的`ArgumentParser`的一个实例。`namespace`是参数解析器的结果的对象；我们在第一章中详细介绍了命名空间对象，*实现天气应用程序*。值是传递给基础参数的值，最后，`option_string`是操作绑定到的参数。
 
 我们通过为参数设置值、目标变量和创建`DbClient`的实例来开始该方法。请注意，我们在这里使用`with`语句，因此我们在`DbClient`上下文中运行更新。
 
-然后，我们调用`update`方法。在这里，我们向`update`方法传递了两个参数，第一个是`filter`。当我们有`{'base_currrency': {'$ne': None}}`时，这意味着我们将更新集合中基础货币不等于None的项目；否则，我们将插入一个新项目。这是`DbClient`类中`update`方法的默认行为，因为我们默认将`upsert`选项设置为`True`。
+然后，我们调用`update`方法。在这里，我们向`update`方法传递了两个参数，第一个是`filter`。当我们有`{'base_currrency': {'$ne': None}}`时，这意味着我们将更新集合中基础货币不等于 None 的项目；否则，我们将插入一个新项目。这是`DbClient`类中`update`方法的默认行为，因为我们默认将`upsert`选项设置为`True`。
 
 当我们完成更新时，我们向用户打印消息，说明默认货币已设置，并且当我们触发`finally`子句时，我们退出代码的执行。如果出现问题，由于某种原因，我们无法更新`config`集合，将显示错误并退出程序。
 
@@ -549,11 +549,11 @@ def __call__(self, parser, namespace, value, option_string=None):
 
 该方法开始时将目标属性的值设置为`True`。我们将用于运行此操作的参数不需要参数，并且默认为`False`，因此如果我们使用参数，我们将其设置为`True`。这只是一种表明我们已经使用了该参数的方式。
 
-然后，我们从数据库中获取配置并获取`base_currency`。我们向用户显示一条消息，告诉他们我们正在从`fixer.io`获取数据，然后我们使用我们的`fetch_exchange_rates_by_currency`函数，将`base_currency`传递给它。当我们得到响应时，我们将日期更改为UTC时间，这样我们就可以更容易地计算给定货币的汇率是否需要更新。
+然后，我们从数据库中获取配置并获取`base_currency`。我们向用户显示一条消息，告诉他们我们正在从`fixer.io`获取数据，然后我们使用我们的`fetch_exchange_rates_by_currency`函数，将`base_currency`传递给它。当我们得到响应时，我们将日期更改为 UTC 时间，这样我们就可以更容易地计算给定货币的汇率是否需要更新。
 
-请记住，`fixer.io`在中欧时间下午4点左右更新其数据。
+请记住，`fixer.io`在中欧时间下午 4 点左右更新其数据。
 
-然后，我们创建`DbClient`的另一个实例，并使用带有两个参数的`update`方法。第一个是`filter`，因此它将更改与条件匹配的集合中的任何项目，第二个参数是我们从`fixer.io` API获取的响应。
+然后，我们创建`DbClient`的另一个实例，并使用带有两个参数的`update`方法。第一个是`filter`，因此它将更改与条件匹配的集合中的任何项目，第二个参数是我们从`fixer.io` API 获取的响应。
 
 在所有事情都完成之后，我们触发`finally`子句并终止程序的执行。如果出现问题，我们会在终端向用户显示一条消息，并终止程序的执行。
 
@@ -599,7 +599,7 @@ class Currency(Enum):
     EUR = 'Euro'
 ```
 
-这非常简单。我们已经在之前的章节中介绍了Python中的枚举，但在这里，我们定义了枚举，其中键是货币的缩写，值是名称。这与`fixer.io`中可用的货币相匹配。
+这非常简单。我们已经在之前的章节中介绍了 Python 中的枚举，但在这里，我们定义了枚举，其中键是货币的缩写，值是名称。这与`fixer.io`中可用的货币相匹配。
 
 打开`currency_converter/currency_converter/core`目录中的`__init__.py`文件，并添加以下导入语句：
 
@@ -638,7 +638,7 @@ def parse_commandline_args():
 
 这里我们要做的第一件事是只获取`Currency`枚举键的名称；这将返回一个类似这样的列表：
 
-![](assets/c9385f16-58d4-4ec9-94db-6905c05a5be3.png)
+![](img/c9385f16-58d4-4ec9-94db-6905c05a5be3.png)
 
 在这里，我们最终创建了`ArgumentParser`的一个实例，并传递了两个参数：`prog`，这是程序的名称，我们可以称之为`currency_converter`，第二个是`description`（当在命令行中传递`help`参数时，将显示给用户的描述）。
 
@@ -707,7 +707,7 @@ argparser.add_argument('--value',
                            help='The value to be converted')
 ```
 
-在这里，我们将参数的名称设置为`--value`。请注意，类型与我们之前定义的参数不同。现在，我们将接收一个浮点值，并且参数解析器将把传递给`--value`参数的值存储到名为value的属性中。最后一个参数是`help`文本。
+在这里，我们将参数的名称设置为`--value`。请注意，类型与我们之前定义的参数不同。现在，我们将接收一个浮点值，并且参数解析器将把传递给`--value`参数的值存储到名为 value 的属性中。最后一个参数是`help`文本。
 
 最后，我们要添加的最后一个参数是指定值将被转换为哪种货币的参数，将被称为`--to`：
 
@@ -773,7 +773,7 @@ def validate_args(args):
 
 这是本章我们一直在等待的部分；我们将创建应用程序的入口点，并将迄今为止编写的所有代码粘合在一起。
 
-让我们在`currency_converter/currency_converter`目录中创建一个名为`__main__.py`的文件。我们之前在[第1章](760a1425-6ef8-4e6b-ba1e-0f936d046aee.xhtml)中已经使用过`__main__`文件，*实现天气应用程序*。当我们在模块的`root`目录中放置一个名为`__main__.py`的文件时，这意味着该文件是模块的入口脚本。因此，如果我们运行以下命令：
+让我们在`currency_converter/currency_converter`目录中创建一个名为`__main__.py`的文件。我们之前在第一章中已经使用过`__main__`文件，*实现天气应用程序*。当我们在模块的`root`目录中放置一个名为`__main__.py`的文件时，这意味着该文件是模块的入口脚本。因此，如果我们运行以下命令：
 
 ```py
 python -m currency_converter 
@@ -796,7 +796,7 @@ from .core import DbClient
 from .core import fetch_exchange_rates_by_currency
 ```
 
-我们像往常一样导入`sys`包，以防需要调用exit来终止代码的执行，然后导入到目前为止我们开发的所有类和实用函数。我们首先导入`parse_commandline_args`函数进行命令行解析，然后导入`get_config`以便我们可以获取用户设置的默认货币，导入`DbClient`类以便我们可以访问数据库并获取汇率；最后，我们还导入`fetch_exchange_rates_by_currency`函数，当我们选择尚未在我们的数据库中的货币时将使用它。我们将从`fixer.io` API中获取这个。
+我们像往常一样导入`sys`包，以防需要调用 exit 来终止代码的执行，然后导入到目前为止我们开发的所有类和实用函数。我们首先导入`parse_commandline_args`函数进行命令行解析，然后导入`get_config`以便我们可以获取用户设置的默认货币，导入`DbClient`类以便我们可以访问数据库并获取汇率；最后，我们还导入`fetch_exchange_rates_by_currency`函数，当我们选择尚未在我们的数据库中的货币时将使用它。我们将从`fixer.io` API 中获取这个。
 
 现在，我们可以创建`main`函数：
 
@@ -817,7 +817,7 @@ def main():
 
 获取所有这些值后，我们调用`get_config`从数据库中获取`base_currency`，然后立即检查是否有`from_currency`可以使用该值；否则，我们使用数据库中的`base_currency`。这将确保如果用户指定了`from_currency`值，那么该值将覆盖数据库中存储的默认货币。
 
-接下来，我们实现将实际从数据库或`fixer.io` API获取汇率的代码，如下所示：
+接下来，我们实现将实际从数据库或`fixer.io` API 获取汇率的代码，如下所示：
 
 ```py
     with DbClient('exchange_rates', 'rates') as db:
@@ -848,7 +848,7 @@ def main():
 
 如果我们找到了基础货币的汇率，我们只需获取该值并将其分配给`dest_rate`变量。
 
-我们要做的最后一件事是执行转换，并使用内置的round函数将小数点后的位数限制为两位，并在终端中打印值。
+我们要做的最后一件事是执行转换，并使用内置的 round 函数将小数点后的位数限制为两位，并在终端中打印值。
 
 在文件末尾，在`main()`函数之后，添加以下代码：
 
@@ -863,34 +863,34 @@ if __name__ == '__main__':
 
 让我们测试一下我们的应用程序。首先，我们将显示帮助消息，看看我们有哪些选项可用：
 
-![](assets/b0f7d3ce-7807-4396-9065-ce200aabd67b.png)
+![](img/b0f7d3ce-7807-4396-9065-ce200aabd67b.png)
 
 很好！正如预期的那样。现在，我们可以使用`--setbasecurrency`参数来设置基础货币：
 
-![](assets/ad6fb0bd-bcf1-49eb-a325-f9fc65accb57.png)
+![](img/ad6fb0bd-bcf1-49eb-a325-f9fc65accb57.png)
 
-在这里，我已将基础货币设置为SEK（瑞典克朗），每次我需要进行货币转换时，我都不需要指定我的基础货币是SEK。让我们将100 SEK转换为USD（美元）：
+在这里，我已将基础货币设置为 SEK（瑞典克朗），每次我需要进行货币转换时，我都不需要指定我的基础货币是 SEK。让我们将 100 SEK 转换为 USD（美元）：
 
-![](assets/38bfab21-ab5d-4b56-b505-d51ebb2957ee.png)
+![](img/38bfab21-ab5d-4b56-b505-d51ebb2957ee.png)
 
 正如你所看到的，我们在数据库中没有该货币的汇率，所以应用程序的第一件事就是从`fixer.io`获取并将其保存到数据库中。
 
-由于我是一名居住在瑞典的巴西开发人员，我想将SEK转换为BRL（巴西雷亚尔），这样我就知道下次去巴西看父母时需要带多少瑞典克朗：
+由于我是一名居住在瑞典的巴西开发人员，我想将 SEK 转换为 BRL（巴西雷亚尔），这样我就知道下次去巴西看父母时需要带多少瑞典克朗：
 
-![](assets/4666b921-54a0-4ed8-914d-96324ba2d6d6.png)
+![](img/4666b921-54a0-4ed8-914d-96324ba2d6d6.png)
 
-请注意，由于这是我们第二次运行应用程序，我们已经有了以SEK为基础货币的汇率，所以应用程序不会再次从`fixer.io`获取数据。
+请注意，由于这是我们第二次运行应用程序，我们已经有了以 SEK 为基础货币的汇率，所以应用程序不会再次从`fixer.io`获取数据。
 
-现在，我们要尝试的最后一件事是覆盖基础货币。目前，它被设置为SEK。我们使用MXN（墨西哥比索）并从MXN转换为SEK：
+现在，我们要尝试的最后一件事是覆盖基础货币。目前，它被设置为 SEK。我们使用 MXN（墨西哥比索）并从 MXN 转换为 SEK：
 
-![](assets/30e9fa97-c5a3-4c03-be9f-cf743813f5de.png)
+![](img/30e9fa97-c5a3-4c03-be9f-cf743813f5de.png)
 
 # 总结
 
 在本章中，我们涵盖了许多有趣的主题。在设置应用程序环境时，您学会了如何使用超级新的、流行的工具`pipenv`，它已成为[python.org](https://www.python.org/)推荐的用于创建虚拟环境和管理项目依赖项的工具。
 
-您还学会了面向对象编程的基本概念，如何为命令行工具创建自定义操作，Python语言中关于上下文管理器的基础知识，如何在Python中创建枚举，以及如何使用`Requests`执行HTTP请求，这是Python生态系统中最受欢迎的包之一。
+您还学会了面向对象编程的基本概念，如何为命令行工具创建自定义操作，Python 语言中关于上下文管理器的基础知识，如何在 Python 中创建枚举，以及如何使用`Requests`执行 HTTP 请求，这是 Python 生态系统中最受欢迎的包之一。
 
-最后但并非最不重要的是，您学会了如何使用`pymongo`包在MongoDB数据库中插入、更新和搜索数据。
+最后但并非最不重要的是，您学会了如何使用`pymongo`包在 MongoDB 数据库中插入、更新和搜索数据。
 
-在下一章中，我们将转变方向，使用出色且非常流行的Django web框架开发一个完整、非常实用的网络应用程序！
+在下一章中，我们将转变方向，使用出色且非常流行的 Django web 框架开发一个完整、非常实用的网络应用程序！

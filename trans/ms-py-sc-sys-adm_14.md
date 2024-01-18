@@ -1,4 +1,4 @@
-# 使用Apache和其他日志文件
+# 使用 Apache 和其他日志文件
 
 在本章中，您将学习有关日志文件的知识。您将学习如何解析日志文件。您还将了解为什么需要在程序中编写异常。解析不同文件的不同方法也很重要。您还将了解`ErrorLog`和`AccessLog`。最后，您将学习如何解析其他日志文件。
 
@@ -38,9 +38,9 @@ def read_apache_log(logfile):
 student@ubuntu:~$ python3 read_apache_log.py Output: 64.242.88.10 - - [07/Mar/2004:16:05:49 -0800] "GET /twiki/bin/edit/Main/Double_bounce_sender?topicparent=Main.ConfigurationVariables HTTP/1.1" 401 12846 64.242.88.10 - - [07/Mar/2004:16:06:51 -0800] "GET /twiki/bin/rdiff/TWiki/NewUserTemplate?rev1=1.3&rev2=1.2 HTTP/1.1" 200 4523 64.242.88.10 - - [07/Mar/2004:16:10:02 -0800] "GET /mailman/listinfo/hsdivision HTTP/1.1" 200 6291 64.242.88.10 - - [07/Mar/2004:16:11:58 -0800] "GET /twiki/bin/view/TWiki/WikiSyntax HTTP/1.1" 200 7352 64.242.88.10 - - [07/Mar/2004:16:20:55 -0800] "GET /twiki/bin/view/Main/DCCAndPostFix HTTP/1.1" 200 5253 64.242.88.10 - - [07/Mar/2004:16:23:12 -0800] "GET /twiki/bin/oops/TWiki/AppendixFileSystem?template=oopsmore&param1=1.12&param2=1.12 HTTP/1.1" 200 11382 64.242.88.10 - - [07/Mar/2004:16:24:16 -0800] "GET /twiki/bin/view/Main/PeterThoeny HTTP/1.1" 200 4924 64.242.88.10 - - [07/Mar/2004:16:29:16 -0800] "GET /twiki/bin/edit/Main/Header_checks?topicparent=Main.ConfigurationVariables HTTP/1.1" 401 12851 64.242.88.10 - - [07/Mar/2004:16:30:29 -0800] "GET /twiki/bin/attach/Main/OfficeLocations HTTP/1.1" 401 12851 64.242.88.10 - - [07/Mar/2004:16:31:48 -0800] "GET /twiki/bin/view/TWiki/WebTopicEditTemplate HTTP/1.1" 200 3732 64.242.88.10 - - [07/Mar/2004:16:32:50 -0800] "GET /twiki/bin/view/Main/WebChanges HTTP/1.1" 200 40520 64.242.88.10 - - [07/Mar/2004:16:33:53 -0800] "GET /twiki/bin/edit/Main/Smtpd_etrn_restrictions?topicparent=Main.ConfigurationVariables HTTP/1.1" 401 12851 64.242.88.10 - - [07/Mar/2004:16:35:19 -0800] "GET /mailman/listinfo/business HTTP/1.1" 200 6379 …..
 ```
 
-在前面的示例中，我们创建了一个`read_apache_log`函数来读取Apache日志文件。在其中，我们打开了一个日志文件，然后打印了其中的日志条目。在定义了`read_apache_log()`函数之后，我们在主函数中调用了它，并传入了Apache日志文件的名称。在我们的案例中，Apache日志文件的名称是`access.log`。
+在前面的示例中，我们创建了一个`read_apache_log`函数来读取 Apache 日志文件。在其中，我们打开了一个日志文件，然后打印了其中的日志条目。在定义了`read_apache_log()`函数之后，我们在主函数中调用了它，并传入了 Apache 日志文件的名称。在我们的案例中，Apache 日志文件的名称是`access.log`。
 
-在`access.log`文件中读取日志条目后，现在我们将从日志文件中解析IP地址。为此，请创建一个名为`parse_ip_address.py`的脚本，并在其中写入以下内容：
+在`access.log`文件中读取日志条目后，现在我们将从日志文件中解析 IP 地址。为此，请创建一个名为`parse_ip_address.py`的脚本，并在其中写入以下内容：
 
 ```py
 import re from collections import Counter r_e = r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}' with open("access.log") as f:
@@ -53,13 +53,13 @@ import re from collections import Counter r_e = r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{
 student@ubuntu:~/work/Chapter_15$ python3 parse_ip_address.py Output: Reading Apache log file Available IP Address in log file => 64.242.88.1 Count => 452 Available IP Address in log file => 213.181.81.4 Count => 1 Available IP Address in log file => 213.54.168.1 Count => 12 Available IP Address in log file => 200.160.249.6 Count => 2 Available IP Address in log file => 128.227.88.7 Count => 14 Available IP Address in log file => 61.9.4.6 Count => 3 Available IP Address in log file => 212.92.37.6 Count => 14 Available IP Address in log file => 219.95.17.5 Count => 1 3Available IP Address in log file => 10.0.0.1 Count => 270 Available IP Address in log file => 66.213.206.2 Count => 1 Available IP Address in log file => 64.246.94.1 Count => 2 Available IP Address in log file => 195.246.13.1 Count => 12 Available IP Address in log file => 195.230.181.1 Count => 1 Available IP Address in log file => 207.195.59.1 Count => 20 Available IP Address in log file => 80.58.35.1 Count => 1 Available IP Address in log file => 200.222.33.3 Count => 1 Available IP Address in log file => 203.147.138.2 Count => 13 Available IP Address in log file => 212.21.228.2 Count => 1 Available IP Address in log file => 80.58.14.2 Count => 4 Available IP Address in log file => 142.27.64.3 Count => 7 ……
 ```
 
-在前面的示例中，我们创建了Apache日志解析器来确定服务器上一些特定IP地址及其请求次数。因此，很明显我们不想要Apache日志文件中的整个日志条目，我们只想从日志文件中获取IP地址。为此，我们必须定义一个模式来搜索IP地址，我们可以通过使用正则表达式来实现。因此，我们导入了`re`模块。然后我们导入了`Collection`模块作为Python内置数据类型`dict`、`list`、`set`和`tuple`的替代品。该模块具有专门的容器数据类型。在导入所需的模块后，我们使用正则表达式编写了一个模式，以匹配从日志文件中映射IP地址的特定条件。
+在前面的示例中，我们创建了 Apache 日志解析器来确定服务器上一些特定 IP 地址及其请求次数。因此，很明显我们不想要 Apache 日志文件中的整个日志条目，我们只想从日志文件中获取 IP 地址。为此，我们必须定义一个模式来搜索 IP 地址，我们可以通过使用正则表达式来实现。因此，我们导入了`re`模块。然后我们导入了`Collection`模块作为 Python 内置数据类型`dict`、`list`、`set`和`tuple`的替代品。该模块具有专门的容器数据类型。在导入所需的模块后，我们使用正则表达式编写了一个模式，以匹配从日志文件中映射 IP 地址的特定条件。
 
-在匹配模式中，`\d`可以是`0`到`9`之间的任何数字，`\r`代表原始字符串。然后，我们打开名为`access.log`的Apache日志文件并读取它。之后，我们在Apache日志文件上应用了正则表达式条件，然后使用`collection`模块的`counter`函数来获取我们根据`re`条件获取的每个IP地址的计数。最后，我们打印了操作的结果，如输出中所示。
+在匹配模式中，`\d`可以是`0`到`9`之间的任何数字，`\r`代表原始字符串。然后，我们打开名为`access.log`的 Apache 日志文件并读取它。之后，我们在 Apache 日志文件上应用了正则表达式条件，然后使用`collection`模块的`counter`函数来获取我们根据`re`条件获取的每个 IP 地址的计数。最后，我们打印了操作的结果，如输出中所示。
 
 # 异常的需要
 
-在这一部分，我们将看看Python编程中异常的需要。正常的程序流程包括事件和信号。异常一词表明您的程序出了问题。这些异常可以是任何类型，比如零除错误、导入错误、属性错误或断言错误。这些异常会在指定的函数无法正常执行其任务时发生。一旦异常发生，程序执行就会停止，解释器将继续进行异常处理过程。异常处理过程包括在`try…except`块中编写代码。异常处理的原因是您的程序发生了意外情况。
+在这一部分，我们将看看 Python 编程中异常的需要。正常的程序流程包括事件和信号。异常一词表明您的程序出了问题。这些异常可以是任何类型，比如零除错误、导入错误、属性错误或断言错误。这些异常会在指定的函数无法正常执行其任务时发生。一旦异常发生，程序执行就会停止，解释器将继续进行异常处理过程。异常处理过程包括在`try…except`块中编写代码。异常处理的原因是您的程序发生了意外情况。
 
 # 分析异常
 
@@ -122,13 +122,13 @@ file not found. Please check whether the file is present in your directory or no
 
 服务器日志文件的位置和名称由`ErrorLog`指令设置。这是最重要的日志文件。Apache `httpd`发送的信息和处理过程中产生的记录都在其中。每当服务器出现问题时，这将是第一个需要查看的地方。它包含了出现问题的细节以及修复问题的过程。
 
-错误日志被写入文件中。在Unix系统上，服务器可以将错误发送到`syslog`，或者您可以将它们传送到您的程序中。日志条目中的第一件事是消息的日期和时间。第二个条目记录了错误的严重程度。
+错误日志被写入文件中。在 Unix 系统上，服务器可以将错误发送到`syslog`，或者您可以将它们传送到您的程序中。日志条目中的第一件事是消息的日期和时间。第二个条目记录了错误的严重程度。
 
-`LogLevel`指令通过限制严重级别处理发送到错误日志的错误。第三个条目包含生成错误的客户端的信息。该信息将是IP地址。接下来是消息本身。它包含了服务器已配置为拒绝客户端访问的信息。服务器将报告所请求文档的文件系统路径。
+`LogLevel`指令通过限制严重级别处理发送到错误日志的错误。第三个条目包含生成错误的客户端的信息。该信息将是 IP 地址。接下来是消息本身。它包含了服务器已配置为拒绝客户端访问的信息。服务器将报告所请求文档的文件系统路径。
 
-错误日志文件中可能出现各种类型的消息。错误日志文件还包含来自CGI脚本的调试输出。无论信息写入`stderr`，都将直接复制到错误日志中。
+错误日志文件中可能出现各种类型的消息。错误日志文件还包含来自 CGI 脚本的调试输出。无论信息写入`stderr`，都将直接复制到错误日志中。
 
-错误日志文件是不可定制的。处理请求的错误日志中的条目将在访问日志中有相应的条目。您应该始终监视错误日志以解决测试期间的问题。在Unix系统上，您可以运行以下命令来完成这个任务：
+错误日志文件是不可定制的。处理请求的错误日志中的条目将在访问日志中有相应的条目。您应该始终监视错误日志以解决测试期间的问题。在 Unix 系统上，您可以运行以下命令来完成这个任务：
 
 ```py
 $ tail -f error_log
@@ -153,15 +153,15 @@ $ tail -f error_log
 
 `CustomLog`指令将使用定义的*昵称*设置一个新的日志文件。访问日志的文件名相对于`ServerRoot`，除非以斜杠开头。
 
-我们之前提到的配置将以**通用日志格式**（**CLF**）写入日志条目。这是一种标准格式，可以由许多不同的Web服务器生成。许多日志分析程序读取这种日志格式。
+我们之前提到的配置将以**通用日志格式**（**CLF**）写入日志条目。这是一种标准格式，可以由许多不同的 Web 服务器生成。许多日志分析程序读取这种日志格式。
 
 现在，我们将看到每个百分比指令的含义：
 
-+   `%h`：这显示了向Web服务器发出请求的客户端的IP地址。如果`HostnameLookups`打开，那么服务器将确定主机名并将其记录在IP地址的位置。
++   `%h`：这显示了向 Web 服务器发出请求的客户端的 IP 地址。如果`HostnameLookups`打开，那么服务器将确定主机名并将其记录在 IP 地址的位置。
 
 +   `%l`：这个术语用于指示所请求的信息不可用。
 
-+   `%u`：这是请求文档的用户ID。相同的值将在`REMOTE_USER`环境变量中提供给CGI脚本。
++   `%u`：这是请求文档的用户 ID。相同的值将在`REMOTE_USER`环境变量中提供给 CGI 脚本。
 
 +   `%t`：这个术语用于检测服务器处理请求完成的时间。格式如下：
 
@@ -171,7 +171,7 @@ $ tail -f error_log
 
 对于`day`参数，需要两位数字。对于`month`，我们必须定义三个字母。对于年份，由于年份有四个字符，我们必须取四位数字。现在，在`day`、`month`和`year`之后，我们必须为`hour`、`minute`和`seconds`各取两位数字。
 
-+   `\"%r\"`：这个术语用作请求行，客户端用双引号给出。这个请求行包含有用的信息。请求客户端使用`GET`方法，使用的协议是HTTP。
++   `\"%r\"`：这个术语用作请求行，客户端用双引号给出。这个请求行包含有用的信息。请求客户端使用`GET`方法，使用的协议是 HTTP。
 
 +   `%>s`：这个术语定义了客户端的状态代码。状态代码非常重要和有用，因为它指示了客户端发送的请求是否成功地发送到服务器。
 
@@ -179,11 +179,11 @@ $ tail -f error_log
 
 # 解析其他日志文件
 
-我们的系统中还有其他不同的日志文件，包括Apache日志。在我们的Linux发行版中，日志文件位于根文件系统中的`/var/log/`文件夹中，如下所示：
+我们的系统中还有其他不同的日志文件，包括 Apache 日志。在我们的 Linux 发行版中，日志文件位于根文件系统中的`/var/log/`文件夹中，如下所示：
 
-![](assets/42d14bf4-400a-417b-950f-1abb543b30f8.png)
+![](img/42d14bf4-400a-417b-950f-1abb543b30f8.png)
 
-在上面的屏幕截图中，我们可以很容易地看到不同类型的日志文件（例如，认证日志文件`auth.log`，系统日志文件`syslog`和内核日志`kern.log`）可用于不同的操作条目。当我们对Apache日志文件执行操作时，如前所示，我们也可以对本地日志文件执行相同类型的操作。让我们看一个以前解析日志文件的例子。在`simple_log.py`脚本中创建并写入以下内容：
+在上面的屏幕截图中，我们可以很容易地看到不同类型的日志文件（例如，认证日志文件`auth.log`，系统日志文件`syslog`和内核日志`kern.log`）可用于不同的操作条目。当我们对 Apache 日志文件执行操作时，如前所示，我们也可以对本地日志文件执行相同类型的操作。让我们看一个以前解析日志文件的例子。在`simple_log.py`脚本中创建并写入以下内容：
 
 ```py
 f=open('/var/log/kern.log','r') lines = f.readlines() for line in lines:
@@ -220,19 +220,19 @@ student@ubuntu:~$ python3 simple_log1.py Output: ['26', '14:37:20'] ['26', '14:3
 
 在本章中，您学习了如何处理不同类型的日志文件。您还了解了解析复杂日志文件以及在处理这些文件时异常处理的必要性。解析日志文件的技巧将有助于顺利进行解析。您还了解了`ErrorLog`和`AccessLog`。
 
-在下一章中，您将学习有关SOAP和REST通信的内容。
+在下一章中，您将学习有关 SOAP 和 REST 通信的内容。
 
 # 问题
 
-1.  Python中运行时异常和编译时异常有什么区别？
+1.  Python 中运行时异常和编译时异常有什么区别？
 
 1.  什么是正则表达式？
 
-1.  探索Linux命令`head`，`tail`，`cat`和`awk`。
+1.  探索 Linux 命令`head`，`tail`，`cat`和`awk`。
 
-1.  编写一个Python程序，将一个文件的内容追加到另一个文件中。
+1.  编写一个 Python 程序，将一个文件的内容追加到另一个文件中。
 
-1.  编写一个Python程序，以相反的顺序读取文件的内容。
+1.  编写一个 Python 程序，以相反的顺序读取文件的内容。
 
 1.  以下表达式的输出将是什么？
 
@@ -244,8 +244,8 @@ student@ubuntu:~$ python3 simple_log1.py Output: ['26', '14:37:20'] ['26', '14:3
 
 # 进一步阅读
 
-+   Python日志记录：[https://docs.python.org/3/library/logging.html](https://docs.python.org/3/library/logging.html)
++   Python 日志记录：[`docs.python.org/3/library/logging.html`](https://docs.python.org/3/library/logging.html)
 
-+   正则表达式：[https://docs.python.org/3/howto/regex.html](https://docs.python.org/3/howto/regex.html)
++   正则表达式：[`docs.python.org/3/howto/regex.html`](https://docs.python.org/3/howto/regex.html)
 
-+   异常处理：[https://www.pythonforbeginners.com/error-handling/python-try-and-except](https://www.pythonforbeginners.com/error-handling/python-try-and-except)
++   异常处理：[`www.pythonforbeginners.com/error-handling/python-try-and-except`](https://www.pythonforbeginners.com/error-handling/python-try-and-except)

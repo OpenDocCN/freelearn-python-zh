@@ -1,6 +1,6 @@
 # 使用信号和插槽处理事件
 
-将小部件组合成一个漂亮的表单是设计应用程序的一个很好的第一步，但是为了GUI能够发挥作用，它需要连接到实际执行操作的代码。为了在PyQt中实现这一点，我们需要了解Qt最重要的功能之一，**信号和插槽**。
+将小部件组合成一个漂亮的表单是设计应用程序的一个很好的第一步，但是为了 GUI 能够发挥作用，它需要连接到实际执行操作的代码。为了在 PyQt 中实现这一点，我们需要了解 Qt 最重要的功能之一，**信号和插槽**。
 
 在本章中，我们将涵盖以下主题：
 
@@ -12,9 +12,9 @@
 
 # 技术要求
 
-除了[第1章](bce5f3b1-2979-4f78-817b-3986e7974725.xhtml)中列出的基本要求外，*使用PyQt入门*，您还需要来自[第2章](2e39f2dd-7df5-4139-8c26-1fec2dfb68d0.xhtml)*使用QtWidgets构建全面表单*的日历表单代码和Qt Designer文件。您可能还希望从我们的GitHub存储库[https://github.com/PacktPublishing/Mastering-GUI-Programming-with-Python/tree/master/Chapter03](https://github.com/PacktPublishing/Mastering-GUI-Programming-with-Python/tree/master/Chapter03)下载示例代码。
+除了第一章中列出的基本要求外，*使用 PyQt 入门*，您还需要来自第二章*使用 QtWidgets 构建全面表单*的日历表单代码和 Qt Designer 文件。您可能还希望从我们的 GitHub 存储库[`github.com/PacktPublishing/Mastering-GUI-Programming-with-Python/tree/master/Chapter03`](https://github.com/PacktPublishing/Mastering-GUI-Programming-with-Python/tree/master/Chapter03)下载示例代码。
 
-查看以下视频，看看代码是如何运行的：[http://bit.ly/2M5OFQo](http://bit.ly/2M5OFQo)
+查看以下视频，看看代码是如何运行的：[`bit.ly/2M5OFQo`](http://bit.ly/2M5OFQo)
 
 # 信号和插槽基础
 
@@ -22,7 +22,7 @@
 
 **插槽**是可以接收信号并对其做出响应的对象方法。我们连接信号到插槽，以配置应用程序对事件的响应。
 
-所有从`QObject`继承的类（这包括Qt中的大多数类，包括所有`QWidget`类）都可以发送和接收信号。每个不同的类都有适合该类功能的一组信号和插槽。
+所有从`QObject`继承的类（这包括 Qt 中的大多数类，包括所有`QWidget`类）都可以发送和接收信号。每个不同的类都有适合该类功能的一组信号和插槽。
 
 例如，`QPushButton`有一个`clicked`信号，每当用户点击按钮时就会发出。`QWidget`类有一个`close()`插槽，如果它是顶级窗口，就会导致它关闭。我们可以这样连接两者：
 
@@ -32,7 +32,7 @@ self.quitbutton.clicked.connect(self.close)
 self.layout().addWidget(self.quitbutton)
 ```
 
-如果您将此代码复制到我们的应用程序模板中并运行它，您会发现单击“退出”按钮会关闭窗口并结束程序。在PyQt5中连接信号到插槽的语法是`object1.signalName.connect(object2.slotName)`。
+如果您将此代码复制到我们的应用程序模板中并运行它，您会发现单击“退出”按钮会关闭窗口并结束程序。在 PyQt5 中连接信号到插槽的语法是`object1.signalName.connect(object2.slotName)`。
 
 您还可以在创建对象时通过将插槽作为关键字参数传递给信号来进行连接。例如，前面的代码可以重写如下：
 
@@ -41,7 +41,7 @@ self.quitbutton = qtw.QPushButton('Quit', clicked=self.close)
 self.layout().addWidget(self.quitbutton)
 ```
 
-C++和旧版本的PyQt使用非常不同的信号和插槽语法，它使用`SIGNAL()`和`SLOT()`包装函数。这些在PyQt5中不存在，所以如果您在遵循旧教程或非Python文档，请记住这一点。
+C++和旧版本的 PyQt 使用非常不同的信号和插槽语法，它使用`SIGNAL()`和`SLOT()`包装函数。这些在 PyQt5 中不存在，所以如果您在遵循旧教程或非 Python 文档，请记住这一点。
 
 信号还可以携带数据，插槽可以接收。例如，`QLineEdit`有一个`textChanged`信号，随信号发送进小部件的文本一起。该行编辑还有一个接受字符串参数的`setText()`插槽。我们可以这样连接它们：
 
@@ -55,7 +55,7 @@ self.entry1.textChanged.connect(self.entry2.setText)
 
 在这个例子中，我们将`entry1`的`textChanged`信号连接到`entry2`的`setText()`插槽。这意味着每当`entry1`中的文本发生变化时，它将用输入的文本信号`entry2`；`entry2`将把自己的文本设置为接收到的字符串，导致它镜像`entry1`中输入的任何内容。
 
-在PyQt5中，插槽不必是官方的Qt插槽方法；它可以是任何Python可调用对象，比如自定义方法或内置函数。例如，让我们将`entry2`小部件的`textChanged`连接到老式的`print()`：
+在 PyQt5 中，插槽不必是官方的 Qt 插槽方法；它可以是任何 Python 可调用对象，比如自定义方法或内置函数。例如，让我们将`entry2`小部件的`textChanged`连接到老式的`print()`：
 
 ```py
 self.entry2.textChanged.connect(print)
@@ -74,9 +74,9 @@ self.entry2.returnPressed.connect(self.entry1.editingFinished)
 
 # 信号和槽连接的限制
 
-尽管PyQt允许我们将信号连接到任何Python可调用对象，但有一些规则和限制需要牢记。与Python不同，C++是一种**静态类型**语言，这意味着变量和函数参数必须给定一个类型（`string`、`integer`、`float`或许多其他类型），并且存储在变量中或传递给该函数的任何值必须具有匹配的类型。这被称为**类型安全**。
+尽管 PyQt 允许我们将信号连接到任何 Python 可调用对象，但有一些规则和限制需要牢记。与 Python 不同，C++是一种**静态类型**语言，这意味着变量和函数参数必须给定一个类型（`string`、`integer`、`float`或许多其他类型），并且存储在变量中或传递给该函数的任何值必须具有匹配的类型。这被称为**类型安全**。
 
-原生的Qt信号和槽是类型安全的。例如，假设我们尝试将行编辑的`textChanged`信号连接到按钮的`clicked`信号，如下所示：
+原生的 Qt 信号和槽是类型安全的。例如，假设我们尝试将行编辑的`textChanged`信号连接到按钮的`clicked`信号，如下所示：
 
 ```py
 self.entry1.textChanged.connect(self.quitbutton.clicked)
@@ -95,9 +95,9 @@ Traceback (most recent call last):
 TypeError: connect() failed between textChanged(QString) and clicked()
 ```
 
-槽可以有多个实现，每个实现都有自己的**签名**，允许相同的槽接受不同的参数类型。这被称为**重载**槽。只要我们的信号签名与任何重载的槽匹配，我们就可以建立连接，Qt会确定我们连接到哪一个。
+槽可以有多个实现，每个实现都有自己的**签名**，允许相同的槽接受不同的参数类型。这被称为**重载**槽。只要我们的信号签名与任何重载的槽匹配，我们就可以建立连接，Qt 会确定我们连接到哪一个。
 
-当连接到一个是Python函数的槽时，我们不必担心参数类型，因为Python是**动态类型**的（尽管我们需要确保我们的Python代码对传递给它的任何对象都做正确的事情）。然而，与对Python函数的任何调用一样，我们确实需要确保传入足够的参数来满足函数签名。
+当连接到一个是 Python 函数的槽时，我们不必担心参数类型，因为 Python 是**动态类型**的（尽管我们需要确保我们的 Python 代码对传递给它的任何对象都做正确的事情）。然而，与对 Python 函数的任何调用一样，我们确实需要确保传入足够的参数来满足函数签名。
 
 例如，让我们向`MainWindow`类添加一个方法，如下所示：
 
@@ -123,7 +123,7 @@ Aborted (core dumped)
 
 由于`clicked`信号只发送一个参数，函数调用是不完整的，会抛出异常。可以通过将`arg2`和`arg3`变成关键字参数（添加默认值），或者创建一个以其他方式填充它们的包装函数来解决这个问题。
 
-顺便说一句，槽接收的参数比信号发送的参数少的情况并不是问题。Qt只是从信号中丢弃额外的数据。
+顺便说一句，槽接收的参数比信号发送的参数少的情况并不是问题。Qt 只是从信号中丢弃额外的数据。
 
 因此，例如，将`clicked`连接到一个没有参数的方法是没有问题的，如下所示：
 
@@ -150,7 +150,7 @@ Aborted (core dumped)
 
 假设您有一个弹出表单窗口的程序。当用户完成填写表单并提交时，我们需要将输入的数据传回主应用程序类进行处理。我们可以采用几种方法来解决这个问题；例如，主应用程序可以监视弹出窗口的**提交**按钮的单击事件，然后在销毁对话框之前从其字段中获取数据。但这种方法要求主窗体了解弹出对话框的所有部件，而且任何对弹出窗口的重构都可能破坏主应用程序窗口中的代码。
 
-让我们尝试使用信号和槽的不同方法。从[第1章](bce5f3b1-2979-4f78-817b-3986e7974725.xhtml)中打开我们应用程序模板的新副本，*PyQt入门*，并开始一个名为`FormWindow`的新类，就像这样：
+让我们尝试使用信号和槽的不同方法。从第一章中打开我们应用程序模板的新副本，*PyQt 入门*，并开始一个名为`FormWindow`的新类，就像这样：
 
 ```py
 class FormWindow(qtw.QWidget):
@@ -158,7 +158,7 @@ class FormWindow(qtw.QWidget):
     submitted = qtc.pyqtSignal(str)
 ```
 
-在这个类中我们定义的第一件事是一个名为`submitted`的自定义信号。要定义自定义信号，我们需要调用`QtCore.pyqtSignal()`函数。`pyqtSignal()`的参数是我们的信号将携带的数据类型，在这种情况下是`str`。我们可以在这里使用Python `type`对象，或者命名C++数据类型的字符串（例如`'QString'`）。
+在这个类中我们定义的第一件事是一个名为`submitted`的自定义信号。要定义自定义信号，我们需要调用`QtCore.pyqtSignal()`函数。`pyqtSignal()`的参数是我们的信号将携带的数据类型，在这种情况下是`str`。我们可以在这里使用 Python `type`对象，或者命名 C++数据类型的字符串（例如`'QString'`）。
 
 现在让我们通过定义`__init__()`方法来构建表单，如下所示：
 
@@ -217,7 +217,7 @@ class FormWindow(qtw.QWidget):
 
 这种设计的美妙之处在于`FormWindow`不需要知道任何关于`MainWindow`的东西，而`MainWindow`只需要知道`FormWindow`有一个`submitted`信号，该信号发射输入的字符串。只要相同的信号发射相同的数据，我们可以轻松修改任一类的结构和内部，而不会对另一类造成问题。
 
-`QtCore`还包含一个`pyqtSlot()`函数，我们可以将其用作装饰器，表示Python函数或方法旨在作为槽使用。
+`QtCore`还包含一个`pyqtSlot()`函数，我们可以将其用作装饰器，表示 Python 函数或方法旨在作为槽使用。
 
 例如，我们可以装饰我们的`MainWindow.onChange()`方法来声明它为一个槽：
 
@@ -227,7 +227,7 @@ class FormWindow(qtw.QWidget):
         # ...
 ```
 
-这纯粹是可选的，因为我们可以使用任何Python可调用对象作为槽，尽管这确实给了我们强制类型安全的能力。例如，如果我们希望要求`onChange()`始终接收一个字符串，我们可以这样装饰它：
+这纯粹是可选的，因为我们可以使用任何 Python 可调用对象作为槽，尽管这确实给了我们强制类型安全的能力。例如，如果我们希望要求`onChange()`始终接收一个字符串，我们可以这样装饰它：
 
 ```py
     @qtc.pyqtSlot(str)
@@ -250,7 +250,7 @@ TypeError: decorated slot has no signature compatible with clicked(bool)
 
 # 信号和槽的重载
 
-就像C++信号和槽可以被重载以接受不同的参数签名一样，我们也可以重载我们自定义的PyQt信号和槽。例如，假设如果在我们的弹出窗口中输入了一个有效的整数字符串，我们希望将其作为字符串和整数发射出去。
+就像 C++信号和槽可以被重载以接受不同的参数签名一样，我们也可以重载我们自定义的 PyQt 信号和槽。例如，假设如果在我们的弹出窗口中输入了一个有效的整数字符串，我们希望将其作为字符串和整数发射出去。
 
 为了做到这一点，我们首先必须重新定义我们的信号：
 
@@ -300,7 +300,7 @@ TypeError: decorated slot has no signature compatible with clicked(bool)
 
 # 自动化我们的日历表单
 
-要了解信号和插槽在实际应用程序中的使用方式，让我们拿我们在[第2章](2e39f2dd-7df5-4139-8c26-1fec2dfb68d0.xhtml) *使用QtWidgets构建表单*中构建的日历表单，并将其转换为一个可工作的日历应用程序。为此，我们需要进行以下更改：
+要了解信号和插槽在实际应用程序中的使用方式，让我们拿我们在第二章 *使用 QtWidgets 构建表单*中构建的日历表单，并将其转换为一个可工作的日历应用程序。为此，我们需要进行以下更改：
 
 +   应用程序需要一种方法来存储我们输入的事件。
 
@@ -318,11 +318,11 @@ TypeError: decorated slot has no signature compatible with clicked(bool)
 
 +   选择“新建…”作为类别应该打开一个对话框，允许我们输入一个新的类别。如果我们选择输入一个，它应该被选中。
 
-我们将首先使用我们手工编码的表单进行这一过程，然后讨论如何使用Qt Designer文件解决同样的问题。
+我们将首先使用我们手工编码的表单进行这一过程，然后讨论如何使用 Qt Designer 文件解决同样的问题。
 
 # 使用我们手工编码的表单
 
-要开始，请将您的`calendar_form.py`文件从[第2章](2e39f2dd-7df5-4139-8c26-1fec2dfb68d0.xhtml) *使用QtWidgets构建表单*复制到一个名为`calendar_app.py`的新文件中，并在编辑器中打开它。我们将开始编辑我们的`MainWindow`类，并将其完善为一个完整的应用程序。
+要开始，请将您的`calendar_form.py`文件从第二章 *使用 QtWidgets 构建表单*复制到一个名为`calendar_app.py`的新文件中，并在编辑器中打开它。我们将开始编辑我们的`MainWindow`类，并将其完善为一个完整的应用程序。
 
 为了处理存储事件，我们将在`MainWindow`中创建一个`dict`属性，如下所示：
 
@@ -357,7 +357,7 @@ class MainWindow(qtw.QWidget):
 
 # 创建和连接我们的回调方法
 
-我们需要的其余自动化不适用于内置的Qt插槽，因此在连接更多信号之前，我们需要创建一些将用于实现插槽的方法。我们将把所有这些方法创建为`MainWindow`类的方法。
+我们需要的其余自动化不适用于内置的 Qt 插槽，因此在连接更多信号之前，我们需要创建一些将用于实现插槽的方法。我们将把所有这些方法创建为`MainWindow`类的方法。
 
 在开始处理回调之前，我们将创建一个实用方法来清除表单，这是几个回调方法将需要的。它看起来像这样：
 
@@ -396,7 +396,7 @@ class MainWindow(qtw.QWidget):
 
 然后，我们循环遍历所选日期的`self.events`字典的事件列表，构建一个包含时间和事件标题的字符串，并将其添加到`event_list`小部件中。请注意，我们的事件时间是一个`QTime`对象，因此要将其用作字符串，我们需要使用它的`toString()`方法进行转换。
 
-有关如何将时间值格式化为字符串的详细信息，请参阅[https://doc.qt.io/qt-5/qtime.html](https://doc.qt.io/qt-5/qtime.html)中的`QTime`文档。
+有关如何将时间值格式化为字符串的详细信息，请参阅[`doc.qt.io/qt-5/qtime.html`](https://doc.qt.io/qt-5/qtime.html)中的`QTime`文档。
 
 为了连接这个方法，在`__init__()`中，我们添加了这段代码：
 
@@ -490,7 +490,7 @@ class MainWindow(qtw.QWidget):
         self.populate_list()
 ```
 
-为了完成这个方法，我们将使用时间值对列表进行排序。请记住，我们对全天事件使用`None`，因此它们将首先通过在排序中用`QTime`的0:00替换它们来进行排序。
+为了完成这个方法，我们将使用时间值对列表进行排序。请记住，我们对全天事件使用`None`，因此它们将首先通过在排序中用`QTime`的 0:00 替换它们来进行排序。
 
 排序后，我们用新排序的列表替换当前日期的事件列表，并用新列表重新填充`QListWidget`。
 
@@ -620,43 +620,43 @@ class CategoryWindow(qtw.QWidget):
 
 我们的日历应用现在已经完成；启动它并试试吧！
 
-# 使用Qt Designer .ui文件
+# 使用 Qt Designer .ui 文件
 
-现在让我们回过头来使用我们在[第2章](2e39f2dd-7df5-4139-8c26-1fec2dfb68d0.xhtml)中创建的Qt Designer文件，*使用QtWidgets构建表单*。这将需要一种完全不同的方法，但最终产品将是一样的。
+现在让我们回过头来使用我们在第二章中创建的 Qt Designer 文件，*使用 QtWidgets 构建表单*。这将需要一种完全不同的方法，但最终产品将是一样的。
 
-要完成本节的工作，您需要[第2章](2e39f2dd-7df5-4139-8c26-1fec2dfb68d0.xhtml)中的`calendar_form.ui`文件，*使用QtWidgets构建表单*，以及第二个`.ui`文件用于类别窗口。您可以自己练习构建这个表单，也可以使用本章示例代码中包含的表单。如果选择自己构建，请确保将每个对象命名为我们在上一节的代码中所做的那样。
+要完成本节的工作，您需要第二章中的`calendar_form.ui`文件，*使用 QtWidgets 构建表单*，以及第二个`.ui`文件用于类别窗口。您可以自己练习构建这个表单，也可以使用本章示例代码中包含的表单。如果选择自己构建，请确保将每个对象命名为我们在上一节的代码中所做的那样。
 
-# 在Qt Designer中连接插槽
+# 在 Qt Designer 中连接插槽
 
-Qt Designer对于连接信号和插槽到我们的GUI的能力有限。对于Python开发人员，它主要只能用于在同一窗口中的小部件之间连接内置的Qt信号到内置的Qt插槽。连接信号到Python可调用对象或自定义的PyQt信号实际上是不可能的。
+Qt Designer 对于连接信号和插槽到我们的 GUI 的能力有限。对于 Python 开发人员，它主要只能用于在同一窗口中的小部件之间连接内置的 Qt 信号到内置的 Qt 插槽。连接信号到 Python 可调用对象或自定义的 PyQt 信号实际上是不可能的。
 
-在日历GUI中，我们确实有一个原生的Qt信号-槽连接示例——`allday_check`小部件连接到`event_time`小部件。让我们看看如何在Qt Designer中连接这些：
+在日历 GUI 中，我们确实有一个原生的 Qt 信号-槽连接示例——`allday_check`小部件连接到`event_time`小部件。让我们看看如何在 Qt Designer 中连接这些：
 
-1.  在Qt Designer中打开`calendar_form.ui`文件
+1.  在 Qt Designer 中打开`calendar_form.ui`文件
 
-1.  在屏幕右下角找到Signal/Slot Editor面板
+1.  在屏幕右下角找到 Signal/Slot Editor 面板
 
 1.  点击+图标添加一个新的连接
 
-1.  在Sender下，打开弹出菜单，选择`allday_check`
+1.  在 Sender 下，打开弹出菜单，选择`allday_check`
 
-1.  在Signal下，选择toggled(bool)
+1.  在 Signal 下，选择 toggled(bool)
 
-1.  对于Receiver，选择`event_time`
+1.  对于 Receiver，选择`event_time`
 
-1.  最后，对于Slot，选择setDisabled(bool)
+1.  最后，对于 Slot，选择 setDisabled(bool)
 
 生成的条目应该是这样的：
 
-![](assets/f8145b67-f651-4977-9b7f-6e0c23b01bf5.png)
+![](img/f8145b67-f651-4977-9b7f-6e0c23b01bf5.png)
 
 如果你正在构建自己的`category_window.ui`文件，请确保你还将取消按钮的`clicked`信号连接到类别窗口的`closed`槽。
 
-# 将.ui文件转换为Python
+# 将.ui 文件转换为 Python
 
-如果你在文本编辑器中打开你的`calendar_form.ui`文件，你会看到它既不是Python也不是C++，而是你设计的GUI的XML表示。PyQt为我们提供了几种选择，可以在Python应用程序中使用`.ui`文件。
+如果你在文本编辑器中打开你的`calendar_form.ui`文件，你会看到它既不是 Python 也不是 C++，而是你设计的 GUI 的 XML 表示。PyQt 为我们提供了几种选择，可以在 Python 应用程序中使用`.ui`文件。
 
-第一种方法是使用PyQt附带的`pyuic5`工具将XML转换为Python。在存放`.ui`文件的目录中打开命令行窗口，运行以下命令：
+第一种方法是使用 PyQt 附带的`pyuic5`工具将 XML 转换为 Python。在存放`.ui`文件的目录中打开命令行窗口，运行以下命令：
 
 ```py
 $ pyuic5 calendar_form.ui
@@ -672,13 +672,13 @@ class Ui_MainWindow(object):
         # ... etc
 ```
 
-注意这个类既不是`QWidget`的子类，也不是`QObject`的子类。这个类本身不会显示我们构建的窗口。相反，这个类将在另一个小部件内部构建我们设计的GUI，我们必须用代码创建它。
+注意这个类既不是`QWidget`的子类，也不是`QObject`的子类。这个类本身不会显示我们构建的窗口。相反，这个类将在另一个小部件内部构建我们设计的 GUI，我们必须用代码创建它。
 
 为了做到这一点，我们将这个类导入到另一个脚本中，创建一个`QWidget`作为容器，并将`setupUi()`方法与我们的小部件容器作为参数一起调用。
 
-不要试图编辑或添加代码到生成的Python文件中。如果你想使用Qt Designer更新你的GUI，当你生成新文件时，你会丢失所有的编辑。把生成的代码当作第三方库来对待。
+不要试图编辑或添加代码到生成的 Python 文件中。如果你想使用 Qt Designer 更新你的 GUI，当你生成新文件时，你会丢失所有的编辑。把生成的代码当作第三方库来对待。
 
-首先，从[第1章](bce5f3b1-2979-4f78-817b-3986e7974725.xhtml)，*PyQt入门*中复制PyQt应用程序模板到存放`calendar_form.py`的目录，并将其命名为`calendar_app.py`。
+首先，从第一章，*PyQt 入门*中复制 PyQt 应用程序模板到存放`calendar_form.py`的目录，并将其命名为`calendar_app.py`。
 
 在文件顶部像这样导入`Ui_MainWindow`类：
 
@@ -694,7 +694,7 @@ from calendar_form import Ui_MainWindow
 class MainWindow(qtw.QWidget, Ui_MainWindow):
 ```
 
-注意我们窗口的基类（第一个父类）仍然是`QWidget`。这个基类需要与我们最初设计表单时选择的基类匹配（参见[第2章](2e39f2dd-7df5-4139-8c26-1fec2dfb68d0.xhtml)，*使用QtWidgets构建表单*）。
+注意我们窗口的基类（第一个父类）仍然是`QWidget`。这个基类需要与我们最初设计表单时选择的基类匹配（参见第二章，*使用 QtWidgets 构建表单*）。
 
 现在，在构造函数内部，我们可以调用`setupUi`，像这样：
 
@@ -704,7 +704,7 @@ class MainWindow(qtw.QWidget, Ui_MainWindow):
         self.setupUi(self)
 ```
 
-如果你在这一点运行应用程序，你会看到日历GUI都在那里，包括我们在`allday_check`和`event_time`之间的连接。然后，你可以将其余的连接和修改添加到`MainWindow`构造函数中，如下所示：
+如果你在这一点运行应用程序，你会看到日历 GUI 都在那里，包括我们在`allday_check`和`event_time`之间的连接。然后，你可以将其余的连接和修改添加到`MainWindow`构造函数中，如下所示：
 
 ```py
         # disable the first category item
@@ -743,7 +743,7 @@ class CategoryWindow(qtw.QWidget):
         self.show()
 ```
 
-在将`Ui_CategoryWindow`对象创建为`CategoryWindow`的属性之后，我们调用它的`setupUi()`方法来在`CategoryWindow`上构建GUI。然而，我们所有对小部件的引用现在都在`self.ui`命名空间下。因此，例如，`category_entry`不是`self.category_entry`，而是`self.ui.category_entry`。虽然这种方法稍微冗长，但如果你正在构建一个特别复杂的类，它可能有助于避免名称冲突。
+在将`Ui_CategoryWindow`对象创建为`CategoryWindow`的属性之后，我们调用它的`setupUi()`方法来在`CategoryWindow`上构建 GUI。然而，我们所有对小部件的引用现在都在`self.ui`命名空间下。因此，例如，`category_entry`不是`self.category_entry`，而是`self.ui.category_entry`。虽然这种方法稍微冗长，但如果你正在构建一个特别复杂的类，它可能有助于避免名称冲突。
 
 # 自动信号和插槽连接
 
@@ -769,11 +769,11 @@ class CategoryWindow(qtw.QWidget):
 
 如果我们使名称匹配，我们就不必在任何地方显式调用`connect()`；回调将自动连接。
 
-您也可以在手工编码的GUI中使用`connectSlotsByName()`；您只需要显式设置每个小部件的`objectName`属性，以便该方法有东西与名称匹配。仅仅变量名是行不通的。
+您也可以在手工编码的 GUI 中使用`connectSlotsByName()`；您只需要显式设置每个小部件的`objectName`属性，以便该方法有东西与名称匹配。仅仅变量名是行不通的。
 
-# 在不进行转换的情况下使用.ui文件
+# 在不进行转换的情况下使用.ui 文件
 
-如果您不介意在运行时进行一些转换开销，实际上可以通过使用PyQt的`uic`库（`pyuic5`基于此库）在程序内部动态转换您的`.ui`文件，从而避免手动转换这一步。
+如果您不介意在运行时进行一些转换开销，实际上可以通过使用 PyQt 的`uic`库（`pyuic5`基于此库）在程序内部动态转换您的`.ui`文件，从而避免手动转换这一步。
 
 让我们尝试使用我们的`MainWindow` GUI。首先将您对`Ui_MainWindow`的导入注释掉，并导入`uic`，如下所示：
 
@@ -788,7 +788,7 @@ from PyQt5 import uic
 MW_Ui, MW_Base = uic.loadUiType('calendar_form.ui')
 ```
 
-`loadUiType()`接受一个`.ui`文件的路径，并返回一个包含生成的UI类和其基于的Qt基类（在本例中为`QWidget`）的元组。
+`loadUiType()`接受一个`.ui`文件的路径，并返回一个包含生成的 UI 类和其基于的 Qt 基类（在本例中为`QWidget`）的元组。
 
 然后，我们可以将这些用作我们的`MainWindow`类的父类，如下所示：
 
@@ -796,11 +796,11 @@ MW_Ui, MW_Base = uic.loadUiType('calendar_form.ui')
 class MainWindow(MW_Base, MW_Ui):
 ```
 
-这种方法的缺点是额外的转换时间，但带来了更简单的构建和更少的文件维护。这是在早期开发阶段采取的一个很好的方法，当时您可能经常在GUI设计上进行迭代。
+这种方法的缺点是额外的转换时间，但带来了更简单的构建和更少的文件维护。这是在早期开发阶段采取的一个很好的方法，当时您可能经常在 GUI 设计上进行迭代。
 
 # 摘要
 
-在本章中，您学习了Qt的对象间通信功能，即信号和插槽。您学会了如何使用它们来自动化表单行为，将功能连接到用户事件，并在应用程序的不同窗口之间进行通信。
+在本章中，您学习了 Qt 的对象间通信功能，即信号和插槽。您学会了如何使用它们来自动化表单行为，将功能连接到用户事件，并在应用程序的不同窗口之间进行通信。
 
 在下一章中，我们将学习`QMainWindow`，这是一个简化常见应用程序组件构建的类。您将学会如何快速创建菜单、工具栏和对话框，以及如何保存设置。
 
@@ -819,9 +819,9 @@ class MainWindow(MW_Base, MW_Ui):
 
 1.  在信号对象上，`emit()`方法在信号被绑定（即连接到插槽）之前是不存在的。重写我们第一个`calendar_app.py`文件中的`CategoryWindow.onSubmit()`方法，以防`submitted`未绑定的可能性。
 
-1.  您在Qt文档中找到一个对象，该对象的插槽需要`QString`作为参数。您能连接发送Python的`str`的自定义信号吗？
+1.  您在 Qt 文档中找到一个对象，该对象的插槽需要`QString`作为参数。您能连接发送 Python 的`str`的自定义信号吗？
 
-1.  您在Qt文档中找到一个对象，该对象的插槽需要`QVariant`作为参数。您可以将哪些内置的Python类型发送到这个插槽？
+1.  您在 Qt 文档中找到一个对象，该对象的插槽需要`QVariant`作为参数。您可以将哪些内置的 Python 类型发送到这个插槽？
 
 1.  您正在尝试创建一个对话框窗口，该窗口需要时间，并在用户完成编辑值时发出。您正在尝试使用自动插槽连接，但您的代码没有做任何事情。确定缺少了什么：
 
@@ -841,7 +841,7 @@ class MainWindow(MW_Base, MW_Ui):
         self.destroy()
 ```
 
-1.  你在Qt Designer中为一个计算器应用程序创建了一个`.ui`文件，现在你试图让它在代码中工作，但是它不起作用。在下面的源代码中你做错了什么？
+1.  你在 Qt Designer 中为一个计算器应用程序创建了一个`.ui`文件，现在你试图让它在代码中工作，但是它不起作用。在下面的源代码中你做错了什么？
 
 ```py
     from calculator_form import Ui_Calculator
@@ -871,6 +871,6 @@ class MainWindow(MW_Base, MW_Ui):
 
 查看以下资源以获取更多信息：
 
-+   PyQt关于信号和槽支持的文档可以在这里找到：[http://pyqt.sourceforge.net/Docs/PyQt5/signals_slots.html](http://pyqt.sourceforge.net/Docs/PyQt5/signals_slots.html)
++   PyQt 关于信号和槽支持的文档可以在这里找到：[`pyqt.sourceforge.net/Docs/PyQt5/signals_slots.html`](http://pyqt.sourceforge.net/Docs/PyQt5/signals_slots.html)
 
-+   PyQt关于使用Qt Designer的文档可以在这里找到：[http://pyqt.sourceforge.net/Docs/PyQt5/designer.html](http://pyqt.sourceforge.net/Docs/PyQt5/designer.html)
++   PyQt 关于使用 Qt Designer 的文档可以在这里找到：[`pyqt.sourceforge.net/Docs/PyQt5/designer.html`](http://pyqt.sourceforge.net/Docs/PyQt5/designer.html)

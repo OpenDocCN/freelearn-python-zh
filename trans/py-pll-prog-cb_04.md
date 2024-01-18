@@ -1,6 +1,6 @@
 # 消息传递
 
-本章将简要介绍**消息传递接口**（**MPI**），这是一种消息交换规范。MPI的主要目标是建立一种高效、灵活和可移植的消息交换通信标准。
+本章将简要介绍**消息传递接口**（**MPI**），这是一种消息交换规范。MPI 的主要目标是建立一种高效、灵活和可移植的消息交换通信标准。
 
 主要是展示库的函数，包括同步和异步通信原语，如（发送/接收）和（广播/全对全），计算的部分结果的组合操作（gather/reduce），最后是进程之间的同步原语（屏障）。
 
@@ -8,7 +8,7 @@
 
 在本章中，我们将介绍以下内容：
 
-+   使用`mpi4py` Python模块
++   使用`mpi4py` Python 模块
 
 +   实现点对点通信
 
@@ -30,19 +30,19 @@
 
 本章需要`mpich`和`mpi4py`库。
 
-`mpich`库是MPI的可移植实现。它是免费软件，适用于各种Unix版本（包括Linux和macOS）和Microsoft Windows。
+`mpich`库是 MPI 的可移植实现。它是免费软件，适用于各种 Unix 版本（包括 Linux 和 macOS）和 Microsoft Windows。
 
-要安装`mpich`，请使用从下载页面下载的安装程序（[http://www.mpich.org/static/downloads/1.4.1p1/](http://www.mpich.org/static/downloads/1.4.1p1/)）。此外，请确保选择32位或64位版本，以获取适合您的计算机的正确版本。
+要安装`mpich`，请使用从下载页面下载的安装程序（[`www.mpich.org/static/downloads/1.4.1p1/`](http://www.mpich.org/static/downloads/1.4.1p1/)）。此外，请确保选择 32 位或 64 位版本，以获取适合您的计算机的正确版本。
 
-`mpi4py` Python模块为MPI（[https://www.mpi-forum.org](https://www.mpi-forum.org)）标准提供了Python绑定。它是基于MPI-1/2/3规范实现的，并公开了基于标准MPI-2 C++绑定的API。
+`mpi4py` Python 模块为 MPI（[`www.mpi-forum.org`](https://www.mpi-forum.org)）标准提供了 Python 绑定。它是基于 MPI-1/2/3 规范实现的，并公开了基于标准 MPI-2 C++绑定的 API。
 
-在Windows机器上安装`mpi4py`的过程如下：
+在 Windows 机器上安装`mpi4py`的过程如下：
 
 ```py
 C:>pip install mpi4py
 ```
 
-Anaconda用户必须输入以下内容：
+Anaconda 用户必须输入以下内容：
 
 ```py
 C:>conda install mpi4py
@@ -58,33 +58,33 @@ C:>mpiexec -n x python mpi4py_script_name.py
 
 `mpiexec`命令是启动并行作业的典型方式：`x`是要使用的进程总数，而`mpi4py_script_name.py`是要执行的脚本的名称。
 
-# 了解MPI结构
+# 了解 MPI 结构
 
-MPI标准定义了虚拟拓扑、同步和进程之间通信的原语。有几种MPI实现，它们在支持的标准版本和功能上有所不同。
+MPI 标准定义了虚拟拓扑、同步和进程之间通信的原语。有几种 MPI 实现，它们在支持的标准版本和功能上有所不同。
 
-我们将通过Python的`mpi4py`库介绍MPI标准。
+我们将通过 Python 的`mpi4py`库介绍 MPI 标准。
 
-在20世纪90年代之前，为不同架构编写并行应用程序比今天更加困难。许多库简化了这个过程，但没有标准的方法来做。那时，大多数并行应用程序都是为科学研究环境而设计的。
+在 20 世纪 90 年代之前，为不同架构编写并行应用程序比今天更加困难。许多库简化了这个过程，但没有标准的方法来做。那时，大多数并行应用程序都是为科学研究环境而设计的。
 
 各种库最常采用的模型是消息传递模型，其中进程之间的通信通过交换消息进行，而不使用共享资源。例如，主进程可以通过发送描述要完成的工作的消息来简单地将工作分配给从进程。这里还有一个非常简单的例子，即执行合并排序的并行应用程序。数据在进程本地排序，然后将结果传递给其他处理合并的进程。
 
-由于这些库大部分使用了相同的模型，尽管彼此之间存在细微差异，各个库的作者在1992年会面，以定义消息交换的标准接口，从而诞生了MPI。这个接口必须允许程序员在大多数并行架构上编写可移植的并行应用程序，使用他们已经习惯的相同特性和模型。
+由于这些库大部分使用了相同的模型，尽管彼此之间存在细微差异，各个库的作者在 1992 年会面，以定义消息交换的标准接口，从而诞生了 MPI。这个接口必须允许程序员在大多数并行架构上编写可移植的并行应用程序，使用他们已经习惯的相同特性和模型。
 
-最初，MPI是为分布式内存架构设计的，20年前开始流行：
+最初，MPI 是为分布式内存架构设计的，20 年前开始流行：
 
-![](assets/c5eade1c-0ee1-4194-a00c-d8686149c550.png)
+![](img/c5eade1c-0ee1-4194-a00c-d8686149c550.png)
 
 分布式内存架构图
 
 随着时间的推移，分布式内存系统开始相互结合，创建了具有分布式/共享内存的混合系统：
 
-![](assets/0ac1b93c-4e24-4612-b1d7-1935c8f0a661.png)
+![](img/0ac1b93c-4e24-4612-b1d7-1935c8f0a661.png)
 
 混合系统架构图
 
-今天，MPI在分布式内存、共享内存和混合系统上运行。然而，编程模型仍然是分布式内存，尽管计算执行的真正架构可能不同。
+今天，MPI 在分布式内存、共享内存和混合系统上运行。然而，编程模型仍然是分布式内存，尽管计算执行的真正架构可能不同。
 
-MPI的优势可以总结如下：
+MPI 的优势可以总结如下：
 
 +   **标准化**：它受到所有**高性能计算**（**HPC**）平台的支持。
 
@@ -92,13 +92,13 @@ MPI的优势可以总结如下：
 
 +   **性能**：制造商可以创建针对特定类型硬件进行优化的实现，并获得更好的性能。
 
-+   **功能性**：MPI-3中定义了超过440个例程，但许多并行程序可以使用少于甚至10个例程来编写。
++   **功能性**：MPI-3 中定义了超过 440 个例程，但许多并行程序可以使用少于甚至 10 个例程来编写。
 
-在接下来的章节中，我们将研究消息传递的主要Python库：`mpi4py`库。
+在接下来的章节中，我们将研究消息传递的主要 Python 库：`mpi4py`库。
 
-# 使用mpi4py Python模块
+# 使用 mpi4py Python 模块
 
-Python编程语言提供了几个MPI模块来编写并行程序。其中最有趣的是`mpi4py`库。它是基于MPI-1/2规范构建的，并提供了一个面向对象的接口，紧密遵循MPI-2 C++绑定。C MPI用户可以在不学习新接口的情况下使用此模块。因此，它被广泛用作Python中几乎完整的MPI库包。
+Python 编程语言提供了几个 MPI 模块来编写并行程序。其中最有趣的是`mpi4py`库。它是基于 MPI-1/2 规范构建的，并提供了一个面向对象的接口，紧密遵循 MPI-2 C++绑定。C MPI 用户可以在不学习新接口的情况下使用此模块。因此，它被广泛用作 Python 中几乎完整的 MPI 库包。
 
 模块的主要应用，将在本章中描述，如下：
 
@@ -110,7 +110,7 @@ Python编程语言提供了几个MPI模块来编写并行程序。其中最有�
 
 # 如何做...
 
-让我们通过检查一个经典程序的代码来开始我们对MPI库的旅程，该程序在每个实例化的进程上打印短语`Hello, world!`：
+让我们通过检查一个经典程序的代码来开始我们对 MPI 库的旅程，该程序在每个实例化的进程上打印短语`Hello, world!`：
 
 1.  导入`mpi4py`库：
 
@@ -118,9 +118,9 @@ Python编程语言提供了几个MPI模块来编写并行程序。其中最有�
 from mpi4py import MPI 
 ```
 
-在MPI中，执行并行程序的进程由一系列非负整数称为**排名**来标识。
+在 MPI 中，执行并行程序的进程由一系列非负整数称为**排名**来标识。
 
-1.  如果我们有一个程序运行的进程数（*p*个进程），那么这些进程将有一个从*0*到*p*-1的`rank`。特别是，为了评估每个进程的`rank`，我们必须使用特定的`COMM_WORLD` MPI函数。这个函数被称为**通信器**，因为它定义了自己的所有可以一起通信的进程集：
+1.  如果我们有一个程序运行的进程数（*p*个进程），那么这些进程将有一个从*0*到*p*-1 的`rank`。特别是，为了评估每个进程的`rank`，我们必须使用特定的`COMM_WORLD` MPI 函数。这个函数被称为**通信器**，因为它定义了自己的所有可以一起通信的进程集：
 
 ```py
  comm = MPI.COMM_WORLD 
@@ -140,13 +140,13 @@ print ("hello world from process ", rank)
 
 # 它是如何工作的...
 
-根据MPI执行模型，我们的应用程序由*N*（在本例中为5）个自治进程组成，每个进程都有自己的本地内存，能够通过消息交换来通信数据。
+根据 MPI 执行模型，我们的应用程序由*N*（在本例中为 5）个自治进程组成，每个进程都有自己的本地内存，能够通过消息交换来通信数据。
 
 通信器定义了可以相互通信的一组进程。这里使用的`MPI_COMM_WORLD`是默认通信器，包括所有进程。
 
 进程的标识是基于`rank`的。每个进程为其所属的每个通信器分配一个`rank`。`rank`是一个从零开始分配的整数，用于在特定通信器的上下文中标识每个单独的进程。通常做法是将全局`rank`为*0*的进程定义为主进程。通过`rank`，开发人员可以指定发送进程和接收进程。
 
-值得注意的是，仅用于说明目的，`stdout`输出不总是有序的，因为多个进程可以同时在屏幕上写入，操作系统会任意选择顺序。因此，我们做好了一个基本观察的准备：MPI执行中涉及的每个进程都运行相同的编译二进制文件，因此每个进程都接收相同的指令来执行。
+值得注意的是，仅用于说明目的，`stdout`输出不总是有序的，因为多个进程可以同时在屏幕上写入，操作系统会任意选择顺序。因此，我们做好了一个基本观察的准备：MPI 执行中涉及的每个进程都运行相同的编译二进制文件，因此每个进程都接收相同的指令来执行。
 
 要执行代码，请输入以下命令行：
 
@@ -168,21 +168,21 @@ hello world from process  4
 
 # 还有更多...
 
-MPI属于**单程序多数据**（**SPMD**）编程技术。
+MPI 属于**单程序多数据**（**SPMD**）编程技术。
 
-SPMD是一种编程技术，所有进程执行相同的程序，但每个进程操作不同的数据。不同进程之间的执行区别在于基于进程的本地`rank`来区分程序的流程。
+SPMD 是一种编程技术，所有进程执行相同的程序，但每个进程操作不同的数据。不同进程之间的执行区别在于基于进程的本地`rank`来区分程序的流程。
 
-SPMD是一种编程技术，其中单个程序同时由多个进程执行，但每个进程可以操作不同的数据。同时，进程可以执行相同的指令和不同的指令。显然，程序将包含适当的指令，允许仅执行代码的部分和/或对数据的子集进行操作。这可以使用不同的编程模型来实现，所有可执行文件同时启动。
+SPMD 是一种编程技术，其中单个程序同时由多个进程执行，但每个进程可以操作不同的数据。同时，进程可以执行相同的指令和不同的指令。显然，程序将包含适当的指令，允许仅执行代码的部分和/或对数据的子集进行操作。这可以使用不同的编程模型来实现，所有可执行文件同时启动。
 
 # 另请参阅
 
-`mpi4py`库的完整参考资料可以在[https://mpi4py.readthedocs.io/en/stable/](https://mpi4py.readthedocs.io/en/stable/)找到。
+`mpi4py`库的完整参考资料可以在[`mpi4py.readthedocs.io/en/stable/`](https://mpi4py.readthedocs.io/en/stable/)找到。
 
 # 实现点对点通信
 
-点对点操作包括在两个进程之间交换消息。在理想情况下，每个发送操作都将与相应的接收操作完全同步。显然，这并非总是如此，当发送方和接收方进程不同步时，MPI实现必须能够保留发送的数据。通常，这是通过一个对开发人员透明且完全由`mpi4py`库管理的缓冲区来实现的。
+点对点操作包括在两个进程之间交换消息。在理想情况下，每个发送操作都将与相应的接收操作完全同步。显然，这并非总是如此，当发送方和接收方进程不同步时，MPI 实现必须能够保留发送的数据。通常，这是通过一个对开发人员透明且完全由`mpi4py`库管理的缓冲区来实现的。
 
-`mpi4py` Python模块通过两个函数实现点对点通信：
+`mpi4py` Python 模块通过两个函数实现点对点通信：
 
 +   `Comm.Send(data, process_destination)`: 此函数将数据发送到通过其在通信器组中的`rank`进行标识的目标进程。
 
@@ -294,7 +294,7 @@ if rank==0:
     comm.send(data,dest=destination_process) 
 ```
 
-同样，我们必须指定`rank`等于`4`的接收进程。我们还注意到`comm.recv`语句必须包含发送进程的rank作为参数：
+同样，我们必须指定`rank`等于`4`的接收进程。我们还注意到`comm.recv`语句必须包含发送进程的 rank 作为参数：
 
 ```py
 if rank==4: 
@@ -312,7 +312,7 @@ if rank==1:
     comm.send(data,dest=destination_process) 
 ```
 
-对于`rank`等于`8`的接收进程，指出了发送进程的rank：
+对于`rank`等于`8`的接收进程，指出了发送进程的 rank：
 
 ```py
 if rank==8: 
@@ -321,7 +321,7 @@ if rank==8:
 
 以下图表总结了`mpi4py`中的点对点通信协议：
 
-![](assets/c92bb67f-1f34-4624-9dd7-9907f38c32e1.png)发送/接收传输协议
+![](img/c92bb67f-1f34-4624-9dd7-9907f38c32e1.png)发送/接收传输协议
 
 正如您所看到的，它描述了一个两步过程，包括从一个任务（*发送者*）发送一些**数据**到另一个任务（*接收者*）接收这些数据。发送任务必须指定要发送的数据及其目的地（*接收者*进程），而接收任务必须指定要接收的消息的*源*。
 
@@ -351,7 +351,7 @@ data1 received is = hello
 
 # 还有更多...
 
-`comm.send()`和`comm.recv()`函数是阻塞函数，这意味着它们会阻塞调用者，直到涉及的缓冲数据可以安全使用。此外，在MPI中，有两种发送和接收消息的管理方法：
+`comm.send()`和`comm.recv()`函数是阻塞函数，这意味着它们会阻塞调用者，直到涉及的缓冲数据可以安全使用。此外，在 MPI 中，有两种发送和接收消息的管理方法：
 
 +   **缓冲模式**：当要发送的数据已被复制到缓冲区时，流控制会立即返回到程序。这并不意味着消息已发送或接收。
 
@@ -359,7 +359,7 @@ data1 received is = hello
 
 # 另请参阅
 
-关于这个主题的有趣教程可以在[https://github.com/antolonappan/MPI_tutorial](https://github.com/antolonappan/MPI_tutorial)找到。
+关于这个主题的有趣教程可以在[`github.com/antolonappan/MPI_tutorial`](https://github.com/antolonappan/MPI_tutorial)找到。
 
 # 避免死锁问题
 
@@ -367,7 +367,7 @@ data1 received is = hello
 
 # 如何做到...
 
-让我们首先分析以下Python代码，它将介绍一个典型的死锁问题。我们有两个进程——`rank`等于`1`和`rank`等于`5`——它们相互通信，并且都具有数据发送者和数据接收者功能：
+让我们首先分析以下 Python 代码，它将介绍一个典型的死锁问题。我们有两个进程——`rank`等于`1`和`rank`等于`5`——它们相互通信，并且都具有数据发送者和数据接收者功能：
 
 1.  导入`mpi4py`库：
 
@@ -438,9 +438,9 @@ sending data b :to process 1
 data received is = a
 ```
 
-两个进程都准备从另一个进程接收消息，并在那里被阻塞。这是因为`comm.recv()`MPI函数和`comm.send()`MPI阻塞了它们。这意味着调用进程等待它们的完成。至于`comm.send()`MPI，完成发生在数据已发送并且可以被覆盖而不修改消息时。
+两个进程都准备从另一个进程接收消息，并在那里被阻塞。这是因为`comm.recv()`MPI 函数和`comm.send()`MPI 阻塞了它们。这意味着调用进程等待它们的完成。至于`comm.send()`MPI，完成发生在数据已发送并且可以被覆盖而不修改消息时。
 
-`comm.recv()`MPI的完成发生在数据已接收并且可以使用时。为了解决这个问题，第一个想法是将`comm.recv()`MPI与`comm.send()`MPI颠倒，如下所示：
+`comm.recv()`MPI 的完成发生在数据已接收并且可以使用时。为了解决这个问题，第一个想法是将`comm.recv()`MPI 与`comm.send()`MPI 颠倒，如下所示：
 
 ```py
 if rank==1: 
@@ -468,7 +468,7 @@ if rank==5:
 
 即使这个解决方案是正确的，也不能保证我们会避免死锁。事实上，通信是通过带有`comm.send()`指令的缓冲区执行的。
 
-MPI复制要发送的数据。这种模式可以无问题地工作，但前提是缓冲区能够容纳所有数据。如果不能容纳，就会发生死锁：发送者无法完成发送数据，因为缓冲区正忙，接收者无法接收数据，因为被`comm.send()`MPI调用阻塞，而这个调用还没有完成。
+MPI 复制要发送的数据。这种模式可以无问题地工作，但前提是缓冲区能够容纳所有数据。如果不能容纳，就会发生死锁：发送者无法完成发送数据，因为缓冲区正忙，接收者无法接收数据，因为被`comm.send()`MPI 调用阻塞，而这个调用还没有完成。
 
 在这一点上，允许我们避免死锁的解决方案是交换发送和接收函数，使它们不对称：
 
@@ -518,7 +518,7 @@ data received is = a
 Sendrecv(self, sendbuf, int dest=0, int sendtag=0, recvbuf=None, int source=0, int recvtag=0, Status status=None) 
 ```
 
-如您所见，所需的参数与`comm.send()`和`comm.recv()`MPI相同（在这种情况下，函数也会阻塞）。然而，`Sendrecv`提供了一个优势，即让通信子系统负责检查发送和接收之间的依赖关系，从而避免死锁。
+如您所见，所需的参数与`comm.send()`和`comm.recv()`MPI 相同（在这种情况下，函数也会阻塞）。然而，`Sendrecv`提供了一个优势，即让通信子系统负责检查发送和接收之间的依赖关系，从而避免死锁。
 
 这样，上一个示例的代码变成了以下内容：
 
@@ -541,17 +541,17 @@ if rank==5:
 
 # 另请参阅
 
-关于并行编程由于死锁管理而变得困难的有趣分析可以在[https://codewithoutrules.com/2017/08/16/concurrency-python/](https://codewithoutrules.com/2017/08/16/concurrency-python/)找到。
+关于并行编程由于死锁管理而变得困难的有趣分析可以在[`codewithoutrules.com/2017/08/16/concurrency-python/`](https://codewithoutrules.com/2017/08/16/concurrency-python/)找到。
 
 # 使用广播进行集体通信
 
 在并行代码的开发过程中，我们经常发现自己处于这样一种情况：我们必须在多个进程之间共享某个变量的值或每个进程提供的变量的某些操作（可能具有不同的值）。
 
-为了解决这类情况，使用通信树（例如，进程0将数据发送到进程1和2，它们将分别负责将数据发送到进程3、4、5、6等）。
+为了解决这类情况，使用通信树（例如，进程 0 将数据发送到进程 1 和 2，它们将分别负责将数据发送到进程 3、4、5、6 等）。
 
-相反，MPI库提供了一些函数，这些函数非常适合于信息交换或明显针对在其上执行的机器进行了优化的多个进程的使用：
+相反，MPI 库提供了一些函数，这些函数非常适合于信息交换或明显针对在其上执行的机器进行了优化的多个进程的使用：
 
-![](assets/48fa28e4-27d9-4ee6-981e-3c72d22b1c27.png)从进程0广播数据到进程1、2、3和4
+![](img/48fa28e4-27d9-4ee6-981e-3c72d22b1c27.png)从进程 0 广播数据到进程 1、2、3 和 4
 
 涉及到属于一个通信器的所有进程的通信方法称为集体通信。因此，集体通信通常涉及多于两个进程。然而，我们将这种集体通信称为广播，其中一个单独的进程将相同的数据发送给任何其他进程。
 
@@ -618,9 +618,9 @@ variable_to_share = comm.bcast(variable_to_share, root=0)
 
 +   要共享的数据（`variable_to_share`）。
 
-+   根进程，即`rank`等于0的进程（`root=0`）。
++   根进程，即`rank`等于 0 的进程（`root=0`）。
 
-运行代码，我们有一个由10个进程组成的通信组，`variable_to_share`在组中的其他进程之间共享。最后，`print`语句可视化运行进程的等级及其变量的值：
+运行代码，我们有一个由 10 个进程组成的通信组，`variable_to_share`在组中的其他进程之间共享。最后，`print`语句可视化运行进程的等级及其变量的值：
 
 ```py
 print("process = %d" %rank + " variable shared  = %d " \   
@@ -673,19 +673,19 @@ variable shared = 100
 
 # 另请参阅
 
-请参阅此链接([https://nyu-cds.github.io/python-mpi/](https://nyu-cds.github.io/python-mpi/))，以找到Python和MPI的完整介绍。
+请参阅此链接([`nyu-cds.github.io/python-mpi/`](https://nyu-cds.github.io/python-mpi/))，以找到 Python 和 MPI 的完整介绍。
 
-# 使用scatter功能的集体通信
+# 使用 scatter 功能的集体通信
 
-scatter功能与scatter广播非常相似，但有一个主要区别：虽然`comm.bcast`将相同的数据发送到所有监听进程，但`comm.scatter`可以将数组中的数据块发送到不同的进程。
+scatter 功能与 scatter 广播非常相似，但有一个主要区别：虽然`comm.bcast`将相同的数据发送到所有监听进程，但`comm.scatter`可以将数组中的数据块发送到不同的进程。
 
-以下图示说明了scatter功能：
+以下图示说明了 scatter 功能：
 
-![](assets/7a6e8b54-06df-43d5-ad30-aa1221ae3f85.png)
+![](img/7a6e8b54-06df-43d5-ad30-aa1221ae3f85.png)
 
-从进程0到进程1、2、3和4中分发数据
+从进程 0 到进程 1、2、3 和 4 中分发数据
 
-**`comm.scatter`**函数获取数组的元素并根据它们的等级将它们分发给进程，第一个元素将发送到进程0，第二个元素将发送到进程1，依此类推。**`mpi4py`**中实现的函数如下：
+**`comm.scatter`**函数获取数组的元素并根据它们的等级将它们分发给进程，第一个元素将发送到进程 0，第二个元素将发送到进程 1，依此类推。**`mpi4py`**中实现的函数如下：
 
 ```py
 recvbuf  = comm.scatter(sendbuf, rank_of_root_process) 
@@ -754,7 +754,7 @@ process = 8 variable shared  = 9
 process = 9 variable shared  = 10 
 ```
 
-我们还要注意`comm.scatter`的限制之一是，您可以在执行语句中指定的处理器数量中分散多少元素。实际上，如果您尝试分散比指定的处理器（在本例中为3）更多的元素，那么您将收到类似以下的错误：
+我们还要注意`comm.scatter`的限制之一是，您可以在执行语句中指定的处理器数量中分散多少元素。实际上，如果您尝试分散比指定的处理器（在本例中为 3）更多的元素，那么您将收到类似以下的错误：
 
 ```py
 C:\> mpiexec -n 3 python scatter.py 
@@ -796,9 +796,9 @@ buf = [data, data_size, data_type]
 
 # 另请参阅
 
-有关MPI广播的有趣教程，请访问[https://pythonprogramming.net/mpi-broadcast-tutorial-mpi4py/](https://pythonprogramming.net/mpi-broadcast-tutorial-mpi4py/)。
+有关 MPI 广播的有趣教程，请访问[`pythonprogramming.net/mpi-broadcast-tutorial-mpi4py/`](https://pythonprogramming.net/mpi-broadcast-tutorial-mpi4py/)。
 
-# 使用gather函数进行集体通信
+# 使用 gather 函数进行集体通信
 
 `gather`函数执行`scatter`函数的逆操作。在这种情况下，所有进程都将数据发送到收集接收到的数据的根进程。
 
@@ -812,7 +812,7 @@ recvbuf  = comm.gather(sendbuf, rank_of_root_process)
 
 在这里，`sendbuf`是发送的数据，`rank_of_root_process`表示所有数据的接收处理：
 
-![](assets/3fc357c4-5541-4c15-94f4-2dd7bee64b9b.png)从进程1、2、3和4收集数据
+![](img/3fc357c4-5541-4c15-94f4-2dd7bee64b9b.png)从进程 1、2、3 和 4 收集数据
 
 # 如何做到...
 
@@ -901,9 +901,9 @@ process 0 receiving 25 from process 4
 
 # 另请参阅
 
-有关`mpi4py`的更多信息，请访问[http://www.ceci-hpc.be/assets/training/mpi4py.pdf](http://www.ceci-hpc.be/assets/training/mpi4py.pdf)。
+有关`mpi4py`的更多信息，请访问[`www.ceci-hpc.be/assets/training/mpi4py.pdf`](http://www.ceci-hpc.be/assets/training/mpi4py.pdf)。
 
-# 使用Alltoall进行集体通信
+# 使用 Alltoall 进行集体通信
 
 `Alltoall`集体通信结合了`scatter`和`gather`的功能。
 
@@ -963,7 +963,7 @@ process 4 sending [ 0 5 10 15 20] receiving [ 4 8 12 16 20]
 
 我们还可以通过以下模式弄清楚发生了什么：
 
-![](assets/ae2c13f2-c674-4f5e-a05b-bf8982a010bd.png)Alltoall 集体通信
+![](img/ae2c13f2-c674-4f5e-a05b-bf8982a010bd.png)Alltoall 集体通信
 
 我们关于模式的观察如下：
 
@@ -991,7 +991,7 @@ process 4 sending [ 0 5 10 15 20] receiving [ 4 8 12 16 20]
 
 # 另请参阅
 
-可以从[https://www.duo.uio.no/bitstream/handle/10852/10848/WenjingLinThesis.pdf](https://www.duo.uio.no/bitstream/handle/10852/10848/WenjingLinThesis.pdf)下载 MPI Python 模块的有趣分析。
+可以从[`www.duo.uio.no/bitstream/handle/10852/10848/WenjingLinThesis.pdf`](https://www.duo.uio.no/bitstream/handle/10852/10848/WenjingLinThesis.pdf)下载 MPI Python 模块的有趣分析。
 
 # 减少操作
 
@@ -1099,7 +1099,7 @@ on task 0 after Reduce: data = [ 0 55 110 165 220 275 330 385 440 495]
 
 请注意，使用`op=MPI.SUM`选项，我们对列数组的所有元素应用求和操作。为了更好地理解减少操作的运行方式，让我们看一下下面的图表：
 
-![](assets/aa28bcc1-08cf-4699-b559-9f4f1e6e948c.png)
+![](img/aa28bcc1-08cf-4699-b559-9f4f1e6e948c.png)
 
 集体通信中的减少
 
@@ -1113,7 +1113,7 @@ on task 0 after Reduce: data = [ 0 55 110 165 220 275 330 385 440 495]
 
 减少操作对每个任务的第*i*个元素求和，然后将结果放入**P0**根进程数组的第*i*个元素中。对于接收操作，**P0**进程接收[**0 6 12**]数据数组。
 
-MPI定义的一些减少操作如下：
+MPI 定义的一些减少操作如下：
 
 +   `MPI.MAX`：返回最大元素。
 
@@ -1123,7 +1123,7 @@ MPI定义的一些减少操作如下：
 
 +   `MPI.PROD`：将所有元素相乘。
 
-+   `MPI.LAND`：对元素执行AND逻辑操作。
++   `MPI.LAND`：对元素执行 AND 逻辑操作。
 
 +   `MPI.MAXLOC`：返回最大值及其所属进程的等级。
 
@@ -1131,17 +1131,17 @@ MPI定义的一些减少操作如下：
 
 # 另见
 
-在[http://mpitutorial.com/tutorials/mpi-reduce-and-allreduce/](http://mpitutorial.com/tutorials/mpi-reduce-and-allreduce/)，您可以找到有关此主题的良好教程以及更多内容。
+在[`mpitutorial.com/tutorials/mpi-reduce-and-allreduce/`](http://mpitutorial.com/tutorials/mpi-reduce-and-allreduce/)，您可以找到有关此主题的良好教程以及更多内容。
 
 # 优化通信
 
-MPI提供的一个有趣功能是虚拟拓扑。如前所述，所有通信函数（点对点或集体）都涉及一组进程。我们一直使用包括所有进程的`MPI_COMM_WORLD`组。它为每个属于大小为*n*的通信器的进程分配了*0*到*n-1*的等级。
+MPI 提供的一个有趣功能是虚拟拓扑。如前所述，所有通信函数（点对点或集体）都涉及一组进程。我们一直使用包括所有进程的`MPI_COMM_WORLD`组。它为每个属于大小为*n*的通信器的进程分配了*0*到*n-1*的等级。
 
-然而，MPI允许我们为通信器分配虚拟拓扑。它定义了对不同进程的标签分配：通过构建虚拟拓扑，每个节点将只与其虚拟邻居通信，提高性能，因为它减少了执行时间。
+然而，MPI 允许我们为通信器分配虚拟拓扑。它定义了对不同进程的标签分配：通过构建虚拟拓扑，每个节点将只与其虚拟邻居通信，提高性能，因为它减少了执行时间。
 
 例如，如果等级是随机分配的，那么消息可能被迫传递到达目的地之前经过许多其他节点。除了性能问题，虚拟拓扑确保代码更清晰、更易读。
 
-MPI提供两种构建拓扑的方法。第一种构建创建笛卡尔拓扑，而后者创建任何类型的拓扑。具体来说，在第二种情况下，我们必须提供要构建的图的邻接矩阵。我们只处理笛卡尔拓扑，通过它可以构建广泛使用的几种结构，如网格、环和环面。
+MPI 提供两种构建拓扑的方法。第一种构建创建笛卡尔拓扑，而后者创建任何类型的拓扑。具体来说，在第二种情况下，我们必须提供要构建的图的邻接矩阵。我们只处理笛卡尔拓扑，通过它可以构建广泛使用的几种结构，如网格、环和环面。
 
 用于创建笛卡尔拓扑的`mpi4py`函数如下：
 
@@ -1277,7 +1277,7 @@ neighbour_processes[LEFT],  neighbour_processes[RIGHT] = \
 
 获得的拓扑结构如下：
 
-![](assets/f716b5dc-9c4c-4e31-9fc3-b128b439f010.png)虚拟网格2x2拓扑结构
+![](img/f716b5dc-9c4c-4e31-9fc3-b128b439f010.png)虚拟网格 2x2 拓扑结构
 
 如图所示，*P0*进程与**P1**（`RIGHT`）和**P2**（`DOWN`）进程链接。**P1**进程与**P3**（`DOWN`）和**P0**（`LEFT`）进程链接，**P3**进程与**P1**（`UP`）和**P2**（`LEFT`）进程链接，**P2**进程与**P3**（`RIGHT`）和**P0**（`UP`）进程链接。
 
@@ -1361,10 +1361,10 @@ neighbour_processes[RIGHT]=3
 
 输出涵盖了此处表示的拓扑结构：
 
-![](assets/0de01d9b-fe04-43f0-9700-68e7955534b8.png)虚拟环面2x2拓扑结构
+![](img/0de01d9b-fe04-43f0-9700-68e7955534b8.png)虚拟环面 2x2 拓扑结构
 
 前面图表中表示的拓扑结构表明，**P0**进程与**P1**（`RIGHT`和`LEFT`）和**P2**（`UP`和`DOWN`）进程链接，**P1**进程与**P3**（`UP`和`DOWN`）和**P0**（`RIGHT`和`LEFT`）进程链接，**P3**进程与**P1**（`UP`和`DOWN`）和**P2**（`RIGHT`和`LEFT`）进程链接，**P2**进程与**P3**（`LEFT`和`RIGHT`）和**P0**（`UP`和`DOWN`）进程链接。
 
 # 另请参阅
 
-有关MPI的更多信息可以在[http://pages.tacc.utexas.edu/~eijkhout/pcse/html/mpi-topo.html](http://pages.tacc.utexas.edu/~eijkhout/pcse/html/mpi-topo.html)找到。
+有关 MPI 的更多信息可以在[`pages.tacc.utexas.edu/~eijkhout/pcse/html/mpi-topo.html`](http://pages.tacc.utexas.edu/~eijkhout/pcse/html/mpi-topo.html)找到。

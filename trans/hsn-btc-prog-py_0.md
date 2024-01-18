@@ -1,10 +1,10 @@
 # 前言
 
-在本书中，您将介绍比特币和区块链，以及如何参与比特币生态系统。您将了解比特币及其特性、区块链以及两者如何共同工作。您还将学习如何使用Pi比特币工具来用Python编程比特币。您将学习如何使用Python以编程方式与区块链API进行交互，以及比特币挖矿以及如何开始进行。我们还将探讨比特币交易机器人。本书还涉及探索和分析比特币生态系统中产生的大量数据；如何获取、清理、操作和可视化比特币价格数据；以及如何使用Python的数据分析工具分析比特币骰子游戏的数据。
+在本书中，您将介绍比特币和区块链，以及如何参与比特币生态系统。您将了解比特币及其特性、区块链以及两者如何共同工作。您还将学习如何使用 Pi 比特币工具来用 Python 编程比特币。您将学习如何使用 Python 以编程方式与区块链 API 进行交互，以及比特币挖矿以及如何开始进行。我们还将探讨比特币交易机器人。本书还涉及探索和分析比特币生态系统中产生的大量数据；如何获取、清理、操作和可视化比特币价格数据；以及如何使用 Python 的数据分析工具分析比特币骰子游戏的数据。
 
 # 为了充分利用本书
 
-任何有一些Python经验的人都可以从本书中受益，他们希望探索Python比特币编程并开始构建基于比特币的Python应用程序。
+任何有一些 Python 经验的人都可以从本书中受益，他们希望探索 Python 比特币编程并开始构建基于比特币的 Python 应用程序。
 
 # 下载示例代码文件
 
@@ -22,25 +22,25 @@
 
 下载文件后，请确保使用最新版本的解压或提取文件夹：
 
-+   WinRAR/7-Zip适用于Windows
++   WinRAR/7-Zip 适用于 Windows
 
-+   Zipeg/iZip/UnRarX适用于Mac
++   Zipeg/iZip/UnRarX 适用于 Mac
 
-+   7-Zip/PeaZip适用于Linux
++   7-Zip/PeaZip 适用于 Linux
 
-本书的代码包也托管在GitHub上，网址为[https://github.com/PacktPublishing/Hands-On-Bitcoin-Programming-with-Python](https://github.com/PacktPublishing/Hands-On-Bitcoin-Programming-with-Python)。如果代码有更新，将在现有的GitHub存储库上进行更新。
+本书的代码包也托管在 GitHub 上，网址为[`github.com/PacktPublishing/Hands-On-Bitcoin-Programming-with-Python`](https://github.com/PacktPublishing/Hands-On-Bitcoin-Programming-with-Python)。如果代码有更新，将在现有的 GitHub 存储库上进行更新。
 
-我们还提供了来自我们丰富书籍和视频目录的其他代码包，可在**[https://github.com/PacktPublishing/](https://github.com/PacktPublishing/)**上找到。来看看吧！
+我们还提供了来自我们丰富书籍和视频目录的其他代码包，可在**[`github.com/PacktPublishing/`](https://github.com/PacktPublishing/)**上找到。来看看吧！
 
 # 下载彩色图片
 
-我们还提供了一个PDF文件，其中包含本书中使用的屏幕截图/图表的彩色图片。您可以在这里下载：[https://www.packtpub.com/sites/default/files/downloads/HandsOnBitcoinProgrammingwithPython_ColorImages.pdf](https://www.packtpub.com/sites/default/files/downloads/HandsOnBitcoinProgrammingwithPython_ColorImages.pdf)。
+我们还提供了一个 PDF 文件，其中包含本书中使用的屏幕截图/图表的彩色图片。您可以在这里下载：[`www.packtpub.com/sites/default/files/downloads/HandsOnBitcoinProgrammingwithPython_ColorImages.pdf`](https://www.packtpub.com/sites/default/files/downloads/HandsOnBitcoinProgrammingwithPython_ColorImages.pdf)。
 
 # 使用的约定
 
 本书中使用了许多文本约定。
 
-`CodeInText`：表示文本中的代码词、数据库表名、文件夹名、文件名、文件扩展名、路径名、虚拟URL、用户输入和Twitter句柄。这是一个例子：“使用`privtopub`函数从这些私钥创建三个公钥。”
+`CodeInText`：表示文本中的代码词、数据库表名、文件夹名、文件名、文件扩展名、路径名、虚拟 URL、用户输入和 Twitter 句柄。这是一个例子：“使用`privtopub`函数从这些私钥创建三个公钥。”
 
 代码块设置如下：
 

@@ -24,7 +24,7 @@
 
 # 如何做...
 
-1.  在新的Python文件中包含以下行以添加数据集：
+1.  在新的 Python 文件中包含以下行以添加数据集：
 
 ```py
 from sklearn.datasets import fetch_20newsgroups 
@@ -86,7 +86,7 @@ for sentence, category in zip(input_content, categories_prediction):
 
 以下屏幕截图提供了根据数据库输入预测对象的示例：
 
-![](Images/14d70abf-d300-4e88-9ece-6318c2e1abb0.png)
+![](img/14d70abf-d300-4e88-9ece-6318c2e1abb0.png)
 
 # 它是如何工作的...
 
@@ -96,11 +96,11 @@ for sentence, category in zip(input_content, categories_prediction):
 
 请参阅以下文章：
 
-+   *情感分析算法和应用：调查*在[https://www.sciencedirect.com/science/article/pii/S2090447914000550](https://www.sciencedirect.com/science/article/pii/S2090447914000550)。
++   *情感分析算法和应用：调查*在[`www.sciencedirect.com/science/article/pii/S2090447914000550`](https://www.sciencedirect.com/science/article/pii/S2090447914000550)。
 
-+   *在线评论的情感分类：使用基于句子的语言模型*来学习情感预测的工作方式[https://www.tandfonline.com/doi/abs/10.1080/0952813X.2013.782352?src=recsys&journalCode=teta20](https://www.tandfonline.com/doi/abs/10.1080/0952813X.2013.782352?src=recsys&journalCode=teta20)。
++   *在线评论的情感分类：使用基于句子的语言模型*来学习情感预测的工作方式[`www.tandfonline.com/doi/abs/10.1080/0952813X.2013.782352?src=recsys&journalCode=teta20`](https://www.tandfonline.com/doi/abs/10.1080/0952813X.2013.782352?src=recsys&journalCode=teta20)。
 
-+   *使用产品评论数据进行情感分析*和*在存在情感的情况下进行句子级情感分析*，以了解推荐系统中使用的各种指标[https://journalofbigdata.springeropen.com/articles/10.1186/s40537-015-0015-2](https://journalofbigdata.springeropen.com/articles/10.1186/s40537-015-0015-2)和[https://link.springer.com/chapter/10.1007/978-3-642-54903-8_1](https://link.springer.com/chapter/10.1007/978-3-642-54903-8_1)。
++   *使用产品评论数据进行情感分析*和*在存在情感的情况下进行句子级情感分析*，以了解推荐系统中使用的各种指标[`journalofbigdata.springeropen.com/articles/10.1186/s40537-015-0015-2`](https://journalofbigdata.springeropen.com/articles/10.1186/s40537-015-0015-2)和[`link.springer.com/chapter/10.1007/978-3-642-54903-8_1`](https://link.springer.com/chapter/10.1007/978-3-642-54903-8_1)。
 
 # 使用标记化预处理数据
 
@@ -132,7 +132,7 @@ print "nWord tokenizer:"
 print word_tokenize(text) 
 ```
 
-1.  引入一个新的WordPunct标记器：
+1.  引入一个新的 WordPunct 标记器：
 
 ```py
 from nltk.tokenize import WordPunctTokenizer 
@@ -143,7 +143,7 @@ print word_punct_tokenizer.tokenize(text)
 
 标记器得到的结果如下所示。它将一个句子分成单词组：
 
-![](Images/fb4eb393-47a2-496c-a3cb-a2f99a36dfa6.png)
+![](img/fb4eb393-47a2-496c-a3cb-a2f99a36dfa6.png)
 
 # 词干化文本数据
 
@@ -151,7 +151,7 @@ print word_punct_tokenizer.tokenize(text)
 
 # 如何做...
 
-1.  使用新的Python文件初始化词干处理过程：
+1.  使用新的 Python 文件初始化词干处理过程：
 
 ```py
 from nltk.stem.porter import PorterStemmer 
@@ -198,7 +198,7 @@ for word in words:
 
 词干处理过程得到的结果如下截图所示：
 
-![](Images/c6b683e2-a8d2-4273-89f8-7b841628e28b.png)
+![](img/c6b683e2-a8d2-4273-89f8-7b841628e28b.png)
 
 # 使用分块分割文本
 
@@ -206,7 +206,7 @@ for word in words:
 
 # 如何做…
 
-1.  使用Python开发并导入以下包：
+1.  使用 Python 开发并导入以下包：
 
 ```py
 import numpy as np 
@@ -253,7 +253,7 @@ def splitter(content, num_of_words):
        return result 
 ```
 
-1.  导入“布朗语料库”的数据，并考虑前10000个单词：
+1.  导入“布朗语料库”的数据，并考虑前 10000 个单词：
 
 ```py
 if __name__=='__main__': 
@@ -284,7 +284,7 @@ if __name__=='__main__':
 
 1.  分块后得到的结果如下截图所示：
 
-![](Images/e33566a4-1380-4420-91db-00b582161836.png)
+![](img/e33566a4-1380-4420-91db-00b582161836.png)
 
 # 构建词袋模型
 
@@ -292,7 +292,7 @@ if __name__=='__main__':
 
 # 如何做…
 
-1.  通过导入以下文件初始化一个新的Python文件：
+1.  通过导入以下文件初始化一个新的 Python 文件：
 
 ```py
 import numpy as np 
@@ -368,11 +368,11 @@ for word, item in zip(vocabulary, matrix.T):
 
 1.  执行词袋模型后获得的结果如下所示：
 
-![](Images/be04e751-2b4b-4148-a279-59415d35db0a.png)![](Images/c0088dd1-48ad-4485-b29b-14b920f4998e.png)
+![](img/be04e751-2b4b-4148-a279-59415d35db0a.png)![](img/c0088dd1-48ad-4485-b29b-14b920f4998e.png)
 
 为了理解它在给定句子上的工作原理，请参考以下内容：
 
-+   *情感分析简介*，在这里解释：[https://blog.algorithmia.com/introduction-sentiment-analysis/](https://blog.algorithmia.com/introduction-sentiment-analysis/)
++   *情感分析简介*，在这里解释：[`blog.algorithmia.com/introduction-sentiment-analysis/`](https://blog.algorithmia.com/introduction-sentiment-analysis/)
 
 # 文本分类器的应用
 

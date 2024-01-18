@@ -1,22 +1,22 @@
-# Python脚本概述
+# Python 脚本概述
 
-Python是一种脚本语言，由Guido van Rossum于1991年创建，用于各种应用，如游戏开发，GIS编程，软件开发，Web开发，数据分析，机器学习和系统脚本。
+Python 是一种脚本语言，由 Guido van Rossum 于 1991 年创建，用于各种应用，如游戏开发，GIS 编程，软件开发，Web 开发，数据分析，机器学习和系统脚本。
 
-Python是一种面向对象的高级编程语言，具有动态语义。主要是Python是一种解释性语言。Python用于快速应用程序开发，因为它具有所有的高级开发功能。
+Python 是一种面向对象的高级编程语言，具有动态语义。主要是 Python 是一种解释性语言。Python 用于快速应用程序开发，因为它具有所有的高级开发功能。
 
-Python简单易学，因为其语法使程序更易读。因此，程序的维护成本较低。
+Python 简单易学，因为其语法使程序更易读。因此，程序的维护成本较低。
 
-Python还有一个重要的特性，即导入模块和包。这个特性允许代码重用。Python解释器易于理解。我们可以在其中逐行编写完整的代码，并且由于Python是一种解释性语言，代码会逐行执行。Python还有广泛的库，用于高级功能。
+Python 还有一个重要的特性，即导入模块和包。这个特性允许代码重用。Python 解释器易于理解。我们可以在其中逐行编写完整的代码，并且由于 Python 是一种解释性语言，代码会逐行执行。Python 还有广泛的库，用于高级功能。
 
 本章将涵盖以下主题：
 
-+   Python脚本
++   Python 脚本
 
-+   安装和使用Python以及各种工具
++   安装和使用 Python 以及各种工具
 
 +   变量，数字和字符串
 
-+   Python支持的数据结构以及如何在脚本中使用所有这些概念
++   Python 支持的数据结构以及如何在脚本中使用所有这些概念
 
 +   决策制定；也就是`if`语句
 
@@ -28,33 +28,33 @@ Python还有一个重要的特性，即导入模块和包。这个特性允许�
 
 # 技术要求
 
-在阅读本书之前，您应该了解Python编程的基础知识，比如基本语法，变量类型，元组数据类型，列表字典，函数，字符串和方法。在[python.org/downloads/](https://www.python.org/downloads/)上有两个版本，3.7.2和2.7.15。在本书中，我们将使用版本3.7进行代码示例和包安装。
+在阅读本书之前，您应该了解 Python 编程的基础知识，比如基本语法，变量类型，元组数据类型，列表字典，函数，字符串和方法。在[python.org/downloads/](https://www.python.org/downloads/)上有两个版本，3.7.2 和 2.7.15。在本书中，我们将使用版本 3.7 进行代码示例和包安装。
 
-本章的示例和源代码可在GitHub存储库中找到：[https://github.com/PacktPublishing/Mastering-Python-Scripting-for-System-Administrators-](https://github.com/PacktPublishing/Mastering-Python-Scripting-for-System-Administrators-)。
+本章的示例和源代码可在 GitHub 存储库中找到：[`github.com/PacktPublishing/Mastering-Python-Scripting-for-System-Administrators-`](https://github.com/PacktPublishing/Mastering-Python-Scripting-for-System-Administrators-)。
 
-# 为什么选择Python？
+# 为什么选择 Python？
 
-Python有广泛的库，用于开源数据分析工具，Web框架，测试等。Python是一种可以在不同平台（Windows，Mac，Linux和嵌入式Linux硬件平台，如树莓派）上使用的编程语言。它用于开发桌面应用程序和Web应用程序。
+Python 有广泛的库，用于开源数据分析工具，Web 框架，测试等。Python 是一种可以在不同平台（Windows，Mac，Linux 和嵌入式 Linux 硬件平台，如树莓派）上使用的编程语言。它用于开发桌面应用程序和 Web 应用程序。
 
-如果使用Python，开发人员可以用更少的行数编写程序。原型设计非常快速，因为Python运行在解释器系统上。Python可以以面向对象，过程式或函数式的方式处理。
+如果使用 Python，开发人员可以用更少的行数编写程序。原型设计非常快速，因为 Python 运行在解释器系统上。Python 可以以面向对象，过程式或函数式的方式处理。
 
-Python可以执行各种任务，比如创建Web应用程序。它与软件一起用于创建工作流程；连接到数据库系统，处理文件，处理大数据，并执行复杂的数学运算。
+Python 可以执行各种任务，比如创建 Web 应用程序。它与软件一起用于创建工作流程；连接到数据库系统，处理文件，处理大数据，并执行复杂的数学运算。
 
-# Python语法与其他编程语言的比较
+# Python 语法与其他编程语言的比较
 
-Python中编写的代码非常易读，因为它类似于英语。Python使用新行来完成命令。
+Python 中编写的代码非常易读，因为它类似于英语。Python 使用新行来完成命令。
 
-Python有一个很棒的特性：缩进。使用缩进，我们可以定义决策语句，循环（如`for`和`while`循环），函数和类的范围。
+Python 有一个很棒的特性：缩进。使用缩进，我们可以定义决策语句，循环（如`for`和`while`循环），函数和类的范围。
 
-# Python安装
+# Python 安装
 
-在这一部分，我们将学习Python在不同平台上的安装，比如Linux和Windows。
+在这一部分，我们将学习 Python 在不同平台上的安装，比如 Linux 和 Windows。
 
-# 在Linux平台上安装
+# 在 Linux 平台上安装
 
-大多数Linux发行版在默认安装中都有Python 2。其中一些还包括Python 3。
+大多数 Linux 发行版在默认安装中都有 Python 2。其中一些还包括 Python 3。
 
-要在基于Debian的Linux上安装`python3`，请在终端中运行以下命令：
+要在基于 Debian 的 Linux 上安装`python3`，请在终端中运行以下命令：
 
 ```py
 sudo apt install python3
@@ -66,28 +66,28 @@ sudo apt install python3
 sudo yum install python3
 ```
 
-如果无法使用上述命令安装Python，请从[https://www.python.org/downloads/](https://www.python.org/downloads/)下载Python并按照说明进行操作。
+如果无法使用上述命令安装 Python，请从[`www.python.org/downloads/`](https://www.python.org/downloads/)下载 Python 并按照说明进行操作。
 
-# 在Windows平台上安装
+# 在 Windows 平台上安装
 
-要在Microsoft Windows中安装Python，您需要从`python.org`下载可执行文件并安装。从[https://www.python.org/downloads/](https://www.python.org/downloads/)下载`python.exe`，选择要在您的PC上安装的Python版本。然后，双击下载的`exe`并安装Python。在安装向导中，有一个复选框，上面写着**将Python添加到路径**。选中此复选框，然后按照说明安装`python3`。
+要在 Microsoft Windows 中安装 Python，您需要从`python.org`下载可执行文件并安装。从[`www.python.org/downloads/`](https://www.python.org/downloads/)下载`python.exe`，选择要在您的 PC 上安装的 Python 版本。然后，双击下载的`exe`并安装 Python。在安装向导中，有一个复选框，上面写着**将 Python 添加到路径**。选中此复选框，然后按照说明安装`python3`。
 
-# 使用pip安装软件包的安装和使用
+# 使用 pip 安装软件包的安装和使用
 
-在Linux中，安装`pip`如下：
+在 Linux 中，安装`pip`如下：
 
 ```py
 sudo apt install python-pip --- This will install pip for python 2.
 sudo apt install python3-pip --- This will install pip for python 3.
 ```
 
-在Windows中，安装`pip`如下：
+在 Windows 中，安装`pip`如下：
 
 ```py
 python -m pip install pip
 ```
 
-# 在Mac上安装
+# 在 Mac 上安装
 
 要安装`python3`，首先必须在系统上安装`brew`。要在系统上安装`brew`，运行以下命令：
 
@@ -101,19 +101,19 @@ python -m pip install pip
 brew install python3
 ```
 
-# 安装Jupyter笔记本
+# 安装 Jupyter 笔记本
 
-要安装Jupyter笔记本，请下载Anaconda。
+要安装 Jupyter 笔记本，请下载 Anaconda。
 
-安装已下载的Anaconda并按照向导上的说明操作。
+安装已下载的 Anaconda 并按照向导上的说明操作。
 
-使用`pip`安装Jupyter：
+使用`pip`安装 Jupyter：
 
 ```py
 pip install jupyter
 ```
 
-在Linux中，`pip install jupyter`将为`python 2`安装Jupyter。如果要为`python 3`安装`jupyter`，请运行以下命令：
+在 Linux 中，`pip install jupyter`将为`python 2`安装 Jupyter。如果要为`python 3`安装`jupyter`，请运行以下命令：
 
 ```py
 pip3 install jupyter
@@ -123,7 +123,7 @@ pip3 install jupyter
 
 现在我们将看看如何安装虚拟环境以及如何激活它。
 
-要在Linux上安装虚拟环境，请执行以下步骤：
+要在 Linux 上安装虚拟环境，请执行以下步骤：
 
 1.  首先检查`pip`是否已安装。我们将为`python3`安装`pip`：
 
@@ -155,49 +155,49 @@ source venv/bin/activate
 deactivate
 ```
 
-在Windows中，运行`pip install virtualenv`命令安装虚拟环境。安装`virtualenv`的步骤与Linux相同。
+在 Windows 中，运行`pip install virtualenv`命令安装虚拟环境。安装`virtualenv`的步骤与 Linux 相同。
 
-# 安装Geany和PyCharm
+# 安装 Geany 和 PyCharm
 
-从[https://www.geany.org/download/releases](https://www.geany.org/download/releases)下载Geany，并下载所需的二进制文件。在安装时按照说明操作。
+从[`www.geany.org/download/releases`](https://www.geany.org/download/releases)下载 Geany，并下载所需的二进制文件。在安装时按照说明操作。
 
-从[https://www.jetbrains.com/pycharm/download/#section=windows](https://www.jetbrains.com/pycharm/download/#section=windows)下载PyCharm并按照说明操作。
+从[`www.jetbrains.com/pycharm/download/#section=windows`](https://www.jetbrains.com/pycharm/download/#section=windows)下载 PyCharm 并按照说明操作。
 
-# Python解释器
+# Python 解释器
 
-Python是一种解释性语言。它有一个名为Python解释器或Python shell的交互式控制台。这个控制台提供了一种逐行执行程序而不创建脚本的方法。
+Python 是一种解释性语言。它有一个名为 Python 解释器或 Python shell 的交互式控制台。这个控制台提供了一种逐行执行程序而不创建脚本的方法。
 
-您可以在Python交互式控制台中访问所有的内置函数和库、安装的模块和命令历史。这个控制台让您有机会探索Python。当您准备好时，可以将代码粘贴到脚本中。
+您可以在 Python 交互式控制台中访问所有的内置函数和库、安装的模块和命令历史。这个控制台让您有机会探索 Python。当您准备好时，可以将代码粘贴到脚本中。
 
-# Python和Bash脚本之间的区别
+# Python 和 Bash 脚本之间的区别
 
-在本节中，我们将学习Python和Bash脚本之间的区别。区别如下：
+在本节中，我们将学习 Python 和 Bash 脚本之间的区别。区别如下：
 
-+   Python是一种脚本语言，而Bash是用于输入和执行命令的Shell
++   Python 是一种脚本语言，而 Bash 是用于输入和执行命令的 Shell
 
-+   使用Python更容易处理更大的程序
++   使用 Python 更容易处理更大的程序
 
-+   在Python中，您可以通过调用导入模块的一行函数来完成大多数事情
++   在 Python 中，您可以通过调用导入模块的一行函数来完成大多数事情
 
 # 启动交互式控制台
 
-我们可以从已安装Python的任何计算机上访问Python的交互式控制台。运行以下命令启动Python的交互式控制台：
+我们可以从已安装 Python 的任何计算机上访问 Python 的交互式控制台。运行以下命令启动 Python 的交互式控制台：
 
 ```py
 $ python
 ```
 
-这将启动默认的Python交互式控制台。
+这将启动默认的 Python 交互式控制台。
 
-在Linux中，如果我们在终端中输入`Python`，则会启动`python2.7`控制台。如果要启动`python3`控制台，则在终端中输入`python3`并按*Enter*。
+在 Linux 中，如果我们在终端中输入`Python`，则会启动`python2.7`控制台。如果要启动`python3`控制台，则在终端中输入`python3`并按*Enter*。
 
-在Windows中，当您在命令提示符中输入`Python`时，它将启动已下载Python版本的控制台。
+在 Windows 中，当您在命令提示符中输入`Python`时，它将启动已下载 Python 版本的控制台。
 
-# 使用Python交互式控制台编写脚本
+# 使用 Python 交互式控制台编写脚本
 
-Python交互式控制台从`>>>前缀`开始。这个控制台将接受您在`>>>前缀`后面写的Python命令。参考以下截图：
+Python 交互式控制台从`>>>前缀`开始。这个控制台将接受您在`>>>前缀`后面写的 Python 命令。参考以下截图：
 
-![](assets/d9a71f44-f130-456b-bbaa-3dbbe4b47bed.png)
+![](img/d9a71f44-f130-456b-bbaa-3dbbe4b47bed.png)
 
 现在，我们将看如何给变量赋值，就像下面的例子：
 
@@ -225,7 +225,7 @@ Python交互式控制台从`>>>前缀`开始。这个控制台将接受您在`>>
 >>>
 ```
 
-在这里，我们给变量赋值，添加了两个变量，将结果存储在第三个变量中，并将结果打印到终端上。接下来，我们从结果变量中减去一个变量，输出将存储在第四个变量中。然后，我们将结果打印到终端上。这告诉我们，我们也可以将Python解释器用作计算器：
+在这里，我们给变量赋值，添加了两个变量，将结果存储在第三个变量中，并将结果打印到终端上。接下来，我们从结果变量中减去一个变量，输出将存储在第四个变量中。然后，我们将结果打印到终端上。这告诉我们，我们也可以将 Python 解释器用作计算器：
 
 ```py
 >>> 509 / 22
@@ -237,7 +237,7 @@ Python交互式控制台从`>>>前缀`开始。这个控制台将接受您在`>>
 
 # 多行
 
-当我们在Python解释器中编写多行代码（例如`if`语句和`for`和`while`循环函数），解释器会使用三个点(`...`)作为第二个提示符进行行继续。要退出这些行，你必须按两次*Enter*键。现在我们来看下面的例子：
+当我们在 Python 解释器中编写多行代码（例如`if`语句和`for`和`while`循环函数），解释器会使用三个点(`...`)作为第二个提示符进行行继续。要退出这些行，你必须按两次*Enter*键。现在我们来看下面的例子：
 
 ```py
 >>> val1 = 2500
@@ -263,9 +263,9 @@ IndentationError: expected an indented block
 >>>
 ```
 
-# 通过Python解释器导入模块
+# 通过 Python 解释器导入模块
 
-如果你导入任何模块，那么Python解释器会检查该模块是否可用。你可以使用`import`语句来做到这一点。如果该模块可用，那么在按下*Enter*键后你会看到`>>>`前缀。这表示执行成功。如果该模块不存在，Python解释器会显示一个错误：
+如果你导入任何模块，那么 Python 解释器会检查该模块是否可用。你可以使用`import`语句来做到这一点。如果该模块可用，那么在按下*Enter*键后你会看到`>>>`前缀。这表示执行成功。如果该模块不存在，Python 解释器会显示一个错误：
 
 ```py
 >>> import time
@@ -294,9 +294,9 @@ ImportError: No module named 'matplotlib'
 >>>
 ```
 
-# 退出Python控制台
+# 退出 Python 控制台
 
-我们可以通过两种方式退出Python控制台：
+我们可以通过两种方式退出 Python 控制台：
 
 +   键盘快捷键：*Ctrl + D*
 
@@ -319,7 +319,7 @@ student@ubuntu:~$
 
 # 使用`quit()`或`exit()`函数
 
-`quit()`会让你退出Python的交互式控制台。它还会把你带回到之前所在的原始终端：
+`quit()`会让你退出 Python 的交互式控制台。它还会把你带回到之前所在的原始终端：
 
 ```py
 >>> Lion = 'Simba'
@@ -329,9 +329,9 @@ student@ubuntu$
 
 # 缩进和制表符
 
-在Python中编写代码块时，缩进是必须的。当你编写函数、决策语句、循环语句和类时，缩进是有用的。这样可以方便阅读你的Python程序。
+在 Python 中编写代码块时，缩进是必须的。当你编写函数、决策语句、循环语句和类时，缩进是有用的。这样可以方便阅读你的 Python 程序。
 
-我们在Python程序中使用缩进来表示代码块。要缩进一个代码块，你可以使用空格或制表符。参考以下例子：
+我们在 Python 程序中使用缩进来表示代码块。要缩进一个代码块，你可以使用空格或制表符。参考以下例子：
 
 ```py
 if val1 > val2:
@@ -343,9 +343,9 @@ print("This part is not indented")
 
 # 变量
 
-和其他编程语言一样，不需要先声明变量。在Python中，只需想一个名字给你的变量并给它赋一个值。你可以在程序中使用该变量。所以在Python中，你可以在需要时声明变量。
+和其他编程语言一样，不需要先声明变量。在 Python 中，只需想一个名字给你的变量并给它赋一个值。你可以在程序中使用该变量。所以在 Python 中，你可以在需要时声明变量。
 
-在Python中，变量的值和类型在程序执行过程中可能会发生变化。在下面的代码行中，我们将值`100`赋给一个变量：
+在 Python 中，变量的值和类型在程序执行过程中可能会发生变化。在下面的代码行中，我们将值`100`赋给一个变量：
 
 ```py
 n = 100
@@ -364,7 +364,7 @@ a = 50 + 9.50 # data type is changed to float
 a = "Seventy" # and now it will be a string
 ```
 
-Python会处理不同数据类型的表示；也就是说，每种类型的值都存储在不同的内存位置。变量将是一个我们将要为其分配值的名称：
+Python 会处理不同数据类型的表示；也就是说，每种类型的值都存储在不同的内存位置。变量将是一个我们将要为其分配值的名称：
 
 ```py
 >>> msg = 'And now for something completely different'
@@ -387,7 +387,7 @@ Python会处理不同数据类型的表示；也就是说，每种类型的值�
 
 # 创建并为变量赋值
 
-在Python中，变量不需要显式声明以保留内存空间。因此，只要将值赋给变量，声明就会自动完成。在Python中，等号`=`用于为变量赋值。
+在 Python 中，变量不需要显式声明以保留内存空间。因此，只要将值赋给变量，声明就会自动完成。在 Python 中，等号`=`用于为变量赋值。
 
 考虑以下例子：
 
@@ -411,7 +411,7 @@ USA
 
 在上面的例子中，我们将`John`赋给`name`变量，将`25`赋给`age`变量，将`USA`赋给`address`变量，将`85.5`赋给`percentage`变量。
 
-我们不必像其他语言那样首先声明它们。因此，查看值时，解释器将获取该变量的类型。在上面的例子中，`name`和`address`是`字符串`，age是整数，percentage是浮点类型。
+我们不必像其他语言那样首先声明它们。因此，查看值时，解释器将获取该变量的类型。在上面的例子中，`name`和`address`是`字符串`，age 是整数，percentage 是浮点类型。
 
 可以如下进行相同值的多重赋值：
 
@@ -421,7 +421,7 @@ x = y = z = 1
 
 在上面的例子中，我们创建了三个变量，并将整数值`1`分配给它们，所有这三个变量都将分配到相同的内存位置。
 
-在Python中，我们可以在一行中为多个变量分配多个值：
+在 Python 中，我们可以在一行中为多个变量分配多个值：
 
 ```py
 x, y, z = 10, 'John', 80
@@ -431,7 +431,7 @@ x, y, z = 10, 'John', 80
 
 # 数字
 
-Python解释器也可以充当计算器。您只需输入一个表达式，它就会返回值。括号`( )`用于进行分组，如下例所示：
+Python 解释器也可以充当计算器。您只需输入一个表达式，它就会返回值。括号`( )`用于进行分组，如下例所示：
 
 ```py
 >>> 5 + 5
@@ -446,7 +446,7 @@ Python解释器也可以充当计算器。您只需输入一个表达式，它�
 
 整数是`int`类型的，小数部分是`float`类型的。
 
-在Python中，除法(`/`)操作始终返回一个浮点值。`floor`除法(`//`)得到一个整数结果。`%`运算符用于计算余数。
+在 Python 中，除法(`/`)操作始终返回一个浮点值。`floor`除法(`//`)得到一个整数结果。`%`运算符用于计算余数。
 
 考虑以下例子：
 
@@ -464,7 +464,7 @@ Python解释器也可以充当计算器。您只需输入一个表达式，它�
 >>>
 ```
 
-要计算幂，Python有`**`运算符，如下例所示：
+要计算幂，Python 有`**`运算符，如下例所示：
 
 ```py
 >>> 8**3
@@ -500,7 +500,7 @@ NameError: name 'k' is not defined
 22.75
 ```
 
-在Python交互式控制台中，`_`包含了最后一个打印的表达式值，如下例所示：
+在 Python 交互式控制台中，`_`包含了最后一个打印的表达式值，如下例所示：
 
 ```py
 >>> a = 18.5/100
@@ -514,7 +514,7 @@ NameError: name 'k' is not defined
 >>>
 ```
 
-数字数据类型存储不可变的数值。如果我们这样做，Python将为更改后的数据类型分配一个新对象。
+数字数据类型存储不可变的数值。如果我们这样做，Python 将为更改后的数据类型分配一个新对象。
 
 我们可以通过为它们分配一个值来创建数字对象，如下例所示：
 
@@ -532,7 +532,7 @@ del num_a, num_b
 
 # 数字类型转换
 
-在某些情况下，您需要显式地将一个类型的数字转换为另一个类型以满足某些要求。Python在表达式中内部执行此操作
+在某些情况下，您需要显式地将一个类型的数字转换为另一个类型以满足某些要求。Python 在表达式中内部执行此操作
 
 +   输入`int(a)`将`a`转换为整数
 
@@ -544,7 +544,7 @@ del num_a, num_b
 
 # 字符串
 
-与数字一样，字符串也是Python中的数据结构之一。Python可以操作字符串。字符串可以表示如下：
+与数字一样，字符串也是 Python 中的数据结构之一。Python 可以操作字符串。字符串可以表示如下：
 
 +   用单引号(`'...'`)括起来
 
@@ -664,7 +664,7 @@ Updated String: - Hello John
 
 # 转义字符
 
-Python支持转义字符，这些字符是不可打印的，可以用反斜杠表示。转义字符在单引号和双引号字符串中都会被解释：
+Python 支持转义字符，这些字符是不可打印的，可以用反斜杠表示。转义字符在单引号和双引号字符串中都会被解释：
 
 | **符号** | **十六进制字符** | **描述** |
 | `a` | `0x07` | 响铃或警报 |
@@ -677,7 +677,7 @@ Python支持转义字符，这些字符是不可打印的，可以用反斜杠�
 | `s` | `0x20` | 空格 |
 | `M-C-x` |  | 元控制-`x` |
 | `x` |  | 字符`x` |
-| `nnn` |  | 八进制表示法，其中`n`在范围0.7内 |
+| `nnn` |  | 八进制表示法，其中`n`在范围 0.7 内 |
 | `r` | `0x0d` | 回车 |
 | `xnn` |  | 十六进制表示法，其中`n`在范围`0.9`，`a.f`或`A.F`内 |
 | `t` | `0x09` | 制表符 |
@@ -698,7 +698,7 @@ Python支持转义字符，这些字符是不可打印的，可以用反斜杠�
 
 # % 字符串格式化运算符
 
-`%`是Python中的字符串格式化运算符。参考以下示例：
+`%`是 Python 中的字符串格式化运算符。参考以下示例：
 
 ```py
 #!/usr/bin/python3
@@ -723,9 +723,9 @@ Hello this is John and my age is 25 !
 | 10 | `%E` – 指数表示法（大写`E`） |
 | 11 | `%f` – 浮点实数 |
 
-# Python中的三重引号
+# Python 中的三重引号
 
-Python的三重引号功能用于跨越多行，包括换行符和制表符。三重引号的语法由三个连续的单引号或双引号组成。参考以下代码：
+Python 的三重引号功能用于跨越多行，包括换行符和制表符。三重引号的语法由三个连续的单引号或双引号组成。参考以下代码：
 
 ```py
 #!/usr/bin/python3
@@ -771,9 +771,9 @@ Welcome John
 
 # 理解列表
 
-Python支持一种称为`list`的数据结构，它是一个可变的有序元素序列。列表中的每个元素称为项。列表是通过在方括号`[]`之间插入值来定义的。`list`的每个元素都被赋予一个数字，我们称之为位置或索引。索引从零开始；即第一个索引为零，第二个索引为1，依此类推。我们可以对列表执行以下操作：索引、切片、添加、乘法和检查成员资格。
+Python 支持一种称为`list`的数据结构，它是一个可变的有序元素序列。列表中的每个元素称为项。列表是通过在方括号`[]`之间插入值来定义的。`list`的每个元素都被赋予一个数字，我们称之为位置或索引。索引从零开始；即第一个索引为零，第二个索引为 1，依此类推。我们可以对列表执行以下操作：索引、切片、添加、乘法和检查成员资格。
 
-Python的内置`length`函数返回列表的长度。Python还有用于查找`list`的最大和最小项的函数。列表可以是编号列表、字符串列表或混合列表。
+Python 的内置`length`函数返回列表的长度。Python 还有用于查找`list`的最大和最小项的函数。列表可以是编号列表、字符串列表或混合列表。
 
 以下是创建列表的代码：
 
@@ -903,7 +903,7 @@ After deleting: ['Mumbai', 'Bangalore', 'Pune']
 
 # 元组
 
-Python的元组数据结构是不可变的，意味着我们不能改变元组的元素。基本上，元组是由逗号分隔并括在括号`( )`中的值序列。与列表一样，元组是有序的元素序列：
+Python 的元组数据结构是不可变的，意味着我们不能改变元组的元素。基本上，元组是由逗号分隔并括在括号`( )`中的值序列。与列表一样，元组是有序的元素序列：
 
 ```py
 >>> t1 = 'h', 'e', 'l', 'l', 'o'
@@ -980,7 +980,7 @@ Pune
 
 # 更新元组
 
-在Python中无法更新元组，因为元组是不可变的。但是可以使用现有元组创建一个新元组，如下例所示：
+在 Python 中无法更新元组，因为元组是不可变的。但是可以使用现有元组创建一个新元组，如下例所示：
 
 ```py
 #!/usr/bin/python3
@@ -1046,7 +1046,7 @@ NameError: name 'cities' is not defined
 | 切片：获取部分 | `cities[1:]` | `('Bangalore', 'Chennai', 'Pune')` |
 | 负数：从右边计数 | `cities[-3]` | `'Bangalore'` |
 
-# max()和min()
+# max()和 min()
 
 使用`max（）`和`min（）`函数，我们可以从元组中找到最高和最低的值。这些函数允许我们获取有关定量数据的信息。让我们看一个例子：
 
@@ -1097,7 +1097,7 @@ False
 {'r', 'd', 'b', 'm', 'z', 'l'}
 ```
 
-Python还支持集合解析。请参阅以下代码：
+Python 还支持集合解析。请参阅以下代码：
 
 ```py
 >>> a = {x for x in 'abracadabra' if x not in 'abc'}
@@ -1107,7 +1107,7 @@ Python还支持集合解析。请参阅以下代码：
 
 # 字典
 
-字典是Python中的一种数据类型，由键值对组成，括在大括号`{}`中。字典是无序的，并由键索引，其中每个键必须是唯一的。这些键必须是不可变类型。如果元组只包含字符串、数字或元组，则可以将元组用作键。
+字典是 Python 中的一种数据类型，由键值对组成，括在大括号`{}`中。字典是无序的，并由键索引，其中每个键必须是唯一的。这些键必须是不可变类型。如果元组只包含字符串、数字或元组，则可以将元组用作键。
 
 只有一对大括号会创建一个空字典：`{}`。字典的主要操作是使用某个键存储值并提取给定键的值。还可以使用`del`删除键值对。如果使用已经使用的键进行存储，则与该键关联的旧值将被遗忘。使用不存在的键提取值是错误的。以下是使用字典的一个小例子：
 
@@ -1149,9 +1149,9 @@ False
 
 在本节中，我们将学习解析参数和用于解析参数的模块。
 
-# Python中的命令行参数
+# Python 中的命令行参数
 
-我们可以在命令行中使用额外的参数来启动程序。Python程序可以使用命令行参数启动。让我们看一个例子：
+我们可以在命令行中使用额外的参数来启动程序。Python 程序可以使用命令行参数启动。让我们看一个例子：
 
 ```py
 $ python program_name.py img.jpg
@@ -1161,12 +1161,12 @@ $ python program_name.py img.jpg
 
 现在，我们将使用模块来获取参数：
 
-| **模块** | **用途** | **Python版本** |
+| **模块** | **用途** | **Python 版本** |
 | `optparse` | 已弃用 | `< 2.7` |
 | `sys` | `sys.argv`中的所有参数（基本） | 所有 |
 | `argparse` | 构建命令行界面 | `>= 2.3` |
 | `fire` | 自动生成**命令行界面**（**CLIs**） | 所有 |
-| `docopt` | 创建CLIs界面 | `>= 2.5` |
+| `docopt` | 创建 CLIs 界面 | `>= 2.5` |
 
 # Sys.argv
 
@@ -1186,9 +1186,9 @@ Arguments list: ['01.py', 'img']
 
 # 决策制定
 
-当条件为`true`时，决策制定就派上用场了。`if...elif...else`语句用于在Python中进行决策制定。
+当条件为`true`时，决策制定就派上用场了。`if...elif...else`语句用于在 Python 中进行决策制定。
 
-# Python if语句语法
+# Python if 语句语法
 
 以下是`if`语句的语法：
 
@@ -1199,7 +1199,7 @@ if test_expression:
 
 在这里，程序评估测试表达式，并且只有在测试表达式为`true`时才执行`语句`。如果测试表达式为`false`，则不执行`语句`。
 
-在Python中，`if`语句的主体由缩进表示。主体以缩进开始，第一行不缩进的行标志着结束。让我们看一个例子：
+在 Python 中，`if`语句的主体由缩进表示。主体以缩进开始，第一行不缩进的行标志着结束。让我们看一个例子：
 
 ```py
 a = 10
@@ -1216,7 +1216,7 @@ Output:
 This statement is always printed.
 ```
 
-# Python if...else语句语法
+# Python if...else 语句语法
 
 在本节中，我们将学习`if..else`语句。只有当`if`条件为`false`时，`else`块才会被执行。请参考以下语法：
 
@@ -1240,7 +1240,7 @@ Output:
 Positive number
 ```
 
-# Python if...elif...else语句
+# Python if...elif...else 语句
 
 `elif`语句检查多个语句是否为`true`值。每当值评估为`true`时，该代码块就会被执行。请参考以下语法：
 
@@ -1272,17 +1272,17 @@ a is equal to 10
 
 # 循环
 
-为了处理脚本中的所有循环需求，Python支持两种循环：
+为了处理脚本中的所有循环需求，Python 支持两种循环：
 
-+   `for循环`
++   `for 循环`
 
-+   `while循环`
++   `while 循环`
 
-现在，我们将学习`for循环`和`while循环`。
+现在，我们将学习`for 循环`和`while 循环`。
 
-# for循环
+# for 循环
 
-`for循环`遍历序列或任何其他可迭代对象的每个项目，并且每次都会执行for块中的语句。请参考以下语法：
+`for 循环`遍历序列或任何其他可迭代对象的每个项目，并且每次都会执行 for 块中的语句。请参考以下语法：
 
 ```py
 for i in sequence:
@@ -1291,7 +1291,7 @@ for i in sequence:
 
 在这里，`i`是变量，它在每次迭代时取序列内的项目的值。这个循环会一直持续，直到我们到达序列中的最后一个项目。这在下面的图表中有所说明：
 
-![](assets/822a75d6-353a-4464-9de9-1cfbff43b9e9.png)
+![](img/822a75d6-353a-4464-9de9-1cfbff43b9e9.png)
 
 请参考以下示例：
 
@@ -1316,7 +1316,7 @@ The sum is 48
 
 # range()函数
 
-Python的`range()`函数将生成一个数字序列。例如，`range(10)`将生成从`0`到`9`的数字（10个数字）。
+Python 的`range()`函数将生成一个数字序列。例如，`range(10)`将生成从`0`到`9`的数字（10 个数字）。
 
 我们还可以将起始、停止和步长大小定义为参数，`range()`将如下所示：
 
@@ -1340,7 +1340,7 @@ The number is 3
 The number is 4
 ```
 
-# while循环
+# while 循环
 
 `while`是一个循环语句，它将在输入的测试表达式为`true`时迭代一段代码块。当我们不知道迭代将进行多少次时，我们使用这个循环。请参考以下语法：
 
@@ -1349,9 +1349,9 @@ while test_expression:
  while body statements
 ```
 
-在while循环中，首先我们将检查测试表达式。只有在测试表达式为`true`时，`while`块才会被执行。经过一次迭代后，表达式将再次被检查，这个过程将继续，直到`test_expression`评估为`false`。这在下图中有所说明：
+在 while 循环中，首先我们将检查测试表达式。只有在测试表达式为`true`时，`while`块才会被执行。经过一次迭代后，表达式将再次被检查，这个过程将继续，直到`test_expression`评估为`false`。这在下图中有所说明：
 
-![](assets/9ce57a7e-fd01-43c8-87d0-61c72da1a24f.png)
+![](img/9ce57a7e-fd01-43c8-87d0-61c72da1a24f.png)
 
 以下是`while`循环的示例：
 
@@ -1379,7 +1379,7 @@ The sum is 55
 
 # 迭代器
 
-在Python中，迭代器是可以被迭代的对象。它是一个对象，每次返回一个元素的数据。Python的迭代器对象实现了两个方法，`__iter__()`和`__next__()`。大多数情况下，迭代器在循环、生成器和推导式中实现。
+在 Python 中，迭代器是可以被迭代的对象。它是一个对象，每次返回一个元素的数据。Python 的迭代器对象实现了两个方法，`__iter__()`和`__next__()`。大多数情况下，迭代器在循环、生成器和推导式中实现。
 
 在以下示例中，我们使用`next()`函数，它将遍历所有项目。在到达末尾并且没有更多数据需要返回时，它将引发`StopIteration`，如下例所示：
 
@@ -1409,11 +1409,11 @@ StopIteration
 
 # 生成器
 
-我们可以使用Python生成器创建迭代器。在Python中，生成器是一个返回可以迭代的对象的函数。
+我们可以使用 Python 生成器创建迭代器。在 Python 中，生成器是一个返回可以迭代的对象的函数。
 
-# 如何在Python中创建一个生成器？
+# 如何在 Python 中创建一个生成器？
 
-在Python中创建生成器很容易。您可以通过定义一个带有`yield`语句而不是`return`语句的函数来创建生成器。如果一个函数包含至少一个`yield`语句，它就成为一个生成器函数。`yield`和`return`语句将从函数返回一些值。以下是一个例子：
+在 Python 中创建生成器很容易。您可以通过定义一个带有`yield`语句而不是`return`语句的函数来创建生成器。如果一个函数包含至少一个`yield`语句，它就成为一个生成器函数。`yield`和`return`语句将从函数返回一些值。以下是一个例子：
 
 ```py
 def my_gen():
@@ -1466,7 +1466,7 @@ Hello John, Welcome to Python Programming !
 return [expression_list]
 ```
 
-此语句可能包含一个表达式，其中必须返回一个值。如果没有表达式，那么函数将返回一个None对象，如下例所示：
+此语句可能包含一个表达式，其中必须返回一个值。如果没有表达式，那么函数将返回一个 None 对象，如下例所示：
 
 ```py
 def return_value(a):
@@ -1482,11 +1482,11 @@ Output:
 4
 ```
 
-# Lambda函数
+# Lambda 函数
 
-在Python中，匿名函数是没有名称定义的函数，称为`lambda`函数，因为它是使用关键字`lambda`定义的。我们在需要短时间内使用函数时使用这些函数。
+在 Python 中，匿名函数是没有名称定义的函数，称为`lambda`函数，因为它是使用关键字`lambda`定义的。我们在需要短时间内使用函数时使用这些函数。
 
-Lambda函数与内置函数一起使用，例如`filter()`和`map()`。
+Lambda 函数与内置函数一起使用，例如`filter()`和`map()`。
 
 filter()函数返回一个元素列表，并且只有一个可迭代的输入。以下是使用`filter()`的示例：
 
@@ -1516,7 +1516,7 @@ Output:
 
 # 模块
 
-模块只是包含Python语句和定义的文件。包含Python代码的文件（例如，`sample.py`）被称为模块，其模块名称将是`sample`。使用模块，我们可以将较大的程序分解为小的有组织的部分。模块的一个重要特性是可重用性。您可以在模块中定义最常用的函数的定义，而不是在不同的程序中复制它们，只需在需要时导入它们。
+模块只是包含 Python 语句和定义的文件。包含 Python 代码的文件（例如，`sample.py`）被称为模块，其模块名称将是`sample`。使用模块，我们可以将较大的程序分解为小的有组织的部分。模块的一个重要特性是可重用性。您可以在模块中定义最常用的函数的定义，而不是在不同的程序中复制它们，只需在需要时导入它们。
 
 让我们创建一个模块并导入它。我们将创建两个脚本：`sample.py`和`add.py`。我们将在`add.py`中导入一个示例模块。现在，将以下代码保存为`sample.py`。让我们看看以下示例：
 
@@ -1527,7 +1527,7 @@ def addition(num1, num2):
  return result
 ```
 
-在这里，我们在名为`sample`的模块中定义了一个`addition()`函数。该函数接受两个数字并返回它们的和。现在我们已经创建了一个模块。您可以在任何Python程序中导入它。
+在这里，我们在名为`sample`的模块中定义了一个`addition()`函数。该函数接受两个数字并返回它们的和。现在我们已经创建了一个模块。您可以在任何 Python 程序中导入它。
 
 # 导入模块
 
@@ -1545,9 +1545,9 @@ Output:
 
 # 总结
 
-在本章中，我们概述了Python脚本语言。我们学习了如何安装Python和各种工具。我们还学习了Python解释器以及如何使用它。我们了解了Python支持的数据类型、变量、数字和字符串、决策语句以及循环语句。我们还学习了函数以及如何在脚本和模块中使用它们以及如何创建和导入它们。
+在本章中，我们概述了 Python 脚本语言。我们学习了如何安装 Python 和各种工具。我们还学习了 Python 解释器以及如何使用它。我们了解了 Python 支持的数据类型、变量、数字和字符串、决策语句以及循环语句。我们还学习了函数以及如何在脚本和模块中使用它们以及如何创建和导入它们。
 
-在下一章《调试和分析Python脚本》中，您将学习Python调试技术、错误处理（异常处理）、调试工具、调试基本程序崩溃、程序分析和计时、以及使程序运行更快的方法。
+在下一章《调试和分析 Python 脚本》中，您将学习 Python 调试技术、错误处理（异常处理）、调试工具、调试基本程序崩溃、程序分析和计时、以及使程序运行更快的方法。
 
 # 问题
 
@@ -1555,7 +1555,7 @@ Output:
 
 1.  列表是可变的还是不可变的？
 
-1.  Python中的数据结构是什么？
+1.  Python 中的数据结构是什么？
 
 1.  如何访问列表中的值？
 
@@ -1563,6 +1563,6 @@ Output:
 
 # 进一步阅读
 
-所有Python文档都可以在以下网站上找到：[www.python.org](http://www.python.org)。
+所有 Python 文档都可以在以下网站上找到：[www.python.org](http://www.python.org)。
 
-您还可以查阅以下书籍，《学习Python的艰难方式》和《Python之字节》，以了解Python的基础知识。
+您还可以查阅以下书籍，《学习 Python 的艰难方式》和《Python 之字节》，以了解 Python 的基础知识。

@@ -10,11 +10,11 @@
 
 这种编程类型的最重要特征是代码不是在多个线程上执行，而是在单个线程上执行，与经典的并发编程不同。因此，两个任务并不是真正同时执行，而是根据这种方法，它们几乎同时执行。
 
-特别是，我们将描述Python 3.4中引入的`asyncio`模块。这使我们能够使用协程和未来来更轻松地编写异步代码，并使其更易读。
+特别是，我们将描述 Python 3.4 中引入的`asyncio`模块。这使我们能够使用协程和未来来更轻松地编写异步代码，并使其更易读。
 
 在本章中，我们将涵盖以下内容：
 
-+   使用`concurrent.futures` Python模块
++   使用`concurrent.futures` Python 模块
 
 +   使用`asyncio`管理事件循环
 
@@ -24,9 +24,9 @@
 
 +   处理`asyncio`和未来
 
-# 使用`concurrent.futures` Python模块
+# 使用`concurrent.futures` Python 模块
 
-`concurrent.futures`模块是Python标准库的一部分，通过将线程建模为异步函数，提供了对线程的抽象层次。
+`concurrent.futures`模块是 Python 标准库的一部分，通过将线程建模为异步函数，提供了对线程的抽象层次。
 
 该模块由两个主要类构建：
 
@@ -66,7 +66,7 @@
 
 这是线程和进程池使用的一个例子，我们将比较执行时间与顺序执行所需的时间。
 
-要执行的任务如下：我们有一个包含10个元素的列表。列表的每个元素都被计数到100,000,000（只是为了浪费时间），然后最后一个数字乘以列表的第*i*个元素。特别是，我们正在评估以下情况：
+要执行的任务如下：我们有一个包含 10 个元素的列表。列表的每个元素都被计数到 100,000,000（只是为了浪费时间），然后最后一个数字乘以列表的第*i*个元素。特别是，我们正在评估以下情况：
 
 +   **顺序执行**
 
@@ -89,7 +89,7 @@ import time
 number_list = list(range(1, 11))
 ```
 
-1.  `count(number)`函数计算从`1`到`100000000`的数字，然后返回`number` × 100,000,000的乘积：
+1.  `count(number)`函数计算从`1`到`100000000`的数字，然后返回`number` × 100,000,000 的乘积：
 
 ```py
 def count(number):
@@ -235,9 +235,9 @@ Process Pool Execution in 4.166398899999999 seconds
 
 然后，池将进程（在本例中为五个进程）以**FIFO**（先进先出）模式分配给可用的核心（对于本例，使用了一个有四个核心的机器）。
 
-因此，对于每个核心，分配的进程按顺序运行。只有在执行I/O操作后，池才会安排执行另一个进程。当然，如果使用线程池，执行机制是相同的。
+因此，对于每个核心，分配的进程按顺序运行。只有在执行 I/O 操作后，池才会安排执行另一个进程。当然，如果使用线程池，执行机制是相同的。
 
-在进程池的情况下，计算时间较短，这要归因于I/O操作不重要的事实。这使得进程池可以更快，因为与线程不同，它们不需要任何同步机制（如在*并行计算和Python入门*的*介绍并行编程*中所解释的）。
+在进程池的情况下，计算时间较短，这要归因于 I/O 操作不重要的事实。这使得进程池可以更快，因为与线程不同，它们不需要任何同步机制（如在*并行计算和 Python 入门*的*介绍并行编程*中所解释的）。
 
 # 还有更多...
 
@@ -247,17 +247,17 @@ Process Pool Execution in 4.166398899999999 seconds
 
 # 另请参阅
 
-在这里可以找到有关`concurrent.futures`的有趣教程：[http://masnun.com/2016/03/29/python-a-quick-introduction-to-the-concurrent-futures-module.html](http://masnun.com/2016/03/29/python-a-quick-introduction-to-the-concurrent-futures-module.html)。
+在这里可以找到有关`concurrent.futures`的有趣教程：[`masnun.com/2016/03/29/python-a-quick-introduction-to-the-concurrent-futures-module.html`](http://masnun.com/2016/03/29/python-a-quick-introduction-to-the-concurrent-futures-module.html)。
 
-# 使用asyncio管理事件循环
+# 使用 asyncio 管理事件循环
 
-`asyncio` Python模块提供了管理事件、协程、任务以及线程和同步原语以编写并发代码的便利设施。
+`asyncio` Python 模块提供了管理事件、协程、任务以及线程和同步原语以编写并发代码的便利设施。
 
 该模块的主要组件如下：
 
 +   **事件循环**：`asyncio`模块允许每个进程一个事件循环。这是处理和分配执行不同任务的实体。特别是，它注册任务并通过从一个任务切换控制流来管理它们。
 
-+   **协程**：这是子例程概念的泛化。此外，协程可以在执行期间暂停以等待外部处理（I/O中的某个例程）并在外部处理完成时从停止的点返回。
++   **协程**：这是子例程概念的泛化。此外，协程可以在执行期间暂停以等待外部处理（I/O 中的某个例程）并在外部处理完成时从停止的点返回。
 
 +   **Futures**：这与`concurrent.futures`模块完全相同。它表示*尚未完成的计算*。
 
@@ -291,15 +291,15 @@ while (1) {
 
 +   `loop.call_later(time_delay,callback,argument)`: 这安排在给定的`time_delay`后调用回调，单位为秒。
 
-+   `loop.call_soon(callback, argument)`: 这安排一个回调尽快被调用。当控制返回到事件循环时，`call_soon()`（[https://docs.python.org/3/library/asyncio-eventloop.html](https://docs.python.org/3/library/asyncio-eventloop.html)）返回后调用回调。
++   `loop.call_soon(callback, argument)`: 这安排一个回调尽快被调用。当控制返回到事件循环时，`call_soon()`（[`docs.python.org/3/library/asyncio-eventloop.html`](https://docs.python.org/3/library/asyncio-eventloop.html)）返回后调用回调。
 
-+   `loop.time()`: 这将根据事件循环的内部时钟返回当前时间作为`float`值（[https://docs.python.org/3/library/functions.html](https://docs.python.org/3/library/functions.html)）。
++   `loop.time()`: 这将根据事件循环的内部时钟返回当前时间作为`float`值（[`docs.python.org/3/library/functions.html`](https://docs.python.org/3/library/functions.html)）。
 
 +   `asyncio.set_event_loop()`: 这将当前上下文的事件循环设置为`loop`。
 
 +   `asyncio.new_event_loop()`: 这根据此策略的规则创建并返回一个新的事件循环对象。
 
-+   `loop.run_forever()`: 这将一直运行，直到调用`stop()`（[https://docs.python.org/3/library/asyncio-eventloop.html](https://docs.python.org/3/library/asyncio-eventloop.html)）。
++   `loop.run_forever()`: 这将一直运行，直到调用`stop()`（[`docs.python.org/3/library/asyncio-eventloop.html`](https://docs.python.org/3/library/asyncio-eventloop.html)）。
 
 # 如何做到这一点...
 
@@ -309,7 +309,7 @@ while (1) {
 
 事件循环将持续进行，直到满足终止条件。正如我们可以想象的那样，这个例子遵循这个异步模式：
 
-![](assets/49fee3e4-437a-47a5-b656-1ecf755cf488.png)
+![](img/49fee3e4-437a-47a5-b656-1ecf755cf488.png)
 
 异步编程模型
 
@@ -424,7 +424,7 @@ def task_A(end_time, loop):
 
 +   `loop`: 这是之前使用`get_event_loop()`方法捕获的事件循环。
 
-在执行任务后，将`loop.time`与`end_time`进行比较。如果执行时间在最大时间（60秒）内，那么通过调用`task_B`继续计算，否则，计算结束，关闭事件循环：
+在执行任务后，将`loop.time`与`end_time`进行比较。如果执行时间在最大时间（60 秒）内，那么通过调用`task_B`继续计算，否则，计算结束，关闭事件循环：
 
 ```py
  if (loop.time() + 1.0) < end_time:
@@ -437,11 +437,11 @@ def task_A(end_time, loop):
 
 现在，让我总结一下情况：
 
-1.  `task_A`以1到5秒之间的随机执行时间调用`task_B`。
+1.  `task_A`以 1 到 5 秒之间的随机执行时间调用`task_B`。
 
-1.  `task_B`以4到7秒之间的随机执行时间调用`task_C`。
+1.  `task_B`以 4 到 7 秒之间的随机执行时间调用`task_C`。
 
-1.  `task_C`以6到10秒之间的随机执行时间调用`task_A`。
+1.  `task_C`以 6 到 10 秒之间的随机执行时间调用`task_A`。
 
 当运行时间到期时，事件循环必须结束：
 
@@ -472,13 +472,13 @@ task_C called
 
 # 还有更多...
 
-异步事件编程取代了一种并发编程，其中程序的几个部分由具有对同一内存中数据的访问权限的不同线程同时执行，从而产生了关键运行的问题。与此同时，能够利用现代CPU的不同核心已经变得至关重要，因为在某些领域，单核处理器已经无法实现类似于后者提供的性能。
+异步事件编程取代了一种并发编程，其中程序的几个部分由具有对同一内存中数据的访问权限的不同线程同时执行，从而产生了关键运行的问题。与此同时，能够利用现代 CPU 的不同核心已经变得至关重要，因为在某些领域，单核处理器已经无法实现类似于后者提供的性能。
 
 # 另请参阅
 
-这是一个关于`asyncio`的很好的介绍：[https://hackernoon.com/a-simple-introduction-to-pythons-asyncio-595d9c9ecf8c](https://hackernoon.com/a-simple-introduction-to-pythons-asyncio-595d9c9ecf8c)。
+这是一个关于`asyncio`的很好的介绍：[`hackernoon.com/a-simple-introduction-to-pythons-asyncio-595d9c9ecf8c`](https://hackernoon.com/a-simple-introduction-to-pythons-asyncio-595d9c9ecf8c)。
 
-# 使用asyncio处理协程
+# 使用 asyncio 处理协程
 
 在我们所呈现的各种示例中，我们已经看到，当程序变得非常长和复杂时，将其分成子程序是方便的，每个子程序实现一个特定的任务。但是，子程序不能独立执行，而只能在主程序的请求下执行，主程序负责协调子程序的使用。
 
@@ -486,7 +486,7 @@ task_C called
 
 在协程中，执行点可以被暂停并稍后恢复，因为协程跟踪执行状态。拥有一组协程后，可以交错计算：第一个运行直到*将控制权让出*，然后第二个运行并继续下去。
 
-交错由事件循环管理，该事件循环在*使用asyncio管理事件循环*配方中进行了描述。它跟踪所有协程，并安排它们何时执行。
+交错由事件循环管理，该事件循环在*使用 asyncio 管理事件循环*配方中进行了描述。它跟踪所有协程，并安排它们何时执行。
 
 协程的其他重要方面如下：
 
@@ -510,13 +510,13 @@ def coroutine_function(function_arguments):
  ............ 
 ```
 
-协程使用PEP 380中引入的`yield from`语法（在[https://www.python.org/dev/peps/pep-0380/](https://www.python.org/dev/peps/pep-0380/)中阅读更多）来停止当前计算的执行并挂起协程的内部状态。
+协程使用 PEP 380 中引入的`yield from`语法（在[`www.python.org/dev/peps/pep-0380/`](https://www.python.org/dev/peps/pep-0380/)中阅读更多）来停止当前计算的执行并挂起协程的内部状态。
 
 特别是在`yield from future`的情况下，协程被挂起，直到`future`完成，然后将传播`future`的结果（或引发异常）；在`yield from coroutine`的情况下，协程等待另一个协程产生结果，该结果将被传播（或引发异常）。
 
 正如我们将在下一个示例中看到的，其中协程将用于模拟有限状态机，我们将使用`yield from coroutine`表示法。
 
-有关使用`asyncio`的协程的更多信息，请访问[https://docs.python.org/3.5/library/asyncio-task.html](https://docs.python.org/3.5/library/asyncio-task.html)。
+有关使用`asyncio`的协程的更多信息，请访问[`docs.python.org/3.5/library/asyncio-task.html`](https://docs.python.org/3.5/library/asyncio-task.html)。
 
 # 如何做...
 
@@ -526,13 +526,13 @@ def coroutine_function(function_arguments):
 
 我们想要使用协程模拟行为的自动机如下：
 
-![](assets/11c82c0c-3add-446c-8ca7-ba4f599bc622.png)
+![](img/11c82c0c-3add-446c-8ca7-ba4f599bc622.png)
 
 有限状态机
 
 系统的状态为**S0**、**S1**、**S2**、**S3**和**S4**，其中**0**和**1**是自动机可以从一个状态过渡到下一个状态的值（这个操作称为*过渡*）。例如，状态**S0**可以过渡到状态**S1**，但只能为值**1**，**S0**可以过渡到状态**S2**，但只能为值**0**。
 
-以下Python代码模拟了自动机从状态**S0**（起始状态）到状态**S4**（结束状态）的过渡：
+以下 Python 代码模拟了自动机从状态**S0**（起始状态）到状态**S4**（结束状态）的过渡：
 
 1.  首先要做的是导入相关的库：
 
@@ -650,7 +650,7 @@ def StartState():
  result = yield from State1(input_value)
 ```
 
-下一个状态的过渡由`input_value`决定，它由Python的`random`模块的`randint (0,1)`函数定义。这个函数随机提供`0`或`1`的值。
+下一个状态的过渡由`input_value`决定，它由 Python 的`random`模块的`randint (0,1)`函数定义。这个函数随机提供`0`或`1`的值。
 
 这样，`randint`随机确定有限状态机将过渡到的状态：
 
@@ -698,11 +698,11 @@ State 3 calling End State with transition value = 1
 
 # 还有更多...
 
-在Python 3.5发布之前，`asyncio`模块使用生成器来模拟异步调用，因此与Python 3.5的当前版本有不同的语法。
+在 Python 3.5 发布之前，`asyncio`模块使用生成器来模拟异步调用，因此与 Python 3.5 的当前版本有不同的语法。
 
-Python 3.5引入了`async`和`await`关键字。请注意，在`await func()`调用周围没有括号。
+Python 3.5 引入了`async`和`await`关键字。请注意，在`await func()`调用周围没有括号。
 
-以下是一个使用Python 3.5+引入的新语法和`asyncio`的`"Hello, world!"`的示例：
+以下是一个使用 Python 3.5+引入的新语法和`asyncio`的`"Hello, world!"`的示例：
 
 ```py
 import asyncio
@@ -721,19 +721,19 @@ if __name__ == "__main__":
 
 # 另请参阅
 
-Python中的协程在这里有很好的描述：[https://www.geeksforgeeks.org/coroutine-in-python/](https://www.geeksforgeeks.org/coroutine-in-python/)。
+Python 中的协程在这里有很好的描述：[`www.geeksforgeeks.org/coroutine-in-python/`](https://www.geeksforgeeks.org/coroutine-in-python/)。
 
-# 使用asyncio操纵任务
+# 使用 asyncio 操纵任务
 
-`asyncio`模块旨在处理异步进程和事件循环上的并发任务执行。它还提供了`asyncio.Task()`类，用于将协程包装在任务中（[https://docs.python.org/3/library/asyncio-task.html](https://docs.python.org/3/library/asyncio-task.html)）。它的用途是允许独立运行的任务与同一事件循环上的其他任务并发运行。
+`asyncio`模块旨在处理异步进程和事件循环上的并发任务执行。它还提供了`asyncio.Task()`类，用于将协程包装在任务中（[`docs.python.org/3/library/asyncio-task.html`](https://docs.python.org/3/library/asyncio-task.html)）。它的用途是允许独立运行的任务与同一事件循环上的其他任务并发运行。
 
 当一个协程被包装在一个任务中时，它将`Task`连接到事件循环，然后在循环启动时自动运行，从而提供了自动驱动协程的机制。
 
-`asyncio`模块提供了`asyncio.Task(coroutine)`方法来处理任务的计算；此外，`asyncio.Task(coroutine)`安排了协程的执行（[https://docs.python.org/3/library/asyncio-task.html](https://docs.python.org/3/library/asyncio-task.html)）。
+`asyncio`模块提供了`asyncio.Task(coroutine)`方法来处理任务的计算；此外，`asyncio.Task(coroutine)`安排了协程的执行（[`docs.python.org/3/library/asyncio-task.html`](https://docs.python.org/3/library/asyncio-task.html)）。
 
 一个任务负责在*事件循环*中执行一个协程对象。
 
-如果包装的协程使用`yields from future`表示法，如*使用asyncio处理协程*部分中已经描述的那样，那么任务将暂停包装的协程的执行并等待未来的完成。
+如果包装的协程使用`yields from future`表示法，如*使用 asyncio 处理协程*部分中已经描述的那样，那么任务将暂停包装的协程的执行并等待未来的完成。
 
 当未来完成时，包装的协程的执行将重新开始，使用未来的结果或异常。此外，必须注意，事件循环一次只运行一个任务。如果其他事件循环在不同的线程中运行，则其他任务可以并行运行。
 
@@ -884,9 +884,9 @@ Asyncio.Task - binomial_coefficient(20, 10) = 184756.0
 
 # 另请参阅
 
-关于`asyncio`和任务的更多信息可以在这里找到：[https://tutorialedge.net/python/concurrency/asyncio-tasks-tutorial/](https://tutorialedge.net/python/concurrency/asyncio-tasks-tutorial/)。
+关于`asyncio`和任务的更多信息可以在这里找到：[`tutorialedge.net/python/concurrency/asyncio-tasks-tutorial/`](https://tutorialedge.net/python/concurrency/asyncio-tasks-tutorial/)。
 
-# 处理asyncio和futures
+# 处理 asyncio 和 futures
 
 `asyncio`模块的另一个关键组件是`asyncio.Future`类。它与`concurrent.Futures`非常相似，但当然，它适应了`asyncio`的主要机制：事件循环。
 
@@ -920,7 +920,7 @@ future = asyncio.Future
 
 # 如何做到这一点...
 
-以下示例显示了如何使用`asyncio.Future`类来管理两个协程：`first_coroutine`和`second_coroutine`，它们执行以下任务。`first_coroutine`执行前*N*个整数的和，`second_coroutine`执行N的阶乘：
+以下示例显示了如何使用`asyncio.Future`类来管理两个协程：`first_coroutine`和`second_coroutine`，它们执行以下任务。`first_coroutine`执行前*N*个整数的和，`second_coroutine`执行 N 的阶乘：
 
 1.  现在，让我们导入相关的库：
 
@@ -1035,7 +1035,7 @@ def got_result(future):
  print(future.result())
 ```
 
-在协程中，我们将`future`对象作为参数传递。计算后，我们为第一个协程设置3秒的睡眠时间，第二个协程设置4秒的睡眠时间：
+在协程中，我们将`future`对象作为参数传递。计算后，我们为第一个协程设置 3 秒的睡眠时间，第二个协程设置 4 秒的睡眠时间：
 
 ```py
 yield from asyncio.sleep(sleep_time)
@@ -1076,4 +1076,4 @@ first coroutine (sum of N integers) result = 1
 
 # 参见
 
-更多关于`asyncio`和期货的示例可以在[https://www.programcreek.com/python/example/102763/asyncio.futures](https://www.programcreek.com/python/example/102763/asyncio.futures)找到。
+更多关于`asyncio`和期货的示例可以在[`www.programcreek.com/python/example/102763/asyncio.futures`](https://www.programcreek.com/python/example/102763/asyncio.futures)找到。

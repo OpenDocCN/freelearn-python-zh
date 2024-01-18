@@ -1,6 +1,6 @@
 # 订单微服务
 
-在本章中，我们将扩展我们在[第7章](a8e0af3b-67d9-4649-986b-041d136af0e8.xhtml)中实现的Web应用程序，*使用Django创建在线视频游戏商店*。我不知道您是否注意到，在该项目中有一些重要的东西缺失。首先是提交订单的能力。就目前而言，用户可以浏览产品并将商品添加到购物车；但是，没有办法发送订单并完成购买。
+在本章中，我们将扩展我们在第七章中实现的 Web 应用程序，*使用 Django 创建在线视频游戏商店*。我不知道您是否注意到，在该项目中有一些重要的东西缺失。首先是提交订单的能力。就目前而言，用户可以浏览产品并将商品添加到购物车；但是，没有办法发送订单并完成购买。
 
 另一个缺失的项目是我们应用程序的用户能够查看已发送的所有订单以及其订单历史的页面。
 
@@ -10,15 +10,15 @@
 
 +   创建微服务的基础知识
 
-+   如何使用Django REST框架创建RESTful API
++   如何使用 Django REST 框架创建 RESTful API
 
 +   如何使用服务并将其与其他应用程序集成
 
 +   如何编写测试
 
-+   如何在AWS上部署应用程序
++   如何在 AWS 上部署应用程序
 
-+   如何使用Gunicorn在HTTP代理`nginx`后运行我们的Web应用程序
++   如何使用 Gunicorn 在 HTTP 代理`nginx`后运行我们的 Web 应用程序
 
 所以，让我们开始吧！
 
@@ -36,17 +36,17 @@ mkdir microservices && cd microservices
 pipenv --python ~/Install/Python3.6/bin/python3.6
 ```
 
-如果您不知道如何使用`pipenv`，在[第4章](2223dee0-d5de-417e-9ca9-6bf4a6038cb6.xhtml)的*设置环境*部分，*汇率和货币转换工具*中，有一个非常好的介绍，介绍了如何开始使用`pipenv`。
+如果您不知道如何使用`pipenv`，在第四章的*设置环境*部分，*汇率和货币转换工具*中，有一个非常好的介绍，介绍了如何开始使用`pipenv`。
 
-创建虚拟环境后，我们需要安装项目依赖项。对于这个项目，我们将安装Django和Django REST框架：
+创建虚拟环境后，我们需要安装项目依赖项。对于这个项目，我们将安装 Django 和 Django REST 框架：
 
 ```py
 pipenv install django djangorestframework requests python-dateutil
 ```
 
-我们使用Django和Django REST框架而不是像Flask这样的简单框架的原因是，这个项目的主要目的是提供关注点的分离，创建一个将处理在前一章中开发的在线游戏商店中的订单的微服务。我们不仅希望提供供Web应用程序消费的API。最好有一个简单的网站，以便我们可以列出订单，查看每个订单的详细信息，并执行更新，如更改订单状态。
+我们使用 Django 和 Django REST 框架而不是像 Flask 这样的简单框架的原因是，这个项目的主要目的是提供关注点的分离，创建一个将处理在前一章中开发的在线游戏商店中的订单的微服务。我们不仅希望提供供 Web 应用程序消费的 API。最好有一个简单的网站，以便我们可以列出订单，查看每个订单的详细信息，并执行更新，如更改订单状态。
 
-正如您在上一章中看到的，Django已经拥有一个非常强大和灵活的管理界面，我们可以自定义以向用户提供这种功能，而无需花费太多时间开发Web应用程序。
+正如您在上一章中看到的，Django 已经拥有一个非常强大和灵活的管理界面，我们可以自定义以向用户提供这种功能，而无需花费太多时间开发 Web 应用程序。
 
 安装依赖项后，您的`Pipfile`应如下所示：
 
@@ -69,13 +69,13 @@ djangorestframework = "*"
 python_version = "3.6"
 ```
 
-完美！现在，我们可以开始一个新的Django项目。我们将使用`django-admin`工具创建项目。让我们继续创建一个名为`order`的项目：
+完美！现在，我们可以开始一个新的 Django 项目。我们将使用`django-admin`工具创建项目。让我们继续创建一个名为`order`的项目：
 
 ```py
 django-admin startproject order
 ```
 
-创建项目后，我们将创建一个Django应用程序。对于这个项目，我们将只创建一个名为`main`的应用程序。首先，我们将更改目录到服务目录：
+创建项目后，我们将创建一个 Django 应用程序。对于这个项目，我们将只创建一个名为`main`的应用程序。首先，我们将更改目录到服务目录：
 
 ```py
 cd order
@@ -87,7 +87,7 @@ cd order
 django-admin startapp main
 ```
 
-创建Django应用程序后，您的项目结构应该类似于以下结构：
+创建 Django 应用程序后，您的项目结构应该类似于以下结构：
 
 ```py
 .
@@ -121,7 +121,7 @@ class OrderCustomer(models.Model):
     email = models.CharField(max_length=100)
 ```
 
-我们将创建一个名为`OrderCustomer`的类，它继承自`Model`，并定义三个属性；`customer_id`，它将对应于在线游戏商店中的客户ID，客户的`name`，最后是`email`。
+我们将创建一个名为`OrderCustomer`的类，它继承自`Model`，并定义三个属性；`customer_id`，它将对应于在线游戏商店中的客户 ID，客户的`name`，最后是`email`。
 
 然后，我们将创建存储订单信息的模型：
 
@@ -153,7 +153,7 @@ class Order(models.Model):
 
 `Order`类继承自`Model`，我们通过添加一个包含应用中订单状态的元组来开始这个类。我们还定义了一个外键`order_customer`，它将创建`OrderCustomer`和`Order`之间的关系。然后是定义其他字段的时间，从`total`开始，它是该订单的总购买价值。然后有两个日期时间字段；`created_at`，这是顾客提交订单的日期，`last_update`，这是在我们想知道订单何时有状态更新时将要使用的字段。
 
-当将`auto_now_add`添加到`DateTimeField`时，Django使用`django.utils.timezone.now`函数，该函数将返回带有时区信息的当前`datetime`对象。DateField使用`datetime.date.today()`，它不包含时区信息。
+当将`auto_now_add`添加到`DateTimeField`时，Django 使用`django.utils.timezone.now`函数，该函数将返回带有时区信息的当前`datetime`对象。DateField 使用`datetime.date.today()`，它不包含时区信息。
 
 我们要创建的最后一个模型是`OrderItems`。这将保存属于订单的项目。我们将像这样定义它：
 
@@ -174,7 +174,7 @@ class OrderItems(models.Model):
         Order, on_delete=models.CASCADE, related_name='items')
 ```
 
-在这里，我们还定义了一个`Meta`类，以便我们可以为模型设置一些元数据。在这种情况下，我们将`verbose_name_plural`设置为`Order items`，以便在Django管理界面中正确拼写。然后，我们定义了`product_id`，`name`，`quantity`和`price_per_unit`，它们指的是在线视频游戏商店中的`Game`模型。
+在这里，我们还定义了一个`Meta`类，以便我们可以为模型设置一些元数据。在这种情况下，我们将`verbose_name_plural`设置为`Order items`，以便在 Django 管理界面中正确拼写。然后，我们定义了`product_id`，`name`，`quantity`和`price_per_unit`，它们指的是在线视频游戏商店中的`Game`模型。
 
 最后，我们有项目数量和外键`Order`。
 
@@ -206,11 +206,11 @@ python manage.py migrate
 
 # 创建模型的管理器
 
-为了使我们的应用程序更易读，不要在端点中充斥着大量业务逻辑，我们将为我们的模型类创建管理器。如果您遵循了上一章，您应该对此非常熟悉。简而言之，管理器是为Django模型提供查询操作的接口。
+为了使我们的应用程序更易读，不要在端点中充斥着大量业务逻辑，我们将为我们的模型类创建管理器。如果您遵循了上一章，您应该对此非常熟悉。简而言之，管理器是为 Django 模型提供查询操作的接口。
 
-默认情况下，Django为每个模型添加一个管理器；它存储在名为objects的属性上。Django添加到模型的默认管理器有时是足够的，不需要创建自定义管理器，但是将所有与数据库相关的代码保持在模型内是一个好习惯。这将使我们的代码更一致、可读，并且更易于测试和维护。
+默认情况下，Django 为每个模型添加一个管理器；它存储在名为 objects 的属性上。Django 添加到模型的默认管理器有时是足够的，不需要创建自定义管理器，但是将所有与数据库相关的代码保持在模型内是一个好习惯。这将使我们的代码更一致、可读，并且更易于测试和维护。
 
-在我们的情况下，我们感兴趣创建的唯一模型是名为Order的自定义模型管理器，但在我们开始实现订单管理器之前，我们需要创建一些辅助类。我们需要创建的第一个类是一个将定义在执行数据库查询时可能发生的自定义异常的类。当然，我们可以使用标准库中已经定义的异常，但是在应用程序的上下文中创建有意义的异常总是一个好习惯。
+在我们的情况下，我们感兴趣创建的唯一模型是名为 Order 的自定义模型管理器，但在我们开始实现订单管理器之前，我们需要创建一些辅助类。我们需要创建的第一个类是一个将定义在执行数据库查询时可能发生的自定义异常的类。当然，我们可以使用标准库中已经定义的异常，但是在应用程序的上下文中创建有意义的异常总是一个好习惯。
 
 我们要创建的三个异常是`InvalidArgumentError`，`OrderAlreadyCompletedError`和`OrderCancellationError`。
 
@@ -272,7 +272,7 @@ ORDER_STATUS = (
   Order.objects.filter(status=5)
 ```
 
-这段代码只有一个问题，你能猜到是什么吗？如果你猜到了*魔法*数字`5`，那你绝对是对的！想象一下，如果我们的同事需要维护这段代码，并且只看到那里的数字`5`，并不知道5实际上代表什么，他们会有多沮丧。因此，我们将创建一个枚举，以便用来表示不同的状态。让我们在`main`应用程序目录中创建一个名为`status.py`的文件，并添加以下枚举：
+这段代码只有一个问题，你能猜到是什么吗？如果你猜到了*魔法*数字`5`，那你绝对是对的！想象一下，如果我们的同事需要维护这段代码，并且只看到那里的数字`5`，并不知道 5 实际上代表什么，他们会有多沮丧。因此，我们将创建一个枚举，以便用来表示不同的状态。让我们在`main`应用程序目录中创建一个名为`status.py`的文件，并添加以下枚举：
 
 ```py
 from enum import Enum, auto
@@ -359,7 +359,7 @@ def get_all_orders_by_customer(self, customer_id):
         raise InvalidArgumentError('customer_id')
 ```
 
-`get_all_orders_by_customer`方法将`customer_id`作为参数。然后，我们使用filter函数来按`customer_id`过滤订单，同时按状态排序；仍在处理中的订单将位于QuerySet的顶部。
+`get_all_orders_by_customer`方法将`customer_id`作为参数。然后，我们使用 filter 函数来按`customer_id`过滤订单，同时按状态排序；仍在处理中的订单将位于 QuerySet 的顶部。
 
 如果`customer_id`无效，例如，如果我们传递的是字符串而不是整数，则会引发`ValueError`异常。我们捕获此异常并引发我们的自定义异常`InvalidArgumentError`。
 
@@ -383,9 +383,9 @@ def get_customer_completed_orders(self, customer_id):
         raise InvalidArgumentError('customer_id')
 ```
 
-第一个方法`get_customer_incomplete_orders`获取一个名为`customer_id`的参数。就像之前的方法一样；我们将捕获`ValueError`异常，以防`customer_id`无效，并引发`InvalidArgumentError`。这种方法的有趣之处在于过滤器。在这里，我们使用`Q()`对象，它封装了一个`Python`对象形式的SQL表达式。
+第一个方法`get_customer_incomplete_orders`获取一个名为`customer_id`的参数。就像之前的方法一样；我们将捕获`ValueError`异常，以防`customer_id`无效，并引发`InvalidArgumentError`。这种方法的有趣之处在于过滤器。在这里，我们使用`Q()`对象，它封装了一个`Python`对象形式的 SQL 表达式。
 
-在这里，我们有`~Q(status=Status.Completed.value)`，这是“not”运算符，等同于状态不是`Status.Complete`。我们还过滤`order_customer_id`以检查它是否等于方法的`customer_id`参数，最后，我们按状态对QuerySet进行排序。
+在这里，我们有`~Q(status=Status.Completed.value)`，这是“not”运算符，等同于状态不是`Status.Complete`。我们还过滤`order_customer_id`以检查它是否等于方法的`customer_id`参数，最后，我们按状态对 QuerySet 进行排序。
 
 `get_customer_completed_orders`基本上是一样的，但这次我们过滤状态等于`Status.Completed`的订单。
 
@@ -433,9 +433,9 @@ def set_next_status(self, order):
     order.save()
 ```
 
-这个方法只接受一个参数，即订单。我们检查订单是否有效，如果无效，我们引发`InvalidArgumentError`。我们还希望确保一旦订单达到“已完成”状态，就不能再更改。因此，我们检查订单是否处于“已完成”状态，然后引发`OrderAlreadyCompleted`异常。最后，我们将当前状态加1并保存对象。
+这个方法只接受一个参数，即订单。我们检查订单是否有效，如果无效，我们引发`InvalidArgumentError`。我们还希望确保一旦订单达到“已完成”状态，就不能再更改。因此，我们检查订单是否处于“已完成”状态，然后引发`OrderAlreadyCompleted`异常。最后，我们将当前状态加 1 并保存对象。
 
-现在，我们可以更改我们的`Order`模型，使其使用我们刚刚创建的`OrderManager`。打开主应用程序目录中的model.py文件，在`Order`类的末尾添加以下行：
+现在，我们可以更改我们的`Order`模型，使其使用我们刚刚创建的`OrderManager`。打开主应用程序目录中的 model.py 文件，在`Order`类的末尾添加以下行：
 
 ```py
 objects = OrderManager()
@@ -451,9 +451,9 @@ objects = OrderManager()
 
 我们为什么需要测试？对这个问题的简短回答是，测试将使我们知道方法或函数是否做了正确的事情。另一个原因（也是我认为最重要的原因之一）是，测试在进行代码更改时给我们更多的信心。
 
-Django在开箱即用的情况下提供了出色的工具来创建单元测试和集成测试，并结合像Selenium这样的框架，可以基本上测试我们应用的所有部分。
+Django 在开箱即用的情况下提供了出色的工具来创建单元测试和集成测试，并结合像 Selenium 这样的框架，可以基本上测试我们应用的所有部分。
 
-说了这些，让我们创建我们的第一个测试。当创建一个新的Django应用程序时，Django会在`app`目录中创建一个名为`test.py`的文件。您可以在其中编写您的测试，或者如果您更喜欢通过将测试分成多个文件来使项目更有组织性，您可以删除该文件并创建一个名为`tests`的目录，并将所有测试文件放在其中。由于我们只打算为Order模型管理器创建测试，我们将把所有测试都放在Django为我们创建的`tests.py`文件中。
+说了这些，让我们创建我们的第一个测试。当创建一个新的 Django 应用程序时，Django 会在`app`目录中创建一个名为`test.py`的文件。您可以在其中编写您的测试，或者如果您更喜欢通过将测试分成多个文件来使项目更有组织性，您可以删除该文件并创建一个名为`tests`的目录，并将所有测试文件放在其中。由于我们只打算为 Order 模型管理器创建测试，我们将把所有测试都放在 Django 为我们创建的`tests.py`文件中。
 
 # 创建测试文件
 
@@ -475,9 +475,9 @@ from .exceptions import InvalidArgumentError
 
 很好！我们首先导入相对增量函数，这样我们就可以轻松进行日期操作，比如向日期添加天数或月数。这在测试按一定时间段获取订单的方法时将非常有帮助。
 
-现在，我们导入一些与Django相关的内容。首先是`TestCase`类，它是`unittest.TestCase`的子类。由于我们将编写与数据库交互的测试，最好使用`django.tests.TestCase`而不是`unittest.TestCase`。Django的`TestCase`实现将确保您的测试在事务中运行，以提供隔离。这样，当运行测试时，由于测试套件中另一个测试创建的数据，我们将不会有不可预测的结果。
+现在，我们导入一些与 Django 相关的内容。首先是`TestCase`类，它是`unittest.TestCase`的子类。由于我们将编写与数据库交互的测试，最好使用`django.tests.TestCase`而不是`unittest.TestCase`。Django 的`TestCase`实现将确保您的测试在事务中运行，以提供隔离。这样，当运行测试时，由于测试套件中另一个测试创建的数据，我们将不会有不可预测的结果。
 
-我们还导入了一些我们将在测试中使用的模型类，`Order`，`OrderCustomer`模型，以及在测试更改订单状态的方法时使用的Status类。
+我们还导入了一些我们将在测试中使用的模型类，`Order`，`OrderCustomer`模型，以及在测试更改订单状态的方法时使用的 Status 类。
 
 在为应用程序编写测试时，我们不仅要测试*好*的情况，还要测试当出现问题时，当错误的参数传递给正在测试的函数和方法时。因此，我们导入我们自定义的错误类，以确保在正确的情况下引发正确的异常。
 
@@ -547,11 +547,11 @@ def test_cancel_order_with_invalid_argument(self):
         Order.objects.cancel_order({'id': 1})
 ```
 
-第一个测试`test_cancel_order`，首先获取ID为1的订单。我们使用`assertIsNotNone`函数断言返回的值不是`None`，同时使用`assertEqual`函数确保订单的状态是`Received`。
+第一个测试`test_cancel_order`，首先获取 ID 为 1 的订单。我们使用`assertIsNotNone`函数断言返回的值不是`None`，同时使用`assertEqual`函数确保订单的状态是`Received`。
 
 然后，我们从订单模型管理器中调用`cancel_order`方法传递订单，最后，我们再次使用`assertEqual`函数来验证订单的状态是否确实更改为`Cancelled`。
 
-第二个测试`test_cancel_complated_order`从获取ID等于`2`的订单开始；请记住，我们已将此订单设置为`Completed`状态。然后，我们做与上一个测试相同的事情；验证订单不等于`None`，并验证状态设置为`Complete`。最后，我们使用`assertRaises`函数测试，如果我们尝试取消已取消的订单，将引发正确的异常；在这种情况下，将引发`OrderCancellationError`类型的异常。
+第二个测试`test_cancel_complated_order`从获取 ID 等于`2`的订单开始；请记住，我们已将此订单设置为`Completed`状态。然后，我们做与上一个测试相同的事情；验证订单不等于`None`，并验证状态设置为`Complete`。最后，我们使用`assertRaises`函数测试，如果我们尝试取消已取消的订单，将引发正确的异常；在这种情况下，将引发`OrderCancellationError`类型的异常。
 
 最后，我们有`test_cancel_order_with_invalid_argument`函数，它将测试如果我们向`cancel_order`函数传递无效参数，是否会引发正确的异常。
 
@@ -559,7 +559,7 @@ def test_cancel_order_with_invalid_argument(self):
 
 现在，我们将为`get_all_orders_by_customer`方法添加测试。对于这个方法，我们需要测试：
 
-+   当给定顾客ID时，返回正确数量的订单
++   当给定顾客 ID 时，返回正确数量的订单
 
 +   当向方法传递无效参数时引发正确的异常
 
@@ -575,13 +575,13 @@ def test_get_all_order_by_customer_with_invalid_id(self):
         Order.objects.get_all_orders_by_customer('o')
 ```
 
-`get_all_orders_by_customer`方法的测试非常简单。在第一个测试中，我们获取ID为`1`的顾客的订单，并测试返回的项目数量是否等于`2`。
+`get_all_orders_by_customer`方法的测试非常简单。在第一个测试中，我们获取 ID 为`1`的顾客的订单，并测试返回的项目数量是否等于`2`。
 
 在第二个测试中，我们断言调用`get_all_orders_by_customer`时使用无效参数，实际上会引发`InvalidArgumentError`类型的异常。在这种情况下，测试将成功通过。
 
 # 获取顾客的不完整订单
 
-`get_customer_incomplete_orders`方法返回给定顾客ID的状态与`Completed`不同的所有订单。对于这个测试，我们需要验证：
+`get_customer_incomplete_orders`方法返回给定顾客 ID 的状态与`Completed`不同的所有订单。对于这个测试，我们需要验证：
 
 +   该方法返回正确数量的项目，以及返回的项目是否没有状态等于`Completed`
 
@@ -599,7 +599,7 @@ def test_get_customer_incomplete_orders_with_invalid_id(self):
         Order.objects.get_customer_incomplete_orders('o')
 ```
 
-测试`test_get_customer_incomplete_orders`从调用`get_customer_incomplete_orders`函数开始，并将顾客ID设置为`1`作为参数传递。然后，我们验证返回的项目数量是否正确；在这种情况下，只有一个不完整的订单，所以应该是`1`。最后，我们检查返回的项目是否实际上具有与`Completed`不同的状态。
+测试`test_get_customer_incomplete_orders`从调用`get_customer_incomplete_orders`函数开始，并将顾客 ID 设置为`1`作为参数传递。然后，我们验证返回的项目数量是否正确；在这种情况下，只有一个不完整的订单，所以应该是`1`。最后，我们检查返回的项目是否实际上具有与`Completed`不同的状态。
 
 另一个测试与之前测试异常的测试完全相同，只是调用该方法并断言已引发了正确的异常。
 
@@ -619,7 +619,7 @@ def test_get_customer_completed_orders_with_invalid_id(self):
         Order.objects.get_customer_completed_orders('o')
 ```
 
-首先，我们调用`get_customer_completed_orders`，传递顾客ID等于`1`，然后验证返回的项目数量是否等于`1`。最后，我们验证返回的项目是否实际上具有状态设置为`Completed`。
+首先，我们调用`get_customer_completed_orders`，传递顾客 ID 等于`1`，然后验证返回的项目数量是否等于`1`。最后，我们验证返回的项目是否实际上具有状态设置为`Completed`。
 
 # 按状态获取订单
 
@@ -745,7 +745,7 @@ def test_set_next_status_on_invalid_order(self):
         Order.objects.set_next_status({'order': 1})
 ```
 
-第一个测试`test_set_next_status`开始通过获取ID等于`1`的订单。然后，它断言订单对象不等于none，并且我们还断言订单状态的值为`Received`。然后，我们调用`set_next_status`方法，将订单作为参数传递。然后，我们再次断言以确保状态已经改变。如果订单的状态等于`2`，也就是`Status`枚举中的`Processing`，则测试将通过。
+第一个测试`test_set_next_status`开始通过获取 ID 等于`1`的订单。然后，它断言订单对象不等于 none，并且我们还断言订单状态的值为`Received`。然后，我们调用`set_next_status`方法，将订单作为参数传递。然后，我们再次断言以确保状态已经改变。如果订单的状态等于`2`，也就是`Status`枚举中的`Processing`，则测试将通过。
 
 另外两个测试与订单测试非常相似，我们断言异常，但值得一提的是测试`test_set_next_status_on_completed_order`断言，如果我们尝试在状态等于`Status.Completed`的订单上调用`set_next_status`，那么将引发`OrderAlreadyCompletedError`类型的异常。
 
@@ -795,13 +795,13 @@ def test_set_status_with_invalid_status(self):
         Order.objects.set_status(order, {'status': 1})
 ```
 
-我们不会遍历所有测试，因为它们测试异常的方式类似于我们之前实现的测试，但是值得浏览第一个测试。在`test_set_status`测试中，它将获取ID等于`1`的订单，正如我们在`setUpTestData`中定义的那样，其状态等于`Status.Received`。我们调用`set_status`方法，传递订单和新状态作为参数，在这种情况下是`Status.Processing`。设置新状态后，我们只需调用`assertEquals`来确保订单的状态实际上已更改为`Status.Processing`。
+我们不会遍历所有测试，因为它们测试异常的方式类似于我们之前实现的测试，但是值得浏览第一个测试。在`test_set_status`测试中，它将获取 ID 等于`1`的订单，正如我们在`setUpTestData`中定义的那样，其状态等于`Status.Received`。我们调用`set_status`方法，传递订单和新状态作为参数，在这种情况下是`Status.Processing`。设置新状态后，我们只需调用`assertEquals`来确保订单的状态实际上已更改为`Status.Processing`。
 
 # 创建订单模型序列化程序
 
-现在我们已经有了一切我们需要开始创建API端点。在这一部分，我们将为`Order`管理器中实现的每个方法创建端点。
+现在我们已经有了一切我们需要开始创建 API 端点。在这一部分，我们将为`Order`管理器中实现的每个方法创建端点。
 
-对于其中一些端点，我们将使用Django REST框架。使用Django REST框架的优势在于该框架包含了许多开箱即用的功能。它具有不同的身份验证方法，对对象的序列化非常强大，我最喜欢的是它将为您提供一个Web界面，您可以在其中浏览API，还包含了大量的基类和混合类，当您需要创建基于类的视图时。
+对于其中一些端点，我们将使用 Django REST 框架。使用 Django REST 框架的优势在于该框架包含了许多开箱即用的功能。它具有不同的身份验证方法，对对象的序列化非常强大，我最喜欢的是它将为您提供一个 Web 界面，您可以在其中浏览 API，还包含了大量的基类和混合类，当您需要创建基于类的视图时。
 
 所以，让我们马上开始吧！
 
@@ -850,13 +850,13 @@ class OrderSerializer(serializers.ModelSerializer):
     status = serializers.SerializerMethodField()
 ```
 
-首先，我们定义两个属性。`items`属性设置为`OrderItemSerializer`，这意味着当我们需要序列化JSON数据时，它将使用该序列化程序，当我们想要添加新订单时。`items`属性指的是订单包含的商品。在这里，我们只使用一个关键字参数`(many=True)`。这将告诉你，序列化程序的items将是一个数组。
+首先，我们定义两个属性。`items`属性设置为`OrderItemSerializer`，这意味着当我们需要序列化 JSON 数据时，它将使用该序列化程序，当我们想要添加新订单时。`items`属性指的是订单包含的商品。在这里，我们只使用一个关键字参数`(many=True)`。这将告诉你，序列化程序的 items 将是一个数组。
 
-状态字段有点特殊；如果你还记得`Order`模型中的状态字段，它被定义为`ChoiceField`。当我们在数据库中保存订单时，该字段将存储值`1`，如果订单状态为`Received`，则存储值`2`，如果状态为`Processing`，依此类推。当我们的API的消费者调用端点获取订单时，他们将对状态的名称感兴趣，而不是数字。
+状态字段有点特殊；如果你还记得`Order`模型中的状态字段，它被定义为`ChoiceField`。当我们在数据库中保存订单时，该字段将存储值`1`，如果订单状态为`Received`，则存储值`2`，如果状态为`Processing`，依此类推。当我们的 API 的消费者调用端点获取订单时，他们将对状态的名称感兴趣，而不是数字。
 
 因此，解决这个问题的方法是将字段定义为`SerializeMethodField`，然后我们将创建一个名为`get_status`的函数，它将返回订单状态的显示名称。我们很快就会看到`get_status`方法的实现是什么样子的。
 
-我们还定义了`order_customer`属性，它设置为`OrderCustomerSerializer`，这意味着在尝试添加新订单时，框架将使用`OrderCustomerSerializer`类来反序列化我们发送的JSON对象。
+我们还定义了`order_customer`属性，它设置为`OrderCustomerSerializer`，这意味着在尝试添加新订单时，框架将使用`OrderCustomerSerializer`类来反序列化我们发送的 JSON 对象。
 
 然后，我们定义一个`Meta`类，以便我们可以向序列化器类添加一些元数据信息：
 
@@ -868,7 +868,7 @@ class OrderSerializer(serializers.ModelSerializer):
                   'created_at', 'id', 'status', )
 ```
 
-第一个属性`depth`指定了在序列化之前应该遍历的关系深度。在这种情况下，它设置为`1`，因为在获取订单对象时，我们还希望获取有关客户和商品的信息。与其他序列化器一样，我们将模型设置为`Order`，并且fields属性指定了哪些字段将被序列化和反序列化。
+第一个属性`depth`指定了在序列化之前应该遍历的关系深度。在这种情况下，它设置为`1`，因为在获取订单对象时，我们还希望获取有关客户和商品的信息。与其他序列化器一样，我们将模型设置为`Order`，并且 fields 属性指定了哪些字段将被序列化和反序列化。
 
 然后，我们实现`get_status`方法：
 
@@ -940,7 +940,7 @@ def create(self, validated_data):
 }
 ```
 
-正如你所看到的，在这个JSON中，我们一次性传递了所有信息。这里，我们有`order`，`items`属性，它是订单项的列表，以及`order_customer`，其中包含提交订单的客户的信息。
+正如你所看到的，在这个 JSON 中，我们一次性传递了所有信息。这里，我们有`order`，`items`属性，它是订单项的列表，以及`order_customer`，其中包含提交订单的客户的信息。
 
 由于我们必须分别创建这些对象，我们首先弹出`order_customer`和`items`，所以我们有三个不同的对象。第一个`validated_customer`将只包含与下订单的人相关的数据。`validated_items`对象将只包含订单每个商品相关的数据，最后，`validated_data`对象将只包含订单本身的数据。
 
@@ -961,7 +961,7 @@ order = Order.objects.create(**validated_data)
 
 执行此操作的不同方式。例如，您可以分两部分进行；首先遍历项目列表并设置订单属性，然后再次遍历列表并创建`OrderItem`对象。然而，那样并不那么优雅，是吗？
 
-这里更好的方法是利用Python是一种多范式编程语言的事实，我们可以以更加函数式的方式解决这个问题：
+这里更好的方法是利用 Python 是一种多范式编程语言的事实，我们可以以更加函数式的方式解决这个问题：
 
 ```py
 mapped_items = map(
@@ -972,9 +972,9 @@ mapped_items = map(
 OrderItems.objects.bulk_create(mapped_items)
 ```
 
-在这里，我们利用了内置函数map之一。`map`函数将应用我指定的作为第一个参数的函数到作为第二个参数传递的可迭代对象上，然后返回一个包含结果的可迭代对象。
+在这里，我们利用了内置函数 map 之一。`map`函数将应用我指定的作为第一个参数的函数到作为第二个参数传递的可迭代对象上，然后返回一个包含结果的可迭代对象。
 
-我们将作为map的第一个参数传递的函数称为`partial`，来自`functools`模块。`partial`函数是一个高阶函数，意味着它将返回另一个函数（第一个参数中的函数），并将参数和关键字参数添加到其签名中。在前面的代码中，它将返回`self._create_order_item`，第一个参数将是可迭代的`validated_items`中的一个项目。第二个参数是我们之前创建的订单。
+我们将作为 map 的第一个参数传递的函数称为`partial`，来自`functools`模块。`partial`函数是一个高阶函数，意味着它将返回另一个函数（第一个参数中的函数），并将参数和关键字参数添加到其签名中。在前面的代码中，它将返回`self._create_order_item`，第一个参数将是可迭代的`validated_items`中的一个项目。第二个参数是我们之前创建的订单。
 
 之后，`mapped_items`的值应该包含一个`OrderItem`对象的列表，唯一剩下的事情就是调用`bulk_create`，它将为我们插入列表中的所有项目。
 
@@ -997,9 +997,9 @@ from .exceptions import OrderAlreadyCompletedError
 from .serializers import OrderSerializer
 ```
 
-在这里，我们从Django REST Framework导入了一些东西，主要是通用的，其中包含了我们将用来创建自定义视图的通用视图类的定义。状态包含了所有HTTP状态码，在向客户端发送响应时非常有用。然后，我们导入了`Response`类，它将允许我们向客户端发送内容，可以以不同的内容类型呈现，例如JSON和XML。
+在这里，我们从 Django REST Framework 导入了一些东西，主要是通用的，其中包含了我们将用来创建自定义视图的通用视图类的定义。状态包含了所有 HTTP 状态码，在向客户端发送响应时非常有用。然后，我们导入了`Response`类，它将允许我们向客户端发送内容，可以以不同的内容类型呈现，例如 JSON 和 XML。
 
-然后，我们从Django中导入`HttpResponse`，以及在rest框架中的`Response`的等价物。
+然后，我们从 Django 中导入`HttpResponse`，以及在 rest 框架中的`Response`的等价物。
 
 我们还导入了我们之前实现的所有自定义异常，这样我们就可以正确处理数据，并在出现问题时向客户端发送有用的错误消息。
 
@@ -1025,7 +1025,7 @@ class OrderListAPIBaseView(generics.ListAPIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 ```
 
-`OrderListAPIBaseView`继承自通用的`ListAPIView`，它为我们提供了get和list方法，我们可以重写这些方法以添加满足我们要求的功能。
+`OrderListAPIBaseView`继承自通用的`ListAPIView`，它为我们提供了 get 和 list 方法，我们可以重写这些方法以添加满足我们要求的功能。
 
 该类首先定义了两个属性；`serializer_class`，设置为`OrderSerializer`，以及`lookup_field`，在这种情况下我们将其设置为空字符串。我们将在子类中重写这个值。然后，我们定义了`get_queryset`方法，这也将在子类中被重写。
 
@@ -1072,7 +1072,7 @@ from .serializers import OrderSerializer
 
 首先，我们将从`django.http`模块导入`HttpReponse`，并从`django.shortcuts`模块导入`get_object_or_404`。后者只是一个帮助函数，它将获取一个对象，如果找不到它，将返回状态码为`440`（`NOT FOUND`）的响应。
 
-然后，我们导入generics以创建通用视图和状态，并从`rest_framework`中导入`Response`类。
+然后，我们导入 generics 以创建通用视图和状态，并从`rest_framework`中导入`Response`类。
 
 最后，我们导入一些模型、帮助方法和函数，以及我们将在视图中使用的序列化器。
 
@@ -1126,7 +1126,7 @@ class OrderByStatusView(OrderListAPIBaseView):
 
 正如你在这里所看到的，我们将`lookup_field`定义为`status_id`，并重写`get_queryset`以调用`get_orders_by_status`，传递状态值。
 
-在这里，我们使用`Status`（`status_id`），因此我们传递`Enum`项而不仅仅是ID。
+在这里，我们使用`Status`（`status_id`），因此我们传递`Enum`项而不仅仅是 ID。
 
 到目前为止，我们实现的所有视图都只接受`GET`请求，并且将返回订单列表。现在，我们将实现一个支持`POST`请求的视图，以便能够接收新订单：
 
@@ -1145,7 +1145,7 @@ class CreateOrderView(generics.CreateAPIView):
         return Response(status=status.HTTP_400_BAD_REQUEST)
 ```
 
-现在，这个类与我们创建的前几个类有些不同，基类是通用的。`CreateAPIView`为我们提供了一个`post`方法，因此我们重写该方法以添加我们需要的逻辑。首先，我们获取请求的数据并将其作为参数传递给`OrderSerializer`类；它将对数据进行反序列化并将其设置为序列化器变量。然后，我们调用`is_valid()`方法，它将验证接收到的数据。如果请求的数据无效，我们返回一个`400`响应（`BAD REQUEST`），否则，我们继续调用`save()`方法。这个方法将在序列化器上内部调用`create`方法，并且它将创建新订单以及新订单的客户和订单项目。如果一切顺利，我们将返回一个`202`响应（`CREATED`），并附上新创建订单的ID。
+现在，这个类与我们创建的前几个类有些不同，基类是通用的。`CreateAPIView`为我们提供了一个`post`方法，因此我们重写该方法以添加我们需要的逻辑。首先，我们获取请求的数据并将其作为参数传递给`OrderSerializer`类；它将对数据进行反序列化并将其设置为序列化器变量。然后，我们调用`is_valid()`方法，它将验证接收到的数据。如果请求的数据无效，我们返回一个`400`响应（`BAD REQUEST`），否则，我们继续调用`save()`方法。这个方法将在序列化器上内部调用`create`方法，并且它将创建新订单以及新订单的客户和订单项目。如果一切顺利，我们将返回一个`202`响应（`CREATED`），并附上新创建订单的 ID。
 
 现在，我们将创建三个函数，用于处理订单取消、设置下一个订单状态，以及最后，设置特定订单的状态：
 
@@ -1179,7 +1179,7 @@ def set_status(request, order_id, status_id):
     )
 ```
 
-正如您所看到的，我们在这里没有使用Django REST框架的基于类的视图。我们只是使用常规函数。第一个函数`cancel_order`接收两个参数——请求和`order_id`。我们首先使用快捷函数`get_object_or_404`。`get_object_or_404`函数会在无法找到与第二个参数中传递的条件匹配的对象时返回`404`响应（`未找到`）。否则，它将返回该对象。
+正如您所看到的，我们在这里没有使用 Django REST 框架的基于类的视图。我们只是使用常规函数。第一个函数`cancel_order`接收两个参数——请求和`order_id`。我们首先使用快捷函数`get_object_or_404`。`get_object_or_404`函数会在无法找到与第二个参数中传递的条件匹配的对象时返回`404`响应（`未找到`）。否则，它将返回该对象。
 
 然后，我们使用了我们在`view_helpers.py`文件中实现的辅助函数`set_status_handler`。这个函数接收另一个函数作为参数。因此，我们传递了一个将执行我们想要的`Order`模型管理器中的方法的`lambda`函数。在这种情况下，当执行`lambda`函数时，它将执行我们在`Order`模型管理器中定义的`cancel_order`方法，传递我们想要取消的订单。
 
@@ -1187,9 +1187,9 @@ def set_status(request, order_id, status_id):
 
 `set_status`函数包含了一些更多的逻辑，但它也很简单。这个函数将接收两个参数，`order_id`和`status_id`。首先，我们获取订单对象，然后使用`status_id`查找状态。如果状态不存在，将引发`ValueError`异常，然后我们返回`400`响应（`错误请求`）。否则，我们调用`set_status_handle`，传递一个`lambda`函数，该函数将执行`set_status`函数，传递订单和状态对象。
 
-# 设置服务URL
+# 设置服务 URL
 
-现在我们已经将所有视图放在了适当的位置，是时候开始设置我们的订单服务用户可以调用以获取和修改订单的URL了。让我们继续打开主`app`目录中的`urls.py`文件；首先，我们需要导入所有要使用的视图类和函数：
+现在我们已经将所有视图放在了适当的位置，是时候开始设置我们的订单服务用户可以调用以获取和修改订单的 URL 了。让我们继续打开主`app`目录中的`urls.py`文件；首先，我们需要导入所有要使用的视图类和函数：
 
 ```py
 from .views import (
@@ -1204,7 +1204,7 @@ from .views import (
 )
 ```
 
-太好了！现在，我们可以开始添加URL：
+太好了！现在，我们可以开始添加 URL：
 
 ```py
 urlpatterns = [
@@ -1243,9 +1243,9 @@ urlpatterns = [
 ]
 ```
 
-要添加新的URL，我们需要使用`path`函数来传递第一个参数，即`URL`。第二个参数是在发送请求到由第一个参数指定的`URL`时将执行的函数。我们创建的每个URL都必须添加到`urlspatterns`列表中。请注意，Django 2简化了如何向URL添加参数。以前，您需要使用正则表达式；现在，您只需遵循`<type:param>`的表示法。
+要添加新的 URL，我们需要使用`path`函数来传递第一个参数，即`URL`。第二个参数是在发送请求到由第一个参数指定的`URL`时将执行的函数。我们创建的每个 URL 都必须添加到`urlspatterns`列表中。请注意，Django 2 简化了如何向 URL 添加参数。以前，您需要使用正则表达式；现在，您只需遵循`<type:param>`的表示法。
 
-在我们尝试这个之前，我们必须打开`urls.py`文件，但这次是在订单目录中，因为我们需要包括我们刚刚创建的URL。
+在我们尝试这个之前，我们必须打开`urls.py`文件，但这次是在订单目录中，因为我们需要包括我们刚刚创建的 URL。
 
 `urls.py`文件应该类似于这样：
 
@@ -1273,7 +1273,7 @@ urlpatterns = [
 ]
 ```
 
-现在，我们希望我们在主应用程序中定义的所有URL都位于`/api/`下。为了实现这一点，我们唯一需要做的就是创建一个新的路由，并包括来自主应用程序的URL。在`urlpatterns`列表中添加以下代码：
+现在，我们希望我们在主应用程序中定义的所有 URL 都位于`/api/`下。为了实现这一点，我们唯一需要做的就是创建一个新的路由，并包括来自主应用程序的 URL。在`urlpatterns`列表中添加以下代码：
 
 ```py
 path('api/', include('main.urls')),
@@ -1285,9 +1285,9 @@ path('api/', include('main.urls')),
 from django.urls import include
 ```
 
-将订单服务部署到AWS时，它不会是公共的；但是作为额外的安全措施，我们将为此服务启用令牌身份验证。
+将订单服务部署到 AWS 时，它不会是公共的；但是作为额外的安全措施，我们将为此服务启用令牌身份验证。
 
-要调用服务的API，我们必须发送身份验证令牌。让我们继续启用它。在`order`目录中打开`settings.py`文件，并添加以下内容：
+要调用服务的 API，我们必须发送身份验证令牌。让我们继续启用它。在`order`目录中打开`settings.py`文件，并添加以下内容：
 
 ```py
 REST_FRAMEWORK = {
@@ -1328,7 +1328,7 @@ INSTALLED_APPS = [
 python manage.py migrate
 ```
 
-Django REST框架具有开箱即用的视图，因此用户可以调用并获取令牌。但是，为简单起见，我们将创建一个可以访问API的用户。然后，我们可以手动创建一个身份验证令牌，该令牌可用于对订单服务API进行请求。
+Django REST 框架具有开箱即用的视图，因此用户可以调用并获取令牌。但是，为简单起见，我们将创建一个可以访问 API 的用户。然后，我们可以手动创建一个身份验证令牌，该令牌可用于对订单服务 API 进行请求。
 
 让我们继续创建这个用户。使用以下命令启动服务：
 
@@ -1340,11 +1340,11 @@ python manage.py runserver
 
 在身份验证和授权选项卡下，您将看到`Users`模型。单击添加并创建一个用户名为`api_user`的用户。创建用户后，返回管理首页，在`AUTH TOKEN`下，单击添加。在下拉菜单中选择`api_user`，然后单击保存。您应该会看到以下页面：
 
-![](assets/edccbabd-f4f7-4bf9-9e8a-930fe3e07c42.png)
+![](img/edccbabd-f4f7-4bf9-9e8a-930fe3e07c42.png)
 
-复制密钥，让我们创建一个小脚本，只需添加一个订单，以便我们可以测试API。
+复制密钥，让我们创建一个小脚本，只需添加一个订单，以便我们可以测试 API。
 
-创建一个名为`send_order.py`的文件；它可以放在任何您想要的地方，只要您已激活虚拟环境，因为我们将使用requests包将订单发送到订单服务。将以下内容添加到`send_order.py`文件中：
+创建一个名为`send_order.py`的文件；它可以放在任何您想要的地方，只要您已激活虚拟环境，因为我们将使用 requests 包将订单发送到订单服务。将以下内容添加到`send_order.py`文件中：
 
 ```py
 import json
@@ -1424,23 +1424,23 @@ python send_order.py --orderid 10
 
 您可以看到以下结果：
 
-![](assets/2a95e41c-4f91-4a4e-ab80-64223855e413.png)
+![](img/2a95e41c-4f91-4a4e-ab80-64223855e413.png)
 
-什么？这里出了些问题，你能猜到是什么吗？请注意在我运行Django开发服务器的终端中打印的屏幕截图中的日志消息：
+什么？这里出了些问题，你能猜到是什么吗？请注意在我运行 Django 开发服务器的终端中打印的屏幕截图中的日志消息：
 
 ```py
 [21/Jan/2018 09:30:37] "PUT /api/order/add/ HTTP/1.1" 401 58
 ```
 
-好的，这里说服务器已收到了对`/api/order/add/`的PUT请求，这里需要注意的一件事是代码`401`表示`未经授权`。这意味着我们在`settings.py`文件中添加的设置运行正常。要调用API，我们需要进行身份验证，而我们正在使用令牌身份验证。
+好的，这里说服务器已收到了对`/api/order/add/`的 PUT 请求，这里需要注意的一件事是代码`401`表示`未经授权`。这意味着我们在`settings.py`文件中添加的设置运行正常。要调用 API，我们需要进行身份验证，而我们正在使用令牌身份验证。
 
-要为用户创建一个令牌，我们需要在Django管理UI中登录。在那里，我们将找到如下所示的`AUTH TOKEN`部分：
+要为用户创建一个令牌，我们需要在 Django 管理 UI 中登录。在那里，我们将找到如下所示的`AUTH TOKEN`部分：
 
-![](assets/2d36948d-637f-4279-8ae5-2ab99d1abc0a.png)
+![](img/2d36948d-637f-4279-8ae5-2ab99d1abc0a.png)
 
 单击右侧的绿色加号。然后，您可以选择要为其创建令牌的用户，当您准备好时，单击保存。之后，您将看到已创建的令牌列表：
 
-![](assets/20e4a65d-5b1a-4455-9ed6-8aad6945c683.png)
+![](img/20e4a65d-5b1a-4455-9ed6-8aad6945c683.png)
 
 该密钥是您要在请求的**HEADER**中发送的密钥。
 
@@ -1455,7 +1455,7 @@ headers = {
 }
 ```
 
-令牌变量是我们为用户`api_user`创建的令牌。要获取令牌，只需登录到Django管理UI，在`AUTH TOKEN`下，您将看到已创建的令牌。只需删除我在此处添加的令牌，并用在您的应用程序上为`api_user`生成的令牌替换它。
+令牌变量是我们为用户`api_user`创建的令牌。要获取令牌，只需登录到 Django 管理 UI，在`AUTH TOKEN`下，您将看到已创建的令牌。只需删除我在此处添加的令牌，并用在您的应用程序上为`api_user`生成的令牌替换它。
 
 然后，我们需要在请求中发送头。更改以下代码：
 
@@ -1476,7 +1476,7 @@ response = requests.put(
 
 现在，我们可以转到终端并再次运行我们的代码。您应该看到类似于以下屏幕截图中显示的输出：
 
-![](assets/b834857f-c578-4561-bf20-7c10a898da7a.png)
+![](img/b834857f-c578-4561-bf20-7c10a898da7a.png)
 
 请注意，现在我们得到了以下日志消息：
 
@@ -1484,11 +1484,11 @@ response = requests.put(
 [21/Jan/2018 09:49:40] "PUT /api/order/add/ HTTP/1.1" 201 0
 ```
 
-这意味着身份验证正常工作。继续花时间探索Django管理UI，并验证我们现在在数据库中创建了一个客户和一个订单以及一些商品。
+这意味着身份验证正常工作。继续花时间探索 Django 管理 UI，并验证我们现在在数据库中创建了一个客户和一个订单以及一些商品。
 
 让我们尝试一些其他端点，看看它们是否按预期工作。例如，我们可以获取刚刚创建的客户的所有订单。
 
-您可以使用任何工具对端点进行小型测试。有一些非常方便的浏览器插件可以安装，或者如果您像我一样喜欢在终端上做所有事情，您可以使用cURL。或者，如果您想尝试使用Python构建一些东西，可以安装`httpie`包，使用pip命令`pip install httpie --upgrade --user`在本地目录下`./local/bin`安装`httpie`。所以，不要忘记将此目录添加到您的PATH中。我喜欢使用`httpie`而不是cURL，因为`httpie`显示了一个漂亮和格式化的JSON输出，这样我就可以更好地查看从端点返回的响应。
+您可以使用任何工具对端点进行小型测试。有一些非常方便的浏览器插件可以安装，或者如果您像我一样喜欢在终端上做所有事情，您可以使用 cURL。或者，如果您想尝试使用 Python 构建一些东西，可以安装`httpie`包，使用 pip 命令`pip install httpie --upgrade --user`在本地目录下`./local/bin`安装`httpie`。所以，不要忘记将此目录添加到您的 PATH 中。我喜欢使用`httpie`而不是 cURL，因为`httpie`显示了一个漂亮和格式化的 JSON 输出，这样我就可以更好地查看从端点返回的响应。
 
 所以，让我们尝试我们创建的第一个`GET`端点：
 
@@ -1542,7 +1542,7 @@ X-Frame-Options: SAMEORIGIN
 
 # 与在线游戏商店的集成
 
-现在我们的服务已经运行起来了，我们准备完成[第7章](a8e0af3b-67d9-4649-986b-041d136af0e8.xhtml)中的Django在线视频游戏商店项目。我们不打算进行太多更改，但有两个改进我们要做：
+现在我们的服务已经运行起来了，我们准备完成第七章中的 Django 在线视频游戏商店项目。我们不打算进行太多更改，但有两个改进我们要做：
 
 +   目前，在在线视频游戏商店中，无法提交订单。我们网站的用户只能将商品添加到购物车中，查看和编辑购物车中的商品。我们将完成这个实现，并创建一个视图，以便我们可以提交订单。
 
@@ -1550,7 +1550,7 @@ X-Frame-Options: SAMEORIGIN
 
 所以，让我们开始吧！
 
-我们要做的第一个变化是为我们在服务订单中创建的`api_user`添加身份验证令牌。我们还想要添加订单服务的基本URL，这样我们就可以更容易地构建我们需要执行请求的URL。在`gamestore`目录中的`settings.py`文件中添加这两个常量变量：
+我们要做的第一个变化是为我们在服务订单中创建的`api_user`添加身份验证令牌。我们还想要添加订单服务的基本 URL，这样我们就可以更容易地构建我们需要执行请求的 URL。在`gamestore`目录中的`settings.py`文件中添加这两个常量变量：
 
 ```py
 ORDER_SERVICE_AUTHTOKEN = '744cf4f8bd628e62f248444a478ce06681cb8089'
@@ -1607,14 +1607,14 @@ OrderItem = namedtuple('OrderItem',
 
 很好！我们刚刚在按钮周围创建了一个表单，并在表单中添加了跨站点请求伪造令牌，这样当我们点击按钮时，它将发送一个请求到`cart/send`。
 
-让我们添加新的URL。在主`app`目录中打开`urls.py`文件，然后添加两个新的URL：
+让我们添加新的 URL。在主`app`目录中打开`urls.py`文件，然后添加两个新的 URL：
 
 ```py
 path(r'cart/send', views.send_cart),
 path(r'my-orders/', views.my_orders),
 ```
 
-您可以将这两个URL定义放在`/cart/`URL的定义之后。
+您可以将这两个 URL 定义放在`/cart/`URL 的定义之后。
 
 打开`views.py`文件并添加一些新的导入：
 
@@ -1771,7 +1771,7 @@ def my_orders(request):
 {% endblock %}
 ```
 
-这个模板非常基础；它只是循环订单，然后循环商品并构建一个包含商品信息的HTML表格。
+这个模板非常基础；它只是循环订单，然后循环商品并构建一个包含商品信息的 HTML 表格。
 
 我们需要在`site.css`中做一些更改，这是在线视频游戏商店的自定义样式。打开`static/styles`文件夹中的`site.css`文件，让我们做一些修改。首先，找到以下代码，如下所示：
 
@@ -1822,7 +1822,7 @@ def my_orders(request):
 </li>
 ```
 
-最后，我们要做的最后一项更改是改进我们在UI中显示的错误消息的布局。找到`base.html`文件末尾的此代码：
+最后，我们要做的最后一项更改是改进我们在 UI 中显示的错误消息的布局。找到`base.html`文件末尾的此代码：
 
 ```py
 {% if messages %}
@@ -1853,7 +1853,7 @@ def my_orders(request):
 
 我们已经准备就绪。现在，我们需要启动网站和服务，以便验证一切是否正常工作。
 
-需要记住的一件事是，为了测试，我们需要在不同的端口上运行Django应用程序。我们可以使用默认端口`800`运行网站（游戏在线商店），对于订单服务，我们可以使用端口`8001`。
+需要记住的一件事是，为了测试，我们需要在不同的端口上运行 Django 应用程序。我们可以使用默认端口`800`运行网站（游戏在线商店），对于订单服务，我们可以使用端口`8001`。
 
 打开两个终端；在一个终端中，我们将启动在线视频游戏商店：
 
@@ -1871,21 +1871,21 @@ python manage.py runserver 127.0.0.1:8001
 
 如果一切顺利，您应该在页面顶部看到通知，如下所示：
 
-![](assets/23172db2-3235-40a2-8e5d-7fa0e02142bd.png)
+![](img/23172db2-3235-40a2-8e5d-7fa0e02142bd.png)
 
 太棒了！它正如预期的那样工作。请注意，在将订单发送到订单服务后，购物车也被清空了。
 
 现在，点击顶部菜单上的`ORDERS`选项，您应该看到我们刚刚提交的订单：
 
-![](assets/9a3ff13e-c15e-4cce-8cfa-7d66c14e0787.png)
+![](img/9a3ff13e-c15e-4cce-8cfa-7d66c14e0787.png)
 
-# 部署到AWS
+# 部署到 AWS
 
 现在，是时候向世界展示我们迄今为止所做的工作了。
 
-我们将在Amazon Web服务的EC2实例上部署gamestore Django应用程序和订单服务。
+我们将在 Amazon Web 服务的 EC2 实例上部署 gamestore Django 应用程序和订单服务。
 
-本节不涉及配置虚拟私有云、安全组、路由表和EC2实例。Packt有许多关于这个主题的优秀书籍和视频可供参考。
+本节不涉及配置虚拟私有云、安全组、路由表和 EC2 实例。Packt 有许多关于这个主题的优秀书籍和视频可供参考。
 
 相反，我们将假设您已经设置好了环境，并专注于：
 
@@ -1897,17 +1897,17 @@ python manage.py runserver 127.0.0.1:8001
 
 +   安装和配置`nginx`
 
-我的AWS设置非常简单，但绝对适用于更复杂的设置。现在，我有一个VPC，一个子网和两个EC2实例（`gamestore`和order-service）。请参阅以下截图：
+我的 AWS 设置非常简单，但绝对适用于更复杂的设置。现在，我有一个 VPC，一个子网和两个 EC2 实例（`gamestore`和 order-service）。请参阅以下截图：
 
-![](assets/e36b74d3-ac74-4979-851d-878b9b9f5b7b.png)
+![](img/e36b74d3-ac74-4979-851d-878b9b9f5b7b.png)
 
-我们可以从`gamestore`应用程序开始；通过ssh连接到您希望部署游戏在线应用程序的EC2实例。请记住，要在这些实例中的一个中进行`ssh`，您需要拥有`.pem`文件：
+我们可以从`gamestore`应用程序开始；通过 ssh 连接到您希望部署游戏在线应用程序的 EC2 实例。请记住，要在这些实例中的一个中进行`ssh`，您需要拥有`.pem`文件：
 
 ```py
 ssh -i gamestore-keys.pem ec2-user@35.176.16.157
 ```
 
-我们将首先更新在该计算机上安装的任何软件包；虽然不是必需的，但这是一个很好的做法，因为其中一些软件包可能具有安全修复和性能改进，您可能希望在安装时拥有这些改进。Amazon Linux使用`yum`软件包管理器，因此我们运行以下命令：
+我们将首先更新在该计算机上安装的任何软件包；虽然不是必需的，但这是一个很好的做法，因为其中一些软件包可能具有安全修复和性能改进，您可能希望在安装时拥有这些改进。Amazon Linux 使用`yum`软件包管理器，因此我们运行以下命令：
 
 ```py
 sudo yum update
@@ -1915,7 +1915,7 @@ sudo yum update
 
 只需对任何需要更新的软件包回答“是”`y`。
 
-这些EC2实例默认未安装Python，因此我们也需要安装它：
+这些 EC2 实例默认未安装 Python，因此我们也需要安装它：
 
 ```py
 sudo yum install python36.x86_64 python36-pip.noarch python36- setuptools.noarch
@@ -1939,17 +1939,17 @@ sudo pip-3.6 install django requests pillow gunicorn
 scp -R -i gamestore-keys.pem ./gamestore ec2-user@35.176.16.157:~/gamestore
 ```
 
-此命令将递归地将本地机器上`gamestore`目录中的所有文件复制到EC2实例中我们的主目录中。
+此命令将递归地将本地机器上`gamestore`目录中的所有文件复制到 EC2 实例中我们的主目录中。
 
-# 修改settings.py文件
+# 修改 settings.py 文件
 
-这里有一件事情我们需要改变。在`settings.py`文件中，有一个名为`ALLOWED_HOSTS`的列表，在我们创建Django项目时为空。我们需要添加我们将部署应用程序的EC2的IP地址；在我的情况下，它将是：
+这里有一件事情我们需要改变。在`settings.py`文件中，有一个名为`ALLOWED_HOSTS`的列表，在我们创建 Django 项目时为空。我们需要添加我们将部署应用程序的 EC2 的 IP 地址；在我的情况下，它将是：
 
 ```py
 ALLOWED_HOSTS=["35.176.16.157"]
 ```
 
-我们还需要更改文件末尾定义的`ORDER_SERVICE_BASEURL`。它需要是我们将部署到订单服务的实例的地址。在我的情况下，IP是`35.176.194.15`，所以我的变量看起来像这样：
+我们还需要更改文件末尾定义的`ORDER_SERVICE_BASEURL`。它需要是我们将部署到订单服务的实例的地址。在我的情况下，IP 是`35.176.194.15`，所以我的变量看起来像这样：
 
 ```py
 ORDER_SERVICE_BASEURL = "http://35.176.194.15"
@@ -2003,9 +2003,9 @@ sudo gunicorn -u nginx gamestore.wsgi
 
 # 部署订单服务
 
-部署订单服务与`gamestore`项目基本相同，唯一的区别是我们将安装不同的Python依赖项并将应用程序部署到不同的目录。所以，让我们开始吧。
+部署订单服务与`gamestore`项目基本相同，唯一的区别是我们将安装不同的 Python 依赖项并将应用程序部署到不同的目录。所以，让我们开始吧。
 
-您几乎可以重复直到安装`nginx`步骤的所有步骤。还要确保您从现在开始使用另一个EC2实例的弹性IP地址。
+您几乎可以重复直到安装`nginx`步骤的所有步骤。还要确保您从现在开始使用另一个 EC2 实例的弹性 IP 地址。
 
 安装`nginx`后，我们可以安装订单服务的依赖项：
 
@@ -2019,7 +2019,7 @@ sudo pip-3.6 install django djangorestframework requests
 scp -R -i order-service-keys.pem ./order ec2-user@35.176.194.15:~/gamestore
 ```
 
-与`gamestore`一样，我们还需要编辑`settings.py`文件并添加我们的EC2实例弹性IP：
+与`gamestore`一样，我们还需要编辑`settings.py`文件并添加我们的 EC2 实例弹性 IP：
 
 ```py
 ALLOWED_HOSTS=["35.176.194.15"]
@@ -2047,7 +2047,7 @@ location / {
 }
 ```
 
-这次，我们不需要配置静态文件夹，因为订单服务没有像图像、模板、JS或CSS文件这样的东西。
+这次，我们不需要配置静态文件夹，因为订单服务没有像图像、模板、JS 或 CSS 文件这样的东西。
 
 重新启动`nginx`服务：
 
@@ -2071,11 +2071,11 @@ sudo gunicorn -u nginx order.wsgi
 
 浏览到该网站，您将看到第一页。所有产品都在加载，登录和注销部分也正常工作。这是我的系统的截图：
 
-![](assets/9660d0a6-ccf9-4d45-981a-f541742d1c64.png)
+![](img/9660d0a6-ccf9-4d45-981a-f541742d1c64.png)
 
 如果您浏览使用订单服务的视图，例如订单部分，您可以验证一切是否正常运行，如果您在网站上下了任何订单，您应该在这里看到订单列表，如下面的截图所示：
 
-![](assets/b57770dd-21a8-4748-81ae-5c8326529984.png)
+![](img/b57770dd-21a8-4748-81ae-5c8326529984.png)
 
 # 总结
 

@@ -14,7 +14,7 @@
 
 正如其名称所示，布局用于以所需格式排列小部件。在布局中排列某些小部件时，自动将某些尺寸和对齐约束应用于小部件。例如，增大窗口的尺寸时，布局中的小部件也会增大，以利用增加的空间。同样，减小窗口的尺寸时，布局中的小部件也会减小。以下问题出现了：布局如何知道小部件的推荐尺寸是多少？
 
-基本上，每个小部件都有一个名为sizeHint的属性，其中包含小部件的推荐尺寸。当窗口调整大小并且布局大小也改变时，通过小部件的sizeHint属性，布局管理器知道小部件的尺寸要求。
+基本上，每个小部件都有一个名为 sizeHint 的属性，其中包含小部件的推荐尺寸。当窗口调整大小并且布局大小也改变时，通过小部件的 sizeHint 属性，布局管理器知道小部件的尺寸要求。
 
 为了在小部件上应用尺寸约束，可以使用以下两个属性：
 
@@ -22,7 +22,7 @@
 
 +   最大尺寸：同样，如果窗口增大，小部件不会变得比最大尺寸属性中指定的尺寸更大。
 
-当设置了前述属性时，sizeHint属性中指定的值将被覆盖。
+当设置了前述属性时，sizeHint 属性中指定的值将被覆盖。
 
 要在布局中排列小部件，只需选择所有小部件，然后单击工具栏上的“布局管理器”。另一种方法是右键单击以打开上下文菜单。从上下文菜单中，可以选择“布局”菜单选项，然后从弹出的子菜单中选择所需的布局。
 
@@ -30,7 +30,7 @@
 
 布局可以嵌套。
 
-以下是Qt Designer提供的布局管理器：
+以下是 Qt Designer 提供的布局管理器：
 
 +   水平布局
 
@@ -62,53 +62,53 @@
 
 1.  还要将按钮小部件的文本属性设置为`提交`。
 
-1.  由于此应用程序的目的是了解布局而不是其他任何内容，因此我们不会设置应用程序中任何小部件的objectName属性。
+1.  由于此应用程序的目的是了解布局而不是其他任何内容，因此我们不会设置应用程序中任何小部件的 objectName 属性。
 
 现在表单将显示如下截图所示：
 
-![](assets/a58fadae-ef2c-4415-b9f1-a50a23a0f840.png)
+![](img/a58fadae-ef2c-4415-b9f1-a50a23a0f840.png)
 
-1.  我们将在每对Label和LineEdit小部件上应用水平布局。因此，单击文本为`Name`的Label小部件，并保持按住*Ctrl*键，然后单击其旁边的LineEdit小部件。
+1.  我们将在每对 Label 和 LineEdit 小部件上应用水平布局。因此，单击文本为`Name`的 Label 小部件，并保持按住*Ctrl*键，然后单击其旁边的 LineEdit 小部件。
 
 您可以使用*Ctrl* +左键选择多个小部件。
 
-1.  选择Label和LineEdit小部件后，右键单击并从打开的上下文菜单中选择布局菜单选项。
+1.  选择 Label 和 LineEdit 小部件后，右键单击并从打开的上下文菜单中选择布局菜单选项。
 
-1.  选择布局菜单选项后，屏幕上将出现几个子菜单选项；选择水平布局子菜单选项。两个Label和LineEdit小部件将水平对齐，如下截图所示：
+1.  选择布局菜单选项后，屏幕上将出现几个子菜单选项；选择水平布局子菜单选项。两个 Label 和 LineEdit 小部件将水平对齐，如下截图所示：
 
-![](assets/bdc1cac6-e00f-4061-8483-08bdba5442ce.png)
+![](img/bdc1cac6-e00f-4061-8483-08bdba5442ce.png)
 
 1.  如果您想要打破布局怎么办？这很简单：您可以随时通过选择布局并右键单击来打破任何布局。上下文菜单将弹出；从上下文菜单中选择布局菜单选项，然后选择打破布局子菜单选项。
 
-1.  要水平对齐文本为`Email Address`的第二对Label小部件和其旁边的LineEdit小部件，请重复步骤6和7中提到的相同过程。这对Label和LineEdit小部件也将水平对齐，如下截图所示。
+1.  要水平对齐文本为`Email Address`的第二对 Label 小部件和其旁边的 LineEdit 小部件，请重复步骤 6 和 7 中提到的相同过程。这对 Label 和 LineEdit 小部件也将水平对齐，如下截图所示。
 
 您可以看到一个红色的矩形围绕着这两个小部件。这个红色的矩形是水平布局窗口：
 
-![](assets/4539ec46-5518-4979-b6a9-5fd9edd6ecf3.png)
+![](img/4539ec46-5518-4979-b6a9-5fd9edd6ecf3.png)
 
-1.  要在第一对Label和LineEdit小部件之间创建一些空间，请从小部件框的间隔器选项卡中拖动水平间隔器小部件，并将其放置在文本为`Name`的Label小部件和其旁边的LineEdit小部件之间。
+1.  要在第一对 Label 和 LineEdit 小部件之间创建一些空间，请从小部件框的间隔器选项卡中拖动水平间隔器小部件，并将其放置在文本为`Name`的 Label 小部件和其旁边的 LineEdit 小部件之间。
 
 水平间隔器小部件最初占据两个小部件之间的默认空间。间隔器显示为表单上的蓝色弹簧。
 
-1.  通过拖动其节点来调整水平间隔器的大小，以限制LineEdit小部件的宽度，如下截图所示：
+1.  通过拖动其节点来调整水平间隔器的大小，以限制 LineEdit 小部件的宽度，如下截图所示：
 
-![](assets/76bf6cf9-c68b-43bd-8db9-9931a47f0906.png)
+![](img/76bf6cf9-c68b-43bd-8db9-9931a47f0906.png)
 
-1.  从第一对Label和LineEdit小部件的水平布局小部件的红色矩形中选择，并将其向右拖动，使其宽度等于第二对小部件。
+1.  从第一对 Label 和 LineEdit 小部件的水平布局小部件的红色矩形中选择，并将其向右拖动，使其宽度等于第二对小部件。
 
 1.  拖动水平布局小部件时，水平间隔器将增加其宽度，以消耗两个小部件之间的额外空白空间，如下截图所示：
 
-![](assets/8404860e-69fe-4ea9-a15a-d36755fb2ef8.png)
+![](img/8404860e-69fe-4ea9-a15a-d36755fb2ef8.png)
 
 1.  将应用程序保存为`demoHorizontalLayout.ui`。
 
-使用Qt Designer创建的用户界面存储在`.ui`文件中，这是一个XML文件，我们需要将其转换为Python代码。要进行转换，您需要打开命令提示符窗口并导航到保存文件的文件夹，然后发出以下命令行：
+使用 Qt Designer 创建的用户界面存储在`.ui`文件中，这是一个 XML 文件，我们需要将其转换为 Python 代码。要进行转换，您需要打开命令提示符窗口并导航到保存文件的文件夹，然后发出以下命令行：
 
 ```py
 C:\Pythonbook\PyQt5>pyuic5 demoHorizontalLayout.ui -o demoHorizontalLayout.py
 ```
 
-Python脚本文件`demoHorizontalLayout.py`可能包含以下代码：
+Python 脚本文件`demoHorizontalLayout.py`可能包含以下代码：
 
 ```py
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -183,11 +183,11 @@ if __name__ == "__main__":
 
 # 它是如何工作的...
 
-您可以在代码中看到，一个具有默认objectName属性`lineEdit`的LineEdit小部件和一个具有默认objectName属性为**label**的Label小部件被放置在表单上。使用水平布局小部件水平对齐LineEdit和Label小部件。水平布局小部件具有默认的objectName属性`horizontalLayout`。在对齐Label和LineEdit小部件时，两个小部件之间的水平空间被减小。因此，在Label和LineEdit小部件之间保留了一个间隔。第二对Label具有默认的objectName属性`label_2`和LineEdit小部件具有默认的objectName属性`lineEdit_2`，通过具有默认objectName属性`horizontalLayout_2`的水平布局水平对齐。
+您可以在代码中看到，一个具有默认 objectName 属性`lineEdit`的 LineEdit 小部件和一个具有默认 objectName 属性为**label**的 Label 小部件被放置在表单上。使用水平布局小部件水平对齐 LineEdit 和 Label 小部件。水平布局小部件具有默认的 objectName 属性`horizontalLayout`。在对齐 Label 和 LineEdit 小部件时，两个小部件之间的水平空间被减小。因此，在 Label 和 LineEdit 小部件之间保留了一个间隔。第二对 Label 具有默认的 objectName 属性`label_2`和 LineEdit 小部件具有默认的 objectName 属性`lineEdit_2`，通过具有默认 objectName 属性`horizontalLayout_2`的水平布局水平对齐。
 
 运行应用程序后，您会发现两对标签和行编辑小部件水平对齐，如下面的屏幕截图所示：
 
-![](assets/0e8766db-b9a9-4dde-ab8e-fb23c08ebe42.png)
+![](img/0e8766db-b9a9-4dde-ab8e-fb23c08ebe42.png)
 
 # 使用垂直布局
 
@@ -197,13 +197,13 @@ if __name__ == "__main__":
 
 在这个应用程序中，我们将提示用户输入姓名和电子邮件地址。用于输入姓名和电子邮件地址的标签和文本框，以及提交按钮，将通过垂直布局垂直排列。以下是创建应用程序的步骤：
 
-1.  启动Qt Designer并基于无按钮对话框模板创建一个应用程序，然后通过将两个标签、两个行编辑和一个 `QPushButton` 小部件拖放到表单上，向表单添加两个`QLabel`、两个`QlineEdit`和一个 `QPushButton` 小部件。
+1.  启动 Qt Designer 并基于无按钮对话框模板创建一个应用程序，然后通过将两个标签、两个行编辑和一个 `QPushButton` 小部件拖放到表单上，向表单添加两个`QLabel`、两个`QlineEdit`和一个 `QPushButton` 小部件。
 
 1.  将两个标签小部件的文本属性设置为`Name`和`Email Address`。
 
-1.  将提交按钮的文本属性设置为`Submit`。因为这个应用程序的目的是理解布局，而不是其他任何东西，所以我们不会设置应用程序中任何小部件的objectName属性。表单现在将显示如下屏幕截图所示：
+1.  将提交按钮的文本属性设置为`Submit`。因为这个应用程序的目的是理解布局，而不是其他任何东西，所以我们不会设置应用程序中任何小部件的 objectName 属性。表单现在将显示如下屏幕截图所示：
 
-![](assets/6eb17343-a136-4675-af5d-5c062e558a71.png)
+![](img/6eb17343-a136-4675-af5d-5c062e558a71.png)
 
 1.  在对小部件应用垂直布局之前，我们需要将小部件水平对齐。因此，我们将在每对标签和行编辑小部件上应用水平布局小部件。因此，点击文本为`Name`的标签小部件，并保持*Ctrl*键按下，然后点击其旁边的行编辑小部件。
 
@@ -211,7 +211,7 @@ if __name__ == "__main__":
 
 1.  选择布局菜单选项后，屏幕上会出现几个子菜单选项。选择水平布局子菜单选项。标签和行编辑小部件将水平对齐。
 
-1.  要水平对齐文本为`Email Address`的第二对标签和其旁边的行编辑小部件，请重复前面步骤5和6中提到的相同过程。您会看到一个红色矩形围绕着这两个小部件。这个红色矩形是水平布局窗口。
+1.  要水平对齐文本为`Email Address`的第二对标签和其旁边的行编辑小部件，请重复前面步骤 5 和 6 中提到的相同过程。您会看到一个红色矩形围绕着这两个小部件。这个红色矩形是水平布局窗口。
 
 1.  要在第一对标签和行编辑小部件之间创建一些空间，请从小部件框的间隔器选项卡中拖动水平间隔器小部件，并将其放在文本为`Name`的标签小部件和其旁边的行编辑小部件之间。水平间隔器将最初占据两个小部件之间的默认空间。
 
@@ -219,7 +219,7 @@ if __name__ == "__main__":
 
 1.  拖动水平布局小部件时，水平间隔器将增加其宽度，以消耗两个小部件之间的额外空白空间，如下面的屏幕截图所示：
 
-![](assets/6a7bfcbd-9828-44f9-a489-35a95e46eb8d.png)
+![](img/6a7bfcbd-9828-44f9-a489-35a95e46eb8d.png)
 
 1.  现在，选择三个项目：第一个水平布局窗口、第二个水平布局窗口和提交按钮。在这些多重选择过程中保持*Ctrl*键按下。
 
@@ -227,11 +227,11 @@ if __name__ == "__main__":
 
 1.  从上下文菜单中选择布局菜单选项，然后选择垂直布局子菜单选项。这三个项目将垂直对齐，并且提交按钮的宽度将增加以匹配最宽布局的宽度，如下面的屏幕截图所示：
 
-![](assets/2331a0a3-0d14-4fb3-bc0f-647a0926d26d.png)
+![](img/2331a0a3-0d14-4fb3-bc0f-647a0926d26d.png)
 
 1.  您还可以从工具栏中选择垂直布局图标，以将小部件排列成垂直布局。
 
-1.  如果要控制提交按钮的宽度，可以使用此小部件的minimumSize和maximumSize属性。您会注意到两个水平布局之间的垂直空间大大减少了。
+1.  如果要控制提交按钮的宽度，可以使用此小部件的 minimumSize 和 maximumSize 属性。您会注意到两个水平布局之间的垂直空间大大减少了。
 
 1.  要在两个水平布局之间创建一些空间，请从小部件框的间隔器选项卡中拖动垂直间隔器小部件，并将其放置在两个水平布局之间。
 
@@ -243,17 +243,17 @@ if __name__ == "__main__":
 
 1.  拖动垂直布局小部件时，垂直间隔器将增加其高度，以消耗两个水平布局和提交按钮之间的额外空白空间，如下面的屏幕截图所示：
 
-![](assets/205ffd7b-a853-4a5e-a6b2-ee5ecd78cc3a.png)
+![](img/205ffd7b-a853-4a5e-a6b2-ee5ecd78cc3a.png)
 
 1.  将应用程序保存为`demoverticalLayout.ui`。
 
-由于我们知道使用Qt Designer创建的用户界面存储在`.ui`文件中，这是一个XML文件，需要将其转换为Python代码。要进行转换，您需要打开命令提示符窗口，并导航到保存文件的文件夹，然后发出以下命令：
+由于我们知道使用 Qt Designer 创建的用户界面存储在`.ui`文件中，这是一个 XML 文件，需要将其转换为 Python 代码。要进行转换，您需要打开命令提示符窗口，并导航到保存文件的文件夹，然后发出以下命令：
 
 ```py
 C:PyQt5>pyuic5 demoverticalLayout.ui -o demoverticalLayout.py
 ```
 
-Python脚本文件`demoverticalLayout.py`可能包含以下代码：
+Python 脚本文件`demoverticalLayout.py`可能包含以下代码：
 
 ```py
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -333,11 +333,11 @@ if __name__ == "__main__":
 
 # 它是如何工作的...
 
-您可以在代码中看到，具有默认objectName `lineEdit`属性的Line Edit小部件和具有默认objectName `label`属性的Label小部件被放置在表单上，并使用具有默认objectName属性`horizontalLayout`的水平布局进行水平对齐。在对齐标签和行编辑小部件时，两个小部件之间的水平空间减小了。因此，在标签和行编辑小部件之间保留了一个间隔器。第二对，具有默认objectName `label_2`属性的Label小部件和具有默认objectName `lineEdit_2`属性的Line Edit小部件，使用具有默认objectName `horizontalLayout_2`属性的水平布局进行水平对齐。然后，使用具有默认`objectName`属性`verticalLayout`的垂直布局对前两个水平布局和具有默认objectName `pushButton`属性的提交按钮进行垂直对齐。通过在它们之间放置一个水平间隔器，增加了第一对标签和行编辑小部件之间的水平空间。类似地，通过在它们之间放置一个名为`spacerItem1`的垂直间隔器，增加了两个水平布局之间的垂直空间。此外，还在第二个水平布局和提交按钮之间放置了一个名为`spacerItem2`的垂直间隔器，以增加它们之间的垂直空间。
+您可以在代码中看到，具有默认 objectName `lineEdit`属性的 Line Edit 小部件和具有默认 objectName `label`属性的 Label 小部件被放置在表单上，并使用具有默认 objectName 属性`horizontalLayout`的水平布局进行水平对齐。在对齐标签和行编辑小部件时，两个小部件之间的水平空间减小了。因此，在标签和行编辑小部件之间保留了一个间隔器。第二对，具有默认 objectName `label_2`属性的 Label 小部件和具有默认 objectName `lineEdit_2`属性的 Line Edit 小部件，使用具有默认 objectName `horizontalLayout_2`属性的水平布局进行水平对齐。然后，使用具有默认`objectName`属性`verticalLayout`的垂直布局对前两个水平布局和具有默认 objectName `pushButton`属性的提交按钮进行垂直对齐。通过在它们之间放置一个水平间隔器，增加了第一对标签和行编辑小部件之间的水平空间。类似地，通过在它们之间放置一个名为`spacerItem1`的垂直间隔器，增加了两个水平布局之间的垂直空间。此外，还在第二个水平布局和提交按钮之间放置了一个名为`spacerItem2`的垂直间隔器，以增加它们之间的垂直空间。
 
 运行应用程序后，您会发现两对标签和行编辑小部件以及提交按钮垂直对齐，如下面的屏幕截图所示：
 
-![](assets/dd0b7f67-3b15-4336-b924-46487100a488.png)
+![](img/dd0b7f67-3b15-4336-b924-46487100a488.png)
 
 # 使用网格布局
 
@@ -347,21 +347,21 @@ if __name__ == "__main__":
 
 在这个应用程序中，我们将制作一个简单的登录表单，提示用户输入电子邮件地址和密码，然后点击提交按钮。在提交按钮下方，将有两个按钮，取消和忘记密码。该应用程序将帮助您了解这些小部件如何以网格模式排列。以下是创建此应用程序的步骤：
 
-1.  启动Qt Designer，并基于无按钮的对话框模板创建一个应用程序，然后通过拖放两个Label、两个Line Edit和三个Push Button小部件到表单上，将两个`QLabel`、两个`QlineEdit`和三个`QPushButton`小部件添加到表单上。
+1.  启动 Qt Designer，并基于无按钮的对话框模板创建一个应用程序，然后通过拖放两个 Label、两个 Line Edit 和三个 Push Button 小部件到表单上，将两个`QLabel`、两个`QlineEdit`和三个`QPushButton`小部件添加到表单上。
 
-1.  将两个Label小部件的文本属性设置为`Name`和`Email Address`。
+1.  将两个 Label 小部件的文本属性设置为`Name`和`Email Address`。
 
-1.  将三个Push Button小部件的文本属性设置为`Submit`，`Cancel`和`Forgot Password`。
+1.  将三个 Push Button 小部件的文本属性设置为`Submit`，`Cancel`和`Forgot Password`。
 
-1.  因为此应用程序的目的是了解布局而不是其他任何内容，所以我们不会设置应用程序中任何小部件的objectName属性。
+1.  因为此应用程序的目的是了解布局而不是其他任何内容，所以我们不会设置应用程序中任何小部件的 objectName 属性。
 
-1.  为了增加两个Line Edit小部件之间的垂直空间，从Widget Box的间隔符选项卡中拖动垂直间隔符小部件，并将其放置在两个Line Edit小部件之间。垂直间隔符将最初占据两个Line Edit小部件之间的空白空间。
+1.  为了增加两个 Line Edit 小部件之间的垂直空间，从 Widget Box 的间隔符选项卡中拖动垂直间隔符小部件，并将其放置在两个 Line Edit 小部件之间。垂直间隔符将最初占据两个 Line Edit 小部件之间的空白空间。
 
-1.  为了在第二个Line Edit小部件和提交按钮之间创建垂直空间，拖动垂直间隔符小部件并将其放置在它们之间。
+1.  为了在第二个 Line Edit 小部件和提交按钮之间创建垂直空间，拖动垂直间隔符小部件并将其放置在它们之间。
 
 应用程序将显示如下截图所示：
 
-![](assets/756be524-e34c-4be9-a03c-da094cecfe9a.png)
+![](img/756be524-e34c-4be9-a03c-da094cecfe9a.png)
 
 1.  通过按下*Ctrl*键并单击表单上的所有小部件来选择表单上的所有小部件。
 
@@ -371,25 +371,25 @@ if __name__ == "__main__":
 
 小部件将按照网格中所示的方式对齐：
 
-![](assets/cf4b1ac4-bbd7-4c78-b5c9-e7af16062762.png)
+![](img/cf4b1ac4-bbd7-4c78-b5c9-e7af16062762.png)
 
-1.  为了增加提交和取消按钮之间的垂直空间，从Widget Box的间隔符选项卡中拖动垂直间隔符小部件，并将其放置在它们之间。
+1.  为了增加提交和取消按钮之间的垂直空间，从 Widget Box 的间隔符选项卡中拖动垂直间隔符小部件，并将其放置在它们之间。
 
 1.  为了增加取消和忘记密码按钮之间的水平空间，从间隔符选项卡中拖动水平间隔符小部件，并将其放置在它们之间。
 
 现在表格将显示如下截图所示：
 
-![](assets/742b1811-bfea-49f2-a3b3-5aa7e38033f8.png)
+![](img/742b1811-bfea-49f2-a3b3-5aa7e38033f8.png)
 
 1.  将应用程序保存为`demoGridLayout.ui`。
 
-使用Qt Designer创建的用户界面存储在`.ui`文件中，这是一个XML文件，需要转换为Python代码。要进行转换，您需要打开命令提示符窗口并导航到保存文件的文件夹，然后发出以下命令：
+使用 Qt Designer 创建的用户界面存储在`.ui`文件中，这是一个 XML 文件，需要转换为 Python 代码。要进行转换，您需要打开命令提示符窗口并导航到保存文件的文件夹，然后发出以下命令：
 
 ```py
 C:PyQt5>pyuic5 demoGridLayout.ui -o demoGridLayout.py
 ```
 
-Python脚本文件`demoGridLayout.py`可能包含以下代码：
+Python 脚本文件`demoGridLayout.py`可能包含以下代码：
 
 ```py
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -480,11 +480,11 @@ if __name__ == "__main__":
 
 # 工作原理...
 
-您可以在代码中看到，具有默认objectName`lineEdit`属性的Line Edit小部件和具有默认objectName`label`属性的Label小部件放置在表单上。类似地，第二对具有默认objectName`label_2`属性的Label小部件和具有默认objectName`lineEdit_2`属性的Line Edit小部件也放置在表单上。通过在它们之间放置名为`spacerItem1`的垂直间隔符，增加了两对Label和Line Edit小部件之间的垂直空间。还在表单上放置了一个文本为`Submit`，objectName为`pushButton`的Push Button小部件。同样，通过在具有objectName`label_2`的第二个Label和具有objectName`pushButton`的Push Button小部件之间放置名为`spacerItem2`的垂直间隔符，增加了它们之间的垂直空间。另外两个具有默认objectName属性`pushButton_2`和`pushButton_3`的push按钮也放置在表单上。所有小部件都以默认对象名称`gridLayout`排列在一个可伸缩的网格布局中。具有object名称`pushButton`和`pushButton_2`的两个push按钮之间的垂直空间通过在它们之间放置名为`spacerItem3`的垂直间隔符来增加。
+您可以在代码中看到，具有默认 objectName`lineEdit`属性的 Line Edit 小部件和具有默认 objectName`label`属性的 Label 小部件放置在表单上。类似地，第二对具有默认 objectName`label_2`属性的 Label 小部件和具有默认 objectName`lineEdit_2`属性的 Line Edit 小部件也放置在表单上。通过在它们之间放置名为`spacerItem1`的垂直间隔符，增加了两对 Label 和 Line Edit 小部件之间的垂直空间。还在表单上放置了一个文本为`Submit`，objectName 为`pushButton`的 Push Button 小部件。同样，通过在具有 objectName`label_2`的第二个 Label 和具有 objectName`pushButton`的 Push Button 小部件之间放置名为`spacerItem2`的垂直间隔符，增加了它们之间的垂直空间。另外两个具有默认 objectName 属性`pushButton_2`和`pushButton_3`的 push 按钮也放置在表单上。所有小部件都以默认对象名称`gridLayout`排列在一个可伸缩的网格布局中。具有 object 名称`pushButton`和`pushButton_2`的两个 push 按钮之间的垂直空间通过在它们之间放置名为`spacerItem3`的垂直间隔符来增加。
 
-运行应用程序时，您会发现两对Label和Line Edit小部件以及提交、取消和忘记密码按钮都排列在一个可伸缩的网格中，如下截图所示：
+运行应用程序时，您会发现两对 Label 和 Line Edit 小部件以及提交、取消和忘记密码按钮都排列在一个可伸缩的网格中，如下截图所示：
 
-![](assets/d581b1d5-be49-44a1-8060-c92f029cd11a.png)
+![](img/d581b1d5-be49-44a1-8060-c92f029cd11a.png)
 
 # 使用表单布局
 
@@ -496,19 +496,19 @@ if __name__ == "__main__":
 
 # 如何做...
 
-在这个应用程序中，我们将创建两列，一列用于显示消息，另一列用于接受用户输入。除了两对用于从用户那里获取输入的Label和Line Edit小部件之外，该应用程序还将有两个按钮，这些按钮也将按照表单布局排列。以下是创建使用表单布局排列小部件的应用程序的步骤：
+在这个应用程序中，我们将创建两列，一列用于显示消息，另一列用于接受用户输入。除了两对用于从用户那里获取输入的 Label 和 Line Edit 小部件之外，该应用程序还将有两个按钮，这些按钮也将按照表单布局排列。以下是创建使用表单布局排列小部件的应用程序的步骤：
 
-1.  启动Qt Designer，并基于无按钮的对话框模板创建一个应用程序，然后通过拖放两个Label、两个LineEdit和两个PushButton小部件到表单上，添加两个`QLabel`、两个`QLineEdit`和两个`QPushButton`小部件。
+1.  启动 Qt Designer，并基于无按钮的对话框模板创建一个应用程序，然后通过拖放两个 Label、两个 LineEdit 和两个 PushButton 小部件到表单上，添加两个`QLabel`、两个`QLineEdit`和两个`QPushButton`小部件。
 
-1.  将两个Label小部件的文本属性设置为`Name`和`Email Address`。
+1.  将两个 Label 小部件的文本属性设置为`Name`和`Email Address`。
 
-1.  将两个Push Button小部件的文本属性设置为`Cancel`和`Submit`。
+1.  将两个 Push Button 小部件的文本属性设置为`Cancel`和`Submit`。
 
-1.  因为这个应用程序的目的是理解布局，而不是其他任何东西，所以我们不会设置应用程序中任何小部件的objectName属性。
+1.  因为这个应用程序的目的是理解布局，而不是其他任何东西，所以我们不会设置应用程序中任何小部件的 objectName 属性。
 
 应用程序将显示如下屏幕截图所示：
 
-![](assets/dc2d8dc1-37b5-43f8-a14a-cd377b5f520a.png)
+![](img/dc2d8dc1-37b5-43f8-a14a-cd377b5f520a.png)
 
 1.  通过按下*Ctrl*键并单击表单上的所有小部件来选择所有小部件。
 
@@ -518,27 +518,27 @@ if __name__ == "__main__":
 
 小部件将在表单布局小部件中对齐，如下面的屏幕截图所示：
 
-![](assets/a757b71e-e5ae-4091-a2ac-7a538975ed84.png)
+![](img/a757b71e-e5ae-4091-a2ac-7a538975ed84.png)
 
-1.  为了增加两个Line Edit小部件之间的垂直空间，请从Widget Box的间隔器选项卡中拖动垂直间隔器小部件，并将其放置在它们之间。
+1.  为了增加两个 Line Edit 小部件之间的垂直空间，请从 Widget Box 的间隔器选项卡中拖动垂直间隔器小部件，并将其放置在它们之间。
 
-1.  为了增加第二个Line Edit小部件和提交按钮之间的垂直空间，请从间隔器选项卡中拖动垂直间隔器小部件，并将其放置在它们之间。
+1.  为了增加第二个 Line Edit 小部件和提交按钮之间的垂直空间，请从间隔器选项卡中拖动垂直间隔器小部件，并将其放置在它们之间。
 
 1.  选择表单布局小部件的红色矩形，并垂直拖动以增加其高度。两个垂直间隔器将自动增加高度，以利用小部件之间的空白空间。
 
 表单现在将显示如下屏幕截图所示：
 
-![](assets/7558844e-df8a-4249-9389-bfe217334b5f.png)
+![](img/7558844e-df8a-4249-9389-bfe217334b5f.png)
 
 1.  将应用程序保存为`demoFormLayout.ui`。
 
-使用Qt Designer创建的用户界面存储在`.ui`文件中，这是一个XML文件，需要转换为Python代码。要进行转换，您需要打开命令提示符窗口，并导航到保存文件的文件夹，然后发出以下命令：
+使用 Qt Designer 创建的用户界面存储在`.ui`文件中，这是一个 XML 文件，需要转换为 Python 代码。要进行转换，您需要打开命令提示符窗口，并导航到保存文件的文件夹，然后发出以下命令：
 
 ```py
 C:PyQt5>pyuic5 demoFormLayout.ui -o demoFormLayout.py
 ```
 
-Python脚本文件`demoFormLayout.py`可能包含以下代码：
+Python 脚本文件`demoFormLayout.py`可能包含以下代码：
 
 ```py
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -623,8 +623,8 @@ if __name__ == "__main__":
 
 # 它是如何工作的...
 
-您可以在代码中看到，一个带有默认objectName `lineEdit`属性的Line Edit小部件和一个带有默认objectName `labels`属性的Label小部件被放置在表单上。同样，第二对，一个带有默认objectName `label_2`属性的Label小部件和一个带有默认objectName `lineEdit_2`属性的Line Edit小部件被放置在表单上。两个带有object names `pushButton`和`pushButton_2`的按钮被放置在表单上。所有六个小部件都被选中，并使用默认objectName `formLayout`属性的表单布局小部件以两列格式对齐。
+您可以在代码中看到，一个带有默认 objectName `lineEdit`属性的 Line Edit 小部件和一个带有默认 objectName `labels`属性的 Label 小部件被放置在表单上。同样，第二对，一个带有默认 objectName `label_2`属性的 Label 小部件和一个带有默认 objectName `lineEdit_2`属性的 Line Edit 小部件被放置在表单上。两个带有 object names `pushButton`和`pushButton_2`的按钮被放置在表单上。所有六个小部件都被选中，并使用默认 objectName `formLayout`属性的表单布局小部件以两列格式对齐。
 
-运行应用程序时，您会发现两对Label和Line Edit小部件以及取消和提交按钮被排列在表单布局小部件中，如下面的屏幕截图所示：
+运行应用程序时，您会发现两对 Label 和 Line Edit 小部件以及取消和提交按钮被排列在表单布局小部件中，如下面的屏幕截图所示：
 
-![](assets/d7c6b285-ad2e-4171-8937-c2346b4f9166.png)
+![](img/d7c6b285-ad2e-4171-8937-c2346b4f9166.png)

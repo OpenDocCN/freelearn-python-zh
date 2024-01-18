@@ -20,13 +20,13 @@
 
 +   将事件绑定到画布项目
 
-+   将画布渲染成PostScript文件
++   将画布渲染成 PostScript 文件
 
 # 介绍
 
-在第一章中，我们涵盖了标准Tkinter小部件的几个配方。但是，我们跳过了**Canvas**小部件，因为它提供了丰富的图形功能，并且值得单独的章节来深入了解其常见用例。
+在第一章中，我们涵盖了标准 Tkinter 小部件的几个配方。但是，我们跳过了**Canvas**小部件，因为它提供了丰富的图形功能，并且值得单独的章节来深入了解其常见用例。
 
-画布是一个矩形区域，您不仅可以在其中显示文本和几何形状，如线条、矩形或椭圆，还可以嵌套其他Tkinter小部件。这些对象称为**画布项目**，每个项目都有一个唯一的标识符，允许我们在它们最初显示在画布上之前对它们进行操作。
+画布是一个矩形区域，您不仅可以在其中显示文本和几何形状，如线条、矩形或椭圆，还可以嵌套其他 Tkinter 小部件。这些对象称为**画布项目**，每个项目都有一个唯一的标识符，允许我们在它们最初显示在画布上之前对它们进行操作。
 
 我们将使用`Canvas`类的方法进行交互示例，这将帮助我们识别可能转换为我们想要构建的应用程序的常见模式。
 
@@ -38,7 +38,7 @@
 
 # 如何做...
 
-以下程序包含一个空画布和一个标签，显示光标在画布上的位置；您可以移动光标以查看其所处的位置，清晰地反映了鼠标指针移动的方向，x和y坐标是如何增加或减少的：
+以下程序包含一个空画布和一个标签，显示光标在画布上的位置；您可以移动光标以查看其所处的位置，清晰地反映了鼠标指针移动的方向，x 和 y 坐标是如何增加或减少的：
 
 ```py
 import tkinter as tk
@@ -67,7 +67,7 @@ if __name__ == "__main__":
 
 # 它是如何工作的...
 
-`Canvas`实例像其他Tkinter小部件一样创建，即首先通过将父容器和额外的配置选项作为关键字参数传递：
+`Canvas`实例像其他 Tkinter 小部件一样创建，即首先通过将父容器和额外的配置选项作为关键字参数传递：
 
 ```py
     def __init__(self):
@@ -79,11 +79,11 @@ if __name__ == "__main__":
 
 下一个屏幕截图显示了由每个轴的垂直投影组成的点：
 
-+   x坐标对应于水平轴上的距离，当您将光标从左向右移动时，其值会增加
++   x 坐标对应于水平轴上的距离，当您将光标从左向右移动时，其值会增加
 
-+   y坐标是垂直轴上的距离，当您将光标从上向下移动时，其值会增加
++   y 坐标是垂直轴上的距离，当您将光标从上向下移动时，其值会增加
 
-![](images/43cd19e1-fd63-49cd-8d6f-dbca306cb2c4.png)
+![](img/43cd19e1-fd63-49cd-8d6f-dbca306cb2c4.png)
 
 正如您可能已经注意到的在前面的屏幕截图中，这些坐标直接映射到传递给处理程序的`event`实例的`x`和`y`属性：
 
@@ -112,7 +112,7 @@ if __name__ == "__main__":
 
 我们还可以指定一些外观选项，如颜色和宽度：
 
-![](images/917ecb33-f662-47ac-9ef6-7cb7d79595a2.png)
+![](img/917ecb33-f662-47ac-9ef6-7cb7d79595a2.png)
 
 # 如何做...
 
@@ -208,21 +208,21 @@ if __name__ == "__main__":
 
 # 在画布上写文本
 
-如果我们想在画布上写一些文本，我们不需要使用额外的小部件，比如Label。`Canvas`类包括`create_text`方法来显示一个可以像任何其他类型的画布项一样操作的字符串。
+如果我们想在画布上写一些文本，我们不需要使用额外的小部件，比如 Label。`Canvas`类包括`create_text`方法来显示一个可以像任何其他类型的画布项一样操作的字符串。
 
-还可以使用与我们可以指定的相同的格式选项来为常规Tkinter小部件的文本添加样式，例如颜色、字体系列和大小。
+还可以使用与我们可以指定的相同的格式选项来为常规 Tkinter 小部件的文本添加样式，例如颜色、字体系列和大小。
 
 # 准备就绪
 
-在这个例子中，我们将连接一个Entry小部件与文本画布项的内容。虽然输入将具有标准外观，但画布上的文本将具有自定义样式：
+在这个例子中，我们将连接一个 Entry 小部件与文本画布项的内容。虽然输入将具有标准外观，但画布上的文本将具有自定义样式：
 
-![](images/7fcc52e1-d1b6-43fe-a9ef-042f22b3b08f.png)
+![](img/7fcc52e1-d1b6-43fe-a9ef-042f22b3b08f.png)
 
 # 如何做...
 
-文本项将首先使用`canvas.create_text()`方法显示，还有一些额外的选项来使用Consolas字体和蓝色。
+文本项将首先使用`canvas.create_text()`方法显示，还有一些额外的选项来使用 Consolas 字体和蓝色。
 
-文本项的动态行为将使用`StringVar`实现。通过跟踪这个Tkinter变量，我们可以修改项目的内容：
+文本项的动态行为将使用`StringVar`实现。通过跟踪这个 Tkinter 变量，我们可以修改项目的内容：
 
 ```py
 import tkinter as tk
@@ -259,7 +259,7 @@ if __name__ == "__main__":
 
 # 它是如何工作的...
 
-首先，我们使用其`StringVar`变量和Canvas小部件初始化`Entry`实例：
+首先，我们使用其`StringVar`变量和 Canvas 小部件初始化`Entry`实例：
 
 ```py
         self.var = tk.StringVar()
@@ -267,7 +267,7 @@ if __name__ == "__main__":
         self.canvas = tk.Canvas(self, bg="white")
 ```
 
-然后，我们通过调用Pack几何管理器的方法来放置小部件。请注意调用根窗口上的`update()`的重要性，因为我们希望强制Tkinter处理所有未决的更改，在这种情况下在`__init__`方法继续执行之前渲染小部件：
+然后，我们通过调用 Pack 几何管理器的方法来放置小部件。请注意调用根窗口上的`update()`的重要性，因为我们希望强制 Tkinter 处理所有未决的更改，在这种情况下在`__init__`方法继续执行之前渲染小部件：
 
 ```py
         self.entry.pack(pady=5)
@@ -300,7 +300,7 @@ if __name__ == "__main__":
         self.canvas.itemconfig(self.text_id, text=self.var.get())
 ```
 
-我们定义了`write_text()`方法，以便它可以接收可变数量的参数，即使我们不需要它们，因为Tkinter变量的`trace()`方法将它们传递给回调函数。
+我们定义了`write_text()`方法，以便它可以接收可变数量的参数，即使我们不需要它们，因为 Tkinter 变量的`trace()`方法将它们传递给回调函数。
 
 # 还有更多...
 
@@ -321,7 +321,7 @@ if __name__ == "__main__":
 
 上述代码片段将给我们以下结果：
 
-![](images/51d7f33e-6edb-4b2d-b763-04ebf4508af2.png)
+![](img/51d7f33e-6edb-4b2d-b763-04ebf4508af2.png)
 
 # 设置换行
 
@@ -336,7 +336,7 @@ if __name__ == "__main__":
 
 现在，当我们在输入框中写入`Hello, world!`时，超过行宽的文本部分将显示在新行中：
 
-![](images/689721c7-6307-4dac-b556-28b3dbb199ec.png)
+![](img/689721c7-6307-4dac-b556-28b3dbb199ec.png)
 
 # 向画布添加形状
 
@@ -348,7 +348,7 @@ if __name__ == "__main__":
 
 项目的位置是通过首先在画布上单击来设置项目将包含在其中的框的左上角，然后再单击来设置此框的左下角并使用一些预定义选项绘制项目来确定的：
 
-![](images/dff4558b-fd6c-4ff5-b8c6-76e02e2dee61.png)
+![](img/dff4558b-fd6c-4ff5-b8c6-76e02e2dee61.png)
 
 # 操作步骤...
 
@@ -439,15 +439,15 @@ if __name__ == "__main__":
 
 +   `canvas.create_rectangle(x0, y0, x1, y1, **options)`: 绘制一个矩形，其左上角位于**(x0, y0)**，右下角位于**(x1, y1)**：
 
-![](images/9bc92787-61f1-4eed-9c2c-1f7b422cb606.png)
+![](img/9bc92787-61f1-4eed-9c2c-1f7b422cb606.png)
 
 +   `canvas.create_oval(x0, y0, x1, y1, **options)`: 绘制一个椭圆，适合从**(x0, y0)**到**(x1, y1)**的矩形中：*
 
-![](images/f9490d06-adc3-4f5e-872c-0fb600265970.png)
+![](img/f9490d06-adc3-4f5e-872c-0fb600265970.png)
 
 +   `canvas.create_arc(x0, y0, x1, y1, **options)`: 绘制一个四分之一的椭圆，该椭圆适合从**(x0, y0)**到**(x1, y1)**的矩形中：
 
-![](images/3abfc301-8ed6-4ed3-bacf-e0a8df5746e9.png)
+![](img/3abfc301-8ed6-4ed3-bacf-e0a8df5746e9.png)
 
 # 另请参阅
 
@@ -463,7 +463,7 @@ if __name__ == "__main__":
 
 以下应用程序创建了一个带有四个矩形的画布，并更改了最接近鼠标指针的矩形的颜色：
 
-![](images/72906402-5615-46ca-8bfb-b05a0f3b46b0.png)
+![](img/72906402-5615-46ca-8bfb-b05a0f3b46b0.png)
 
 # 如何做...
 
@@ -618,7 +618,7 @@ if __name__ == "__main__":
         self.pressed_keys.pop(event.keysym, None)
 ```
 
-这种方法比分别绑定`"<Up>"`、`"<Down>"`、`"<Right>"`和`"<Left>"`键更可取，因为这样会在Tkinter处理输入键盘事件时仅调用每个处理程序，导致项目从一个位置“跳转”到下一个位置，而不是在水平和垂直轴上平滑移动。
+这种方法比分别绑定`"<Up>"`、`"<Down>"`、`"<Right>"`和`"<Left>"`键更可取，因为这样会在 Tkinter 处理输入键盘事件时仅调用每个处理程序，导致项目从一个位置“跳转”到下一个位置，而不是在水平和垂直轴上平滑移动。
 
 `App`实例初始化的最后一句是调用`process_movements()`，它开始处理画布项目的移动。
 
@@ -648,20 +648,20 @@ if __name__ == "__main__":
         pos_y = y0 + (y1 - y0) / 2 + off_y
 ```
 
-然后，我们检查最终项目位置是否在画布区域内。为此，我们利用Python对链接比较运算符的支持：
+然后，我们检查最终项目位置是否在画布区域内。为此，我们利用 Python 对链接比较运算符的支持：
 
 ```py
         if 0 <= pos_x <= self.width and 0 <= pos_y <= self.height:
             self.canvas.move(self.item, off_x, off_y)
 ```
 
-最后，该方法通过调用`self.after(10, self.process_movements)`以10毫秒的延迟安排自身。因此，我们实现了在Tkinter的主循环中具有“自定义主循环”的效果。
+最后，该方法通过调用`self.after(10, self.process_movements)`以 10 毫秒的延迟安排自身。因此，我们实现了在 Tkinter 的主循环中具有“自定义主循环”的效果。
 
 # 还有更多...
 
 您可能会想知道为什么我们没有调用`after_idle()`而是调用`after()`来安排`process_movements()`方法。
 
-这似乎是一个有效的方法，因为除了重新绘制我们的画布和处理键盘输入之外，没有其他事件需要处理，因此在`process_movements()`之间如果没有待处理的GUI事件，就不需要添加延迟。
+这似乎是一个有效的方法，因为除了重新绘制我们的画布和处理键盘输入之外，没有其他事件需要处理，因此在`process_movements()`之间如果没有待处理的 GUI 事件，就不需要添加延迟。
 
 但是，使用`after_idle`会导致项目移动的速度取决于计算机的速度。这意味着快速系统将在相同的时间间隔内多次调用`process_movements()`，而较慢的系统将在项目速度上有所不同。
 
@@ -679,7 +679,7 @@ if __name__ == "__main__":
 
 该应用程序通过向画布添加四个绿色矩形并突出显示通过使用箭头键移动的蓝色矩形触摸的矩形，扩展了前一个应用程序：
 
-![](images/ce47f2c4-c609-4fa0-aea3-71bf7cb0b81e.png)
+![](img/ce47f2c4-c609-4fa0-aea3-71bf7cb0b81e.png)
 
 # 如何做...
 
@@ -785,13 +785,13 @@ if __name__ == "__main__":
 
 除了在画布上添加和修改项目，还可以通过`Canvas`类的`delete()`方法删除它们。虽然这种方法的使用非常简单，但在下一个示例中我们将看到一些有用的模式。
 
-请记住，在画布上显示的项目越多，Tkinter重新绘制小部件所需的时间就越长。因此，如果这可能会导致性能问题，最好删除不必要的项目。
+请记住，在画布上显示的项目越多，Tkinter 重新绘制小部件所需的时间就越长。因此，如果这可能会导致性能问题，最好删除不必要的项目。
 
 # 准备工作
 
 对于此示例，我们将构建一个应用程序，在画布上随机显示几个圆。单击圆后，每个圆都会自行删除，窗口包含一个按钮来清除所有项目和另一个按钮来重新开始：
 
-![](images/f5f70f4c-b05c-4a20-a132-8128d59fc1b4.png)
+![](img/f5f70f4c-b05c-4a20-a132-8128d59fc1b4.png)
 
 # 如何做...
 
@@ -977,15 +977,15 @@ if 0 <= final_x <= canvas_width and 0 <= final_y <= canvas_height:
 
 +   *移动画布项目*配方
 
-# 将画布渲染成PostScript文件
+# 将画布渲染成 PostScript 文件
 
-`Canvas`类通过其`postscript()`方法本地支持使用PostScript语言保存其内容。这会存储画布项目的图形表示，如线条、矩形、多边形、椭圆和弧，但不会对嵌入式小部件和图像进行存储。
+`Canvas`类通过其`postscript()`方法本地支持使用 PostScript 语言保存其内容。这会存储画布项目的图形表示，如线条、矩形、多边形、椭圆和弧，但不会对嵌入式小部件和图像进行存储。
 
-我们将修改一个之前的配方，动态生成这种简单项目的功能，以添加将画布的表示保存到PostScript文件的功能。
+我们将修改一个之前的配方，动态生成这种简单项目的功能，以添加将画布的表示保存到 PostScript 文件的功能。
 
 # 如何做...
 
-我们将从*绘制线条和箭头*配方中获取代码示例，以添加一个按钮，将画布内容打印到PostScript文件中：
+我们将从*绘制线条和箭头*配方中获取代码示例，以添加一个按钮，将画布内容打印到 PostScript 文件中：
 
 ```py
 import tkinter as tk
@@ -1017,24 +1017,24 @@ class App(tk.Tk):
 
 原始脚本的主要添加是带有`render_canvas()`回调的`Render canvas`按钮。
 
-它在`canvas`实例上调用`postscript()`方法，并使用`file`和`colormode`参数。这些选项指定了写入PostScript和输出颜色信息的目标文件的路径，可以是`"color"`表示全彩输出，`"gray"`表示转换为灰度等效，`"mono"`表示将所有颜色转换为黑色或白色：
+它在`canvas`实例上调用`postscript()`方法，并使用`file`和`colormode`参数。这些选项指定了写入 PostScript 和输出颜色信息的目标文件的路径，可以是`"color"`表示全彩输出，`"gray"`表示转换为灰度等效，`"mono"`表示将所有颜色转换为黑色或白色：
 
 ```py
     def render_canvas(self):
         self.canvas.postscript(file="output.ps", colormode="color")
 ```
 
-您可以在Tk/Tcl文档的`postscript()`方法中检查所有可以传递的有效选项，网址为[https://www.tcl.tk/man/tcl8.6/TkCmd/canvas.htm#M61](https://www.tcl.tk/man/tcl8.6/TkCmd/canvas.htm#M61)。请记住，PostScript是一种主要用于打印的语言，因此大多数选项都是指页面设置。
+您可以在 Tk/Tcl 文档的`postscript()`方法中检查所有可以传递的有效选项，网址为[`www.tcl.tk/man/tcl8.6/TkCmd/canvas.htm#M61`](https://www.tcl.tk/man/tcl8.6/TkCmd/canvas.htm#M61)。请记住，PostScript 是一种主要用于打印的语言，因此大多数选项都是指页面设置。
 
 # 还有更多...
 
-由于PostScript文件不像其他文件格式那样流行，您可能希望将生成的文件从PostScript转换为更熟悉的格式，如PDF。
+由于 PostScript 文件不像其他文件格式那样流行，您可能希望将生成的文件从 PostScript 转换为更熟悉的格式，如 PDF。
 
-为了做到这一点，您需要一个第三方软件，比如**Ghostscript**，它是根据GNU的**Affero通用公共许可证**（**AGPL**）分发的。 Ghostscript的解释器和渲染器实用程序可以从您的程序中调用，自动将PostScript结果转换为PDF。
+为了做到这一点，您需要一个第三方软件，比如**Ghostscript**，它是根据 GNU 的**Affero 通用公共许可证**（**AGPL**）分发的。 Ghostscript 的解释器和渲染器实用程序可以从您的程序中调用，自动将 PostScript 结果转换为 PDF。
 
-从[https://www.ghostscript.com/download/gsdnld.html](https://www.ghostscript.com/download/gsdnld.html)下载并安装软件的最新版本，并将安装的`bin`和`lib`文件夹添加到操作系统路径中。
+从[`www.ghostscript.com/download/gsdnld.html`](https://www.ghostscript.com/download/gsdnld.html)下载并安装软件的最新版本，并将安装的`bin`和`lib`文件夹添加到操作系统路径中。
 
-然后，修改您的Tkinter应用程序，调用`ps2pdf`程序作为子进程，并在执行完毕时删除`output.ps`文件，如下所示：
+然后，修改您的 Tkinter 应用程序，调用`ps2pdf`程序作为子进程，并在执行完毕时删除`output.ps`文件，如下所示：
 
 ```py
 import os

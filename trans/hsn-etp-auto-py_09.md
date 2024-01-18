@@ -1,6 +1,6 @@
-# 使用Subprocess模块
+# 使用 Subprocess 模块
 
-运行和生成新的系统进程对于想要自动化特定操作系统任务或在脚本中执行一些命令的系统管理员非常有用。Python提供了许多库来调用外部系统实用程序，并与生成的数据进行交互。最早创建的库是`OS`模块，它提供了一些有用的工具来调用外部进程，比如`os.system`，`os.spwan`和`os.popen*`。然而，它缺少一些基本功能，因此Python开发人员引入了一个新的库，`subprocess`，它可以生成新的进程，与进程发送和接收，并处理错误和返回代码。目前，官方Python文档建议使用`subprocess`模块来访问系统命令，Python实际上打算用它来替换旧的模块。
+运行和生成新的系统进程对于想要自动化特定操作系统任务或在脚本中执行一些命令的系统管理员非常有用。Python 提供了许多库来调用外部系统实用程序，并与生成的数据进行交互。最早创建的库是`OS`模块，它提供了一些有用的工具来调用外部进程，比如`os.system`，`os.spwan`和`os.popen*`。然而，它缺少一些基本功能，因此 Python 开发人员引入了一个新的库，`subprocess`，它可以生成新的进程，与进程发送和接收，并处理错误和返回代码。目前，官方 Python 文档建议使用`subprocess`模块来访问系统命令，Python 实际上打算用它来替换旧的模块。
 
 本章将涵盖以下主题：
 
@@ -19,22 +19,22 @@
 | `bufsize` | 它作为`open()`函数的缓冲参数提供，用于创建`stdin`/`stdout`/`stderr`管道文件对象。 |
 | `executable` | 要执行的替换程序。 |
 | `stdin`，`stdout`，`stderr` | 这些分别指定了执行程序的标准输入、标准输出和标准错误文件句柄。 |
-| `shell` | 如果为`True`，则命令将通过shell执行（默认为`False`）。在Linux中，这意味着在运行子进程之前调用`/bin/sh`。 |
+| `shell` | 如果为`True`，则命令将通过 shell 执行（默认为`False`）。在 Linux 中，这意味着在运行子进程之前调用`/bin/sh`。 |
 | `cwd` | 在执行子进程之前设置当前目录。 |
 | `env` | 定义新进程的环境变量。 |
 
-现在，让我们专注于`args`。`popen()`命令可以接受Python列表作为输入，其中第一个元素被视为命令，后续元素被视为命令`args`，如下面的代码片段所示：
+现在，让我们专注于`args`。`popen()`命令可以接受 Python 列表作为输入，其中第一个元素被视为命令，后续元素被视为命令`args`，如下面的代码片段所示：
 
 ```py
 import subprocess
 print(subprocess.Popen("ifconfig"))
 ```
 
-**脚本输出**![](../images/00147.jpeg)
+**脚本输出**![](img/00147.jpeg)
 
-从命令返回的输出直接打印到您的Python终端。
+从命令返回的输出直接打印到您的 Python 终端。
 
-`ifconfig`是一个用于返回网络接口信息的Linux实用程序。对于Windows用户，您可以通过在cmd上使用`ipconfig`命令来获得类似的输出。
+`ifconfig`是一个用于返回网络接口信息的 Linux 实用程序。对于 Windows 用户，您可以通过在 cmd 上使用`ipconfig`命令来获得类似的输出。
 
 我们可以重写上面的代码，使用列表而不是字符串，如下面的代码片段所示：
 
@@ -51,7 +51,7 @@ print(subprocess.Popen(["sudo", "ifconfig", "enp60s0:0", "10.10.10.2", "netmask"
         device interrupt 16  
 ```
 
-请注意，如果您将上一个命令提供为字符串而不是列表，就像我们在第一个示例中所做的那样，命令将失败，如下面的屏幕截图所示。子进程`Popen()`期望在每个列表元素中有一个可执行名称，而不是其他任何参数。![](../images/00148.jpeg)
+请注意，如果您将上一个命令提供为字符串而不是列表，就像我们在第一个示例中所做的那样，命令将失败，如下面的屏幕截图所示。子进程`Popen()`期望在每个列表元素中有一个可执行名称，而不是其他任何参数。![](img/00148.jpeg)
 
 另一方面，如果您想使用字符串方法而不是列表，您可以将`shell`参数设置为`True`。这将指示`Popen()`在命令之前附加`/bin/sh`，因此命令将在其后执行所有参数：
 
@@ -59,9 +59,9 @@ print(subprocess.Popen(["sudo", "ifconfig", "enp60s0:0", "10.10.10.2", "netmask"
 print(subprocess.Popen("sudo ifconfig enp60s0:0 10.10.10.2 netmask 255.255.255.0 up", shell=True)) 
 ```
 
-您可以将`shell=True`视为生成一个shell进程并将命令与参数传递给它。这可以通过使用`split()`节省您几行代码，以便直接从外部系统接收命令并运行它。
+您可以将`shell=True`视为生成一个 shell 进程并将命令与参数传递给它。这可以通过使用`split()`节省您几行代码，以便直接从外部系统接收命令并运行它。
 
-`subprocess`使用的默认shell是`/bin/sh`。如果您使用其他shell，比如`tch`或`csh`，您可以在`executable`参数中定义它们。还要注意，作为shell运行命令可能会带来安全问题，并允许*安全注入*。指示您的代码运行脚本的用户可以添加`"; rm -rf /"`，导致可怕的事情发生。
+`subprocess`使用的默认 shell 是`/bin/sh`。如果您使用其他 shell，比如`tch`或`csh`，您可以在`executable`参数中定义它们。还要注意，作为 shell 运行命令可能会带来安全问题，并允许*安全注入*。指示您的代码运行脚本的用户可以添加`"; rm -rf /"`，导致可怕的事情发生。
 
 此外，您可以使用`cwd`参数在运行命令之前将目录更改为特定目录。当您需要在对其进行操作之前列出目录的内容时，这将非常有用：
 
@@ -70,7 +70,7 @@ import subprocess
 print(subprocess.Popen(["cat", "interfaces"], cwd="/etc/network"))  
 ```
 
-![](../images/00149.jpeg)Ansible有一个类似的标志叫做`chdir:`。此参数将用于playbook任务中，在执行之前更改目录。
+![](img/00149.jpeg)Ansible 有一个类似的标志叫做`chdir:`。此参数将用于 playbook 任务中，在执行之前更改目录。
 
 # 读取标准输入(stdin)、标准输出(stdout)和标准错误(stderr)
 
@@ -89,7 +89,7 @@ import subprocess
 p = subprocess.Popen(["ping", "8.8.8.8", "-c", "3"], stdin=subprocess.PIPE, stdout=subprocess.PIPE) stdout, stderr = p.communicate() print("""==========The Standard Output is========== {}""".format(stdout))   print("""==========The Standard Error is========== {}""".format(stderr))
 ```
 
-![](../images/00150.jpeg)
+![](img/00150.jpeg)
 
 同样，您可以使用`communicate()`中的输入参数发送数据并写入进程：
 
@@ -100,7 +100,7 @@ p = subprocess.Popen(["grep", "subprocess"], stdout=subprocess.PIPE, stdin=subpr
 
 在脚本中，我们在`communicate()`中使用了`input`参数，它将数据发送到另一个子进程，该子进程将使用`grep`命令搜索子进程关键字。返回的输出将存储在`stdout`变量中：
 
-![](../images/00151.jpeg)
+![](img/00151.jpeg)
 
 验证进程成功执行的另一种方法是使用返回代码。当命令成功执行且没有错误时，返回代码将为`0`；否则，它将是大于`0`的整数值：
 
@@ -121,11 +121,11 @@ def ping_destination(ip):   p = subprocess.Popen(['ping', '-c', '3'],
     print(ping_destination(raw_input("Please enter the host:"))) 
 ```
 
-脚本将要求用户输入一个IP地址，然后调用`ping_destination()`函数，该函数将针对IP地址执行`ping`命令。`ping`命令的结果（成功或失败）将返回到标准输出，并且`communicate()`函数将使用结果填充返回代码：
+脚本将要求用户输入一个 IP 地址，然后调用`ping_destination()`函数，该函数将针对 IP 地址执行`ping`命令。`ping`命令的结果（成功或失败）将返回到标准输出，并且`communicate()`函数将使用结果填充返回代码：
 
-![](../images/00152.jpeg)
+![](img/00152.jpeg)
 
-首先，我们测试了Google DNS IP地址。主机是活动的，并且命令将成功执行，返回代码`=0`。函数将返回`True`并打印`主机是活动的`。其次，我们使用了`HostNotExist`字符串进行测试。函数将返回`False`到主程序并打印`主机已关闭`。此外，它将打印返回给子进程的命令标准输出（`Name or service not known`）。
+首先，我们测试了 Google DNS IP 地址。主机是活动的，并且命令将成功执行，返回代码`=0`。函数将返回`True`并打印`主机是活动的`。其次，我们使用了`HostNotExist`字符串进行测试。函数将返回`False`到主程序并打印`主机已关闭`。此外，它将打印返回给子进程的命令标准输出（`Name or service not known`）。
 
 您可以使用`echo $?`来检查先前执行的命令的返回代码（有时称为退出代码）。
 
@@ -135,7 +135,7 @@ def ping_destination(ip):   p = subprocess.Popen(['ping', '-c', '3'],
 
 如果您检查`call()`函数，您会发现它实际上是`Popen()`类的一个包装器，但具有一个`wait()`函数，它会在返回输出之前等待命令结束：
 
-![](../images/00153.jpeg)
+![](img/00153.jpeg)
 
 ```py
 import subprocess

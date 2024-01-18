@@ -1,28 +1,28 @@
 # 评估
 
-# 第1章：使用Python脚本
+# 第一章：使用 Python 脚本
 
-1.  Python 2.x和3.x之间有什么区别？
+1.  Python 2.x 和 3.x 之间有什么区别？
 
-Python 3.x中的Unicode支持已经得到改进。其他更改涉及`print`和`exec`函数，这些函数已经调整为更易读和一致。
+Python 3.x 中的 Unicode 支持已经得到改进。其他更改涉及`print`和`exec`函数，这些函数已经调整为更易读和一致。
 
-1.  Python开发人员使用的主要编程范式是什么？
+1.  Python 开发人员使用的主要编程范式是什么？
 
 面向对象编程。
 
-1.  Python中的哪种数据结构允许我们将值与键关联起来？
+1.  Python 中的哪种数据结构允许我们将值与键关联起来？
 
-Python字典数据结构提供了一个哈希表，可以存储任意数量的Python对象。字典由包含键和值的项目对组成。
+Python 字典数据结构提供了一个哈希表，可以存储任意数量的 Python 对象。字典由包含键和值的项目对组成。
 
-1.  Python脚本的主要开发环境是什么？
+1.  Python 脚本的主要开发环境是什么？
 
-PyCharm、Wing IDE和Python IDLE。
+PyCharm、Wing IDE 和 Python IDLE。
 
-1.  作为Python开发安全工具的一套最佳实践，我们可以遵循什么方法论？
+1.  作为 Python 开发安全工具的一套最佳实践，我们可以遵循什么方法论？
 
 **安全工具开发的开放方法论**（**OMSTD**）
 
-1.  帮助创建隔离的Python环境的Python模块是什么？
+1.  帮助创建隔离的 Python 环境的 Python 模块是什么？
 
 `virtualenv`
 
@@ -30,21 +30,21 @@ PyCharm、Wing IDE和Python IDLE。
 
 **安全工具构建者**（**SBT**）
 
-1.  在Python开发环境中如何调试变量？
+1.  在 Python 开发环境中如何调试变量？
 
 通过添加断点。这样，我们可以在我们设置断点的地方调试并查看变量的内容。
 
-1.  在PyCharm中如何添加断点？
+1.  在 PyCharm 中如何添加断点？
 
 我们可以在调试工具窗口中使用`call`函数设置断点。
 
-1.  如何在Wing IDE中添加断点？
+1.  如何在 Wing IDE 中添加断点？
 
 我们可以在调试选项菜单中使用`call`函数设置断点。
 
-# 第2章：系统编程包
+# 第二章：系统编程包
 
-1.  允许我们与Python解释器交互的主要模块是什么？
+1.  允许我们与 Python 解释器交互的主要模块是什么？
 
 系统（`sys`）模块。
 
@@ -60,7 +60,7 @@ PyCharm、Wing IDE和Python IDLE。
 
 `>>> subprocess.call("cls", shell=True)`
 
-1.  在Python中，我们可以采用什么方法来轻松安全地处理文件和异常？
+1.  在 Python 中，我们可以采用什么方法来轻松安全地处理文件和异常？
 
 我们可以使用上下文管理器方法和`with`语句。
 
@@ -68,7 +68,7 @@ PyCharm、Wing IDE和Python IDLE。
 
 进程是完整的程序。线程类似于进程：它们也是正在执行的代码。但是，线程在进程内执行，并且进程的线程之间共享资源，如内存。
 
-1.  Python中用于创建和管理线程的主要模块是什么？
+1.  Python 中用于创建和管理线程的主要模块是什么？
 
 有两个选项：
 
@@ -76,9 +76,9 @@ PyCharm、Wing IDE和Python IDLE。
 
 `threading`模块提供了更方便的接口。
 
-1.  Python在处理线程时存在的限制是什么？
+1.  Python 在处理线程时存在的限制是什么？
 
-Python中的线程执行受全局解释器锁（GIL）控制，因此一次只能执行一个线程，而不受机器处理器数量的影响。
+Python 中的线程执行受全局解释器锁（GIL）控制，因此一次只能执行一个线程，而不受机器处理器数量的影响。
 
 1.  提供了一个高级接口，以异步方式执行输入/输出任务的类是哪个？`ThreadPoolExecutors`提供了一个简单的抽象，可以同时启动多个线程，并使用这些线程以并发方式执行任务。
 
@@ -86,11 +86,11 @@ Python中的线程执行受全局解释器锁（GIL）控制，因此一次只�
 
 我们可以使用`threading.current_thread()`函数来确定哪个线程执行了当前任务。
 
-# 第3章：套接字编程
+# 第三章：套接字编程
 
-1.  `sockets`模块的哪个方法允许从IP地址获取域名？
+1.  `sockets`模块的哪个方法允许从 IP 地址获取域名？
 
-通过`gethostbyaddr(address)`方法，我们可以从IP地址获取域名。
+通过`gethostbyaddr(address)`方法，我们可以从 IP 地址获取域名。
 
 1.  `socket`模块的哪个方法允许服务器套接字接受来自另一台主机的客户端套接字的请求？
 
@@ -106,11 +106,11 @@ Python中的线程执行受全局解释器锁（GIL）控制，因此一次只�
 
 `>>> server.bind((“localhost”, 9999))`.
 
-1.  TCP和UDP协议之间的区别是什么，以及如何在Python中使用`socket`模块实现它们？
+1.  TCP 和 UDP 协议之间的区别是什么，以及如何在 Python 中使用`socket`模块实现它们？
 
-TCP和UDP之间的主要区别是UDP不是面向连接的。这意味着我们的数据包没有保证会到达目的地，并且如果传递失败，也不会收到错误通知。
+TCP 和 UDP 之间的主要区别是 UDP 不是面向连接的。这意味着我们的数据包没有保证会到达目的地，并且如果传递失败，也不会收到错误通知。
 
-1.  `socket`模块的哪种方法允许您将主机名转换为IPv4地址格式？
+1.  `socket`模块的哪种方法允许您将主机名转换为 IPv4 地址格式？
 
 `socket.gethostbyname(hostname)`
 
@@ -122,25 +122,25 @@ TCP和UDP之间的主要区别是UDP不是面向连接的。这意味着我们�
 
 `socket.timeout`
 
-1.  `socket`模块的哪个异常允许您捕获在搜索IP地址信息时发生的错误？
+1.  `socket`模块的哪个异常允许您捕获在搜索 IP 地址信息时发生的错误？
 
-`socket.gaierror`异常，带有消息“连接到服务器的错误：[Errno 11001] getaddrinfo失败”。
+`socket.gaierror`异常，带有消息“连接到服务器的错误：[Errno 11001] getaddrinfo 失败”。
 
 1.  `socket`模块的哪个异常允许您捕获通用输入和输出错误和通信？
 
 `socket.error`
 
-# 第4章：HTTP编程
+# 第四章：HTTP 编程
 
-1.  哪个模块最容易使用，因为它旨在简化对REST API的请求？
+1.  哪个模块最容易使用，因为它旨在简化对 REST API 的请求？
 
 `requests`模块。
 
-1.  通过传递一个字典类型的数据结构来进行POST请求的正确方法是什么，该数据结构将被发送到请求的正文中？
+1.  通过传递一个字典类型的数据结构来进行 POST 请求的正确方法是什么，该数据结构将被发送到请求的正文中？
 
 `response = requests.post(url, data=data)`
 
-1.  通过代理服务器正确地进行POST请求并同时修改标头信息的方法是什么？
+1.  通过代理服务器正确地进行 POST 请求并同时修改标头信息的方法是什么？
 
 `requests.post(url,headers=headers,proxies=proxy)`
 
@@ -148,7 +148,7 @@ TCP和UDP之间的主要区别是UDP不是面向连接的。这意味着我们�
 
 字典数据结构；例如，`proxy = {“protocol”:”ip:port”}`。
 
-1.  如果在`response`对象中有服务器的响应，我们如何获得服务器返回的HTTP请求代码？
+1.  如果在`response`对象中有服务器的响应，我们如何获得服务器返回的 HTTP 请求代码？
 
 `response.status_code`
 
@@ -162,23 +162,23 @@ TCP和UDP之间的主要区别是UDP不是面向连接的。这意味着我们�
 
 1.  基本身份验证机制使用什么编码系统发送用户名和密码？
 
-HTTP基本身份验证机制基于表单，使用`Base64`对由冒号分隔的用户名和密码组合进行编码。
+HTTP 基本身份验证机制基于表单，使用`Base64`对由冒号分隔的用户名和密码组合进行编码。
 
 1.  使用一种单向哈希加密算法（MD5）来改进基本身份验证过程的机制是什么？
 
-HTTP摘要身份验证机制使用MD5加密用户、密钥和领域哈希。
+HTTP 摘要身份验证机制使用 MD5 加密用户、密钥和领域哈希。
 
-1.  用于识别我们用于向URL发送请求的浏览器和操作系统的标头是哪个？
+1.  用于识别我们用于向 URL 发送请求的浏览器和操作系统的标头是哪个？
 
 **User-Agent**标头。
 
-# 第5章：分析网络流量
+# 第五章：分析网络流量
 
-1.  Scapy函数可以以与`tcpdump`和Wireshark等工具相同的方式捕获数据包是什么？
+1.  Scapy 函数可以以与`tcpdump`和 Wireshark 等工具相同的方式捕获数据包是什么？
 
 `scapy> pkts = sniff (iface = "eth0", count = n)`，其中`n`是数据包的数量。
 
-1.  使用Scapy以循环的形式每五秒发送一个数据包的最佳方法是什么？
+1.  使用 Scapy 以循环的形式每五秒发送一个数据包的最佳方法是什么？
 
 `scapy> sendp (packet, loop=1, inter=5)`
 
@@ -218,7 +218,7 @@ HTTP摘要身份验证机制使用MD5加密用户、密钥和领域哈希。
 
 `**traceroute**`
 
-# 第 6 章：从服务器收集信息
+# 第六章：从服务器收集信息
 
 1.  我们需要什么来访问 Shodan 开发者 API？
 
@@ -260,7 +260,7 @@ HTTP摘要身份验证机制使用MD5加密用户、密钥和领域哈希。
 
 `53(UDP)`
 
-# 第 7 章：与 FTP、SSH 和 SNMP 服务器交互
+# 第七章：与 FTP、SSH 和 SNMP 服务器交互
 
 1.  如何使用 `ftplib` 模块通过 `connect()` 和 `login()` 方法连接到 FTP 服务器？
 
@@ -280,17 +280,17 @@ HTTP摘要身份验证机制使用MD5加密用户、密钥和领域哈希。
 
 `ssh.connect(host, username=’username’, password=’password’)`
 
-1.  Paramiko模块的哪种方法允许我们打开一个会话以便随后执行命令？
+1.  Paramiko 模块的哪种方法允许我们打开一个会话以便随后执行命令？
 
 `ssh_session = client.get_transport().open_session()`
 
-1.  我们如何使用找到的路由和密码从RSA证书登录到SSH服务器？
+1.  我们如何使用找到的路由和密码从 RSA 证书登录到 SSH 服务器？
 
 `rsa_key= RSAKey.from_private_key_file('path_key_rsa',password)`
 
 `client.connect('host',username='',pkey= rsa_key,password='')`
 
-1.  `PySNMP`模块的哪个主要类允许对SNMP代理进行查询？
+1.  `PySNMP`模块的哪个主要类允许对 SNMP 代理进行查询？
 
 `CommandGenerator`。以下是其使用示例：
 
@@ -298,19 +298,19 @@ HTTP摘要身份验证机制使用MD5加密用户、密钥和领域哈希。
 
 `cmdGen = cmdgen.CommandGenerator()`
 
-1.  在不中断会话或提示用户的情况下，通知Paramiko首次接受服务器密钥的指令是什么？
+1.  在不中断会话或提示用户的情况下，通知 Paramiko 首次接受服务器密钥的指令是什么？
 
 `ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())`
 
-1.  通过`Transport()`方法连接到SSH服务器的另一种对象类型提供了另一种身份验证方式？
+1.  通过`Transport()`方法连接到 SSH 服务器的另一种对象类型提供了另一种身份验证方式？
 
 `transport = paramiko.Transport(ip_address)`
 
 `transport.start_client()`
 
-1.  基于Paramiko的Python FTP模块，以安全方式与FTP服务器建立连接是什么？
+1.  基于 Paramiko 的 Python FTP 模块，以安全方式与 FTP 服务器建立连接是什么？
 
-`pysftp`，它基于paramiko。
+`pysftp`，它基于 paramiko。
 
 1.  我们需要使用`ftplib`的哪种方法来下载文件，以及需要执行哪个`ftp`命令？
 
@@ -320,7 +320,7 @@ HTTP摘要身份验证机制使用MD5加密用户、密钥和领域哈希。
 
 `ftp_client.retrbinary(ftp_cmd,file_handler.write)`
 
-# 第8章：使用Nmap扫描器
+# 第八章：使用 Nmap 扫描器
 
 1.  哪种方法允许我们查看已被定位扫描的机器？
 
@@ -334,11 +334,11 @@ HTTP摘要身份验证机制使用MD5加密用户、密钥和领域哈希。
 
 `nmap.csv()`
 
-1.  用于执行异步扫描的Nmap模块是什么类型的？
+1.  用于执行异步扫描的 Nmap 模块是什么类型的？
 
 `nma = nmap.PortScannerAsync()`
 
-1.  用于执行同步扫描的Nmap模块是什么类型的？
+1.  用于执行同步扫描的 Nmap 模块是什么类型的？
 
 `nma = nmap.PortScanner()`
 
@@ -360,23 +360,23 @@ HTTP摘要身份验证机制使用MD5加密用户、密钥和领域哈希。
 
 `nmasync.scan(hosts=’127.0.0.1’, arguments=’-sP’, callback=callback_result)`
 
-1.  如果我们需要知道FTP服务是否允许匿名身份验证而无需输入用户名和密码，我们需要在端口`21`上运行哪个脚本？
+1.  如果我们需要知道 FTP 服务是否允许匿名身份验证而无需输入用户名和密码，我们需要在端口`21`上运行哪个脚本？
 
 `ftp-anon.nse`
 
-1.  如果我们需要知道MySQL服务是否允许匿名身份验证而无需输入用户名和密码，我们需要在端口`3306`上运行哪个脚本？
+1.  如果我们需要知道 MySQL 服务是否允许匿名身份验证而无需输入用户名和密码，我们需要在端口`3306`上运行哪个脚本？
 
 `mysql-enum.nse`
 
-# 第9章：与Metasploit框架连接
+# 第九章：与 Metasploit 框架连接
 
-1.  与模块交互和执行Metasploit中的利用的接口是什么？
+1.  与模块交互和执行 Metasploit 中的利用的接口是什么？
 
 `msfconsole`
 
-1.  使用Metasploit框架利用系统的主要步骤是什么？
+1.  使用 Metasploit 框架利用系统的主要步骤是什么？
 
-使用Metasploit框架利用系统的五个步骤如下：
+使用 Metasploit 框架利用系统的五个步骤如下：
 
 1. 配置主动利用
 
@@ -388,9 +388,9 @@ HTTP摘要身份验证机制使用MD5加密用户、密钥和领域哈希。
 
 5. 启动利用
 
-1.  Metasploit框架用于客户端和Metasploit服务器实例之间交换信息的接口名称是什么？
+1.  Metasploit 框架用于客户端和 Metasploit 服务器实例之间交换信息的接口名称是什么？
 
-MSGRPC接口使用`MessagePack`格式在Metasploit Framework实例和客户端之间交换信息。
+MSGRPC 接口使用`MessagePack`格式在 Metasploit Framework 实例和客户端之间交换信息。
 
 1.  `generic/shell_bind_tcp`和`generic/shell_reverse_tcp`之间的区别是什么？
 
@@ -400,41 +400,41 @@ MSGRPC接口使用`MessagePack`格式在Metasploit Framework实例和客户端�
 
 `./msfrpcd -U user -P password -p 55553 -n -f`
 
-这样，Metasploit的RPC接口在端口`55553`上监听。
+这样，Metasploit 的 RPC 接口在端口`55553`上监听。
 
 1.  我们需要使用哪个函数以与`msfconsole`实用程序相同的方式与框架交互？
 
 1.  我们使用`console.create`函数，然后使用该函数返回的控制台标识符，如下所示：
 
-导入msfrpc
+导入 msfrpc
 
 `client = msfrpc.Msfrpc({'uri':'/msfrpc', 'port':'5553', 'host':'127.0.0.1', 'ssl': True})`
 
 `client.call('console.create')`
 
-1.  使用Metasploit Framework在客户端和Metasploit服务器实例之间交换信息的远程访问接口的名称是什么？
+1.  使用 Metasploit Framework 在客户端和 Metasploit 服务器实例之间交换信息的远程访问接口的名称是什么？
 
 `MSGRPC`
 
-1.  我们如何可以从Metasploit服务器获取所有利用的列表？
+1.  我们如何可以从 Metasploit 服务器获取所有利用的列表？
 
 要获取利用，可以在使用该工具时使用`**show exploits**`命令。
 
-1.  Metasploit Framework中哪些模块可以访问Apache Tomcat中的应用程序管理器并利用Apache Tomcat服务器以获取会话meterpreter？
+1.  Metasploit Framework 中哪些模块可以访问 Apache Tomcat 中的应用程序管理器并利用 Apache Tomcat 服务器以获取会话 meterpreter？
 
-在Metasploit Framework中，有一个名为`tomcat_mgr_login`的辅助模块，它为攻击者提供用户名和密码以访问Tomcat Manager。
+在 Metasploit Framework 中，有一个名为`tomcat_mgr_login`的辅助模块，它为攻击者提供用户名和密码以访问 Tomcat Manager。
 
-1.  在Tomcat服务器上执行利用时建立meterpreter会话的有效负载名称是什么？
+1.  在 Tomcat 服务器上执行利用时建立 meterpreter 会话的有效负载名称是什么？
 
 `java/meterpreter/bind_tcp`
 
-# 第10章：与漏洞扫描仪交互
+# 第十章：与漏洞扫描仪交互
 
 1.  考虑一组标准化和易于衡量的标准，评分漏洞的主要机制是什么？
 
 **通用漏洞评分系统**（**CVSS**）
 
-1.  我们使用哪个包和类来与Python交互Nessus？
+1.  我们使用哪个包和类来与 Python 交互 Nessus？
 
 `from nessrest import ness6rest`
 
@@ -446,57 +446,57 @@ MSGRPC接口使用`MessagePack`格式在Metasploit Framework实例和客户端�
 
 `scan_details(self, name)`方法获取所请求扫描的详细信息。
 
-1.  用Python连接`nexpose`服务器的主要类是什么？
+1.  用 Python 连接`nexpose`服务器的主要类是什么？
 
-要使用`nexpose`服务器连接Python，我们使用`pynexpose.py`文件中的`NeXposeServer`类。
+要使用`nexpose`服务器连接 Python，我们使用`pynexpose.py`文件中的`NeXposeServer`类。
 
 1.  负责列出所有检测到的漏洞并返回特定漏洞详情的方法是什么？
 
 `vulnerability_listing()`和`vulnerability_details()`方法负责列出所有检测到的漏洞并返回特定漏洞的详情。
 
-1.  允许我们解析并获取从`nexpose`服务器获取的信息的Python模块的名称是什么？
+1.  允许我们解析并获取从`nexpose`服务器获取的信息的 Python 模块的名称是什么？
 
 `BeautifulSoup`。
 
-1.  允许我们连接到`NexPose`漏洞扫描仪的Python模块的名称是什么？
+1.  允许我们连接到`NexPose`漏洞扫描仪的 Python 模块的名称是什么？
 
-`Pynexpose`模块允许从Python对位于Web服务器上的漏洞扫描器进行编程访问。
+`Pynexpose`模块允许从 Python 对位于 Web 服务器上的漏洞扫描器进行编程访问。
 
-1.  允许我们连接到`Nessus`漏洞扫描仪的Python模块的名称是什么？
+1.  允许我们连接到`Nessus`漏洞扫描仪的 Python 模块的名称是什么？
 
 `nessrest`。
 
-1.  `Nexpose`服务器以何种格式返回响应以便从Python中简单处理？
+1.  `Nexpose`服务器以何种格式返回响应以便从 Python 中简单处理？
 
 XML。
 
-# 第11章：识别Web应用程序中的服务器漏洞
+# 第十一章：识别 Web 应用程序中的服务器漏洞
 
 1.  哪种类型的漏洞是一种攻击，将恶意脚本注入到网页中，以重定向用户到假网站或收集个人信息？
 
 **跨站脚本**（**XSS**）允许攻击者在受害者的浏览器中执行脚本，从而允许他们劫持用户会话或将用户重定向到恶意站点。
 
-1.  攻击者将SQL数据库命令插入到Web应用程序使用的订单表单的数据输入字段的技术是什么？
+1.  攻击者将 SQL 数据库命令插入到 Web 应用程序使用的订单表单的数据输入字段的技术是什么？
 
-SQL注入是一种利用`未经验证`输入漏洞来窃取数据的技术。基本上，它是一种代码注入技术，攻击者执行恶意SQL查询，控制Web应用程序的数据库。
+SQL 注入是一种利用`未经验证`输入漏洞来窃取数据的技术。基本上，它是一种代码注入技术，攻击者执行恶意 SQL 查询，控制 Web 应用程序的数据库。
 
-您希望防止浏览器运行潜在有害的JavaScript命令。什么工具可以帮助您检测与JavaScript相关的Web应用程序中的漏洞？
+您希望防止浏览器运行潜在有害的 JavaScript 命令。什么工具可以帮助您检测与 JavaScript 相关的 Web 应用程序中的漏洞？
 
-您可以使用`xssscrapy`来检测XSS漏洞。
+您可以使用`xssscrapy`来检测 XSS 漏洞。
 
 1.  什么工具允许您从网站获取数据结构？
 
-`Scrapy`是Python的一个框架，允许您执行网络抓取任务和网络爬行过程以及数据分析。它允许您递归扫描网站的内容，并对内容应用一组规则，以提取可能对您有用的信息。
+`Scrapy`是 Python 的一个框架，允许您执行网络抓取任务和网络爬行过程以及数据分析。它允许您递归扫描网站的内容，并对内容应用一组规则，以提取可能对您有用的信息。
 
-1.  什么工具允许您检测与JavaScript相关的Web应用程序中的漏洞？
+1.  什么工具允许您检测与 JavaScript 相关的 Web 应用程序中的漏洞？
 
 `Sqlmap`和`xsscrapy`。
 
-1.  w3af工具的哪个配置文件执行扫描以识别更高风险的漏洞，如SQL注入和XSS？
+1.  w3af 工具的哪个配置文件执行扫描以识别更高风险的漏洞，如 SQL 注入和 XSS？
 
-`audit_high_risk`配置文件执行扫描以识别更高风险的漏洞，如SQL注入和XSS。
+`audit_high_risk`配置文件执行扫描以识别更高风险的漏洞，如 SQL 注入和 XSS。
 
-1.  w3af API中的主要类是包含启用插件、建立攻击目标和管理配置文件所需的所有方法和属性的类是什么？
+1.  w3af API 中的主要类是包含启用插件、建立攻击目标和管理配置文件所需的所有方法和属性的类是什么？
 
 在整个攻击过程中，最重要的是管理`core.controllers.w3afCore`模块的`w3afCore`类。该类的实例包含启用插件、建立攻击目标、管理配置文件以及启动、中断和停止攻击过程所需的所有方法和属性。
 
@@ -506,23 +506,23 @@ SQL注入是一种利用`未经验证`输入漏洞来窃取数据的技术。基
 
 `>>>sqlmap -u http://testphp.productweb.com/showproducts.php?cat=1 –dbs`
 
-1.  允许在服务器中扫描Heartbleed漏洞的Nmap脚本的名称是什么？
+1.  允许在服务器中扫描 Heartbleed 漏洞的 Nmap 脚本的名称是什么？
 
 `ssl-heartbleed`
 
-1.  哪个过程允许我们与服务器建立SSL连接，包括对称和非对称密钥的交换，以在客户端和服务器之间建立加密连接？
+1.  哪个过程允许我们与服务器建立 SSL 连接，包括对称和非对称密钥的交换，以在客户端和服务器之间建立加密连接？
 
 `HandShake`确定将用于加密通信的密码套件，验证服务器，并在实际数据传输之前建立安全连接。
 
-# 第12章：从文档、图像和浏览器中提取地理位置和元数据
+# 第十二章：从文档、图像和浏览器中提取地理位置和元数据
 
-1.  哪个Python模块允许我们从IP地址检索地理信息？
+1.  哪个 Python 模块允许我们从 IP 地址检索地理信息？
 
-`pygeoip`允许您从IP地址检索地理信息。它基于GeoIP数据库，这些数据库根据类型（类型为`city`、`region`、`country`、`ISP`）分布在几个文件中。
+`pygeoip`允许您从 IP 地址检索地理信息。它基于 GeoIP 数据库，这些数据库根据类型（类型为`city`、`region`、`country`、`ISP`）分布在几个文件中。
 
-1.  哪个模块使用Google Geocoding API v3服务来检索特定地址的坐标？
+1.  哪个模块使用 Google Geocoding API v3 服务来检索特定地址的坐标？
 
-`pygeocoder`是一个简化使用Google地理位置功能的Python模块。使用此模块，您可以轻松找到与坐标对应的地址，反之亦然。我们还可以使用它来验证和格式化地址。
+`pygeocoder`是一个简化使用 Google 地理位置功能的 Python 模块。使用此模块，您可以轻松找到与坐标对应的地址，反之亦然。我们还可以使用它来验证和格式化地址。
 
 1.  允许根据地点的描述和特定位置进行查询的`pygeocoder`模块的主要类是什么？
 
@@ -532,11 +532,11 @@ SQL注入是一种利用`未经验证`输入漏洞来窃取数据的技术。基
 
 `results = Geocoder.reverse_geocode(results.latitude, results.longitude)`
 
-1.  `pygeoip`模块中的哪个方法允许我们从传递的IP地址获取国家名称的值？
+1.  `pygeoip`模块中的哪个方法允许我们从传递的 IP 地址获取国家名称的值？
 
 `country_name_by_addr(<ip_address>)`
 
-1.  `pygeoip`模块中的哪个方法允许我们从IP地址获取以字典形式的地理数据（国家、城市、地区、纬度、经度）？
+1.  `pygeoip`模块中的哪个方法允许我们从 IP 地址获取以字典形式的地理数据（国家、城市、地区、纬度、经度）？
 
 `record_by_addr(<ip_address>)`
 
@@ -544,19 +544,19 @@ SQL注入是一种利用`未经验证`输入漏洞来窃取数据的技术。基
 
 `org_by_name(<domain_name>)`
 
-1.  哪个Python模块允许我们从PDF文档中提取元数据？
+1.  哪个 Python 模块允许我们从 PDF 文档中提取元数据？
 
 `PyPDF2`
 
-1.  我们可以使用哪个类和方法来从PDF文档中获取信息？
+1.  我们可以使用哪个类和方法来从 PDF 文档中获取信息？
 
 `PyPDF2`模块提供了提取文档信息以及加密和解密文档的功能。要提取元数据，我们可以使用`PdfFileReader`类和`getDocumentInfo()`方法，它返回一个包含文档数据的字典。
 
-1.  哪个模块允许我们从EXIF格式的标签中提取图像信息？
+1.  哪个模块允许我们从 EXIF 格式的标签中提取图像信息？
 
-`PIL.ExifTags`用于获取图像的EXIF标签信息；图像对象的`_getexif()`方法可用。
+`PIL.ExifTags`用于获取图像的 EXIF 标签信息；图像对象的`_getexif()`方法可用。
 
-# 第13章：密码学和隐写术
+# 第十三章：密码学和隐写术
 
 1.  哪种算法类型使用相同的密钥来加密和解密数据？
 
@@ -566,13 +566,13 @@ SQL注入是一种利用`未经验证`输入漏洞来窃取数据的技术。基
 
 公钥算法使用两个不同的密钥：一个用于加密，另一个用于解密。这项技术的用户发布其公钥，同时保持其私钥保密。这使得任何人都可以使用公钥加密发送给他们的消息，只有私钥的持有者才能解密。
 
-1.  在`pycrypto`中，我们可以使用哪个包来使用诸如AES之类的加密算法？
+1.  在`pycrypto`中，我们可以使用哪个包来使用诸如 AES 之类的加密算法？
 
 `from Crypto.Cipher import AES`
 
-1.  对于哪种算法，我们需要确保数据的长度是16字节的倍数？
+1.  对于哪种算法，我们需要确保数据的长度是 16 字节的倍数？
 
-AES加密。
+AES 加密。
 
 1.  对于密码模块，我们可以使用哪个包进行对称加密？
 
@@ -582,7 +582,7 @@ AES加密。
 
 1.  从密码中派生加密密钥使用哪种算法？
 
-**基于密码的密钥派生函数2**（**PBKDF2**）。对于密码模块，我们可以使用`cryptography.hazmat.primitives.kdf.pbkdf2`包中的`PBKDF2HMAC`。
+**基于密码的密钥派生函数 2**（**PBKDF2**）。对于密码模块，我们可以使用`cryptography.hazmat.primitives.kdf.pbkdf2`包中的`PBKDF2HMAC`。
 
 1.  `fernet`包为对称加密提供了什么，并且用于生成密钥的方法是什么？
 

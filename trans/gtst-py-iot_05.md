@@ -26,7 +26,7 @@
 
 # 加载、显示和保存图像
 
-本节介绍了如何通过OpenCV-Python处理图像。此外，我们讨论了如何加载、显示和保存图像。
+本节介绍了如何通过 OpenCV-Python 处理图像。此外，我们讨论了如何加载、显示和保存图像。
 
 # 如何做...
 
@@ -60,13 +60,13 @@ cv2.waitKey(0)
 cv2.imwrite("Saved Image.jpg", image) 
 ```
 
-1.  用于执行Python程序`Load_Display_Save.py`的命令如下所示：
+1.  用于执行 Python 程序`Load_Display_Save.py`的命令如下所示：
 
-![](Images/e2747d29-f33d-4c11-8241-c7bc713334ff.png)
+![](img/e2747d29-f33d-4c11-8241-c7bc713334ff.png)
 
 1.  执行`Load_Display_Save.py`后获得的结果如下所示：
 
-![](Images/034ff3a4-7d68-467b-b4a8-0f1bd5117ae8.png)
+![](img/034ff3a4-7d68-467b-b4a8-0f1bd5117ae8.png)
 
 # 图像翻转
 
@@ -156,33 +156,33 @@ cv2.waitKey(0)
 cv2.destroyAllWindows() 
 ```
 
-1.  用于执行`Flipping.py` Python程序的命令如下所示：
+1.  用于执行`Flipping.py` Python 程序的命令如下所示：
 
-![](Images/7d0a6ede-4840-4ab4-9776-d44e9f6ebe1b.png)
+![](img/7d0a6ede-4840-4ab4-9776-d44e9f6ebe1b.png)
 
 1.  执行`Flipping.py`后获得的原始和水平翻转的图像如下所示：
 
-![](Images/8ae77f4f-9f1b-47a6-9703-31c2970f9fb1.png)
+![](img/8ae77f4f-9f1b-47a6-9703-31c2970f9fb1.png)
 
 以下是水平翻转的图片：
 
-![](Images/77684d2e-ae13-4b2c-941c-d37e4b1008b5.png)
+![](img/77684d2e-ae13-4b2c-941c-d37e4b1008b5.png)
 
 1.  执行`Flipping.py`后获得的垂直、水平和垂直翻转的图像如下所示：
 
-![](Images/85e084c3-2d5c-4eae-b489-e57a93e931a0.png)
+![](img/85e084c3-2d5c-4eae-b489-e57a93e931a0.png)
 
 以下是水平和垂直翻转的图片：
 
-![](Images/e49c540d-e711-4112-85b3-d433c59fea9d.png)
+![](img/e49c540d-e711-4112-85b3-d433c59fea9d.png)
 
 # 图像缩放
 
-图像缩放用于根据要求修改输入图像的尺寸。在OpenCV中通常使用三种类型的缩放操作符，它们是立方、区域和线性插值。
+图像缩放用于根据要求修改输入图像的尺寸。在 OpenCV 中通常使用三种类型的缩放操作符，它们是立方、区域和线性插值。
 
 # 如何做...
 
-1.  创建一个新的Python文件并导入以下包：
+1.  创建一个新的 Python 文件并导入以下包：
 
 ```py
 # Scaling (Resizing) Images - Cubic, Area, Linear Interpolations 
@@ -285,25 +285,25 @@ cv2.waitKey()
 cv2.destroyAllWindows() 
 ```
 
-1.  用于执行`Scaling.py` Python程序的命令如下所示：
+1.  用于执行`Scaling.py` Python 程序的命令如下所示：
 
-![](Images/e932fc3b-9c5f-452d-83c2-8480e08d0f11.png)
+![](img/e932fc3b-9c5f-452d-83c2-8480e08d0f11.png)
 
 1.  用于缩放的原始图像如下所示：
 
-![](Images/37709e13-bb28-4616-ba74-4bf2b18d9fdc.png)
+![](img/37709e13-bb28-4616-ba74-4bf2b18d9fdc.png)
 
 1.  执行`Scaling.py`文件后获得的线性插值输出如下所示：
 
-![](Images/f451fa07-f8d7-4ce8-88df-6f18f6abe93b.png)
+![](img/f451fa07-f8d7-4ce8-88df-6f18f6abe93b.png)
 
 1.  执行`Scaling.py`文件后获得的面积插值输出如下所示：
 
-![](Images/7bb33217-91fc-408c-8107-857eca6a88f4.png)
+![](img/7bb33217-91fc-408c-8107-857eca6a88f4.png)
 
 1.  执行`Scaling.py`文件后获得的立方插值输出如下所示：
 
-![](Images/146eb167-7623-4716-a6ae-0d7ef0e973e3.png)
+![](img/146eb167-7623-4716-a6ae-0d7ef0e973e3.png)
 
 # 腐蚀和膨胀
 
@@ -317,7 +317,7 @@ cv2.destroyAllWindows()
 import cv2 
 ```
 
-1.  导入数值Python包 - `numpy as np`：
+1.  导入数值 Python 包 - `numpy as np`：
 
 ```py
 import numpy as np 
@@ -341,7 +341,7 @@ cv2.imshow("Original", image)
 cv2.waitKey(0) 
 ```
 
-1.  给定形状和类型，用1填充：
+1.  给定形状和类型，用 1 填充：
 
 ```py
 # np.ones(shape, dtype) 
@@ -395,19 +395,19 @@ cv2.destroyAllWindows()
 
 1.  用于执行`Erosion_Dilation.py`文件的命令如下所示：
 
-![](Images/f3c5589b-a112-48f9-8145-a1c2e4b552b7.png)
+![](img/f3c5589b-a112-48f9-8145-a1c2e4b552b7.png)
 
 1.  用于执行`Erosion_Dilation.py`文件的输入图像如下所示：
 
-![](Images/131dfbf0-3273-43fb-82ca-6408ada76501.png)
+![](img/131dfbf0-3273-43fb-82ca-6408ada76501.png)
 
 1.  执行`Erosion_Dilation.py`文件后获得的腐蚀图像如下所示：
 
-![](Images/1a1c5a64-8e8c-4a4f-bda9-c08b3622108d.png)
+![](img/1a1c5a64-8e8c-4a4f-bda9-c08b3622108d.png)
 
 1.  执行`Erosion_Dilation.py`文件后获得的膨胀图像如下所示：
 
-![](Images/6ad113bb-0abf-4be3-ad07-80b4496dd6d6.png)
+![](img/6ad113bb-0abf-4be3-ad07-80b4496dd6d6.png)
 
 # 图像分割
 
@@ -502,11 +502,11 @@ cv2.destroyAllWindows()
 
 1.  执行`Image_Segmentation.py`文件后获得的结果如下所示：
 
-![](Images/5782941a-b4e6-4332-8318-d012e6f2d143.png)
+![](img/5782941a-b4e6-4332-8318-d012e6f2d143.png)
 
 以下是边缘检测输出：
 
-![](Images/b1b74744-bea2-48cd-b867-b9cc58c61326.png)
+![](img/b1b74744-bea2-48cd-b867-b9cc58c61326.png)
 
 # 模糊和锐化图像
 
@@ -600,19 +600,19 @@ cv2.destroyAllWindows()
 
 1.  用于执行`Blurring_Sharpening.py`的命令如下所示：
 
-![](Images/9d3d7e80-2065-4b49-9fb3-73ba8f019299.png)
+![](img/9d3d7e80-2065-4b49-9fb3-73ba8f019299.png)
 
 1.  用于执行`Blurring_Sharpening.py`文件的输入图像如下所示：
 
-![](Images/0fc19880-c1ed-429d-810f-cc0d99e00029.png)
+![](img/0fc19880-c1ed-429d-810f-cc0d99e00029.png)
 
 1.  执行`Blurring_Sharpening.py`文件后获得的模糊图像如下所示：
 
-![](Images/a5d0dda6-40b2-4cd4-a1a5-0caf0c2f3982.png)
+![](img/a5d0dda6-40b2-4cd4-a1a5-0caf0c2f3982.png)
 
 1.  执行`Blurring_Sharpening.py`文件后获得的锐化图像如下所示：
 
-![](Images/f4d411d0-8984-4418-b31f-0e9c98cc2bb2.png)
+![](img/f4d411d0-8984-4418-b31f-0e9c98cc2bb2.png)
 
 # 在图像中检测边缘
 
@@ -635,7 +635,7 @@ in_file = sys.argv[1]
 image = cv2.imread(in_file, cv2.IMREAD_GRAYSCALE) 
 ```
 
-1.  实现Sobel边缘检测方案：
+1.  实现 Sobel 边缘检测方案：
 
 ```py
 horizontal_sobel = cv2.Sobel(image, cv2.CV_64F, 1, 0, ksize=5) 
@@ -676,37 +676,37 @@ cv2.imshow('Canny image', canny_img)
 cv2.waitKey()
 ```
 
-1.  用于执行`Detecting_edges.py` Python程序文件的命令，以及输入图像(`baby.jpg`)如下所示：
+1.  用于执行`Detecting_edges.py` Python 程序文件的命令，以及输入图像(`baby.jpg`)如下所示：
 
-![](Images/ef7c4c3c-5ff6-4967-8cb2-21225f4a86a0.png)
+![](img/ef7c4c3c-5ff6-4967-8cb2-21225f4a86a0.png)
 
-1.  执行`Detecting_edges.py`文件后获得的输入图像和水平Sobel滤波器输出如下所示：
+1.  执行`Detecting_edges.py`文件后获得的输入图像和水平 Sobel 滤波器输出如下所示：
 
-![](Images/234d88f2-d818-428d-a185-1e4ea0404526.png)
+![](img/234d88f2-d818-428d-a185-1e4ea0404526.png)
 
-1.  执行`Detecting_edges.py`文件后获得的垂直Sobel滤波器输出和拉普拉斯图像输出如下所示：
+1.  执行`Detecting_edges.py`文件后获得的垂直 Sobel 滤波器输出和拉普拉斯图像输出如下所示：
 
-![](Images/d10d6ba5-3946-4083-91c1-0cef82083fbe.png)
+![](img/d10d6ba5-3946-4083-91c1-0cef82083fbe.png)
 
 以下是拉普拉斯图像输出：
 
-![](Images/243aaabd-5c2b-4923-91ef-49916fb9f4a3.png)
+![](img/243aaabd-5c2b-4923-91ef-49916fb9f4a3.png)
 
 1.  执行`Detecting_edges.py`文件后获得的`Canny`边缘检测输出如下所示：
 
-![](Images/8f4d5750-5f51-4c9d-9130-8c64ffd698c6.png)
+![](img/8f4d5750-5f51-4c9d-9130-8c64ffd698c6.png)
 
 # 它是如何工作的...
 
 读者可以参考以下文档，了解边缘检测是什么，以及它对测试图片的影响：
 
-[http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.301.927](http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.301.927)
+[`citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.301.927`](http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.301.927)
 
 # 另请参见
 
 请参阅以下文档：
 
-+   [https://www.tutorialspoint.com/dip/concept_of_edge_detection.htm](https://www.tutorialspoint.com/dip/concept_of_edge_detection.htm)
++   [`www.tutorialspoint.com/dip/concept_of_edge_detection.htm`](https://www.tutorialspoint.com/dip/concept_of_edge_detection.htm)
 
 # 直方图均衡化
 
@@ -729,7 +729,7 @@ in_file = sys.argv[1]
 image = cv2.imread(in_file) 
 ```
 
-1.  将RGB图像转换为灰度图像：
+1.  将 RGB 图像转换为灰度图像：
 
 ```py
 image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) 
@@ -743,7 +743,7 @@ image_gray_histoeq = cv2.equalizeHist(image_gray)
 cv2.imshow('Histogram equalized - grayscale image', image_gray_histoeq) 
 ```
 
-1.  调整RGB图像的直方图：
+1.  调整 RGB 图像的直方图：
 
 ```py
 image_yuv = cv2.cvtColor(image, cv2.COLOR_BGR2YUV) 
@@ -759,25 +759,25 @@ cv2.imshow('Histogram equalized - color image', image_histoeq)
 cv2.waitKey()
 ```
 
-1.  用于执行`histogram.py` Python程序文件的命令，以及输入图像(`finger.jpg`)如下所示：
+1.  用于执行`histogram.py` Python 程序文件的命令，以及输入图像(`finger.jpg`)如下所示：
 
-![](Images/ad53e9d6-fe47-4d0f-a4aa-5f2876f35706.png)
+![](img/ad53e9d6-fe47-4d0f-a4aa-5f2876f35706.png)
 
 1.  用于执行`histogram.py`文件的输入图像如下所示：
 
-![](Images/7470d11b-e229-4e87-b648-b0f7b4eb6bc9.png)
+![](img/7470d11b-e229-4e87-b648-b0f7b4eb6bc9.png)
 
 1.  执行`histogram.py`文件后获得的直方图均衡化灰度图像如下所示：
 
-![](Images/9fa26fce-9eb1-4a54-8163-8bb22ad11a42.png)
+![](img/9fa26fce-9eb1-4a54-8163-8bb22ad11a42.png)
 
 1.  执行`histogram.py`文件后获得的直方图均衡化彩色图像如下所示：
 
-![](Images/21bbb467-1918-46bc-ae7c-c2d912a83004.png)
+![](img/21bbb467-1918-46bc-ae7c-c2d912a83004.png)
 
 # 在图像中检测角点
 
-角点是图像中用于提取推断图像内容的特殊特征的边界。角点检测经常用于图像配准、视频跟踪、图像拼接、运动检测、3D建模、全景拼接和物体识别。
+角点是图像中用于提取推断图像内容的特殊特征的边界。角点检测经常用于图像配准、视频跟踪、图像拼接、运动检测、3D 建模、全景拼接和物体识别。
 
 # 如何做...
 
@@ -799,7 +799,7 @@ image_gray1 = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 image_gray2 = np.float32(image_gray1) 
 ```
 
-1.  实现Harris角点检测方案：
+1.  实现 Harris 角点检测方案：
 
 ```py
 image_harris1 = cv2.cornerHarris(image_gray2, 7, 5, 0.04) 
@@ -829,20 +829,20 @@ cv2.imshow('Harris Corners', image)
 cv2.waitKey() 
 ```
 
-1.  用于执行`Detecting_corner.py` Python程序文件的命令，以及输入图像(`box.jpg`)如下所示：
+1.  用于执行`Detecting_corner.py` Python 程序文件的命令，以及输入图像(`box.jpg`)如下所示：
 
-![](Images/a1cf1797-e1a2-4ff5-917f-b2410b5478db.png)
+![](img/a1cf1797-e1a2-4ff5-917f-b2410b5478db.png)
 
 1.  用于执行`Detecting_corner.py`文件的输入图像如下所示：
 
-![](Images/8e3a22bb-a6f1-4251-baa8-2be67137ef99.png)
+![](img/8e3a22bb-a6f1-4251-baa8-2be67137ef99.png)
 
-1.  执行`Detecting_corner.py`文件后获得的Harris角点如下所示：
+1.  执行`Detecting_corner.py`文件后获得的 Harris 角点如下所示：
 
-![](Images/3934c015-8fa1-4ba6-a941-7c6046008dda.png)
+![](img/3934c015-8fa1-4ba6-a941-7c6046008dda.png)
 
 要了解它如何作用于输入图片，请参考以下内容：
 
-+   图像角点检测涉及在给定图片中找到边缘/角点。它可以用于从灰度和RGB图片中提取重要的形状特征。参考这篇关于边缘和角点检测的调查论文：
++   图像角点检测涉及在给定图片中找到边缘/角点。它可以用于从灰度和 RGB 图片中提取重要的形状特征。参考这篇关于边缘和角点检测的调查论文：
 
-[https://pdfs.semanticscholar.org/24dd/6c2c08f5601e140aad5b9170e0c7485f6648.pdf](https://pdfs.semanticscholar.org/24dd/6c2c08f5601e140aad5b9170e0c7485f6648.pdf)。
+[`pdfs.semanticscholar.org/24dd/6c2c08f5601e140aad5b9170e0c7485f6648.pdf`](https://pdfs.semanticscholar.org/24dd/6c2c08f5601e140aad5b9170e0c7485f6648.pdf)。

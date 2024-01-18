@@ -1,16 +1,16 @@
-# 分布式Python
+# 分布式 Python
 
-本章将介绍一些重要的Python模块，用于分布式计算。特别是，我们将描述`socket`模块，它允许您通过客户端-服务器模型实现简单的分布式应用程序。
+本章将介绍一些重要的 Python 模块，用于分布式计算。特别是，我们将描述`socket`模块，它允许您通过客户端-服务器模型实现简单的分布式应用程序。
 
-然后，我们将介绍Celery模块，这是一个强大的Python框架，用于管理分布式任务。最后，我们将描述`Pyro4`模块，它允许您调用在不同进程中使用的方法，可能在不同的机器上。
+然后，我们将介绍 Celery 模块，这是一个强大的 Python 框架，用于管理分布式任务。最后，我们将描述`Pyro4`模块，它允许您调用在不同进程中使用的方法，可能在不同的机器上。
 
 在本章中，我们将介绍以下内容：
 
 +   介绍分布式计算
 
-+   使用Python的socket模块
++   使用 Python 的 socket 模块
 
-+   使用Celery进行分布式任务管理
++   使用 Celery 进行分布式任务管理
 
 +   使用`Pyro4`进行远程方法调用（RMI）
 
@@ -46,7 +46,7 @@
 
 # 客户端-服务器应用程序
 
-只有两个级别，操作完全在服务器上进行。例如，我们可以提到经典的静态或动态网站。实现这些类型应用的工具是网络套接字，可以用多种语言进行编程，包括C、C++、Java，当然还有Python。
+只有两个级别，操作完全在服务器上进行。例如，我们可以提到经典的静态或动态网站。实现这些类型应用的工具是网络套接字，可以用多种语言进行编程，包括 C、C++、Java，当然还有 Python。
 
 术语*客户端-服务器系统*指的是一个网络架构，其中客户端计算机或客户端终端通常连接到服务器以使用某项服务；例如，与其他客户端共享某些硬件/软件资源，或依赖底层协议架构。
 
@@ -58,7 +58,7 @@
 
 区分客户端和服务器的一个特征是客户端可以与服务器启动事务，而服务器永远不能主动与客户端启动事务：
 
-![](assets/f9df2fb0-1a78-4826-b494-5e3b43effbf0.png)
+![](img/f9df2fb0-1a78-4826-b494-5e3b43effbf0.png)
 
 客户端-服务器架构
 
@@ -74,15 +74,15 @@
 
 因此，客户端-服务器应用程序通常与分布式处理相关联。
 
-# TCP/IP客户端-服务器架构
+# TCP/IP 客户端-服务器架构
 
-TCP/IP连接在两个应用程序之间建立了点对点的连接。这种连接的两端由IP地址标记，IP地址标识了工作站，而端口号使得可以在同一工作站上连接到独立应用程序的多个连接。
+TCP/IP 连接在两个应用程序之间建立了点对点的连接。这种连接的两端由 IP 地址标记，IP 地址标识了工作站，而端口号使得可以在同一工作站上连接到独立应用程序的多个连接。
 
-一旦连接建立，协议可以在其上交换数据，底层的TCP/IP协议负责将这些数据分成数据包，从连接的一端发送到另一端。特别是，TCP协议负责组装和拆卸数据包，以及管理握手来保证连接的可靠性，而IP协议负责传输单个数据包和选择最佳的路由来沿着网络传输数据包。
+一旦连接建立，协议可以在其上交换数据，底层的 TCP/IP 协议负责将这些数据分成数据包，从连接的一端发送到另一端。特别是，TCP 协议负责组装和拆卸数据包，以及管理握手来保证连接的可靠性，而 IP 协议负责传输单个数据包和选择最佳的路由来沿着网络传输数据包。
 
-这种机制是TCP/IP协议稳健性的基础，而TCP/IP协议的发展又是军事领域（ARPANET）发展的原因之一。
+这种机制是 TCP/IP 协议稳健性的基础，而 TCP/IP 协议的发展又是军事领域（ARPANET）发展的原因之一。
 
-各种现有的标准应用程序（如Web浏览、文件传输和电子邮件）使用标准化的应用程序协议，如HTTP、FTP、POP3、IMAP和SMTP。
+各种现有的标准应用程序（如 Web 浏览、文件传输和电子邮件）使用标准化的应用程序协议，如 HTTP、FTP、POP3、IMAP 和 SMTP。
 
 每个特定的客户端-服务器应用程序必须定义和应用自己的专有应用程序协议。这可能涉及以固定大小的数据块交换数据（这是最简单的解决方案）。
 
@@ -96,7 +96,7 @@ TCP/IP连接在两个应用程序之间建立了点对点的连接。这种连�
 
 +   后端或数据层或持久数据管理
 
-这种命名方式通常用于Web应用程序。更一般地，可以将任何软件应用程序分为三个级别，如下所示：
+这种命名方式通常用于 Web 应用程序。更一般地，可以将任何软件应用程序分为三个级别，如下所示：
 
 +   **表示层**（**PL**）：这是数据的可视化部分（例如用户界面所需的模块和输入控件）。
 
@@ -104,19 +104,19 @@ TCP/IP连接在两个应用程序之间建立了点对点的连接。这种连�
 
 +   **数据访问层**（**DAL**）：其中包含管理持久数据所需的一切（基本上是数据库管理系统）。
 
-本章将介绍Python提出的一些分布式架构的解决方案。我们将首先描述`socket`模块，然后使用它来实现一些基本的客户端-服务器模型的示例。
+本章将介绍 Python 提出的一些分布式架构的解决方案。我们将首先描述`socket`模块，然后使用它来实现一些基本的客户端-服务器模型的示例。
 
-# 使用Python套接字模块
+# 使用 Python 套接字模块
 
 套接字是一种软件对象，允许在远程主机（通过网络）或本地进程之间发送和接收数据，例如**进程间通信**（**IPC**）。
 
-套接字是在伯克利作为**BSD Unix**项目的一部分发明的。它们基于Unix文件的输入和输出管理模型。事实上，打开、读取、写入和关闭套接字的操作与Unix文件的管理方式相同，但需要考虑的区别是用于通信的有用参数，如地址、端口号和协议。
+套接字是在伯克利作为**BSD Unix**项目的一部分发明的。它们基于 Unix 文件的输入和输出管理模型。事实上，打开、读取、写入和关闭套接字的操作与 Unix 文件的管理方式相同，但需要考虑的区别是用于通信的有用参数，如地址、端口号和协议。
 
 套接字技术的成功和传播与互联网的发展息息相关。事实上，套接字与互联网的结合使得任何类型的机器之间的通信以及分散在世界各地的机器之间的通信变得非常容易（至少与其他系统相比是如此）。
 
 # 准备就绪
 
-Python套接字模块公开了用于使用**BSD**（**Berkeley Software Distribution**的缩写）套接字接口进行网络通信的低级C API。
+Python 套接字模块公开了用于使用**BSD**（**Berkeley Software Distribution**的缩写）套接字接口进行网络通信的低级 C API。
 
 该模块包括`Socket`类，其中包括管理以下任务的主要方法：
 
@@ -128,7 +128,7 @@ Python套接字模块公开了用于使用**BSD**（**Berkeley Software Distribu
 
 +   `protocol`号码（通常为零）
 
-+   `gethostname()`: 返回机器的当前IP地址。
++   `gethostname()`: 返回机器的当前 IP 地址。
 
 +   `accept()`: 返回以下一对值（`conn`和`address`），其中`conn`是套接字类型对象（用于在连接上发送/接收数据），而`address`是连接到连接的另一端的套接字的地址。
 
@@ -142,11 +142,11 @@ Python套接字模块公开了用于使用**BSD**（**Berkeley Software Distribu
 
 # 如何做到...
 
-在下面的示例中，服务器正在监听默认端口，并通过TCP/IP连接，客户端向服务器发送连接建立的日期和时间。
+在下面的示例中，服务器正在监听默认端口，并通过 TCP/IP 连接，客户端向服务器发送连接建立的日期和时间。
 
 以下是`server.py`的服务器实现：
 
-1.  导入相关的Python模块：
+1.  导入相关的 Python 模块：
 
 ```py
 import socket
@@ -251,7 +251,7 @@ port=9999
 s.connect((host,port))
 ```
 
-可以接收的最大字节数不超过1024字节：（`tm=s.recv(1024)`）。
+可以接收的最大字节数不超过 1024 字节：（`tm=s.recv(1024)`）。
 
 1.  现在，关闭连接并最终打印连接到服务器的连接时间：
 
@@ -266,7 +266,7 @@ print ("Time connection server:%s"%tm.decode('ascii'))
 
 实际上，客户端的本地端口不一定与服务器的远程端口相符。服务器接收请求，如果接受，将创建一个新连接。现在，客户端和服务器通过专门为数据套接字连接的数据流创建的虚拟通道进行通信。
 
-与第一阶段提到的一致，服务器创建数据套接字，因为第一个套接字专门用于处理请求。因此，可能有许多客户端使用服务器为它们创建的数据套接字与服务器进行通信。TCP协议是面向连接的，这意味着当不再需要通信时，客户端会将此通知服务器，并关闭连接。
+与第一阶段提到的一致，服务器创建数据套接字，因为第一个套接字专门用于处理请求。因此，可能有许多客户端使用服务器为它们创建的数据套接字与服务器进行通信。TCP 协议是面向连接的，这意味着当不再需要通信时，客户端会将此通知服务器，并关闭连接。
 
 要运行示例，请执行服务器：
 
@@ -274,7 +274,7 @@ print ("Time connection server:%s"%tm.decode('ascii'))
 C:\>python server.py 
 ```
 
-然后，在不同的Windows终端中执行客户端：
+然后，在不同的 Windows 终端中执行客户端：
 
 ```py
 C:\>python client.py
@@ -283,7 +283,7 @@ C:\>python client.py
 客户端端的结果应报告地址（`addr`）并报告`port`已连接：
 
 ```py
-Connected with[addr],[port]('192.168.178.11', 58753)
+Connected with[addr],port
 ```
 
 但是，在服务器端，结果应该如下：
@@ -354,15 +354,15 @@ while True :
 
 我们可以区分以下三种套接字类型，其特点是连接模式：
 
-+   **流套接字**：这些是面向连接的套接字，它们基于可靠的协议，如TCP或SCTP。
++   **流套接字**：这些是面向连接的套接字，它们基于可靠的协议，如 TCP 或 SCTP。
 
-+   **数据报套接字**：这些套接字不是面向连接的（无连接）套接字，而是基于快速但不可靠的UDP协议。
++   **数据报套接字**：这些套接字不是面向连接的（无连接）套接字，而是基于快速但不可靠的 UDP 协议。
 
-+   **原始套接字**（原始IP）：传输层被绕过，头部在应用层可访问。
++   **原始套接字**（原始 IP）：传输层被绕过，头部在应用层可访问。
 
 # 流套接字
 
-我们将只看到这种类型的套接字。由于它们基于TCP等传输层协议，它们保证可靠、全双工和面向连接的通信，具有可变长度的字节流。
+我们将只看到这种类型的套接字。由于它们基于 TCP 等传输层协议，它们保证可靠、全双工和面向连接的通信，具有可变长度的字节流。
 
 通过这个套接字进行通信包括以下阶段：
 
@@ -372,45 +372,45 @@ while True :
 
 1.  **通信**：现在，客户端和服务器通过一个虚拟通道进行通信，介于客户端套接字和一个新的套接字（服务器端）之间，专门为此连接的数据流创建：一个数据套接字。正如在第一阶段中提到的，服务器创建数据套接字，因为第一个数据套接字专门用于处理请求。因此，可能有许多客户端与服务器通信，每个客户端都有服务器专门为其创建的数据套接字。
 
-1.  **连接的关闭**：由于TCP是一种面向连接的协议，当不再需要通信时，客户端会通知服务器，服务器会释放数据套接字。
+1.  **连接的关闭**：由于 TCP 是一种面向连接的协议，当不再需要通信时，客户端会通知服务器，服务器会释放数据套接字。
 
 通过流套接字进行通信的阶段如下图所示：
 
-![](assets/4a04807a-ed49-44eb-9f21-2346ea59f835.png)
+![](img/4a04807a-ed49-44eb-9f21-2346ea59f835.png)
 
 流套接字阶段
 
 # 另请参阅
 
-有关Python套接字的更多信息，请访问[https://docs.python.org/3/howto/sockets.html](https://docs.python.org/3/howto/sockets.html)。
+有关 Python 套接字的更多信息，请访问[`docs.python.org/3/howto/sockets.html`](https://docs.python.org/3/howto/sockets.html)。
 
-# 使用Celery进行分布式任务管理
+# 使用 Celery 进行分布式任务管理
 
-*Celery*是一个Python框架，通过遵循面向对象的中间件方法来管理分布式任务。其主要特点是处理许多小任务并将它们分发到许多计算节点上。最终，每个任务的结果将被重新处理，以组成整体解决方案。
+*Celery*是一个 Python 框架，通过遵循面向对象的中间件方法来管理分布式任务。其主要特点是处理许多小任务并将它们分发到许多计算节点上。最终，每个任务的结果将被重新处理，以组成整体解决方案。
 
-要使用Celery，需要一个消息代理。这是一个独立的（与Celery无关）软件组件，具有中间件的功能，用于向分布式任务工作者发送和接收消息。
+要使用 Celery，需要一个消息代理。这是一个独立的（与 Celery 无关）软件组件，具有中间件的功能，用于向分布式任务工作者发送和接收消息。
 
 事实上，消息代理（也称为消息中间件）处理通信网络中消息的交换：这种中间件的寻址方案不再是点对点类型，而是面向消息的寻址。
 
 消息代理的参考架构，用于管理消息的交换，基于所谓的发布/订阅范式，如下所示：
 
-![](assets/081ba83c-57b4-44c6-aaa5-89f6d9e0989c.png)
+![](img/081ba83c-57b4-44c6-aaa5-89f6d9e0989c.png)
 
 消息代理架构
 
-Celery支持许多类型的代理。但是，更完整的是RabbitMQ和Redis。
+Celery 支持许多类型的代理。但是，更完整的是 RabbitMQ 和 Redis。
 
 # 准备就绪
 
-要安装Celery，请使用`pip`安装程序，如下所示：
+要安装 Celery，请使用`pip`安装程序，如下所示：
 
 ```py
 C:\>pip install celery
 ```
 
-然后，必须安装消息代理。有几种选择可用，但是对于我们的示例，建议从以下链接安装 RabbitMQ：[http://www.rabbitmq.com/download.html](http://www.rabbitmq.com/download.html)。
+然后，必须安装消息代理。有几种选择可用，但是对于我们的示例，建议从以下链接安装 RabbitMQ：[`www.rabbitmq.com/download.html`](http://www.rabbitmq.com/download.html)。
 
-RabbitMQ 是一个实现 **高级消息队列协议** (**AMQP**) 的消息导向中间件。RabbitMQ 服务器是用 Erlang 编程语言编写的，因此在安装它之前，您需要从 [http://www.erlang.org/download.html](http://www.erlang.org/download.html) 下载并安装 Erlang。涉及的步骤如下：
+RabbitMQ 是一个实现 **高级消息队列协议** (**AMQP**) 的消息导向中间件。RabbitMQ 服务器是用 Erlang 编程语言编写的，因此在安装它之前，您需要从 [`www.erlang.org/download.html`](http://www.erlang.org/download.html) 下载并安装 Erlang。涉及的步骤如下：
 
 1.  要检查 `celery` 的安装，首先启动消息代理（例如 RabbitMQ）。然后，输入以下内容：
 
@@ -446,9 +446,9 @@ C:\>celery --version
 
 +   变量值：`1`
 
-进行此设置的原因是因为 Celery 依赖于 `billiard` 包 ([https://github.com/celery/billiard](https://github.com/celery/billiard))，它使用 `FORKED_BY_MULTIPROCESSING` 变量。
+进行此设置的原因是因为 Celery 依赖于 `billiard` 包 ([`github.com/celery/billiard`](https://github.com/celery/billiard))，它使用 `FORKED_BY_MULTIPROCESSING` 变量。
 
-有关 Celery 在 Windows 上的设置的更多信息，请阅读 [https://www.distributedpython.com/2018/08/21/celery-4-windows/](https://www.distributedpython.com/2018/08/21/celery-4-windows/)。
+有关 Celery 在 Windows 上的设置的更多信息，请阅读 [`www.distributedpython.com/2018/08/21/celery-4-windows/`](https://www.distributedpython.com/2018/08/21/celery-4-windows/)。
 
 # 如何做...
 
@@ -665,23 +665,23 @@ Global Options:
 -------------------------------------------------------------
 ```
 
-Celery协议可以通过使用Webhooks（[https://developer.github.com/webhooks/](https://developer.github.com/webhooks/)）在任何语言中实现。
+Celery 协议可以通过使用 Webhooks（[`developer.github.com/webhooks/`](https://developer.github.com/webhooks/)）在任何语言中实现。
 
 # 另请参阅
 
-+   有关Celery的更多信息，请访问[http://www.celeryproject.org/](http://www.celeryproject.org/)。
++   有关 Celery 的更多信息，请访问[`www.celeryproject.org/`](http://www.celeryproject.org/)。
 
-+   推荐的消息代理（[https://en.wikipedia.org/wiki/Message_broker](https://en.wikipedia.org/wiki/Message_broker)）是RabbitMQ（[https://en.wikipedia.org/wiki/RabbitMQ](https://en.wikipedia.org/wiki/RabbitMQ)）或Redis（[https://en.wikipedia.org/wiki/Redis](https://en.wikipedia.org/wiki/Redis)）。此外，还有MongoDB（[https://en.wikipedia.org/wiki/MongoDB](https://en.wikipedia.org/wiki/MongoDB)）、Beanstalk、Amazon SQS（[https://en.wikipedia.org/wiki/Amazon_Simple_Queue_Service](https://en.wikipedia.org/wiki/Amazon_Simple_Queue_Service)）、CouchDB（[https://en.wikipedia.org/wiki/Apache_CouchDB](https://en.wikipedia.org/wiki/Apache_CouchDB)）和IronMQ（[https://www.iron.io/mq](https://www.iron.io/mq)）。
++   推荐的消息代理（[`en.wikipedia.org/wiki/Message_broker`](https://en.wikipedia.org/wiki/Message_broker)）是 RabbitMQ（[`en.wikipedia.org/wiki/RabbitMQ`](https://en.wikipedia.org/wiki/RabbitMQ)）或 Redis（[`en.wikipedia.org/wiki/Redis`](https://en.wikipedia.org/wiki/Redis)）。此外，还有 MongoDB（[`en.wikipedia.org/wiki/MongoDB`](https://en.wikipedia.org/wiki/MongoDB)）、Beanstalk、Amazon SQS（[`en.wikipedia.org/wiki/Amazon_Simple_Queue_Service`](https://en.wikipedia.org/wiki/Amazon_Simple_Queue_Service)）、CouchDB（[`en.wikipedia.org/wiki/Apache_CouchDB`](https://en.wikipedia.org/wiki/Apache_CouchDB)）和 IronMQ（[`www.iron.io/mq`](https://www.iron.io/mq)）。
 
-# 使用Pyro4的RMI
+# 使用 Pyro4 的 RMI
 
-**Pyro**是**Python Remote Objects**的缩写。它的工作原理与Java的**RMI**（远程方法调用）完全相同，允许调用远程对象的方法（属于不同进程），就像对象是本地的一样（属于调用运行的同一进程）。
+**Pyro**是**Python Remote Objects**的缩写。它的工作原理与 Java 的**RMI**（远程方法调用）完全相同，允许调用远程对象的方法（属于不同进程），就像对象是本地的一样（属于调用运行的同一进程）。
 
-在面向对象的系统中使用RMI机制，可以在项目中获得统一性和对称性的重要优势，因为这种机制使得可以使用相同的概念工具对分布式进程之间的交互进行建模。
+在面向对象的系统中使用 RMI 机制，可以在项目中获得统一性和对称性的重要优势，因为这种机制使得可以使用相同的概念工具对分布式进程之间的交互进行建模。
 
 从下图中可以看出，`Pyro4`使对象以客户端/服务器的方式分布；这意味着`Pyro4`系统的主要部分可以从客户端调用者切换到远程对象，后者被调用来执行一个函数：
 
-![](assets/1782750b-b3f5-4ac1-8274-f01d46cff0ec.png)
+![](img/1782750b-b3f5-4ac1-8274-f01d46cff0ec.png)
 
 RMI
 
@@ -689,7 +689,7 @@ RMI
 
 # 准备工作
 
-管理这种分布式方式的整个方法由`Pyro4`提供。要安装最新版本的`Pyro4`，请使用`pip`安装程序（这里使用Windows安装），并添加以下命令：
+管理这种分布式方式的整个方法由`Pyro4`提供。要安装最新版本的`Pyro4`，请使用`pip`安装程序（这里使用 Windows 安装），并添加以下命令：
 
 ```py
 C:\>pip install Pyro4
@@ -742,7 +742,7 @@ daemon = Pyro4.Daemon()
 ns = Pyro4.locateNS()
 ```
 
-1.  将对象服务器注册为*Pyro对象*；它只会在Pyro守护程序内部知道：
+1.  将对象服务器注册为*Pyro 对象*；它只会在 Pyro 守护程序内部知道：
 
 ```py
 uri = daemon.register(server)
@@ -776,7 +776,7 @@ if __name__ == "__main__":
 import Pyro4
 ```
 
-1.  `Pyro4` API使开发人员能够以透明的方式分发对象。在这个例子中，客户端脚本发送请求到服务器程序，以执行`welcomeMessage()`方法：
+1.  `Pyro4` API 使开发人员能够以透明的方式分发对象。在这个例子中，客户端脚本发送请求到服务器程序，以执行`welcomeMessage()`方法：
 
 ```py
 uri = input("What is the Pyro uri of the greeting object? ").strip()
@@ -808,7 +808,7 @@ class Server(object):
  return ("Hi welcome " + str (name))
 ```
 
-`Pyro4`使用守护对象将传入调用分派给适当的对象。服务器必须创建一个管理其所有实例的守护进程。每个服务器都有一个守护进程，它知道服务器提供的所有Pyro对象：
+`Pyro4`使用守护对象将传入调用分派给适当的对象。服务器必须创建一个管理其所有实例的守护进程。每个服务器都有一个守护进程，它知道服务器提供的所有 Pyro 对象：
 
 ```py
  daemon = Pyro4.Daemon()
@@ -835,7 +835,7 @@ Warning: HMAC key not set. Anyone can connect to this server!
 URI = PYRO:Pyro.NameServer@localhost:9090
 ```
 
-前面的消息意味着名称服务器正在您的网络中运行。最后，我们可以在两个单独的Windows控制台中启动服务器和客户端脚本：
+前面的消息意味着名称服务器正在您的网络中运行。最后，我们可以在两个单独的 Windows 控制台中启动服务器和客户端脚本：
 
 1.  要运行`pyro_server.py`，只需输入以下内容：
 
@@ -877,11 +877,11 @@ Hi welcome Ruvika
 
 `Pyro4`的功能之一是创建对象拓扑。例如，假设我们想要构建一个遵循链式拓扑结构的分布式架构，如下所示：
 
-![](assets/7f93a4ab-70f7-4ecb-8a0b-f5633c11bad1.png)
+![](img/7f93a4ab-70f7-4ecb-8a0b-f5633c11bad1.png)
 
-使用Pyro4链接对象
+使用 Pyro4 链接对象
 
-客户端向**服务器1**发出请求，然后将请求转发到**服务器2**，然后调用**服务器3**。当**服务器3**调用**服务器1**时，链式调用结束。
+客户端向**服务器 1**发出请求，然后将请求转发到**服务器 2**，然后调用**服务器 3**。当**服务器 3**调用**服务器 1**时，链式调用结束。
 
 # 实现链式拓扑
 
@@ -971,7 +971,7 @@ Warning: HMAC key not set. Anyone can connect to this server!
 URI = PYRO:Pyro.NameServer@localhost:9090
 ```
 
-在三个不同的终端中运行三个服务器，分别输入它们（这里使用Windows终端）：
+在三个不同的终端中运行三个服务器，分别输入它们（这里使用 Windows 终端）：
 
 第一个服务器（`server_chain_1.py`）在第一个终端中：
 
@@ -1038,6 +1038,6 @@ Back at 1; the chain is closed!
 
 # 另请参阅
 
-`Pyro4`文档可在[https://buildmedia.readthedocs.org/media/pdf/pyro4/stable/pyro4.pdf](https://buildmedia.readthedocs.org/media/pdf/pyro4/stable/pyro4.pdf)上找到。
+`Pyro4`文档可在[`buildmedia.readthedocs.org/media/pdf/pyro4/stable/pyro4.pdf`](https://buildmedia.readthedocs.org/media/pdf/pyro4/stable/pyro4.pdf)上找到。
 
-其中包含了4.75版本的描述和一些应用示例。
+其中包含了 4.75 版本的描述和一些应用示例。
