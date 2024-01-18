@@ -1,18 +1,18 @@
-# 请求和 Web 框架
+# 请求和Web框架
 
-本章的主要内容是 Python 中的请求和 Web 框架。我们将讨论使得从 Web 检索数据（例如，获取天气更新）、将数据上传到远程服务器（例如，记录传感器数据）或控制本地网络上的设备成为可能的库和框架。我们还将讨论一些有助于学习本章核心主题的话题。
+本章的主要内容是Python中的请求和Web框架。我们将讨论使得从Web检索数据（例如，获取天气更新）、将数据上传到远程服务器（例如，记录传感器数据）或控制本地网络上的设备成为可能的库和框架。我们还将讨论一些有助于学习本章核心主题的话题。
 
 # `try`/`except`关键字
 
 到目前为止，我们已经审查并测试了所有的例子，假设程序的执行不会遇到错误。相反，应用程序有时会由于外部因素（如无效的用户输入和糟糕的互联网连接）或程序员造成的程序逻辑错误而失败。在这种情况下，我们希望程序报告/记录错误的性质，并在退出程序之前继续执行或清理资源。`try`/`except`关键字提供了一种机制，可以捕获程序执行过程中发生的错误并采取补救措施。由于可能在代码的关键部分捕获和记录错误，`try`/`except`关键字在调试应用程序时特别有用。
 
-通过比较两个例子来理解`try`/`except`关键字。让我们构建一个简单的猜数字游戏，用户被要求猜一个 0 到 9 之间的数字：
+通过比较两个例子来理解`try`/`except`关键字。让我们构建一个简单的猜数字游戏，用户被要求猜一个0到9之间的数字：
 
-1.  使用 Python 的`random`模块生成一个随机数（在 0 到 9 之间）。如果用户猜测的数字正确，Python 程序会宣布用户为赢家并退出游戏。
+1.  使用Python的`random`模块生成一个随机数（在0到9之间）。如果用户猜测的数字正确，Python程序会宣布用户为赢家并退出游戏。
 
 1.  如果用户输入是字母`x`，程序会退出游戏。
 
-1.  用户输入使用`int()`函数转换为整数。进行了一个合理性检查，以确定用户输入是否是 0 到 9 之间的数字。
+1.  用户输入使用`int()`函数转换为整数。进行了一个合理性检查，以确定用户输入是否是0到9之间的数字。
 
 1.  整数与随机数进行比较。如果它们相同，程序会宣布用户为赢家并退出游戏。
 
@@ -55,7 +55,7 @@ if __name__ == "__main__":
  ValueError: invalid literal for int() with base 10: 'hello'
 ```
 
-在前面的例子中，当程序试图将用户输入`hello`转换为整数时失败。程序执行以异常结束。异常突出了发生错误的行。在这种情况下，它发生在第 10 行：
+在前面的例子中，当程序试图将用户输入`hello`转换为整数时失败。程序执行以异常结束。异常突出了发生错误的行。在这种情况下，它发生在第10行：
 
 ```py
     File "guessing_game.py", line 12, in <module>
@@ -103,7 +103,7 @@ if __name__ == "__main__":
 
 让我们讨论相同的例子如何使用`try`/`except`关键字：
 
-1.  从前面的例子中，我们知道当用户提供错误的输入时（例如，一个字母而不是 0 到 9 之间的数字），异常发生在第 10 行（用户输入转换为整数的地方），错误的性质被命名为`ValueError`。
+1.  从前面的例子中，我们知道当用户提供错误的输入时（例如，一个字母而不是0到9之间的数字），异常发生在第10行（用户输入转换为整数的地方），错误的性质被命名为`ValueError`。
 
 1.  可以通过将其包装在`try...except`块中来避免程序执行的中断：
 
@@ -218,7 +218,7 @@ print("You won the game in %d attempts "\
 
 # 连接到互联网 - 网络请求
 
-现在我们已经讨论了`try`/`except`关键字，让我们利用它来构建一个连接到互联网的简单应用程序。我们将编写一个简单的应用程序，从互联网上获取当前时间。我们将使用 Python 的`requests`库（[`requests.readthedocs.io/en/master/#`](http://requests.readthedocs.io/en/master/#)）。
+现在我们已经讨论了`try`/`except`关键字，让我们利用它来构建一个连接到互联网的简单应用程序。我们将编写一个简单的应用程序，从互联网上获取当前时间。我们将使用Python的`requests`库（[http://requests.readthedocs.io/en/master/#](http://requests.readthedocs.io/en/master/#)）。
 
 `requests`模块使得连接到网络和检索信息成为可能。为了做到这一点，我们需要使用`requests`模块中的`get()`方法来发出请求：
 
@@ -227,7 +227,7 @@ import requests
 response = requests.get('http://nist.time.gov/actualtime.cgi')
 ```
 
-在上述代码片段中，我们将一个 URL 作为参数传递给`get()`方法。在这种情况下，它是返回当前时间的 Unix 格式的 URL（[`en.wikipedia.org/wiki/Unix_time`](https://en.wikipedia.org/wiki/Unix_time)）。
+在上述代码片段中，我们将一个URL作为参数传递给`get()`方法。在这种情况下，它是返回当前时间的Unix格式的URL（[https://en.wikipedia.org/wiki/Unix_time](https://en.wikipedia.org/wiki/Unix_time)）。
 
 让我们利用`try`/`except`关键字来请求获取当前时间：
 
@@ -247,21 +247,21 @@ if __name__ == "__main__":
 
 在前面的例子中（可以与本章一起下载，命名为`internet_access.py`），请求是在`try`块下进行的，响应（由`response.text`返回）被打印到屏幕上。
 
-如果在执行请求以检索当前时间时出现错误，将引发`ConnectionError`（[`requests.readthedocs.io/en/master/user/quickstart/#errors-and-exceptions`](http://requests.readthedocs.io/en/master/user/quickstart/#errors-and-exceptions)）。这个错误可能是由于缺乏互联网连接或不正确的 URL 引起的。这个错误被`except`块捕获。尝试运行这个例子，它应该返回`time.gov`的当前时间：
+如果在执行请求以检索当前时间时出现错误，将引发`ConnectionError`（[http://requests.readthedocs.io/en/master/user/quickstart/#errors-and-exceptions](http://requests.readthedocs.io/en/master/user/quickstart/#errors-and-exceptions)）。这个错误可能是由于缺乏互联网连接或不正确的URL引起的。这个错误被`except`块捕获。尝试运行这个例子，它应该返回`time.gov`的当前时间：
 
 ```py
     <timestamp time="1474421525322329" delay="0"/>
 ```
 
-# requests 的应用-检索天气信息
+# requests的应用-检索天气信息
 
 让我们使用`requests`模块来检索旧金山市的天气信息。我们将使用**OpenWeatherMap** API ([openweathermap.org](http://openweathermap.org))来检索天气信息：
 
-1.  为了使用 API，注册一个 API 账户并获取一个 API 密钥（免费）：
+1.  为了使用API，注册一个API账户并获取一个API密钥（免费）：
 
-![](img/e491b6d7-eedd-4706-a6c2-7ffe0ae779fb.png)来自 openweathermap.org 的 API 密钥
+![](Images/e491b6d7-eedd-4706-a6c2-7ffe0ae779fb.png)来自openweathermap.org的API密钥
 
-1.  根据 API 文档（[openweathermap.org/current](http://openweathermap.org/current)），可以使用`http://api.openweathermap.org/data/2.5/weather?zip=SanFrancisco&appid=API_KEY&units=imperial`作为 URL 来检索一个城市的天气信息。
+1.  根据API文档（[openweathermap.org/current](http://openweathermap.org/current)），可以使用`http://api.openweathermap.org/data/2.5/weather?zip=SanFrancisco&appid=API_KEY&units=imperial`作为URL来检索一个城市的天气信息。
 
 1.  用你的账户的密钥替换`API_KEY`，并在浏览器中使用它来检索当前的天气信息。你应该能够以以下格式检索到天气信息：
 
@@ -277,22 +277,22 @@ if __name__ == "__main__":
        Francisco","cod":200}
 ```
 
-天气信息（如前所示）以 JSON 格式返回。**JavaScript 对象表示法**（**JSON**）是一种广泛用于在网络上传递数据的数据格式。JSON 格式的主要优点是它是一种可读的格式，许多流行的编程语言支持将数据封装在 JSON 格式中。如前面的片段所示，JSON 格式使得以可读的名称/值对交换信息成为可能。
+天气信息（如前所示）以JSON格式返回。**JavaScript对象表示法**（**JSON**）是一种广泛用于在网络上传递数据的数据格式。JSON格式的主要优点是它是一种可读的格式，许多流行的编程语言支持将数据封装在JSON格式中。如前面的片段所示，JSON格式使得以可读的名称/值对交换信息成为可能。
 
-让我们回顾一下使用`requests`模块检索天气并解析 JSON 数据：
+让我们回顾一下使用`requests`模块检索天气并解析JSON数据：
 
-1.  用前面例子中的 URL（`internet_access.py`）替换为本例中讨论的 URL。这应该以 JSON 格式返回天气信息。
+1.  用前面例子中的URL（`internet_access.py`）替换为本例中讨论的URL。这应该以JSON格式返回天气信息。
 
-1.  requests 模块提供了一个解析 JSON 数据的方法。响应可以按以下方式解析：
+1.  requests模块提供了一个解析JSON数据的方法。响应可以按以下方式解析：
 
 ```py
        response = requests.get(URL) 
        json_data = response.json()
 ```
 
-1.  `json()`函数解析来自 OpenWeatherMap API 的响应，并返回不同天气参数（`json_data`）及其值的字典。
+1.  `json()`函数解析来自OpenWeatherMap API的响应，并返回不同天气参数（`json_data`）及其值的字典。
 
-1.  由于我们知道 API 文档中的响应格式，可以从解析后的响应中检索当前温度：
+1.  由于我们知道API文档中的响应格式，可以从解析后的响应中检索当前温度：
 
 ```py
        print(json_data['main']['temp'])
@@ -330,43 +330,43 @@ if __name__ == "__main__":
     Temperature is 68.79 degrees Fahrenheit
 ```
 
-# requests 的应用-将事件发布到互联网
+# requests的应用-将事件发布到互联网
 
-在上一个例子中，我们从互联网上检索了信息。让我们考虑一个例子，在这个例子中，我们需要在互联网上发布传感器事件。这可能是你不在家时猫门打开，或者有人踩在你家门口的地垫上。因为我们在上一章中讨论了如何将传感器与树莓派 Zero 连接，所以让我们讨论一个场景，我们可以将这些事件发布到*Slack*——一个工作场所通讯工具，Twitter，或者云服务，比如**Phant** ([`data.sparkfun.com/`](https://data.sparkfun.com/))。
+在上一个例子中，我们从互联网上检索了信息。让我们考虑一个例子，在这个例子中，我们需要在互联网上发布传感器事件。这可能是你不在家时猫门打开，或者有人踩在你家门口的地垫上。因为我们在上一章中讨论了如何将传感器与树莓派Zero连接，所以让我们讨论一个场景，我们可以将这些事件发布到*Slack*——一个工作场所通讯工具，Twitter，或者云服务，比如**Phant** ([https://data.sparkfun.com/](https://data.sparkfun.com/))。
 
-在这个例子中，我们将使用`requests`将这些事件发布到 Slack。每当发生传感器事件，比如猫门打开时，让我们在 Slack 上给自己发送直接消息。我们需要一个 URL 来将这些传感器事件发布到 Slack。让我们回顾一下生成 URL 以将传感器事件发布到 Slack：
+在这个例子中，我们将使用`requests`将这些事件发布到Slack。每当发生传感器事件，比如猫门打开时，让我们在Slack上给自己发送直接消息。我们需要一个URL来将这些传感器事件发布到Slack。让我们回顾一下生成URL以将传感器事件发布到Slack：
 
-1.  生成 URL 的第一步是创建一个*incoming webhook*。Webhook 是一种可以将消息作为有效负载发布到应用程序（如 Slack）的请求类型。
+1.  生成URL的第一步是创建一个*incoming webhook*。Webhook是一种可以将消息作为有效负载发布到应用程序（如Slack）的请求类型。
 
-1.  如果您是名为*TeamX*的 Slack 团队成员，请在浏览器中启动您团队的应用程序目录，即`teamx.slack.com/apps`：
+1.  如果您是名为*TeamX*的Slack团队成员，请在浏览器中启动您团队的应用程序目录，即`teamx.slack.com/apps`：
 
-![](img/dea1e47a-e8f1-4848-b40e-1cdd2836fcbc.png)启动您团队的应用程序目录
+![](Images/dea1e47a-e8f1-4848-b40e-1cdd2836fcbc.png)启动您团队的应用程序目录
 
 1.  在应用程序目录中搜索`incoming webhooks`，并选择第一个选项，Incoming WebHooks（如下截图所示）：
 
-![](img/bb557455-62ba-4716-8699-695bbf6be867.png)选择 incoming webhooks
+![](Images/bb557455-62ba-4716-8699-695bbf6be867.png)选择incoming webhooks
 
 1.  点击添加配置：
 
-![](img/2b0b1d70-c3f9-4f41-bbfb-ea0b0ed6c3a8.png)添加配置
+![](Images/2b0b1d70-c3f9-4f41-bbfb-ea0b0ed6c3a8.png)添加配置
 
-1.  当事件发生时，让我们向自己发送私人消息。选择 Privately to (you)作为选项，并通过单击添加 Incoming WebHooks 集成来创建一个 webhook：
+1.  当事件发生时，让我们向自己发送私人消息。选择Privately to (you)作为选项，并通过单击添加Incoming WebHooks集成来创建一个webhook：
 
-![](img/e37bc0b4-1cce-4840-9313-f2bfe7d0b60e.png)选择 Privately to you
+![](Images/e37bc0b4-1cce-4840-9313-f2bfe7d0b60e.png)选择Privately to you
 
-1.  我们已经生成了一个 URL，用于发送有关传感器事件的直接消息（URL 部分隐藏）：
+1.  我们已经生成了一个URL，用于发送有关传感器事件的直接消息（URL部分隐藏）：
 
-![](img/21db2e44-ca8f-4a25-acd3-355752853efa.png)生成的 URL
+![](Images/21db2e44-ca8f-4a25-acd3-355752853efa.png)生成的URL
 
-1.  现在，我们可以使用先前提到的 URL 在 Slack 上向自己发送直接消息。传感器事件可以作为 JSON 有效负载发布到 Slack。让我们回顾一下如何将传感器事件发布到 Slack。
+1.  现在，我们可以使用先前提到的URL在Slack上向自己发送直接消息。传感器事件可以作为JSON有效负载发布到Slack。让我们回顾一下如何将传感器事件发布到Slack。
 
-1.  例如，让我们考虑在猫门打开时发布消息。第一步是为消息准备 JSON 有效负载。根据 Slack API 文档（[`api.slack.com/custom-integrations)`](https://api.slack.com/custom-integrations)），消息有效负载需要采用以下格式：
+1.  例如，让我们考虑在猫门打开时发布消息。第一步是为消息准备JSON有效负载。根据Slack API文档（[https://api.slack.com/custom-integrations)](https://api.slack.com/custom-integrations)），消息有效负载需要采用以下格式：
 
 ```py
        payload = {"text": "The cat door was just opened!"}
 ```
 
-1.  为了发布此事件，我们将使用`requests`模块中的`post()`方法。在发布时，数据有效负载需要以 JSON 格式进行编码：
+1.  为了发布此事件，我们将使用`requests`模块中的`post()`方法。在发布时，数据有效负载需要以JSON格式进行编码：
 
 ```py
        response = requests.post(URL, json.dumps(payload))
@@ -395,21 +395,21 @@ if __name__ == "__main__":
 
 1.  在发布消息后，请求返回`ok`作为响应。这表明发布成功了。
 
-1.  生成您自己的 URL 并执行上述示例（与本章一起提供的`slack_post.py`一起下载）。您将在 Slack 上收到直接消息：
+1.  生成您自己的URL并执行上述示例（与本章一起提供的`slack_post.py`一起下载）。您将在Slack上收到直接消息：
 
-![](img/b593e295-094d-403e-a245-a79068060b26.png)在 Slack 上直接发送消息
+![](Images/b593e295-094d-403e-a245-a79068060b26.png)在Slack上直接发送消息
 
-现在，尝试将传感器接口到 Raspberry Pi Zero（在前几章中讨论），并将传感器事件发布到 Slack。
+现在，尝试将传感器接口到Raspberry Pi Zero（在前几章中讨论），并将传感器事件发布到Slack。
 
-还可以将传感器事件发布到 Twitter，并让您的 Raspberry Pi Zero 检查新邮件等。查看本书的网站以获取更多示例。
+还可以将传感器事件发布到Twitter，并让您的Raspberry Pi Zero检查新邮件等。查看本书的网站以获取更多示例。
 
-# Flask web 框架
+# Flask web框架
 
-在我们的最后一节中，我们将讨论 Python 中的 Web 框架。我们将讨论 Flask 框架（[`flask.pocoo.org/`](http://flask.pocoo.org/)）。基于 Python 的框架使得可以使用 Raspberry Pi Zero 将传感器接口到网络。这使得可以在网络中的任何位置控制设备并从传感器中读取数据。让我们开始吧！
+在我们的最后一节中，我们将讨论Python中的Web框架。我们将讨论Flask框架（[http://flask.pocoo.org/](http://flask.pocoo.org/)）。基于Python的框架使得可以使用Raspberry Pi Zero将传感器接口到网络。这使得可以在网络中的任何位置控制设备并从传感器中读取数据。让我们开始吧！
 
-# 安装 Flask
+# 安装Flask
 
-第一步是安装 Flask 框架。可以按以下方式完成：
+第一步是安装Flask框架。可以按以下方式完成：
 
 ```py
     sudo pip3 install flask
@@ -417,7 +417,7 @@ if __name__ == "__main__":
 
 # 构建我们的第一个示例
 
-Flask 框架文档解释了构建第一个示例。根据文档修改示例如下：
+Flask框架文档解释了构建第一个示例。根据文档修改示例如下：
 
 ```py
 #!/usr/bin/python3
@@ -433,19 +433,19 @@ if __name__ == "__main__":
     app.run('0.0.0.0')
 ```
 
-启动此示例（与本章一起提供的`flask_example.py`一起下载），它应该在 Raspberry Pi Zero 上启动一个对网络可见的服务器。在另一台计算机上，启动浏览器，并输入 Raspberry Pi Zero 的 IP 地址以及端口号`5000`作为后缀（如下快照所示）。它应该将您带到服务器的索引页面，显示消息 Hello World!：
+启动此示例（与本章一起提供的`flask_example.py`一起下载），它应该在Raspberry Pi Zero上启动一个对网络可见的服务器。在另一台计算机上，启动浏览器，并输入Raspberry Pi Zero的IP地址以及端口号`5000`作为后缀（如下快照所示）。它应该将您带到服务器的索引页面，显示消息Hello World!：
 
-![](img/c515611e-7de9-40cc-a867-0fbc6cd43c88.png)基于 Flask 框架的 Raspberry Pi Zero 上的 Web 服务器
+![](Images/c515611e-7de9-40cc-a867-0fbc6cd43c88.png)基于Flask框架的Raspberry Pi Zero上的Web服务器
 
-您可以使用命令行终端上的`ifconfig`命令找到 Raspberry Pi Zero 的 IP 地址。
+您可以使用命令行终端上的`ifconfig`命令找到Raspberry Pi Zero的IP地址。
 
-# 使用 Flask 框架控制设备
+# 使用Flask框架控制设备
 
-让我们尝试使用 Flask 框架在家中打开/关闭电器。在之前的章节中，我们使用*PowerSwitch Tail II*来控制树莓派 Zero 上的台灯。让我们尝试使用 Flask 框架来控制相同的东西。按照以下图示连接 PowerSwitch Tail：
+让我们尝试使用Flask框架在家中打开/关闭电器。在之前的章节中，我们使用*PowerSwitch Tail II*来控制树莓派Zero上的台灯。让我们尝试使用Flask框架来控制相同的东西。按照以下图示连接PowerSwitch Tail：
 
-![](img/587aacf5-ad6d-45f6-bc42-214248b72183.png)使用 Flask 框架控制台灯
+![](Images/587aacf5-ad6d-45f6-bc42-214248b72183.png)使用Flask框架控制台灯
 
-根据 Flask 框架文档，可以将 URL 路由到特定函数。例如，可以使用`route()`将`/lamp/<control>`绑定到`control()`函数：
+根据Flask框架文档，可以将URL路由到特定函数。例如，可以使用`route()`将`/lamp/<control>`绑定到`control()`函数：
 
 ```py
 @app.route("/lamp/<control>") 
@@ -457,7 +457,7 @@ def control(control):
   return "Table lamp is now %s" % control
 ```
 
-在前面的代码片段中，`<control>`是一个可以作为参数传递给绑定函数的变量。这使我们能够打开/关闭灯。例如，`<IP 地址>:5000/lamp/on`打开灯，反之亦然。把它们放在一起，我们有这样：
+在前面的代码片段中，`<control>`是一个可以作为参数传递给绑定函数的变量。这使我们能够打开/关闭灯。例如，`<IP地址>:5000/lamp/on`打开灯，反之亦然。把它们放在一起，我们有这样：
 
 ```py
 #!/usr/bin/python3 
@@ -480,14 +480,14 @@ if __name__ == "__main__":
     app.run('0.0.0.0')
 ```
 
-上述示例可与本章一起下载，文件名为`appliance_control.py`。启动基于 Flask 的 Web 服务器，并在另一台计算机上打开 Web 服务器。为了打开灯，输入`<树莓派 Zero 的 IP 地址>:5000/lamp/on`作为 URL：
+上述示例可与本章一起下载，文件名为`appliance_control.py`。启动基于Flask的Web服务器，并在另一台计算机上打开Web服务器。为了打开灯，输入`<树莓派Zero的IP地址>:5000/lamp/on`作为URL：
 
 这应该打开灯：
 
-![](img/06292c52-263d-41b8-bf2c-9cb2503a77dd.png)
+![](Images/06292c52-263d-41b8-bf2c-9cb2503a77dd.png)
 
-因此，我们建立了一个简单的框架，可以控制网络中的电器。可以在 HTML 页面中包含按钮，并将它们路由到特定的 URL 以执行特定的功能。Python 中还有几个其他框架可以开发 Web 应用程序。我们只是向您介绍了 Python 可能的不同应用程序。我们建议您查看本书的网站，了解更多示例，例如使用 Flask 框架控制万圣节装饰和其他节日装饰。
+因此，我们建立了一个简单的框架，可以控制网络中的电器。可以在HTML页面中包含按钮，并将它们路由到特定的URL以执行特定的功能。Python中还有几个其他框架可以开发Web应用程序。我们只是向您介绍了Python可能的不同应用程序。我们建议您查看本书的网站，了解更多示例，例如使用Flask框架控制万圣节装饰和其他节日装饰。
 
 # 摘要
 
-在本章中，我们讨论了 Python 中的`try`/`except`关键字。我们还讨论了从互联网检索信息的应用程序，以及将传感器事件发布到互联网。我们还讨论了 Python 的 Flask Web 框架，并演示了在网络中控制电器。在下一章中，我们将讨论 Python 中的一些高级主题。
+在本章中，我们讨论了Python中的`try`/`except`关键字。我们还讨论了从互联网检索信息的应用程序，以及将传感器事件发布到互联网。我们还讨论了Python的Flask Web框架，并演示了在网络中控制电器。在下一章中，我们将讨论Python中的一些高级主题。

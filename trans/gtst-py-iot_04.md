@@ -88,7 +88,7 @@ plot_classification(classification_gaussiannb, a, b)
 
 执行朴素贝叶斯分类器后获得的准确性如下截图所示：
 
-![](img/e4b9d171-b071-433f-90a1-e585f8ffe86a.png)
+![](Images/e4b9d171-b071-433f-90a1-e585f8ffe86a.png)
 
 # 另请参阅
 
@@ -96,19 +96,19 @@ plot_classification(classification_gaussiannb, a, b)
 
 +   要了解分类器如何工作的示例，请参考以下链接：
 
-[`en.wikipedia.org/wiki/Naive_Bayes_classifier`](https://en.wikipedia.org/wiki/Naive_Bayes_classifier)
+[https://en.wikipedia.org/wiki/Naive_Bayes_classifier](https://en.wikipedia.org/wiki/Naive_Bayes_classifier)
 
 +   要了解更多关于使用提议的分类器进行文本分类的信息，请参考以下链接：
 
-[`sebastianraschka.com/Articles/2014_naive_bayes_1.html`](http://sebastianraschka.com/Articles/2014_naive_bayes_1.html)
+[http://sebastianraschka.com/Articles/2014_naive_bayes_1.html](http://sebastianraschka.com/Articles/2014_naive_bayes_1.html)
 
 +   要了解更多关于朴素贝叶斯分类算法的信息，请参考以下链接：
 
-[`software.ucv.ro/~cmihaescu/ro/teaching/AIR/docs/Lab4-NaiveBayes.pdf`](http://software.ucv.ro/~cmihaescu/ro/teaching/AIR/docs/Lab4-NaiveBayes.pdf)
+[http://software.ucv.ro/~cmihaescu/ro/teaching/AIR/docs/Lab4-NaiveBayes.pdf](http://software.ucv.ro/~cmihaescu/ro/teaching/AIR/docs/Lab4-NaiveBayes.pdf)
 
 # 逻辑回归分类器
 
-可以选择这种方法，其中输出只能取两个值，0 或 1，通过/失败，赢/输，活着/死亡，健康/生病等。在因变量有两个以上的结果类别的情况下，可以使用多项逻辑回归进行分析。
+可以选择这种方法，其中输出只能取两个值，0或1，通过/失败，赢/输，活着/死亡，健康/生病等。在因变量有两个以上的结果类别的情况下，可以使用多项逻辑回归进行分析。
 
 # 如何做...
 
@@ -151,7 +151,7 @@ def plot_classification(classification, a , b):
 
 执行逻辑回归的命令如下截图所示：
 
-![](img/ac242a00-2916-40dc-9710-78d6b2719307.png)
+![](Images/ac242a00-2916-40dc-9710-78d6b2719307.png)
 
 # 将数据集分割为训练集和测试集
 
@@ -159,7 +159,7 @@ def plot_classification(classification, a , b):
 
 # 如何做...
 
-1.  将以下代码片段添加到同一个 Python 文件中：
+1.  将以下代码片段添加到同一个Python文件中：
 
 ```py
 from sklearn import cross_validation
@@ -178,7 +178,7 @@ a = np.array(a)
 b = np.array(b)
 ```
 
-1.  将 75%的数据用于训练，25%的数据用于测试：
+1.  将75%的数据用于训练，25%的数据用于测试：
 
 ```py
 a_training, a_testing, b_training, b_testing = cross_validation.train_test_split(a, b, test_size=0.25, random_state=5)
@@ -223,7 +223,7 @@ plot_classification(classification_gaussiannb_new, a_testing, b_testing)
 
 在以下截图中显示了数据集分割时获得的准确性：
 
-![](img/9e8bf137-ddd2-4813-bebc-d619b5943868.png)
+![](Images/9e8bf137-ddd2-4813-bebc-d619b5943868.png)
 
 # 使用交叉验证评估准确性
 
@@ -266,13 +266,13 @@ print "Recall: " + str(round(100*recall.mean(), 2)) + "%"
 
 1.  执行交叉验证后获得的结果如下所示：
 
-![](img/c897f11e-7072-4708-bfd2-1c07e9f7d59a.png)
+![](Images/c897f11e-7072-4708-bfd2-1c07e9f7d59a.png)
 
 为了了解它在给定的句子数据集上的工作情况，请参考以下链接：
 
 +   逻辑回归简介：
 
-[`machinelearningmastery.com/logistic-regression-for-machine-learning/`](https://machinelearningmastery.com/logistic-regression-for-machine-learning/)
+[https://machinelearningmastery.com/logistic-regression-for-machine-learning/](https://machinelearningmastery.com/logistic-regression-for-machine-learning/)
 
 # 分析一个句子的情感
 
@@ -296,7 +296,7 @@ def collect_features(word_list):
   return dict ([(word, True) for word in word_list])
 ```
 
-1.  采用 NLTK 中的电影评论作为训练数据：
+1.  采用NLTK中的电影评论作为训练数据：
 
 ```py
 if __name__=='__main__':
@@ -355,7 +355,7 @@ if __name__=='__main__':
 
 1.  情感分析的结果如下所示：
 
-![](img/74bc9668-f70b-4188-b868-a0a1cb5aa4a6.png)
+![](Images/74bc9668-f70b-4188-b868-a0a1cb5aa4a6.png)
 
 # 使用主题建模在文本中识别模式
 
@@ -397,7 +397,7 @@ classPreprocedure(object):
     self.english_stop_words= stopwords.words('english')
 ```
 
-1.  创建一个 Snowball 词干提取器：
+1.  创建一个Snowball词干提取器：
 
 ```py
     self.snowball_stemmer = SnowballStemmer('english')  
@@ -456,7 +456,7 @@ if __name__=='__main__':
   corpus = [dict_tokens.doc2bow(text) for text in processed_tokens]
 ```
 
-1.  开发一个 LDA 模型，定义所需的参数，并初始化 LDA 目标：
+1.  开发一个LDA模型，定义所需的参数，并初始化LDA目标：
 
 ```py
   num_of_topics = 2
@@ -469,8 +469,8 @@ if __name__=='__main__':
 
 1.  执行`topic_modelling.py`时获得的结果如下截图所示：
 
-![](img/5c09b91d-5a91-4538-b54a-46ff45e443ee.png)
+![](Images/5c09b91d-5a91-4538-b54a-46ff45e443ee.png)
 
 # 情感分析的应用
 
-情感分析在社交媒体如 Facebook 和 Twitter 中使用，以找出公众对某个问题的情感（积极/消极）。它们还用于确定人们对广告的情感以及人们对您的产品、品牌或服务的感受。
+情感分析在社交媒体如Facebook和Twitter中使用，以找出公众对某个问题的情感（积极/消极）。它们还用于确定人们对广告的情感以及人们对您的产品、品牌或服务的感受。

@@ -1,22 +1,22 @@
 # 与数据库交互
 
-在之前的章节中，我们使用了许多 Python 工具和实用程序生成了多种不同的报告。在本章中，我们将利用 Python 库连接到外部数据库，并提交我们生成的数据。然后，外部应用程序可以访问这些数据以获取信息。
+在之前的章节中，我们使用了许多Python工具和实用程序生成了多种不同的报告。在本章中，我们将利用Python库连接到外部数据库，并提交我们生成的数据。然后，外部应用程序可以访问这些数据以获取信息。
 
-Python 提供了广泛的库和模块，涵盖了管理和处理流行的**数据库管理系统**（**DBMSes**），如 MySQL、PostgreSQL 和 Oracle。在本章中，我们将学习如何与 DBMS 交互，并填充我们自己的数据。
+Python提供了广泛的库和模块，涵盖了管理和处理流行的**数据库管理系统**（**DBMSes**），如MySQL、PostgreSQL和Oracle。在本章中，我们将学习如何与DBMS交互，并填充我们自己的数据。
 
 本章将涵盖以下主题：
 
-+   在自动化服务器上安装 MySQL
++   在自动化服务器上安装MySQL
 
-+   从 Python 访问 MySQL 数据库
++   从Python访问MySQL数据库
 
-# 在自动化服务器上安装 MySQL
+# 在自动化服务器上安装MySQL
 
-我们需要做的第一件事是设置一个数据库。在接下来的步骤中，我们将介绍如何在我们在第八章中创建的自动化服务器上安装 MySQL 数据库。基本上，您需要一个具有互联网连接的基于 Linux 的机器（CentOS 或 Ubuntu）来下载 SQL 软件包。MySQL 是一个使用关系数据库和 SQL 语言与数据交互的开源 DBMS。在 CentOS 7 中，MySQL 被另一个分支版本 MariaDB 取代；两者具有相同的源代码，但 MariaDB 中有一些增强功能。
+我们需要做的第一件事是设置一个数据库。在接下来的步骤中，我们将介绍如何在我们在[第8章](part0116.html#3EK180-9cfcdc5beecd470bbeda046372f0337f)中创建的自动化服务器上安装MySQL数据库。基本上，您需要一个具有互联网连接的基于Linux的机器（CentOS或Ubuntu）来下载SQL软件包。MySQL是一个使用关系数据库和SQL语言与数据交互的开源DBMS。在CentOS 7中，MySQL被另一个分支版本MariaDB取代；两者具有相同的源代码，但MariaDB中有一些增强功能。
 
-按照以下步骤安装 MariaDB：
+按照以下步骤安装MariaDB：
 
-1.  使用`yum`软件包管理器（或`apt`，在基于 Debian 的系统中）下载`mariadb-server`软件包，如下摘录所示：
+1.  使用`yum`软件包管理器（或`apt`，在基于Debian的系统中）下载`mariadb-server`软件包，如下摘录所示：
 
 ```py
 yum install mariadb-server -y
@@ -42,19 +42,19 @@ systemctl status mariadb
 
 # 保护安装
 
-安装完成后的下一个逻辑步骤是保护它。MariaDB 包括一个安全脚本，可以更改 MySQL 配置文件中的选项，比如创建用于访问数据库的 root 密码和允许远程访问。运行以下命令启动脚本：
+安装完成后的下一个逻辑步骤是保护它。MariaDB包括一个安全脚本，可以更改MySQL配置文件中的选项，比如创建用于访问数据库的root密码和允许远程访问。运行以下命令启动脚本：
 
 ```py
 mysql_secure_installation
 ```
 
-第一个提示要求您提供 root 密码。这个 root 密码不是 Linux 的 root 用户名，而是 MySQL 数据库的 root 密码；由于这是一个全新的安装，我们还没有设置它，所以我们将简单地按*Enter*进入下一步：
+第一个提示要求您提供root密码。这个root密码不是Linux的root用户名，而是MySQL数据库的root密码；由于这是一个全新的安装，我们还没有设置它，所以我们将简单地按*Enter*进入下一步：
 
 ```py
 Enter current password for root (enter for none): <PRESS_ENTER>
 ```
 
-脚本将建议为 root 设置密码。我们将通过按`Y`并输入新密码来接受建议：
+脚本将建议为root设置密码。我们将通过按`Y`并输入新密码来接受建议：
 
 ```py
 Set root password? [Y/n] Y
@@ -72,7 +72,7 @@ Remove anonymous users? [Y/n] y
  ... Success!
 ```
 
-您可以从远程机器向托管在自动化服务器上的数据库运行 SQL 命令；这需要您为 root 用户授予特殊权限，以便他们可以远程访问数据库：
+您可以从远程机器向托管在自动化服务器上的数据库运行SQL命令；这需要您为root用户授予特殊权限，以便他们可以远程访问数据库：
 
 ```py
 Disallow root login remotely? [Y/n] n
@@ -103,18 +103,18 @@ Thanks for using MariaDB!
 
 # 验证数据库安装
 
-在 MySQL 安装后的第一步是验证它。我们需要验证`mysqld`守护程序是否已启动并正在侦听端口`3306`。我们将通过运行`netstat`命令和在侦听端口上使用`grep`来做到这一点：
+在MySQL安装后的第一步是验证它。我们需要验证`mysqld`守护程序是否已启动并正在侦听端口`3306`。我们将通过运行`netstat`命令和在侦听端口上使用`grep`来做到这一点：
 
 ```py
 netstat -antup | grep -i 3306
 tcp   0   0 0.0.0.0:3306      0.0.0.0:*         LISTEN      3094/mysqld
 ```
 
-这意味着`mysqld`服务可以接受来自端口`3306`上的任何 IP 的传入连接。
+这意味着`mysqld`服务可以接受来自端口`3306`上的任何IP的传入连接。
 
-如果您的机器上运行着`iptables`，您需要向`INPUT`链添加一个规则，以允许远程主机连接到 MySQL 数据库。还要验证`SELINUX`是否具有适当的策略。
+如果您的机器上运行着`iptables`，您需要向`INPUT`链添加一个规则，以允许远程主机连接到MySQL数据库。还要验证`SELINUX`是否具有适当的策略。
 
-第二次验证是通过使用`mysqladmin`实用程序连接到数据库。这个工具包含在 MySQL 客户端中，允许您在 MySQL 数据库上远程（或本地）执行命令：
+第二次验证是通过使用`mysqladmin`实用程序连接到数据库。这个工具包含在MySQL客户端中，允许您在MySQL数据库上远程（或本地）执行命令：
 
 ```py
 mysqladmin -u root -p ping
@@ -123,15 +123,16 @@ mysqld is alive
 ```
 
 | **切换名称** | **含义** |
+| --- | --- |
 | `-u` | 指定用户名。 |
-| `-p` | 使 MySQL 提示您输入用户名的密码。 |
-| `ping` | 用于验证 MySQL 数据库是否存活的操作名称。 |
+| `-p` | 使MySQL提示您输入用户名的密码。 |
+| `ping` | 用于验证MySQL数据库是否存活的操作名称。 |
 
-输出表明 MySQL 安装已成功完成，我们准备进行下一步。
+输出表明MySQL安装已成功完成，我们准备进行下一步。
 
-# 从 Python 访问 MySQL 数据库
+# 从Python访问MySQL数据库
 
-Python 开发人员创建了`MySQLdb`模块，该模块提供了一个工具，可以从 Python 脚本中与数据库进行交互和管理。可以使用 Python 的`pip`或操作系统包管理器（如`yum`或`apt`）安装此模块。
+Python开发人员创建了`MySQLdb`模块，该模块提供了一个工具，可以从Python脚本中与数据库进行交互和管理。可以使用Python的`pip`或操作系统包管理器（如`yum`或`apt`）安装此模块。
 
 要安装该软件包，请使用以下命令：
 
@@ -150,9 +151,9 @@ Type "help", "copyright", "credits" or "license" for more information.
 >>> 
 ```
 
-由于模块已经成功导入，我们知道 Python 模块已成功安装。
+由于模块已经成功导入，我们知道Python模块已成功安装。
 
-现在，通过控制台访问数据库，并创建一个名为`TestingPython`的简单数据库，其中包含一个表。然后我们将从 Python 连接到它：
+现在，通过控制台访问数据库，并创建一个名为`TestingPython`的简单数据库，其中包含一个表。然后我们将从Python连接到它：
 
 ```py
 [root@AutomationServer ~]# mysql -u root -p
@@ -169,7 +170,7 @@ MariaDB [(none)]> CREATE DATABASE TestingPython;
 Query OK, 1 row affected (0.00 sec)
 ```
 
-在前述声明中，我们使用 MySQL 实用程序连接到数据库，然后使用 SQL 的`CREATE`命令创建一个空的新数据库。
+在前述声明中，我们使用MySQL实用程序连接到数据库，然后使用SQL的`CREATE`命令创建一个空的新数据库。
 
 您可以使用以下命令验证新创建的数据库：
 
@@ -189,7 +190,7 @@ MariaDB [(none)]> SHOW DATABASES;
 4 rows in set (0.00 sec)
 ```
 
-在 SQL 命令中不一定要使用大写字母；但是，这是最佳实践，以便将它们与变量和其他操作区分开来。
+在SQL命令中不一定要使用大写字母；但是，这是最佳实践，以便将它们与变量和其他操作区分开来。
 
 我们需要切换到新的数据库：
 
@@ -205,7 +206,7 @@ MariaDB [TestingPython]> CREATE TABLE TestTable (id INT PRIMARY KEY, fName VARCH
 Query OK, 0 rows affected (0.00 sec)
 ```
 
-在创建表时，应指定列类型。例如，`fname`是一个最大长度为 30 个字符的字符串，而`id`是一个整数。
+在创建表时，应指定列类型。例如，`fname`是一个最大长度为30个字符的字符串，而`id`是一个整数。
 
 验证表的创建如下：
 
@@ -233,7 +234,7 @@ MariaDB [TestingPython]> describe TestTable;
 
 # 查询数据库
 
-此时，我们的数据库已准备好接受一些 Python 脚本。让我们创建一个新的 Python 文件，并提供数据库参数：
+此时，我们的数据库已准备好接受一些Python脚本。让我们创建一个新的Python文件，并提供数据库参数：
 
 ```py
 import MySQLdb
@@ -245,7 +246,8 @@ SQL_IP ="10.10.10.130" SQL_USERNAME="root" SQL_PASSWORD="EnterpriseAutomation" S
 以下表格列出了参数及其含义：
 
 | **参数** | **含义** |
-| `host` | 具有`mysql`安装的服务器 IP 地址。 |
+| --- | --- |
+| `host` | 具有`mysql`安装的服务器IP地址。 |
 | `user` | 具有对连接数据库的管理权限的用户名。 |
 | `passwd` | 使用`mysql_secure_installation`脚本创建的密码。 |
 | `db` | 数据库名称。 |
@@ -256,7 +258,7 @@ SQL_IP ="10.10.10.130" SQL_USERNAME="root" SQL_PASSWORD="EnterpriseAutomation" S
 <_mysql.connection open to '10.10.10.130' at 1cfd430>
 ```
 
-返回的对象表明已成功打开到数据库的连接。让我们使用此对象创建用于执行实际命令的 SQL 游标：
+返回的对象表明已成功打开到数据库的连接。让我们使用此对象创建用于执行实际命令的SQL游标：
 
 ```py
 cursor = sql_connection.cursor() cursor.execute("show tables")
@@ -269,6 +271,7 @@ cursor = sql_connection.cursor() cursor.execute("show tables")
 `execute()`方法用于向数据库发送命令并返回查询结果，而`fetch*()`方法有三种不同的用法：
 
 | **方法名称** | **描述** |
+| --- | --- |
 | `fetchone()` | 从输出中获取一个记录，而不管返回的行数。 |
 | `fetchmany(num)` | 返回方法内指定的记录数。 |
 | `fetchall()` | 返回所有记录。 |
@@ -319,13 +322,13 @@ SQL_IP ="10.10.10.130" SQL_USERNAME="root" SQL_PASSWORD="EnterpriseAutomation" S
 
 +   然后，我们使用`employees`对它们进行分组，这是一个`list`类型的变量。
 
-+   创建一个`for`循环来迭代`employees`列表，在循环内部，我们格式化了`insert` SQL 命令，并使用`execute()`方法将数据推送到 SQL 数据库。请注意，在`execute`函数内部不需要在命令后添加分号(`;`)，因为它会自动添加。
++   创建一个`for`循环来迭代`employees`列表，在循环内部，我们格式化了`insert` SQL命令，并使用`execute()`方法将数据推送到SQL数据库。请注意，在`execute`函数内部不需要在命令后添加分号(`;`)，因为它会自动添加。
 
-+   在每次成功执行 SQL 命令后，将使用`commit()`操作来强制数据库引擎提交数据；否则，连接将被回滚。
++   在每次成功执行SQL命令后，将使用`commit()`操作来强制数据库引擎提交数据；否则，连接将被回滚。
 
-+   最后，使用`close()`函数来终止已建立的 SQL 连接。
++   最后，使用`close()`函数来终止已建立的SQL连接。
 
-关闭数据库连接意味着所有游标都被发送到 Python 垃圾收集器，并且将无法使用。还要注意，当关闭连接而不提交更改时，它会立即使数据库引擎回滚所有事务。
+关闭数据库连接意味着所有游标都被发送到Python垃圾收集器，并且将无法使用。还要注意，当关闭连接而不提交更改时，它会立即使数据库引擎回滚所有事务。
 
 脚本的输出如下：
 
@@ -337,7 +340,7 @@ INSERT INTO TestTable(id,fname,lname,Title) VALUES (3,'Sara','Mosad','QA_ENG')
 INSERT INTO TestTable(id,fname,lname,Title) VALUES (4,'Aly','Mohamed','PILOT')
 ```
 
-您可以通过 MySQL 控制台查询数据库，以验证数据是否已提交到数据库：
+您可以通过MySQL控制台查询数据库，以验证数据是否已提交到数据库：
 
 ```py
 MariaDB [TestingPython]> select * from TestTable;
@@ -351,7 +354,7 @@ MariaDB [TestingPython]> select * from TestTable;
 +----+--------+---------+-----------+
 ```
 
-现在，回到我们的 Python 代码，我们可以再次使用`execute()`函数；这次，我们使用它来选择在`TestTable`中插入的所有数据：
+现在，回到我们的Python代码，我们可以再次使用`execute()`函数；这次，我们使用它来选择在`TestTable`中插入的所有数据：
 
 ```py
 import MySQLdb
@@ -366,12 +369,12 @@ python mysql_show_all.py
 ((1L, 'Bassim', 'Aly', 'NW_ENG'), (2L, 'Ahmed', 'Hany', 'DEVELOPER'), (3L, 'Sara', 'Mosaa    d', 'QA_ENG'), (4L, 'Aly', 'Mohamed', 'PILOT'))
 ```
 
-在上一个示例中，`id`值后的`L`字符可以通过再次将数据转换为整数（在 Python 中）来解决，使用`int()`函数。
+在上一个示例中，`id`值后的`L`字符可以通过再次将数据转换为整数（在Python中）来解决，使用`int()`函数。
 
 游标内另一个有用的属性是`.rowcount`。这个属性将指示上一个`.execute()`方法返回了多少行。
 
 # 总结
 
-在本章中，我们学习了如何使用 Python 连接器与 DBMS 交互。我们在自动化服务器上安装了一个 MySQL 数据库，然后进行了验证。然后，我们使用 Python 脚本访问了 MySQL 数据库，并对其进行了操作。
+在本章中，我们学习了如何使用Python连接器与DBMS交互。我们在自动化服务器上安装了一个MySQL数据库，然后进行了验证。然后，我们使用Python脚本访问了MySQL数据库，并对其进行了操作。
 
-在下一章中，我们将学习如何使用 Ansible 进行系统管理。
+在下一章中，我们将学习如何使用Ansible进行系统管理。

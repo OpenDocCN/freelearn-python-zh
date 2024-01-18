@@ -2,47 +2,47 @@
 
 正如查尔斯·狄更斯在《双城记》中写道，“这是最好的时代，也是最坏的时代，这是智慧的时代，也是愚蠢的时代。”他看似矛盾的话语完美地描述了变革和过渡时期的混乱和情绪。毫无疑问，我们正在经历网络工程领域的快速变化。随着软件开发在网络的各个方面变得更加集成，传统的命令行界面和垂直集成的网络堆栈方法不再是管理今天网络的最佳方式。对于网络工程师来说，我们所看到的变化充满了兴奋和机遇，但对于那些需要快速适应和跟上的人来说，也是具有挑战性的。本书旨在通过提供一个实用指南来帮助网络专业人士缓解过渡，解决如何从传统平台发展到基于软件驱动实践的问题。
 
-在这本书中，我们使用 Python 作为首选的编程语言，以掌握网络工程任务。Python 是一种易于学习的高级编程语言，可以有效地补充网络工程师的创造力和问题解决能力，以简化日常操作。Python 正在成为许多大型网络的一个组成部分，通过这本书，我希望与您分享我所学到的经验。
+在这本书中，我们使用Python作为首选的编程语言，以掌握网络工程任务。Python是一种易于学习的高级编程语言，可以有效地补充网络工程师的创造力和问题解决能力，以简化日常操作。Python正在成为许多大型网络的一个组成部分，通过这本书，我希望与您分享我所学到的经验。
 
-自第一版出版以来，我已经与许多读者进行了有趣而有意义的交流。第一版书的成功让我感到谦卑，并且我对所得到的反馈非常重视。在第二版中，我尝试使示例和技术更加相关。特别是，传统的 OpenFlow SDN 章节被一些网络 DevOps 工具所取代。我真诚地希望新的内容对你有所帮助。
+自第一版出版以来，我已经与许多读者进行了有趣而有意义的交流。第一版书的成功让我感到谦卑，并且我对所得到的反馈非常重视。在第二版中，我尝试使示例和技术更加相关。特别是，传统的OpenFlow SDN章节被一些网络DevOps工具所取代。我真诚地希望新的内容对你有所帮助。
 
 变革的时代为技术进步提供了巨大的机遇。本书中的概念和工具在我的职业生涯中帮助了我很多，我希望它们也能对你有同样的帮助。
 
 # 这本书适合谁
 
-这本书非常适合已经管理网络设备组并希望扩展他们对使用 Python 和其他工具克服网络挑战的知识的 IT 专业人员和运维工程师。建议具有网络和 Python 的基本知识。
+这本书非常适合已经管理网络设备组并希望扩展他们对使用Python和其他工具克服网络挑战的知识的IT专业人员和运维工程师。建议具有网络和Python的基本知识。
 
 # 本书涵盖内容
 
-第一章，*TCP/IP 协议套件和 Python 回顾*，回顾了构成当今互联网通信的基本技术，从 OSI 和客户端-服务器模型到 TCP、UDP 和 IP 协议套件。本章将回顾 Python 语言的基础知识，如类型、运算符、循环、函数和包。
+[第1章](2bb48797-d649-4704-85fc-0f5244ed34fb.xhtml)，*TCP/IP协议套件和Python回顾*，回顾了构成当今互联网通信的基本技术，从OSI和客户端-服务器模型到TCP、UDP和IP协议套件。本章将回顾Python语言的基础知识，如类型、运算符、循环、函数和包。
 
-第二章，*低级网络设备交互*，使用实际示例说明如何使用 Python 在网络设备上执行命令。它还将讨论在自动化中仅具有 CLI 界面的挑战。本章将使用 Pexpect 和 Paramiko 库进行示例。
+[第2章](8cefc139-8dfa-4250-81bf-928231e20b22.xhtml)，*低级网络设备交互*，使用实际示例说明如何使用Python在网络设备上执行命令。它还将讨论在自动化中仅具有CLI界面的挑战。本章将使用Pexpect和Paramiko库进行示例。
 
-第三章，*API 和意图驱动的网络*，讨论了支持**应用程序编程接口**（**API**）和其他高级交互方法的新型网络设备。它还说明了允许在关注网络工程师意图的同时抽象低级任务的工具。本章将使用 Cisco NX-API、Juniper PyEZ 和 Arista Pyeapi 的讨论和示例。
+[第3章](d2c76e60-c005-4efc-85de-c7a3253e4b47.xhtml)，*API和意图驱动的网络*，讨论了支持**应用程序编程接口**（**API**）和其他高级交互方法的新型网络设备。它还说明了允许在关注网络工程师意图的同时抽象低级任务的工具。本章将使用Cisco NX-API、Juniper PyEZ和Arista Pyeapi的讨论和示例。
 
-第四章，《Python 自动化框架- Ansible 基础》，讨论了 Ansible 的基础知识，这是一个基于 Python 的开源自动化框架。Ansible 比 API 更进一步，专注于声明性任务意图。在本章中，我们将介绍使用 Ansible 的优势、其高级架构，并展示一些与思科、Juniper 和 Arista 设备一起使用 Ansible 的实际示例。
+第4章，《Python自动化框架- Ansible基础》，讨论了Ansible的基础知识，这是一个基于Python的开源自动化框架。Ansible比API更进一步，专注于声明性任务意图。在本章中，我们将介绍使用Ansible的优势、其高级架构，并展示一些与思科、Juniper和Arista设备一起使用Ansible的实际示例。
 
-第五章，《Python 自动化框架-进阶》，在前一章的基础上，涵盖了更高级的 Ansible 主题。我们将介绍条件、循环、模板、变量、Ansible Vault 和角色。还将介绍编写自定义模块的基础知识。
+第5章，《Python自动化框架-进阶》，在前一章的基础上，涵盖了更高级的Ansible主题。我们将介绍条件、循环、模板、变量、Ansible Vault和角色。还将介绍编写自定义模块的基础知识。
 
-第六章，《Python 网络安全》，介绍了几种 Python 工具，帮助您保护网络。将讨论使用 Scapy 进行安全测试，使用 Ansible 快速实施访问列表，以及使用 Python 进行网络取证分析。
+第6章，《Python网络安全》，介绍了几种Python工具，帮助您保护网络。将讨论使用Scapy进行安全测试，使用Ansible快速实施访问列表，以及使用Python进行网络取证分析。
 
-第七章，《Python 网络监控-第 1 部分》，涵盖了使用各种工具监控网络。本章包含了一些使用 SNMP 和 PySNMP 进行查询以获取设备信息的示例。还将展示 Matplotlib 和 Pygal 示例来绘制结果。本章将以使用 Python 脚本作为输入源的 Cacti 示例结束。
+第7章，《Python网络监控-第1部分》，涵盖了使用各种工具监控网络。本章包含了一些使用SNMP和PySNMP进行查询以获取设备信息的示例。还将展示Matplotlib和Pygal示例来绘制结果。本章将以使用Python脚本作为输入源的Cacti示例结束。
 
-第八章，《Python 网络监控-第 2 部分》，涵盖了更多的网络监控工具。本章将从使用 Graphviz 根据 LLDP 信息绘制网络开始。我们将继续使用推送式网络监控的示例，使用 Netflow 和其他技术。我们将使用 Python 解码流数据包和 ntop 来可视化结果。还将概述 Elasticsearch 以及如何用于网络监控。
+第8章，《Python网络监控-第2部分》，涵盖了更多的网络监控工具。本章将从使用Graphviz根据LLDP信息绘制网络开始。我们将继续使用推送式网络监控的示例，使用Netflow和其他技术。我们将使用Python解码流数据包和ntop来可视化结果。还将概述Elasticsearch以及如何用于网络监控。
 
-第九章，《使用 Python 构建网络 Web 服务》，向您展示如何使用 Python Flask Web 框架为网络自动化创建自己的 API。网络 API 提供了诸如将请求者与网络细节抽象化、整合和定制操作以及通过限制可用操作的暴露来提供更好的安全性等好处。
+第9章，《使用Python构建网络Web服务》，向您展示如何使用Python Flask Web框架为网络自动化创建自己的API。网络API提供了诸如将请求者与网络细节抽象化、整合和定制操作以及通过限制可用操作的暴露来提供更好的安全性等好处。
 
-第十章，《AWS 云网络》，展示了如何使用 AWS 构建一个功能齐全且具有弹性的虚拟网络。我们将介绍诸如 CloudFormation、VPC 路由表、访问列表、弹性 IP、NAT 网关、Direct Connect 等虚拟私有云技术以及其他相关主题。
+第10章，《AWS云网络》，展示了如何使用AWS构建一个功能齐全且具有弹性的虚拟网络。我们将介绍诸如CloudFormation、VPC路由表、访问列表、弹性IP、NAT网关、Direct Connect等虚拟私有云技术以及其他相关主题。
 
-第十一章，《使用 Git 工作》，我们将说明如何利用 Git 进行协作和代码版本控制。本章将使用 Git 进行网络操作的实际示例。
+第11章，《使用Git工作》，我们将说明如何利用Git进行协作和代码版本控制。本章将使用Git进行网络操作的实际示例。
 
-第十二章，《Jenkins 持续集成》，使用 Jenkins 自动创建操作流水线，可以节省时间并提高可靠性。
+第12章，《Jenkins持续集成》，使用Jenkins自动创建操作流水线，可以节省时间并提高可靠性。
 
-第十三章，《网络的测试驱动开发》，解释了如何使用 Python 的 unittest 和 PyTest 创建简单的测试来验证我们的代码。我们还将看到编写用于验证可达性、网络延迟、安全性和网络事务的网络测试的示例。我们还将看到如何将这些测试集成到 Jenkins 等持续集成工具中。
+第13章，《网络的测试驱动开发》，解释了如何使用Python的unittest和PyTest创建简单的测试来验证我们的代码。我们还将看到编写用于验证可达性、网络延迟、安全性和网络事务的网络测试的示例。我们还将看到如何将这些测试集成到Jenkins等持续集成工具中。
 
 # 为了充分利用本书
 
-为了充分利用本书，建议具备一些基本的网络操作知识和 Python 知识。大多数章节可以任意顺序阅读，但第四章和第五章必须按顺序阅读。除了书的开头介绍的基本软件和硬件工具外，每个章节还会介绍与该章节相关的新工具。
+为了充分利用本书，建议具备一些基本的网络操作知识和Python知识。大多数章节可以任意顺序阅读，但第4章和第5章必须按顺序阅读。除了书的开头介绍的基本软件和硬件工具外，每个章节还会介绍与该章节相关的新工具。
 
 强烈建议按照自己的网络实验室中显示的示例进行跟踪和练习。
 
@@ -62,25 +62,25 @@
 
 下载文件后，请确保使用最新版本的解压缩或提取文件夹：
 
-+   WinRAR/7-Zip 适用于 Windows
++   WinRAR/7-Zip适用于Windows
 
-+   Zipeg/iZip/UnRarX 适用于 Mac
++   Zipeg/iZip/UnRarX适用于Mac
 
-+   7-Zip/PeaZip 适用于 Linux
++   7-Zip/PeaZip适用于Linux
 
-该书的代码包也托管在 GitHub 上，网址为[`github.com/PacktPublishing/Mastering-Python-Networking-Second-Edition`](https://github.com/PacktPublishing/Mastering-Python-Networking-Second-Edition)。如果代码有更新，将在现有的 GitHub 存储库上进行更新。
+该书的代码包也托管在GitHub上，网址为[https://github.com/PacktPublishing/Mastering-Python-Networking-Second-Edition](https://github.com/PacktPublishing/Mastering-Python-Networking-Second-Edition)。如果代码有更新，将在现有的GitHub存储库上进行更新。
 
-我们还有其他代码包，来自我们丰富的图书和视频目录，可在[`github.com/PacktPublishing/`](https://github.com/PacktPublishing/)上找到。快去看看吧！
+我们还有其他代码包，来自我们丰富的图书和视频目录，可在[https://github.com/PacktPublishing/](https://github.com/PacktPublishing/)上找到。快去看看吧！
 
 # 下载彩色图片
 
-我们还提供了一个 PDF 文件，其中包含本书中使用的屏幕截图/图表的彩色图片。您可以在此处下载：[`www.packtpub.com/sites/default/files/downloads/MasteringPythonNetworkingSecondEdition_ColorImages.pdf`](https://www.packtpub.com/sites/default/files/downloads/MasteringPythonNetworkingSecondEdition_ColorImages.pdf)。
+我们还提供了一个PDF文件，其中包含本书中使用的屏幕截图/图表的彩色图片。您可以在此处下载：[https://www.packtpub.com/sites/default/files/downloads/MasteringPythonNetworkingSecondEdition_ColorImages.pdf](https://www.packtpub.com/sites/default/files/downloads/MasteringPythonNetworkingSecondEdition_ColorImages.pdf)。
 
 # 使用的约定
 
 本书中使用了许多文本约定。
 
-`CodeInText`：表示文本中的代码词、数据库表名、文件夹名、文件名、文件扩展名、路径名、虚拟 URL、用户输入和 Twitter 句柄。例如：“自动配置还生成了`vty`访问，用于 telnet 和 SSH。”
+`CodeInText`：表示文本中的代码词、数据库表名、文件夹名、文件名、文件扩展名、路径名、虚拟URL、用户输入和Twitter句柄。例如：“自动配置还生成了`vty`访问，用于telnet和SSH。”
 
 代码块设置如下：
 
@@ -99,6 +99,6 @@ Type "help", "copyright", "credits" or "license" for more information.
 >>> exit()
 ```
 
-**粗体**：表示新术语、重要单词或屏幕上看到的单词。例如，菜单或对话框中的单词会以这种形式出现在文本中。例如：“在‘拓扑设计’选项中，我将‘管理网络’选项设置为‘共享平面网络’，以便在虚拟路由器上使用 VMnet2 作为管理网络。”
+**粗体**：表示新术语、重要单词或屏幕上看到的单词。例如，菜单或对话框中的单词会以这种形式出现在文本中。例如：“在‘拓扑设计’选项中，我将‘管理网络’选项设置为‘共享平面网络’，以便在虚拟路由器上使用VMnet2作为管理网络。”
 
 警告或重要提示会以这种形式出现。提示和技巧会以这种形式出现。

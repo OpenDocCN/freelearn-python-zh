@@ -6,11 +6,11 @@
 
 +   如何使用**模型-视图-控制器**模式来分离应用程序的关注点
 
-+   如何将代码组织成 Python 包
++   如何将代码组织成Python包
 
 +   为您的包结构创建基本文件和目录
 
-+   如何使用 Git 版本控制系统跟踪您的更改
++   如何使用Git版本控制系统跟踪您的更改
 
 # 分离关注点
 
@@ -18,15 +18,15 @@
 
 我们称之为**关注点的分离**，通过使用描述不同应用程序组件及其交互方式的架构模式来实现。
 
-# MVC 模式
+# MVC模式
 
-这些模式中最持久的可能是 MVC 模式，它是在 20 世纪 70 年代引入的。尽管这种模式多年来已经发展并衍生出各种变体，但基本的要点仍然是：将数据、数据的呈现和应用程序逻辑保持在独立的组件中。
+这些模式中最持久的可能是MVC模式，它是在20世纪70年代引入的。尽管这种模式多年来已经发展并衍生出各种变体，但基本的要点仍然是：将数据、数据的呈现和应用程序逻辑保持在独立的组件中。
 
 让我们更深入地了解这些组件，并在我们的应用程序的上下文中理解它们。
 
 # 什么是模型？
 
-MVC 中的**模型**代表数据。这包括数据的存储，以及数据可以被查询或操作的各种方式。理想情况下，模型不关心或受到数据如何呈现或授予什么 UI 控件的影响，而是提供一个高级接口，只在最小程度上关注其他组件的内部工作。理论上，如果您决定完全更改程序的 UI（比如，从 Tkinter 应用程序到 Web 应用程序），模型应该完全不受影响。
+MVC中的**模型**代表数据。这包括数据的存储，以及数据可以被查询或操作的各种方式。理想情况下，模型不关心或受到数据如何呈现或授予什么UI控件的影响，而是提供一个高级接口，只在最小程度上关注其他组件的内部工作。理论上，如果您决定完全更改程序的UI（比如，从Tkinter应用程序到Web应用程序），模型应该完全不受影响。
 
 模型中包含的功能或信息的一些示例包括以下内容：
 
@@ -40,15 +40,15 @@ MVC 中的**模型**代表数据。这包括数据的存储，以及数据可以
 
 +   对存储的数据进行计算
 
-我们的应用程序目前没有模型类；数据布局是在表单类中定义的，到目前为止，`Application.on_save()`方法是唯一关心数据持久性的代码。我们需要将这个逻辑拆分成一个单独的对象，该对象将定义数据布局并处理所有 CSV 操作。
+我们的应用程序目前没有模型类；数据布局是在表单类中定义的，到目前为止，`Application.on_save()`方法是唯一关心数据持久性的代码。我们需要将这个逻辑拆分成一个单独的对象，该对象将定义数据布局并处理所有CSV操作。
 
 # 什么是视图？
 
-**视图**是向用户呈现数据和控件的接口。应用程序可能有许多视图，通常是在相同的数据上。视图不直接与模型交互，并且理想情况下只包含足够的逻辑来呈现 UI 并将用户操作传递回控制器。
+**视图**是向用户呈现数据和控件的接口。应用程序可能有许多视图，通常是在相同的数据上。视图不直接与模型交互，并且理想情况下只包含足够的逻辑来呈现UI并将用户操作传递回控制器。
 
 在视图中找到的一些代码示例包括以下内容：
 
-+   GUI 布局和小部件定义
++   GUI布局和小部件定义
 
 +   表单自动化，例如字段的自动完成，小部件的动态切换，或错误对话框的显示
 
@@ -60,7 +60,7 @@ MVC 中的**模型**代表数据。这包括数据的存储，以及数据可以
 
 # 什么是控制器？
 
-**控制器**是应用程序的大中央车站。它处理用户的请求，并负责在视图和模型之间路由数据。MVC 的大多数变体都会改变控制器的角色（有时甚至是名称），但重要的是它充当视图和模型之间的中介。我们的控制器对象将需要保存应用程序使用的视图和模型的引用，并负责管理它们之间的交互。
+**控制器**是应用程序的大中央车站。它处理用户的请求，并负责在视图和模型之间路由数据。MVC的大多数变体都会改变控制器的角色（有时甚至是名称），但重要的是它充当视图和模型之间的中介。我们的控制器对象将需要保存应用程序使用的视图和模型的引用，并负责管理它们之间的交互。
 
 在控制器中找到的代码示例包括以下内容：
 
@@ -78,9 +78,9 @@ MVC 中的**模型**代表数据。这包括数据的存储，以及数据可以
 
 简而言之，我们这样做是为了使扩展可管理。随着应用程序的增长，复杂性也会增加。将我们的组件相互隔离限制了任何一个组件需要管理的复杂性的数量；例如，当我们重新构造表单视图的布局时，我们不应该担心模型将如何在输出文件中结构化数据。程序的这两个方面应该彼此独立。
 
-这也有助于我们在放置某些类型的逻辑时保持一致。例如，拥有一个独立的模型对象有助于我们避免在 UI 代码中散布临时数据查询或文件访问尝试。
+这也有助于我们在放置某些类型的逻辑时保持一致。例如，拥有一个独立的模型对象有助于我们避免在UI代码中散布临时数据查询或文件访问尝试。
 
-最重要的是，如果没有一些指导性的架构策略，我们的程序很可能会变成一团无法解开的逻辑混乱。即使不遵循严格的 MVC 设计定义，始终遵循松散的 MVC 模式也会在应用程序变得更加复杂时节省很多麻烦。
+最重要的是，如果没有一些指导性的架构策略，我们的程序很可能会变成一团无法解开的逻辑混乱。即使不遵循严格的MVC设计定义，始终遵循松散的MVC模式也会在应用程序变得更加复杂时节省很多麻烦。
 
 # 构建我们的应用程序目录结构
 
@@ -88,21 +88,21 @@ MVC 中的**模型**代表数据。这包括数据的存储，以及数据可以
 
 # 基本目录结构
 
-Python 应用程序目录布局没有官方标准，但有一些常见的约定可以帮助我们保持整洁，并且以后更容易打包我们的软件。让我们按照以下方式设置我们的目录结构：
+Python应用程序目录布局没有官方标准，但有一些常见的约定可以帮助我们保持整洁，并且以后更容易打包我们的软件。让我们按照以下方式设置我们的目录结构：
 
 1.  首先，创建一个名为`ABQ_Data_Entry`的目录。这是我们应用程序的**根目录**，所以每当我们提到**应用程序根目录**时，就是它。
 
-1.  在应用程序根目录下，创建另一个名为`abq_data_entry`的目录。注意它是小写的。这将是一个 Python 包，其中将包含应用程序的所有代码；它应该始终被赋予一个相当独特的名称，以免与现有的 Python 包混淆。通常情况下，应用程序根目录和主模块之间不会有不同的大小写，但这也不会有任何问题；我们在这里这样做是为了避免混淆。
+1.  在应用程序根目录下，创建另一个名为`abq_data_entry`的目录。注意它是小写的。这将是一个Python包，其中将包含应用程序的所有代码；它应该始终被赋予一个相当独特的名称，以免与现有的Python包混淆。通常情况下，应用程序根目录和主模块之间不会有不同的大小写，但这也不会有任何问题；我们在这里这样做是为了避免混淆。
 
-Python 模块的命名应始终使用全部小写的名称和下划线。这个约定在 PEP 8 中有详细说明，PEP 8 是 Python 的官方风格指南。有关 PEP 8 的更多信息，请参见[`www.python.org/dev/peps/pep-0008`](https://www.python.org/dev/peps/pep-0008)。
+Python模块的命名应始终使用全部小写的名称和下划线。这个约定在PEP 8中有详细说明，PEP 8是Python的官方风格指南。有关PEP 8的更多信息，请参见[https://www.python.org/dev/peps/pep-0008](https://www.python.org/dev/peps/pep-0008)。
 
 1.  接下来，在应用程序根目录下创建一个名为`docs`的文件夹。这个文件夹将用于存放关于应用程序的文档文件。
 
 1.  最后，在应用程序根目录中创建两个空文件：`README.rst`和`abq_data_entry.py`。你的目录结构应该如下所示：
 
-![](img/830b3415-2492-4ad3-a86e-1e17b65c7a9b.png)
+![](assets/830b3415-2492-4ad3-a86e-1e17b65c7a9b.png)
 
-# abq_data_entry.py 文件
+# abq_data_entry.py文件
 
 就像以前一样，`abq_data_entry.py`是执行程序的主文件。不过，与以前不同的是，它不会包含大部分的程序。实际上，这个文件应该尽可能地简化。
 
@@ -117,9 +117,9 @@ app.mainloop()
 
 保存并关闭文件。这个文件的唯一目的是导入我们的`Application`类，创建一个实例，并运行它。其余的工作将在`abq_data_entry`包内进行。我们还没有创建这个包，所以这个文件暂时无法运行；在我们处理文档之前，让我们先处理一下文档。
 
-# README.rst 文件
+# README.rst文件
 
-自上世纪 70 年代以来，程序一直包含一个名为`README`的简短文本文件，其中包含程序文档的简要摘要。对于小型程序，它可能是唯一的文档；对于大型程序，它通常包含用户或管理员的基本预先飞行指令。
+自上世纪70年代以来，程序一直包含一个名为`README`的简短文本文件，其中包含程序文档的简要摘要。对于小型程序，它可能是唯一的文档；对于大型程序，它通常包含用户或管理员的基本预先飞行指令。
 
 `README`文件没有规定的内容集，但作为基本指南，考虑以下部分：
 
@@ -139,13 +139,13 @@ app.mainloop()
 
 +   **错误**：应用程序中已知的错误或限制的列表。
 
-并不是所有这些部分都适用于每个程序；例如，ABQ 数据输入目前没有任何配置选项，所以没有理由有一个配置部分。根据情况，你可能会添加其他部分；例如，公开分发的软件可能会有一个常见问题解答部分，或者开源软件可能会有一个包含如何提交补丁的贡献部分。
+并不是所有这些部分都适用于每个程序；例如，ABQ数据输入目前没有任何配置选项，所以没有理由有一个配置部分。根据情况，你可能会添加其他部分；例如，公开分发的软件可能会有一个常见问题解答部分，或者开源软件可能会有一个包含如何提交补丁的贡献部分。
 
-`README`文件以纯 ASCII 或 Unicode 文本编写，可以是自由格式的，也可以使用标记语言。由于我们正在进行一个 Python 项目，我们将使用 reStructuredText，这是 Python 文档的官方标记语言（这就是为什么我们的文件使用`rst`文件扩展名）。
+`README`文件以纯ASCII或Unicode文本编写，可以是自由格式的，也可以使用标记语言。由于我们正在进行一个Python项目，我们将使用reStructuredText，这是Python文档的官方标记语言（这就是为什么我们的文件使用`rst`文件扩展名）。
 
 # ReStructuredText
 
-reStructuredText 标记语言是 Python `docutils`项目的一部分，完整的参考资料可以在 Docutils 网站找到：[`docutils.sourceforge.net`](http://docutils.sourceforge.net)。`docutils`项目还提供了将 RST 转换为 PDF、ODT、HTML 和 LaTeX 等格式的实用程序。
+reStructuredText标记语言是Python `docutils`项目的一部分，完整的参考资料可以在Docutils网站找到：[http://docutils.sourceforge.net](http://docutils.sourceforge.net)。`docutils`项目还提供了将RST转换为PDF、ODT、HTML和LaTeX等格式的实用程序。
 
 基础知识可以很快掌握，所以让我们来看看它们：
 
@@ -162,7 +162,7 @@ reStructuredText 标记语言是 Python `docutils`项目的一部分，完整的
 +   代码示例可以通过用双反引号字符括起来来指定内联(```py`), or in a block by ending a lead-in line with a double colon and indenting the code block.
 *   Tables can either be created by surrounding columns of text with `=` symbols, separated by spaces to indicate the column breaks, or by constructing ASCII-art tables from `|`, `-`, and `+`. Tables can be tedious to create in a plain text editor, but some programming tools have plugins to generate the RST tables.
 
-We've used RST already in Chapter 2, *Designing GUI Applications with Tkinter,* to create our program specification; there, you saw the use of titles, headers, bullets, and a table. Let's walk through creating our `README.rst` file:
+We've used RST already in [Chapter 2](3ec510a4-0919-4f25-9c34-f7bbd4199912.xhtml), *Designing GUI Applications with Tkinter,* to create our program specification; there, you saw the use of titles, headers, bullets, and a table. Let's walk through creating our `README.rst` file:
 
 1.  Open the file and start with the title and description, as follows:
 
@@ -170,7 +170,7 @@ We've used RST already in Chapter 2, *Designing GUI Applications with Tkinter,* 
 
 ============================
 
-ABQ 数据输入应用程序
+ABQ数据输入应用程序
 
 ============================
 
@@ -178,7 +178,7 @@ ABQ 数据输入应用程序
 
 ===========
 
-此程序为 ABQ Agrilabs 实验室数据提供数据输入表单。
+此程序为ABQ Agrilabs实验室数据提供数据输入表单。
 
 特点
 
@@ -186,7 +186,7 @@ ABQ 数据输入应用程序
 
 * 提供经过验证的输入表单，以确保正确的数据
 
-* 将数据存储到 ABQ 格式的 CSV 文件中
+* 将数据存储到ABQ格式的CSV文件中
 
 * 在可能的情况下自动填充表单字段
 
@@ -240,9 +240,9 @@ There really isn't much to know about running the program other than this comman
 
 =============
 
-CSV 文件将以“abq_data_record_CURRENTDATE.csv”的格式保存在您当前的目录中，其中 CURRENTDATE 是今天的日期，采用 ISO 格式。
+CSV文件将以“abq_data_record_CURRENTDATE.csv”的格式保存在您当前的目录中，其中CURRENTDATE是今天的日期，采用ISO格式。
 
-此程序仅追加到 CSV 文件。您应该安装电子表格程序，以防需要编辑或检查文件。
+此程序仅追加到CSV文件。您应该安装电子表格程序，以防需要编辑或检查文件。
 
 ```py
 
@@ -279,7 +279,7 @@ Let's start building our application's package. Create the following six empty f
 
 Each of those Python files is called a **module**. A module is nothing more than a Python file inside a package directory. Your directory structure should now look like this:
 
-![](img/06efc903-784c-426e-be9b-ddeb66de7849.png)
+![](assets/06efc903-784c-426e-be9b-ddeb66de7849.png)
 
 At this point, you have a working package, albeit with no actual code in it. To test this, open a Terminal/command-line window, change to your `ABQ_Data_Entry` directory, and start a Python shell.
 
@@ -297,7 +297,7 @@ Don't confuse the term package here with the actual distributable Python package
 
 # Splitting our application into multiple files
 
-Now that our directory structure is in order, we need to start dissecting our application script and splitting it up into our module files. We'll also need to create our model class. Open up your `abq_data_entry.py` file from Chapter 4, *Reducing User Error with Validation and Automation,* and let's begin!
+Now that our directory structure is in order, we need to start dissecting our application script and splitting it up into our module files. We'll also need to create our model class. Open up your `abq_data_entry.py` file from [Chapter 4](43851b46-13ed-4f6f-b754-bc9fe4f522d9.xhtml), *Reducing User Error with Validation and Automation,* and let's begin!
 
 # Creating the models module
 
@@ -354,7 +354,7 @@ from .constants import FieldTypes as FT
 
 class CSVModel:
 
-"""CSV 文件存储"""
+"""CSV文件存储"""
 
 字段 = {
 
@@ -477,7 +477,7 @@ The constructor is pretty simple; it just takes a `filename` parameter and store
 
 def save_record(self, data):
 
-"""将数据字典保存到 CSV 文件"""
+"""将数据字典保存到CSV文件"""
 
 newfile = not os.path.exists(self.filename)
 
@@ -904,9 +904,9 @@ python3 abq_data_entry.py
 
 ```py
 
-It should look and act just like the single script from Chapter 4, *Reducing User Error with Validation and Automation,* and run without errors, as shown in the following screenshot:
+It should look and act just like the single script from [Chapter 4](43851b46-13ed-4f6f-b754-bc9fe4f522d9.xhtml), *Reducing User Error with Validation and Automation,* and run without errors, as shown in the following screenshot:
 
-![](img/4151fc4d-d11b-4bf1-a5a3-df5ab3971dca.png)
+![](assets/4151fc4d-d11b-4bf1-a5a3-df5ab3971dca.png)
 
 Success!
 
@@ -932,7 +932,7 @@ There are dozens of VC systems available, but by far the most popular for many y
 
 Git was created by Linus Torvalds to be the version control software for the Linux kernel project, and has since grown to be the most popular VC software in the world. It is utilized by source sharing sites like GitHub, Bitbucket, SourceForge, and GitLab. Git is extremely powerful, and mastering it can take months or years; fortunately, the basics can be grasped in a few minutes.
 
-First, you'll need to install Git; visit [`git-scm.com/downloads`](https://git-scm.com/downloads) for instructions on how to install Git on macOS, Windows, Linux, or other Unix operating systems.
+First, you'll need to install Git; visit [https://git-scm.com/downloads](https://git-scm.com/downloads) for instructions on how to install Git on macOS, Windows, Linux, or other Unix operating systems.
 
 # Initializing and configuring a Git repository
 
@@ -1036,11 +1036,11 @@ To view your repository's history, run the `git log` command as follows:
 
 alanm@alanm-laptop:~/ABQ_Data_Entry$ git log
 
-提交 df48707422875ff545dc30f4395f82ad2d25f103（HEAD -> master）
+提交df48707422875ff545dc30f4395f82ad2d25f103（HEAD -> master）
 
 作者：Alan Moore <alan@example.com>
 
-日期：2017 年 12 月 21 日星期四 18:12:17 -0600
+日期：2017年12月21日星期四18:12:17 -0600
 
 初始提交
 
@@ -1056,12 +1056,12 @@ alanm@alanm-laptop:~/ABQ_Data_Entry$ git log
 
 1.  再次检查您的文件清单：`README.rst`文件已经回来了。
 
-这里发生的是我们改变了我们的存储库，然后告诉 Git 将存储库的状态硬重置到我们的第一个提交。如果您不想重置您的存储库，您也可以暂时检出一个旧的提交，或者使用特定的提交作为基础创建一个分支。正如您已经看到的，这为我们提供了一个强大的实验安全网；无论您如何调整代码，任何提交都只是一个命令的距离！
+这里发生的是我们改变了我们的存储库，然后告诉Git将存储库的状态硬重置到我们的第一个提交。如果您不想重置您的存储库，您也可以暂时检出一个旧的提交，或者使用特定的提交作为基础创建一个分支。正如您已经看到的，这为我们提供了一个强大的实验安全网；无论您如何调整代码，任何提交都只是一个命令的距离！
 
-Git 有许多更多的功能超出了本书的范围。如果您想了解更多信息，Git 项目在[`git-scm.com/book`](https://git-scm.com/book)提供了免费的在线手册，您可以在那里了解分支和设置远程存储库等高级功能。目前，重要的是在进行更改时提交更改，以便保持您的安全网并记录更改的历史。
+Git有许多更多的功能超出了本书的范围。如果您想了解更多信息，Git项目在[https://git-scm.com/book](https://git-scm.com/book)提供了免费的在线手册，您可以在那里了解分支和设置远程存储库等高级功能。目前，重要的是在进行更改时提交更改，以便保持您的安全网并记录更改的历史。
 
 # 总结
 
-在本章中，您学会了为您的简单脚本做一些严肃的扩展准备。您学会了如何将应用程序的职责领域划分为单独的组件，以及如何将代码分割成单独的模块。您学会了如何使用 reStructuredText 记录代码并使用版本控制跟踪所有更改。
+在本章中，您学会了为您的简单脚本做一些严肃的扩展准备。您学会了如何将应用程序的职责领域划分为单独的组件，以及如何将代码分割成单独的模块。您学会了如何使用reStructuredText记录代码并使用版本控制跟踪所有更改。
 
-在下一章中，我们将通过实现一些新功能来测试我们的新项目布局。您将学习如何使用 Tkinter 的应用程序菜单小部件，如何实现文件打开和保存，以及如何使用消息弹出窗口来警告用户或确认操作。
+在下一章中，我们将通过实现一些新功能来测试我们的新项目布局。您将学习如何使用Tkinter的应用程序菜单小部件，如何实现文件打开和保存，以及如何使用消息弹出窗口来警告用户或确认操作。

@@ -1,6 +1,6 @@
 # 文档和报告
 
-在本章中，您将学习如何使用 Python 记录和报告信息。您还将学习如何使用 Python 脚本获取输入以及如何打印输出。在 Python 中编写接收电子邮件的脚本更容易。您将学习如何格式化信息。
+在本章中，您将学习如何使用Python记录和报告信息。您还将学习如何使用Python脚本获取输入以及如何打印输出。在Python中编写接收电子邮件的脚本更容易。您将学习如何格式化信息。
 
 在本章中，您将学习以下内容：
 
@@ -12,7 +12,7 @@
 
 # 标准输入和输出
 
-在本节中，我们将学习 Python 中的输入和输出。我们将学习`stdin`和`stdout`，以及`input()`函数。
+在本节中，我们将学习Python中的输入和输出。我们将学习`stdin`和`stdout`，以及`input()`函数。
 
 `stdin`和`stdout`是类似文件的对象。这些对象由操作系统提供。每当用户在交互会话中运行程序时，`stdin`充当输入，`stdout`将是用户的终端。由于`stdin`是类似文件的对象，我们必须从`stdin`读取数据而不是在运行时读取数据。`stdout`用于输出。它用作表达式和`print()`函数的输出，以及`input()`函数的提示。
 
@@ -126,9 +126,9 @@ Student details: Name:John Address:New York
 
 # 发送电子邮件
 
-在本节中，我们将学习如何通过 Python 脚本从 Gmail 发送电子邮件。为此，Python 有一个名为`smtplib`的模块。Python 中的`smtplib`模块提供了用于向具有 SMTP 侦听器的任何互联网机器发送电子邮件的 SMTP 客户端会话对象。
+在本节中，我们将学习如何通过Python脚本从Gmail发送电子邮件。为此，Python有一个名为`smtplib`的模块。Python中的`smtplib`模块提供了用于向具有SMTP侦听器的任何互联网机器发送电子邮件的SMTP客户端会话对象。
 
-我们将看一个例子。在这个例子中，我们将从 Gmail 向接收者发送包含简单文本的电子邮件。
+我们将看一个例子。在这个例子中，我们将从Gmail向接收者发送包含简单文本的电子邮件。
 
 创建一个`send_email.py`脚本，并在其中写入以下内容：
 
@@ -148,9 +148,9 @@ student@ubuntu:~/work$ python3 send_text.py
 Password: Mail sent successfully
 ```
 
-在前面的例子中，我们从我们的 Gmail ID 向接收者发送了一封电子邮件。用户名变量将存储您的电子邮件 ID。在密码变量中，您可以输入密码，或者您可以使用`getpass`模块提示密码。在这里，我们提示输入密码。接下来，发件人变量将有您的名字。现在，我们将向多个接收者发送此电子邮件。然后，我们为该电子邮件包括了主题，发件人和收件人。然后在`login()`中，我们提到了我们的用户名和密码变量。接下来，在`sendmail()`中，我们提到了发件人，接收者和文本变量。因此，使用此过程，我们成功发送了电子邮件。
+在前面的例子中，我们从我们的Gmail ID向接收者发送了一封电子邮件。用户名变量将存储您的电子邮件ID。在密码变量中，您可以输入密码，或者您可以使用`getpass`模块提示密码。在这里，我们提示输入密码。接下来，发件人变量将有您的名字。现在，我们将向多个接收者发送此电子邮件。然后，我们为该电子邮件包括了主题，发件人和收件人。然后在`login()`中，我们提到了我们的用户名和密码变量。接下来，在`sendmail()`中，我们提到了发件人，接收者和文本变量。因此，使用此过程，我们成功发送了电子邮件。
 
-现在，我们将看一个发送带附件的电子邮件的例子。在这个例子中，我们将向收件人发送一张图片。我们将通过 Gmail 发送此邮件。创建一个`send_email_attachment.py`脚本，并在其中写入以下内容：
+现在，我们将看一个发送带附件的电子邮件的例子。在这个例子中，我们将向收件人发送一张图片。我们将通过Gmail发送此邮件。创建一个`send_email_attachment.py`脚本，并在其中写入以下内容：
 
 ```py
 import os import smtplib from email.mime.text import MIMEText from email.mime.image import MIMEImage from email.mime.multipart import MIMEMultipart import getpass host_name = 'smtp.gmail.com' port = 465  u_name = 'username/emailid' password = getpass.getpass() sender = 'sender_name' receivers = ['receiver1_email_address', 'receiver2_email_address'] text = MIMEMultipart() text['Subject'] = 'Test Attachment' text['From'] = sender text['To'] = ', '.join(receivers) txt = MIMEText('Sending a sample image.') text.attach(txt) f_path = '/home/student/Desktop/mountain.jpg' with open(f_path, 'rb') as f:
@@ -170,21 +170,21 @@ student@ubuntu:~/work$ python3 send_email_attachment.py
 Password: Email with attachment sent successfully!!
 ```
 
-在前面的例子中，我们将图像作为附件发送给接收者。我们提到了发件人和收件人的电子邮件 ID。接下来，在`f_path`中，我们提到了我们发送为附件的图像的路径。接下来，我们将该图像作为附件发送给接收者。
+在前面的例子中，我们将图像作为附件发送给接收者。我们提到了发件人和收件人的电子邮件ID。接下来，在`f_path`中，我们提到了我们发送为附件的图像的路径。接下来，我们将该图像作为附件发送给接收者。
 
-在前面的两个例子——`send_text.py`和`send_email_attachment.py`——我们通过 Gmail 发送了电子邮件。您可以通过任何其他电子邮件提供商发送。要使用任何其他电子邮件提供商，只需在`host_name`中写入该提供商名称。不要忘记在其前面添加`smtp`。在这些示例中，我们使用了`smtp.gmail.com`；对于 Yahoo！您可以使用`smtp.mail.yahoo.com`。因此，您可以根据您的电子邮件提供商更改主机名以及端口。
+在前面的两个例子——`send_text.py`和`send_email_attachment.py`——我们通过Gmail发送了电子邮件。您可以通过任何其他电子邮件提供商发送。要使用任何其他电子邮件提供商，只需在`host_name`中写入该提供商名称。不要忘记在其前面添加`smtp`。在这些示例中，我们使用了`smtp.gmail.com`；对于Yahoo！您可以使用`smtp.mail.yahoo.com`。因此，您可以根据您的电子邮件提供商更改主机名以及端口。
 
 # 摘要
 
-在本章中，我们学习了标准输入和输出。我们了解了“stdin”和“stdout”分别作为键盘输入和用户终端。我们还学习了“input()”和“print()”函数。除此之外，我们还学习了如何从 Gmail 发送电子邮件给接收者。我们发送了一封包含简单文本的电子邮件，还发送了附件。此外，我们还学习了使用“format()”方法和“%”运算符进行字符串格式化。
+在本章中，我们学习了标准输入和输出。我们了解了`stdin`和`stdout`分别作为键盘输入和用户终端。我们还学习了`input()`和`print()`函数。除此之外，我们还学习了如何从Gmail发送电子邮件给接收者。我们发送了一封包含简单文本的电子邮件，还发送了附件。此外，我们还学习了使用`format()`方法和`%`运算符进行字符串格式化。
 
-在下一章中，您将学习如何处理不同类型的文件，如 PDF、Excel 和“csv”。
+在下一章中，您将学习如何处理不同类型的文件，如PDF、Excel和“csv”。
 
 # 问题
 
-1.  “stdin”和输入之间有什么区别？
+1.  `stdin`和输入之间有什么区别？
 
-1.  SMTP 是什么？
+1.  SMTP是什么？
 
 1.  以下内容的输出将是什么？
 
@@ -212,6 +212,6 @@ print('str1 * 3 =', str1 * 3)
 
 # 进一步阅读
 
-1.  “string”文档：[`docs.python.org/3.1/library/string.html`](https://docs.python.org/3.1/library/string.html)
+1.  `string`文档：[https://docs.python.org/3.1/library/string.html](https://docs.python.org/3.1/library/string.html)
 
-1.  “smptplib”文档：[`docs.python.org/3/library/smtplib.html`](https://docs.python.org/3/library/smtplib.html)
+1.  `smptplib`文档：[https://docs.python.org/3/library/smtplib.html](https://docs.python.org/3/library/smtplib.html)

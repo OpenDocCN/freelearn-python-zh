@@ -1,6 +1,6 @@
-# 使用 QtCharts 嵌入数据图
+# 使用QtCharts嵌入数据图
 
-世界充满了数据。从服务器日志到财务记录，传感器遥测到人口普查统计数据，程序员们需要筛选和提取意义的原始数据似乎没有尽头。除此之外，没有什么比一个好的图表或图形更有效地将一组原始数据提炼成有意义的信息。虽然 Python 有一些很棒的图表工具，比如`matplotlib`，PyQt 还提供了自己的`QtCharts`库，这是一个用于构建图表、图形和其他数据可视化的简单工具包。
+世界充满了数据。从服务器日志到财务记录，传感器遥测到人口普查统计数据，程序员们需要筛选和提取意义的原始数据似乎没有尽头。除此之外，没有什么比一个好的图表或图形更有效地将一组原始数据提炼成有意义的信息。虽然Python有一些很棒的图表工具，比如`matplotlib`，PyQt还提供了自己的`QtCharts`库，这是一个用于构建图表、图形和其他数据可视化的简单工具包。
 
 在本章中，我们将探讨以下主题中使用`QtCharts`进行数据可视化：
 
@@ -8,35 +8,35 @@
 
 +   显示实时数据
 
-+   Qt 图表样式
++   Qt图表样式
 
 # 技术要求
 
-除了我们在整本书中一直使用的基本 PyQt 设置之外，您还需要为`QtCharts`库安装 PyQt 支持。这种支持不是默认的 PyQt 安装的一部分，但可以通过 PyPI 轻松安装，如下所示：
+除了我们在整本书中一直使用的基本PyQt设置之外，您还需要为`QtCharts`库安装PyQt支持。这种支持不是默认的PyQt安装的一部分，但可以通过PyPI轻松安装，如下所示：
 
 ```py
 $ pip install --user PyQtChart
 ```
 
-您还需要`psutil`库，可以从 PyPI 安装。我们已经在第十二章中使用过这个库，*使用 QPainter 创建 2D 图形*，所以如果您已经阅读了那一章，那么您应该已经有了它。如果没有，可以使用以下命令轻松安装：
+您还需要`psutil`库，可以从PyPI安装。我们已经在[第12章](1a25e80a-2680-47f4-b309-782cf9b8580f.xhtml)中使用过这个库，*使用QPainter创建2D图形*，所以如果您已经阅读了那一章，那么您应该已经有了它。如果没有，可以使用以下命令轻松安装：
 
 ```py
 $ pip install --user psutil
 ```
 
-最后，您可能希望从[`github.com/PacktPublishing/Mastering-GUI-Programming-with-Python/tree/master/Chapter14`](https://github.com/PacktPublishing/Mastering-GUI-Programming-with-Python/tree/master/Chapter14)下载本章的示例代码。
+最后，您可能希望从[https://github.com/PacktPublishing/Mastering-GUI-Programming-with-Python/tree/master/Chapter14](https://github.com/PacktPublishing/Mastering-GUI-Programming-with-Python/tree/master/Chapter14)下载本章的示例代码。
 
-查看以下视频以查看代码的运行情况：[`bit.ly/2M5y67f`](http://bit.ly/2M5y67f)
+查看以下视频以查看代码的运行情况：[http://bit.ly/2M5y67f](http://bit.ly/2M5y67f)
 
 # 创建一个简单的图表
 
-在第十二章 *使用 QPainter 创建 2D 图形*中，我们使用 Qt 图形框架和`psutil`库创建了一个 CPU 活动图。虽然这种构建图表的方法效果很好，但是创建一个缺乏简单美观性的基本图表需要大量的工作。`QtChart`库也是基于 Qt 图形框架的，但简化了各种功能完备的图表的创建。
+在[第12章](1a25e80a-2680-47f4-b309-782cf9b8580f.xhtml) *使用QPainter创建2D图形*中，我们使用Qt图形框架和`psutil`库创建了一个CPU活动图。虽然这种构建图表的方法效果很好，但是创建一个缺乏简单美观性的基本图表需要大量的工作。`QtChart`库也是基于Qt图形框架的，但简化了各种功能完备的图表的创建。
 
 为了演示它的工作原理，我们将构建一个更完整的系统监控程序，其中包括几个图表，这些图表是从`psutil`库提供的数据派生出来的。
 
-# 设置 GUI
+# 设置GUI
 
-要开始我们的程序，将 Qt 应用程序模板从第四章 *使用 QMainWindow 构建应用程序*复制到一个名为`system_monitor.py`的新文件中。
+要开始我们的程序，将Qt应用程序模板从[第4章](9281bd2a-64a1-4128-92b0-e4871b79c040.xhtml) *使用QMainWindow构建应用程序*复制到一个名为`system_monitor.py`的新文件中。
 
 在应用程序的顶部，我们需要导入`QtChart`库：
 
@@ -44,7 +44,7 @@ $ pip install --user psutil
 from PyQt5 import QtChart as qtch
 ```
 
-我们还需要`deque`类和`psutil`库，就像我们在[第十二章](https://cdp.packtpub.com/mastering_gui_programming_with_python/wp-admin/post.php?post=37&action=edit#post_35) *使用 QPainter 创建 2D 图形*中所需要的那样：
+我们还需要`deque`类和`psutil`库，就像我们在[第12章](https://cdp.packtpub.com/mastering_gui_programming_with_python/wp-admin/post.php?post=37&action=edit#post_35) *使用QPainter创建2D图形*中所需要的那样：
 
 ```py
 from collections import deque
@@ -58,7 +58,7 @@ import psutil
         self.setCentralWidget(tabs)
 ```
 
-现在 GUI 的主要框架已经就位，我们将开始创建我们的图表类并将它们添加到 GUI 中。
+现在GUI的主要框架已经就位，我们将开始创建我们的图表类并将它们添加到GUI中。
 
 # 构建磁盘使用情况图
 
@@ -75,7 +75,7 @@ class DiskUsageChartView(qtch.QChartView):
         super().__init__()
 ```
 
-该类是从`QtChart.QChartView`类派生的；这个`QGraphicsView`的子类是一个可以显示`QChart`对象的小部件。就像 Qt 图形框架一样，`QtChart`框架也是基于模型-视图设计的。在这种情况下，`QChart`对象类似于`QGraphicsScene`对象，它将附加到`QChartView`对象以进行显示。
+该类是从`QtChart.QChartView`类派生的；这个`QGraphicsView`的子类是一个可以显示`QChart`对象的小部件。就像Qt图形框架一样，`QtChart`框架也是基于模型-视图设计的。在这种情况下，`QChart`对象类似于`QGraphicsScene`对象，它将附加到`QChartView`对象以进行显示。
 
 让我们创建我们的`QChart`对象，如下所示：
 
@@ -99,7 +99,7 @@ class DiskUsageChartView(qtch.QChartView):
 | `QPieSeries` | 饼图 | 相对百分比 |
 | `QScatterSeries` | 散点图 | 点的集合 |
 
-可以在[`doc.qt.io/qt-5/qtcharts-overview.html`](https://doc.qt.io/qt-5/qtcharts-overview.html)找到可用系列类型的完整列表。我们的图表将比较多个分区的磁盘使用百分比，因此在这些选项中使用最合理的系列类型似乎是`QBarSeries`类。每个分区将是一个*类别*，并且将与之关联一个单个值（使用百分比）。
+可以在[https://doc.qt.io/qt-5/qtcharts-overview.html](https://doc.qt.io/qt-5/qtcharts-overview.html)找到可用系列类型的完整列表。我们的图表将比较多个分区的磁盘使用百分比，因此在这些选项中使用最合理的系列类型似乎是`QBarSeries`类。每个分区将是一个*类别*，并且将与之关联一个单个值（使用百分比）。
 
 让我们创建`QBarSeries`类，如下：
 
@@ -117,7 +117,7 @@ class DiskUsageChartView(qtch.QChartView):
         series.append(bar_set)
 ```
 
-Qt 条形图旨在显示类别数据，但也允许比较这些类别中的不同数据集。例如，如果您想要比较公司产品在美国各个城市的相对销售成功情况，您可以使用城市作为类别，并为每种产品创建一个条形集。
+Qt条形图旨在显示类别数据，但也允许比较这些类别中的不同数据集。例如，如果您想要比较公司产品在美国各个城市的相对销售成功情况，您可以使用城市作为类别，并为每种产品创建一个条形集。
 
 在我们的情况下，类别将是系统上的分区，我们只有一个数据集要查看每个分区的数据 - 即磁盘使用百分比。
 
@@ -180,7 +180,7 @@ Qt 条形图旨在显示类别数据，但也允许比较这些类别中的不�
 
 如果此时运行应用程序，您应该会得到分区使用百分比的显示：
 
-![](img/a5c9d296-9255-447f-bb1a-c03e0f2da444.png)
+![](assets/a5c9d296-9255-447f-bb1a-c03e0f2da444.png)
 
 您的显示可能会有所不同，这取决于您的操作系统和驱动器配置。前面的图看起来很不错，但我们可以做一个小小的改进，即在我们的条形上实际放置百分比标签，以便读者可以看到精确的数据值。这可以通过在`DiskUsageChartView.__init__()`中添加以下行来完成：
 
@@ -190,17 +190,17 @@ Qt 条形图旨在显示类别数据，但也允许比较这些类别中的不�
 
 现在当我们运行程序时，我们会得到带有标签的条形，如下所示：
 
-![](img/fa104c14-f8df-45ab-8620-39906e58bc21.png)
+![](assets/fa104c14-f8df-45ab-8620-39906e58bc21.png)
 
 嗯，看来这位作者需要一个更大的硬盘了！
 
 # 显示实时数据
 
-现在我们已经看到了创建静态图表有多么容易，让我们来看看创建实时更新图表的过程。基本上，过程是相同的，但是我们需要定期使用新数据更新图表的数据系列。为了演示这一点，让我们制作一个实时 CPU 使用率监视器。
+现在我们已经看到了创建静态图表有多么容易，让我们来看看创建实时更新图表的过程。基本上，过程是相同的，但是我们需要定期使用新数据更新图表的数据系列。为了演示这一点，让我们制作一个实时CPU使用率监视器。
 
-# 构建 CPU 使用率图表
+# 构建CPU使用率图表
 
-让我们在一个名为`CPUUsageView`的新类中启动我们的 CPU 监视器：
+让我们在一个名为`CPUUsageView`的新类中启动我们的CPU监视器：
 
 ```py
 class CPUUsageView(qtch.QChartView):
@@ -214,7 +214,7 @@ class CPUUsageView(qtch.QChartView):
         self.setChart(chart)
 ```
 
-就像我们在磁盘使用图表中所做的那样，我们基于`QChartView`创建了这个类，并在构造函数中创建了一个`QChart`对象。我们还定义了一个标题，并且，就像我们在第十二章中所做的那样，*使用 QPainter 创建 2D 图形*，配置了一次显示多少个数据点。不过这次我们要显示更多的点，这样我们就可以得到更详细的图表了。
+就像我们在磁盘使用图表中所做的那样，我们基于`QChartView`创建了这个类，并在构造函数中创建了一个`QChart`对象。我们还定义了一个标题，并且，就像我们在[第12章](1a25e80a-2680-47f4-b309-782cf9b8580f.xhtml)中所做的那样，*使用QPainter创建2D图形*，配置了一次显示多少个数据点。不过这次我们要显示更多的点，这样我们就可以得到更详细的图表了。
 
 创建图表对象后，下一步是创建系列对象：
 
@@ -223,7 +223,7 @@ class CPUUsageView(qtch.QChartView):
         chart.addSeries(self.series)
 ```
 
-这次，我们使用`QSplineSeries`对象；我们也可以使用`QLineSeries`，但是样条版本将使用三次样条曲线连接我们的数据点，使外观更加平滑，这类似于我们在第十二章中使用贝塞尔曲线所实现的效果，*使用 QPainter 创建 2D 图形*。
+这次，我们使用`QSplineSeries`对象；我们也可以使用`QLineSeries`，但是样条版本将使用三次样条曲线连接我们的数据点，使外观更加平滑，这类似于我们在[第12章](1a25e80a-2680-47f4-b309-782cf9b8580f.xhtml)中使用贝塞尔曲线所实现的效果，*使用QPainter创建2D图形*。
 
 接下来，我们需要使用一些默认数据填充系列对象，如下所示：
 
@@ -250,7 +250,7 @@ class CPUUsageView(qtch.QChartView):
         chart.setAxisY(y_axis, self.series)
 ```
 
-因为我们的数据主要是(*x*, *y*)坐标，我们的两个轴都是`QValueAxis`对象。然而，我们的*x*轴坐标的值基本上是没有意义的（它只是`deque`对象中 CPU 使用值的索引），因此我们将通过将轴的`labelsVisible`属性设置为`False`来隐藏这些标签。
+因为我们的数据主要是(*x*, *y*)坐标，我们的两个轴都是`QValueAxis`对象。然而，我们的*x*轴坐标的值基本上是没有意义的（它只是`deque`对象中CPU使用值的索引），因此我们将通过将轴的`labelsVisible`属性设置为`False`来隐藏这些标签。
 
 请注意，这次我们在使用`setAxisX()`和`setAxisY`设置图表的*x*和*y*轴时，将系列对象与轴一起传递。这样做会自动将轴附加到系列上，并为每个轴节省了额外的方法调用。
 
@@ -295,26 +295,26 @@ class CPUUsageView(qtch.QChartView):
         self.timer.start()
 ```
 
-这个定时器将每 200 毫秒调用`refresh_stats()`，更新系列，因此也更新了图表。
+这个定时器将每200毫秒调用`refresh_stats()`，更新系列，因此也更新了图表。
 
-回到`MainView.__init__()`，让我们添加 CPU 图表：
+回到`MainView.__init__()`，让我们添加CPU图表：
 
 ```py
         cpu_view = CPUUsageView()
         tabs.addTab(cpu_view, "CPU Usage")
 ```
 
-现在，您可以运行应用程序，单击 CPU 使用率选项卡，查看类似于以下图表的图表：
+现在，您可以运行应用程序，单击CPU使用率选项卡，查看类似于以下图表的图表：
 
-![](img/57289362-6e4b-409f-bd5a-6d2d74860221.png)
+![](assets/57289362-6e4b-409f-bd5a-6d2d74860221.png)
 
-尝试进行一些 CPU 密集型任务，为图表生成一些有趣的数据。
+尝试进行一些CPU密集型任务，为图表生成一些有趣的数据。
 
 # 在图表周围进行平移和缩放
 
 由于我们的刷新方法每秒调用五次，因此该系列中的数据对于这样一个小图表来说相当详细。这样密集的图表可能是用户希望更详细地探索的内容。为了实现这一功能，我们可以利用`QChart`对象的方法来在图表图像周围进行平移和缩放，并允许用户更好地查看数据。
 
-要为`CPUUsageView`类配置交互控件，我们可以重写`keyPressEvent()`方法，就像我们在第十二章中的游戏中所做的那样，*使用 QPainter 创建 2D 图形*：
+要为`CPUUsageView`类配置交互控件，我们可以重写`keyPressEvent()`方法，就像我们在[第12章](1a25e80a-2680-47f4-b309-782cf9b8580f.xhtml)中的游戏中所做的那样，*使用QPainter创建2D图形*：
 
 ```py
     def keyPressEvent(self, event):
@@ -339,9 +339,9 @@ class CPUUsageView(qtch.QChartView):
 
 如果您现在运行此程序，您应该会发现可以使用箭头键移动图表，并使用尖括号放大或缩小（请记住在大多数键盘上按*Shift*以获得尖括号）。
 
-# Qt 图表样式
+# Qt图表样式
 
-Qt 图表默认看起来很好，但让我们面对现实吧——在样式方面，没有人想被困在默认设置中。幸运的是，QtCharts 为我们的可视化组件提供了各种各样的样式选项。
+Qt图表默认看起来很好，但让我们面对现实吧——在样式方面，没有人想被困在默认设置中。幸运的是，QtCharts为我们的可视化组件提供了各种各样的样式选项。
 
 为了探索这些选项，我们将构建第三个图表来显示物理和交换内存使用情况，然后根据我们自己的喜好进行样式化。
 
@@ -396,7 +396,7 @@ class MemoryChartView(qtch.QChartView):
         chart.setAxisY(y_axis, series)
 ```
 
-在这里，就像 CPU 使用图表一样，我们的*x*轴只表示数据的无意义索引号，所以我们只是要隐藏标签。另一方面，我们的*y*轴表示一个百分比，所以我们将其范围设置为`0`到`100`。
+在这里，就像CPU使用图表一样，我们的*x*轴只表示数据的无意义索引号，所以我们只是要隐藏标签。另一方面，我们的*y*轴表示一个百分比，所以我们将其范围设置为`0`到`100`。
 
 现在，我们将创建我们的`refresh`方法来更新图表数据：
 
@@ -415,7 +415,7 @@ class MemoryChartView(qtch.QChartView):
             self.swap_set.replace(x, swap)
 ```
 
-`psutil`库有两个函数用于检查内存使用情况：`virtual_memory()`返回有关物理 RAM 的信息；`swap_memory()`返回有关交换文件使用情况的信息。我们正在应用一些基本算术来找出交换和物理内存使用的总内存百分比，然后将这些数据附加到`deque`对象中，并通过迭代来替换条形集中的数据。
+`psutil`库有两个函数用于检查内存使用情况：`virtual_memory()`返回有关物理RAM的信息；`swap_memory()`返回有关交换文件使用情况的信息。我们正在应用一些基本算术来找出交换和物理内存使用的总内存百分比，然后将这些数据附加到`deque`对象中，并通过迭代来替换条形集中的数据。
 
 最后，我们将在`__init__()`中再次添加我们的定时器来调用刷新方法：
 
@@ -464,7 +464,7 @@ class MemoryChartView(qtch.QChartView):
         chart.setDropShadowEnabled(True)
 ```
 
-将`dropShadowEnabled`设置为`True`将导致在图表绘图区域周围显示一个阴影，给它一个微妙的 3D 效果。
+将`dropShadowEnabled`设置为`True`将导致在图表绘图区域周围显示一个阴影，给它一个微妙的3D效果。
 
 通过设置图表的`theme`属性，我们可以实现外观上的更明显的变化，如下所示：
 
@@ -472,7 +472,7 @@ class MemoryChartView(qtch.QChartView):
         chart.setTheme(qtch.QChart.ChartThemeBrownSand)
 ```
 
-尽管这被称为图表主题，但它主要影响了绘图所使用的颜色。Qt 5.12 附带了八种图表主题，可以在[`doc.qt.io/qt-5/qchart.html#ChartTheme-enum`](https://doc.qt.io/qt-5/qchart.html#ChartTheme-enum)找到。在这里，我们配置了*Brown Sand*主题，它将使用土地色调来展示我们的数据绘图。
+尽管这被称为图表主题，但它主要影响了绘图所使用的颜色。Qt 5.12附带了八种图表主题，可以在[https://doc.qt.io/qt-5/qchart.html#ChartTheme-enum](https://doc.qt.io/qt-5/qchart.html#ChartTheme-enum)找到。在这里，我们配置了*Brown Sand*主题，它将使用土地色调来展示我们的数据绘图。
 
 对于我们的堆叠条形图，这意味着堆栈的每个部分将从主题中获得不同的颜色。
 
@@ -486,7 +486,7 @@ class MemoryChartView(qtch.QChartView):
         chart.setBackgroundBrush(qtg.QBrush(gradient))
 ```
 
-在这种情况下，我们创建了一个线性渐变，并使用它来创建了一个背景的`QBrush`对象（有关更多讨论，请参阅第六章，*Qt 应用程序的样式*）。
+在这种情况下，我们创建了一个线性渐变，并使用它来创建了一个背景的`QBrush`对象（有关更多讨论，请参阅[第6章](c3eb2567-0e73-4c37-9a9e-a0e2311e106c.xhtml)，*Qt应用程序的样式*）。
 
 背景也有一个`QPen`对象，用于绘制绘图区域的边框：
 
@@ -532,7 +532,7 @@ class MemoryChartView(qtch.QChartView):
         y_axis.setTickCount(11)
 ```
 
-默认的刻度数是`5`，最小值是`2`。请注意，这个数字包括顶部和底部的线，所以为了让网格线每 10%显示一条，我们将轴设置为`11`个刻度。
+默认的刻度数是`5`，最小值是`2`。请注意，这个数字包括顶部和底部的线，所以为了让网格线每10%显示一条，我们将轴设置为`11`个刻度。
 
 为了帮助用户区分紧密排列的网格线，我们还可以在轴对象上启用**阴影**：
 
@@ -582,7 +582,7 @@ class MemoryChartView(qtch.QChartView):
 
 此时，您的内存图表应该看起来像这样：
 
-![](img/039075c6-d675-44f1-84d3-393b24627858.png)
+![](assets/039075c6-d675-44f1-84d3-393b24627858.png)
 
 不错！现在，尝试使用自己的颜色、刷子、笔和字体值，看看您能创造出什么！
 
@@ -590,7 +590,7 @@ class MemoryChartView(qtch.QChartView):
 
 在本章中，您学会了如何使用`QtChart`可视化数据。您创建了一个静态表格，一个动画实时表格，以及一个带有自定义颜色和字体的花哨图表。您还学会了如何创建柱状图、堆叠柱状图和样条图。
 
-在下一章中，我们将探讨在树莓派上使用 PyQt 的用法。您将学习如何安装最新版本的 PyQt，以及如何利用树莓派的独特功能将您的 PyQt 应用程序与电路和外部硬件进行接口。
+在下一章中，我们将探讨在树莓派上使用PyQt的用法。您将学习如何安装最新版本的PyQt，以及如何利用树莓派的独特功能将您的PyQt应用程序与电路和外部硬件进行接口。
 
 # 问题
 
@@ -598,7 +598,7 @@ class MemoryChartView(qtch.QChartView):
 
 1.  考虑以下数据集的描述。为每个数据集建议一种图表样式：
 
-+   按日期的 Web 服务器点击次数
++   按日期的Web服务器点击次数
 
 +   每个销售人员每月的销售数据
 
@@ -655,16 +655,16 @@ class MemoryChartView(qtch.QChartView):
 
 1.  使用您为`内存使用情况`图表使用的技术为系统监视器脚本中的另外两个图表设置样式。尝试不同的刷子和笔，看看是否可以找到其他要设置的属性。
 
-1.  `QPolarChart`是`QChart`的一个子类，允许您构建极坐标图。在 Qt 文档中调查极坐标图的使用，并查看是否可以创建一个适当数据集的极坐标图。
+1.  `QPolarChart`是`QChart`的一个子类，允许您构建极坐标图。在Qt文档中调查极坐标图的使用，并查看是否可以创建一个适当数据集的极坐标图。
 
-1.  `psutil.cpu_percent()`接受一个可选参数`percpu`，它将创建一个显示每个 CPU 核使用信息的值列表。更新您的应用程序以使用此选项，并分别在一个图表上显示每个 CPU 核的活动。
+1.  `psutil.cpu_percent()`接受一个可选参数`percpu`，它将创建一个显示每个CPU核使用信息的值列表。更新您的应用程序以使用此选项，并分别在一个图表上显示每个CPU核的活动。
 
 # 进一步阅读
 
 有关更多信息，请参考以下链接：
 
-+   `QtCharts`概述可以在[`doc.qt.io/qt-5/qtcharts-index.html`](https://doc.qt.io/qt-5/qtcharts-index.html)找到
++   `QtCharts`概述可以在[https://doc.qt.io/qt-5/qtcharts-index.html](https://doc.qt.io/qt-5/qtcharts-index.html)找到
 
-+   `psutil`库的更多文档可以在[`psutil.readthedocs.io/en/latest/`](https://psutil.readthedocs.io/en/latest/)找到
++   `psutil`库的更多文档可以在[https://psutil.readthedocs.io/en/latest/](https://psutil.readthedocs.io/en/latest/)找到
 
-+   加州大学伯克利分校的这篇指南为不同类型的数据选择合适的图表提供了一些指导：[`guides.lib.berkeley.edu/data-visualization/type`](http://guides.lib.berkeley.edu/data-visualization/type)
++   加州大学伯克利分校的这篇指南为不同类型的数据选择合适的图表提供了一些指导：[http://guides.lib.berkeley.edu/data-visualization/type](http://guides.lib.berkeley.edu/data-visualization/type)

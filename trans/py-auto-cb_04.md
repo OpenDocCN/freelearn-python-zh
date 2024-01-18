@@ -8,7 +8,7 @@
 
 +   处理编码
 
-+   阅读 CSV 文件
++   阅读CSV文件
 
 +   阅读日志文件
 
@@ -16,15 +16,15 @@
 
 +   阅读图像
 
-+   阅读 PDF 文件
++   阅读PDF文件
 
-+   阅读 Word 文档
++   阅读Word文档
 
 +   扫描文档以查找关键字
 
 # 介绍
 
-在本章中，我们将处理读取文件的基本操作，从搜索和打开目录和子目录中的文件开始。然后，我们将描述一些最常见的文件类型以及如何读取它们，包括原始文本文件、PDF 和 Word 文档等格式。
+在本章中，我们将处理读取文件的基本操作，从搜索和打开目录和子目录中的文件开始。然后，我们将描述一些最常见的文件类型以及如何读取它们，包括原始文本文件、PDF和Word文档等格式。
 
 最后一个食谱将把它们全部结合起来，展示如何在目录中递归搜索不同类型的文件中的单词。
 
@@ -49,7 +49,7 @@ $ touch dir/file6.pdf
 
 所有文件都将是空的；我们只会在本食谱中使用它们来发现它们。请注意，有四个文件的扩展名是`.txt`，另外两个文件的扩展名是`.pdf`。
 
-这些文件也可以在 GitHub 存储库中找到：[`github.com/PacktPublishing/Python-Automation-Cookbook/tree/master/Chapter04/documents/dir`](https://github.com/PacktPublishing/Python-Automation-Cookbook/tree/master/Chapter04/documents/dir)。
+这些文件也可以在GitHub存储库中找到：[https://github.com/PacktPublishing/Python-Automation-Cookbook/tree/master/Chapter04/documents/dir](https://github.com/PacktPublishing/Python-Automation-Cookbook/tree/master/Chapter04/documents/dir)。
 
 进入创建的`dir`目录：
 
@@ -134,7 +134,7 @@ file5.pdf
 
 `os.path.join()`函数允许我们清晰地连接两个路径，比如基本路径和文件。
 
-由于文件以纯字符串形式返回，因此可以进行任何类型的过滤，就像第 3 步那样。在第 4 步中，可以使用正则表达式的全部功能进行过滤。
+由于文件以纯字符串形式返回，因此可以进行任何类型的过滤，就像第3步那样。在第4步中，可以使用正则表达式的全部功能进行过滤。
 
 在下一个食谱中，我们将处理文件的内容，而不仅仅是文件名。
 
@@ -157,13 +157,13 @@ file5.pdf
 
 +   `os.path.exists()`，用于返回文件在文件系统上是否存在
 
-有关`os.path`的完整文档可以在这里找到：[`docs.python.org/3/library/os.path.html`](https://docs.python.org/3/library/os.path.html)。另一个模块`pathlib`可以用于以面向对象的方式进行更高级别的访问：[`docs.python.org/3/library/pathlib.html`](https://docs.python.org/3/library/pathlib.html)。
+有关`os.path`的完整文档可以在这里找到：[https://docs.python.org/3/library/os.path.html](https://docs.python.org/3/library/os.path.html)。另一个模块`pathlib`可以用于以面向对象的方式进行更高级别的访问：[https://docs.python.org/3/library/pathlib.html](https://docs.python.org/3/library/pathlib.html)。
 
-如第 4 步所示，可以使用多种过滤方式。在第一章中展示的所有字符串操作，*让我们开始自动化之旅*都可以使用。
+如第4步所示，可以使用多种过滤方式。在[第1章](e139aa50-5631-4b75-9257-d4eb2e12ef90.xhtml)中展示的所有字符串操作，*让我们开始自动化之旅*都可以使用。
 
 # 另请参阅
 
-+   第一章中的*介绍正则表达式*食谱，*让我们开始自动化之旅*
++   [第1章](e139aa50-5631-4b75-9257-d4eb2e12ef90.xhtml)中的*介绍正则表达式*食谱，*让我们开始自动化之旅*
 
 +   *阅读文本文件*食谱
 
@@ -171,11 +171,11 @@ file5.pdf
 
 在搜索特定文件之后，我们可能会打开并阅读它。文本文件非常简单，但非常强大。它们以纯文本形式存储数据，而不是复杂的二进制格式。
 
-Python 本身提供了对文本文件的支持，并且很容易将其视为一系列行。
+Python本身提供了对文本文件的支持，并且很容易将其视为一系列行。
 
 # 准备工作
 
-我们将阅读包含 Tim Peters 的*Python 之禅*的`zen_of_python.txt`文件，这是一系列很好地描述了 Python 设计原则的格言。它在 GitHub 存储库中可用：[`github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter04/documents/zen_of_python.txt`](https://github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter04/documents/zen_of_python.txt)：
+我们将阅读包含Tim Peters的*Python之禅*的`zen_of_python.txt`文件，这是一系列很好地描述了Python设计原则的格言。它在GitHub存储库中可用：[https://github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter04/documents/zen_of_python.txt](https://github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter04/documents/zen_of_python.txt)：
 
 ```py
 Beautiful is better than ugly.
@@ -199,9 +199,9 @@ If the implementation is easy to explain, it may be a good idea.
 Namespaces are one honking great idea -- let's do more of those!
 ```
 
-*Python 之禅*在 PEP-20 中描述：[`www.python.org/dev/peps/pep-0020/`](https://www.python.org/dev/peps/pep-0020/)。
+*Python之禅*在PEP-20中描述：[https://www.python.org/dev/peps/pep-0020/](https://www.python.org/dev/peps/pep-0020/)。
 
-*Python 之禅*可以通过调用`import this`在任何 Python 解释器中显示。
+*Python之禅*可以通过调用`import this`在任何Python解释器中显示。
 
 # 如何做...
 
@@ -241,13 +241,13 @@ Beautiful is better than ugly.
 
 # 它是如何工作的...
 
-要以文本模式打开文件，请使用`open()`函数。这将返回一个`file`对象，然后可以迭代返回每一行，如*如何做...*部分的步骤 1 所示。
+要以文本模式打开文件，请使用`open()`函数。这将返回一个`file`对象，然后可以迭代返回每一行，如*如何做...*部分的步骤1所示。
 
 `with`上下文管理器是处理文件的非常方便的方式，因为它在完成使用后会关闭它们（离开块）。即使出现异常，它也会这样做。
 
-步骤 2 显示了如何迭代和过滤基于哪些行适用于我们的任务。这些行作为字符串返回，可以以多种方式进行过滤，如前面所述。
+步骤2显示了如何迭代和过滤基于哪些行适用于我们的任务。这些行作为字符串返回，可以以多种方式进行过滤，如前面所述。
 
-可能不需要读取整个文件，如步骤 3 所示。因为逐行迭代文件将在读取文件时进行，您可以随时停止，避免读取文件的其余部分。对于像我们的示例这样的小文件来说，这并不是很重要，但对于长文件来说，这可以减少内存使用和时间。
+可能不需要读取整个文件，如步骤3所示。因为逐行迭代文件将在读取文件时进行，您可以随时停止，避免读取文件的其余部分。对于像我们的示例这样的小文件来说，这并不是很重要，但对于长文件来说，这可以减少内存使用和时间。
 
 # 还有更多...
 
@@ -261,9 +261,9 @@ Beautiful is better than ugly.
 
 请注意`.close()`方法，以确保文件已关闭并释放与打开文件相关的资源。`.read()`方法一次读取整个文件，而不是逐行读取。
 
-`.read()`方法还接受以字节为单位的大小参数，限制读取的数据大小。例如，`file.read(1024)`将返回最多 1KB 的信息。下一次调用`.read()`将从那一点继续。
+`.read()`方法还接受以字节为单位的大小参数，限制读取的数据大小。例如，`file.read(1024)`将返回最多1KB的信息。下一次调用`.read()`将从那一点继续。
 
-文件以特定模式打开。模式定义了读/写以及文本或二进制数据的组合。默认情况下，文件以只读和文本模式打开，描述为`'r'`（步骤 2）或`'rt'`（步骤 3）。
+文件以特定模式打开。模式定义了读/写以及文本或二进制数据的组合。默认情况下，文件以只读和文本模式打开，描述为`'r'`（步骤2）或`'rt'`（步骤3）。
 
 其他配方将探讨更多模式。
 
@@ -277,15 +277,15 @@ Beautiful is better than ugly.
 
 文本文件可以以不同的编码形式存在。近年来，情况有了很大改善，但在处理不同系统时仍然存在兼容性问题。
 
-文件中的原始数据和 Python 中的字符串对象之间存在差异。字符串对象已从文件包含的任何编码转换为本机字符串。一旦以这种格式存在，可能需要以不同的编码进行存储。默认情况下，Python 使用操作系统定义的编码，在现代操作系统中为 UTF-8。这是一种高度兼容的编码，但您可能需要以不同的编码保存文件。
+文件中的原始数据和Python中的字符串对象之间存在差异。字符串对象已从文件包含的任何编码转换为本机字符串。一旦以这种格式存在，可能需要以不同的编码进行存储。默认情况下，Python使用操作系统定义的编码，在现代操作系统中为UTF-8。这是一种高度兼容的编码，但您可能需要以不同的编码保存文件。
 
 # 准备工作
 
-我们在 GitHub 存储库中准备了两个文件，这两个文件以两种不同的编码存储字符串`20£`。一个是通常的 UTF8，另一个是 ISO 8859-1，另一种常见的编码。这些文件可以在 GitHub 的`Chapter04/documents`目录下找到，文件名分别是`example_iso.txt`和`example_utf8.txt`：
+我们在GitHub存储库中准备了两个文件，这两个文件以两种不同的编码存储字符串`20£`。一个是通常的UTF8，另一个是ISO 8859-1，另一种常见的编码。这些文件可以在GitHub的`Chapter04/documents`目录下找到，文件名分别是`example_iso.txt`和`example_utf8.txt`：
 
-[`github.com/PacktPublishing/Python-Automation-Cookbook`](https://github.com/PacktPublishing/Python-Automation-Cookbook)
+[https://github.com/PacktPublishing/Python-Automation-Cookbook](https://github.com/PacktPublishing/Python-Automation-Cookbook)
 
-我们将使用 Beautiful Soup 模块，该模块在第三章中的*解析 HTML*食谱中介绍，*构建您的第一个网络爬虫应用程序*。
+我们将使用Beautiful Soup模块，该模块在[第3章](d640524b-3aa3-406e-a6d4-842bc61c4658.xhtml)中的*解析HTML*食谱中介绍，*构建您的第一个网络爬虫应用程序*。
 
 # 操作步骤...
 
@@ -343,21 +343,21 @@ UnicodeDecodeError: 'utf-8' codec can't decode byte 0xa3 in position 2: invalid 
 
 # 工作原理...
 
-*操作步骤...*部分的步骤 1 和 2 非常简单。在第 3 步中，我们添加了一个额外的参数`encoding`，以指定文件需要以与 UTF-8 不同的方式打开。
+*操作步骤...*部分的步骤1和2非常简单。在第3步中，我们添加了一个额外的参数`encoding`，以指定文件需要以与UTF-8不同的方式打开。
 
-Python 可以直接接受很多标准编码。在这里检查所有标准编码及其别名：[`docs.python.org/3/library/codecs.html#standard-encodings`](https://docs.python.org/3/library/codecs.html#standard-encodings)。
+Python可以直接接受很多标准编码。在这里检查所有标准编码及其别名：[https://docs.python.org/3/library/codecs.html#standard-encodings](https://docs.python.org/3/library/codecs.html#standard-encodings)。
 
-在第 4 步中，我们创建一个新的 ISO-8859-1 文件，并像往常一样写入。注意`'w'`参数，它指定以文本模式打开文件进行写入。
+在第4步中，我们创建一个新的ISO-8859-1文件，并像往常一样写入。注意`'w'`参数，它指定以文本模式打开文件进行写入。
 
-步骤 5 是确认文件已正确保存。
+步骤5是确认文件已正确保存。
 
 # 还有更多...
 
-这个食谱假设我们知道文件的编码。但有时我们不确定。Beautiful Soup，一个用于解析 HTML 的模块，可以尝试检测特定文件的编码。
+这个食谱假设我们知道文件的编码。但有时我们不确定。Beautiful Soup，一个用于解析HTML的模块，可以尝试检测特定文件的编码。
 
-自动检测文件的编码可能是不可能的，因为潜在的编码可能有无限多种。但我们将检查通常的编码，应该可以覆盖 90%的真实情况。只需记住，确切知道的最简单方法是询问创建文件的人。
+自动检测文件的编码可能是不可能的，因为潜在的编码可能有无限多种。但我们将检查通常的编码，应该可以覆盖90%的真实情况。只需记住，确切知道的最简单方法是询问创建文件的人。
 
-为此，我们需要以`'rb'`参数以二进制格式打开文件进行读取，然后将二进制内容传递给 Beautiful Soup 的`UnicodeDammit`模块，如下所示：
+为此，我们需要以`'rb'`参数以二进制格式打开文件进行读取，然后将二进制内容传递给Beautiful Soup的`UnicodeDammit`模块，如下所示：
 
 ```py
 >>> from bs4 import UnicodeDammit
@@ -375,21 +375,21 @@ Python 可以直接接受很多标准编码。在这里检查所有标准编码�
 
 # 另请参阅
 
-+   第一章中的*操作字符串*食谱，*让我们开始我们的自动化之旅*
++   [第1章](e139aa50-5631-4b75-9257-d4eb2e12ef90.xhtml)中的*操作字符串*食谱，*让我们开始我们的自动化之旅*
 
-+   第三章中的*解析 HTML*食谱，*构建您的第一个网络爬虫应用程序*
++   [第3章](d640524b-3aa3-406e-a6d4-842bc61c4658.xhtml)中的*解析HTML*食谱，*构建您的第一个网络爬虫应用程序*
 
-# 读取 CSV 文件
+# 读取CSV文件
 
-一些文本文件包含用逗号分隔的表格数据。这是一种方便的创建结构化数据的方式，而不是使用专有的、更复杂的格式，如 Excel 或其他格式。这些文件称为**逗号分隔值**，或**CSV**文件，大多数电子表格软件也可以导出到它。
+一些文本文件包含用逗号分隔的表格数据。这是一种方便的创建结构化数据的方式，而不是使用专有的、更复杂的格式，如Excel或其他格式。这些文件称为**逗号分隔值**，或**CSV**文件，大多数电子表格软件也可以导出到它。
 
 # 准备工作
 
-我们使用了这个页面描述的 10 部票房电影的数据制作了一个 CSV 文件：[`www.mrob.com/pub/film-video/topadj.html`](http://www.mrob.com/pub/film-video/topadj.html)。
+我们使用了这个页面描述的10部票房电影的数据制作了一个CSV文件：[http://www.mrob.com/pub/film-video/topadj.html](http://www.mrob.com/pub/film-video/topadj.html)。
 
-我们将表格的前十个元素复制到电子表格程序（Numbers）中，并将文件导出为 CSV。该文件可以在 GitHub 存储库的`Chapter04/documents`目录中找到，文件名为`top_films.csv`：
+我们将表格的前十个元素复制到电子表格程序（Numbers）中，并将文件导出为CSV。该文件可以在GitHub存储库的`Chapter04/documents`目录中找到，文件名为`top_films.csv`：
 
-![](img/167bb0f1-03c9-4a8f-80af-8faa051e79c5.png)
+![](assets/167bb0f1-03c9-4a8f-80af-8faa051e79c5.png)
 
 # 操作步骤...
 
@@ -440,17 +440,17 @@ odict_keys(['Rank', 'Admissions\n(millions)', 'Title (year) (studio)', 'Director
 
 请注意，需要读取文件，并且我们使用`with`上下文管理器。这确保了文件在块结束时关闭。
 
-如*如何做*部分的第 2 步所示，`csv.reader`类允许我们通过将它们细分为列表来结构化返回的代码行，遵循表格数据的格式。请注意，所有值都被描述为字符串。`csv.reader`无法理解第一行是否是标题。
+如*如何做*部分的第2步所示，`csv.reader`类允许我们通过将它们细分为列表来结构化返回的代码行，遵循表格数据的格式。请注意，所有值都被描述为字符串。`csv.reader`无法理解第一行是否是标题。
 
-为了更结构化地读取文件，在第 3 步中我们使用`csv.DictReader`，它默认将第一行读取为一个标题，定义后面描述的字段，然后将每一行转换为包含这些字段的字典。
+为了更结构化地读取文件，在第3步中我们使用`csv.DictReader`，它默认将第一行读取为一个标题，定义后面描述的字段，然后将每一行转换为包含这些字段的字典。
 
 有时，就像在这种情况下一样，文件中描述的字段名称可能有点冗长。不要害怕将字典翻译成更易管理的字段名称。
 
 # 还有更多...
 
-由于 CSV 是一个非常宽泛的解释，数据可以以几种方式存储。这在`csv`模块中表示为**方言**。例如，值可以由逗号、分号或制表符分隔。可以通过调用`csv.list_dialect`来显示默认接受的方言列表。
+由于CSV是一个非常宽泛的解释，数据可以以几种方式存储。这在`csv`模块中表示为**方言**。例如，值可以由逗号、分号或制表符分隔。可以通过调用`csv.list_dialect`来显示默认接受的方言列表。
 
-默认情况下，方言将是 Excel，这是最常见的方言。即使其他电子表格也通常会使用它。
+默认情况下，方言将是Excel，这是最常见的方言。即使其他电子表格也通常会使用它。
 
 但是，方言也可以通过`Sniffer`类从文件本身推断出来。`Sniffer`类分析文件的样本（或整个文件）并返回一个`dialect`对象，以允许以正确的方式进行读取。
 
@@ -470,7 +470,7 @@ odict_keys(['Rank', 'Admissions\n(millions)', 'Title (year) (studio)', 'Director
 ...         print(row)
 ```
 
-完整的`csv`模块文档可以在这里找到：[`docs.python.org/3.6/library/csv.html`](https://docs.python.org/3.6/library/csv.html)。
+完整的`csv`模块文档可以在这里找到：[https://docs.python.org/3.6/library/csv.html](https://docs.python.org/3.6/library/csv.html)。
 
 # 另请参阅
 
@@ -484,7 +484,7 @@ odict_keys(['Rank', 'Admissions\n(millions)', 'Title (year) (studio)', 'Director
 
 # 准备工作
 
-可以从 GitHub 存储库获取包含五个销售日志的`example_log.log`文件：[`github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter04/documents/example_logs.log`](https://github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter04/documents/example_logs.log)。
+可以从GitHub存储库获取包含五个销售日志的`example_log.log`文件：[https://github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter04/documents/example_logs.log](https://github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter04/documents/example_logs.log)。
 
 格式如下：
 
@@ -531,7 +531,7 @@ Decimal('47.82')
 Counter({1489: 2, 4508: 1, 8597: 1, 3086: 1})
 ```
 
-1.  过滤日志，找到所有销售产品 ID 为`1489`的事件：
+1.  过滤日志，找到所有销售产品ID为`1489`的事件：
 
 ```py
 >>> logs = []
@@ -553,19 +553,19 @@ Counter({1489: 2, 4508: 1, 8597: 1, 3086: 1})
 
 由于每个日志都是单独的一行，我们逐个打开文件并解析每个日志。解析代码在`price_log.py`中可用。查看它以获取更多细节。
 
-在*如何做*部分的第 2 步中，我们打开文件并处理每一行，以创建包含所有已处理日志的日志列表。然后，我们可以进行聚合操作，就像下一步一样。
+在*如何做*部分的第2步中，我们打开文件并处理每一行，以创建包含所有已处理日志的日志列表。然后，我们可以进行聚合操作，就像下一步一样。
 
-第 3 步显示了如何聚合所有值，例如对文件日志中出售的所有商品的价格进行求和，以获得总收入。
+第3步显示了如何聚合所有值，例如对文件日志中出售的所有商品的价格进行求和，以获得总收入。
 
-第 4 步使用 Counter 来确定文件日志中每个项目的数量。这将返回一个类似字典的对象，其中包含要计数的值以及它们出现的次数。
+第4步使用Counter来确定文件日志中每个项目的数量。这将返回一个类似字典的对象，其中包含要计数的值以及它们出现的次数。
 
-过滤也可以逐行进行，就像第 5 步中所示的那样。这类似于本章中其他配方中的过滤。
+过滤也可以逐行进行，就像第5步中所示的那样。这类似于本章中其他配方中的过滤。
 
 # 还有更多...
 
 请记住，一旦获得所需的所有数据，就可以立即停止处理文件。如果文件非常大，通常情况下是日志文件的情况，这可能是一个很好的策略。
 
-Counter 是一个快速计算列表的好工具。有关更多详细信息，请参阅 Python 文档：[`docs.python.org/2/library/collections.html#counter-objects`](https://docs.python.org/2/library/collections.html#counter-objects)。您可以通过调用以下方式获取有序项目：
+Counter是一个快速计算列表的好工具。有关更多详细信息，请参阅Python文档：[https://docs.python.org/2/library/collections.html#counter-objects](https://docs.python.org/2/library/collections.html#counter-objects)。您可以通过调用以下方式获取有序项目：
 
 ```py
 >>> counter.most_common()
@@ -574,7 +574,7 @@ Counter 是一个快速计算列表的好工具。有关更多详细信息，请
 
 # 另请参阅
 
-+   第一章中的*使用第三方工具—parse*食谱，*让我们开始自动化之旅*
++   [第1章](e139aa50-5631-4b75-9257-d4eb2e12ef90.xhtml)中的*使用第三方工具—parse*食谱，*让我们开始自动化之旅*
 
 +   *读取文本文件*食谱
 
@@ -582,11 +582,11 @@ Counter 是一个快速计算列表的好工具。有关更多详细信息，请
 
 文件元数据是与特定文件相关的除数据本身之外的所有内容。这意味着参数，如文件的大小、创建日期或其权限。
 
-浏览这些数据很重要，例如，要筛选早于某个日期的文件，或查找所有大于某个 KB 值的文件。在本食谱中，我们将看到如何在 Python 中访问文件元数据。
+浏览这些数据很重要，例如，要筛选早于某个日期的文件，或查找所有大于某个KB值的文件。在本食谱中，我们将看到如何在Python中访问文件元数据。
 
 # 准备工作
 
-我们将使用 GitHub 存储库中的`zen_of_python.txt`文件（[`github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter04/documents/zen_of_python.txt`](https://github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter04/documents/zen_of_python.txt)）。通过使用`ls`命令，您可以看到该文件有`856`字节，并且在此示例中，它是在 6 月 14 日创建的：
+我们将使用GitHub存储库中的`zen_of_python.txt`文件（[https://github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter04/documents/zen_of_python.txt](https://github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter04/documents/zen_of_python.txt)）。通过使用`ls`命令，您可以看到该文件有`856`字节，并且在此示例中，它是在6月14日创建的：
 
 ```py
 $ ls -lrt zen_of_python.txt
@@ -635,15 +635,15 @@ datetime.datetime(2018, 6, 20, 3, 32, 15)
 
 # 它是如何工作的…
 
-`os.stats`返回一个表示文件系统中存储的元数据的 stats 对象。元数据包括：
+`os.stats`返回一个表示文件系统中存储的元数据的stats对象。元数据包括：
 
-+   文件的大小，以字节为单位，如*如何做…*部分中的步骤 3 所示，使用`st_size`
++   文件的大小，以字节为单位，如*如何做…*部分中的步骤3所示，使用`st_size`
 
-+   文件内容上次修改的时间，如步骤 4 所示，使用`st_mtime`
++   文件内容上次修改的时间，如步骤4所示，使用`st_mtime`
 
-+   文件上次读取（访问）的时间，如步骤 5 所示，使用`st_atime`
++   文件上次读取（访问）的时间，如步骤5所示，使用`st_atime`
 
-时间以时间戳形式返回，因此在步骤 4 和 5 中，我们从时间戳创建一个`datetime`对象，以更好地访问数据。
+时间以时间戳形式返回，因此在步骤4和5中，我们从时间戳创建一个`datetime`对象，以更好地访问数据。
 
 所有这些值都可以用来过滤文件。
 
@@ -662,19 +662,19 @@ datetime.datetime(2018, 6, 20, 3, 32, 15)
 1529531669.0
 ```
 
-该值以 UNIX 时间戳格式指定（自 1970 年 1 月 1 日以来的秒数）。
+该值以UNIX时间戳格式指定（自1970年1月1日以来的秒数）。
 
 请注意，调用这三个函数的速度将比调用`os.stats`和处理结果要慢。此外，返回的`stats`可以被检查以检测可用的值。
 
 该食谱中描述的数值适用于所有文件系统，但还有更多可以使用的数值。
 
-例如，要获取文件的创建日期，可以在 MacOS 中使用`st_birthtime`参数，或在 Windows 中使用`st_mtime`。
+例如，要获取文件的创建日期，可以在MacOS中使用`st_birthtime`参数，或在Windows中使用`st_mtime`。
 
-`st_mtime`始终可用，但其含义在不同系统之间会有所不同。在 Unix 系统中，当内容被修改时，它会发生变化，因此它不是一个可靠的创建时间。
+`st_mtime`始终可用，但其含义在不同系统之间会有所不同。在Unix系统中，当内容被修改时，它会发生变化，因此它不是一个可靠的创建时间。
 
 `os.stat`将遵循符号链接。如果要获取符号链接的统计信息，请使用`os.lstat()`。
 
-查看所有可用统计信息的完整文档：[`docs.python.org/3.6/library/os.html#os.stat_result`](https://docs.python.org/3.6/library/os.html#os.stat_result)。
+查看所有可用统计信息的完整文档：[https://docs.python.org/3.6/library/os.html#os.stat_result](https://docs.python.org/3.6/library/os.html#os.stat_result)。
 
 # 另请参阅
 
@@ -686,13 +686,13 @@ datetime.datetime(2018, 6, 20, 3, 32, 15)
 
 可能最常见的非文本数据是图像数据。图像有自己一套特定的元数据，可以读取以筛选值或执行其他操作。
 
-主要挑战是处理多种格式和不同的元数据定义。在本示例中，我们将展示如何从 JPEG 和 PNG 中获取信息，以及相同的信息如何以不同的方式编码。
+主要挑战是处理多种格式和不同的元数据定义。在本示例中，我们将展示如何从JPEG和PNG中获取信息，以及相同的信息如何以不同的方式编码。
 
 # 准备工作
 
-处理 Python 中图像的最佳通用工具可能是 Pillow。该模块允许您轻松读取最常见格式的文件，并对其进行操作。Pillow 最初是**PIL**（**Python Imaging Library**）的一个分支，几年前成为停滞不前的模块。
+处理Python中图像的最佳通用工具可能是Pillow。该模块允许您轻松读取最常见格式的文件，并对其进行操作。Pillow最初是**PIL**（**Python Imaging Library**）的一个分支，几年前成为停滞不前的模块。
 
-我们还将使用`xmltodict`模块将一些 XML 数据转换为更方便的字典。将这两个模块添加到`requirements.txt`中，并重新安装到虚拟环境中：
+我们还将使用`xmltodict`模块将一些XML数据转换为更方便的字典。将这两个模块添加到`requirements.txt`中，并重新安装到虚拟环境中：
 
 ```py
 $ echo "Pillow==5.1.0" >> requirements.txt
@@ -700,11 +700,11 @@ $ echo "xmltodict==0.11.0" >> requirements.txt
 $ pip install -r requirements.txt
 ```
 
-照片文件中的元数据信息是以**EXIF**（**Exchangeable Image File**）格式定义的。EXIF 是一种存储有关照片信息的标准，包括拍摄照片的相机、拍摄时间、GPS 位置、曝光、焦距、颜色信息等。
+照片文件中的元数据信息是以**EXIF**（**Exchangeable Image File**）格式定义的。EXIF是一种存储有关照片信息的标准，包括拍摄照片的相机、拍摄时间、GPS位置、曝光、焦距、颜色信息等。
 
-您可以在此处获取更多信息：[`www.slrphotographyguide.com/what-is-exif-metadata/`](https://www.slrphotographyguide.com/what-is-exif-metadata/)。所有信息都是可选的，但几乎所有数字相机和处理软件都会存储一些数据。由于隐私问题，其中的部分信息，如确切位置，可以被禁用。
+您可以在此处获取更多信息：[https://www.slrphotographyguide.com/what-is-exif-metadata/](https://www.slrphotographyguide.com/what-is-exif-metadata/)。所有信息都是可选的，但几乎所有数字相机和处理软件都会存储一些数据。由于隐私问题，其中的部分信息，如确切位置，可以被禁用。
 
-以下图像将用于此示例，并可在 GiHub 存储库中下载（[`github.com/PacktPublishing/Python-Automation-Cookbook/tree/master/Chapter04/images`](https://github.com/PacktPublishing/Python-Automation-Cookbook/tree/master/Chapter04/images)）：
+以下图像将用于此示例，并可在GiHub存储库中下载（[https://github.com/PacktPublishing/Python-Automation-Cookbook/tree/master/Chapter04/images](https://github.com/PacktPublishing/Python-Automation-Cookbook/tree/master/Chapter04/images)）：
 
 +   `photo-dublin-a1.jpg`
 
@@ -712,17 +712,17 @@ $ pip install -r requirements.txt
 
 +   `photo-dublin-b.png`
 
-其中两张照片，`photo-dublin-a1.jpg`和`photo-dublin-a2.png`，是同一张照片，但第一张是原始照片，而第二张经过了轻微的颜色变化和裁剪。请注意，一张是 JPEG 格式，另一张是 PNG 格式。另一张照片，`photo-dublin-b.png`，是一张不同的照片。这两张照片是在都柏林用同一部手机相机拍摄的，分别在两天拍摄。
+其中两张照片，`photo-dublin-a1.jpg`和`photo-dublin-a2.png`，是同一张照片，但第一张是原始照片，而第二张经过了轻微的颜色变化和裁剪。请注意，一张是JPEG格式，另一张是PNG格式。另一张照片，`photo-dublin-b.png`，是一张不同的照片。这两张照片是在都柏林用同一部手机相机拍摄的，分别在两天拍摄。
 
-虽然 Pillow 可以直接理解 JPG 文件存储的 EXIF 信息，但 PNG 文件存储 XMP 信息，这是一种更通用的标准，可以包含 EXIF 信息。
+虽然Pillow可以直接理解JPG文件存储的EXIF信息，但PNG文件存储XMP信息，这是一种更通用的标准，可以包含EXIF信息。
 
-可以在此处获取有关 XMP 的更多信息：[`www.adobe.com/devnet/xmp.html`](https://www.adobe.com/devnet/xmp.html)。在很大程度上，它定义了一个相对易于阅读的 XML 树结构。
+可以在此处获取有关XMP的更多信息：[https://www.adobe.com/devnet/xmp.html](https://www.adobe.com/devnet/xmp.html)。在很大程度上，它定义了一个相对易于阅读的XML树结构。
 
-更进一步复杂化的是，XMP 是 RDF 的一个子集，RDF 是一种描述信息编码方式的标准。
+更进一步复杂化的是，XMP是RDF的一个子集，RDF是一种描述信息编码方式的标准。
 
-如果 EFIX、XMP 和 RDF 听起来令人困惑，那是因为它们确实如此。最终，它们只是用来存储我们感兴趣的值的名称。我们可以使用 Python 内省工具检查名称的具体信息，确切地查看数据的结构以及我们要查找的参数名称。
+如果EFIX、XMP和RDF听起来令人困惑，那是因为它们确实如此。最终，它们只是用来存储我们感兴趣的值的名称。我们可以使用Python内省工具检查名称的具体信息，确切地查看数据的结构以及我们要查找的参数名称。
 
-由于 GPS 信息以不同的格式存储，我们在 GitHub 存储库中包含了一个名为`gps_conversion.py`的文件，位于此处：[`github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter04/gps_conversion.py`](https://github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter04/gps_conversion.py)。其中包括`exif_to_decimal`和`rdf_to_decimal`函数，它们将两种格式转换为十进制以进行比较。
+由于GPS信息以不同的格式存储，我们在GitHub存储库中包含了一个名为`gps_conversion.py`的文件，位于此处：[https://github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter04/gps_conversion.py](https://github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter04/gps_conversion.py)。其中包括`exif_to_decimal`和`rdf_to_decimal`函数，它们将两种格式转换为十进制以进行比较。
 
 # 如何做...
 
@@ -752,7 +752,7 @@ $ pip install -r requirements.txt
 'JPEG'
 ```
 
-1.  检索图像的 EXIF 信息，并处理为方便的字典。显示相机、使用的镜头以及拍摄时间：
+1.  检索图像的EXIF信息，并处理为方便的字典。显示相机、使用的镜头以及拍摄时间：
 
 ```py
 >>> exif_info_1 = {TAGS.get(tag, tag): value 
@@ -765,7 +765,7 @@ $ pip install -r requirements.txt
 '2018:04:21 12:07:55'
 ```
 
-1.  打开第二张图像并获取 XMP 信息：
+1.  打开第二张图像并获取XMP信息：
 
 ```py
 >>> image2 = Image.open('photo-dublin-a2.png')
@@ -778,7 +778,7 @@ $ pip install -r requirements.txt
 >>> xmp_info = xmltodict.parse(image2.info['XML:com.adobe.xmp'])
 ```
 
-1.  获取包含我们正在寻找的所有值的 RDF 描述字段。检索模型（TIFF 值）、镜头模型（EXIF 值）和创建日期（XMP 值）。检查这些值是否与第 4 步中的相同，即使文件不同：
+1.  获取包含我们正在寻找的所有值的RDF描述字段。检索模型（TIFF值）、镜头模型（EXIF值）和创建日期（XMP值）。检查这些值是否与第4步中的相同，即使文件不同：
 
 ```py
 >>> rdf_info_2 = xmp_info['x:xmpmeta']['rdf:RDF']['rdf:Description']
@@ -790,7 +790,7 @@ $ pip install -r requirements.txt
 '2018-04-21T12:07:55'
 ```
 
-1.  获取两张图片中的 GPS 信息，转换为等效格式，并检查它们是否相同。请注意，分辨率不同，但它们匹配到第四位小数：
+1.  获取两张图片中的GPS信息，转换为等效格式，并检查它们是否相同。请注意，分辨率不同，但它们匹配到第四位小数：
 
 ```py
 >>> gps_info_1 = {GPSTAGS.get(tag, tag): value 
@@ -801,7 +801,7 @@ $ pip install -r requirements.txt
 ('N53.346905', 'W6.247796666666667')
 ```
 
-1.  打开第三张图片，获取创建日期和 GPS 信息，并检查它与另一张照片不匹配，尽管它很接近（第二和第三位小数不相同）：
+1.  打开第三张图片，获取创建日期和GPS信息，并检查它与另一张照片不匹配，尽管它很接近（第二和第三位小数不相同）：
 
 ```py
 >>> image3 = Image.open('photo-dublin-b.png')
@@ -815,31 +815,31 @@ $ pip install -r requirements.txt
 
 # 工作原理...
 
-Pillow 能够解释大多数常见语言的文件，并将它们以 JPG 格式的图像打开，就像在*如何做…*部分的第 2 步中所示。
+Pillow能够解释大多数常见语言的文件，并将它们以JPG格式的图像打开，就像在*如何做…*部分的第2步中所示。
 
-“Image”对象包含有关文件大小和格式的基本信息，并在第 3 步中显示。 “info”属性包含取决于格式的信息。
+`Image`对象包含有关文件大小和格式的基本信息，并在第3步中显示。 `info`属性包含取决于格式的信息。
 
-JPG 文件的 EXIF 元数据可以使用“._getexif()”方法进行解析，但随后需要正确翻译，因为它使用原始二进制定义。例如，数字 42,036 对应于“LensModel”属性。幸运的是，“PIL.ExifTags”模块中有所有标签的定义。我们在第 4 步中将字典翻译为可读标签，以获得更可读的字典。
+JPG文件的EXIF元数据可以使用`._getexif()`方法进行解析，但随后需要正确翻译，因为它使用原始二进制定义。例如，数字42,036对应于`LensModel`属性。幸运的是，`PIL.ExifTags`模块中有所有标签的定义。我们在第4步中将字典翻译为可读标签，以获得更可读的字典。
 
-第 5 步打开了 PNG 格式，其与大小相关的属性相同，但元数据存储在 XML/RDF 格式中，并且需要借助“xmltodict”进行解析。第 6 步展示了如何导航此元数据以提取与 JPG 格式中相同的信息。数据是相同的，因为这两个文件来自同一原始图片，即使图片不同。
+第5步打开了PNG格式，其与大小相关的属性相同，但元数据存储在XML/RDF格式中，并且需要借助“xmltodict”进行解析。第6步展示了如何导航此元数据以提取与JPG格式中相同的信息。数据是相同的，因为这两个文件来自同一原始图片，即使图片不同。
 
-“xmltodict”在尝试解析非 XML 格式的数据时会出现一些问题。请检查输入是否为有效的 XML。
+`xmltodict`在尝试解析非XML格式的数据时会出现一些问题。请检查输入是否为有效的XML。
 
-第 7 步提取了两张图片的 GPS 信息，这些信息以不同的方式存储，并显示它们是相同的（尽管由于编码方式不同，精度也不同）。
+第7步提取了两张图片的GPS信息，这些信息以不同的方式存储，并显示它们是相同的（尽管由于编码方式不同，精度也不同）。
 
-第 8 步显示了不同照片的信息。
+第8步显示了不同照片的信息。
 
 # 还有更多...
 
-Pillow 还具有许多围绕修改图片的功能。很容易调整大小或对文件进行简单修改，例如旋转。您可以在这里找到完整的 Pillow 文档：[`pillow.readthedocs.io`](https://pillow.readthedocs.io)。
+Pillow还具有许多围绕修改图片的功能。很容易调整大小或对文件进行简单修改，例如旋转。您可以在这里找到完整的Pillow文档：[https://pillow.readthedocs.io](https://pillow.readthedocs.io)。
 
-Pillow 允许对图像进行许多操作。不仅可以进行简单的操作，如调整大小或将一个格式转换为另一个格式，还可以进行诸如裁剪图像、应用颜色滤镜或生成动画 GIF 等操作。如果您对使用 Python 进行图像处理感兴趣，那么 Pillow 绝对值得一看。
+Pillow允许对图像进行许多操作。不仅可以进行简单的操作，如调整大小或将一个格式转换为另一个格式，还可以进行诸如裁剪图像、应用颜色滤镜或生成动画GIF等操作。如果您对使用Python进行图像处理感兴趣，那么Pillow绝对值得一看。
 
-食谱中的 GPS 坐标以 DMS（度，分，秒），DDM（度，十进制分钟）表示，并转换为 DD（十进制度）。您可以在这里找到有关不同 GPS 格式的更多信息：[`www.ubergizmo.com/how-to/read-gps-coordinates/`](http://www.ubergizmo.com/how-to/read-gps-coordinates/)。如果您感兴趣，还可以在那里找到如何搜索图片的确切位置。
+食谱中的GPS坐标以DMS（度，分，秒），DDM（度，十进制分钟）表示，并转换为DD（十进制度）。您可以在这里找到有关不同GPS格式的更多信息：[http://www.ubergizmo.com/how-to/read-gps-coordinates/](http://www.ubergizmo.com/how-to/read-gps-coordinates/)。如果您感兴趣，还可以在那里找到如何搜索图片的确切位置。
 
-阅读图像文件的更高级用法是尝试对其进行 OCR（光学字符识别）处理。这意味着自动检测图像中的文本并提取和处理它。开源模块“tesseract”允许您执行此操作，并且可以与 Python 和 Pillow 一起使用。
+阅读图像文件的更高级用法是尝试对其进行OCR（光学字符识别）处理。这意味着自动检测图像中的文本并提取和处理它。开源模块`tesseract`允许您执行此操作，并且可以与Python和Pillow一起使用。
 
-您需要在系统中安装`tesseract`（[`github.com/tesseract-ocr/tesseract/wiki`](https://github.com/tesseract-ocr/tesseract/wiki)），以及`pytesseract` Python 模块（使用`pip install pytesseract`）。您可以从 GitHub 存储库中下载一个带有清晰文本的文件，称为`photo-text.jpg`，网址为[`github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter04/images/photo-text.jpg`](https://github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter04/images/photo-text.jpg)。
+您需要在系统中安装`tesseract`（[https://github.com/tesseract-ocr/tesseract/wiki](https://github.com/tesseract-ocr/tesseract/wiki)），以及`pytesseract` Python模块（使用`pip install pytesseract`）。您可以从GitHub存储库中下载一个带有清晰文本的文件，称为`photo-text.jpg`，网址为[https://github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter04/images/photo-text.jpg](https://github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter04/images/photo-text.jpg)。
 
 ```py
 >>> from PIL import Image
@@ -848,18 +848,18 @@ Pillow 允许对图像进行许多操作。不仅可以进行简单的操作，�
 'Automate!'
 ```
 
-如果图像中的文本不太清晰，或者与图像混合在一起，或者使用了独特的字体，OCR 可能会很困难。在 GitHub 存储库中提供了`photo-dublin-a-text.jpg`文件的示例（可在[`github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter04/images/photo-dublin-a-text.jpg`](https://github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter04/images/photo-dublin-a-text.jpg)找到），其中包含图片上的文本：
+如果图像中的文本不太清晰，或者与图像混合在一起，或者使用了独特的字体，OCR可能会很困难。在GitHub存储库中提供了`photo-dublin-a-text.jpg`文件的示例（可在[https://github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter04/images/photo-dublin-a-text.jpg](https://github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter04/images/photo-dublin-a-text.jpg)找到），其中包含图片上的文本：
 
 ```py
 >>> >>> pytesseract.image_to_string(Image.open('photo-dublin-a-text.jpg'))
 'ﬂ\n\nAutomat'
 ```
 
-有关 Tesseract 的更多信息，请访问以下链接：[`github.com/tesseract-ocr/tesseract`](https://github.com/tesseract-ocr/tesseract)
+有关Tesseract的更多信息，请访问以下链接：[https://github.com/tesseract-ocr/tesseract](https://github.com/tesseract-ocr/tesseract)
 
-[`github.com/madmaze/pytesseract`](https://github.com/madmaze/pytesseract)
+[https://github.com/madmaze/pytesseract](https://github.com/madmaze/pytesseract)
 
-将文件正确导入 OCR 可能需要进行初始图像处理以获得更好的结果。图像处理超出了本书的目标范围，但您可以使用比 Pillow 更强大的 OpenCV。您可以处理一个文件，然后使用 Pillow 打开它：[`opencv-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_tutorials.html`](http://opencv-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_tutorials.html)。
+将文件正确导入OCR可能需要进行初始图像处理以获得更好的结果。图像处理超出了本书的目标范围，但您可以使用比Pillow更强大的OpenCV。您可以处理一个文件，然后使用Pillow打开它：[http://opencv-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_tutorials.html](http://opencv-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_tutorials.html)。
 
 # 另请参阅
 
@@ -869,9 +869,9 @@ Pillow 允许对图像进行许多操作。不仅可以进行简单的操作，�
 
 +   爬行和搜索目录食谱
 
-# 阅读 PDF 文件
+# 阅读PDF文件
 
-文档的常见格式是 PDF（便携式文档格式）。它起初是一种描述任何打印机文档的格式，因此 PDF 是一种确保文档将被打印为其显示的格式的格式，因此是保证一致性的绝佳方式。它已成为共享文档的强大标准，特别是只读文档。
+文档的常见格式是PDF（便携式文档格式）。它起初是一种描述任何打印机文档的格式，因此PDF是一种确保文档将被打印为其显示的格式的格式，因此是保证一致性的绝佳方式。它已成为共享文档的强大标准，特别是只读文档。
 
 # 做好准备
 
@@ -882,9 +882,9 @@ Pillow 允许对图像进行许多操作。不仅可以进行简单的操作，�
 >>> pip install -r requirements.txt
 ```
 
-在 GitHub 目录`Chapter03/documents`中，我们准备了两个文档，`document-1.pdf`和`document-2.pdf`，供本食谱使用。请注意，它们主要包含 Lorem Ipsum 文本，这只是占位文本。
+在GitHub目录`Chapter03/documents`中，我们准备了两个文档，`document-1.pdf`和`document-2.pdf`，供本食谱使用。请注意，它们主要包含Lorem Ipsum文本，这只是占位文本。
 
-Lorem Ipsum 文本通常用于设计，以显示文本而无需在设计之前创建内容。在这里了解更多：[`loremipsum.io/`](https://loremipsum.io/)。
+Lorem Ipsum文本通常用于设计，以显示文本而无需在设计之前创建内容。在这里了解更多：[https://loremipsum.io/](https://loremipsum.io/)。
 
 它们都是相同的测试文档，但第二个只能使用密码打开。密码是`automate`。
 
@@ -896,7 +896,7 @@ Lorem Ipsum 文本通常用于设计，以显示文本而无需在设计之前�
 >>> from PyPDF2 import PdfFileReader
 ```
 
-1.  打开`document-1.pdf`文件并创建一个 PDF 文档对象。请注意，文件需要一直处于打开状态以进行阅读：
+1.  打开`document-1.pdf`文件并创建一个PDF文档对象。请注意，文件需要一直处于打开状态以进行阅读：
 
 ```py
 >>> file = open('document-1.pdf', 'rb')
@@ -912,7 +912,7 @@ Lorem Ipsum 文本通常用于设计，以显示文本而无需在设计之前�
 False
 ```
 
-1.  从文档信息中获取创建日期（2018 年 6 月 24 日 11:15:18），并发现它是使用 Mac 的`Quartz PDFContext`创建的：
+1.  从文档信息中获取创建日期（2018年6月24日11:15:18），并发现它是使用Mac的`Quartz PDFContext`创建的：
 
 ```py
 >>> document.documentInfo['/CreationDate']
@@ -972,7 +972,7 @@ PyPDF2.utils.PdfReadError: File has not been decrypted
 
 # 它是如何工作的...
 
-一旦文档打开，如*如何做...*部分的步骤 1 和 2 所示，`document`对象将提供对文档的访问。
+一旦文档打开，如*如何做...*部分的步骤1和2所示，`document`对象将提供对文档的访问。
 
 最有趣的属性是页面数量，可在 `.numPages` 中找到，以及每个页面，可在 `.pages` 中找到，可以像列表一样访问。
 
@@ -992,7 +992,7 @@ PDF 是一种非常灵活的格式，因此它非常标准，但这也意味着�
 
 虽然大多数 PDF 文件包含文本信息，但并不罕见它们包含图像。例如，扫描文档经常会出现这种情况。这意味着信息被存储为图像的集合，而不是文本。这使得提取数据变得困难；我们最终不得不采用诸如 OCR 这样的方法来将图像解析为文本。
 
-PyPDF2 没有提供处理图像的良好接口。您可能需要将 PDF 转换为一组图像，然后对其进行处理。大多数 PDF 阅读器都可以做到这一点，或者您可以使用命令行工具，如 `pdftooppm`（[`linux.die.net/man/1/pdftoppm`](https://linux.die.net/man/1/pdftoppm)）或 QPDF（参见下文）。有关 OCR 的想法，请参阅 *读取图像* 配方。
+PyPDF2 没有提供处理图像的良好接口。您可能需要将 PDF 转换为一组图像，然后对其进行处理。大多数 PDF 阅读器都可以做到这一点，或者您可以使用命令行工具，如 `pdftooppm`（[https://linux.die.net/man/1/pdftoppm](https://linux.die.net/man/1/pdftoppm)）或 QPDF（参见下文）。有关 OCR 的想法，请参阅 *读取图像* 配方。
 
 某些加密文件的加密方式可能无法被 PyPDF2 理解。它会生成 `NotImplementedError: only algorithm code 1 and 2 are supported`。如果发生这种情况，您需要在外部解密 PDF 并在解密后打开它。您可以使用 QPDF 创建一个无需密码的副本，方法如下：
 
@@ -1000,9 +1000,9 @@ PyPDF2 没有提供处理图像的良好接口。您可能需要将 PDF 转换�
 $ qpdf --decrypt --password=PASSWORD encrypted.pdf output-decrypted.pdf
 ```
 
-完整的 QPDF 可在此处找到：[`qpdf.sourceforge.net/files/qpdf-manual.html`](http://qpdf.sourceforge.net/files/qpdf-manual.html)。QPDF 也可以在大多数软件包管理器中找到。
+完整的 QPDF 可在此处找到：[http://qpdf.sourceforge.net/files/qpdf-manual.html](http://qpdf.sourceforge.net/files/qpdf-manual.html)。QPDF 也可以在大多数软件包管理器中找到。
 
-QPDF 能够进行大量的转换和深入分析 PDF。还有一个名为 `pikepdf` 的 Python 模块的绑定（[`pikepdf.readthedocs.io/en/stable/`](https://pikepdf.readthedocs.io/en/stable/)）。这个模块比 PyPDF2 更难使用，对于文本提取来说也不那么直接，但如果需要其他操作，比如从 PDF 中提取图像，它可能会很有用。
+QPDF 能够进行大量的转换和深入分析 PDF。还有一个名为 `pikepdf` 的 Python 模块的绑定（[https://pikepdf.readthedocs.io/en/stable/](https://pikepdf.readthedocs.io/en/stable/)）。这个模块比 PyPDF2 更难使用，对于文本提取来说也不那么直接，但如果需要其他操作，比如从 PDF 中提取图像，它可能会很有用。
 
 # 另请参阅
 
@@ -1114,23 +1114,23 @@ True
 
 # 它是如何工作的…
 
-Word 文档最重要的特点是数据是以段落而不是页面结构化的。字体大小、行大小和其他考虑因素可能导致页面数量发生变化。
+Word文档最重要的特点是数据是以段落而不是页面结构化的。字体大小、行大小和其他考虑因素可能导致页面数量发生变化。
 
 大多数段落通常也是空的，或者只包含换行符、制表符或其他空白字符。检查段落是否为空并跳过它是一个好主意。
 
-在*如何做…*部分，第 2 步打开文件，第 3 步显示如何访问核心属性。这些属性在 Word 中被定义为文档元数据，例如作者或创建日期。
+在*如何做…*部分，第2步打开文件，第3步显示如何访问核心属性。这些属性在Word中被定义为文档元数据，例如作者或创建日期。
 
-这些信息需要谨慎对待，因为许多生成 Word 文档的工具（但不包括 Microsoft Office）不一定会填充它。在使用该信息之前，请再次检查。
+这些信息需要谨慎对待，因为许多生成Word文档的工具（但不包括Microsoft Office）不一定会填充它。在使用该信息之前，请再次检查。
 
-文档的段落可以被迭代，并以原始格式提取其文本，如第 6 步所示。这是不包括样式信息的信息，通常对于自动处理数据来说是最有用的。
+文档的段落可以被迭代，并以原始格式提取其文本，如第6步所示。这是不包括样式信息的信息，通常对于自动处理数据来说是最有用的。
 
-如果需要样式信息，可以使用运行，如第 7 和第 8 步。每个段落可以包含一个或多个运行，这些运行是共享相同样式的较小单位。例如，如果一个句子是*Word1* word2 **word3**，将有三个运行，一个是斜体文本（Word1），另一个是下划线（word2），另一个是粗体（word3）。更甚者，可能会有包含空格的常规文本的中间运行，总共有 5 个运行。
+如果需要样式信息，可以使用运行，如第7和第8步。每个段落可以包含一个或多个运行，这些运行是共享相同样式的较小单位。例如，如果一个句子是*Word1* word2 **word3**，将有三个运行，一个是斜体文本（Word1），另一个是下划线（word2），另一个是粗体（word3）。更甚者，可能会有包含空格的常规文本的中间运行，总共有5个运行。
 
 样式可以通过属性进行单独检测，例如粗体、斜体或下划线。
 
-运行的划分可能相当复杂。由于编辑器的工作方式，*半词*是很常见的，一个单词分成两个运行，有时具有相同的属性。不要依赖于运行的数量并分析内容。特别是在试图确保具有特定样式的部分是否分成两个或更多个运行时，请再次检查。一个很好的例子是第 8 步中的单词`lore` `m`（应该是`lorem`）。
+运行的划分可能相当复杂。由于编辑器的工作方式，*半词*是很常见的，一个单词分成两个运行，有时具有相同的属性。不要依赖于运行的数量并分析内容。特别是在试图确保具有特定样式的部分是否分成两个或更多个运行时，请再次检查。一个很好的例子是第8步中的单词`lore` `m`（应该是`lorem`）。
 
-请注意，由于 Word 文档由许多来源生成，许多属性可能未设置，因此需要工具决定使用哪些具体属性。例如，保留默认字体非常常见，这可能意味着字体信息为空。
+请注意，由于Word文档由许多来源生成，许多属性可能未设置，因此需要工具决定使用哪些具体属性。例如，保留默认字体非常常见，这可能意味着字体信息为空。
 
 # 还有更多...
 
@@ -1146,13 +1146,13 @@ True
 
 通常专注于原始文本，而不关注样式信息是正确的解析。但有时段落中的粗体单词会有特殊意义。它可能是标题或您正在寻找的结果。因为它被突出显示，很可能就是您要找的！在分析文档时请记住这一点。
 
-你可以在这里找到整个`python-docx`文档：[`python-docx.readthedocs.io/en/latest/`](https://python-docx.readthedocs.io/en/latest/)。
+你可以在这里找到整个`python-docx`文档：[https://python-docx.readthedocs.io/en/latest/](https://python-docx.readthedocs.io/en/latest/)。
 
 # 另请参阅
 
 +   *阅读文本文件*配方
 
-+   *阅读 PDF 文件*配方
++   *阅读PDF文件*配方
 
 # 扫描文档以查找关键字
 
@@ -1169,7 +1169,7 @@ PyPDF2==1.26.0
 python-docx==0.8.6
 ```
 
-检查要搜索的目录是否有以下文件（所有文件都在 GitHub 的`Chapter04/documents`目录中可用）。请注意，`file5.pdf`和`file6.pdf`是`document-1.pdf`的副本，以简化。`file1.txt`到`file4.txt`是空文件：
+检查要搜索的目录是否有以下文件（所有文件都在GitHub的`Chapter04/documents`目录中可用）。请注意，`file5.pdf`和`file6.pdf`是`document-1.pdf`的副本，以简化。`file1.txt`到`file4.txt`是空文件：
 
 ```py
 ├── dir
@@ -1191,7 +1191,7 @@ python-docx==0.8.6
 └── zen_of_python.txt
 ```
 
-我们准备了一个名为`scan.py`的脚本，它将在所有`.txt`、`.csv`、`.pdf`和`.docx`文件中搜索一个单词。该脚本可在 GitHub 存储库的`Chapter04`目录中找到。
+我们准备了一个名为`scan.py`的脚本，它将在所有`.txt`、`.csv`、`.pdf`和`.docx`文件中搜索一个单词。该脚本可在GitHub存储库的`Chapter04`目录中找到。
 
 # 如何做...
 
@@ -1217,7 +1217,7 @@ $ python scan.py -w the
 >>> Word found in ./dir/subdir/file5.pdf
 ```
 
-1.  搜索单词`lorem`，只出现在 PDF 和 docx 文件中：
+1.  搜索单词`lorem`，只出现在PDF和docx文件中：
 
 ```py
 $ python scan.py -w lorem
@@ -1227,7 +1227,7 @@ $ python scan.py -w lorem
 >>> Word found in ./dir/subdir/file5.pdf
 ```
 
-1.  搜索单词`20£`，只出现在两个 ISO 文件中，使用不同的编码：
+1.  搜索单词`20£`，只出现在两个ISO文件中，使用不同的编码：
 
 ```py
 $ python scan.py -w 20£
@@ -1260,7 +1260,7 @@ $ python scan.py -w BETTER
 
 1.  `search_txt`首先打开文件以确定其编码，使用`UnicodeDammit`，然后逐行打开文件并读取。如果找到该单词，它会立即停止并返回成功。
 
-1.  `search_csv`以 CSV 格式打开文件，并不仅逐行迭代，还逐列迭代。一旦找到该单词，它就会返回。
+1.  `search_csv`以CSV格式打开文件，并不仅逐行迭代，还逐列迭代。一旦找到该单词，它就会返回。
 
 1.  `search_pdf`打开文件，如果文件被加密，则退出。如果没有加密，它会逐页提取文本并与单词进行比较。一旦找到匹配项，它就会立即返回。
 
@@ -1272,7 +1272,7 @@ $ python scan.py -w BETTER
 
 +   可以添加更多的搜索函数。在本章中，我们浏览了日志文件和图像。
 
-+   类似的结构也可以用于搜索文件并仅返回最后 10 个。
++   类似的结构也可以用于搜索文件并仅返回最后10个。
 
 +   `search_csv`没有嗅探以检测方言。这也可以添加。
 
@@ -1286,8 +1286,8 @@ $ python scan.py -w BETTER
 
 +   处理编码的配方
 
-+   阅读 CSV 文件的配方
++   阅读CSV文件的配方
 
-+   阅读 PDF 文件的配方
++   阅读PDF文件的配方
 
-+   阅读 Word 文档的配方
++   阅读Word文档的配方

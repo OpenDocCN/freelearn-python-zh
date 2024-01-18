@@ -2,62 +2,62 @@
 
 在本章中，我们将涵盖：
 
-+   如何使用 BeautifulSoup 解析网站和导航 DOM
++   如何使用BeautifulSoup解析网站和导航DOM
 
-+   使用 Beautiful Soup 的查找方法搜索 DOM
++   使用Beautiful Soup的查找方法搜索DOM
 
-+   使用 XPath 和 lxml 查询 DOM
++   使用XPath和lxml查询DOM
 
-+   使用 XPath 和 CSS 选择器查询数据
++   使用XPath和CSS选择器查询数据
 
-+   使用 Scrapy 选择器
++   使用Scrapy选择器
 
-+   以 Unicode / UTF-8 格式加载数据
++   以Unicode / UTF-8格式加载数据
 
 # 介绍
 
-有效抓取的关键方面是理解内容和数据如何存储在 Web 服务器上，识别要检索的数据，并理解工具如何支持此提取。在本章中，我们将讨论网站结构和 DOM，介绍使用 lxml、XPath 和 CSS 解析和查询网站的技术。我们还将看看如何处理其他语言和不同编码类型（如 Unicode）开发的网站。
+有效抓取的关键方面是理解内容和数据如何存储在Web服务器上，识别要检索的数据，并理解工具如何支持此提取。在本章中，我们将讨论网站结构和DOM，介绍使用lxml、XPath和CSS解析和查询网站的技术。我们还将看看如何处理其他语言和不同编码类型（如Unicode）开发的网站。
 
-最终，理解如何在 HTML 文档中查找和提取数据归结为理解 HTML 页面的结构，它在 DOM 中的表示，查询 DOM 以查找特定元素的过程，以及如何根据数据的表示方式指定要检索的元素。
+最终，理解如何在HTML文档中查找和提取数据归结为理解HTML页面的结构，它在DOM中的表示，查询DOM以查找特定元素的过程，以及如何根据数据的表示方式指定要检索的元素。
 
-# 如何使用 BeautifulSoup 解析网站和导航 DOM
+# 如何使用BeautifulSoup解析网站和导航DOM
 
-当浏览器显示网页时，它会在一种称为**文档对象模型**（**DOM**）的表示中构建页面内容的模型。DOM 是页面整个内容的分层表示，以及结构信息、样式信息、脚本和其他内容的链接。
+当浏览器显示网页时，它会在一种称为**文档对象模型**（**DOM**）的表示中构建页面内容的模型。DOM是页面整个内容的分层表示，以及结构信息、样式信息、脚本和其他内容的链接。
 
-理解这种结构对于能够有效地从网页上抓取数据至关重要。我们将看一个示例网页，它的 DOM，并且检查如何使用 Beautiful Soup 导航 DOM。
+理解这种结构对于能够有效地从网页上抓取数据至关重要。我们将看一个示例网页，它的DOM，并且检查如何使用Beautiful Soup导航DOM。
 
 # 准备就绪
 
-我们将使用示例代码的`www`文件夹中包含的一个小型网站。要跟着做，请从`www`文件夹内启动一个 Web 服务器。可以使用 Python 3 来完成这个操作：
+我们将使用示例代码的`www`文件夹中包含的一个小型网站。要跟着做，请从`www`文件夹内启动一个Web服务器。可以使用Python 3来完成这个操作：
 
 ```py
 www $ python3 -m http.server 8080
 Serving HTTP on 0.0.0.0 port 8080 (http://0.0.0.0:8080/) ...
 ```
 
-可以通过右键单击页面并选择检查来检查 Chrome 中的网页 DOM。这将打开 Chrome 开发者工具。在浏览器中打开`http://localhost:8080/planets.html`。在 Chrome 中，您可以右键单击并选择“检查”以打开开发者工具（其他浏览器也有类似的工具）。
+可以通过右键单击页面并选择检查来检查Chrome中的网页DOM。这将打开Chrome开发者工具。在浏览器中打开`http://localhost:8080/planets.html`。在Chrome中，您可以右键单击并选择“检查”以打开开发者工具（其他浏览器也有类似的工具）。
 
-![](img/414227f7-dd30-4c7e-8bab-7fc02e136fcd.png)在页面上选择检查
+![](assets/414227f7-dd30-4c7e-8bab-7fc02e136fcd.png)在页面上选择检查
 
-这将打开开发者工具和检查器。DOM 可以在元素选项卡中检查。
+这将打开开发者工具和检查器。DOM可以在元素选项卡中检查。
 
 以下显示了表中第一行的选择：
 
-![](img/f3dd4285-7e9b-4b96-a3c5-3f31e318b983.png)检查第一行
+![](assets/f3dd4285-7e9b-4b96-a3c5-3f31e318b983.png)检查第一行
 
 每一行行星都在一个`<tr>`元素内。这个元素及其相邻元素有几个特征，我们将检查它们，因为它们被设计为模拟常见的网页。
 
-首先，这个元素有三个属性：`id`，`planet`和`name`。属性在抓取中通常很重要，因为它们通常用于识别和定位嵌入在 HTML 中的数据。
+首先，这个元素有三个属性：`id`，`planet`和`name`。属性在抓取中通常很重要，因为它们通常用于识别和定位嵌入在HTML中的数据。
 
 其次，`<tr>`元素有子元素，在这种情况下是五个`<td>`元素。我们经常需要查看特定元素的子元素，以找到所需的实际数据。
 
-这个元素还有一个父元素`<tbody>`。还有兄弟元素，以及一组`<tr>`子元素。从任何行星，我们可以向上到父元素并找到其他行星。正如我们将看到的，我们可以使用各种工具中的各种构造，比如 Beautiful Soup 中的**find**函数系列，以及`XPath`查询，轻松地导航这些关系。
+这个元素还有一个父元素`<tbody>`。还有兄弟元素，以及一组`<tr>`子元素。从任何行星，我们可以向上到父元素并找到其他行星。正如我们将看到的，我们可以使用各种工具中的各种构造，比如Beautiful Soup中的**find**函数系列，以及`XPath`查询，轻松地导航这些关系。
 
 # 如何做...
 
-这个配方以及本章中的大多数其他配方都将以 iPython 的交互方式呈现。但是每个配方的代码都可以在脚本文件中找到。这个配方的代码在`02/01_parsing_html_wtih_bs.py`中。您可以输入以下内容，或者从脚本文件中复制粘贴。
+这个配方以及本章中的大多数其他配方都将以iPython的交互方式呈现。但是每个配方的代码都可以在脚本文件中找到。这个配方的代码在`02/01_parsing_html_wtih_bs.py`中。您可以输入以下内容，或者从脚本文件中复制粘贴。
 
-现在让我们通过 Beautiful Soup 解析 HTML。我们首先通过以下代码将此页面加载到`BeautifulSoup`对象中，该代码创建一个 BeautifulSoup 对象，使用 requests.get 加载页面内容，并将其加载到名为 soup 的变量中。
+现在让我们通过Beautiful Soup解析HTML。我们首先通过以下代码将此页面加载到`BeautifulSoup`对象中，该代码创建一个BeautifulSoup对象，使用requests.get加载页面内容，并将其加载到名为soup的变量中。
 
 ```py
 In [1]: import requests
@@ -67,18 +67,18 @@ In [1]: import requests
    ...:
 ```
 
-通过将其转换为字符串，可以检索`soup`对象中的 HTML（大多数 BeautifulSoup 对象都具有此特性）。以下显示了文档中 HTML 的前 1000 个字符：
+通过将其转换为字符串，可以检索`soup`对象中的HTML（大多数BeautifulSoup对象都具有此特性）。以下显示了文档中HTML的前1000个字符：
 
 ```py
 In [2]: str(soup)[:1000]
-Out[2]: '<html>\n<head>\n</head>\n<body>\n<div id="planets">\n<h1>Planetary data</h1>\n<div id="content">Here are some interesting facts about the planets in our solar system</div>\n<p></p>\n<table border="1" id="planetsTable">\n<tr id="planetHeader">\n<th>\n</th>\n<th>\r\n Name\r\n </th>\n<th>\r\n Mass (10²⁴kg)\r\n </th>\n<th>\r\n Diameter (km)\r\n </th>\n<th>\r\n How it got its Name\r\n </th>\n<th>\r\n More Info\r\n </th>\n</tr>\n<tr class="planet" id="planet1" name="Mercury">\n<td>\n<img src="img/mercury-150x150.png"/>\n</td>\n<td>\r\n Mercury\r\n </td>\n<td>\r\n 0.330\r\n </td>\n<td>\r\n 4879\r\n </td>\n<td>Named Mercurius by the Romans because it appears to move so swiftly.</td>\n<td>\n<a href="https://en.wikipedia.org/wiki/Mercury_(planet)">Wikipedia</a>\n</td>\n</tr>\n<tr class="p'
+Out[2]: '<html>\n<head>\n</head>\n<body>\n<div id="planets">\n<h1>Planetary data</h1>\n<div id="content">Here are some interesting facts about the planets in our solar system</div>\n<p></p>\n<table border="1" id="planetsTable">\n<tr id="planetHeader">\n<th>\n</th>\n<th>\r\n Name\r\n </th>\n<th>\r\n Mass (10^24kg)\r\n </th>\n<th>\r\n Diameter (km)\r\n </th>\n<th>\r\n How it got its Name\r\n </th>\n<th>\r\n More Info\r\n </th>\n</tr>\n<tr class="planet" id="planet1" name="Mercury">\n<td>\n<img src="img/mercury-150x150.png"/>\n</td>\n<td>\r\n Mercury\r\n </td>\n<td>\r\n 0.330\r\n </td>\n<td>\r\n 4879\r\n </td>\n<td>Named Mercurius by the Romans because it appears to move so swiftly.</td>\n<td>\n<a href="https://en.wikipedia.org/wiki/Mercury_(planet)">Wikipedia</a>\n</td>\n</tr>\n<tr class="p'
 ```
 
-我们可以使用`soup`的属性来导航 DOM 中的元素。`soup`代表整个文档，我们可以通过链接标签名称来深入文档。以下导航到包含数据的`<table>`：
+我们可以使用`soup`的属性来导航DOM中的元素。`soup`代表整个文档，我们可以通过链接标签名称来深入文档。以下导航到包含数据的`<table>`：
 
 ```py
 In [3]: str(soup.html.body.div.table)[:200]
-Out[3]: '<table border="1" id="planetsTable">\n<tr id="planetHeader">\n<th>\n</th>\n<th>\r\n Name\r\n </th>\n<th>\r\n Mass (10²⁴kg)\r\n </th>\n<th>\r\n '
+Out[3]: '<table border="1" id="planetsTable">\n<tr id="planetHeader">\n<th>\n</th>\n<th>\r\n Name\r\n </th>\n<th>\r\n Mass (10^24kg)\r\n </th>\n<th>\r\n '
 ```
 
 以下是获取表格的第一个子`<tr>`：
@@ -92,7 +92,7 @@ Out[6]: <tr id="planetHeader">
                     Name
                 </th>
 <th>
-                    Mass (10²⁴kg)
+                    Mass (10^24kg)
                 </th>
 <th>
                     Diameter (km)
@@ -115,7 +115,7 @@ In [4]: soup.html.body.div.table.children
 Out[4]: <list_iterator at 0x10eb11cc0>
 ```
 
-我们可以使用`for`循环或 Python 生成器来检查迭代器中的每个子元素。以下使用生成器来获取所有子节点，并将它们的 HTML 组成的前几个字符作为列表返回：
+我们可以使用`for`循环或Python生成器来检查迭代器中的每个子元素。以下使用生成器来获取所有子节点，并将它们的HTML组成的前几个字符作为列表返回：
 
 ```py
 In [5]: [str(c)[:45] for c in soup.html.body.div.table.children]
@@ -147,30 +147,30 @@ Out[5]:
 
 ```py
 In [7]: str(soup.html.body.div.table.tr.parent)[:200]
-Out[7]: '<table border="1" id="planetsTable">\n<tr id="planetHeader">\n<th>\n</th>\n<th>\r\n Name\r\n </th>\n<th>\r\n Mass (10²⁴kg)\r\n </th>\n<th>\r\n '
+Out[7]: '<table border="1" id="planetsTable">\n<tr id="planetHeader">\n<th>\n</th>\n<th>\r\n Name\r\n </th>\n<th>\r\n Mass (10^24kg)\r\n </th>\n<th>\r\n '
 ```
 
 # 它是如何工作的
 
-Beautiful Soup 将页面的 HTML 转换为其自己的内部表示。这个模型与浏览器创建的 DOM 具有相同的表示。但是 Beautiful Soup 还提供了许多强大的功能，用于导航 DOM 中的元素，例如我们在使用标签名称作为属性时所看到的。当我们知道 HTML 中的标签名称的固定路径时，这些功能非常适合查找东西。
+Beautiful Soup将页面的HTML转换为其自己的内部表示。这个模型与浏览器创建的DOM具有相同的表示。但是Beautiful Soup还提供了许多强大的功能，用于导航DOM中的元素，例如我们在使用标签名称作为属性时所看到的。当我们知道HTML中的标签名称的固定路径时，这些功能非常适合查找东西。
 
 # 还有更多...
 
-这种导航 DOM 的方式相对不灵活，并且高度依赖于结构。可能随着网页由其创建者更新，结构会随时间改变。页面甚至可能看起来相同，但具有完全不同的结构，从而破坏您的抓取代码。
+这种导航DOM的方式相对不灵活，并且高度依赖于结构。可能随着网页由其创建者更新，结构会随时间改变。页面甚至可能看起来相同，但具有完全不同的结构，从而破坏您的抓取代码。
 
-那么我们该如何处理呢？正如我们将看到的，有几种搜索元素的方法比定义显式路径要好得多。一般来说，我们可以使用 XPath 和 Beautiful Soup 的查找方法来做到这一点。我们将在本章后面的示例中检查这两种方法。
+那么我们该如何处理呢？正如我们将看到的，有几种搜索元素的方法比定义显式路径要好得多。一般来说，我们可以使用XPath和Beautiful Soup的查找方法来做到这一点。我们将在本章后面的示例中检查这两种方法。
 
-# 使用 Beautiful Soup 的查找方法搜索 DOM
+# 使用Beautiful Soup的查找方法搜索DOM
 
-我们可以使用 Beautiful Soup 的查找方法对 DOM 进行简单搜索。这些方法为我们提供了一个更灵活和强大的构造，用于查找不依赖于这些元素的层次结构的元素。在本示例中，我们将检查这些函数的几种常见用法，以定位 DOM 中的各种元素。
+我们可以使用Beautiful Soup的查找方法对DOM进行简单搜索。这些方法为我们提供了一个更灵活和强大的构造，用于查找不依赖于这些元素的层次结构的元素。在本示例中，我们将检查这些函数的几种常见用法，以定位DOM中的各种元素。
 
 # 准备工作
 
-如果您想将以下内容剪切并粘贴到 ipython 中，您可以在`02/02_bs4_find.py`中找到示例。
+如果您想将以下内容剪切并粘贴到ipython中，您可以在`02/02_bs4_find.py`中找到示例。
 
 # 如何做...
 
-我们将从一个新的 iPython 会话开始，并首先加载行星页面：
+我们将从一个新的iPython会话开始，并首先加载行星页面：
 
 ```py
 In [1]: import requests
@@ -191,7 +191,7 @@ In [4]: table = soup.find("table")
 Out[4]: '<table border="1" id="planetsTable">\n<tr id="planetHeader">\n<th>\n</th>\n<th>\r\n Nam'
 ```
 
-这告诉 soup 对象在文档中查找第一个`<table>`元素。从这个元素中，我们可以使用`findAll`找到所有属于该表格的`<tr>`元素的后代：
+这告诉soup对象在文档中查找第一个`<table>`元素。从这个元素中，我们可以使用`findAll`找到所有属于该表格的`<tr>`元素的后代：
 
 ```py
 In [8]: [str(tr)[:50] for tr in table.findAll("tr")]
@@ -208,7 +208,7 @@ Out[8]:
  '<tr class="planet" id="planet9" name="Pluto">\n<td>']
 ```
 
-请注意这些是后代而不是直接的子代。将查询更改为`"td"`以查看区别。没有直接的子代是`<td>`，但每行都有多个`<td>`元素。总共会找到 54 个`<td>`元素。
+请注意这些是后代而不是直接的子代。将查询更改为`"td"`以查看区别。没有直接的子代是`<td>`，但每行都有多个`<td>`元素。总共会找到54个`<td>`元素。
 
 如果我们只想要包含行星数据的行，这里有一个小问题。表头也被包括在内。我们可以通过利用目标行的`id`属性来解决这个问题。以下代码找到了`id`值为`"planet3"`的行。
 
@@ -267,19 +267,19 @@ Out[19]:
 
 就像这样，我们已经从页面中嵌入的内容中制作了一个很好的数据结构。
 
-# 使用 XPath 和 lxml 查询 DOM
+# 使用XPath和lxml查询DOM
 
-XPath 是一种用于从 XML 文档中选择节点的查询语言，对于进行网页抓取的任何人来说，它是必须学习的查询语言。XPath 相对于其他基于模型的工具，为其用户提供了许多好处：
+XPath是一种用于从XML文档中选择节点的查询语言，对于进行网页抓取的任何人来说，它是必须学习的查询语言。XPath相对于其他基于模型的工具，为其用户提供了许多好处：
 
-+   可以轻松地浏览 DOM 树
++   可以轻松地浏览DOM树
 
-+   比 CSS 选择器和正则表达式等其他选择器更复杂和强大
++   比CSS选择器和正则表达式等其他选择器更复杂和强大
 
 +   它有一个很棒的（200+）内置函数集，并且可以通过自定义函数进行扩展
 
 +   它得到了解析库和抓取平台的广泛支持
 
-XPath 包含七种数据模型（我们之前已经看到了其中一些）：
+XPath包含七种数据模型（我们之前已经看到了其中一些）：
 
 +   根节点（顶级父节点）
 
@@ -295,7 +295,7 @@ XPath 包含七种数据模型（我们之前已经看到了其中一些）：
 
 +   处理指令节点
 
-XPath 表达式可以返回不同的数据类型：
+XPath表达式可以返回不同的数据类型：
 
 +   字符串
 
@@ -305,11 +305,11 @@ XPath 表达式可以返回不同的数据类型：
 
 +   节点集（可能是最常见的情况）
 
-（XPath）**轴**定义了相对于当前节点的节点集。XPath 中定义了总共 13 个轴，以便轻松搜索不同的节点部分，从当前上下文节点或根节点。
+（XPath）**轴**定义了相对于当前节点的节点集。XPath中定义了总共13个轴，以便轻松搜索不同的节点部分，从当前上下文节点或根节点。
 
-**lxml**是一个 Python 包装器，位于 libxml2 XML 解析库之上，后者是用 C 编写的。C 中的实现有助于使其比 Beautiful Soup 更快，但在某些计算机上安装起来也更困难。最新的安装说明可在以下网址找到：[`lxml.de/installation.html`](http://lxml.de/installation.html)。
+**lxml**是一个Python包装器，位于libxml2 XML解析库之上，后者是用C编写的。C中的实现有助于使其比Beautiful Soup更快，但在某些计算机上安装起来也更困难。最新的安装说明可在以下网址找到：[http://lxml.de/installation.html](http://lxml.de/installation.html)。
 
-lxml 支持 XPath，这使得管理复杂的 XML 和 HTML 文档变得相当容易。我们将研究使用 lxml 和 XPath 一起的几种技术，以及如何使用 lxml 和 XPath 来导航 DOM 并访问数据。
+lxml支持XPath，这使得管理复杂的XML和HTML文档变得相当容易。我们将研究使用lxml和XPath一起的几种技术，以及如何使用lxml和XPath来导航DOM并访问数据。
 
 # 准备工作
 
@@ -321,19 +321,19 @@ In [1]: from lxml import html
    ...: page_html = requests.get("http://localhost:8080/planets.html").text
 ```
 
-到这一点，lxml 应该已经作为其他安装的依赖项安装了。如果出现错误，请使用`pip install lxml`进行安装。
+到这一点，lxml应该已经作为其他安装的依赖项安装了。如果出现错误，请使用`pip install lxml`进行安装。
 
 # 如何做...
 
-我们要做的第一件事是将 HTML 加载到 lxml 的“etree”中。这是 lxml 对 DOM 的表示。
+我们要做的第一件事是将HTML加载到lxml的“etree”中。这是lxml对DOM的表示。
 
 ```py
 in [2]: tree = html.fromstring(page_html)
 ```
 
-`tree`变量现在是 DOM 的 lxml 表示，它对 HTML 内容进行了建模。现在让我们来看看如何使用它和 XPath 从文档中选择各种元素。
+`tree`变量现在是DOM的lxml表示，它对HTML内容进行了建模。现在让我们来看看如何使用它和XPath从文档中选择各种元素。
 
-我们的第一个 XPath 示例将是查找所有在`<table>`元素下的`<tr>`元素。
+我们的第一个XPath示例将是查找所有在`<table>`元素下的`<tr>`元素。
 
 ```py
 In [3]: [tr for tr in tree.xpath("/html/body/div/table/tr")]
@@ -351,9 +351,9 @@ Out[3]:
  <Element tr at 0x10cfd1638>]
 ```
 
-这个 XPath 从文档的根部通过标签名称进行导航，直到`<tr>`元素。这个例子看起来类似于 Beautiful Soup 中的属性表示法，但最终它更加具有表现力。请注意结果中的一个区别。所有的`<tr>`元素都被返回了，而不仅仅是第一个。事实上，如果每个级别的标签都有多个项目可用，那么这个路径的搜索将在所有这些`<div>`上执行。
+这个XPath从文档的根部通过标签名称进行导航，直到`<tr>`元素。这个例子看起来类似于Beautiful Soup中的属性表示法，但最终它更加具有表现力。请注意结果中的一个区别。所有的`<tr>`元素都被返回了，而不仅仅是第一个。事实上，如果每个级别的标签都有多个项目可用，那么这个路径的搜索将在所有这些`<div>`上执行。
 
-实际结果是一个`lxml`元素对象。以下使用`etree.tostring()`获取与元素相关的 HTML（尽管它们已经应用了编码）：
+实际结果是一个`lxml`元素对象。以下使用`etree.tostring()`获取与元素相关的HTML（尽管它们已经应用了编码）：
 
 ```py
 In [4]: from lxml import etree
@@ -379,7 +379,7 @@ Out[4]:
 ']
 ```
 
-现在让我们看看如何使用 XPath 来选择只有行星的`<tr>`元素。
+现在让我们看看如何使用XPath来选择只有行星的`<tr>`元素。
 
 ```py
 In [5]: [etree.tostring(tr)[:50] for tr in tree.xpath("/html/body/div/table/tr[@class='planet']")]
@@ -401,9 +401,9 @@ Out[5]:
 
 在标签旁边使用`[]`表示我们要根据当前元素的某些条件进行选择。`@`表示我们要检查标签的属性，在这种情况下，我们要选择属性等于"planet"的标签。
 
-还有另一个要指出的是查询中有 11 个`<tr>`行。如前所述，XPath 在每个级别上对所有找到的节点进行导航。这个文档中有两个表，都是不同`<div>`的子元素，都是`<body>`元素的子元素。具有`id="planetHeader"`的行来自我们想要的目标表，另一个具有`id="footerRow"`的行来自第二个表。
+还有另一个要指出的是查询中有11个`<tr>`行。如前所述，XPath在每个级别上对所有找到的节点进行导航。这个文档中有两个表，都是不同`<div>`的子元素，都是`<body>`元素的子元素。具有`id="planetHeader"`的行来自我们想要的目标表，另一个具有`id="footerRow"`的行来自第二个表。
 
-以前我们通过选择`class="row"`的`<tr>`来解决了这个问题，但还有其他值得简要提及的方法。首先，我们还可以使用`[]`来指定 XPath 的每个部分中的特定元素，就像它们是数组一样。看下面的例子：
+以前我们通过选择`class="row"`的`<tr>`来解决了这个问题，但还有其他值得简要提及的方法。首先，我们还可以使用`[]`来指定XPath的每个部分中的特定元素，就像它们是数组一样。看下面的例子：
 
 ```py
 In [6]: [etree.tostring(tr)[:50] for tr in tree.xpath("/html/body/div[1]/table/tr")]
@@ -425,7 +425,7 @@ Out[6]:
 ']
 ```
 
-XPath 中的数组从 1 开始而不是 0（一个常见的错误来源）。这选择了第一个`<div>`。更改为`[2]`选择了第二个`<div>`，因此只选择了第二个`<table>`。
+XPath中的数组从1开始而不是0（一个常见的错误来源）。这选择了第一个`<div>`。更改为`[2]`选择了第二个`<div>`，因此只选择了第二个`<table>`。
 
 ```py
 In [7]: [etree.tostring(tr)[:50] for tr in tree.xpath("/html/body/div[2]/table/tr")]
@@ -434,7 +434,7 @@ Out[7]: [b'<tr id="footerRow">
 ']
 ```
 
-这个文档中的第一个`<div>`也有一个 id 属性：
+这个文档中的第一个`<div>`也有一个id属性：
 
 ```py
   <div id="planets">  
@@ -462,7 +462,7 @@ Out[8]:
 ']
 ```
 
-之前我们根据 class 属性的值选择了行星行。我们也可以排除行：
+之前我们根据class属性的值选择了行星行。我们也可以排除行：
 
 ```py
 In [9]: [etree.tostring(tr)[:50] for tr in tree.xpath("/html/body/div[@id='planets']/table/tr[@id!='planetHeader']")]
@@ -513,7 +513,7 @@ Out[11]:
 \n <tr id="']
 ```
 
-这返回了两个父级，因为这个 XPath 返回了两个表的行，所以找到了所有这些行的父级。`*`是一个通配符，代表任何名称的任何父级标签。在这种情况下，这两个父级都是表，但通常结果可以是任意数量的 HTML 元素类型。下面的结果相同，但如果两个父级是不同的 HTML 标签，那么它只会返回`<table>`元素。
+这返回了两个父级，因为这个XPath返回了两个表的行，所以找到了所有这些行的父级。`*`是一个通配符，代表任何名称的任何父级标签。在这种情况下，这两个父级都是表，但通常结果可以是任意数量的HTML元素类型。下面的结果相同，但如果两个父级是不同的HTML标签，那么它只会返回`<table>`元素。
 
 ```py
 In [12]: [etree.tostring(tr)[:50] for tr in tree.xpath("/html/body/div/table/tr/parent::table")]
@@ -551,33 +551,34 @@ In [15]: mass = tree.xpath("/html/body/div[1]/table/tr[@name='Earth']/td[3]/text
 Out[15]: '5.97'
 ```
 
-这个 XPath 的尾部`/td[3]/text()[1]`选择了行中的第三个`<td>`元素，然后选择了该元素的文本（这是元素中所有文本的数组），并选择了其中的第一个质量。
+这个XPath的尾部`/td[3]/text()[1]`选择了行中的第三个`<td>`元素，然后选择了该元素的文本（这是元素中所有文本的数组），并选择了其中的第一个质量。
 
 # 它是如何工作的
 
-XPath 是**XSLT**（可扩展样式表语言转换）标准的一部分，提供了在 XML 文档中选择节点的能力。HTML 是 XML 的一种变体，因此 XPath 可以在 HTML 文档上工作（尽管 HTML 可能格式不正确，在这种情况下会破坏 XPath 解析）。
+XPath是**XSLT**（可扩展样式表语言转换）标准的一部分，提供了在XML文档中选择节点的能力。HTML是XML的一种变体，因此XPath可以在HTML文档上工作（尽管HTML可能格式不正确，在这种情况下会破坏XPath解析）。
 
-XPath 本身旨在模拟 XML 节点、属性和属性的结构。该语法提供了查找与表达式匹配的 XML 中的项目的方法。这可以包括匹配或逻辑比较 XML 文档中任何节点、属性、值或文本的任何部分。
+XPath本身旨在模拟XML节点、属性和属性的结构。该语法提供了查找与表达式匹配的XML中的项目的方法。这可以包括匹配或逻辑比较XML文档中任何节点、属性、值或文本的任何部分。
 
-XPath 表达式可以组合成非常复杂的路径在文档中。还可以根据相对位置导航文档，这在根据相对位置而不是 DOM 中的绝对位置找到数据时非常有帮助。
+XPath表达式可以组合成非常复杂的路径在文档中。还可以根据相对位置导航文档，这在根据相对位置而不是DOM中的绝对位置找到数据时非常有帮助。
 
-理解 XPath 对于知道如何解析 HTML 和执行网页抓取是至关重要的。正如我们将看到的，它是许多高级库的基础，并为其提供了实现，比如 lxml。
+理解XPath对于知道如何解析HTML和执行网页抓取是至关重要的。正如我们将看到的，它是许多高级库的基础，并为其提供了实现，比如lxml。
 
 # 还有更多...
 
-XPath 实际上是处理 XML 和 HTML 文档的一个了不起的工具。它在功能上非常丰富，我们仅仅触及了它在演示 HTML 文档中常见的一些示例的表面。
+XPath实际上是处理XML和HTML文档的一个了不起的工具。它在功能上非常丰富，我们仅仅触及了它在演示HTML文档中常见的一些示例的表面。
 
 要了解更多，请访问以下链接：
 
-+   [`www.w3schools.com/xml/xml_xpath.asp`](https://www.w3schools.com/xml/xml_xpath.asp)
++   [https://www.w3schools.com/xml/xml_xpath.asp](https://www.w3schools.com/xml/xml_xpath.asp)
 
-+   [`www.w3.org/TR/xpath/`](https://www.w3.org/TR/xpath/)
++   [https://www.w3.org/TR/xpath/](https://www.w3.org/TR/xpath/)
 
-# 使用 XPath 和 CSS 选择器查询数据
+# 使用XPath和CSS选择器查询数据
 
-CSS 选择器是用于选择元素的模式，通常用于定义应该应用样式的元素。它们也可以与 lxml 一起用于选择 DOM 中的节点。CSS 选择器通常被广泛使用，因为它们比 XPath 更紧凑，并且通常在代码中更可重用。以下是可能使用的常见选择器的示例：
+CSS选择器是用于选择元素的模式，通常用于定义应该应用样式的元素。它们也可以与lxml一起用于选择DOM中的节点。CSS选择器通常被广泛使用，因为它们比XPath更紧凑，并且通常在代码中更可重用。以下是可能使用的常见选择器的示例：
 
 | **您要寻找的内容** | **示例** |
+| --- | --- |
 | 所有标签 | `*` |
 | 特定标签（即`tr`） | `.planet` |
 | 类名（即`"planet"`） | `tr.planet` |
@@ -588,7 +589,7 @@ CSS 选择器是用于选择元素的模式，通常用于定义应该应用样�
 
 # 准备工作
 
-让我们开始使用与上一个示例中使用的相同的启动代码来检查 CSS 选择器。这些代码片段也在`02/04_css_selectors.py`中。
+让我们开始使用与上一个示例中使用的相同的启动代码来检查CSS选择器。这些代码片段也在`02/04_css_selectors.py`中。
 
 ```py
 In [1]: from lxml import html
@@ -600,7 +601,7 @@ In [1]: from lxml import html
 
 # 如何做...
 
-现在让我们开始使用 XPath 和 CSS 选择器。以下选择所有具有等于`"planet"`的类的`<tr>`元素：
+现在让我们开始使用XPath和CSS选择器。以下选择所有具有等于`"planet"`的类的`<tr>`元素：
 
 ```py
 In [2]: [(v, v.xpath("@name")) for v in tree.cssselect('tr.planet')]
@@ -634,23 +635,23 @@ In [4]: tr = tree.cssselect("tr[name='Pluto']")
 Out[5]: (<Element tr at 0x10e477548>, 'Pluto')
 ```
 
-请注意，与 XPath 不同，不需要使用`@`符号来指定属性。
+请注意，与XPath不同，不需要使用`@`符号来指定属性。
 
 # 工作原理
 
-lxml 将您提供的 CSS 选择器转换为 XPath，然后针对底层文档执行该 XPath 表达式。实质上，lxml 中的 CSS 选择器提供了一种简写 XPath 的方法，使得查找符合某些模式的节点比使用 XPath 更简单。
+lxml将您提供的CSS选择器转换为XPath，然后针对底层文档执行该XPath表达式。实质上，lxml中的CSS选择器提供了一种简写XPath的方法，使得查找符合某些模式的节点比使用XPath更简单。
 
 # 还有更多...
 
-由于 CSS 选择器在底层使用 XPath，因此与直接使用 XPath 相比，使用它会增加一些开销。然而，这种差异几乎不成问题，因此在某些情况下，更容易只使用 cssselect。
+由于CSS选择器在底层使用XPath，因此与直接使用XPath相比，使用它会增加一些开销。然而，这种差异几乎不成问题，因此在某些情况下，更容易只使用cssselect。
 
-可以在以下位置找到 CSS 选择器的完整描述：[`www.w3.org/TR/2011/REC-css3-selectors-20110929/`](https://www.w3.org/TR/2011/REC-css3-selectors-20110929/)
+可以在以下位置找到CSS选择器的完整描述：[https://www.w3.org/TR/2011/REC-css3-selectors-20110929/](https://www.w3.org/TR/2011/REC-css3-selectors-20110929/)
 
-# 使用 Scrapy 选择器
+# 使用Scrapy选择器
 
-Scrapy 是一个用于从网站提取数据的 Python 网络爬虫框架。它提供了许多强大的功能，用于浏览整个网站，例如跟踪链接的能力。它提供的一个功能是使用 DOM 在文档中查找数据，并且现在，相当熟悉的 XPath。
+Scrapy是一个用于从网站提取数据的Python网络爬虫框架。它提供了许多强大的功能，用于浏览整个网站，例如跟踪链接的能力。它提供的一个功能是使用DOM在文档中查找数据，并且现在，相当熟悉的XPath。
 
-在这个示例中，我们将加载 StackOverflow 上当前问题的列表，然后使用 scrapy 选择器解析它。使用该选择器，我们将提取每个问题的文本。
+在这个示例中，我们将加载StackOverflow上当前问题的列表，然后使用scrapy选择器解析它。使用该选择器，我们将提取每个问题的文本。
 
 # 准备工作
 
@@ -666,7 +667,7 @@ In [1]: from scrapy.selector import Selector
    ...:
 ```
 
-接下来加载页面。在此示例中，我们将检索 StackOverflow 上最近的问题并提取它们的标题。我们可以使用以下查询来实现：
+接下来加载页面。在此示例中，我们将检索StackOverflow上最近的问题并提取它们的标题。我们可以使用以下查询来实现：
 
 ```py
 In [2]: response = requests.get("http://stackoverflow.com/questions")
@@ -681,11 +682,11 @@ In [3]: selector = Selector(response)
 Out[3]: <Selector xpath=None data='<html>\r\n\r\n <head>\r\n\r\n <title>N'>
 ```
 
-检查此页面的内容，我们可以看到问题的 HTML 具有以下结构：
+检查此页面的内容，我们可以看到问题的HTML具有以下结构：
 
-![](img/d72e8df6-61f1-4395-a003-009279e30ddb.png)StackOverflow 问题的 HTML
+![](assets/d72e8df6-61f1-4395-a003-009279e30ddb.png)StackOverflow问题的HTML
 
-使用选择器，我们可以使用 XPath 找到这些：
+使用选择器，我们可以使用XPath找到这些：
 
 ```py
 In [4]: summaries = selector.xpath('//div[@class="summary"]/h3')
@@ -718,33 +719,33 @@ Out[5]:
 
 # 工作原理
 
-在底层，Scrapy 构建其选择器基于 lxml。它提供了一个较小且略微简单的 API，性能与 lxml 相似。
+在底层，Scrapy构建其选择器基于lxml。它提供了一个较小且略微简单的API，性能与lxml相似。
 
 # 还有更多...
 
-要了解有关 Scrapy 选择器的更多信息，请参见：[`doc.scrapy.org/en/latest/topics/selectors.html`](https://doc.scrapy.org/en/latest/topics/selectors.html)。
+要了解有关Scrapy选择器的更多信息，请参见：[https://doc.scrapy.org/en/latest/topics/selectors.html](https://doc.scrapy.org/en/latest/topics/selectors.html)。
 
-# 以 unicode / UTF-8 加载数据
+# 以unicode / UTF-8加载数据
 
-文档的编码告诉应用程序如何将文档中的字符表示为文件中的字节。基本上，编码指定每个字符有多少位。在标准 ASCII 文档中，所有字符都是 8 位。HTML 文件通常以每个字符 8 位编码，但随着互联网的全球化，情况并非总是如此。许多 HTML 文档以 16 位字符编码，或者使用 8 位和 16 位字符的组合。
+文档的编码告诉应用程序如何将文档中的字符表示为文件中的字节。基本上，编码指定每个字符有多少位。在标准ASCII文档中，所有字符都是8位。HTML文件通常以每个字符8位编码，但随着互联网的全球化，情况并非总是如此。许多HTML文档以16位字符编码，或者使用8位和16位字符的组合。
 
-一种特别常见的 HTML 文档编码形式被称为 UTF-8。这是我们将要研究的编码形式。
+一种特别常见的HTML文档编码形式被称为UTF-8。这是我们将要研究的编码形式。
 
 # 准备工作
 
-我们将从位于`http://localhost:8080/unicode.html`的本地 Web 服务器中读取名为`unicode.html`的文件。该文件采用 UTF-8 编码，并包含编码空间不同部分的几组字符。例如，页面在浏览器中如下所示：
+我们将从位于`http://localhost:8080/unicode.html`的本地Web服务器中读取名为`unicode.html`的文件。该文件采用UTF-8编码，并包含编码空间不同部分的几组字符。例如，页面在浏览器中如下所示：
 
 浏览器中的页面
 
-使用支持 UTF-8 的编辑器，我们可以看到西里尔字母在编辑器中是如何呈现的：
+使用支持UTF-8的编辑器，我们可以看到西里尔字母在编辑器中是如何呈现的：
 
-编辑器中的 HTML
+编辑器中的HTML
 
 示例的代码位于`02/06_unicode.py`中。
 
 # 如何做...
 
-我们将研究如何使用`urlopen`和`requests`来处理 UTF-8 中的 HTML。这两个库处理方式不同，让我们来看看。让我们开始导入`urllib`，加载页面并检查一些内容。
+我们将研究如何使用`urlopen`和`requests`来处理UTF-8中的HTML。这两个库处理方式不同，让我们来看看。让我们开始导入`urllib`，加载页面并检查一些内容。
 
 ```py
 In [8]: from urllib.request import urlopen
@@ -757,7 +758,7 @@ Out[8]: b'><strong>Cyrillic</strong> &nbsp; U+0400 \xe2\x80\x93 U+04FF &nbsp; (1
 
 请注意，西里尔字母是以多字节代码的形式读入的，使用\符号，例如`\xd0\x89`。
 
-为了纠正这一点，我们可以使用 Python 的`str`语句将内容转换为 UTF-8 格式：
+为了纠正这一点，我们可以使用Python的`str`语句将内容转换为UTF-8格式：
 
 ```py
 In [9]: str(content, "utf-8")[837:1270]
@@ -778,7 +779,7 @@ In [9]: import requests
 
 # 它是如何工作的
 
-在使用`urlopen`时，通过使用 str 语句并指定应将内容转换为 UTF-8 来明确执行了转换。对于`requests`，该库能够通过在文档中看到以下标记来确定 HTML 中的内容是以 UTF-8 格式编码的：
+在使用`urlopen`时，通过使用str语句并指定应将内容转换为UTF-8来明确执行了转换。对于`requests`，该库能够通过在文档中看到以下标记来确定HTML中的内容是以UTF-8格式编码的：
 
 ```py
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
@@ -786,4 +787,4 @@ In [9]: import requests
 
 # 还有更多...
 
-互联网上有许多关于 Unicode 和 UTF-8 编码技术的资源。也许最好的是以下维基百科文章，其中有一个很好的摘要和描述编码技术的表格：[`en.wikipedia.org/wiki/UTF-8`](https://en.wikipedia.org/wiki/UTF-8)
+互联网上有许多关于Unicode和UTF-8编码技术的资源。也许最好的是以下维基百科文章，其中有一个很好的摘要和描述编码技术的表格：[https://en.wikipedia.org/wiki/UTF-8](https://en.wikipedia.org/wiki/UTF-8)

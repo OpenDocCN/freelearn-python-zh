@@ -1,6 +1,6 @@
 # 单元测试-单元测试框架简介
 
-测试您的项目是软件开发的重要部分。在本章中，我们将学习 Python 中的单元测试。Python 有一个名为`unittest`的模块，这是一个单元测试框架。我们将在本章学习`unittest`框架。
+测试您的项目是软件开发的重要部分。在本章中，我们将学习Python中的单元测试。Python有一个名为`unittest`的模块，这是一个单元测试框架。我们将在本章学习`unittest`框架。
 
 在本章中，您将学习以下主题：
 
@@ -8,9 +8,9 @@
 
 +   创建单元测试任务
 
-# 什么是 unittest？
+# 什么是unittest？
 
-`unittest`是 Python 中的一个单元测试框架。它支持多个任务，如测试固件、编写测试用例、将测试用例聚合到测试套件中以及运行测试。
+`unittest`是Python中的一个单元测试框架。它支持多个任务，如测试固件、编写测试用例、将测试用例聚合到测试套件中以及运行测试。
 
 `unittest`支持四个主要概念，列在这里：
 
@@ -22,7 +22,7 @@
 
 +   `test runner`: 这包括安排测试执行并向用户提供输出
 
-Python 有一个`unittest`模块，我们将在脚本中导入它。`unittest`模块有`TestCase`类用于创建测试用例。
+Python有一个`unittest`模块，我们将在脚本中导入它。`unittest`模块有`TestCase`类用于创建测试用例。
 
 可以将单独的测试用例创建为方法。这些方法名称以单词*test*开头。因此，测试运行器将知道哪些方法代表测试用例。
 
@@ -62,6 +62,7 @@ OK
 每当运行测试脚本时，您有三种可能的测试结果：
 
 | **结果** | **描述** |
+| --- | --- |
 | `OK` | 成功 |
 | `FAIL` | 测试失败-引发`AssertionError`异常 |
 | `ERROR` | 引发除`AssertionError`之外的异常 |
@@ -118,9 +119,9 @@ FAILED (failures=1)
 
 # 摘要
 
-在本章中，我们学习了 Python 的单元测试框架`unittest`。我们还学习了如何创建测试用例以及单元测试中使用的方法。
+在本章中，我们学习了Python的单元测试框架`unittest`。我们还学习了如何创建测试用例以及单元测试中使用的方法。
 
-在下一章中，我们将学习如何自动化系统管理员的常规管理活动。您将学习如何接受输入，处理密码，执行外部命令，读取配置文件，向脚本添加警告代码，设置 CPU 限制，启动 web 浏览器，使用`os`模块并进行备份。
+在下一章中，我们将学习如何自动化系统管理员的常规管理活动。您将学习如何接受输入，处理密码，执行外部命令，读取配置文件，向脚本添加警告代码，设置CPU限制，启动web浏览器，使用`os`模块并进行备份。
 
 # 问题
 
@@ -130,10 +131,10 @@ FAILED (failures=1)
 
 1.  编写测试用例有什么用？
 
-1.  什么是 PEP8 标准？
+1.  什么是PEP8标准？
 
 # 进一步阅读
 
-+   单元测试文档：[`docs.python.org/3/library/unittest.html `](https://docs.python.org/3/library/unittest.html)
++   单元测试文档：[https://docs.python.org/3/library/unittest.html ](https://docs.python.org/3/library/unittest.html)
 
-+   Python 中的 PEP8 编码标准：[`www.python.org/dev/peps/pep-0008/ `](https://www.python.org/dev/peps/pep-0008/)
++   Python中的PEP8编码标准：[https://www.python.org/dev/peps/pep-0008/ ](https://www.python.org/dev/peps/pep-0008/)

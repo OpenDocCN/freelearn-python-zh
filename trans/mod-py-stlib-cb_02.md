@@ -2,11 +2,11 @@
 
 在本章中，我们将涵盖以下配方：
 
-+   模式匹配-正则表达式不是解析模式的唯一方法；Python 提供了更简单且同样强大的工具来解析模式
++   模式匹配-正则表达式不是解析模式的唯一方法；Python提供了更简单且同样强大的工具来解析模式
 
-+   文本相似性-检测两个相似字符串的性能可能很困难，但 Python 有一些易于使用的内置工具
++   文本相似性-检测两个相似字符串的性能可能很困难，但Python有一些易于使用的内置工具
 
-+   文本建议-Python 寻找最相似的一个建议给用户正确的拼写
++   文本建议-Python寻找最相似的一个建议给用户正确的拼写
 
 +   模板化-在生成文本时，模板化是定义规则的最简单方法
 
@@ -20,7 +20,7 @@
 
 # 介绍
 
-Python 是为系统工程而生的，当与 shell 脚本和基于 shell 的软件一起工作时，经常需要创建和解析文本。这就是为什么 Python 有非常强大的工具来处理文本。
+Python是为系统工程而生的，当与shell脚本和基于shell的软件一起工作时，经常需要创建和解析文本。这就是为什么Python有非常强大的工具来处理文本。
 
 # 模式匹配
 
@@ -50,7 +50,7 @@ Python 是为系统工程而生的，当与 shell 脚本和基于 shell 的软�
 
 +   `[!...]`表示除了方括号内包含的字符之外的所有内容
 
-您可能会从系统 shell 中认出这个语法，所以很容易看出`*.txt`意味着*每个具有.txt 扩展名的名称*：
+您可能会从系统shell中认出这个语法，所以很容易看出`*.txt`意味着*每个具有.txt扩展名的名称*：
 
 ```py
 >>> fnmatch.fnmatch('hello.txt', '*.txt')
@@ -116,9 +116,9 @@ False
 ['.git', '.gitignore', '.vscode']
 ```
 
-`fnmatch`的真正优势在于它是一种足够简单和安全的语言，可以向用户公开。假设您正在编写一个电子邮件客户端，并且希望提供搜索功能，如果您有来自 Jane Smith 和 Smith Lincoln 的电子邮件，您如何让用户搜索名为 Smith 或姓为 Smith 的人？
+`fnmatch`的真正优势在于它是一种足够简单和安全的语言，可以向用户公开。假设您正在编写一个电子邮件客户端，并且希望提供搜索功能，如果您有来自Jane Smith和Smith Lincoln的电子邮件，您如何让用户搜索名为Smith或姓为Smith的人？
 
-使用`fnmatch`很容易，因为您可以将其提供给用户，让他们编写`*Smith`或`Smith*`，具体取决于他们是在寻找名为 Smith 的人还是姓氏为 Smith 的人：
+使用`fnmatch`很容易，因为您可以将其提供给用户，让他们编写`*Smith`或`Smith*`，具体取决于他们是在寻找名为Smith的人还是姓氏为Smith的人：
 
 ```py
 >>> senders = ['Jane Smith', 'Smith Lincoln']
@@ -134,7 +134,7 @@ False
 
 查找文本相似性并不是一项简单的任务。如果您尝试自己去做，您很快就会意识到它很快变得复杂和缓慢。
 
-Python 库提供了在`difflib`模块中检测两个序列之间差异的工具。由于文本本身是一个序列（字符序列），我们可以应用提供的函数来检测字符串的相似性。
+Python库提供了在`difflib`模块中检测两个序列之间差异的工具。由于文本本身是一个序列（字符序列），我们可以应用提供的函数来检测字符串的相似性。
 
 # 如何做...
 
@@ -154,7 +154,7 @@ Python 库提供了在`difflib`模块中检测两个序列之间差异的工具�
 >>> s4 = 'Today my dog ate steak'
 ```
 
-1.  我们可以使用`difflib.SequenceMatcher`来计算字符串之间的相似度（从 0 到 1）。
+1.  我们可以使用`difflib.SequenceMatcher`来计算字符串之间的相似度（从0到1）。
 
 ```py
 >>> import difflib
@@ -166,7 +166,7 @@ Python 库提供了在`difflib`模块中检测两个序列之间差异的工具�
 0.46808510638297873
 ```
 
-因此，`SequenceMatcher`能够检测到`s`和`s2`非常相似（98%），除了`weather`中的拼写错误之外，它们实际上是完全相同的短语。然后它指出`Today the weather is nice`与`Yesterday the weather was nice`相似度为 80%，最后指出`Today the weather is nice`和`Today my dog ate steak`几乎没有共同之处。
+因此，`SequenceMatcher`能够检测到`s`和`s2`非常相似（98%），除了`weather`中的拼写错误之外，它们实际上是完全相同的短语。然后它指出`Today the weather is nice`与`Yesterday the weather was nice`相似度为80%，最后指出`Today the weather is nice`和`Today my dog ate steak`几乎没有共同之处。
 
 # 还有更多...
 
@@ -341,7 +341,7 @@ Message 2
 
 # 它是如何工作的...
 
-`string.Formatter`支持与`str.format`方法支持的相同语言。实际上，它根据 Python 称为*格式化字符串语法*的内容解析包含在`{}`中的表达式。`{}`之外的所有内容保持不变，而`{}`中的任何内容都会被解析为`field_name!conversion:format_spec`规范。因此，由于我们的`field_name`不包含`!`或`:`，它可以是任何其他内容。
+`string.Formatter`支持与`str.format`方法支持的相同语言。实际上，它根据Python称为*格式化字符串语法*的内容解析包含在`{}`中的表达式。`{}`之外的所有内容保持不变，而`{}`中的任何内容都会被解析为`field_name!conversion:format_spec`规范。因此，由于我们的`field_name`不包含`!`或`:`，它可以是任何其他内容。
 
 然后提取的`field_name`被提供给`Formatter.get_field`，以查找`format`方法提供的参数中该字段的值。
 
@@ -361,7 +361,7 @@ Hello Alessandro
 
 这非常方便，可以解决大多数字符串格式化需求，但缺乏像循环和条件语句这样的真正模板引擎的功能。
 
-我们所做的是扩展`Formatter`，不仅解析`field_name`中指定的变量，还评估 Python 表达式。
+我们所做的是扩展`Formatter`，不仅解析`field_name`中指定的变量，还评估Python表达式。
 
 由于我们知道所有的`field_name`解析都要经过`Formatter.get_field`，在我们自己的自定义类中覆盖该方法将允许我们更改每当评估像`{name}`这样的`field_name`时发生的情况：
 
@@ -370,7 +370,7 @@ class TemplateFormatter(string.Formatter):
     def get_field(self, field_name, args, kwargs):
 ```
 
-为了区分普通变量和表达式，我们使用了`$`符号。由于 Python 变量永远不会以`$`开头，因此我们不会与提供给格式化的参数发生冲突（因为`str.format($something=5`实际上是 Python 中的语法错误）。因此，像`{$something}`这样的`field_name`不意味着查找`''$something`的值，而是评估`something`表达式：
+为了区分普通变量和表达式，我们使用了`$`符号。由于Python变量永远不会以`$`开头，因此我们不会与提供给格式化的参数发生冲突（因为`str.format($something=5`实际上是Python中的语法错误）。因此，像`{$something}`这样的`field_name`不意味着查找`''$something`的值，而是评估`something`表达式：
 
 ```py
 if field_name.startswith("$"):
@@ -378,7 +378,7 @@ if field_name.startswith("$"):
     val = eval(code, {}, dict(kwargs))
 ```
 
-`eval`函数运行在字符串中编写的任何代码，并将执行限制为表达式（Python 中的表达式总是导致一个值，与不导致值的语句不同），因此我们还进行了语法检查，以防止模板用户编写`if something: x='hi'`，这将不会提供任何值来显示在渲染模板后的文本中。
+`eval`函数运行在字符串中编写的任何代码，并将执行限制为表达式（Python中的表达式总是导致一个值，与不导致值的语句不同），因此我们还进行了语法检查，以防止模板用户编写`if something: x='hi'`，这将不会提供任何值来显示在渲染模板后的文本中。
 
 然后，由于我们希望用户能够查找到他们提供的表达式引用的任何变量（如`{$len(messages)}`），我们将`kwargs`提供给`eval`作为`locals`变量，以便任何引用变量的表达式都能正确解析。我们还提供一个空的全局上下文`{}`，以便我们不会无意中触及软件的任何全局变量。
 
@@ -406,7 +406,7 @@ return val, field_name
 
 虽然有人会认为通过组合多个`lambda`可以编写非常复杂的软件，但大多数人会认为语句会导致更可读的代码。
 
-因此，如果你需要处理非常复杂的文本，你应该使用功能齐全的模板引擎，并寻找像 Jinja、Kajiki 或 Mako 这样的解决方案。特别是对于生成 HTML，像 Kajiki 这样的解决方案，它还能够验证你的 HTML，非常方便，可以比我们的`TemplateFormatter`做得更多。
+因此，如果你需要处理非常复杂的文本，你应该使用功能齐全的模板引擎，并寻找像Jinja、Kajiki或Mako这样的解决方案。特别是对于生成HTML，像Kajiki这样的解决方案，它还能够验证你的HTML，非常方便，可以比我们的`TemplateFormatter`做得更多。
 
 # 拆分字符串并保留空格
 
@@ -426,7 +426,7 @@ return val, field_name
 
 # 工作原理...
 
-`shlex`是最初用于解析 Unix shell 代码的模块。因此，它支持通过引号保留短语。通常在 Unix 命令行中，由空格分隔的单词被提供为调用命令的参数，但如果你想将多个单词作为单个参数提供，可以使用引号将它们分组。
+`shlex`是最初用于解析Unix shell代码的模块。因此，它支持通过引号保留短语。通常在Unix命令行中，由空格分隔的单词被提供为调用命令的参数，但如果你想将多个单词作为单个参数提供，可以使用引号将它们分组。
 
 这正是`shlex`所复制的，为我们提供了一个可靠的驱动拆分的方法。我们只需要用双引号或单引号包裹我们想要保留的所有内容。
 
@@ -483,7 +483,7 @@ true he had not slept peacefully but probably all the more deeply because of tha
 {97: 98, 99: None}
 ```
 
-`97`，`98`和`99`是`'a'`，`'b'`和`'c'`的 Unicode 值：
+`97`，`98`和`99`是`'a'`，`'b'`和`'c'`的Unicode值：
 
 ```py
 >>> print(ord('a'), ord('b'), ord('c'))
@@ -529,7 +529,7 @@ true he had not slept peacefully but probably all the more deeply because of tha
 
 在许多情况下，一个单词可以用多种方式书写。例如，写"Über"和"Uber"的用户可能意思相同。如果你正在为博客实现标记等功能，你肯定不希望最后得到两个不同的标记。
 
-因此，在保存标签之前，您可能希望将它们标准化为普通的 ASCII 字符，以便它们最终被视为相同的标签。
+因此，在保存标签之前，您可能希望将它们标准化为普通的ASCII字符，以便它们最终被视为相同的标签。
 
 # 如何做...
 
@@ -571,9 +571,9 @@ unaccented_map = unaccented_map()
 
 但是我们如何知道所有这些映射呢？这些字符的一个有趣特性是它们可以被认为是带有附加符号的普通字符。就像`à`可以被认为是带有重音的`a`。
 
-Unicode 等价性知道这一点，并提供了多种写入被认为是相同字符的方法。我们真正感兴趣的是分解形式，这意味着将字符写成定义它的多个分隔符。例如，`é`将被分解为`0065`和`0301`，这是`e`和重音的代码点。
+Unicode等价性知道这一点，并提供了多种写入被认为是相同字符的方法。我们真正感兴趣的是分解形式，这意味着将字符写成定义它的多个分隔符。例如，`é`将被分解为`0065`和`0301`，这是`e`和重音的代码点。
 
-Python 提供了一种通过`unicodedata.decompostion`函数知道字符分解版本的方法：
+Python提供了一种通过`unicodedata.decompostion`函数知道字符分解版本的方法：
 
 ```py
 >>> import unicodedata
@@ -636,7 +636,7 @@ col1-2 | col2-2
 
 这两者都很难阅读，并且远非显示正确表格的样子。
 
-给定固定的列宽（20 个字符），我们希望我们的文本始终具有确切的长度，以便它不会导致错位的表格。
+给定固定的列宽（20个字符），我们希望我们的文本始终具有确切的长度，以便它不会导致错位的表格。
 
 # 如何做...
 
@@ -681,13 +681,13 @@ hello world          | this is a long text, | one more column
 
 我们必须解决三个问题来实现我们的`maketable`函数：
 
-+   长度小于 20 个字符的文本
++   长度小于20个字符的文本
 
-+   将长度超过 20 个字符的文本拆分为多行
++   将长度超过20个字符的文本拆分为多行
 
 +   填充列中缺少的行
 
-如果我们分解我们的`maketable`函数，它的第一件事就是将长度超过 20 个字符的文本拆分为多行：
+如果我们分解我们的`maketable`函数，它的第一件事就是将长度超过20个字符的文本拆分为多行：
 
 ```py
 [textwrap.wrap(col, COLSIZE) for col in cols]
@@ -701,13 +701,13 @@ hello world          | this is a long text, | one more column
  ['one more column']]
 ```
 
-然后我们需要确保每行长度小于 20 个字符的文本都扩展到恰好 20 个字符，以便我们的表保持形状，这是通过对每行应用`ljust`方法来实现的：
+然后我们需要确保每行长度小于20个字符的文本都扩展到恰好20个字符，以便我们的表保持形状，这是通过对每行应用`ljust`方法来实现的：
 
 ```py
 [[s.ljust(COLSIZE) for s in textwrap.wrap(col, COLSIZE)] for col in cols]
 ```
 
-将`ljust`与`textwrap`结合起来，就得到了我们想要的结果：包含每个 20 个字符的行的列的列表：
+将`ljust`与`textwrap`结合起来，就得到了我们想要的结果：包含每个20个字符的行的列的列表：
 
 ```py
 [['hello world         '], 

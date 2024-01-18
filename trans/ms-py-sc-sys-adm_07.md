@@ -1,8 +1,8 @@
 # 文本处理和正则表达式
 
-在本章中，我们将学习有关文本处理和正则表达式的知识。文本处理是创建或修改文本的过程。Python 有一个非常强大的名为正则表达式的库，可以执行搜索和提取数据等任务。您将学习如何在文件中执行此操作，还将学习读取和写入文件。
+在本章中，我们将学习有关文本处理和正则表达式的知识。文本处理是创建或修改文本的过程。Python有一个非常强大的名为正则表达式的库，可以执行搜索和提取数据等任务。您将学习如何在文件中执行此操作，还将学习读取和写入文件。
 
-我们将学习有关 Python 正则表达式和处理文本的`re`模块。我们将学习`re`模块的`match()`、`search()`、`findall()`和`sub()`函数。我们还将学习使用`textwrap`模块在 Python 中进行文本包装。最后，我们将学习有关 Unicode 字符。
+我们将学习有关Python正则表达式和处理文本的`re`模块。我们将学习`re`模块的`match()`、`search()`、`findall()`和`sub()`函数。我们还将学习使用`textwrap`模块在Python中进行文本包装。最后，我们将学习有关Unicode字符。
 
 在本章中，我们将涵盖以下主题：
 
@@ -10,11 +10,11 @@
 
 +   正则表达式
 
-+   Unicode 字符串
++   Unicode字符串
 
 # 文本包装
 
-在本节中，我们将学习有关`textwrap` Python 模块。该模块提供了执行所有工作的`TextWrapper`类。`textwrap`模块用于格式化和包装纯文本。该模块提供了五个主要函数：`wrap()`、`fill()`、`dedent()`、`indent()`和`shorten()`。我们现在将逐一学习这些函数。
+在本节中，我们将学习有关`textwrap` Python模块。该模块提供了执行所有工作的`TextWrapper`类。`textwrap`模块用于格式化和包装纯文本。该模块提供了五个主要函数：`wrap()`、`fill()`、`dedent()`、`indent()`和`shorten()`。我们现在将逐一学习这些函数。
 
 # wrap()函数
 
@@ -44,7 +44,7 @@ student@ubuntu:~/work$ python3 wrap_example.py
 ['Python is an interpreted high-', 'level programming language for', 'general-purpose programming.', 'Created by Guido van Rossum', 'and first released in', '1991, Python has a design', 'philosophy that emphasizes', 'code readability,  notably', 'using significant whitespace.']
 ```
 
-在前面的示例中，我们使用了 Python 的`textwrap`模块。首先，我们创建了一个名为`sample_string`的字符串。接下来，使用`TextWrapper`类指定了宽度。然后，使用`wrap`函数将字符串包装到宽度为`30`。然后，我们打印了这些行。
+在前面的示例中，我们使用了Python的`textwrap`模块。首先，我们创建了一个名为`sample_string`的字符串。接下来，使用`TextWrapper`类指定了宽度。然后，使用`wrap`函数将字符串包装到宽度为`30`。然后，我们打印了这些行。
 
 # fill()函数
 
@@ -160,9 +160,9 @@ student@ubuntu:~/work$ python3 shorten_example.py Python is an interpreted high-
 
 # 正则表达式
 
-在本节中，我们将学习 Python 中的正则表达式。正则表达式是一种专门的编程语言，它嵌入在 Python 中，并通过`re`模块提供给用户使用。我们可以定义要匹配的字符串集的规则。使用正则表达式，我们可以从文件、代码、文档、电子表格等中提取特定信息。
+在本节中，我们将学习Python中的正则表达式。正则表达式是一种专门的编程语言，它嵌入在Python中，并通过`re`模块提供给用户使用。我们可以定义要匹配的字符串集的规则。使用正则表达式，我们可以从文件、代码、文档、电子表格等中提取特定信息。
 
-在 Python 中，正则表达式表示为`re`，可以通过`re`模块导入。正则表达式支持四种功能：
+在Python中，正则表达式表示为`re`，可以通过`re`模块导入。正则表达式支持四种功能：
 
 +   标识符
 
@@ -175,6 +175,7 @@ student@ubuntu:~/work$ python3 shorten_example.py Python is an interpreted high-
 下表列出了标识符，并对每个标识符进行了描述：
 
 | **标识符** | **描述** |
+| --- | --- |
 | `\w` | 匹配字母数字字符，包括下划线(`_`) |
 | `\W` | 匹配非字母数字字符，不包括下划线(`_`) |
 | `\d` | 匹配数字 |
@@ -187,6 +188,7 @@ student@ubuntu:~/work$ python3 shorten_example.py Python is an interpreted high-
 下表列出了修饰符，并对每个修饰符进行了描述：
 
 | **修饰符** | **描述** |
+| --- | --- |
 | `^` | 匹配字符串的开头 |
 | `$` | 匹配字符串的结尾 |
 | `?` | 匹配`0`或`1` |
@@ -199,6 +201,7 @@ student@ubuntu:~/work$ python3 shorten_example.py Python is an interpreted high-
 下表列出了空白字符，并对每个字符进行了描述：
 
 | **字符** | **描述** |
+| --- | --- |
 | `\s` | 空格 |
 | `\t` | 制表符 |
 | `\n` | 换行 |
@@ -209,14 +212,15 @@ student@ubuntu:~/work$ python3 shorten_example.py Python is an interpreted high-
 下表列出了标志，并对每个标志进行了描述：
 
 | **标志** | **描述** |
+| --- | --- |
 | `re.IGNORECASE` | 不区分大小写匹配 |
 | `re.DOTALL` | 匹配包括换行符在内的任何字符 |
 | `re.MULTILINE` | 多行匹配 |
-| `Re.ASCII` | 仅使转义匹配 ASCII 字符 |
+| `Re.ASCII` | 仅使转义匹配ASCII字符 |
 
 现在我们将看一些正则表达式的示例。我们将学习`match()`、`search()`、`findall()`和`sub()`函数。
 
-要在 Python 中使用正则表达式，必须在脚本中导入`re`模块，以便能够使用正则表达式的所有函数和方法。
+要在Python中使用正则表达式，必须在脚本中导入`re`模块，以便能够使用正则表达式的所有函数和方法。
 
 现在我们将逐一学习这些功能。
 
@@ -248,7 +252,7 @@ student@ubuntu:~/work$ python3 re_match.py
 ('This is python tutorial. Do you', 'learning')
 ```
 
-在前面的脚本中，我们导入了`re`模块以在 Python 中使用正则表达式。然后我们创建了一个`str_line`字符串。接下来，我们创建了一个`obj`匹配对象，并将匹配模式的结果存储在其中。在这个例子中，`(.*) enjoy (.*?) .*`模式将打印`enjoy`关键字之前的所有内容，并且只会打印`enjoy`关键字之后的一个单词。接下来，我们使用了`match`对象的`groups()`方法。它将以元组的形式打印所有匹配的子字符串。因此，你将得到的输出是，`('This is python tutorial. Do you', 'learning')`。
+在前面的脚本中，我们导入了`re`模块以在Python中使用正则表达式。然后我们创建了一个`str_line`字符串。接下来，我们创建了一个`obj`匹配对象，并将匹配模式的结果存储在其中。在这个例子中，`(.*) enjoy (.*?) .*`模式将打印`enjoy`关键字之前的所有内容，并且只会打印`enjoy`关键字之后的一个单词。接下来，我们使用了`match`对象的`groups()`方法。它将以元组的形式打印所有匹配的子字符串。因此，你将得到的输出是，`('This is python tutorial. Do you', 'learning')`。
 
 # search()函数
 
@@ -277,7 +281,7 @@ import re pattern = ['programming', 'hello'] str_line = 'Python programming is f
 student@ubuntu:~/work$ python3 re_search.py Searching for programming in Python programming is fun Match found Searching for hello in Python programming is fun No match found
 ```
 
-在前面的例子中，我们使用了`match`对象的`search()`方法来查找`re`模式。在导入 re 模块之后，我们在列表中指定了模式。在那个列表中，我们写了两个字符串：`programming`和`hello`。接下来，我们创建了一个字符串：`Python programming is fun`。我们写了一个 for 循环，它将逐个检查指定的模式。如果找到匹配项，将执行`if`块。如果找不到匹配项，将执行`else`块。
+在前面的例子中，我们使用了`match`对象的`search()`方法来查找`re`模式。在导入re模块之后，我们在列表中指定了模式。在那个列表中，我们写了两个字符串：`programming`和`hello`。接下来，我们创建了一个字符串：`Python programming is fun`。我们写了一个for循环，它将逐个检查指定的模式。如果找到匹配项，将执行`if`块。如果找不到匹配项，将执行`else`块。
 
 # findall()函数
 
@@ -305,7 +309,7 @@ student@ubuntu:~/work$ python3 re_findall_example.py
 
 # sub()函数
 
-这是 re 模块中最重要的函数之一。`sub()`用于用指定的替换字符串替换`re`模式。它将用替换字符串替换`re`模式的所有出现。语法如下：
+这是re模块中最重要的函数之一。`sub()`用于用指定的替换字符串替换`re`模式。它将用替换字符串替换`re`模式的所有出现。语法如下：
 
 ```py
    re.sub(pattern, repl_str, string, count=0)
@@ -345,9 +349,9 @@ Replacing only one occurrence of Peter...
 Replaced:  Mary Piper picked a peck of pickled peppers. How many pickled peppers did Peter Piper pick?
 ```
 
-在上面的例子中，我们使用`sub()`来用指定的替换字符串替换`re`模式。我们用 Mary 替换了 Peter。所以，所有的 Peter 都将被替换为 Mary。接下来，我们还包括了`count`参数。我们提到了`count=1`：这意味着只有一个 Peter 的出现将被替换，其他的 Peter 的出现将保持不变。
+在上面的例子中，我们使用`sub()`来用指定的替换字符串替换`re`模式。我们用Mary替换了Peter。所以，所有的Peter都将被替换为Mary。接下来，我们还包括了`count`参数。我们提到了`count=1`：这意味着只有一个Peter的出现将被替换，其他的Peter的出现将保持不变。
 
-现在，我们将学习 re 模块的`subn()`函数。`subn()`函数与`sub()`的功能相同，但还有额外的功能。`subn()`函数将返回一个包含新字符串和执行的替换次数的元组。让我们看一个`subn()`的例子。创建一个`re_subn.py`脚本，并在其中写入以下内容：
+现在，我们将学习re模块的`subn()`函数。`subn()`函数与`sub()`的功能相同，但还有额外的功能。`subn()`函数将返回一个包含新字符串和执行的替换次数的元组。让我们看一个`subn()`的例子。创建一个`re_subn.py`脚本，并在其中写入以下内容：
 
 ```py
 import re
@@ -381,11 +385,11 @@ Original:  Peter Piper picked a peck of pickled peppers. How many pickled pepper
 Replaced:  ('Mary Piper picked a peck of pickled peppers. How many pickled peppers did Mary Piper pick?', 2)
 ```
 
-在上面的例子中，我们使用了`subn()`函数来替换 RE 模式。结果，我们得到了一个包含替换后的字符串和替换次数的元组。
+在上面的例子中，我们使用了`subn()`函数来替换RE模式。结果，我们得到了一个包含替换后的字符串和替换次数的元组。
 
-# Unicode 字符串
+# Unicode字符串
 
-在本节中，我们将学习如何在 Python 中打印 Unicode 字符串。Python 以一种非常简单的方式处理 Unicode 字符串。字符串类型实际上保存的是 Unicode 字符串，而不是字节序列。
+在本节中，我们将学习如何在Python中打印Unicode字符串。Python以一种非常简单的方式处理Unicode字符串。字符串类型实际上保存的是Unicode字符串，而不是字节序列。
 
 在您的系统中启动`python3`控制台，并开始编写以下内容：
 
@@ -405,7 +409,7 @@ Type "help", "copyright", "credits" or "license" for more information.
 
 >>> chinese = '\u4e16\u754c\u60a8\u597d!
 >>> chinese
-![](img/5088de25-a7d1-4cde-8821-03151178533d.png) ----- (Meaning “Hello world!”)
+![](assets/5088de25-a7d1-4cde-8821-03151178533d.png) ----- (Meaning “Hello world!”)
 >>>
 >>> s = '\u092E\u0941\u0902\u092C\u0908'
 >>> s
@@ -421,9 +425,9 @@ Type "help", "copyright", "credits" or "license" for more information.
 >>> 
 ```
 
-# Unicode 代码点
+# Unicode代码点
 
-在本节中，我们将学习 Unicode 代码点。Python 有一个强大的内置函数`ord()`，用于从给定字符获取 Unicode 代码点。因此，让我们看一个从字符获取 Unicode 代码点的例子，如下所示：
+在本节中，我们将学习Unicode代码点。Python有一个强大的内置函数`ord()`，用于从给定字符获取Unicode代码点。因此，让我们看一个从字符获取Unicode代码点的例子，如下所示：
 
 ```py
 >>> str1 = u'Office'
@@ -436,7 +440,7 @@ U+0066
 U+0069
 U+0063
 U+0065
->>> str2 = ![](img/89322582-8eec-4421-a610-31da6e1876bf.png)
+>>> str2 = ![](assets/89322582-8eec-4421-a610-31da6e1876bf.png)
 >>> for char in str2:
 ... print('U+%04x' % ord(char))
 ...
@@ -447,7 +451,7 @@ U+6587
 
 # 编码
 
-从 Unicode 代码点到字节字符串的转换称为编码。因此，让我们看一个将 Unicode 代码点编码的例子，如下所示：
+从Unicode代码点到字节字符串的转换称为编码。因此，让我们看一个将Unicode代码点编码的例子，如下所示：
 
 ```py
 >>> str = u'Office'
@@ -458,7 +462,7 @@ U+6587
 
 # 解码
 
-从字节字符串到 Unicode 代码点的转换称为解码。因此，让我们看一个将字节字符串解码为 Unicode 代码点的例子，如下所示：
+从字节字符串到Unicode代码点的转换称为解码。因此，让我们看一个将字节字符串解码为Unicode代码点的例子，如下所示：
 
 ```py
 >>> str = bytes('Office', encoding='utf-8')
@@ -467,9 +471,9 @@ U+6587
 'Office'
 ```
 
-# 避免 UnicodeDecodeError
+# 避免UnicodeDecodeError
 
-每当字节字符串无法解码为 Unicode 代码点时，就会发生`UnicodeDecodeError`。为了避免这种异常，我们可以在`decode`的`error`参数中传递`replace`、`backslashreplace`或`ignore`，如下所示：
+每当字节字符串无法解码为Unicode代码点时，就会发生`UnicodeDecodeError`。为了避免这种异常，我们可以在`decode`的`error`参数中传递`replace`、`backslashreplace`或`ignore`，如下所示：
 
 ```py
 >>> str = b"\xaf"
@@ -490,17 +494,17 @@ UnicodeDecodeError: 'utf-8' codec can't decode byte 0xaf in position 0: invalid 
 
 在本章中，我们学习了正则表达式，使用它可以定义一组我们想要匹配的字符串的规则。我们学习了`re`模块的四个函数：`match()`、`search()`、`findall()`和`sub()`。
 
-我们学习了`textwrap`模块，它用于格式化和包装纯文本。我们还学习了`textwrap`模块的`wrap()`、`fill()`、`dedent()`、`indent()`和`shorten()`函数。最后，我们学习了 Unicode 字符以及如何在 Python 中打印 Unicode 字符串。
+我们学习了`textwrap`模块，它用于格式化和包装纯文本。我们还学习了`textwrap`模块的`wrap()`、`fill()`、`dedent()`、`indent()`和`shorten()`函数。最后，我们学习了Unicode字符以及如何在Python中打印Unicode字符串。
 
-在下一章中，我们将学习如何使用 Python 对信息进行标准文档化和报告。
+在下一章中，我们将学习如何使用Python对信息进行标准文档化和报告。
 
 # 问题
 
-1.  Python 中的正则表达式是什么？
+1.  Python中的正则表达式是什么？
 
-1.  编写一个 Python 程序来检查一个字符串是否只包含某个字符集（在本例中为`a–z`、`A–Z`和`0–9`）。
+1.  编写一个Python程序来检查一个字符串是否只包含某个字符集（在本例中为`a–z`、`A–Z`和`0–9`）。
 
-1.  Python 中的哪个模块支持正则表达式？
+1.  Python中的哪个模块支持正则表达式？
 
 a) `re`
 
@@ -538,8 +542,8 @@ d) `'we are humans'`
 
 # 进一步阅读
 
-+   正则表达式：[`docs.python.org/3.2/library/re.html`](https://docs.python.org/3.2/library/re.html)
++   正则表达式：[https://docs.python.org/3.2/library/re.html](https://docs.python.org/3.2/library/re.html)
 
-+   Textwrap 文档：[`docs.python.org/3/library/textwrap.html`](https://docs.python.org/3/library/textwrap.html)
++   Textwrap文档：[https://docs.python.org/3/library/textwrap.html](https://docs.python.org/3/library/textwrap.html)
 
-+   Unicode 文档：[`docs.python.org/3/howto/unicode.html`](https://docs.python.org/3/howto/unicode.html)
++   Unicode文档：[https://docs.python.org/3/howto/unicode.html](https://docs.python.org/3/howto/unicode.html)

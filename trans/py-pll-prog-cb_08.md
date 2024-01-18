@@ -1,34 +1,34 @@
 # 异构计算
 
-本章将帮助我们通过 Python 语言探索**图形处理单元**（**GPU**）编程技术。GPU 的不断演进揭示了这些架构如何为执行复杂计算带来巨大好处。
+本章将帮助我们通过Python语言探索**图形处理单元**（**GPU**）编程技术。GPU的不断演进揭示了这些架构如何为执行复杂计算带来巨大好处。
 
-GPU 当然不能取代 CPU。然而，它们是一个结构良好的异构代码，能够利用两种类型处理器的优势，事实上，可以带来相当大的优势。
+GPU当然不能取代CPU。然而，它们是一个结构良好的异构代码，能够利用两种类型处理器的优势，事实上，可以带来相当大的优势。
 
-我们将研究异构编程的主要开发环境，即**PyCUDA**和**Numba**环境，用于**CUDA**和**PyOpenCL**环境，它们是 Python 版本的**OpenCL**框架。
+我们将研究异构编程的主要开发环境，即**PyCUDA**和**Numba**环境，用于**CUDA**和**PyOpenCL**环境，它们是Python版本的**OpenCL**框架。
 
 在本章中，我们将涵盖以下内容：
 
 +   理解异构计算
 
-+   理解 GPU 架构
++   理解GPU架构
 
-+   理解 GPU 编程
++   理解GPU编程
 
-+   处理 PyCUDA
++   处理PyCUDA
 
-+   使用 PyCUDA 进行异构编程
++   使用PyCUDA进行异构编程
 
-+   使用 PyCUDA 实现内存管理
++   使用PyCUDA实现内存管理
 
-+   介绍 PyOpenCL
++   介绍PyOpenCL
 
-+   使用 PyOpenCL 构建应用程序
++   使用PyOpenCL构建应用程序
 
-+   使用 PyOpenCL 进行逐元素表达
++   使用PyOpenCL进行逐元素表达
 
-+   评估 PyOpenCL 应用程序
++   评估PyOpenCL应用程序
 
-+   使用 Numba 进行 GPU 编程
++   使用Numba进行GPU编程
 
 让我们从详细了解异构计算开始。
 
@@ -36,99 +36,99 @@ GPU 当然不能取代 CPU。然而，它们是一个结构良好的异构代码
 
 多年来，对越来越复杂计算的更好性能的追求导致了在计算机使用方面采用新技术。其中之一称为*异构计算*，旨在以一种有利于时间计算效率的方式与不同（或异构）处理器合作。
 
-在这种情况下，主程序运行的处理器（通常是 CPU）被称为“主机”，而协处理器（例如 GPU）被称为“设备”。后者通常与主机物理上分离，并管理自己的内存空间，这也与主机的内存分开。
+在这种情况下，主程序运行的处理器（通常是CPU）被称为“主机”，而协处理器（例如GPU）被称为“设备”。后者通常与主机物理上分离，并管理自己的内存空间，这也与主机的内存分开。
 
-特别是，受到市场需求的影响，GPU 已经演变成高度并行的处理器，将 GPU 从图形渲染设备转变为可并行化和计算密集型的通用计算设备。
+特别是，受到市场需求的影响，GPU已经演变成高度并行的处理器，将GPU从图形渲染设备转变为可并行化和计算密集型的通用计算设备。
 
-事实上，除了在屏幕上渲染图形之外，使用 GPU 进行其他任务被称为异构计算。
+事实上，除了在屏幕上渲染图形之外，使用GPU进行其他任务被称为异构计算。
 
-最后，良好的 GPU 编程任务是充分利用图形卡提供的高级并行性和数学能力，并尽量减少它所带来的所有缺点，例如主机和设备之间的物理连接延迟。
+最后，良好的GPU编程任务是充分利用图形卡提供的高级并行性和数学能力，并尽量减少它所带来的所有缺点，例如主机和设备之间的物理连接延迟。
 
-# 理解 GPU 架构
+# 理解GPU架构
 
-GPU 是用于矢量处理图形数据以从多边形基元渲染图像的专用 CPU/核心。良好的 GPU 程序的任务是充分利用图形卡提供的高级并行性和数学能力，并尽量减少它所带来的所有缺点，例如主机和设备之间的物理连接延迟。
+GPU是用于矢量处理图形数据以从多边形基元渲染图像的专用CPU/核心。良好的GPU程序的任务是充分利用图形卡提供的高级并行性和数学能力，并尽量减少它所带来的所有缺点，例如主机和设备之间的物理连接延迟。
 
-GPU 具有高度并行的结构，可以以高效的方式处理大型数据集。这一特性与硬件性能程序的快速改进相结合，引起了科学界对使用 GPU 进行除了渲染图像之外的其他用途的关注。
+GPU具有高度并行的结构，可以以高效的方式处理大型数据集。这一特性与硬件性能程序的快速改进相结合，引起了科学界对使用GPU进行除了渲染图像之外的其他用途的关注。
 
-GPU（参见下图）由称为**流多处理器**（**SMs**）的多个处理单元组成，代表了并行逻辑的第一级别。事实上，每个 SM 同时独立地工作：
+GPU（参见下图）由称为**流多处理器**（**SMs**）的多个处理单元组成，代表了并行逻辑的第一级别。事实上，每个SM同时独立地工作：
 
-![](img/12715105-d093-49e4-8e05-cdb976bc755c.png)GPU 架构
+![](assets/12715105-d093-49e4-8e05-cdb976bc755c.png)GPU架构
 
-每个 SM 被分成一组**流处理器**（**SPs**），具有可以顺序运行线程的核心。SP 代表执行逻辑的最小单位和更细粒度的并行级别。
+每个SM被分成一组**流处理器**（**SPs**），具有可以顺序运行线程的核心。SP代表执行逻辑的最小单位和更细粒度的并行级别。
 
-为了最好地编程这种类型的架构，我们需要介绍 GPU 编程，这将在下一节中描述。
+为了最好地编程这种类型的架构，我们需要介绍GPU编程，这将在下一节中描述。
 
-# 理解 GPU 编程
+# 理解GPU编程
 
-GPU 已经变得越来越可编程。事实上，它们的指令集已经扩展，允许执行更多的任务。
+GPU已经变得越来越可编程。事实上，它们的指令集已经扩展，允许执行更多的任务。
 
-如今，在 GPU 上，可以执行经典的 CPU 编程指令，如循环和条件，内存访问和浮点计算。两个主要的独立显卡制造商——**NVIDIA**和**AMD**——已经开发了他们的 GPU 架构，为开发人员提供了相关的开发环境，允许使用不同的编程语言，包括 Python 进行编程。
+如今，在GPU上，可以执行经典的CPU编程指令，如循环和条件，内存访问和浮点计算。两个主要的独立显卡制造商——**NVIDIA**和**AMD**——已经开发了他们的GPU架构，为开发人员提供了相关的开发环境，允许使用不同的编程语言，包括Python进行编程。
 
-目前，开发人员在非纯粹与图形相关的环境中编程使用 GPU 的软件时，有宝贵的工具。在异构计算的主要开发环境中，我们有 CUDA 和 OpenCL。
+目前，开发人员在非纯粹与图形相关的环境中编程使用GPU的软件时，有宝贵的工具。在异构计算的主要开发环境中，我们有CUDA和OpenCL。
 
 现在让我们详细看一下它们。
 
 # CUDA
 
-CUDA 是 NVIDIA 的专有硬件架构，也是相关开发环境的名称。目前，CUDA 拥有数十万活跃开发人员，这表明在并行编程环境中对这项技术的兴趣正在增长。
+CUDA是NVIDIA的专有硬件架构，也是相关开发环境的名称。目前，CUDA拥有数十万活跃开发人员，这表明在并行编程环境中对这项技术的兴趣正在增长。
 
-CUDA 为最常用的编程语言提供扩展，包括 Python。最知名的 CUDA Python 扩展如下：
+CUDA为最常用的编程语言提供扩展，包括Python。最知名的CUDA Python扩展如下：
 
-+   PyCUDA ([`mathema.tician.de/software/PyCUDA/`](https://mathema.tician.de/software/pycuda/))
++   PyCUDA ([https://mathema.tician.de/software/PyCUDA/](https://mathema.tician.de/software/pycuda/))
 
-+   Numba ([`numba.pydata.org`](http://numba.pydata.org))
++   Numba ([http://numba.pydata.org](http://numba.pydata.org))
 
 我们将在接下来的章节中使用这些扩展。
 
 # OpenCL
 
-并行计算中的第二个主角是 OpenCL，与其 NVIDIA 对应物不同，它是开放标准，不仅可以与不同制造商的 GPU 一起使用，还可以与不同类型的微处理器一起使用。
+并行计算中的第二个主角是OpenCL，与其NVIDIA对应物不同，它是开放标准，不仅可以与不同制造商的GPU一起使用，还可以与不同类型的微处理器一起使用。
 
-然而，OpenCL 是一个更完整和多功能的解决方案，因为它没有 CUDA 的成熟和简单易用。
+然而，OpenCL是一个更完整和多功能的解决方案，因为它没有CUDA的成熟和简单易用。
 
-OpenCL Python 扩展是 PyOpenCL ([`mathema.tician.de/software/pyopencl/`](https://mathema.tician.de/software/pyopencl/))。
+OpenCL Python扩展是PyOpenCL ([https://mathema.tician.de/software/pyopencl/](https://mathema.tician.de/software/pyopencl/))。
 
-在接下来的章节中，将分析 CUDA 和 OpenCL 编程模型及其 Python 扩展，并附带一些有趣的应用示例。
+在接下来的章节中，将分析CUDA和OpenCL编程模型及其Python扩展，并附带一些有趣的应用示例。
 
-# 处理 PyCUDA
+# 处理PyCUDA
 
-PyCUDA 是 Andreas Klöckner 提供的一个绑定库，通过它可以访问 CUDA 的 Python API。其主要特点包括自动清理，与对象的生命周期相关联，从而防止泄漏，对模块和缓冲区的方便抽象，对驱动程序的完全访问以及内置的错误处理。它也非常轻巧。
+PyCUDA是Andreas Klöckner提供的一个绑定库，通过它可以访问CUDA的Python API。其主要特点包括自动清理，与对象的生命周期相关联，从而防止泄漏，对模块和缓冲区的方便抽象，对驱动程序的完全访问以及内置的错误处理。它也非常轻巧。
 
-该项目是根据 MIT 许可证开源的，文档非常清晰，而且在线可以找到许多不同的来源来提供帮助和支持。PyCUDA 的主要目的是让开发人员以最小的抽象从 Python 调用 CUDA，并支持 CUDA 元编程和模板化。
+该项目是根据MIT许可证开源的，文档非常清晰，而且在线可以找到许多不同的来源来提供帮助和支持。PyCUDA的主要目的是让开发人员以最小的抽象从Python调用CUDA，并支持CUDA元编程和模板化。
 
 # 准备就绪
 
-请按照 Andreas Klöckner 主页上的说明([`mathema.tician.de/software/pycuda/`](https://mathema.tician.de/software/pycuda/))安装 PyCUDA。
+请按照Andreas Klöckner主页上的说明([https://mathema.tician.de/software/pycuda/](https://mathema.tician.de/software/pycuda/))安装PyCUDA。
 
 下一个编程示例具有双重功能：
 
-+   第一步是验证 PyCUDA 是否正确安装。
++   第一步是验证PyCUDA是否正确安装。
 
-+   第二步是读取并打印 GPU 卡的特性。
++   第二步是读取并打印GPU卡的特性。
 
 # 如何做到...
 
 让我们按照以下步骤进行：
 
-1.  通过第一条指令，我们导入了 Python 驱动程序（即`pycuda.driver`）到我们 PC 上安装的 CUDA 库：
+1.  通过第一条指令，我们导入了Python驱动程序（即`pycuda.driver`）到我们PC上安装的CUDA库：
 
 ```py
 import pycuda.driver as drv
 ```
 
-1.  初始化 CUDA。还要注意，在`pycuda.driver`模块中的任何其他指令之前必须调用以下指令：
+1.  初始化CUDA。还要注意，在`pycuda.driver`模块中的任何其他指令之前必须调用以下指令：
 
 ```py
 drv.init()
 ```
 
-1.  枚举 PC 上的 GPU 卡数量：
+1.  枚举PC上的GPU卡数量：
 
 ```py
 print ("%d device(s) found." % drv.Device.count())
 ```
 
-1.  对于每个存在的 GPU 卡，打印设备的型号名称、计算能力和设备上的总内存量（以千字节为单位）：
+1.  对于每个存在的GPU卡，打印设备的型号名称、计算能力和设备上的总内存量（以千字节为单位）：
 
 ```py
 for ordinal i n range(drv.Device.count()): 
@@ -147,9 +147,9 @@ import pycuda.driver as drv
 drv.init() 
 ```
 
-`pycuda.driver`模块公开了 CUDA 编程接口的驱动级别，比 CUDA C 运行时级别的编程接口更灵活，并且具有一些运行时中不存在的功能。
+`pycuda.driver`模块公开了CUDA编程接口的驱动级别，比CUDA C运行时级别的编程接口更灵活，并且具有一些运行时中不存在的功能。
 
-然后，它循环进入`drv.Device.count()`函数，并且对于每个 GPU 卡，都会打印出卡的名称和其主要特征（计算能力和总内存）：
+然后，它循环进入`drv.Device.count()`函数，并且对于每个GPU卡，都会打印出卡的名称和其主要特征（计算能力和总内存）：
 
 ```py
 print ("Device #%d: %s" % (ordinal, dev.name()))  
@@ -163,7 +163,7 @@ print ("Total Memory: %s KB" % (dev.total_memory()//(1024)))
 C:\>python dealingWithPycuda.py
 ```
 
-完成后，安装的 GPU 将显示在屏幕上，如下例所示：
+完成后，安装的GPU将显示在屏幕上，如下例所示：
 
 ```py
 1 device(s) found.
@@ -174,41 +174,41 @@ Total Memory: 1048576 KB
 
 # 还有更多...
 
-CUDA 编程模型（因此也包括 Python 包装器 PyCUDA）是通过对 C 语言标准库的特定扩展来实现的。这些扩展就像在标准 C 库中的函数调用一样创建，允许简单地处理包括主机和设备代码在内的异构编程模型。这两个逻辑部分的管理由`nvcc`编译器完成。
+CUDA编程模型（因此也包括Python包装器PyCUDA）是通过对C语言标准库的特定扩展来实现的。这些扩展就像在标准C库中的函数调用一样创建，允许简单地处理包括主机和设备代码在内的异构编程模型。这两个逻辑部分的管理由`nvcc`编译器完成。
 
 以下是其简要描述：
 
 1.  *将*设备代码与主机代码分开。
 
-1.  *调用*默认编译器（例如 GCC）来编译主机代码。
+1.  *调用*默认编译器（例如GCC）来编译主机代码。
 
 1.  *构建*设备代码为二进制形式（`.cubin`对象）或汇编形式（`PTX`对象）：
 
-![](img/6c16c259-1075-4eb4-bf70-ad0b6ac78a12.png)
+![](assets/6c16c259-1075-4eb4-bf70-ad0b6ac78a12.png)
 
-PyCUDA 执行模型
+PyCUDA执行模型
 
-PyCUDA 在执行期间执行所有前述步骤，与 CUDA 应用程序相比，这会增加应用程序的加载时间。
+PyCUDA在执行期间执行所有前述步骤，与CUDA应用程序相比，这会增加应用程序的加载时间。
 
 # 另请参阅
 
-+   CUDA 编程指南可在此处找到：[`docs.nvidia.com/CUDA/CUDA-c-programming-guide/`](https://docs.nvidia.com/cuda/cuda-c-programming-guide/)
++   CUDA编程指南可在此处找到：[https://docs.nvidia.com/CUDA/CUDA-c-programming-guide/](https://docs.nvidia.com/cuda/cuda-c-programming-guide/)
 
-+   PyCUDA 文档可在此处找到：[`documen.tician.de/PyCUDA/`](https://documen.tician.de/pycuda/)
++   PyCUDA文档可在此处找到：[https://documen.tician.de/PyCUDA/](https://documen.tician.de/pycuda/)
 
-# 使用 PyCUDA 进行异构编程
+# 使用PyCUDA进行异构编程
 
-CUDA 编程模型（因此也包括 PyCUDA 的编程模型）旨在在 CPU 和 GPU 上共同执行软件应用程序，以便在 CPU 上执行应用程序的顺序部分，并在 GPU 上执行可以并行化的部分。不幸的是，计算机并不足够聪明，无法自主地理解如何分配代码，因此开发人员需要指示哪些部分应由 CPU 和 GPU 运行。
+CUDA编程模型（因此也包括PyCUDA的编程模型）旨在在CPU和GPU上共同执行软件应用程序，以便在CPU上执行应用程序的顺序部分，并在GPU上执行可以并行化的部分。不幸的是，计算机并不足够聪明，无法自主地理解如何分配代码，因此开发人员需要指示哪些部分应由CPU和GPU运行。
 
-事实上，CUDA 应用程序由串行组件和并行组件（称为内核）组成，串行组件由系统 CPU 或主机执行，而并行组件由 GPU 或设备执行。
+事实上，CUDA应用程序由串行组件和并行组件（称为内核）组成，串行组件由系统CPU或主机执行，而并行组件由GPU或设备执行。
 
 内核被定义为*网格*，反过来可以分解为顺序分配给各个多处理器的块，从而实现*粗粒度并行*。在块内部，有一个基本的计算单元，线程，具有非常*细粒度的并行性*。一个线程只能属于一个块，并且由整个内核的唯一索引标识。为了方便起见，可以使用二维索引来表示块，三维索引来表示线程。内核之间是顺序执行的。另一方面，块和线程是并行执行的。运行的线程数量（并行）取决于它们在块中的组织以及它们对资源的请求，与设备中可用的资源相比。
 
-要可视化先前表达的概念，请参考[`sites.google.com/site/computationvisualization/programming/cuda/article1`](https://sites.google.com/site/computationvisualization/programming/cuda/article1)中的（*图 5*）。
+要可视化先前表达的概念，请参考[https://sites.google.com/site/computationvisualization/programming/cuda/article1](https://sites.google.com/site/computationvisualization/programming/cuda/article1)中的（*图5*）。
 
-块的设计旨在保证可伸缩性。事实上，如果您有一个具有两个多处理器的架构和另一个具有四个多处理器的架构，那么 GPU 应用程序可以在两个架构上执行，显然具有不同的时间和并行级别。
+块的设计旨在保证可伸缩性。事实上，如果您有一个具有两个多处理器的架构和另一个具有四个多处理器的架构，那么GPU应用程序可以在两个架构上执行，显然具有不同的时间和并行级别。
 
-根据 PyCUDA 编程模型执行异构程序的结构如下：
+根据PyCUDA编程模型执行异构程序的结构如下：
 
 1.  *在*主机上分配内存。
 
@@ -220,15 +220,15 @@ CUDA 编程模型（因此也包括 PyCUDA 的编程模型）旨在在 CPU 和 G
 
 1.  *释放*在设备上分配的内存。
 
-以下图表显示了根据 PyCUDA 编程模型的程序执行流程：
+以下图表显示了根据PyCUDA编程模型的程序执行流程：
 
-![](img/d58c37c0-992d-4f12-b1e3-b152038611bc.png)PyCUDA 编程模型
+![](assets/d58c37c0-992d-4f12-b1e3-b152038611bc.png)PyCUDA编程模型
 
-在下一个例子中，我们将通过一个具体的编程方法来构建 PyCUDA 应用程序。
+在下一个例子中，我们将通过一个具体的编程方法来构建PyCUDA应用程序。
 
 # 如何做...
 
-为了展示 PyCUDA 编程模型，我们考虑需要将 5×5 矩阵的所有元素加倍的任务：
+为了展示PyCUDA编程模型，我们考虑需要将5×5矩阵的所有元素加倍的任务：
 
 1.  我们导入了执行所需的库：
 
@@ -239,7 +239,7 @@ from PyCUDA.compiler import SourceModule
 import numpy 
 ```
 
-1.  我们导入的`numpy`库允许我们构建问题的输入，即一个 5×5 矩阵，其值是随机选择的：
+1.  我们导入的`numpy`库允许我们构建问题的输入，即一个5×5矩阵，其值是随机选择的：
 
 ```py
 a = numpy.random.randn(5,5) 
@@ -258,7 +258,7 @@ a_gpu = cuda.mem_alloc(a.nbytes)
 cuda.memcpy_htod(a_gpu, a) 
 ```
 
-1.  在设备内部，`doubleMatrix`内核函数将运行。它的目的是将输入矩阵的每个元素乘以`2`。正如你所看到的，`doubleMatrix`函数的语法类似于 C 语言，而`SourceModule`语句是 NVIDIA 编译器（`nvcc`编译器）的真正指令，它创建了一个模块，这个模块只包含`doubleMatrix`函数：
+1.  在设备内部，`doubleMatrix`内核函数将运行。它的目的是将输入矩阵的每个元素乘以`2`。正如你所看到的，`doubleMatrix`函数的语法类似于C语言，而`SourceModule`语句是NVIDIA编译器（`nvcc`编译器）的真正指令，它创建了一个模块，这个模块只包含`doubleMatrix`函数：
 
 ```py
 mod = SourceModule(""" 
@@ -274,7 +274,7 @@ mod = SourceModule("""
 func = mod.get_function("doubles_matrix") 
 ```
 
-1.  最后，我们运行内核函数。为了成功地在设备上执行内核函数，CUDA 用户必须指定内核的输入和执行线程块的大小。在下面的情况中，输入是先前复制到设备上的`a_gpu`矩阵，而线程块的维度是`(5,5,1)`：
+1.  最后，我们运行内核函数。为了成功地在设备上执行内核函数，CUDA用户必须指定内核的输入和执行线程块的大小。在下面的情况中，输入是先前复制到设备上的`a_gpu`矩阵，而线程块的维度是`(5,5,1)`：
 
 ```py
 func(a_gpu, block=(5,5,1)) 
@@ -311,9 +311,9 @@ import PyCUDA.autoinit
 from PyCUDA.compiler import SourceModule 
 ```
 
-特别是，`autoinit`导入自动识别我们系统上可用于执行的 GPU，而`SourceModule`是 NVIDIA 编译器（`nvcc`）的指令，允许我们识别必须编译并上传到设备的对象。
+特别是，`autoinit`导入自动识别我们系统上可用于执行的GPU，而`SourceModule`是NVIDIA编译器（`nvcc`）的指令，允许我们识别必须编译并上传到设备的对象。
 
-然后，我们使用`numpy`库构建了 5×5 输入矩阵：
+然后，我们使用`numpy`库构建了5×5输入矩阵：
 
 ```py
 import numpy 
@@ -365,9 +365,9 @@ func = mod.get_function("doubleMatrix ")
 func(a_gpu, block = (5, 5, 1)) 
 ```
 
-`block = (5, 5, 1)`告诉我们，我们正在调用一个具有`a_gpu`线性化输入矩阵和大小为`5`的单个线程块的内核函数（即在*x*方向上`*5*`个线程，在*y*方向上`*5*`个线程，在*z*方向上 1 个线程，总共*16*个线程）。请注意，每个线程执行相同的内核代码（总共 25 个线程）。
+`block = (5, 5, 1)`告诉我们，我们正在调用一个具有`a_gpu`线性化输入矩阵和大小为`5`的单个线程块的内核函数（即在*x*方向上`*5*`个线程，在*y*方向上`*5*`个线程，在*z*方向上1个线程，总共*16*个线程）。请注意，每个线程执行相同的内核代码（总共25个线程）。
 
-在 GPU 设备中计算后，我们使用数组来存储结果：
+在GPU设备中计算后，我们使用数组来存储结果：
 
 ```py
 a_doubled = numpy.empty_like(a) 
@@ -399,19 +399,19 @@ DOUBLED MATRIX AFTER PyCUDA EXECUTION
 
 # 还有更多...
 
-使得 CUDA 的关键特性与其他并行模型（通常在 CPU 上使用）根本不同的是，为了高效，它需要成千上万的线程处于活动状态。这是由 GPU 的典型结构实现的，它使用轻量级线程，并且还允许非常快速和高效地创建和修改执行上下文。
+使得CUDA的关键特性与其他并行模型（通常在CPU上使用）根本不同的是，为了高效，它需要成千上万的线程处于活动状态。这是由GPU的典型结构实现的，它使用轻量级线程，并且还允许非常快速和高效地创建和修改执行上下文。
 
-请注意，线程的调度直接与 GPU 架构及其固有的并行性相关联。事实上，一块线程分配给一个单个 SM。在这里，线程进一步分成称为 warp 的组。属于同一 warp 的线程由*warp 调度程序*管理。为了充分利用 SM 的固有并行性，同一 warp 的线程必须执行相同的指令。如果不满足这个条件，我们就称为*线程分歧*。
+请注意，线程的调度直接与GPU架构及其固有的并行性相关联。事实上，一块线程分配给一个单个SM。在这里，线程进一步分成称为warp的组。属于同一warp的线程由*warp调度程序*管理。为了充分利用SM的固有并行性，同一warp的线程必须执行相同的指令。如果不满足这个条件，我们就称为*线程分歧*。
 
 # 另请参阅
 
-+   有关使用 PyCUDA 的完整教程，请访问以下网站：[`documen.tician.de/pycuda/tutorial.html`](https://documen.tician.de/pycuda/tutorial.html)。
++   有关使用PyCUDA的完整教程，请访问以下网站：[https://documen.tician.de/pycuda/tutorial.html](https://documen.tician.de/pycuda/tutorial.html)。
 
-+   在 Windows 10 上安装 PyCUDA，请查看以下链接：[`github.com/kdkoadd/Win10-PyCUDA-Install`](https://github.com/kdkoadd/Win10-PyCUDA-Install)。
++   在Windows 10上安装PyCUDA，请查看以下链接：[https://github.com/kdkoadd/Win10-PyCUDA-Install](https://github.com/kdkoadd/Win10-PyCUDA-Install)。
 
-# 使用 PyCUDA 实现内存管理
+# 使用PyCUDA实现内存管理
 
-PyCUDA 程序应遵守由 SM 的结构和内部组织所规定的对线程性能的限制。事实上，GPU 提供的各种类型的内存的知识和正确使用对于实现最大效率至关重要。在那些启用了 CUDA 使用的 GPU 卡中，有四种类型的内存，如下所示：
+PyCUDA程序应遵守由SM的结构和内部组织所规定的对线程性能的限制。事实上，GPU提供的各种类型的内存的知识和正确使用对于实现最大效率至关重要。在那些启用了CUDA使用的GPU卡中，有四种类型的内存，如下所示：
 
 +   **寄存器**：每个线程被分配一个内存寄存器，只有分配的线程才能访问，即使线程属于同一块。
 
@@ -421,13 +421,13 @@ PyCUDA 程序应遵守由 SM 的结构和内部组织所规定的对线程性能
 
 +   **全局内存**：网格中的所有线程，因此所有内核都可以访问全局内存。此外，数据的持久性与常量内存完全相同：
 
-![](img/b43f49cb-fad9-4e64-8752-610540f62d30.png)
+![](assets/b43f49cb-fad9-4e64-8752-610540f62d30.png)
 
-GPU 内存模型
+GPU内存模型
 
 # 准备工作
 
-为了获得最佳性能，PyCUDA 程序必须充分利用每种类型的内存。特别是，它必须充分利用共享内存，最小化对全局内存的访问。
+为了获得最佳性能，PyCUDA程序必须充分利用每种类型的内存。特别是，它必须充分利用共享内存，最小化对全局内存的访问。
 
 为了做到这一点，问题域通常被细分，以便一个线程块能够在一个封闭的数据子集中执行其处理。这样，操作单个块的线程将共同在同一个共享内存区域上工作，优化访问。
 
@@ -474,7 +474,7 @@ import numpy as np
 from pycuda import driver, compiler, gpuarray, tools 
 ```
 
-1.  然后，初始化 GPU 设备：
+1.  然后，初始化GPU设备：
 
 ```py
 import pycuda.autoinit 
@@ -498,7 +498,7 @@ __global__ void MatrixMulKernel(float *a, float *b, float *c)
 }""" 
 ```
 
-1.  以下参数将用于设置矩阵的维度。在这种情况下，大小为 5×5：
+1.  以下参数将用于设置矩阵的维度。在这种情况下，大小为5×5：
 
 ```py
 MATRIX_SIZE = 5
@@ -524,7 +524,7 @@ a_gpu = gpuarray.to_gpu(a_cpu)
 b_gpu = gpuarray.to_gpu(b_cpu) 
 ```
 
-1.  我们在 GPU 上分配了一个内存区域，大小与两个矩阵的乘积得到的输出矩阵相同。在这种情况下，得到的矩阵`c_gpu`的大小为 5×5：
+1.  我们在GPU上分配了一个内存区域，大小与两个矩阵的乘积得到的输出矩阵相同。在这种情况下，得到的矩阵`c_gpu`的大小为5×5：
 
 ```py
 c_gpu = gpuarray.empty((MATRIX_SIZE, MATRIX_SIZE), np.float32) 
@@ -572,7 +572,7 @@ print ("Matrix C (GPU):")
 print (c_gpu.get()) 
 ```
 
-1.  为了检查在 GPU 上执行的计算的有效性，我们比较了两种实现的结果，一种是在主机设备（CPU）上执行的，另一种是在设备（GPU）上执行的。为此，我们使用了`numpy allclose`指令，它验证了两个逐元素数组在容差为`1e-05`的情况下是否相等：
+1.  为了检查在GPU上执行的计算的有效性，我们比较了两种实现的结果，一种是在主机设备（CPU）上执行的，另一种是在设备（GPU）上执行的。为此，我们使用了`numpy allclose`指令，它验证了两个逐元素数组在容差为`1e-05`的情况下是否相等：
 
 ```py
 np.allclose(c_cpu, c_gpu.get()) 
@@ -580,7 +580,7 @@ np.allclose(c_cpu, c_gpu.get())
 
 # 它是如何工作的...
 
-考虑 PyCUDA 编程工作流程。准备输入矩阵、输出矩阵以及存储结果的位置：
+考虑PyCUDA编程工作流程。准备输入矩阵、输出矩阵以及存储结果的位置：
 
 ```py
 MATRIX_SIZE = 5 
@@ -589,7 +589,7 @@ b_cpu = np.random.randn(MATRIX_SIZE, MATRIX_SIZE).astype(np.float32)
 c_cpu = np.dot(a_cpu, b_cpu) 
 ```
 
-然后，我们使用`gpuarray.to_gpu()` PyCUDA 函数将这些矩阵传输到 GPU 设备：
+然后，我们使用`gpuarray.to_gpu()` PyCUDA函数将这些矩阵传输到GPU设备：
 
 ```py
 a_gpu = gpuarray.to_gpu(a_cpu)  
@@ -614,11 +614,11 @@ __global__ void MatrixMulKernel(float *a, float *b, float *c){
 
 `threadIdx.x`和`threadIdy.y`是坐标，允许在二维块网格中识别线程。请注意，网格块内的线程执行相同的内核代码，但是在不同的数据片段上。如果我们将并行版本与顺序版本进行比较，那么我们立即注意到循环索引*i*和*j*已被`threadIdx.x`和`threadIdx.y`索引所取代。
 
-这意味着在并行版本中，我们只会有一个循环迭代。实际上，`MatrixMulKernel`内核将在一个 5×5 并行线程的网格上执行。
+这意味着在并行版本中，我们只会有一个循环迭代。实际上，`MatrixMulKernel`内核将在一个5×5并行线程的网格上执行。
 
 这个条件在下图中表示：
 
-![](img/65aa99d1-d699-4329-883c-543cb7ef15de.png)
+![](assets/65aa99d1-d699-4329-883c-543cb7ef15de.png)
 
 示例的网格和线程块组织
 
@@ -661,7 +661,7 @@ TRUE
 
 # 还有更多...
 
-在单线程块中，共享内存中分配的数据的可见性有限。很容易看出，PyCUDA 编程模型适用于特定类别的应用程序。
+在单线程块中，共享内存中分配的数据的可见性有限。很容易看出，PyCUDA编程模型适用于特定类别的应用程序。
 
 特别是这些应用程序必须具备的特征涉及到许多数学运算，具有高度的数据并行性（即在大量数据上重复相同操作的序列）。
 
@@ -669,33 +669,33 @@ TRUE
 
 # 另请参阅
 
-+   可以在以下链接找到更多使用 PyCUDA 的示例：[`github.com/zamorays/miniCursoPycuda`](https://github.com/zamorays/miniCursoPycuda)。
++   可以在以下链接找到更多使用PyCUDA的示例：[https://github.com/zamorays/miniCursoPycuda](https://github.com/zamorays/miniCursoPycuda)。
 
-# 介绍 PyOpenCL
+# 介绍PyOpenCL
 
-PyOpenCL 是 PyCUDA 的姊妹项目。它是一个绑定库，可以从 Python 完全访问 OpenCL 的 API，也是由 Andreas Klöckner 开发的。它具有许多与 PyCUDA 相同的概念，包括对超出范围对象的清理、对数据结构的部分抽象和错误处理，而且开销很小。该项目在 MIT 许可下可用；其文档非常好，网上可以找到大量指南和教程。
+PyOpenCL是PyCUDA的姊妹项目。它是一个绑定库，可以从Python完全访问OpenCL的API，也是由Andreas Klöckner开发的。它具有许多与PyCUDA相同的概念，包括对超出范围对象的清理、对数据结构的部分抽象和错误处理，而且开销很小。该项目在MIT许可下可用；其文档非常好，网上可以找到大量指南和教程。
 
-PyOpenCL 的主要重点是提供 Python 和 OpenCL 之间的轻量级连接，但它还包括对模板和元程序的支持。PyOpenCL 程序的流程几乎与 OpenCL 的 C 或 C++程序完全相同。主机程序准备调用设备程序，启动它，然后等待结果。
+PyOpenCL的主要重点是提供Python和OpenCL之间的轻量级连接，但它还包括对模板和元程序的支持。PyOpenCL程序的流程几乎与OpenCL的C或C++程序完全相同。主机程序准备调用设备程序，启动它，然后等待结果。
 
 # 准备工作
 
-PyOpenCL 安装的主要参考资料是 Andreas Klöckner 的主页：[`mathema.tician.de/software/pyopencl/`](https://mathema.tician.de/software/pyopencl/)。
+PyOpenCL安装的主要参考资料是Andreas Klöckner的主页：[https://mathema.tician.de/software/pyopencl/](https://mathema.tician.de/software/pyopencl/)。
 
-如果您正在使用 Anaconda，则建议执行以下步骤：
+如果您正在使用Anaconda，则建议执行以下步骤：
 
-1.  从以下链接安装最新的 Anaconda 发行版，其中包括 Python 3.7：[`www.anaconda.com/distribution/#download-section`](https://www.anaconda.com/distribution/#download-section)。对于本节，已安装了 Windows Installer 的 Anaconda 2019.07。
+1.  从以下链接安装最新的Anaconda发行版，其中包括Python 3.7：[https://www.anaconda.com/distribution/#download-section](https://www.anaconda.com/distribution/#download-section)。对于本节，已安装了Windows Installer的Anaconda 2019.07。
 
-1.  从此链接获取 PyOpenCL 预构建二进制文件，链接为：[`www.lfd.uci.edu/~gohlke/pythonlibs/`](https://www.lfd.uci.edu/~gohlke/pythonlibs/)。选择正确的 OS 和 CPython 版本组合。在这里，我们使用`pyopencl-2019.1+cl12-cp37-cp37m-win_amd64.whl`。
+1.  从此链接获取PyOpenCL预构建二进制文件，链接为：[https://www.lfd.uci.edu/~gohlke/pythonlibs/](https://www.lfd.uci.edu/~gohlke/pythonlibs/)。选择正确的OS和CPython版本组合。在这里，我们使用`pyopencl-2019.1+cl12-cp37-cp37m-win_amd64.whl`。
 
-1.  使用`pip`来安装之前的软件包。只需在 Anaconda Prompt 中输入以下内容：
+1.  使用`pip`来安装之前的软件包。只需在Anaconda Prompt中输入以下内容：
 
 ```py
 **(base) C:\> pip install <directory>\pyopencl-2019.1+cl12-cp37-cp37m-win_amd64.whl** 
 ```
 
-`<directory>`是 PyOpenCL 软件包所在的文件夹。
+`<directory>`是PyOpenCL软件包所在的文件夹。
 
-此外，以下符号表示我们正在使用 Anaconda Prompt：
+此外，以下符号表示我们正在使用Anaconda Prompt：
 
 ```py
 **(base) C:\>**
@@ -703,7 +703,7 @@ PyOpenCL 安装的主要参考资料是 Andreas Klöckner 的主页：[`mathema.
 
 # 操作步骤如下...
 
-在以下示例中，我们将使用 PyOpenCL 的一个函数来列举它将运行的 GPU 的特性。
+在以下示例中，我们将使用PyOpenCL的一个函数来列举它将运行的GPU的特性。
 
 我们实现的代码非常简单和逻辑：
 
@@ -713,7 +713,7 @@ PyOpenCL 安装的主要参考资料是 Andreas Klöckner 的主页：[`mathema.
 import pyopencl as cl
 ```
 
-1.  我们构建一个函数，其输出将为我们提供正在使用的 GPU 硬件的特征：
+1.  我们构建一个函数，其输出将为我们提供正在使用的GPU硬件的特征：
 
 ```py
 def print_device_info() :
@@ -830,35 +830,35 @@ Platform - Profile: FULL_PROFILE
 
 # 还有更多...
 
-OpenCL 目前由 Khronos Group 管理，这是一个非营利性公司联盟，他们合作定义了这个（以及许多其他）标准的规范和符合参数，用于为每种类型的平台创建特定于 OpenCL 的驱动程序。
+OpenCL目前由Khronos Group管理，这是一个非营利性公司联盟，他们合作定义了这个（以及许多其他）标准的规范和符合参数，用于为每种类型的平台创建特定于OpenCL的驱动程序。
 
 这些驱动程序还提供了用于编译使用内核语言编写的程序的函数：这些函数被转换为通常是特定于供应商的某种形式的中间语言中的程序，然后在参考架构上执行。
 
-有关 OpenCL 的更多信息可以在以下链接找到：[`www.khronos.org/registry/OpenCL/`](https://www.khronos.org/registry/OpenCL/)。
+有关OpenCL的更多信息可以在以下链接找到：[https://www.khronos.org/registry/OpenCL/](https://www.khronos.org/registry/OpenCL/)。
 
 # 另请参阅
 
-+   PyOpenCL 文档可在此处找到：[`documen.tician.de/pyopencl/`](https://documen.tician.de/pyopencl/)。
++   PyOpenCL文档可在此处找到：[https://documen.tician.de/pyopencl/](https://documen.tician.de/pyopencl/)。
 
-+   PyOpenCL 的最佳介绍之一，即使有点过时，可以在以下链接找到：[`www.drdobbs.com/open-source/easy-opencl-with-python/240162614`](http://www.drdobbs.com/open-source/easy-opencl-with-python/240162614)。
++   PyOpenCL的最佳介绍之一，即使有点过时，可以在以下链接找到：[http://www.drdobbs.com/open-source/easy-opencl-with-python/240162614](http://www.drdobbs.com/open-source/easy-opencl-with-python/240162614)。
 
-# 使用 PyOpenCL 构建应用程序
+# 使用PyOpenCL构建应用程序
 
-为 PyOpenCL 构建程序的第一步是编写主机应用程序。这是在 CPU 上执行的，其任务是管理可能在 GPU 卡（即设备）上执行内核。
+为PyOpenCL构建程序的第一步是编写主机应用程序。这是在CPU上执行的，其任务是管理可能在GPU卡（即设备）上执行内核。
 
-*内核*是可执行代码的基本单位，类似于 C 函数。它可以是数据并行或任务并行。然而，PyOpenCL 的基石是利用并行性。
+*内核*是可执行代码的基本单位，类似于C函数。它可以是数据并行或任务并行。然而，PyOpenCL的基石是利用并行性。
 
 一个基本概念是*程序*，它是一组内核和其他函数，类似于动态库。因此，我们可以将内核中的指令分组，并将不同的内核分组到一个程序中。
 
 程序可以从应用程序中调用。我们有执行队列，指示内核执行的顺序。但是，在某些情况下，这些可以在不遵循原始顺序的情况下启动。
 
-最后，我们可以列出使用 PyOpenCL 开发应用程序的基本元素：
+最后，我们可以列出使用PyOpenCL开发应用程序的基本元素：
 
-+   **设备**：这标识了内核代码要在其中执行的硬件。请注意，PyOpenCL 应用程序可以在 CPU 和 GPU 板上运行（以及 PyCUDA），还可以在嵌入式设备（如**可编程门阵列**（**FPGAs**））上运行。
++   **设备**：这标识了内核代码要在其中执行的硬件。请注意，PyOpenCL应用程序可以在CPU和GPU板上运行（以及PyCUDA），还可以在嵌入式设备（如**可编程门阵列**（**FPGAs**））上运行。
 
 +   **程序**：这是一组内核，其任务是选择在设备上运行哪个内核。
 
-+   **内核**：这是要在设备上执行的代码。内核是类似 C 的函数，这意味着它可以在支持 PyOpenCL 驱动程序的任何设备上编译。
++   **内核**：这是要在设备上执行的代码。内核是类似C的函数，这意味着它可以在支持PyOpenCL驱动程序的任何设备上编译。
 
 +   **命令队列**：这在设备上对内核的执行进行排序。
 
@@ -866,15 +866,15 @@ OpenCL 目前由 Khronos Group 管理，这是一个非营利性公司联盟，�
 
 以下图表显示了此数据结构如何在主机应用程序中工作：
 
-![](img/60b38941-28e9-4b2f-a920-d59c4f426b1e.png)
+![](assets/60b38941-28e9-4b2f-a920-d59c4f426b1e.png)
 
-PyOpenCL 编程模型
+PyOpenCL编程模型
 
 再次，我们观察到一个程序可以包含更多的函数在设备上运行，并且每个内核仅封装了程序中的单个函数。
 
 # 如何做到这一点...
 
-在以下示例中，我们展示了使用 PyOpenCL 构建应用程序的基本步骤：要执行的任务是两个向量的求和。为了有一个可读的输出，我们将考虑每个具有 100 个元素的两个向量：结果向量的每个第 i 个元素将等于**`vector_a`**的第 i 个元素加上**`vector_b`**的第 i 个元素的和：
+在以下示例中，我们展示了使用PyOpenCL构建应用程序的基本步骤：要执行的任务是两个向量的求和。为了有一个可读的输出，我们将考虑每个具有100个元素的两个向量：结果向量的每个第i个元素将等于**`vector_a`**的第i个元素加上**`vector_b`**的第i个元素的和：
 
 1.  让我们从导入所有必要的库开始：
 
@@ -980,7 +980,7 @@ vector_a = np.random.randint(vector_dimension, size= vector_dimension)
 vector_b = np.random.randint(vector_dimension, size= vector_dimension) 
 ```
 
-每个向量包含 100 个整数项，这些项是通过`numpy`函数随机选择的：
+每个向量包含100个整数项，这些项是通过`numpy`函数随机选择的：
 
 ```py
 np.random.randint(max integer , size of the vector) 
@@ -992,13 +992,13 @@ np.random.randint(max integer , size of the vector)
 platform = cl.get_platforms()[1] 
 ```
 
-然后，选择相应的设备。这里，`platform.get_devices()[0]`对应于 Intel(R) HD Graphics 5500 显卡：
+然后，选择相应的设备。这里，`platform.get_devices()[0]`对应于Intel(R) HD Graphics 5500显卡：
 
 ```py
 device = platform.get_devices()[0]
 ```
 
-在接下来的步骤中，定义了上下文和队列；PyOpenCL 提供了上下文（选择的设备）和队列（选择的上下文）的方法：
+在接下来的步骤中，定义了上下文和队列；PyOpenCL提供了上下文（选择的设备）和队列（选择的上下文）的方法：
 
 ```py
 context = cl.Context([device]) 
@@ -1037,7 +1037,7 @@ __kernel void vectorSum(__global const int *a_g, __global const int *b_g, __glob
 
 1.  *求和*向量的分量：`res_g[gid] = a_g[gid] + b_g[gid]`。
 
-在 OpenCL（因此在 PyOpenCL 中），缓冲区附加到上下文（[`documen.tician.de/pyopencl/runtime.html#pyopencl.Context`](https://documen.tician.de/pyopencl/runtime.html#pyopencl.Context)），一旦缓冲区在设备上使用，就会移动到设备上。
+在OpenCL（因此在PyOpenCL中），缓冲区附加到上下文（[https://documen.tician.de/pyopencl/runtime.html#pyopencl.Context](https://documen.tician.de/pyopencl/runtime.html#pyopencl.Context)），一旦缓冲区在设备上使用，就会移动到设备上。
 
 最后，我们在设备中执行`vectorSum`：
 
@@ -1081,11 +1081,11 @@ INPUT VECTOR A
 
 # 还有更多...
 
-在本节中，我们已经看到 PyOpenCL 执行模型，就像 PyCUDA 一样，涉及一个管理一个或多个异构设备的主机处理器。特别是，每个 PyOpenCL 命令以源代码的形式从主机发送到设备，该源代码是通过内核函数定义的。
+在本节中，我们已经看到PyOpenCL执行模型，就像PyCUDA一样，涉及一个管理一个或多个异构设备的主机处理器。特别是，每个PyOpenCL命令以源代码的形式从主机发送到设备，该源代码是通过内核函数定义的。
 
 然后，将源代码加载到参考架构的程序对象中，将程序编译成参考架构，并创建与程序相关的内核对象。
 
-内核对象可以在可变数量的工作组中执行，创建一个*n*维计算矩阵，使其能够有效地将问题的工作负载在*n*维（1、2 或 3）中进行有效划分。这些工作组又由多个并行工作项组成。
+内核对象可以在可变数量的工作组中执行，创建一个*n*维计算矩阵，使其能够有效地将问题的工作负载在*n*维（1、2或3）中进行有效划分。这些工作组又由多个并行工作项组成。
 
 根据设备的并行计算能力平衡每个工作组的工作负载是实现良好应用程序性能的关键参数之一。
 
@@ -1095,21 +1095,21 @@ INPUT VECTOR A
 
 # 另请参阅
 
-有关 PyOpenCL 编程的更多信息，请访问[`pydanny-event-notes.readthedocs.io/en/latest/PyConPL2012/async_via_pyopencl.html`](https://pydanny-event-notes.readthedocs.io/en/latest/PyConPL2012/async_via_pyopencl.html)。
+有关PyOpenCL编程的更多信息，请访问[https://pydanny-event-notes.readthedocs.io/en/latest/PyConPL2012/async_via_pyopencl.html](https://pydanny-event-notes.readthedocs.io/en/latest/PyConPL2012/async_via_pyopencl.html)。
 
-# 使用 PyOpenCL 进行逐元素表达式
+# 使用PyOpenCL进行逐元素表达式
 
 逐元素功能允许我们在单个计算步骤中对复杂表达式（由更多操作数组成）进行评估。
 
 # 入门指南
 
-`ElementwiseKernel(context, argument, operation, name, optional_parameters)`方法在 PyOpenCL 中实现以处理逐元素表达式。
+`ElementwiseKernel(context, argument, operation, name, optional_parameters)`方法在PyOpenCL中实现以处理逐元素表达式。
 
 主要参数如下：
 
 +   `context`是将执行逐元素操作的设备或设备组。
 
-+   `argument`是计算中涉及的所有参数的类似 C 的参数列表。
++   `argument`是计算中涉及的所有参数的类似C的参数列表。
 
 +   `operation`是表示要在参数列表上执行的操作的字符串。
 
@@ -1186,7 +1186,7 @@ Choose platform:
 queue = cl.CommandQueue(context)
 ```
 
-输入和输出向量被实例化。输入向量`vector_a`和`vector_b`是使用`random.randint` NumPy 函数获得的随机值的整数向量。然后使用 PyOpenCL 语句将这些向量复制到设备中：
+输入和输出向量被实例化。输入向量`vector_a`和`vector_b`是使用`random.randint` NumPy函数获得的随机值的整数向量。然后使用PyOpenCL语句将这些向量复制到设备中：
 
 ```py
 cl.array_to_device(queue,array)
@@ -1199,7 +1199,7 @@ elementwiseSum = cl.elementwise.ElementwiseKernel(context,\
  "int *a, int *b, int *c", "c[i] = a[i] + b[i]", "sum")
 ```
 
-请注意，所有参数都以 C 参数列表的形式的字符串格式化（它们都是整数）。操作是类似 C 的代码片段，执行操作，即输入向量元素的和。将用于编译内核的函数的名称是`sum`。
+请注意，所有参数都以C参数列表的形式的字符串格式化（它们都是整数）。操作是类似C的代码片段，执行操作，即输入向量元素的和。将用于编译内核的函数的名称是`sum`。
 
 最后，我们使用之前定义的参数调用`elementwiseSum`函数：
 
@@ -1244,13 +1244,13 @@ OUTPUT VECTOR RESULT A + B
 
 # 还有更多...
 
-PyCUDA 也具有逐元素功能：
+PyCUDA也具有逐元素功能：
 
 ```py
 ElementwiseKernel(arguments,operation,name,optional_parameters)
 ```
 
-此功能与为 PyOpenCL 构建的函数几乎具有相同的参数，除了上下文参数。通过 PyCUDA 实现的本节中的相同示例具有以下列表：
+此功能与为PyOpenCL构建的函数几乎具有相同的参数，除了上下文参数。通过PyCUDA实现的本节中的相同示例具有以下列表：
 
 ```py
 import pycuda.autoinit 
@@ -1279,11 +1279,11 @@ print (result_vector)
 
 # 另请参阅
 
-在以下链接中，您将找到 PyOpenCL 应用程序的有趣示例：[`github.com/romanarranz/PyOpenCL`](https://github.com/romanarranz/PyOpenCL)。
+在以下链接中，您将找到PyOpenCL应用程序的有趣示例：[https://github.com/romanarranz/PyOpenCL](https://github.com/romanarranz/PyOpenCL)。
 
-# 评估 PyOpenCL 应用程序
+# 评估PyOpenCL应用程序
 
-在本节中，我们将使用 PyOpenCL 库对 CPU 和 GPU 之间的性能进行比较测试。
+在本节中，我们将使用PyOpenCL库对CPU和GPU之间的性能进行比较测试。
 
 事实上，在研究要实现的算法的性能之前，了解所拥有的计算平台所提供的计算优势也是很重要的。
 
@@ -1303,7 +1303,7 @@ print (result_vector)
 
 在以下测试中，将评估并比较数学运算的计算时间，例如两个具有浮点元素的向量的求和。为了进行比较，将在两个单独的函数上执行相同的操作。
 
-第一个函数仅由 CPU 计算，而第二个函数是通过使用 PyOpenCL 库编写的，以使用 GPU 卡。测试是在大小为 10,000 个元素的向量上执行的。
+第一个函数仅由CPU计算，而第二个函数是通过使用PyOpenCL库编写的，以使用GPU卡。测试是在大小为10,000个元素的向量上执行的。
 
 以下是代码：
 
@@ -1324,7 +1324,7 @@ a = np.random.rand(10000).astype(np.float32)
 b = np.random.rand(10000).astype(np.float32) 
 ```
 
-1.  以下函数计算两个向量在 CPU（主机）上的和：
+1.  以下函数计算两个向量在CPU（主机）上的和：
 
 ```py
 def test_cpu_vector_sum(a, b): 
@@ -1338,7 +1338,7 @@ def test_cpu_vector_sum(a, b):
     return c_cpu 
 ```
 
-1.  以下函数计算两个向量在 GPU（设备）上的和：
+1.  以下函数计算两个向量在GPU（设备）上的和：
 
 ```py
 def test_gpu_vector_sum(a, b): 
@@ -1401,11 +1401,11 @@ if __name__ == "__main__":
 
 # 工作原理...
 
-如前所述，测试包括在 CPU 上通过`test_cpu_vector_sum`函数执行计算任务，然后通过`test_gpu_vector_sum`函数在 GPU 上执行。
+如前所述，测试包括在CPU上通过`test_cpu_vector_sum`函数执行计算任务，然后通过`test_gpu_vector_sum`函数在GPU上执行。
 
 两个函数都报告执行时间。
 
-关于在 CPU 上进行测试的函数`test_cpu_vector_sum`，它由对`10000`个向量元素进行双重计算循环组成：
+关于在CPU上进行测试的函数`test_cpu_vector_sum`，它由对`10000`个向量元素进行双重计算循环组成：
 
 ```py
  cpu_start_time = time() 
@@ -1415,7 +1415,7 @@ if __name__ == "__main__":
                cpu_end_time = time() 
 ```
 
-总 CPU 时间是以下时间之间的差异：
+总CPU时间是以下时间之间的差异：
 
 ```py
  CPU Time = cpu_end_time - cpu_start_time 
@@ -1488,21 +1488,21 @@ GPU Kernel evaluation Time: 0.013606592 s
 GPU Time: 0.019981861114501953 s 
 ```
 
-即使测试不具有计算上的广泛性，它也提供了有关 GPU 卡潜力的有用指示。
+即使测试不具有计算上的广泛性，它也提供了有关GPU卡潜力的有用指示。
 
 # 还有更多...
 
-OpenCL 是一个标准化的跨平台 API，用于开发利用异构系统中的并行计算的应用程序。与 CUDA 的相似之处令人瞩目，包括从内存层次结构到线程和工作项之间的直接对应关系。
+OpenCL是一个标准化的跨平台API，用于开发利用异构系统中的并行计算的应用程序。与CUDA的相似之处令人瞩目，包括从内存层次结构到线程和工作项之间的直接对应关系。
 
 即使在编程层面，也有许多相似的方面和具有相同功能的扩展。
 
-然而，由于 OpenCL 能够支持各种硬件，它具有更复杂的设备管理模型。另一方面，OpenCL 旨在实现不同制造商产品之间的代码可移植性。
+然而，由于OpenCL能够支持各种硬件，它具有更复杂的设备管理模型。另一方面，OpenCL旨在实现不同制造商产品之间的代码可移植性。
 
-CUDA 由于其更高的成熟度和专用硬件，提供了简化的设备管理和更高级别的 API，使其更可取，但前提是您正在处理特定的架构（即 NVIDIA 显卡）。
+CUDA由于其更高的成熟度和专用硬件，提供了简化的设备管理和更高级别的API，使其更可取，但前提是您正在处理特定的架构（即NVIDIA显卡）。
 
-CUDA 和 OpenCL 库以及 PyCUDA 和 PyOpenCL 库的优缺点在以下部分中进行了解释。
+CUDA和OpenCL库以及PyCUDA和PyOpenCL库的优缺点在以下部分中进行了解释。
 
-# OpenCL 和 PyOpenCL 的优点
+# OpenCL和PyOpenCL的优点
 
 优点如下：
 
@@ -1510,59 +1510,59 @@ CUDA 和 OpenCL 库以及 PyCUDA 和 PyOpenCL 库的优缺点在以下部分中�
 
 +   相同的代码在不同的系统上运行。
 
-# OpenCL 和 PyOpenCL 的缺点
+# OpenCL和PyOpenCL的缺点
 
 缺点如下：
 
 +   复杂的设备管理
 
-+   APIs 不够稳定
++   APIs不够稳定
 
-# CUDA 和 PyCUDA 的优点
+# CUDA和PyCUDA的优点
 
 优点如下：
 
-+   具有非常高抽象级别的 APIs
++   具有非常高抽象级别的APIs
 
 +   许多编程语言的扩展
 
 +   庞大的文档和非常庞大的社区
 
-# CUDA 和 PyCUDA 的缺点
+# CUDA和PyCUDA的缺点
 
 缺点如下：
 
-+   仅支持最新的 NVIDIA GPU 作为设备
++   仅支持最新的NVIDIA GPU作为设备
 
-+   减少了对 CPU 和 GPU 的异构性
++   减少了对CPU和GPU的异构性
 
 # 另请参阅
 
-Andreas Klöckner 在[`www.bu.edu/pasi/courses/gpu-programming-with-pyopencl-and-pycuda/`](https://www.bu.edu/pasi/courses/gpu-programming-with-pyopencl-and-pycuda/)和[`www.youtube.com/results?search_query=pyopenCL+and+pycuda`](https://www.youtube.com/results?search_query=pyopenCL+and+pycuda)上提供了一系列关于 PyCuda 和 PyOpenCL 的 GPU 编程讲座。
+Andreas Klöckner在[https://www.bu.edu/pasi/courses/gpu-programming-with-pyopencl-and-pycuda/](https://www.bu.edu/pasi/courses/gpu-programming-with-pyopencl-and-pycuda/)和[https://www.youtube.com/results?search_query=pyopenCL+and+pycuda](https://www.youtube.com/results?search_query=pyopenCL+and+pycuda)上提供了一系列关于PyCuda和PyOpenCL的GPU编程讲座。
 
-# 使用 Numba 进行 GPU 编程
+# 使用Numba进行GPU编程
 
-Numba 是一个提供基于 CUDA 的 API 的 Python 编译器。它主要设计用于数值计算任务，就像 NumPy 库一样。特别是，`numba`库管理和处理 NumPy 提供的数组数据类型。
+Numba是一个提供基于CUDA的API的Python编译器。它主要设计用于数值计算任务，就像NumPy库一样。特别是，`numba`库管理和处理NumPy提供的数组数据类型。
 
-事实上，利用数据并行性，这是涉及数组的数值计算中固有的选择，对于 GPU 加速器来说是一个自然的选择。
+事实上，利用数据并行性，这是涉及数组的数值计算中固有的选择，对于GPU加速器来说是一个自然的选择。
 
-Numba 编译器通过为 Python 函数指定签名类型（或装饰器）并在运行时启用编译来工作（这种类型的编译也称为*即时编译*）。
+Numba编译器通过为Python函数指定签名类型（或装饰器）并在运行时启用编译来工作（这种类型的编译也称为*即时编译*）。
 
 最重要的装饰器如下：
 
-+   `jit`：这允许开发人员编写类似 CUDA 的函数。当遇到时，编译器将装饰器下的代码翻译成伪汇编 PTX 语言，以便 GPU 执行。
++   `jit`：这允许开发人员编写类似CUDA的函数。当遇到时，编译器将装饰器下的代码翻译成伪汇编PTX语言，以便GPU执行。
 
 +   `autojit`：这为*延迟编译*过程注释了一个函数，这意味着具有此签名的函数只编译一次。
 
-+   `vectorize`：这创建了一个所谓的**NumPy 通用函数**（**ufunc**），它接受一个函数并使用矢量参数并行执行它。
++   `vectorize`：这创建了一个所谓的**NumPy通用函数**（**ufunc**），它接受一个函数并使用矢量参数并行执行它。
 
-+   `guvectorize`：这构建了所谓的**NumPy 广义通用函数**（**gufunc**）。`gufunc`对象可以操作整个子数组。
++   `guvectorize`：这构建了所谓的**NumPy广义通用函数**（**gufunc**）。`gufunc`对象可以操作整个子数组。
 
 # 准备工作
 
-Numba（版本 0.45）兼容 Python 2.7 和 3.5 或更高版本，以及 NumPy 版本 1.7 到 1.16。
+Numba（版本0.45）兼容Python 2.7和3.5或更高版本，以及NumPy版本1.7到1.16。
 
-要安装`numba`，建议使用 Anaconda 框架，因此，只需从 Anaconda Prompt 中输入以下内容：
+要安装`numba`，建议使用Anaconda框架，因此，只需从Anaconda Prompt中输入以下内容：
 
 ```py
 (base) C:\> conda install numba
@@ -1574,9 +1574,9 @@ Numba（版本 0.45）兼容 Python 2.7 和 3.5 或更高版本，以及 NumPy �
 (base) C:\> conda install cudatoolkit
 ```
 
-之后，可以验证 CUDA 库和 GPU 是否被正确检测到。
+之后，可以验证CUDA库和GPU是否被正确检测到。
 
-从 Anaconda Prompt 打开 Python 解释器：
+从Anaconda Prompt打开Python解释器：
 
 ```py
 (base) C:\> python
@@ -1585,7 +1585,7 @@ Type "help", "copyright", "credits" or "license" for more information.
 >>
 ```
 
-第一个测试涉及检查 CUDA 库（`cudatoolkit`）是否正确安装：
+第一个测试涉及检查CUDA库（`cudatoolkit`）是否正确安装：
 
 ```py
 >>> import numba.cuda.api
@@ -1641,7 +1641,7 @@ True
 
 # 如何做...
 
-在这个例子中，我们使用`@guvectorize`注释演示了 Numba 编译器的使用。
+在这个例子中，我们使用`@guvectorize`注释演示了Numba编译器的使用。
 
 要执行的任务是矩阵乘法：
 
@@ -1667,7 +1667,7 @@ def matmul(A, B, C):
                 C[i, j] += A[i, k] * B[k, j] 
 ```
 
-1.  输入矩阵的大小为 10×10，元素为整数：
+1.  输入矩阵的大小为10×10，元素为整数：
 
 ```py
 dim = 10 
@@ -1712,7 +1712,7 @@ print(":\n%s" % C)
                       C[i, j] += A[i, k] * B[k, j] 
 ```
 
-这里使用`randint` NumPy 函数构建了 10×10 维度的输入矩阵：
+这里使用`randint` NumPy函数构建了10×10维度的输入矩阵：
 
 ```py
 dim = 10
@@ -1783,13 +1783,13 @@ RESULT MATRIX C = A*B
 
 顺序算法按照图表中显示的方式运行，即一个接一个地添加数组的元素：
 
-![](img/7e5ea317-7653-4c24-96f3-8ea106d866df.png)
+![](assets/7e5ea317-7653-4c24-96f3-8ea106d866df.png)
 
 顺序求和
 
 并行算法按照以下模式运行：
 
-![](img/3704575d-6b42-4dc7-b4f9-01093cb44870.png)
+![](assets/3704575d-6b42-4dc7-b4f9-01093cb44870.png)
 
 并行求和
 
@@ -1826,4 +1826,4 @@ result = 50005000
 
 # 另请参阅
 
-在以下存储库中，您可以找到许多 Numba 的示例：[`github.com/numba/numba-examples`](https://github.com/numba/numba-examples)。您可以在[`nyu-cds.github.io/python-numba/05-cuda/`](https://nyu-cds.github.io/python-numba/05-cuda/)找到有关 Numba 和 CUDA 编程的有趣介绍。
+在以下存储库中，您可以找到许多 Numba 的示例：[https://github.com/numba/numba-examples](https://github.com/numba/numba-examples)。您可以在[https://nyu-cds.github.io/python-numba/05-cuda/](https://nyu-cds.github.io/python-numba/05-cuda/)找到有关 Numba 和 CUDA 编程的有趣介绍。
