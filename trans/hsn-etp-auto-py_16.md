@@ -1,4 +1,4 @@
-# 使用 Boto3 自动化 AWS
+# 第十六章：使用 Boto3 自动化 AWS
 
 在之前的章节中，我们探讨了如何使用 Python 自动化 OpenStack 和 VMware 私有云。我们将继续通过自动化最受欢迎的公共云之一——亚马逊网络服务（AWS）来继续我们的云自动化之旅。在本章中，我们将探讨如何使用 Python 脚本创建 Amazon Elastic Compute Cloud（EC2）和 Amazon Simple Storage Systems（S3）。
 

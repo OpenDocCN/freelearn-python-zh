@@ -1,4 +1,4 @@
-# 使用 Python 和 Jinja2 生成配置
+# 第六章：使用 Python 和 Jinja2 生成配置
 
 本章介绍了 YAML 格式，用于表示数据并从 Jinja2 语言创建的黄金模板生成配置。我们将在 Ansible 和 Python 中使用这两个概念来创建我们配置的数据模型存储。
 

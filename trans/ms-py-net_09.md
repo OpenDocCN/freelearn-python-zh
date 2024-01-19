@@ -1,4 +1,4 @@
-# 使用 Python 构建网络 Web 服务
+# 第九章：使用 Python 构建网络 Web 服务
 
 在之前的章节中，我们是各种工具提供的 API 的消费者。在第三章中，*API 和意图驱动的网络*，我们看到我们可以使用`HTTP POST`方法到`http://<your router ip>/ins` URL 上的 NX-API，其中`CLI`命令嵌入在主体中，以远程执行 Cisco Nexus 设备上的命令；然后设备返回命令执行输出。在第八章中，*使用 Python 进行网络监控-第 2 部分*，我们使用`GET`方法来获取我们 sFlow-RT 的`http://<your host ip>:8008/version`上的版本，主体为空。这些交换是 RESTful Web 服务的例子。
 

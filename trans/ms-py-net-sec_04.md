@@ -1,4 +1,4 @@
-# HTTP 编程
+# 第四章：HTTP 编程
 
 本章将向您介绍 HTTP 协议，并介绍如何使用 Python 检索和操作 Web 内容。我们还将回顾`urllib`标准库和`requests`包。`urllib2`是用于获取 URL 的 Python 模块。它提供了一个非常简单的接口，以`urlopen`函数的形式。如果我们想要向 API 端点发出请求以简化 HTTP 工作流程，请求包是一个非常有用的工具。
 

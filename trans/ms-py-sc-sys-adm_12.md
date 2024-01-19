@@ -1,4 +1,4 @@
-# Telnet 和 SSH 上的主机远程监控
+# 第十二章：Telnet 和 SSH 上的主机远程监控
 
 在本章中，您将学习如何在配置了 Telnet 和 SSH 的服务器上进行基本配置。我们将首先使用 Telnet 模块，然后使用首选方法实现相同的配置：使用 Python 中的不同模块进行 SSH。您还将了解`telnetlib`、`subprocess`、`fabric`、`Netmiko`和`paramiko`模块的工作原理。在本章中，您必须具备基本的网络知识。
 

@@ -1,4 +1,4 @@
-# 与 Metasploit 框架连接
+# 第九章：与 Metasploit 框架连接
 
 本章涵盖了 Metasploit 框架作为利用漏洞的工具，以及如何使用 Python 中的`Python-msfprc`和`pyMetasploit`模块进行编程。这些模块帮助我们在 Python 和 Metasploit 的 msgrpc 之间进行交互，以自动执行 Metasploit 框架中的模块和利用。
 

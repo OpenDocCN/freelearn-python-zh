@@ -1,4 +1,4 @@
-# 与 FTP、SSH 和 SNMP 服务器交互
+# 第七章：与 FTP、SSH 和 SNMP 服务器交互
 
 本章将帮助您了解允许我们与 FTP、SSH 和 SNMP 服务器交互的模块。在本章中，我们将探讨网络中的计算机如何相互交互。一些允许我们连接 FTP、SSH 和 SNMP 服务器的工具可以在 Python 中找到，其中我们可以突出显示 FTPLib、Paramiko 和 PySNMP。
 

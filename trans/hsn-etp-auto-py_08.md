@@ -1,4 +1,4 @@
-# 准备实验室环境
+# 第八章：准备实验室环境
 
 在本章中，我们将使用两个流行的 Linux 发行版 CentOS 和 Ubuntu 来设置实验室。CentOS 是一个以社区驱动的 Linux 操作系统，面向企业服务器，并以其与**Red Hat Enterprise Linux**（**RHEL**）的兼容性而闻名。Ubuntu 是另一个基于著名的 Debian 操作系统的 Linux 发行版；目前由 Canonical Ltd.开发，并为其提供商业支持。
 
