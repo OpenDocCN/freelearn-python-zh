@@ -1,12 +1,12 @@
-# Python 中的数据类型和面向对象编程
+# Python中的数据类型和面向对象编程
 
-在本章中，我们将讨论 Python 中的数据类型和**面向对象编程**（**OOP**）。我们将讨论 Python 中的列表、字典、元组和集合等数据类型。我们还将讨论 OOP，它的必要性以及如何在树莓派基于项目中编写面向对象的代码（例如，使用 OOP 来控制家用电器）。我们将讨论在树莓派 Zero 项目中使用 OOP。
+在本章中，我们将讨论Python中的数据类型和**面向对象编程**（**OOP**）。我们将讨论Python中的列表、字典、元组和集合等数据类型。我们还将讨论OOP，它的必要性以及如何在树莓派基于项目中编写面向对象的代码（例如，使用OOP来控制家用电器）。我们将讨论在树莓派Zero项目中使用OOP。
 
 # 列表
 
-在 Python 中，列表是一种数据类型（其文档在此处可用，[`docs.python.org/3.4/tutorial/datastructures.html#`](https://docs.python.org/3.4/tutorial/datastructures.html#)），可用于按顺序存储元素。
+在Python中，列表是一种数据类型（其文档在此处可用，[https://docs.python.org/3.4/tutorial/datastructures.html#](https://docs.python.org/3.4/tutorial/datastructures.html#)），可用于按顺序存储元素。
 
-本章讨论的主题如果不在实践中使用很难理解。任何使用此符号表示的示例：`>>>`都可以使用 Python 解释器进行测试。
+本章讨论的主题如果不在实践中使用很难理解。任何使用此符号表示的示例：`>>>`都可以使用Python解释器进行测试。
 
 列表可以包含字符串、对象（在本章中详细讨论）或数字等。例如，以下是列表的示例：
 
@@ -40,11 +40,11 @@ for item in sequence:
  The number is  6
 ```
 
-由于 Python 的循环可以遍历一系列元素，它会获取每个元素并将其赋值给`item`。然后将该项打印到控制台上。
+由于Python的循环可以遍历一系列元素，它会获取每个元素并将其赋值给`item`。然后将该项打印到控制台上。
 
 # 可以在列表上执行的操作
 
-在 Python 中，可以使用`dir()`方法检索数据类型的属性。例如，可以检索`sequence`列表的可用属性如下：
+在Python中，可以使用`dir()`方法检索数据类型的属性。例如，可以检索`sequence`列表的可用属性如下：
 
 ```py
     >>> dir(sequence)
@@ -76,7 +76,7 @@ for item in sequence:
 
 `remove()`方法找到元素的第一个实例（传递一个参数）并将其从列表中删除。让我们考虑以下示例：
 
-+   **示例 1**：
++   **示例1**：
 
 ```py
        >>> sequence = [1, 1, 2, 3, 4, 7, 5, 6, 7]
@@ -85,7 +85,7 @@ for item in sequence:
  [1, 1, 2, 3, 4, 5, 6, 7]
 ```
 
-+   **示例 2**：
++   **示例2**：
 
 ```py
        >>> sequence.remove(1)
@@ -93,7 +93,7 @@ for item in sequence:
  [1, 2, 3, 4, 5, 6, 7]
 ```
 
-+   **示例 3**：
++   **示例3**：
 
 ```py
        >>> sequence.remove(1)
@@ -111,7 +111,7 @@ for item in sequence:
  4
 ```
 
-在这个例子中，该方法返回元素`5`的索引。由于 Python 使用从 0 开始的索引，因此元素`5`的索引为`4`：
+在这个例子中，该方法返回元素`5`的索引。由于Python使用从0开始的索引，因此元素`5`的索引为`4`：
 
 ```py
     random_list = [2, 2, 4, 5, 5, 5, 6, 7, 7, 8]
@@ -163,7 +163,7 @@ for item in sequence:
     'Friday', 'Saturday']
 ```
 
-在列表中，`Wednesday`缺失。它需要被放置在`Tuesday`和`Thursday`之间的位置 2（Python 使用**零基索引**，即元素的位置/索引从 0、1、2 等开始计数）。可以使用 insert 添加如下：
+在列表中，`Wednesday`缺失。它需要被放置在`Tuesday`和`Thursday`之间的位置2（Python使用**零基索引**，即元素的位置/索引从0、1、2等开始计数）。可以使用insert添加如下：
 
 ```py
     >>> day_of_week.insert(2, 'Wednesday')
@@ -327,7 +327,7 @@ for item in sequence:
        random_list = []
 ```
 
-1.  我们将使用 Python 的 `random` 模块 ([`docs.python.org/3/library/random.html`](https://docs.python.org/3/library/random.html)) 生成随机数。为了生成在 `0` 和 `10` 之间的随机数，我们将使用 `random` 模块的 `randint()` 方法。
+1.  我们将使用 Python 的 `random` 模块 ([https://docs.python.org/3/library/random.html](https://docs.python.org/3/library/random.html)) 生成随机数。为了生成在 `0` 和 `10` 之间的随机数，我们将使用 `random` 模块的 `randint()` 方法。
 
 ```py
        random_number = random.randint(0,10)
@@ -354,7 +354,7 @@ for item in sequence:
 
 # 字典
 
-字典 ([`docs.python.org/3.4/tutorial/datastructures.html#dictionaries`](https://docs.python.org/3.4/tutorial/datastructures.html#dictionaries)) 是一个无序的键值对集合的数据类型。字典中的每个键都有一个相关的值。字典的一个示例是：
+字典 ([https://docs.python.org/3.4/tutorial/datastructures.html#dictionaries](https://docs.python.org/3.4/tutorial/datastructures.html#dictionaries)) 是一个无序的键值对集合的数据类型。字典中的每个键都有一个相关的值。字典的一个示例是：
 
 ```py
  >>> my_dict = {1: "Hello", 2: "World"} >>> my_dict   
@@ -412,7 +412,7 @@ print(value) ... Hello World I am excited to learn Python
       "values": [1, 2, 3,4, 5], "test": {"1": 1, "2": 2} } 
 ```
 
-字典在解析 CSV 文件并将每一行与唯一键关联的场景中非常有用。字典也用于编码和解码 JSON 数据
+字典在解析CSV文件并将每一行与唯一键关联的场景中非常有用。字典也用于编码和解码JSON数据
 
 # 元组
 
@@ -455,7 +455,7 @@ print(value) ... Hello World I am excited to learn Python
 
 # 集合
 
-集合（[`docs.python.org/3/tutorial/datastructures.html#sets`](https://docs.python.org/3/tutorial/datastructures.html#sets)）是一个无序的不可变元素的集合，不包含重复条目。可以按以下方式创建集合：
+集合（[https://docs.python.org/3/tutorial/datastructures.html#sets](https://docs.python.org/3/tutorial/datastructures.html#sets)）是一个无序的不可变元素的集合，不包含重复条目。可以按以下方式创建集合：
 
 ```py
  >>> my_set = set([1, 2, 3, 4, 5]) >>> my_set {1, 2, 3, 4, 5}
@@ -477,19 +477,19 @@ print(value) ... Hello World I am excited to learn Python
 
 集合用于测试元素在不同集合中的成员资格。有与成员资格测试相关的不同方法。我们建议使用集合的文档来了解每种方法（运行`help(my_set)`以查找成员资格测试的不同方法）。
 
-# Python 中的面向对象编程
+# Python中的面向对象编程
 
-面向对象编程有助于简化代码并简化应用程序开发。在重用代码方面尤其有用。面向对象的代码使您能够重用使用通信接口的传感器的代码。例如，所有配有 UART 端口的传感器可以使用面向对象的代码进行分组。
+面向对象编程有助于简化代码并简化应用程序开发。在重用代码方面尤其有用。面向对象的代码使您能够重用使用通信接口的传感器的代码。例如，所有配有UART端口的传感器可以使用面向对象的代码进行分组。
 
-面向对象编程的一个例子是**GPIO Zero 库**（[`www.raspberrypi.org/blog/gpio-zero-a-friendly-python-api-for-physical-computing/`](https://www.raspberrypi.org/blog/gpio-zero-a-friendly-python-api-for-physical-computing/)），在之前的章节中使用过。实际上，在 Python 中一切都是对象。
+面向对象编程的一个例子是**GPIO Zero库**（[https://www.raspberrypi.org/blog/gpio-zero-a-friendly-python-api-for-physical-computing/](https://www.raspberrypi.org/blog/gpio-zero-a-friendly-python-api-for-physical-computing/)），在之前的章节中使用过。实际上，在Python中一切都是对象。
 
-面向对象的代码在与其他人合作项目时特别有帮助。例如，您可以使用 Python 中的面向对象的代码实现传感器驱动程序并记录其用法。这使其他开发人员能够开发应用程序，而无需关注传感器接口背后的细节。面向对象编程为应用程序提供了模块化，简化了应用程序开发。我们将在本章中回顾一个示例，演示面向对象编程的优势。在本章中，我们将利用面向对象编程为我们的项目带来模块化。
+面向对象的代码在与其他人合作项目时特别有帮助。例如，您可以使用Python中的面向对象的代码实现传感器驱动程序并记录其用法。这使其他开发人员能够开发应用程序，而无需关注传感器接口背后的细节。面向对象编程为应用程序提供了模块化，简化了应用程序开发。我们将在本章中回顾一个示例，演示面向对象编程的优势。在本章中，我们将利用面向对象编程为我们的项目带来模块化。
 
 让我们开始吧！
 
-# 重新审视学生 ID 卡示例
+# 重新审视学生ID卡示例
 
-让我们重新访问第十章中的身份证示例，*算术运算、循环和闪烁灯*（`input_test.py`）。我们讨论了编写一个简单的程序，用于捕获和打印属于一个学生的信息。学生的联系信息可以按以下方式检索和存储：
+让我们重新访问[第10章](e39b6641-3554-4ce9-9c84-43eb7006b557.xhtml)中的身份证示例，*算术运算、循环和闪烁灯*（`input_test.py`）。我们讨论了编写一个简单的程序，用于捕获和打印属于一个学生的信息。学生的联系信息可以按以下方式检索和存储：
 
 ```py
 name = input("What is your name? ") 
@@ -497,9 +497,9 @@ address = input("What is your address? ")
 age = input("How old are you? ")
 ```
 
-现在，考虑一个情景，需要保存和在程序执行期间的任何时刻检索 10 个学生的信息。我们需要为用于保存学生信息的变量想出一个命名规范。如果我们使用 30 个不同的变量来存储每个学生的信息，那将会是一团糟。这就是面向对象编程可以真正帮助的地方。
+现在，考虑一个情景，需要保存和在程序执行期间的任何时刻检索10个学生的信息。我们需要为用于保存学生信息的变量想出一个命名规范。如果我们使用30个不同的变量来存储每个学生的信息，那将会是一团糟。这就是面向对象编程可以真正帮助的地方。
 
-让我们使用面向对象编程来重新编写这个例子，以简化问题。面向对象编程的第一步是声明对象的结构。这是通过定义一个类来完成的。类确定了对象的功能。让我们编写一个 Python 类，定义学生对象的结构。
+让我们使用面向对象编程来重新编写这个例子，以简化问题。面向对象编程的第一步是声明对象的结构。这是通过定义一个类来完成的。类确定了对象的功能。让我们编写一个Python类，定义学生对象的结构。
 
 # 类
 
@@ -509,7 +509,7 @@ age = input("How old are you? ")
 class Student(object):
 ```
 
-因此，定义了一个名为`Student`的类。每当创建一个新对象时，Python 会在内部调用`__init__()`方法。
+因此，定义了一个名为`Student`的类。每当创建一个新对象时，Python会在内部调用`__init__()`方法。
 
 这个方法是在类内定义的：
 
@@ -609,7 +609,7 @@ print(student1.update_address("234 Main Street, Newark, CA"))
 
 因此，我们已经编写了我们的第一个面向对象的代码，演示了模块化代码的能力。前面的代码示例可与本章一起下载，名称为`student_info.py`。
 
-# Python 中的文档字符串
+# Python中的文档字符串
 
 在面向对象的示例中，您可能已经注意到了一个用三个双引号括起来的句子：
 
@@ -617,9 +617,9 @@ print(student1.update_address("234 Main Street, Newark, CA"))
     """A Python class to store student information"""
 ```
 
-这被称为**文档字符串**。文档字符串用于记录有关类或方法的信息。文档字符串在尝试存储与方法或类的使用相关的信息时特别有帮助（稍后将在本章中演示）。文档字符串还用于在文件开头存储与应用程序或代码示例相关的多行注释。Python 解释器会忽略文档字符串，它们旨在为其他程序员提供有关类的文档。
+这被称为**文档字符串**。文档字符串用于记录有关类或方法的信息。文档字符串在尝试存储与方法或类的使用相关的信息时特别有帮助（稍后将在本章中演示）。文档字符串还用于在文件开头存储与应用程序或代码示例相关的多行注释。Python解释器会忽略文档字符串，它们旨在为其他程序员提供有关类的文档。
 
-同样，Python 解释器会忽略以`#`符号开头的任何单行注释。单行注释通常用于对一块代码做特定的注释。包括结构良好的注释可以使您的代码易读。
+同样，Python解释器会忽略以`#`符号开头的任何单行注释。单行注释通常用于对一块代码做特定的注释。包括结构良好的注释可以使您的代码易读。
 
 例如，以下代码片段通知读者，生成并存储在变量`rand_num`中的随机数在`0`和`9`之间：
 
@@ -645,11 +645,11 @@ Student(student1, "John Doe", "29", "123 Main Street, Newark, CA")
 Student.return_address(student1)
 ```
 
-在这种情况下，`self`关键字简化了我们访问对象属性的方式。现在，让我们回顾一些涉及树莓派的 OOP 的例子。
+在这种情况下，`self`关键字简化了我们访问对象属性的方式。现在，让我们回顾一些涉及树莓派的OOP的例子。
 
 # 扬声器控制器
 
-让我们编写一个 Python 类（下载的`tone_player.py`），它会播放一个音乐音调，指示您的树莓派已完成启动。对于本节，您将需要一个 USB 声卡和一个连接到树莓派的 USB 集线器的扬声器。
+让我们编写一个Python类（下载的`tone_player.py`），它会播放一个音乐音调，指示您的树莓派已完成启动。对于本节，您将需要一个USB声卡和一个连接到树莓派的USB集线器的扬声器。
 
 让我们称我们的类为`TonePlayer`。这个类应该能够控制扬声器音量，并在创建对象时播放任何传递的文件：
 
@@ -676,9 +676,9 @@ def set_volume(self, value):
     shell=False)
 ```
 
-在`set_volume`方法中，我们使用 Python 的`subprocess`模块来运行调整声音驱动器音量的 Linux 系统命令。
+在`set_volume`方法中，我们使用Python的`subprocess`模块来运行调整声音驱动器音量的Linux系统命令。
 
-这个类最重要的方法是`play`命令。当调用`play`方法时，我们需要使用 Linux 的`play`命令播放音调声音：
+这个类最重要的方法是`play`命令。当调用`play`方法时，我们需要使用Linux的`play`命令播放音调声音：
 
 ```py
 def play(self):
@@ -712,7 +712,7 @@ if __name__ == "__main__":
     tone_player.play()
 ```
 
-将`TonePlayer`类保存到您的树莓派（保存为名为`tone_player.py`的文件），并使用来自*freesound*（[`www.freesound.org/people/zippi1/sounds/18872/`](https://www.freesound.org/people/zippi1/sounds/18872/)）等来源的音调声音文件。将其保存到您选择的位置并尝试运行代码。它应该以所需的音量播放音调声音！
+将`TonePlayer`类保存到您的树莓派（保存为名为`tone_player.py`的文件），并使用来自*freesound*（[https://www.freesound.org/people/zippi1/sounds/18872/](https://www.freesound.org/people/zippi1/sounds/18872/)）等来源的音调声音文件。将其保存到您选择的位置并尝试运行代码。它应该以所需的音量播放音调声音！
 
 现在，编辑`/etc/rc.local`并在文件末尾添加以下行（在`exit 0`行之前）：
 
@@ -720,19 +720,19 @@ if __name__ == "__main__":
 python3 /home/pi/toneplayer.py
 ```
 
-这应该在 Pi 启动时播放一个音调！
+这应该在Pi启动时播放一个音调！
 
 # 灯光控制守护程序
 
-让我们回顾另一个例子，在这个例子中，我们使用 OOP 实现了一个简单的守护程序，它在一天中的指定时间打开/关闭灯光。为了能够在预定时间执行任务，我们将使用`schedule`库（[`github.com/dbader/schedule`](https://github.com/dbader/schedule)）。可以按照以下方式安装它：
+让我们回顾另一个例子，在这个例子中，我们使用OOP实现了一个简单的守护程序，它在一天中的指定时间打开/关闭灯光。为了能够在预定时间执行任务，我们将使用`schedule`库（[https://github.com/dbader/schedule](https://github.com/dbader/schedule)）。可以按照以下方式安装它：
 
 ```py
     sudo pip3 install schedule
 ```
 
-让我们称我们的类为`LightScheduler`。它应该能够接受开启和关闭灯光的开始和结束时间。它还应该提供覆盖功能，让用户根据需要开启/关闭灯光。假设灯光是使用**PowerSwitch Tail II**（[`www.powerswitchtail.com/Pages/default.aspx`](http://www.powerswitchtail.com/Pages/default.aspx)）来控制的。它的接口如下：
+让我们称我们的类为`LightScheduler`。它应该能够接受开启和关闭灯光的开始和结束时间。它还应该提供覆盖功能，让用户根据需要开启/关闭灯光。假设灯光是使用**PowerSwitch Tail II**（[http://www.powerswitchtail.com/Pages/default.aspx](http://www.powerswitchtail.com/Pages/default.aspx)）来控制的。它的接口如下：
 
-![](img/4616788e-12ba-409b-8fcc-499916c7a9bb.png)树莓派 Zero 与 PowerSwitch Tail II 的接口
+![](Images/4616788e-12ba-409b-8fcc-499916c7a9bb.png)树莓派Zero与PowerSwitch Tail II的接口
 
 以下是创建的`LightSchedular`类：
 
@@ -747,7 +747,7 @@ class LightScheduler(object):
         self.lights = OutputDevice(2)
 ```
 
-每当创建`LightScheduler`的实例时，GPIO 引脚被初始化以控制 PowerSwitch Tail II。现在，让我们添加开启/关闭灯光的方法：
+每当创建`LightScheduler`的实例时，GPIO引脚被初始化以控制PowerSwitch Tail II。现在，让我们添加开启/关闭灯光的方法：
 
 ```py
 def init_schedule(self): 
@@ -806,10 +806,10 @@ if __name__ == "__main__":
         time.sleep(1)
 ```
 
-在上面的例子中，灯光被安排在下午 6:30 开启，并在上午 9:30 关闭。一旦工作被安排，程序就会进入一个无限循环，等待任务执行。这个例子可以作为守护进程运行，通过在启动时执行文件（在`/etc/rc.local`中添加一行`light_scheduler.py`）。安排完工作后，它将继续作为后台守护进程运行。
+在上面的例子中，灯光被安排在下午6:30开启，并在上午9:30关闭。一旦工作被安排，程序就会进入一个无限循环，等待任务执行。这个例子可以作为守护进程运行，通过在启动时执行文件（在`/etc/rc.local`中添加一行`light_scheduler.py`）。安排完工作后，它将继续作为后台守护进程运行。
 
-这只是面向初学者的 OOP 及其应用的基本介绍。请参考本书网站以获取更多关于 OOP 的例子。
+这只是面向初学者的OOP及其应用的基本介绍。请参考本书网站以获取更多关于OOP的例子。
 
 # 总结
 
-在本章中，我们讨论了列表和 OOP 的优势。我们使用树莓派作为例子的中心，讨论了 OOP 的例子。由于本书主要面向初学者，我们决定在讨论例子时坚持 OOP 的基础知识。书中还有一些超出范围的高级方面。我们让读者通过本书网站上提供的其他例子来学习高级概念。
+在本章中，我们讨论了列表和OOP的优势。我们使用树莓派作为例子的中心，讨论了OOP的例子。由于本书主要面向初学者，我们决定在讨论例子时坚持OOP的基础知识。书中还有一些超出范围的高级方面。我们让读者通过本书网站上提供的其他例子来学习高级概念。

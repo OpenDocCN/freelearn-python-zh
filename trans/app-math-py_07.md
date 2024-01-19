@@ -4,7 +4,7 @@
 
 时间序列代表这些回归类型问题的一种专门类别，其中一个值在一段时间内发展。与更简单的问题不同，时间序列数据通常在连续值之间有复杂的依赖关系；例如，一个值可能依赖于前两个值，甚至可能依赖于前一个“噪音”。时间序列建模在科学和经济学中非常重要，有各种工具可用于建模时间序列数据。处理时间序列数据的基本技术称为**ARIMA**，它代表**自回归综合移动平均**。该模型包括两个基本组件，一个**自回归**（**AR**）**组件和一个**移动平均**（**MA**）组件，用于构建观察数据的模型。
 
-在本章中，我们将学习如何建立两组数据之间的关系模型，量化这种关系的强度，并对其他值（未来）生成预测。然后，我们将学习如何使用逻辑回归，在分类问题中，这是简单线性模型的一种变体。最后，我们将使用 ARIMA 为时间序列数据构建模型，并基于这些模型构建不同类型的数据。我们将通过使用一个名为 Prophet 的库来自动生成时间序列数据模型来结束本章。
+在本章中，我们将学习如何建立两组数据之间的关系模型，量化这种关系的强度，并对其他值（未来）生成预测。然后，我们将学习如何使用逻辑回归，在分类问题中，这是简单线性模型的一种变体。最后，我们将使用ARIMA为时间序列数据构建模型，并基于这些模型构建不同类型的数据。我们将通过使用一个名为Prophet的库来自动生成时间序列数据模型来结束本章。
 
 在本章中，我们将涵盖以下内容：
 
@@ -14,19 +14,19 @@
 
 +   使用对数回归进行分类
 
-+   使用 ARMA 对时间序列数据进行建模
++   使用ARMA对时间序列数据进行建模
 
-+   使用 ARIMA 从时间序列数据进行预测
++   使用ARIMA从时间序列数据进行预测
 
-+   使用 ARIMA 对季节性数据进行预测
++   使用ARIMA对季节性数据进行预测
 
-+   使用 Prophet 对时间序列进行建模
++   使用Prophet对时间序列进行建模
 
 让我们开始吧！
 
 # 技术要求
 
-在本章中，像往常一样，我们需要导入 NumPy 包并使用别名`np`，导入 Matplotlib `pyplot`模块并使用`plt`别名，以及导入 Pandas 包并使用`pd`别名。我们可以使用以下命令来实现：
+在本章中，像往常一样，我们需要导入NumPy包并使用别名`np`，导入Matplotlib `pyplot`模块并使用`plt`别名，以及导入Pandas包并使用`pd`别名。我们可以使用以下命令来实现：
 
 ```py
 import numpy as np
@@ -34,14 +34,14 @@ import matplotlib.pyplot as plt
 import pandas as pd
 ```
 
-在本章中，我们还需要一些新的包。statsmodels 包用于回归和时间序列分析，`scikit-learn`包（`sklearn`）提供通用数据科学和机器学习工具，Prophet 包（`fbprophet`）用于自动生成时间序列数据模型。这些包可以使用您喜欢的包管理器（如`pip`）进行安装：
+在本章中，我们还需要一些新的包。statsmodels包用于回归和时间序列分析，`scikit-learn`包（`sklearn`）提供通用数据科学和机器学习工具，Prophet包（`fbprophet`）用于自动生成时间序列数据模型。这些包可以使用您喜欢的包管理器（如`pip`）进行安装：
 
 ```py
           python3.8 -m pip install statsmodels sklearn fbprophet
 
 ```
 
-Prophet 包可能在某些操作系统上安装起来比较困难，因为它的依赖关系。如果安装`fbprophet`出现问题，您可能希望尝试使用 Python 的 Anaconda 发行版及其包管理器`conda`，它可以更严格地处理依赖关系：
+Prophet包可能在某些操作系统上安装起来比较困难，因为它的依赖关系。如果安装`fbprophet`出现问题，您可能希望尝试使用Python的Anaconda发行版及其包管理器`conda`，它可以更严格地处理依赖关系：
 
 ```py
           conda install fbprophet
@@ -50,19 +50,19 @@ Prophet 包可能在某些操作系统上安装起来比较困难，因为它的
 
 最后，我们还需要一个名为`tsdata`的小模块，该模块包含在本章的存储库中。该模块包含一系列用于生成样本时间序列数据的实用程序。
 
-本章的代码可以在 GitHub 存储库的`Chapter 07`文件夹中找到：[`github.com/PacktPublishing/Applying-Math-with-Python/tree/master/Chapter%2007`](https://github.com/PacktPublishing/Applying-Math-with-Python/tree/master/Chapter%2007)。
+本章的代码可以在GitHub存储库的`Chapter 07`文件夹中找到：[https://github.com/PacktPublishing/Applying-Math-with-Python/tree/master/Chapter%2007](https://github.com/PacktPublishing/Applying-Math-with-Python/tree/master/Chapter%2007)。
 
-查看以下视频以查看代码实际操作：[`bit.ly/2Ct8m0B`](https://bit.ly/2Ct8m0B)。
+查看以下视频以查看代码实际操作：[https://bit.ly/2Ct8m0B](https://bit.ly/2Ct8m0B)。
 
 # 使用基本线性回归
 
 线性回归是一种建模两组数据之间依赖关系的工具，这样我们最终可以使用这个模型进行预测。名称来源于我们基于第二组数据形成一个线性模型（直线）。在文献中，我们希望建模的变量通常被称为*响应*变量，而我们在这个模型中使用的变量是*预测*变量。
 
-在这个步骤中，我们将学习如何使用 statsmodels 包执行简单的线性回归，以建模两组数据之间的关系。
+在这个步骤中，我们将学习如何使用statsmodels包执行简单的线性回归，以建模两组数据之间的关系。
 
 ## 准备工作
 
-对于这个步骤，我们需要导入 statsmodels 的`api`模块并使用别名`sm`，导入 NumPy 包并使用别名`np`，导入 Matplotlib 的`pyplot`模块并使用别名`plt`，以及一个 NumPy 默认随机数生成器的实例。所有这些都可以通过以下命令实现：
+对于这个步骤，我们需要导入statsmodels的`api`模块并使用别名`sm`，导入NumPy包并使用别名`np`，导入Matplotlib的`pyplot`模块并使用别名`plt`，以及一个NumPy默认随机数生成器的实例。所有这些都可以通过以下命令实现：
 
 ```py
 import statsmodels.api as sm
@@ -74,7 +74,7 @@ rng = default_rng(12345)
 
 ## 如何做到这一点...
 
-以下步骤概述了如何使用 statsmodels 包对两组数据执行简单线性回归：
+以下步骤概述了如何使用statsmodels包对两组数据执行简单线性回归：
 
 1.  首先，我们生成一些示例数据进行分析。我们将生成两组数据，这将说明一个良好的拟合和一个不太好的拟合：
 
@@ -141,39 +141,39 @@ ax.plot(model_x[:, 1], model_y2, 'r')
 
 散点图以及我们添加的最佳拟合线（模型）可以在下图中看到：
 
-![](img/8bf4175e-e73a-4f3b-b5a1-860f8d0bc8f1.png)图 7.1：使用最小二乘法回归计算的数据散点图和最佳拟合线。
+![](assets/8bf4175e-e73a-4f3b-b5a1-860f8d0bc8f1.png)图7.1：使用最小二乘法回归计算的数据散点图和最佳拟合线。
 
 ## 工作原理...
 
 基本数学告诉我们，一条直线的方程如下所示：
 
-![](img/def061a4-d8f7-482e-a3a3-78d4587c495f.png)
+![](assets/def061a4-d8f7-482e-a3a3-78d4587c495f.png)
 
 在这里，*c*是直线与*y*轴相交的值，通常称为*y*截距，*m*是直线的斜率。在线性回归的背景下，我们试图找到响应变量*Y*和预测变量*X*之间的关系，使其形式为一条直线，使以下情况发生：
 
-![](img/2777a0a2-21f8-41b8-97d0-0969989f1e8f.png)
+![](assets/2777a0a2-21f8-41b8-97d0-0969989f1e8f.png)
 
 在这里，*c*和*m*现在是要找到的参数。我们可以用另一种方式来表示这一点，如下所示：
 
-![](img/f85da231-6294-45c3-9e5a-b08dd6a6ef79.png)
+![](assets/f85da231-6294-45c3-9e5a-b08dd6a6ef79.png)
 
 这里，*E*是一个误差项，一般来说，它取决于*X*。为了找到“最佳”模型，我们需要找到*E*误差被最小化的*c*和*m*参数值（在适当的意义上）。找到使这个误差最小化的参数值的基本方法是最小二乘法，这给了这里使用的回归类型以它的名字：*普通最小二乘法*。一旦我们使用这种方法建立了响应变量和预测变量之间的某种关系，我们的下一个任务就是评估这个模型实际上如何代表这种关系。为此，我们形成了以下方程给出的*残差*：
 
-![](img/c3ade12f-e352-49c2-a1f1-b07373253b4d.png)
+![](assets/c3ade12f-e352-49c2-a1f1-b07373253b4d.png)
 
-我们对每个数据点*X[i]*和*Y[i]*进行这样的操作。为了对我们对数据之间关系建模的准确性进行严格的统计分析，我们需要残差满足某些假设。首先，我们需要它们在概率意义上是独立的。其次，我们需要它们围绕 0 呈正态分布，并且具有相同的方差。（在实践中，我们可以稍微放松这些条件，仍然可以对模型的准确性做出合理的评论。）
+我们对每个数据点*X[i]*和*Y[i]*进行这样的操作。为了对我们对数据之间关系建模的准确性进行严格的统计分析，我们需要残差满足某些假设。首先，我们需要它们在概率意义上是独立的。其次，我们需要它们围绕0呈正态分布，并且具有相同的方差。（在实践中，我们可以稍微放松这些条件，仍然可以对模型的准确性做出合理的评论。）
 
-在这个配方中，我们使用线性关系从预测数据中生成响应数据。我们创建的两个响应数据集之间的差异在于每个值的误差的“大小”。对于第一个数据集`y1`，残差呈正态分布，标准差为 0.5，而对于第二个数据集`y2`，残差的标准差为 5.0。我们可以在*图 7.1*中的散点图中看到这种变异性，其中`y1`的数据通常非常接近最佳拟合线 - 这与用于生成数据的实际关系非常接近 - 而`y2`数据则远离最佳拟合线。
+在这个配方中，我们使用线性关系从预测数据中生成响应数据。我们创建的两个响应数据集之间的差异在于每个值的误差的“大小”。对于第一个数据集`y1`，残差呈正态分布，标准差为0.5，而对于第二个数据集`y2`，残差的标准差为5.0。我们可以在*图7.1*中的散点图中看到这种变异性，其中`y1`的数据通常非常接近最佳拟合线 - 这与用于生成数据的实际关系非常接近 - 而`y2`数据则远离最佳拟合线。
 
-来自 statsmodels 包的`OLS`对象是普通最小二乘回归的主要接口。我们将响应数据和预测数据作为数组提供。为了在模型中有一个常数项，我们需要在预测数据中添加一列 1。`sm.add_constant`例程是一个简单的实用程序，用于添加这个常数列。`OLS`类的`fit`方法计算模型的参数，并返回一个包含最佳拟合模型参数的结果对象（`model1`和`model2`）。`summary`方法创建一个包含有关模型和拟合优度的各种统计信息的字符串。`predict`方法将模型应用于新数据。顾名思义，它可以用于使用模型进行预测。
+来自statsmodels包的`OLS`对象是普通最小二乘回归的主要接口。我们将响应数据和预测数据作为数组提供。为了在模型中有一个常数项，我们需要在预测数据中添加一列1。`sm.add_constant`例程是一个简单的实用程序，用于添加这个常数列。`OLS`类的`fit`方法计算模型的参数，并返回一个包含最佳拟合模型参数的结果对象（`model1`和`model2`）。`summary`方法创建一个包含有关模型和拟合优度的各种统计信息的字符串。`predict`方法将模型应用于新数据。顾名思义，它可以用于使用模型进行预测。
 
-除了参数值本身之外，摘要中报告了另外两个统计量。第一个是*R²*值，或者调整后的版本，它衡量了模型解释的变异性与总变异性之间的关系。这个值将在 0 和 1 之间。较高的值表示拟合效果更好。第二个是 F 统计量的 p 值，它表示模型的整体显著性。与 ANOVA 测试一样，较小的 F 统计量表明模型是显著的，这意味着模型更有可能准确地对数据进行建模。
+除了参数值本身之外，摘要中报告了另外两个统计量。第一个是*R²*值，或者调整后的版本，它衡量了模型解释的变异性与总变异性之间的关系。这个值将在0和1之间。较高的值表示拟合效果更好。第二个是F统计量的p值，它表示模型的整体显著性。与ANOVA测试一样，较小的F统计量表明模型是显著的，这意味着模型更有可能准确地对数据进行建模。
 
-在这个配方中，第一个模型`model1`的调整后的*R²*值为 0.986，表明该模型非常紧密地拟合了数据，p 值为 6.43e-19，表明具有很高的显著性。第二个模型的调整后的*R²*值为 0.361，表明该模型与数据的拟合程度较低，p 值为 0.000893，也表明具有很高的显著性。尽管第二个模型与数据的拟合程度较低，但从统计学的角度来看，并不意味着它没有用处。该模型仍然具有显著性，尽管不如第一个模型显著，但它并没有解释所有的变异性（或者至少是数据中的一个显著部分）。这可能表明数据中存在额外的（非线性）结构，或者数据之间的相关性较低，这意味着响应和预测数据之间的关系较弱（由于我们构造数据的方式，我们知道后者是真实的）。
+在这个配方中，第一个模型`model1`的调整后的*R²*值为0.986，表明该模型非常紧密地拟合了数据，p值为6.43e-19，表明具有很高的显著性。第二个模型的调整后的*R²*值为0.361，表明该模型与数据的拟合程度较低，p值为0.000893，也表明具有很高的显著性。尽管第二个模型与数据的拟合程度较低，但从统计学的角度来看，并不意味着它没有用处。该模型仍然具有显著性，尽管不如第一个模型显著，但它并没有解释所有的变异性（或者至少是数据中的一个显著部分）。这可能表明数据中存在额外的（非线性）结构，或者数据之间的相关性较低，这意味着响应和预测数据之间的关系较弱（由于我们构造数据的方式，我们知道后者是真实的）。
 
 ## 还有更多...
 
-简单线性回归是统计学家工具包中一个很好的通用工具。它非常适合找到两组已知（或被怀疑）以某种方式相互关联的数据之间关系的性质。衡量一个数据集依赖于另一个数据集的程度的统计测量称为*相关性*。我们可以使用相关系数来衡量相关性，例如*Spearman 秩相关系数*。高正相关系数表示数据之间存在强烈的正相关关系，就像在这个示例中看到的那样，而高负相关系数表示强烈的负相关关系，其中通过数据的最佳拟合线的斜率为负。相关系数为 0 意味着数据没有相关性：数据之间没有关系。
+简单线性回归是统计学家工具包中一个很好的通用工具。它非常适合找到两组已知（或被怀疑）以某种方式相互关联的数据之间关系的性质。衡量一个数据集依赖于另一个数据集的程度的统计测量称为*相关性*。我们可以使用相关系数来衡量相关性，例如*Spearman秩相关系数*。高正相关系数表示数据之间存在强烈的正相关关系，就像在这个示例中看到的那样，而高负相关系数表示强烈的负相关关系，其中通过数据的最佳拟合线的斜率为负。相关系数为0意味着数据没有相关性：数据之间没有关系。
 
 如果数据集之间明显相关，但不是线性（直线）关系，那么它可能遵循一个多项式关系，例如，一个值与另一个值的平方有关。有时，您可以对一个数据集应用转换，例如对数，然后使用线性回归来拟合转换后的数据。当两组数据之间存在幂律关系时，对数特别有用。
 
@@ -185,14 +185,14 @@ ax.plot(model_x[:, 1], model_y2, 'r')
 
 ## 准备就绪
 
-对于这个示例，我们将需要导入 NumPy 包作为`np`，导入 Matplotlib 的`pyplot`模块作为`plt`，导入 Pandas 包作为`pd`，并创建 NumPy 默认随机数生成器的实例，使用以下命令：
+对于这个示例，我们将需要导入NumPy包作为`np`，导入Matplotlib的`pyplot`模块作为`plt`，导入Pandas包作为`pd`，并创建NumPy默认随机数生成器的实例，使用以下命令：
 
 ```py
 from numpy.random import default_rng
 rng = default_rng(12345)
 ```
 
-我们还需要导入 statsmodels 的`api`模块作为`sm`，可以使用以下命令导入：
+我们还需要导入statsmodels的`api`模块作为`sm`，可以使用以下命令导入：
 
 ```py
 import statsmodels.api as sm
@@ -202,7 +202,7 @@ import statsmodels.api as sm
 
 以下步骤向您展示了如何使用多元线性回归来探索几个预测变量和一个响应变量之间的关系：
 
-1.  首先，我们需要创建要分析的预测数据。这将采用 Pandas 的`DataFrame`形式，有四个项。我们将通过添加一个包含 1 的列来添加常数项：
+1.  首先，我们需要创建要分析的预测数据。这将采用Pandas的`DataFrame`形式，有四个项。我们将通过添加一个包含1的列来添加常数项：
 
 ```py
 p_vars = pd.DataFrame({
@@ -247,7 +247,7 @@ ax3.set_xlabel("X3")
 ```py
         The resulting plots can be seen in the following figure:
 
-          ![](img/151a3a34-831e-40fc-9d29-ec1db98ab665.png)
+          ![](assets/151a3a34-831e-40fc-9d29-ec1db98ab665.png)
 
         Figure 7.2: Scatter plots of the response data against each of the predictor variables
         As we can see, there appears to be some correlation between the response data and the first two predictor columns, `X1` and `X2`. This is what we expect, given how we generated the data.
@@ -266,17 +266,17 @@ print(model.summary())
 
 ```
 
-OLS 回归结果
+OLS回归结果
 
 ==================================================================
 
-因变量：y                  R 平方：0.770
+因变量：y                  R平方：0.770
 
-模型：OLS 调整                   R 平方：0.762
+模型：OLS调整                   R平方：0.762
 
-方法：最小二乘法             F 统计量：106.8
+方法：最小二乘法             F统计量：106.8
 
-日期：2020 年 4 月 23 日星期四            概率（F 统计量）：1.77e-30
+日期：2020年4月23日星期四            概率（F统计量）：1.77e-30
 
 时间：12:47:30                    对数似然：-389.38
 
@@ -332,7 +332,7 @@ print(second_model.summary())
         How it works...
         Multilinear regression works in much the same way as simple linear regression. We follow the same procedure here as in the previous recipe, where we use the statsmodels package to fit a multilinear model to our data. Of course, there are some differences behind the scenes. The model we produce using multilinear regression is very similar in form to the simple linear model from the previous recipe. It has the following form:
 
-          ![](img/0839eae4-836a-497f-9f90-8dd8f2cd4a17.png)
+          ![](assets/0839eae4-836a-497f-9f90-8dd8f2cd4a17.png)
 
         Here, *Y* is the response variable, *X[i]* represents the predictor variables, *E* is the error term, and *β*[*i*] is the parameters to be computed. The same requirements are also necessary for this context: residuals must be independent and normally distributed with a mean of 0 and a common standard deviation.
         In this recipe, we provided our predictor data as a Pandas `DataFrame` rather than a plain NumPy array. Notice that the names of the columns have been adopted in the summary data that we printed. Unlike the first recipe, *Using basic linear regression*, we included the constant column in this `DataFrame`, rather than using the `add_constant` utility from statsmodels.
@@ -345,7 +345,7 @@ print(second_model.summary())
 
 ```
 
-从 numpy.random 导入 default_rng
+从numpy.random导入default_rng
 
 rng = default_rng(12345)
 
@@ -355,9 +355,9 @@ rng = default_rng(12345)
 
 ```
 
-从 sklearn.linear_model 导入 LogisticRegression
+从sklearn.linear_model导入LogisticRegression
 
-从 sklearn.metrics 导入 classification_report
+从sklearn.metrics导入classification_report
 
 ```py
 
@@ -420,7 +420,7 @@ ax1.set_title("Scatter plot of var3 against var1")
 
         The resulting plot can be seen in the following figure:
 
-          ![](img/e972cdff-197a-4940-8f33-dbe849ddb774.png)
+          ![](assets/e972cdff-197a-4940-8f33-dbe849ddb774.png)
 
         Figure 7.3: Scatter plot of the var3 data against var1, with classification marked
 
@@ -495,11 +495,11 @@ weighted avg       1.00        1.00         1.00          50
         How it works...
         Logistic regression works by forming a linear model of the *log odds* ratio *(*or *logit*), which, for a single predictor variable, *x*, has the following form:
 
-          ![](img/ef09118a-1d49-472f-9b70-c9925e410036.png)
+          ![](assets/ef09118a-1d49-472f-9b70-c9925e410036.png)
 
         Here, *p*(*x*) represents the probability of a true outcome in response to the given the predictor, *x*. Rearranging this gives a variation of the logistic function for the probability:
 
-          ![](img/4edf13c3-10f1-42a0-a475-91264d1ea732.png)
+          ![](assets/4edf13c3-10f1-42a0-a475-91264d1ea732.png)
 
         The parameters for the log odds are estimated using a maximum likelihood method. 
         The `LogisticRegression` class from the `linear_model` module in `scikit-learn` is an implementation of logistic regression that is very easy to use. First, we create a new model instance of this class, with any custom parameters that we need, and then use the `fit` method on this object to fit (or train) the model to the sample data. Once this fitting is done, we can access the parameters that have been estimated using the `get_params` method. 
@@ -550,7 +550,7 @@ ts_ax.set_ylabel("Value")
 
         The resulting plot can be seen in the following figure. Here, we can see that there doesn't appear to be an underlying trend, which means that the data is likely to be stationary:
 
-          ![](img/518372fa-7c61-409c-90aa-f0a13459785f.png)
+          ![](assets/518372fa-7c61-409c-90aa-f0a13459785f.png)
 
         Figure 7.4: Plot of the time series data that we will analyze. There doesn't appear to be a trend in this data
 
@@ -594,7 +594,7 @@ acf_ax.set_ylabel("Value")
 
         The plots of the ACF and PACF for our time series can be seen in the following figure. These plots suggest the existence of both autoregressive and moving average processes:
 
-          ![](img/093fb316-c237-48f3-b47b-a62afcde7afa.png)
+          ![](assets/093fb316-c237-48f3-b47b-a62afcde7afa.png)
 
         Figure 7.5: ACF and PACF for the sample time series data
 
@@ -628,9 +628,9 @@ Dep. Variable: y           No. Observations: 366
 
 Model: ARMA(1, 1)          Log Likelihood -513.038
 
-方法：css-mle            创新的标准偏差 0.982
+方法：css-mle            创新的标准偏差0.982
 
-日期：2020 年 5 月 1 日     AIC 1034.077
+日期：2020年5月1日     AIC 1034.077
 
 时间：12:40:00             BIC 1049.687
 
@@ -696,7 +696,7 @@ racf_ax.set_ylabel("值")
 
         The ACF and PACF of the residuals can be seen in the following figure. Here, we can see that there are no significant spikes at lags other than 0, so we conclude that there is no structure remaining in the residuals:
 
-          ![](img/6dc54aaa-0b81-403f-b4d8-2a67cb360f1e.png)
+          ![](assets/6dc54aaa-0b81-403f-b4d8-2a67cb360f1e.png)
 
         Figure 7.6: ACF and PACF for the residuals from our model
 
@@ -714,7 +714,7 @@ ts_ax.legend()
 
         The updated plot can be seen in the following figure:
 
-          ![](img/67b312d7-3986-4bf8-aba6-a534a0cf9b89.png)
+          ![](assets/67b312d7-3986-4bf8-aba6-a534a0cf9b89.png)
 
         Figure 7.7: Plot of the fitted time series data over the observed time series data
         The fitted values give a reasonable approximation of the behavior of the time series, but reduce the noise from the underlying structure.
@@ -722,21 +722,21 @@ ts_ax.legend()
         A time series is stationary if it does not have a trend. They usually have a tendency to move in one direction rather than another. Stationary processes are important because we can usually remove the trend from an arbitrary time series and model the underlying stationary series. The ARMA model that we used in this recipe is a basic means of modeling the behavior of stationary time series. The two parts of an ARMA model are the autoregressive and moving average parts, which model the dependence of the terms and noise, respectively, on previous terms and noise.
         An order 1 autoregressive model has the following form:
 
-          ![](img/7a4a2e01-301a-4448-9ad2-32ab71c37a97.png)
+          ![](assets/7a4a2e01-301a-4448-9ad2-32ab71c37a97.png)
 
         Here, *φ[i]* represents the parameters and *ε[t]* is the noise at a given step. The noise is usually assumed to be normally distributed with a mean of 0 and a standard deviation that is constant across all the time steps. The *Y[t]* value represents the value of the time series at the time step, *t*. In this model, each value depends on the previous value, though it can also depend on some constants and some noise. The model will give rise to a stationary time series precisely when the *φ[1]* parameter lies strictly between -1 and 1.
         An order 1 moving average model is very similar to an autoregressive model and is given by the following equation:
 
-          ![](img/c71efac3-1651-4fc9-932c-e3930e7d80e7.png)
+          ![](assets/c71efac3-1651-4fc9-932c-e3930e7d80e7.png)
 
         Here, the variants of *θ[i]* are parameters. Putting these two models together gives us an ARMA(1, 1) model, which has the following form:
 
-          ![](img/fcb7eb3b-9d02-4a2e-b954-b260ba87f8e0.png)
+          ![](assets/fcb7eb3b-9d02-4a2e-b954-b260ba87f8e0.png)
 
         In general, we can have an ARMA(p, q) model that has an order *p* AR component and an order q MA component. We usually refer to the quantities, *p* and *q*, as the orders of the model.
         Determining the orders of the AR and MA components is the most tricky aspect of constructing an ARMA model. The ACF and PACF give some information toward this, but even then, it can be quite difficult. For example, an autoregressive process will show some kind of decay or oscillating pattern on the ACF as lag increases, and a small number of peaks on the PACF and values that are not significantly different from 0 beyond that. The number of peaks that appear on the PAF plot can be taken as the order of the process. For a moving average process, the reverse is true. There are usually a small number of significant peaks on the ACF plot, and a decay or oscillating pattern on the PACF plot. Of course, sometimes, this isn't obvious.
         In this recipe, we plotted the ACF and PACF for our sample time series data. In the autocorrelation plot in *Figure 7.5* (top), we can see that the peaks decay rapidly until they lie within the confidence interval of zero (meaning they are not significant). This suggests the presence of an autoregressive component. On the partial autocorrelation plot in *Figure 7.5* (bottom), we can see that there are only two peaks that can be considered not zero, which suggests an autoregressive process of order 1 or 2\. You should try to keep the order of the model as small as possible. Due to this, we chose an order 1 autoregressive component. With this assumption, the second peak on the partial autocorrelation plot is indicative of decay (rather than an isolated peak), which suggests the presence of a moving average process. To keep the model simple, we try an order 1 moving average process. This is how the model that we used in this recipe was decided on. Notice that this is not an exact process, and you might have decided differently. 
-        We use the augmented Dickey-Fuller test to test the likelihood that the time series that we have observed is stationary. This is a statistical test, such as those seen in Chapter 6, *Working with Data and Statistics*, that generates a test statistic from the data. This test statistic, in turn, determines a p-value that is used to determine whether to accept or reject the null hypothesis. For this test, the null hypothesis is that a unit root is present in the time series that's been sampled. The alternative hypothesis – the one we are really interested in – is that the observed time series is (trend) stationary. If the p-value is sufficiently small, then we can conclude with the specified confidence that the observed time series is stationary. In this recipe, the p-value was 0.000 to 3 decimal places, which indicates a strong likelihood that the series is stationary. Stationarity is an essential assumption for using the ARMA model for the data.
+        We use the augmented Dickey-Fuller test to test the likelihood that the time series that we have observed is stationary. This is a statistical test, such as those seen in [Chapter 6](87b0f91d-3086-41a9-995d-27fe7d364e8b.xhtml), *Working with Data and Statistics*, that generates a test statistic from the data. This test statistic, in turn, determines a p-value that is used to determine whether to accept or reject the null hypothesis. For this test, the null hypothesis is that a unit root is present in the time series that's been sampled. The alternative hypothesis – the one we are really interested in – is that the observed time series is (trend) stationary. If the p-value is sufficiently small, then we can conclude with the specified confidence that the observed time series is stationary. In this recipe, the p-value was 0.000 to 3 decimal places, which indicates a strong likelihood that the series is stationary. Stationarity is an essential assumption for using the ARMA model for the data.
         Once we have determined that the series is stationary, and also decided on the orders of the model, we have to fit the model to the sample data that we have. The parameters of the model are estimated using a maximum likelihood estimator. In this recipe, the learning of the parameters is done using the `fit` method, in *step 6*.
         The statsmodels package provides various tools for working with time series, including utilities for calculating – and plotting –ACF and PACF of time series data, various test statistics, and creating ARMA models for time series. There are also some tools for automatically estimating the order of the model.
         We can use the **Akaike information criterion** (**AIC**), **Bayesian information criterion** (**BIC**), and **Hannan-Quinn Information Criterion** (**HQIC**) quantities to compare this model to other models to see which model best describes the data. A smaller value is better in each case.
@@ -753,7 +753,7 @@ ts_ax.legend()
 
 ```
 
-从 tsdata 导入生成样本数据
+从tsdata导入生成样本数据
 
 ```py
 
@@ -786,7 +786,7 @@ ts_ax.set_ylabel("值")
 
         The resulting plot can be seen in the following figure. As we can see, there is a clear upward trend in the data, so the time series is certainly not stationary:
 
-          ![](img/a5081c24-e36c-48ac-86e5-a5ec2cfccee0.png)
+          ![](assets/a5081c24-e36c-48ac-86e5-a5ec2cfccee0.png)
 
         Figure 7.8: Plot of the sample time series. There is an obvious positive trend in the data.
 
@@ -820,7 +820,7 @@ pacf_ax.set_ylabel("值")
 
         The ACF and PACF can be seen in the following figure. We can see that there does not appear to be any trends left in the data and that there appears to be both an autoregressive component and a moving average component:
 
-          ![](img/dc3a6b97-bdd4-4c6c-822a-d40b00a0a2e8.png)
+          ![](assets/dc3a6b97-bdd4-4c6c-822a-d40b00a0a2e8.png)
 
         Figure 7.9: ACF and PACF for the differenced time series
 
@@ -840,7 +840,7 @@ print(fitted.summary())
 
 ```
 
-ARIMA 模型结果
+ARIMA模型结果
 
 ==================================================================
 
@@ -850,11 +850,11 @@ ARIMA 模型结果
 
 方法：css-mle                创新的标准差 0.986
 
-日期：星期六，2020 年 5 月 2 日         AIC 1033.810
+日期：星期六，2020年5月2日         AIC 1033.810
 
 时间：14:47:25                 BIC 1049.409
 
-样本：2020 年 01 月 02 日             HQIC 1040.009
+样本：2020年01月02日             HQIC 1040.009
 
 - 12-31-2020
 
@@ -924,7 +924,7 @@ ts_ax.legend()
 
         The final plot containing the time series with the forecast and the actual future values can be seen in the following figure:
 
-          ![](img/76b414a5-1847-4944-8811-28677d9e3853.png)
+          ![](assets/76b414a5-1847-4944-8811-28677d9e3853.png)
 
         Figure 7.10: Plot of the sample time series with forecast values and actual future values for comparison
         Here, we can see that the actual future values are within the confidence interval for the forecast values.
@@ -941,7 +941,7 @@ ts_ax.legend()
 
 ```
 
-从 tsdata 导入生成样本数据
+从tsdata导入生成样本数据
 
 ```py
 
@@ -974,7 +974,7 @@ ts_ax.set_ylabel("值")
 
         The plot of the sample time series data can be seen in the following figure. Here, we can see that there seem to be periodic peaks in the data:
 
-          ![](img/f4ae55a8-7e3a-489b-b5bc-987923b794ab.png)
+          ![](assets/f4ae55a8-7e3a-489b-b5bc-987923b794ab.png)
 
         Figure 7.11: Plot of the sample time series data
 
@@ -1000,7 +1000,7 @@ pacf_ax.set_ylabel("值")
 
         The ACF and PACF for the sample time series can be seen in the following figure:
 
-          ![](img/0d6132a1-0b39-4f7b-bf1a-0da288ad8c3c.png)
+          ![](assets/0d6132a1-0b39-4f7b-bf1a-0da288ad8c3c.png)
 
         Figure 7.12: ACF and PACF for the sample time series
         These plots possibly indicate the existence of autoregressive components, but also a significant spike on the PACF with lag 7.
@@ -1017,11 +1017,11 @@ tight_layout=True)
 
 sm.graphics.tsa.plot_acf(diffs, ax=dacf_ax,
 
-标题="差分 ACF")
+标题="差分ACF")
 
 sm.graphics.tsa.plot_pacf(diffs, ax=dpacf_ax,
 
-标题="差分 PACF")
+标题="差分PACF")
 
 dpacf_ax.set_xlabel("滞后")
 
@@ -1033,7 +1033,7 @@ dpacf_ax.set_ylabel("值")
 
         The ACF and PACF for the differenced time series can be seen in the following figure. We can see that there is definitely a seasonal component with lag 7:
 
-          ![](img/7e2f3382-2b4e-4423-9d38-0e0d4332f9b8.png)
+          ![](assets/7e2f3382-2b4e-4423-9d38-0e0d4332f9b8.png)
 
         Figure 7.13: Plot of the ACF and PACF for the differenced time series
 
@@ -1059,7 +1059,7 @@ fitted_seasonal.fittedvalues.plot(ax=ts_ax, c="r",
 
 ```
 
-SARIMAX 结果
+SARIMAX结果
 
 ===================================================================
 
@@ -1067,11 +1067,11 @@ SARIMAX 结果
 
 模型：SARIMAX(1, 1, 1)x(1, 0, [], 7) 对数似然-509.941
 
-日期：星期一，2020 年 5 月 4 日                AIC 1027.881
+日期：星期一，2020年5月4日                AIC 1027.881
 
 时间：18:03:27                        BIC 1043.481
 
-样本：2020 年 01 月 01 日                    HQIC 1034.081
+样本：2020年01月01日                    HQIC 1034.081
 
 - 12-31-2020
 
@@ -1143,13 +1143,13 @@ ts_ax.legend()
 
         The final plot of the time series, along with the predictions and the confidence interval for the forecasts, can be seen in the following figure:
 
-          ![](img/54ae8641-4c49-464e-9183-9c56e95c1145.png)
+          ![](assets/54ae8641-4c49-464e-9183-9c56e95c1145.png)
 
         Figure 7.14: Plot of the sample time series, along with the forecasts and confidence interval
         How it works...
         Adjusting an ARIMA model to incorporate seasonality is a relatively simple task. A seasonal component is similar to an autoregressive component, where the lag starts at some number larger than 1\. In this recipe, the time series exhibits seasonality with period 7 (weekly), which means that the model is approximately given by the following equation:
 
-          ![](img/0a72f02a-4314-4245-b1cf-92c84d07882e.png)
+          ![](assets/0a72f02a-4314-4245-b1cf-92c84d07882e.png)
 
         Here *φ[1]* and *Φ**[1]**are the parameters and *ε[t]* is the noise at time step *t*. The standard ARIMA model is easily adapted to include this additional lag term.* *The SARIMA model incorporates this additional seasonality into the ARIMA model. It has four additional order terms on top of the three for the underlying ARIMA model. These four additional parameters are the seasonal AR, differencing, and MA components, along with the period of the seasonality. In this recipe, we took the seasonal AR to be order 1, with no seasonal differencing or MA components (order 0), and a seasonal period of 7\. This gives us the additional parameters (1, 0, 0, 7) that we used in *step 5* of this recipe.
 
@@ -1267,7 +1267,7 @@ ax.set_ylabel("值")
 
 The plot of the time series, along with forecasts, can be seen in the following figure:
 
-          ![](img/9a9b3e93-8bbb-491f-8f99-2357a722754a.png)
+          ![](assets/9a9b3e93-8bbb-491f-8f99-2357a722754a.png)
 
         Figure 7.15: Plot of sample time series data, along with forecasts and a confidence interval
 
@@ -1285,7 +1285,7 @@ There are alternative packages for automatically generating models for time seri
 
 # Further reading
 
-A good textbook on regression in statistics is the book *Probability and Statistics* by Mendenhall, Beaver, and Beaver, as mentioned in Chapter 6, *Working with Data and Statistics*. The following books provide a good introduction to classification and regression in modern data science:
+A good textbook on regression in statistics is the book *Probability and Statistics* by Mendenhall, Beaver, and Beaver, as mentioned in [Chapter 6](87b0f91d-3086-41a9-995d-27fe7d364e8b.xhtml), *Working with Data and Statistics*. The following books provide a good introduction to classification and regression in modern data science:
 
 *   *James, G. and Witten, D., 2013\. An Introduction To Statistical Learning: With Applications In R. New York: Springer.*
 

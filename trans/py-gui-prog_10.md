@@ -1,36 +1,36 @@
-# 使用 SQL 改进数据存储
+# 使用SQL改进数据存储
 
-随着时间的推移，实验室出现了一个越来越严重的问题：CSV 文件到处都是！冲突的副本，丢失的文件，非数据输入人员更改的记录，以及其他与 CSV 相关的挫折正在困扰着项目。很明显，单独的 CSV 文件不适合作为存储实验数据的方式。需要更好的东西。
+随着时间的推移，实验室出现了一个越来越严重的问题：CSV文件到处都是！冲突的副本，丢失的文件，非数据输入人员更改的记录，以及其他与CSV相关的挫折正在困扰着项目。很明显，单独的CSV文件不适合作为存储实验数据的方式。需要更好的东西。
 
-该设施有一个安装了 PostgreSQL 数据库的较旧的 Linux 服务器。您被要求更新您的程序，以便将数据存储在 PostgreSQL 数据库中，而不是在 CSV 文件中。这将是对您的应用程序的重大更新！
+该设施有一个安装了PostgreSQL数据库的较旧的Linux服务器。您被要求更新您的程序，以便将数据存储在PostgreSQL数据库中，而不是在CSV文件中。这将是对您的应用程序的重大更新！
 
 在本章中，您将学习以下主题：
 
-+   安装和配置 PostgreSQL 数据库系统
++   安装和配置PostgreSQL数据库系统
 
 +   在数据库中构建数据以获得良好的性能和可靠性
 
-+   SQL 查询的基础知识
++   SQL查询的基础知识
 
-+   使用`psycopg2`库将您的程序连接到 PostgreSQL
++   使用`psycopg2`库将您的程序连接到PostgreSQL
 
 # PostgreSQL
 
-PostgreSQL（通常发音为 post-gress）是一个免费的、开源的、跨平台的关系数据库系统。它作为一个网络服务运行，您可以使用客户端程序或软件库进行通信。在撰写本文时，该项目刚刚发布了 10.0 版本。
+PostgreSQL（通常发音为post-gress）是一个免费的、开源的、跨平台的关系数据库系统。它作为一个网络服务运行，您可以使用客户端程序或软件库进行通信。在撰写本文时，该项目刚刚发布了10.0版本。
 
-尽管 ABQ 提供了一个已安装和配置的 PostgreSQL 服务器，但您需要为开发目的在您的工作站上下载并安装该软件。
+尽管ABQ提供了一个已安装和配置的PostgreSQL服务器，但您需要为开发目的在您的工作站上下载并安装该软件。
 
 共享的生产资源，如数据库和网络服务，永远不应该用于测试或开发。始终在您自己的工作站或单独的服务器上设置这些资源的独立开发副本。
 
-# 安装和配置 PostgreSQL
+# 安装和配置PostgreSQL
 
-要下载 PostgreSQL，请访问[`www.postgresql.org/download/`](https://www.postgresql.org/download)。EnterpriseDB 公司为 Windows、macOS 和 Linux 提供了安装程序，这是一个为 PostgreSQL 提供付费支持的商业实体。这些软件包包括服务器、命令行客户端和 pgAdmin 图形客户端。
+要下载PostgreSQL，请访问[https://www.postgresql.org/download/](https://www.postgresql.org/download)。EnterpriseDB公司为Windows、macOS和Linux提供了安装程序，这是一个为PostgreSQL提供付费支持的商业实体。这些软件包包括服务器、命令行客户端和pgAdmin图形客户端。
 
 要安装软件，请使用具有管理权限的帐户启动安装程序，并按照安装向导中的屏幕进行操作。
 
-安装后，启动 pgAdmin，并通过选择 Object | Create | Login/Group Role 来为自己创建一个新的管理员用户。确保访问特权选项卡以检查超级用户，并访问定义选项卡以设置密码。然后，通过选择 Object | Create | Database 来创建一个数据库。确保将您的用户设置为所有者。要在数据库上运行 SQL 命令，请选择您的数据库并单击 Tools | Query Tool。
+安装后，启动pgAdmin，并通过选择Object | Create | Login/Group Role来为自己创建一个新的管理员用户。确保访问特权选项卡以检查超级用户，并访问定义选项卡以设置密码。然后，通过选择Object | Create | Database来创建一个数据库。确保将您的用户设置为所有者。要在数据库上运行SQL命令，请选择您的数据库并单击Tools | Query Tool。
 
-喜欢使用命令行的 MacOS 或 Linux 用户也可以使用以下命令：
+喜欢使用命令行的MacOS或Linux用户也可以使用以下命令：
 
 ```py
 sudo -u postgres createuser -sP myusername
@@ -38,55 +38,55 @@ sudo -u postgres createdb -O myusername mydatabasename
 psql -d mydatabasename -U myusername
 ```
 
-尽管 Enterprise DB 为 Linux 提供了二进制安装程序，但大多数 Linux 用户更喜欢使用其发行版提供的软件包。您可能会得到一个稍旧的 PostgreSQL 版本，但对于大多数基本用例来说这并不重要。请注意，pgAdmin 通常是单独的软件包的一部分，最新版本（pgAdmin 4）可能不可用。不过，您应该没有问题遵循本章使用旧版本。
+尽管Enterprise DB为Linux提供了二进制安装程序，但大多数Linux用户更喜欢使用其发行版提供的软件包。您可能会得到一个稍旧的PostgreSQL版本，但对于大多数基本用例来说这并不重要。请注意，pgAdmin通常是单独的软件包的一部分，最新版本（pgAdmin 4）可能不可用。不过，您应该没有问题遵循本章使用旧版本。
 
-# 使用 psycopg2 连接
+# 使用psycopg2连接
 
-要从我们的应用程序进行 SQL 查询，我们需要安装一个可以直接与我们的数据库通信的 Python 库。最受欢迎的选择是`psycopg2`。`psycopg2`库不是 Python 标准库的一部分。您可以在[`initd.org/psycopg/docs/install.html`](http://initd.org/psycopg/docs/install.html)找到最新的安装说明；但是，首选方法是使用`pip`。
+要从我们的应用程序进行SQL查询，我们需要安装一个可以直接与我们的数据库通信的Python库。最受欢迎的选择是`psycopg2`。`psycopg2`库不是Python标准库的一部分。您可以在[http://initd.org/psycopg/docs/install.html](http://initd.org/psycopg/docs/install.html)找到最新的安装说明；但是，首选方法是使用`pip`。
 
-对于 Windows、macOS 和 Linux，以下命令应该有效：
+对于Windows、macOS和Linux，以下命令应该有效：
 
 ```py
 pip install --user psycopg2-binary
 ```
 
-如果这不起作用，或者您更愿意从源代码安装它，请在网站上检查要求。`psycopg2`库是用 C 编写的，而不是 Python，因此它需要 C 编译器和其他几个开发包。Linux 用户通常可以从其发行版的软件包管理系统中安装`psycopg2`。我们将在本章后面深入研究`psycopg2`的使用。
+如果这不起作用，或者您更愿意从源代码安装它，请在网站上检查要求。`psycopg2`库是用C编写的，而不是Python，因此它需要C编译器和其他几个开发包。Linux用户通常可以从其发行版的软件包管理系统中安装`psycopg2`。我们将在本章后面深入研究`psycopg2`的使用。
 
-# SQL 和关系数据库基础知识
+# SQL和关系数据库基础知识
 
-在我们开始使用 Python 与 PostgreSQL 之前，您至少需要对 SQL 有基本的了解。如果您已经有了，可以跳到下一节；否则，准备好接受关系数据库和 SQL 的超短速成课程。
+在我们开始使用Python与PostgreSQL之前，您至少需要对SQL有基本的了解。如果您已经有了，可以跳到下一节；否则，准备好接受关系数据库和SQL的超短速成课程。
 
-三十多年来，关系数据库系统一直是存储业务数据的事实标准。它们更常被称为**SQL 数据库**，因为与它们交互的**结构化查询语言**（**SQL**）。
+三十多年来，关系数据库系统一直是存储业务数据的事实标准。它们更常被称为**SQL数据库**，因为与它们交互的**结构化查询语言**（**SQL**）。
 
-SQL 数据库由表组成。表类似于我们的 CSV 文件，因为它具有表示单个项目的行和表示与每个项目关联的数据值的列。SQL 表与我们的 CSV 文件有一些重要的区别。首先，表中的每一列都被分配了一个严格执行的数据类型；就像当您尝试将`abcd`作为`int`使用时，Python 会产生错误一样，当您尝试将字母插入到数字或其他非字符串列中时，SQL 数据库会抱怨。SQL 数据库通常支持文本、数字、日期和时间、布尔值、二进制数据等数据类型。
+SQL数据库由表组成。表类似于我们的CSV文件，因为它具有表示单个项目的行和表示与每个项目关联的数据值的列。SQL表与我们的CSV文件有一些重要的区别。首先，表中的每一列都被分配了一个严格执行的数据类型；就像当您尝试将`abcd`作为`int`使用时，Python会产生错误一样，当您尝试将字母插入到数字或其他非字符串列中时，SQL数据库会抱怨。SQL数据库通常支持文本、数字、日期和时间、布尔值、二进制数据等数据类型。
 
-SQL 表还可以具有约束，进一步强制执行插入到表中的数据的有效性。例如，可以给列添加唯一约束，这可以防止两行具有相同的值，或者添加非空约束，这意味着每一行都必须有一个值。
+SQL表还可以具有约束，进一步强制执行插入到表中的数据的有效性。例如，可以给列添加唯一约束，这可以防止两行具有相同的值，或者添加非空约束，这意味着每一行都必须有一个值。
 
-SQL 数据库通常包含许多表；这些表可以连接在一起，以表示更复杂的数据结构。通过将数据分解为多个链接的表，可以以比我们的二维纯文本 CSV 文件更有效和更具弹性的方式存储数据。
+SQL数据库通常包含许多表；这些表可以连接在一起，以表示更复杂的数据结构。通过将数据分解为多个链接的表，可以以比我们的二维纯文本CSV文件更有效和更具弹性的方式存储数据。
 
-# 基本的 SQL 操作
+# 基本的SQL操作
 
-SQL 是一个用于对表格数据进行大规模操作的强大而表达性的语言，但基础知识可以很快掌握。SQL 作为单独的查询来执行，这些查询要么定义数据，要么在数据库中操作数据。SQL 方言在不同的关系数据库产品之间略有不同，但它们大多数支持 ANSI/ISO 标准 SQL 进行核心操作。虽然我们将在本章中使用 PostgreSQL，但我们编写的大多数 SQL 语句都可以在不同的数据库中使用。
+SQL是一个用于对表格数据进行大规模操作的强大而表达性的语言，但基础知识可以很快掌握。SQL作为单独的查询来执行，这些查询要么定义数据，要么在数据库中操作数据。SQL方言在不同的关系数据库产品之间略有不同，但它们大多数支持ANSI/ISO标准SQL进行核心操作。虽然我们将在本章中使用PostgreSQL，但我们编写的大多数SQL语句都可以在不同的数据库中使用。
 
-要遵循本节，连接到您的 PostgreSQL 数据库服务器上的空数据库，可以使用`psql`命令行工具、pgAdmin 4 图形工具或您选择的其他数据库客户端软件。
+要遵循本节，连接到您的PostgreSQL数据库服务器上的空数据库，可以使用`psql`命令行工具、pgAdmin 4图形工具或您选择的其他数据库客户端软件。
 
-# 与 Python 的语法差异
+# 与Python的语法差异
 
-如果您只在 Python 中编程过，那么最初可能会觉得 SQL 很奇怪，因为规则和语法非常不同。
+如果您只在Python中编程过，那么最初可能会觉得SQL很奇怪，因为规则和语法非常不同。
 
-我们将介绍各个命令和关键字，但以下是与 Python 不同的一些一般区别：
+我们将介绍各个命令和关键字，但以下是与Python不同的一些一般区别：
 
-+   **SQL（大部分）不区分大小写**：尽管为了可读性的目的，按照惯例，将 SQL 关键字输入为全大写，但大多数 SQL 实现不区分大小写。这里有一些小的例外，但大部分情况下，您可以以最容易的方式输入 SQL 的大小写。
++   **SQL（大部分）不区分大小写**：尽管为了可读性的目的，按照惯例，将SQL关键字输入为全大写，但大多数SQL实现不区分大小写。这里有一些小的例外，但大部分情况下，您可以以最容易的方式输入SQL的大小写。
 
-+   **空格不重要**：在 Python 中，换行和缩进可以改变代码的含义。在 SQL 中，空格不重要，语句以分号结尾。查询中的缩进和换行只是为了可读性。
++   **空格不重要**：在Python中，换行和缩进可以改变代码的含义。在SQL中，空格不重要，语句以分号结尾。查询中的缩进和换行只是为了可读性。
 
-+   **SQL 是声明性的**：Python 可以被描述为一种命令式编程语言：我们通过告诉 Python 如何做来告诉 Python 我们想要它做什么。SQL 更像是一种声明性语言：我们描述我们想要的，SQL 引擎会找出如何做。
++   **SQL是声明性的**：Python可以被描述为一种命令式编程语言：我们通过告诉Python如何做来告诉Python我们想要它做什么。SQL更像是一种声明性语言：我们描述我们想要的，SQL引擎会找出如何做。
 
-当我们查看特定的 SQL 代码示例时，我们会遇到其他语法差异。
+当我们查看特定的SQL代码示例时，我们会遇到其他语法差异。
 
 # 定义表和插入数据
 
-SQL 表是使用`CREATE TABLE`命令创建的，如下面的 SQL 查询所示：
+SQL表是使用`CREATE TABLE`命令创建的，如下面的SQL查询所示：
 
 ```py
 CREATE TABLE musicians (id SERIAL PRIMARY KEY, name TEXT NOT NULL, born DATE, died DATE CHECK(died > born));
@@ -96,7 +96,7 @@ CREATE TABLE musicians (id SERIAL PRIMARY KEY, name TEXT NOT NULL, born DATE, di
 
 在这种情况下，我们有以下四列：
 
-+   `id`列将是任意的行 ID。它的类型是`SERIAL`，这意味着它将是一个自动递增的整数字段，其约束是`PRIMARY KEY`，这意味着它将用作行的唯一标识符。
++   `id`列将是任意的行ID。它的类型是`SERIAL`，这意味着它将是一个自动递增的整数字段，其约束是`PRIMARY KEY`，这意味着它将用作行的唯一标识符。
 
 +   `name`字段的类型是`TEXT`，因此它可以容纳任意长度的字符串。它的`NOT NULL`约束意味着在该字段中不允许`NULL`值。
 
@@ -112,7 +112,7 @@ INSERT INTO musicians (name, born, died) VALUES ('Robert Fripp', '1946-05-16', N
 
 `INSERT INTO`命令接受表名和一个可选的列表，指定接收数据的字段；其他字段将接收它们的默认值（如果在`CREATE`语句中没有另外指定，则为`NULL`）。`VALUES`关键字表示要跟随的数据值列表，格式为逗号分隔的元组列表。每个元组对应一个表行，必须与在表名之后指定的字段列表匹配。
 
-请注意，字符串由单引号字符括起来。与 Python 不同，单引号和双引号在 SQL 中具有不同的含义：单引号表示字符串文字，而双引号用于包含空格或需要保留大小写的对象名称。如果我们在这里使用双引号，将导致错误。
+请注意，字符串由单引号字符括起来。与Python不同，单引号和双引号在SQL中具有不同的含义：单引号表示字符串文字，而双引号用于包含空格或需要保留大小写的对象名称。如果我们在这里使用双引号，将导致错误。
 
 让我们创建并填充一个`instruments`表：
 
@@ -129,7 +129,7 @@ INSERT INTO instruments (name) VALUES ('bass'), ('drums'), ('guitar'), ('keyboar
 ALTER TABLE musicians ADD COLUMN main_instrument INT REFERENCES instruments(id);
 ```
 
-`ALTER TABLE`命令接受表名，然后是改变表的某个方面的命令。在这种情况下，我们正在添加一个名为`main_instrument`的新列，它将是一个整数。我们指定的`REFERENCES`约束称为**外键**约束；它将`main_instrument`的可能值限制为`instruments`表中现有的 ID 号码。
+`ALTER TABLE`命令接受表名，然后是改变表的某个方面的命令。在这种情况下，我们正在添加一个名为`main_instrument`的新列，它将是一个整数。我们指定的`REFERENCES`约束称为**外键**约束；它将`main_instrument`的可能值限制为`instruments`表中现有的ID号码。
 
 # 从表中检索数据
 
@@ -144,6 +144,7 @@ SELECT name FROM musicians;
 它的输出如下：
 
 | `name` |
+| --- |
 | `Bill Bruford` |
 | `Keith Emerson` |
 | `Greg Lake` |
@@ -156,9 +157,10 @@ SELECT name FROM musicians;
 SELECT * FROM musicians;
 ```
 
-前面的 SQL 查询返回以下数据表：
+前面的SQL查询返回以下数据表：
 
 | `ID` | `name` | `born` | `died` | `main_instrument` |
+| --- | --- | --- | --- | --- |
 | `4` | `Bill Bruford` | `1949-05-17` |  |  |
 | `2` | `Keith Emerson` | `1944-11-02` | `2016-03-11` |  |
 | `3` | `Greg Lake` | `1947-11-10` | `2016-12-07` |  |
@@ -179,7 +181,7 @@ SELECT name FROM musicians WHERE died IS NULL;
 SELECT name FROM musicians WHERE born < '1945-01-01' AND died IS NULL;
 ```
 
-在这种情况下，我们只会得到 1945 年之前出生且尚未去世的音乐家。
+在这种情况下，我们只会得到1945年之前出生且尚未去世的音乐家。
 
 `SELECT`命令也可以对字段进行操作，或者按照某些列重新排序结果：
 
@@ -191,9 +193,9 @@ SELECT name, age(born), (died - born)/365 AS "age at death" FROM musicians ORDER
 
 当运行此查询时，请注意，对于没有死亡日期的人，`age at death`为`NULL`。对`NULL`值进行数学或逻辑运算总是返回`NULL`。
 
-`ORDER BY`子句指定结果应该按照哪些列进行排序。它还接受`DESC`或`ASC`的参数来指定降序或升序。我们在这里按出生日期降序排序输出。请注意，每种数据类型都有其自己的排序规则，就像在 Python 中一样。日期按照它们的日历位置排序，字符串按照字母顺序排序，数字按照它们的数值排序。
+`ORDER BY`子句指定结果应该按照哪些列进行排序。它还接受`DESC`或`ASC`的参数来指定降序或升序。我们在这里按出生日期降序排序输出。请注意，每种数据类型都有其自己的排序规则，就像在Python中一样。日期按照它们的日历位置排序，字符串按照字母顺序排序，数字按照它们的数值排序。
 
-# 更新行，删除行，以及更多的 WHERE 子句
+# 更新行，删除行，以及更多的WHERE子句
 
 要更新或删除现有行，我们使用`UPDATE`和`DELETE FROM`关键字与`WHERE`子句一起选择受影响的行。
 
@@ -220,7 +222,7 @@ UPDATE musicians SET main_instrument=2 WHERE name='Bill Bruford';
 UPDATE musicians SET main_instrument=4, name='Keith Noel Emerson' WHERE name LIKE 'Keith%';
 ```
 
-额外的列更新只需用逗号分隔。请注意，我们还使用`LIKE`运算符与`%`通配符一起匹配记录。`LIKE`可用于文本和字符串数据类型，以匹配部分数值。标准 SQL 支持两个通配符字符：`%`，匹配任意数量的字符，`_`，匹配单个字符。
+额外的列更新只需用逗号分隔。请注意，我们还使用`LIKE`运算符与`%`通配符一起匹配记录。`LIKE`可用于文本和字符串数据类型，以匹配部分数值。标准SQL支持两个通配符字符：`%`，匹配任意数量的字符，`_`，匹配单个字符。
 
 我们也可以匹配转换后的列值：
 
@@ -230,17 +232,17 @@ UPDATE musicians SET main_instrument=1 WHERE LOWER(name) LIKE '%lake';
 
 在这里，我们使用`LOWER`函数将我们的字符串与列值的小写版本进行匹配。这不会永久改变表中的数据；它只是临时更改值以进行检查。
 
-标准 SQL 规定`LIKE`是区分大小写的匹配。PostgreSQL 提供了一个`ILIKE`运算符，它可以进行不区分大小写的匹配，还有一个`SIMILAR TO`运算符，它使用更高级的正则表达式语法进行匹配。
+标准SQL规定`LIKE`是区分大小写的匹配。PostgreSQL提供了一个`ILIKE`运算符，它可以进行不区分大小写的匹配，还有一个`SIMILAR TO`运算符，它使用更高级的正则表达式语法进行匹配。
 
 # 子查询
 
-与其每次使用`instruments`表的原始主键值，我们可以像以下 SQL 查询中所示使用子查询：
+与其每次使用`instruments`表的原始主键值，我们可以像以下SQL查询中所示使用子查询：
 
 ```py
 UPDATE musicians SET main_instrument=(SELECT id FROM instruments WHERE name='guitar') WHERE name IN ('Robert Fripp', 'David Gilmour');
 ```
 
-子查询是 SQL 查询中的 SQL 查询。如果可以保证子查询返回单个值，它可以用在任何需要使用文字值的地方。在这种情况下，我们让我们的数据库来确定`guitar`的主键是什么，并将其插入我们的`main_instrument`值。
+子查询是SQL查询中的SQL查询。如果可以保证子查询返回单个值，它可以用在任何需要使用文字值的地方。在这种情况下，我们让我们的数据库来确定`guitar`的主键是什么，并将其插入我们的`main_instrument`值。
 
 在`WHERE`子句中，我们还使用`IN`运算符来匹配一个值列表。这允许我们匹配一个值列表。
 
@@ -264,7 +266,7 @@ SELECT name FROM (SELECT * FROM musicians WHERE died IS NULL) AS living_musician
 
 子查询是使用多个表的一种方法，但更灵活和强大的方法是使用`JOIN`。
 
-`JOIN`在 SQL 语句的`FROM`子句中使用如下：
+`JOIN`在SQL语句的`FROM`子句中使用如下：
 
 ```py
 SELECT musicians.name, instruments.name as main_instrument FROM musicians JOIN instruments ON musicians.main_instrument = instruments.id;
@@ -282,7 +284,7 @@ SELECT musicians.name, instruments.name as main_instrument FROM musicians JOIN i
 
 +   多对多连接匹配两个表中的多行。这种连接需要使用一个中间表。
 
-早期的查询显示了一个多对一的连接，因为许多音乐家可以有相同的主要乐器。当一个列的值应该限制在一组选项时，通常会使用多对一连接，比如我们的 GUI 可能会用`ComboBox`小部件表示的字段。连接的表称为**查找表**。
+早期的查询显示了一个多对一的连接，因为许多音乐家可以有相同的主要乐器。当一个列的值应该限制在一组选项时，通常会使用多对一连接，比如我们的GUI可能会用`ComboBox`小部件表示的字段。连接的表称为**查找表**。
 
 如果我们要反转它，它将是一对多：
 
@@ -292,9 +294,10 @@ SELECT instruments.name AS instrument, musicians.name AS musician FROM instrumen
 
 一对多连接通常在记录有与之关联的子记录列表时使用；在这种情况下，每个乐器都有一个将其视为主要乐器的音乐家列表。连接的表通常称为**详细表**。
 
-前面的 SQL 查询将给出以下输出：
+前面的SQL查询将给出以下输出：
 
 | `instrument` | `musician` |
+| --- | --- |
 | `drums` | `Bill Bruford` |
 | `keyboards` | `Keith Emerson` |
 | `bass` | `Greg Lake` |
@@ -303,13 +306,13 @@ SELECT instruments.name AS instrument, musicians.name AS musician FROM instrumen
 
 请注意，`guitar`在乐器列表中重复了。当两个表连接时，结果的行不再指代相同类型的对象。乐器表中的一行代表一个乐器。`musician`表中的一行代表一个音乐家。这个表中的一行代表一个`instrument`-`musician`关系。
 
-但假设我们想要保持输出，使得一行代表一个乐器，但仍然可以在每行中包含有关关联音乐家的信息。为了做到这一点，我们需要使用聚合函数和`GROUP BY`子句来聚合匹配的音乐家行，如下面的 SQL 查询所示：
+但假设我们想要保持输出，使得一行代表一个乐器，但仍然可以在每行中包含有关关联音乐家的信息。为了做到这一点，我们需要使用聚合函数和`GROUP BY`子句来聚合匹配的音乐家行，如下面的SQL查询所示：
 
 ```py
 SELECT instruments.name AS instrument, count(musicians.id) as musicians FROM instruments JOIN musicians ON musicians.main_instrument = instruments.id GROUP BY instruments.name;
 ```
 
-`GROUP BY`子句指定输出表中的每一行代表什么列。不在`GROUP BY`子句中的输出列必须使用聚合函数减少为单个值。在这种情况下，我们使用`count()`函数来计算与每个乐器关联的音乐家记录的总数。标准 SQL 包含几个更多的聚合函数，如`min()`、`max()`和`sum()`，大多数 SQL 实现也扩展了这些函数。
+`GROUP BY`子句指定输出表中的每一行代表什么列。不在`GROUP BY`子句中的输出列必须使用聚合函数减少为单个值。在这种情况下，我们使用`count()`函数来计算与每个乐器关联的音乐家记录的总数。标准SQL包含几个更多的聚合函数，如`min()`、`max()`和`sum()`，大多数SQL实现也扩展了这些函数。
 
 多对一和一对多连接并不能完全涵盖数据库需要建模的每种可能情况；很多时候，需要一个多对多的关系。
 
@@ -329,7 +332,7 @@ CREATE TABLE musicians_bands (musician_id INT REFERENCES musicians(id), band_id 
 INSERT INTO musicians_bands(musician_id, band_id) VALUES (1, 3), (2, 2), (3, 2), (3, 3), (4, 1), (4, 2), (4, 5), (5,4);
 ```
 
-`musicians_bands`表只包含两个外键字段，一个指向音乐家的 ID，一个指向乐队的 ID。请注意，我们使用两个字段的组合作为主键，而不是创建或指定一个字段作为主键。有多行具有相同的两个值是没有意义的，因此这种组合可以作为一个合适的主键。要编写使用这种关系的查询，我们的`FROM`子句需要指定两个`JOIN`语句：一个从`musicians`到`musicians_bands`，一个从`bands`到`musicians_bands`。
+`musicians_bands`表只包含两个外键字段，一个指向音乐家的ID，一个指向乐队的ID。请注意，我们使用两个字段的组合作为主键，而不是创建或指定一个字段作为主键。有多行具有相同的两个值是没有意义的，因此这种组合可以作为一个合适的主键。要编写使用这种关系的查询，我们的`FROM`子句需要指定两个`JOIN`语句：一个从`musicians`到`musicians_bands`，一个从`bands`到`musicians_bands`。
 
 例如，让我们获取每位音乐家所在乐队的名字：
 
@@ -339,24 +342,25 @@ SELECT musicians.name, array_agg(bands.name) AS bands FROM musicians JOIN musici
 
 这个查询使用连接表将`音乐家`和`乐队`联系起来，然后显示音乐家的名字以及他们所在乐队的聚合列表，并按音乐家的名字排序。
 
-前面的 SQL 查询给出了以下输出：
+前面的SQL查询给出了以下输出：
 
 | `name` | `bands` |
+| --- | --- |
 | `Bill Bruford` | `{ABWH,"King Crimson",Yes}` |
 | `David Gilmour` | `{"Pink Floyd"}` |
 | `Greg Lake` | `{ELP,"King Crimson"}` |
 | `Keith Emerson` | `{ELP}` |
 | `Robert Fripp` | ``{"King Crimson"}`` |
 
-这里使用的`array_agg()`函数将字符串值聚合成数组结构。这种方法和`ARRAY`数据类型是特定于 PostgreSQL 的。没有用于聚合字符串值的 SQL 标准函数，但大多数 SQL 实现都有解决方案。
+这里使用的`array_agg()`函数将字符串值聚合成数组结构。这种方法和`ARRAY`数据类型是特定于PostgreSQL的。没有用于聚合字符串值的SQL标准函数，但大多数SQL实现都有解决方案。
 
 # 学习更多
 
-这是对 SQL 概念和语法的快速概述；我们已经涵盖了你需要了解的大部分内容，但还有很多东西需要学习。PostgreSQL 手册，可在[`www.postgresql.org/docs/manuals/`](https://www.postgresql.org/docs/manuals/)上找到，是 SQL 语法和 PostgreSQL 特定功能的重要资源和参考。
+这是对SQL概念和语法的快速概述；我们已经涵盖了你需要了解的大部分内容，但还有很多东西需要学习。PostgreSQL手册，可在[https://www.postgresql.org/docs/manuals/](https://www.postgresql.org/docs/manuals/)上找到，是SQL语法和PostgreSQL特定功能的重要资源和参考。
 
 # 建模关系数据
 
-我们的应用目前将数据存储在一个单独的 CSV 文件中；这种文件通常被称为**平面文件**，因为数据已经被压缩成了两个维度。虽然这种格式对我们的应用程序来说可以接受，并且可以直接转换成 SQL 表，但更准确和有用的数据模型需要更复杂的结构。
+我们的应用目前将数据存储在一个单独的CSV文件中；这种文件通常被称为**平面文件**，因为数据已经被压缩成了两个维度。虽然这种格式对我们的应用程序来说可以接受，并且可以直接转换成SQL表，但更准确和有用的数据模型需要更复杂的结构。
 
 # 规范化
 
@@ -374,9 +378,9 @@ SELECT musicians.name, array_agg(bands.name) AS bands FROM musicians JOIN musici
 
 # 实体关系图
 
-帮助规范化我们的数据并为关系数据库做好准备的一种有效方法是分析数据并创建一个**实体-关系图**，或**ERD**。 ERD 是一种用图表表示数据库存储信息和这些信息之间关系的方法。
+帮助规范化我们的数据并为关系数据库做好准备的一种有效方法是分析数据并创建一个**实体-关系图**，或**ERD**。 ERD是一种用图表表示数据库存储信息和这些信息之间关系的方法。
 
-这些东西被称为**实体**。**实体**是一个唯一可识别的对象；它对应于单个表的单行。实体具有属性，对应于其表的列。实体与其他实体有关系，这对应于我们在 SQL 中定义的外键关系。
+这些东西被称为**实体**。**实体**是一个唯一可识别的对象；它对应于单个表的单行。实体具有属性，对应于其表的列。实体与其他实体有关系，这对应于我们在SQL中定义的外键关系。
 
 让我们考虑实验室场景中的实体及其属性和关系：
 
@@ -392,57 +396,58 @@ SELECT musicians.name, array_agg(bands.name) AS bands FROM musicians JOIN musici
 
 以下是这些实体和关系的图表：
 
-![](img/7fd91062-81f2-4025-a39e-26abb3216732.png)
+![](assets/7fd91062-81f2-4025-a39e-26abb3216732.png)
 
 在前面的图表中，实体由矩形表示。我们有五个实体：**实验室**，**地块**，**实验室技术人员**，**实验室检查**和**地块检查**。每个实体都有属性，用椭圆形表示。关系由菱形表示，其中的文字描述了左到右的关系。例如，**实验室技术人员**执行**实验室检查**，**实验室检查**在**实验室**中进行。请注意关系周围的小**1**和**n**字符：这些显示了关系是一对多，多对一还是多对多。
 
-这个图表代表了我们数据的一个相当规范化的结构。要在 SQL 中实现它，我们只需为每个实体创建一个表，为每个属性创建一个列，并为每个关系创建一个外键关系（可能包括一个中间表）。在我们这样做之前，让我们考虑 SQL 数据类型。
+这个图表代表了我们数据的一个相当规范化的结构。要在SQL中实现它，我们只需为每个实体创建一个表，为每个属性创建一个列，并为每个关系创建一个外键关系（可能包括一个中间表）。在我们这样做之前，让我们考虑SQL数据类型。
 
 # 分配数据类型
 
-标准 SQL 定义了 16 种数据类型，包括各种大小的整数和浮点数类型、固定大小或可变大小的 ASCII 或 Unicode 字符串、日期和时间类型以及位类型。几乎每个 SQL 引擎都会扩展这些类型，以适应二进制数据、特殊类型的字符串或数字等。许多数据类型似乎有点多余，而且有几个别名在不同的实现之间可能是不同的。选择列的数据类型可能会令人困惑！
+标准SQL定义了16种数据类型，包括各种大小的整数和浮点数类型、固定大小或可变大小的ASCII或Unicode字符串、日期和时间类型以及位类型。几乎每个SQL引擎都会扩展这些类型，以适应二进制数据、特殊类型的字符串或数字等。许多数据类型似乎有点多余，而且有几个别名在不同的实现之间可能是不同的。选择列的数据类型可能会令人困惑！
 
-对于 PostgreSQL，以下图表提供了一些合理的选择：
+对于PostgreSQL，以下图表提供了一些合理的选择：
 
 | **存储的数据** | **推荐类型** | **备注** |
+| --- | --- | --- |
 | 固定长度字符串 | `CHAR` | 需要长度。 |
 | 短到中等长度的字符串 | `VARCHAR` | 需要一个最大长度参数，例如，`VARCHAR(256)`。 |
 | 长、自由格式文本 | `TEXT` | 无限长度，性能较慢。 |
 | 较小的整数 | `SMALLINT` | 最多±32,767。 |
-| 大多数整数 | `INT` | 最多约±21 亿。 |
-| 较大的整数 | `BIGINT` | 最多约±922 万亿。 |
+| 大多数整数 | `INT` | 最多约±21亿。 |
+| 较大的整数 | `BIGINT` | 最多约±922万亿。 |
 | 小数 | `NUMERIC` | 接受可选的长度和精度参数。 |
 | 整数主键 | `SERIAL`，`BIGSERIAL` | 自动递增整数或大整数。 |
 | 布尔 | `BOOLEAN` |  |
-| 日期和时间 | `TIMESTAMP WITH TIMEZONE` | 存储日期、时间和时区。精确到 1 微秒。 |
+| 日期和时间 | `TIMESTAMP WITH TIMEZONE` | 存储日期、时间和时区。精确到1微秒。 |
 | 无时间的日期 | `DATE` |  |
 | 无日期的时间 | `TIME` | 可以有或没有时区。 |
 
-这些类型可能在大多数应用中满足您的绝大多数需求，我们将在我们的 ABQ 数据库中使用其中的一部分。在创建表时，我们将参考我们的数据字典，并为我们的列选择适当的数据类型。
+这些类型可能在大多数应用中满足您的绝大多数需求，我们将在我们的ABQ数据库中使用其中的一部分。在创建表时，我们将参考我们的数据字典，并为我们的列选择适当的数据类型。
 
 注意不要选择过于具体或限制性的数据类型。任何数据最终都可以存储在`TEXT`字段中；选择更具体的类型的目的主要是为了能够使用特定类型的运算符、函数或排序。如果不需要这些，可以考虑使用更通用的类型。例如，电话号码和美国社会安全号码可以纯粹用数字表示，但这并不意味着要将它们作为`INTEGER`或`NUMERIC`字段；毕竟，你不会用它们进行算术运算！
 
-# 创建 ABQ 数据库
+# 创建ABQ数据库
 
-现在我们已经对数据进行了建模，并对可用的数据类型有了一定的了解，是时候建立我们的数据库了。首先，在您的 SQL 服务器上创建一个名为`abq`的数据库，并将自己设为所有者。
+现在我们已经对数据进行了建模，并对可用的数据类型有了一定的了解，是时候建立我们的数据库了。首先，在您的SQL服务器上创建一个名为`abq`的数据库，并将自己设为所有者。
 
 接下来，在您的项目根目录下，创建一个名为`sql`的新目录。在`sql`文件夹中，创建一个名为`create_db.sql`的文件。我们将从这个文件开始编写我们的数据库创建代码。
 
 # 创建我们的表
 
-我们创建表的顺序很重要。在外键关系中引用的任何表都需要在定义关系之前存在。因此，最好从查找表开始，并遵循一对多关系的链，直到所有表都被创建。在我们的 ERD 中，这将使我们从大致左上到右下。
+我们创建表的顺序很重要。在外键关系中引用的任何表都需要在定义关系之前存在。因此，最好从查找表开始，并遵循一对多关系的链，直到所有表都被创建。在我们的ERD中，这将使我们从大致左上到右下。
 
 # 创建查找表
 
 我们需要创建以下三个查找表：
 
-+   `labs`：这个查找表将包含我们实验室的 ID 字符串。
++   `labs`：这个查找表将包含我们实验室的ID字符串。
 
-+   `lab_techs`：这个查找表将包含实验室技术员的姓名，通过他们的员工 ID 号进行标识。
++   `lab_techs`：这个查找表将包含实验室技术员的姓名，通过他们的员工ID号进行标识。
 
 +   `plots`：这个查找表将为每个物理地块创建一行，由实验室和地块号标识。它还将跟踪地块中种植的当前种子样本。
 
-将用于创建这些表的 SQL 查询添加到`create_db.sql`中，如下所示：
+将用于创建这些表的SQL查询添加到`create_db.sql`中，如下所示：
 
 ```py
 CREATE TABLE labs (id CHAR(1) PRIMARY KEY);
@@ -457,15 +462,15 @@ CREATE TABLE plots (lab_id CHAR(1) NOT NULL REFERENCES labs(id),
 
 +   `labs`应该有值`A`到`E`，代表五个实验室。
 
-+   `lab_techs`需要我们四名实验室技术员的姓名和 ID 号：`J Simms`（`4291`）、`P Taylor`（`4319`）、`Q Murphy`（`4478`）和`L Taniff`（`5607`）。
++   `lab_techs`需要我们四名实验室技术员的姓名和ID号：`J Simms`（`4291`）、`P Taylor`（`4319`）、`Q Murphy`（`4478`）和`L Taniff`（`5607`）。
 
-+   `plots`需要所有 100 个地块，每个实验室的地块号为`1`到`20`。种子样本在四个值之间轮换，如`AXM477`、`AXM478`、`AXM479`和`AXM480`。
++   `plots`需要所有100个地块，每个实验室的地块号为`1`到`20`。种子样本在四个值之间轮换，如`AXM477`、`AXM478`、`AXM479`和`AXM480`。
 
-您可以手动使用 pgAdmin 填充这些表，或者使用包含在示例代码中的`db_populate.sql`脚本。
+您可以手动使用pgAdmin填充这些表，或者使用包含在示例代码中的`db_populate.sql`脚本。
 
 # 实验室检查表
 
-`lab_check`表是一个技术人员在给定日期的给定时间检查实验室的所有地块的一个实例，如下所示的 SQL 查询：
+`lab_check`表是一个技术人员在给定日期的给定时间检查实验室的所有地块的一个实例，如下所示的SQL查询：
 
 ```py
 CREATE TABLE lab_checks(
@@ -475,7 +480,7 @@ CREATE TABLE lab_checks(
     PRIMARY KEY(date, time, lab_id));
 ```
 
-`date`、`time`和`lab_id`列一起唯一标识了实验室检查，因此我们将它们指定为主键列。执行检查的实验室技术员的 ID 是这个表中唯一的属性。
+`date`、`time`和`lab_id`列一起唯一标识了实验室检查，因此我们将它们指定为主键列。执行检查的实验室技术员的ID是这个表中唯一的属性。
 
 # 地块检查表
 
@@ -519,7 +524,7 @@ notes TEXT);
 
 # 创建视图
 
-在完成数据库设计之前，我们将创建一个视图，以简化对我们数据的访问。视图在大多数方面都像表一样，但不包含实际数据；它实际上只是一个存储的`SELECT`查询。我们的视图将为与 GUI 交互更容易地格式化我们的数据。
+在完成数据库设计之前，我们将创建一个视图，以简化对我们数据的访问。视图在大多数方面都像表一样，但不包含实际数据；它实际上只是一个存储的`SELECT`查询。我们的视图将为与GUI交互更容易地格式化我们的数据。
 
 视图是使用`CREATE VIEW`命令创建的，如下所示：
 
@@ -543,25 +548,25 @@ FROM plot_checks AS pc JOIN lab_checks AS lc ON pc.lab_id = lc.lab_id AND pc.dat
 
 我们正在选择`plot_checks`表，并通过外键关系将其与`lab_checks`和`lab_techs`连接起来。请注意，我们使用`AS`关键字给这些表起了别名。像这样的简短别名可以帮助使大查询更易读。我们还将每个字段别名为应用程序数据结构中使用的名称。这些必须用双引号括起来，以允许使用空格并保留大小写。通过使列名与应用程序中的`data`字典键匹配，我们就不需要在应用程序代码中翻译字段名。
 
-诸如 PostgreSQL 之类的 SQL 数据库引擎在连接和转换表格数据方面非常高效。在可能的情况下，利用这种能力，让数据库为了您的应用程序的方便而进行数据格式化工作。
+诸如PostgreSQL之类的SQL数据库引擎在连接和转换表格数据方面非常高效。在可能的情况下，利用这种能力，让数据库为了您的应用程序的方便而进行数据格式化工作。
 
-这完成了我们的数据库创建脚本。在您的 PostgreSQL 客户端中运行此脚本，并验证已创建四个表和视图。
+这完成了我们的数据库创建脚本。在您的PostgreSQL客户端中运行此脚本，并验证已创建四个表和视图。
 
-# 将 SQL 集成到我们的应用程序中
+# 将SQL集成到我们的应用程序中
 
-将我们的应用程序转换为 SQL 后端将不是一项小任务。该应用程序是围绕 CSV 文件的假设构建的，尽管我们已经注意到了分离我们的关注点，但许多事情都需要改变。
+将我们的应用程序转换为SQL后端将不是一项小任务。该应用程序是围绕CSV文件的假设构建的，尽管我们已经注意到了分离我们的关注点，但许多事情都需要改变。
 
 让我们分解一下我们需要采取的步骤：
 
-+   我们需要编写一个 SQL 模型
++   我们需要编写一个SQL模型
 
-+   我们的`Application`类将需要使用 SQL 模型
++   我们的`Application`类将需要使用SQL模型
 
 +   记录表格需要重新排序以优先考虑我们的键，使用新的查找和使用数据库自动填充
 
 +   记录列表将需要调整以适应新的数据模型和主键
 
-在这个过程中，我们将需要修复其他错误或根据需要实现一些新的 UI 元素。让我们开始吧！
+在这个过程中，我们将需要修复其他错误或根据需要实现一些新的UI元素。让我们开始吧！
 
 # 创建一个新模型
 
@@ -572,7 +577,7 @@ import psycopg2 as pg
 from psycopg2.extras import DictCursor
 ```
 
-`DictCursor`将允许我们以 Python 字典而不是默认的元组获取结果，这在我们的应用程序中更容易处理。
+`DictCursor`将允许我们以Python字典而不是默认的元组获取结果，这在我们的应用程序中更容易处理。
 
 开始一个名为`SQLModel`的新模型类，并从`CSVModel`复制`fields`属性。
 
@@ -628,7 +633,7 @@ class SQLModel:
                 return cursor.fetchall()
 ```
 
-使用`psycopg2`查询数据库涉及从连接生成`cursor`对象，然后使用查询字符串和可选参数数据调用其`execute()`方法。默认情况下，所有查询都在事务中执行，这意味着它们在我们提交更改之前不会生效。如果查询因任何原因（SQL 语法错误、约束违反、连接问题等）引发异常，事务将进入损坏状态，并且必须在我们再次使用连接之前回滚（恢复事务的初始状态）。因此，我们将在`try`块中执行我们的查询，并在任何`psycopg2`相关异常（所有都是从`pg.Error`继承的）的情况下使用`connection.rollback()`回滚事务。
+使用`psycopg2`查询数据库涉及从连接生成`cursor`对象，然后使用查询字符串和可选参数数据调用其`execute()`方法。默认情况下，所有查询都在事务中执行，这意味着它们在我们提交更改之前不会生效。如果查询因任何原因（SQL语法错误、约束违反、连接问题等）引发异常，事务将进入损坏状态，并且必须在我们再次使用连接之前回滚（恢复事务的初始状态）。因此，我们将在`try`块中执行我们的查询，并在任何`psycopg2`相关异常（所有都是从`pg.Error`继承的）的情况下使用`connection.rollback()`回滚事务。
 
 在查询执行后从游标中检索数据时，我们使用 `fetchall()` 方法，它将所有结果作为列表检索。但是，如果查询不是返回数据的查询（例如 `INSERT`），`fetchall()` 将抛出异常。为了避免这种情况，我们首先检查 `cursor.description`：如果查询返回了数据（即使是空数据集），`cursor.description` 将包含有关返回表的元数据（例如列名）。如果没有，则为 `None`。
 
@@ -792,7 +797,7 @@ def get_record(self, date, time, lab, plot):
 
 这完成了我们的模型类；现在让我们将其合并到应用程序中。
 
-# 调整 SQL 后端的 Application 类
+# 调整SQL后端的Application类
 
 `Application`类需要的第一件事是数据库连接信息，以传递给模型。
 
@@ -805,11 +810,11 @@ def get_record(self, date, time, lab, plot):
         'db_name': {'type': 'str', 'value': 'abq'}
 ```
 
-这些可以保存在我们的 JSON`config`文件中，可以编辑以从开发切换到生产，但我们的用户名和密码需要用户输入。为此，我们需要构建一个登录对话框。
+这些可以保存在我们的JSON`config`文件中，可以编辑以从开发切换到生产，但我们的用户名和密码需要用户输入。为此，我们需要构建一个登录对话框。
 
 # 构建登录窗口
 
-Tkinter 没有为我们提供现成的登录对话框，但它提供了一个通用的`Dialog`类，可以被子类化以创建自定义对话框。
+Tkinter没有为我们提供现成的登录对话框，但它提供了一个通用的`Dialog`类，可以被子类化以创建自定义对话框。
 
 从`tkinter.simpledialog`中导入这个类到我们的`views.py`文件：
 
@@ -829,7 +834,7 @@ class LoginDialog(Dialog):
         super().__init__(parent, title=title)
 ```
 
-我们的类将像往常一样接受一个`parent`，一个窗口`title`，以及一个可选的`error`，如果需要重新显示带有`error`消息的对话框（例如，如果密码错误）。`__init__()`的其余部分为密码、用户名和`error`字符串设置了一些 Tkinter 变量；然后，它以通常的方式调用`super()`结束。
+我们的类将像往常一样接受一个`parent`，一个窗口`title`，以及一个可选的`error`，如果需要重新显示带有`error`消息的对话框（例如，如果密码错误）。`__init__()`的其余部分为密码、用户名和`error`字符串设置了一些Tkinter变量；然后，它以通常的方式调用`super()`结束。
 
 表单本身不是在`__init__()`中定义的；相反，我们需要重写`body()`方法：
 
@@ -867,14 +872,14 @@ class LoginDialog(Dialog):
 
 `Dialog`自动提供`OK`和`Cancel`按钮；我们想知道点击了哪个按钮，如果是`OK`按钮，检索输入的信息。
 
-点击 OK 会调用`apply()`方法，因此我们可以重写它来设置一个`result`值。
+点击OK会调用`apply()`方法，因此我们可以重写它来设置一个`result`值。
 
 ```py
         def apply(self):
             self.result = (self.user.get(), self.pw.get())
 ```
 
-`Dialog`默认创建一个名为`result`的属性，其值设置为`None`。但是现在，如果我们的用户点击了 OK，`result`将是一个包含用户名和密码的元组。我们将使用这个属性来确定点击了什么，输入了什么。
+`Dialog`默认创建一个名为`result`的属性，其值设置为`None`。但是现在，如果我们的用户点击了OK，`result`将是一个包含用户名和密码的元组。我们将使用这个属性来确定点击了什么，输入了什么。
 
 # 使用登录窗口
 
@@ -943,7 +948,7 @@ class LoginDialog(Dialog):
 
 理论上，我们应该能够用相同的方法调用交换一个新模型，我们的应用程序对象将正常工作，但情况并非完全如此。我们需要做一些小的修复来让`Application`与我们的新模型一起工作。
 
-# DataRecordForm 创建
+# DataRecordForm创建
 
 首先，让我们在`Application.__init__()`中修复`DataRecordForm`的实例化：
 
@@ -956,7 +961,7 @@ class LoginDialog(Dialog):
 
 以前，我们从`CSVModel`的静态类属性中提取了`fields`参数。我们现在需要从我们的数据模型实例中提取它，因为实例正在设置一些值。
 
-# 修复 open_record()方法
+# 修复open_record()方法
 
 接下来，我们需要修复我们的`open_record()`方法。它目前需要一个`rownum`，但我们不再有行号；我们有`date`、`time`、`lab`和`plot`。
 
@@ -974,7 +979,7 @@ class LoginDialog(Dialog):
         record = self.data_model.get_record(*rowkey)
 ```
 
-# 修复 on_save()方法
+# 修复on_save()方法
 
 `on_save()`的错误处理部分是好的，但在`if errors:`块之后，我们将开始改变事情：
 
@@ -1046,7 +1051,7 @@ class LoginDialog(Dialog):
 
 将这两种方法添加到`callbacks`字典中，`Application`类应该准备就绪。
 
-# 更新我们的视图以适应 SQL 后端
+# 更新我们的视图以适应SQL后端
 
 让我们回顾一下我们需要在视图中进行的更改：
 
@@ -1062,15 +1067,15 @@ class LoginDialog(Dialog):
 
 # 数据记录表单
 
-我们的第一个任务是移动字段。这实际上只是剪切和粘贴代码，然后修复我们的`grid()`参数。将它们放在正确的键顺序中：Date、Time、Lab、Plot。然后，将 Technician 和 Seed sample 留在 Record Information 部分的末尾。
+我们的第一个任务是移动字段。这实际上只是剪切和粘贴代码，然后修复我们的`grid()`参数。将它们放在正确的键顺序中：Date、Time、Lab、Plot。然后，将Technician和Seed sample留在Record Information部分的末尾。
 
 它应该看起来像这样：
 
-![](img/c9aa7446-02f5-4cf4-b810-7b805ae2dd1b.png)
+![](assets/c9aa7446-02f5-4cf4-b810-7b805ae2dd1b.png)
 
-这种更改的原因是，所有可能触发 Technician 或 Seed sample 自动填充的字段将出现在这些字段之前。如果它们中的任何一个出现在之后，我们将无用地自动填充用户已经填写的字段。
+这种更改的原因是，所有可能触发Technician或Seed sample自动填充的字段将出现在这些字段之前。如果它们中的任何一个出现在之后，我们将无用地自动填充用户已经填写的字段。
 
-在`__init__()`的末尾，让我们添加触发器来填充 Technician 和 Seed sample：
+在`__init__()`的末尾，让我们添加触发器来填充Technician和Seed sample：
 
 ```py
         for field in ('Lab', 'Plot'):
@@ -1128,7 +1133,7 @@ self.treeview.config(show='headings')
             values = [rowdata[key] for key in valuekeys]
 ```
 
-我们可以删除`enumerate()`调用，只需处理行数据，从中提取`rowkey`元组，通过获取`Date`、`Time`、`Lab`和`Plot`。这些需要转换为字符串，因为它们作为 Python 对象（如`date`和`int`）从数据库中出来，我们需要将它们与`inserted`和`updated`中的键进行匹配，这些键都是字符串值（因为它们是从我们的表单中提取的）。
+我们可以删除`enumerate()`调用，只需处理行数据，从中提取`rowkey`元组，通过获取`Date`、`Time`、`Lab`和`Plot`。这些需要转换为字符串，因为它们作为Python对象（如`date`和`int`）从数据库中出来，我们需要将它们与`inserted`和`updated`中的键进行匹配，这些键都是字符串值（因为它们是从我们的表单中提取的）。
 
 让我们进行比较并设置我们的行标签：
 
@@ -1177,7 +1182,7 @@ self.treeview.config(show='headings')
 这就像调用`split()`一样简单：
 
 ```py
-        self.callbacks'on_open_record')
+        self.callbacks['on_open_record'](selected_id.split('|'))
 ```
 
 这修复了我们所有的视图代码，我们的程序已经准备好运行了！
@@ -1186,10 +1191,10 @@ self.treeview.config(show='headings')
 
 呼！这是一次相当艰难的旅程，但你还没有完成。作业是，您需要更新您的单元测试以适应数据库和登录。最好的方法是模拟数据库和登录对话框。
 
-还有一些 CSV 后端的残留物，比如文件菜单中的选择目标... 项目。您可以删除这些 UI 元素，但是将后端代码保留下来可能会在不久的将来派上用场。
+还有一些CSV后端的残留物，比如文件菜单中的选择目标... 项目。您可以删除这些UI元素，但是将后端代码保留下来可能会在不久的将来派上用场。
 
 # 总结
 
-在本章中，您了解了关系数据库和 SQL，用于处理它们的语言。您学会了对数据进行建模和规范化，以减少不一致性的可能性，以及如何将平面文件转换为关系数据。您学会了如何使用`psycopg2`库，并经历了将应用程序转换为使用 SQL 后端的艰巨任务。
+在本章中，您了解了关系数据库和SQL，用于处理它们的语言。您学会了对数据进行建模和规范化，以减少不一致性的可能性，以及如何将平面文件转换为关系数据。您学会了如何使用`psycopg2`库，并经历了将应用程序转换为使用SQL后端的艰巨任务。
 
-在下一章中，我们将接触云。我们需要使用不同的网络协议联系一些远程服务器来交换数据。您将了解有关 Python 标准库模块的信息，用于处理 HTTP 和 FTP，并使用它们来下载和上传数据。
+在下一章中，我们将接触云。我们需要使用不同的网络协议联系一些远程服务器来交换数据。您将了解有关Python标准库模块的信息，用于处理HTTP和FTP，并使用它们来下载和上传数据。

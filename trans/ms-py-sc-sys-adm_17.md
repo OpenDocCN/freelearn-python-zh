@@ -1,20 +1,20 @@
 # 统计数据收集和报告
 
-在本章中，您将学习有关用于科学计算的统计学中使用的高级 Python 库。您将学习有关 Python 的 NumPY、Pandas、Matplotlib 和 Plotly 模块。您将学习有关数据可视化技术，以及如何绘制收集到的数据。
+在本章中，您将学习有关用于科学计算的统计学中使用的高级Python库。您将学习有关Python的NumPY、Pandas、Matplotlib和Plotly模块。您将学习有关数据可视化技术，以及如何绘制收集到的数据。
 
 在本章中，我们将涵盖以下主题：
 
-+   NumPY 模块
++   NumPY模块
 
-+   Pandas 模块
++   Pandas模块
 
 +   数据可视化
 
-# NumPY 模块
+# NumPY模块
 
-NumPY 是一个提供数组高效操作的 Python 模块。NumPY 是 Python 科学计算的基本包。这个包通常用于 Python 数据分析。NumPY 数组是多个值的网格。
+NumPY是一个提供数组高效操作的Python模块。NumPY是Python科学计算的基本包。这个包通常用于Python数据分析。NumPY数组是多个值的网格。
 
-通过在终端中运行以下命令来安装 NumPY：
+通过在终端中运行以下命令来安装NumPY：
 
 ```py
 $ pip3 install numpy
@@ -95,7 +95,7 @@ student@ubuntu:~$ python3 size_and_dtype.py
 student@ubuntu:~$ python3 Python 3.6.7 (default, Oct 22 2018, 11:32:17) [GCC 8.2.0] on linux Type "help", "copyright", "credits" or "license" for more information. >>> import numpy as np >>> np.zeros(5) array([0., 0., 0., 0., 0.]) >>> 
 ```
 
-在创建所有值为零的数组之后，我们将使用`numpy`的`np.ones()`函数创建所有值为 1 的数组，如下所示：
+在创建所有值为零的数组之后，我们将使用`numpy`的`np.ones()`函数创建所有值为1的数组，如下所示：
 
 ```py
 >>> np.ones((5,5)) array([[1., 1., 1., 1., 1.],
@@ -209,7 +209,7 @@ student@ubuntu:~$ python3 Python 3.6.7 (default, Oct 22 2018, 11:32:17) [GCC 8.2
 >>> arr[5:] array([ 5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15]) >>> 
 ```
 
-正如我们在上面的例子中看到的，我们从第 5 个索引值开始访问数组中的值直到末尾。结果，我们得到的输出是`array([ 5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15])`。
+正如我们在上面的例子中看到的，我们从第5个索引值开始访问数组中的值直到末尾。结果，我们得到的输出是`array([ 5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15])`。
 
 现在我们将看一下`numpy`数组的切片。在切片中，我们实际上是取原始数组的一部分并将其存储在指定的数组名称中。让我们看一个例子：
 
@@ -326,9 +326,9 @@ The Array is :  [ 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15] exponential of
 
 在前面的例子中，我们使用`numpy`的`range`函数创建了一个简单的数组。然后我们对生成的数组应用了`exp()`函数，以获得数组的指数。
 
-# Pandas 模块
+# Pandas模块
 
-在本节中，我们将学习有关 pandas 模块的知识。pandas 模块提供了快速灵活的数据结构，专为处理结构化和时间序列数据而设计。pandas 模块用于数据分析。pandas 模块是建立在 NumPY 和 Matplotlib 等包之上的，并为我们提供了大部分分析和可视化工作的场所。要使用此模块的功能，您必须首先导入它。
+在本节中，我们将学习有关pandas模块的知识。pandas模块提供了快速灵活的数据结构，专为处理结构化和时间序列数据而设计。pandas模块用于数据分析。pandas模块是建立在NumPY和Matplotlib等包之上的，并为我们提供了大部分分析和可视化工作的场所。要使用此模块的功能，您必须首先导入它。
 
 首先，通过运行以下命令安装我们示例中需要的以下软件包：
 
@@ -336,11 +336,11 @@ The Array is :  [ 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15] exponential of
 $ pip3 install pandas $ pip3 install matplotlib
 ```
 
-在这里，我们将看一些使用 pandas 模块的例子。我们将学习两种数据结构：系列和数据框。我们还将看到如何使用 pandas 从`csv`文件中读取数据。
+在这里，我们将看一些使用pandas模块的例子。我们将学习两种数据结构：系列和数据框。我们还将看到如何使用pandas从`csv`文件中读取数据。
 
 # 系列
 
-pandas 系列是一维数组。它可以容纳任何数据类型。标签被称为索引。现在，我们将看一个不声明索引的系列和声明索引的系列的例子。首先，我们将看一个不声明索引的系列的例子。为此，请创建一个名为`series_without_index.py`的脚本，并在其中写入以下内容：
+pandas系列是一维数组。它可以容纳任何数据类型。标签被称为索引。现在，我们将看一个不声明索引的系列和声明索引的系列的例子。首先，我们将看一个不声明索引的系列的例子。为此，请创建一个名为`series_without_index.py`的脚本，并在其中写入以下内容：
 
 ```py
 import pandas as pd import numpy as np s_data = pd.Series([10, 20, 30, 40], name = 'numbers') print(s_data)
@@ -358,7 +358,7 @@ student@ubuntu:~/work$ python3 series_without_index.py
 0 10 1 20 2 30 3 40 Name: numbers, dtype: int64
 ```
 
-在上面的例子中，我们学习了不声明索引的系列。首先，我们导入了两个模块：pandas 和`numpy`。接下来，我们创建了将存储系列数据的`s_data`对象。在该系列中，我们创建了一个列表，而不是声明索引，我们提供了 name 属性，该属性将为列表提供一个名称，然后我们打印了数据。在输出中，左列是数据的索引。即使我们从未提供索引，pandas 也会隐式地给出。索引将始终从`0`开始。在列的下方是我们系列的名称和值的数据类型。
+在上面的例子中，我们学习了不声明索引的系列。首先，我们导入了两个模块：pandas和`numpy`。接下来，我们创建了将存储系列数据的`s_data`对象。在该系列中，我们创建了一个列表，而不是声明索引，我们提供了name属性，该属性将为列表提供一个名称，然后我们打印了数据。在输出中，左列是数据的索引。即使我们从未提供索引，pandas也会隐式地给出。索引将始终从`0`开始。在列的下方是我们系列的名称和值的数据类型。
 
 现在，我们将看一个声明索引的系列的例子。在这里，我们还将执行索引和切片操作。为此，请创建一个名为`series_with_index.py`的脚本，并在其中写入以下内容：
 
@@ -379,15 +379,15 @@ The data at index 2 is:  30 The data from range 1 to 3 are:
 
 # 数据框
 
-在本节中，我们将学习有关 pandas 数据框的知识。数据框是具有列并且可能是不同数据类型的二维标记数据结构。数据框类似于 SQL 表或电子表格。在使用 pandas 时，它们是最常见的对象。
+在本节中，我们将学习有关pandas数据框的知识。数据框是具有列并且可能是不同数据类型的二维标记数据结构。数据框类似于SQL表或电子表格。在使用pandas时，它们是最常见的对象。
 
-现在，我们将看一个例子，从`csv`文件中读取数据到 DataFrame 中。为此，您必须在系统中有一个`csv`文件。如果您的系统中没有`csv`文件，请按以下方式创建一个名为`employee.csv`的文件：
+现在，我们将看一个例子，从`csv`文件中读取数据到DataFrame中。为此，您必须在系统中有一个`csv`文件。如果您的系统中没有`csv`文件，请按以下方式创建一个名为`employee.csv`的文件：
 
 ```py
 Id, Name, Department, Country 101, John, Finance, US 102, Mary, HR, Australia 103, Geeta, IT, India 104, Rahul, Marketing, India 105, Tom, Sales, Russia
 ```
 
-现在，我们将把这个`csv`文件读入 DataFrame 中。为此，请创建一个名为`read_csv_dataframe.py`的脚本，并在其中写入以下内容：
+现在，我们将把这个`csv`文件读入DataFrame中。为此，请创建一个名为`read_csv_dataframe.py`的脚本，并在其中写入以下内容：
 
 ```py
 import pandas as pd file_name = 'employee.csv' df = pd.read_csv(file_name) print(df) print() print(df.head(3)) print() print(df.tail(1))
@@ -403,7 +403,7 @@ student@ubuntu:~/work$ python3 read_csv_dataframe.py Output:
 Id  Name  Department  Country 4  105   Tom       Sales   Russia
 ```
 
-在上面的例子中，我们首先创建了一个名为`employee.csv`的`csv`文件。我们使用 pandas 模块创建数据框。目标是将`csv`文件读入 DataFrame 中。接下来，我们创建了一个`df`对象，并将`csv`文件的内容读入其中。接下来我们打印一个 DataFrame。在这里，我们使用`head()`和`tail()`方法来获取特定数量的数据行。我们指定了`head(3)`，这意味着我们打印了前三行数据。我们还指定了`tail(1)`，这意味着我们打印了最后一行数据。
+在上面的例子中，我们首先创建了一个名为`employee.csv`的`csv`文件。我们使用pandas模块创建数据框。目标是将`csv`文件读入DataFrame中。接下来，我们创建了一个`df`对象，并将`csv`文件的内容读入其中。接下来我们打印一个DataFrame。在这里，我们使用`head()`和`tail()`方法来获取特定数量的数据行。我们指定了`head(3)`，这意味着我们打印了前三行数据。我们还指定了`tail(1)`，这意味着我们打印了最后一行数据。
 
 # 数据可视化
 
@@ -415,9 +415,9 @@ Id  Name  Department  Country 4  105   Tom       Sales   Russia
 
 # Matplotlib
 
-Matplotlib 是 Python 中的数据可视化库，它允许我们使用几行代码生成图表、直方图、功率谱、条形图、误差图、散点图等。Matplotlib 通常使事情变得更容易，最困难的事情也变得可能。
+Matplotlib是Python中的数据可视化库，它允许我们使用几行代码生成图表、直方图、功率谱、条形图、误差图、散点图等。Matplotlib通常使事情变得更容易，最困难的事情也变得可能。
 
-要在您的 Python 程序中使用`matplotlib`，首先我们必须安装`matplotlib`。在您的终端中运行以下命令来安装`matplotlib`：
+要在您的Python程序中使用`matplotlib`，首先我们必须安装`matplotlib`。在您的终端中运行以下命令来安装`matplotlib`：
 
 ```py
 $ pip3 install matplotlib
@@ -445,9 +445,9 @@ student@ubuntu:~/work$ python3 simple_plot.py
 
 输出如下：
 
-![](img/8d8b8572-e237-441f-8089-399fd0396d31.jpg)
+![](assets/8d8b8572-e237-441f-8089-399fd0396d31.jpg)
 
-在上面的例子中，我们导入了两个模块，`matplotlib`和`numpy`，来可视化数据以及分别创建数组*x*和*y*。之后，我们将两个数组绘制为`plt.plot(x,y)`。然后我们使用`xlabel()`，`ylabel()`和`title()`函数向图表添加标题和标签，并使用`plt.show()`函数显示这个绘图。因为我们在 Python 脚本中使用 Matplotlib，不要忘记在最后一行添加`plt.show()`来显示您的绘图。
+在上面的例子中，我们导入了两个模块，`matplotlib`和`numpy`，来可视化数据以及分别创建数组*x*和*y*。之后，我们将两个数组绘制为`plt.plot(x,y)`。然后我们使用`xlabel()`，`ylabel()`和`title()`函数向图表添加标题和标签，并使用`plt.show()`函数显示这个绘图。因为我们在Python脚本中使用Matplotlib，不要忘记在最后一行添加`plt.show()`来显示您的绘图。
 
 现在我们将创建两个数组来显示绘图中的两行曲线，并且我们将对这两条曲线应用样式。在下面的例子中，我们将使用`ggplot`样式来绘制图表。`ggplot`是一个用于声明性创建图形的系统，基于图形语法。要绘制`ghraph`，我们只需提供数据，然后告诉`ggplot`如何映射变量以及使用什么图形原语，它会处理细节。在大多数情况下，我们从`ggplot()`样式开始。
 
@@ -468,7 +468,7 @@ student@ubuntu:~/work$ python3 simple_plot2.py
 
 现在`matplotlib`已经安装在您的系统中，我们将看一些例子。在绘图时，有两个重要的组件：图和轴。图是充当绘制所有内容的窗口的容器。它可以有各种类型的独立图。轴是您可以绘制数据和与之相关的任何标签的区域。轴由一个`x`轴和一个`y`轴组成。
 
-在上面的例子中，首先我们导入了所需的模块，然后我们使用`ggplot`样式来绘制图表。我们创建了两组数组；即`x1`，`y1`和`x2`，`y2`。然后我们使用 subplot 函数`plt.subplot()`，因为它允许我们在同一画布中绘制不同的东西。如果您想要在不同的画布上显示这两个图，您也可以使用`plt.figure()`函数而不是`plt.subplot()`。
+在上面的例子中，首先我们导入了所需的模块，然后我们使用`ggplot`样式来绘制图表。我们创建了两组数组；即`x1`，`y1`和`x2`，`y2`。然后我们使用subplot函数`plt.subplot()`，因为它允许我们在同一画布中绘制不同的东西。如果您想要在不同的画布上显示这两个图，您也可以使用`plt.figure()`函数而不是`plt.subplot()`。
 
 输出如下：
 
@@ -484,11 +484,11 @@ student@ubuntu:~/work$ python3 simple_plot3.py
 
 输出如下：
 
-![](img/a92750b5-5c24-45f9-a017-f463bba4d645.jpg)![](img/8b8221ae-82a7-4746-a89c-5364f14e95d2.jpg)
+![](assets/a92750b5-5c24-45f9-a017-f463bba4d645.jpg)![](assets/8b8221ae-82a7-4746-a89c-5364f14e95d2.jpg)
 
-现在，我们将看一下如何使用`plt.figure()`函数绘制数组并使用 Matplotlib 保存生成的图。您可以使用`savefig()`方法将它们保存为不同的格式，如`png`，`jpg`，`pdf`等。我们将把前面的图保存在一个名为`my_sample_plot.jpg`的文件中。现在，我们将看一个例子。为此，创建一个名为`simple_plot3.py`的脚本，并在其中写入以下内容：
+现在，我们将看一下如何使用`plt.figure()`函数绘制数组并使用Matplotlib保存生成的图。您可以使用`savefig()`方法将它们保存为不同的格式，如`png`，`jpg`，`pdf`等。我们将把前面的图保存在一个名为`my_sample_plot.jpg`的文件中。现在，我们将看一个例子。为此，创建一个名为`simple_plot3.py`的脚本，并在其中写入以下内容：
 
-然后，我们使用`color`参数为图形线条提供特定的颜色，并且在第三个参数中，我们使用`linewidth`，它决定了图形线条的宽度。之后，我们还使用了`savefig()`方法来以特定的图像格式保存我们的图。您可以在运行 Python 脚本的当前目录中检查它们（如果您没有指定路径）。
+然后，我们使用`color`参数为图形线条提供特定的颜色，并且在第三个参数中，我们使用`linewidth`，它决定了图形线条的宽度。之后，我们还使用了`savefig()`方法来以特定的图像格式保存我们的图。您可以在运行Python脚本的当前目录中检查它们（如果您没有指定路径）。
 
 您可以通过直接访问该目录来打开这些图像，或者您也可以使用以下方法使用`matplotlib`来打开这些生成的图像。现在，我们将看一个打开保存的图的示例。为此，请创建一个名为`open_image.py`的脚本，并在其中写入以下内容：
 
@@ -504,11 +504,11 @@ student@ubuntu:~/work$ python3 open_image.py
 
 输出如下：
 
-![](img/5f61279d-d859-4627-9969-958d6ba9cd1a.jpg)
+![](assets/5f61279d-d859-4627-9969-958d6ba9cd1a.jpg)
 
-在前面的例子中，我们使用了 Matplotlib 的`imshow()`函数来打开图的保存图像。
+在前面的例子中，我们使用了Matplotlib的`imshow()`函数来打开图的保存图像。
 
-现在，我们将看一些不同类型的图。Matplotlib 允许我们创建不同类型的图来处理数组中的数据，如直方图、散点图、条形图等。使用不同类型的图取决于数据可视化的目的。让我们看一些这些图。
+现在，我们将看一些不同类型的图。Matplotlib允许我们创建不同类型的图来处理数组中的数据，如直方图、散点图、条形图等。使用不同类型的图取决于数据可视化的目的。让我们看一些这些图。
 
 # 直方图
 
@@ -526,7 +526,7 @@ student@ubuntu:~/work$ python3 histogram_example.py
 
 输出如下：
 
-![](img/eb702ea3-c0ab-469d-8aa9-07e1dd69fd78.jpg)
+![](assets/eb702ea3-c0ab-469d-8aa9-07e1dd69fd78.jpg)
 
 在前面的例子中，我们使用`numpy`创建了一组随机数。然后，我们使用`plt.hist()`方法绘制了这些数值数据。
 
@@ -546,7 +546,7 @@ student@ubuntu:~/work$ python3 scatterplot_example.py
 
 输出如下：
 
-![](img/985d2b20-6987-46b5-a513-fcd962fd61de.jpg)
+![](assets/985d2b20-6987-46b5-a513-fcd962fd61de.jpg)
 
 在前面的例子中，我们得到了`x`和`y`的值。然后，我们使用`plt.scatter()`方法来绘制这些值，以获得`x`和`y`值的散点图。
 
@@ -566,7 +566,7 @@ student@ubuntu:~/work$ python3 bar_chart.py
 
 输出如下：
 
-![](img/692d75ea-6b6f-4e8b-8290-2f3c9c654f2b.jpg)
+![](assets/692d75ea-6b6f-4e8b-8290-2f3c9c654f2b.jpg)
 
 在前面的例子中，我们有两组值：`x1`，`y1`和`x2`，`y2`。在获得数值数据后，我们使用`plt.bar()`方法来绘制当前数据的条形图。
 
@@ -574,15 +574,15 @@ student@ubuntu:~/work$ python3 bar_chart.py
 
 # Plotly
 
-Plotly 是 Python 中的一个交互式、开源的绘图库。它是一个图表库，提供了 30 多种图表类型，如科学图表、3D 图形、统计图表、金融图表等。
+Plotly是Python中的一个交互式、开源的绘图库。它是一个图表库，提供了30多种图表类型，如科学图表、3D图形、统计图表、金融图表等。
 
-要在 Python 中使用`plotly`，首先我们必须在系统中安装它。要安装`plotly`，请在您的终端中运行以下命令：
+要在Python中使用`plotly`，首先我们必须在系统中安装它。要安装`plotly`，请在您的终端中运行以下命令：
 
 ```py
 $ pip3 install plotly
 ```
 
-我们可以在线和离线使用`plotly`。对于在线使用，你需要有一个`plotly`账户，之后你需要在 Python 中设置你的凭据：
+我们可以在线和离线使用`plotly`。对于在线使用，你需要有一个`plotly`账户，之后你需要在Python中设置你的凭据：
 
 ```py
  plotly.tools.set_credentials_file(username='Username', api_key='APIkey')
@@ -590,7 +590,7 @@ $ pip3 install plotly
 
 要离线使用`plotly`，我们需要使用`plotly`函数：`plotly.offline.plot()`
 
-在这一部分，我们将使用 plotly 离线。现在，我们将看一个简单的例子。为此，创建一个名为`sample_plotly.py`的脚本，并在其中写入以下内容：
+在这一部分，我们将使用plotly离线。现在，我们将看一个简单的例子。为此，创建一个名为`sample_plotly.py`的脚本，并在其中写入以下内容：
 
 ```py
 import plotly from plotly.graph_objs import Scatter, Layout plotly.offline.plot({
@@ -605,9 +605,9 @@ student@ubuntu:~/work$ python3 sample_plotly.py
 
 输出如下：
 
-![](img/d639864a-5006-48d1-bbc5-9772566cc3b5.jpg)
+![](assets/d639864a-5006-48d1-bbc5-9772566cc3b5.jpg)
 
-在前面的例子中，我们导入了`plotly`模块，然后将`plotly`设置为离线使用。我们在其中放入了一些有用于绘制图表的参数。在例子中，我们使用了一些参数：`data`和`layout`。在`data`参数中，我们使用散点函数定义了`x`和`y`数组，这些数组具有要在`x`和`y`轴上绘制的值。然后我们使用`layout`参数，在其中我们定义了布局函数以为图表提供标题。前面程序的输出保存为 HTML 文件，并在默认浏览器中打开。这个 HTML 文件与你的脚本在同一个目录中。
+在前面的例子中，我们导入了`plotly`模块，然后将`plotly`设置为离线使用。我们在其中放入了一些有用于绘制图表的参数。在例子中，我们使用了一些参数：`data`和`layout`。在`data`参数中，我们使用散点函数定义了`x`和`y`数组，这些数组具有要在`x`和`y`轴上绘制的值。然后我们使用`layout`参数，在其中我们定义了布局函数以为图表提供标题。前面程序的输出保存为HTML文件，并在默认浏览器中打开。这个HTML文件与你的脚本在同一个目录中。
 
 现在让我们看一些不同类型的图表来可视化数据。所以，首先，我们将从散点图开始。
 
@@ -627,9 +627,9 @@ student@ubuntu:~/work$ python3 scatter_plot_plotly.py
 
 输出如下：
 
-![](img/728d2983-9f6e-4a22-8a99-1ce9a9e585bd.jpg)
+![](assets/728d2983-9f6e-4a22-8a99-1ce9a9e585bd.jpg)
 
-在前面的例子中，我们导入了`plotly`，然后通过使用`numpy`创建了随机数据，并在脚本中导入了`numpy`模块。生成数据集后，我们创建了一个名为`trace`的对象，并将我们的数值数据插入其中以进行散点。最后，我们将`trace`对象中的数据放入`plotly.offline.plot()`函数中，以获得数据的散点图。与我们的第一个示例图一样，这个例子的输出也以 HTML 格式保存，并显示在默认的网络浏览器中。
+在前面的例子中，我们导入了`plotly`，然后通过使用`numpy`创建了随机数据，并在脚本中导入了`numpy`模块。生成数据集后，我们创建了一个名为`trace`的对象，并将我们的数值数据插入其中以进行散点。最后，我们将`trace`对象中的数据放入`plotly.offline.plot()`函数中，以获得数据的散点图。与我们的第一个示例图一样，这个例子的输出也以HTML格式保存，并显示在默认的网络浏览器中。
 
 # 线散点图
 
@@ -647,9 +647,9 @@ student@ubuntu:~/work$ python3 line_scatter_plot.py
 
 输出如下：
 
-![](img/61d2fa81-8592-4c5a-95ad-d68670ca8126.jpg)
+![](assets/61d2fa81-8592-4c5a-95ad-d68670ca8126.jpg)
 
-在前面的例子中，我们导入了`plotly`，以及`numpy`模块。然后我们为 x 轴生成了一些随机值，也为三个不同的 y 轴生成了随机值。之后，我们将这些数据放入创建的`trace`对象中，最后将该数据集放入 plotly 的离线函数中。然后我们得到了散点和线的格式的输出。这个例子的输出文件以`line_scatter_plot.html`的名称保存在你当前的目录中。
+在前面的例子中，我们导入了`plotly`，以及`numpy`模块。然后我们为x轴生成了一些随机值，也为三个不同的y轴生成了随机值。之后，我们将这些数据放入创建的`trace`对象中，最后将该数据集放入plotly的离线函数中。然后我们得到了散点和线的格式的输出。这个例子的输出文件以`line_scatter_plot.html`的名称保存在你当前的目录中。
 
 # 箱线图
 
@@ -669,9 +669,9 @@ student@ubuntu:~/work$ python3 plotly_box_plot.py
 
 输出如下：
 
-![](img/976d4c5a-f03e-4eb3-93d3-39456e5e1a92.jpg)
+![](assets/976d4c5a-f03e-4eb3-93d3-39456e5e1a92.jpg)
 
-在前面的例子中，我们导入了`plotly`，以及`numpy`模块。然后我们声明 N 为箱线图中的总箱数，并通过固定颜色的饱和度和亮度以及围绕色调进行变化，生成了一个彩虹颜色的数组。每个箱子由一个包含数据、类型和颜色的字典表示。我们使用列表推导来描述 N 个不同颜色的箱子，每个箱子都有不同的随机生成的数据。之后，我们格式化输出的布局并通过离线的`plotly`函数绘制数据。
+在前面的例子中，我们导入了`plotly`，以及`numpy`模块。然后我们声明N为箱线图中的总箱数，并通过固定颜色的饱和度和亮度以及围绕色调进行变化，生成了一个彩虹颜色的数组。每个箱子由一个包含数据、类型和颜色的字典表示。我们使用列表推导来描述N个不同颜色的箱子，每个箱子都有不同的随机生成的数据。之后，我们格式化输出的布局并通过离线的`plotly`函数绘制数据。
 
 # 等高线图
 
@@ -692,19 +692,19 @@ student@ubuntu:~/work$ python3 contour_plotly.py This is the format of your plot
 
 输出如下：
 
-![](img/5ddc9f4d-947e-426e-ad4a-a6fa45c5a213.jpg)
+![](assets/5ddc9f4d-947e-426e-ad4a-a6fa45c5a213.jpg)
 
-在前面的例子中，我们取了一个数据集，并对其应用了`contour()`函数。然后我们将轮廓数据附加到`data_set`中，并最终对数据应用了`plotly`函数以获得输出。这些是 plotly 中用于以可视方式绘制数据的一些技术。
+在前面的例子中，我们取了一个数据集，并对其应用了`contour()`函数。然后我们将轮廓数据附加到`data_set`中，并最终对数据应用了`plotly`函数以获得输出。这些是plotly中用于以可视方式绘制数据的一些技术。
 
 # 总结
 
-在本章中，我们学习了 NumPY 和 Pandas 模块，以及数据可视化技术。在 NumPY 模块部分，我们学习了数组的索引和切片以及通用数组函数。在 pandas 模块部分，我们学习了 Series 和 DataFrames。我们还学习了如何将`csv`文件读入 DataFrame。在数据可视化中，我们学习了 Python 中用于数据可视化的库：`matplotlib`和`plotly`。
+在本章中，我们学习了NumPY和Pandas模块，以及数据可视化技术。在NumPY模块部分，我们学习了数组的索引和切片以及通用数组函数。在pandas模块部分，我们学习了Series和DataFrames。我们还学习了如何将`csv`文件读入DataFrame。在数据可视化中，我们学习了Python中用于数据可视化的库：`matplotlib`和`plotly`。
 
-在下一章中，您将学习有关 MySQL 和 SQLite 数据库管理的知识。
+在下一章中，您将学习有关MySQL和SQLite数据库管理的知识。
 
 # 问题
 
-1.  什么是 NumPy 数组？
+1.  什么是NumPy数组？
 
 1.  以下代码片段的输出是什么？
 
@@ -722,22 +722,22 @@ print ("Output stacked array :\n ", out_arr)
 
 1.  如何比`np.sum`更快地对小数组求和？
 
-1.  如何从 Pandas DataFrame 中删除索引、行或列？
+1.  如何从Pandas DataFrame中删除索引、行或列？
 
-1.  如何将 Pandas DataFrame 写入文件？
+1.  如何将Pandas DataFrame写入文件？
 
-1.  pandas 中的 NaN 是什么？
+1.  pandas中的NaN是什么？
 
-1.  如何从 pandas DataFrame 中删除重复项？
+1.  如何从pandas DataFrame中删除重复项？
 
-1.  如何更改使用 Matplotlib 绘制的图形的大小？
+1.  如何更改使用Matplotlib绘制的图形的大小？
 
-1.  Python 中绘制图形的可用替代方法是什么？
+1.  Python中绘制图形的可用替代方法是什么？
 
 # 进一步阅读
 
-+   10 分钟到 pandas 文档：[`pandas.pydata.org/pandas-docs/stable/`](https://pandas.pydata.org/pandas-docs/stable/)
++   10分钟到pandas文档：[https://pandas.pydata.org/pandas-docs/stable/](https://pandas.pydata.org/pandas-docs/stable/)
 
-+   NumPy 教程：[`docs.scipy.org/doc/numpy/user/quickstart.html`](https://docs.scipy.org/doc/numpy/user/quickstart.html)
++   NumPy教程：[https://docs.scipy.org/doc/numpy/user/quickstart.html](https://docs.scipy.org/doc/numpy/user/quickstart.html)
 
-+   使用 plotly 进行图形绘制：[`plot.ly/d3-js-for-python-and-pandas-charts/`](https://plot.ly/d3-js-for-python-and-pandas-charts/)
++   使用plotly进行图形绘制：[https://plot.ly/d3-js-for-python-and-pandas-charts/](https://plot.ly/d3-js-for-python-and-pandas-charts/)

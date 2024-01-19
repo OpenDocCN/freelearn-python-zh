@@ -1,38 +1,38 @@
 # 套接字编程
 
-本章将介绍使用`socket`模块进行 Python 网络编程的一些基础知识。在此过程中，我们将使用 TCP 和**用户数据报** **协议**（**UDP**）协议构建客户端和服务器。套接字编程涵盖了使用 Python 编写低级网络应用程序的 TCP 和 UDP 套接字。我们还将介绍 HTTPS 和 TLS 以进行安全数据传输。
+本章将介绍使用`socket`模块进行Python网络编程的一些基础知识。在此过程中，我们将使用TCP和**用户数据报** **协议**（**UDP**）协议构建客户端和服务器。套接字编程涵盖了使用Python编写低级网络应用程序的TCP和UDP套接字。我们还将介绍HTTPS和TLS以进行安全数据传输。
 
 本章将涵盖以下主题：
 
-+   了解套接字及如何在 Python 中实现它们
++   了解套接字及如何在Python中实现它们
 
-+   了解 Python 中 TCP 编程客户端和服务器
++   了解Python中TCP编程客户端和服务器
 
-+   了解 Python 中 UDP 编程客户端和服务器
++   了解Python中UDP编程客户端和服务器
 
-+   了解解析 IP 地址和域的套接字方法
++   了解解析IP地址和域的套接字方法
 
 +   将所有概念应用于实际用例，如端口扫描和异常处理
 
 # 技术要求
 
-本章的示例和源代码可在 GitHub 存储库的`第三章`文件夹中找到：[`github.com/PacktPublishing/Mastering-Python-for-Networking-and-Security`](https://github.com/PacktPublishing/Mastering-Python-for-Networking-and-Security)。
+本章的示例和源代码可在GitHub存储库的`第3章`文件夹中找到：[https://github.com/PacktPublishing/Mastering-Python-for-Networking-and-Security](https://github.com/PacktPublishing/Mastering-Python-for-Networking-and-Security)。
 
-您需要在本地计算机上安装一个至少有 2GB 内存的 Python 发行版，并具有一些关于网络协议的基本知识。
+您需要在本地计算机上安装一个至少有2GB内存的Python发行版，并具有一些关于网络协议的基本知识。
 
 # 套接字介绍
 
 套接字是允许我们利用操作系统与网络进行交互的主要组件。您可以将套接字视为客户端和服务器之间的点对点通信通道。
 
-网络套接字是在同一台或不同机器上的进程之间建立通信的一种简单方式。套接字的概念与 UNIX 文件描述符非常相似。诸如`read()`和`write()`（用于处理文件系统）的命令以类似的方式工作于套接字。
+网络套接字是在同一台或不同机器上的进程之间建立通信的一种简单方式。套接字的概念与UNIX文件描述符非常相似。诸如`read()`和`write()`（用于处理文件系统）的命令以类似的方式工作于套接字。
 
-网络套接字地址由 IP 地址和端口号组成。套接字的目标是通过网络通信进程。
+网络套接字地址由IP地址和端口号组成。套接字的目标是通过网络通信进程。
 
-# Python 中的网络套接字
+# Python中的网络套接字
 
-网络中不同实体之间的通信基于 Python 的套接字经典概念。套接字由机器的 IP 地址、它监听的端口和它使用的协议定义。
+网络中不同实体之间的通信基于Python的套接字经典概念。套接字由机器的IP地址、它监听的端口和它使用的协议定义。
 
-在 Python 中创建套接字是通过`socket.socket()`方法完成的。套接字方法的一般语法如下：
+在Python中创建套接字是通过`socket.socket()`方法完成的。套接字方法的一般语法如下：
 
 ```py
 s = socket.socket (socket_family, socket_type, protocol=0)
@@ -40,21 +40,21 @@ s = socket.socket (socket_family, socket_type, protocol=0)
 
 这些**参数**代表传输层的地址族和协议。
 
-根据套接字类型，套接字根据是否使用 TCP 或 UDP 服务，被分类为流套接字（`socket.SOCK_STREAM`）或数据报套接字（`socket.SOCK_DGRAM`）。`socket.SOCK_DGRAM`用于 UDP 通信，`socket.SOCK_STREAM`用于 TCP 连接。
+根据套接字类型，套接字根据是否使用TCP或UDP服务，被分类为流套接字（`socket.SOCK_STREAM`）或数据报套接字（`socket.SOCK_DGRAM`）。`socket.SOCK_DGRAM`用于UDP通信，`socket.SOCK_STREAM`用于TCP连接。
 
-套接字还可以根据家族进行分类。我们有 UNIX 套接字（`socket.AF_UNIX`），它是在网络概念之前创建的，基于文件；我们感兴趣的是`socket.AF_INET`套接字；`socket.AF_INET6 用于 IPv6`套接字，等等：
+套接字还可以根据家族进行分类。我们有UNIX套接字（`socket.AF_UNIX`），它是在网络概念之前创建的，基于文件；我们感兴趣的是`socket.AF_INET`套接字；`socket.AF_INET6用于IPv6`套接字，等等：
 
-![](img/8617f5df-4575-4951-ab3a-1d6add4a165a.png)
+![](assets/8617f5df-4575-4951-ab3a-1d6add4a165a.png)
 
 # 套接字模块
 
-在 Python 中，可以在`socket`模块中找到用于处理套接字的类型和函数。`socket`模块公开了快速编写 TCP 和 UDP 客户端和服务器所需的所有必要部分。`socket`模块几乎包含了构建套接字服务器或客户端所需的一切。在 Python 的情况下，套接字返回一个对象，可以对其应用套接字方法。
+在Python中，可以在`socket`模块中找到用于处理套接字的类型和函数。`socket`模块公开了快速编写TCP和UDP客户端和服务器所需的所有必要部分。`socket`模块几乎包含了构建套接字服务器或客户端所需的一切。在Python的情况下，套接字返回一个对象，可以对其应用套接字方法。
 
-当您安装 Python 发行版时，默认情况下会安装此模块。
+当您安装Python发行版时，默认情况下会安装此模块。
 
-要检查它，我们可以在 Python 解释器中这样做：
+要检查它，我们可以在Python解释器中这样做：
 
-![](img/51894bae-8aea-48b5-baf5-676c2046591f.png)
+![](assets/51894bae-8aea-48b5-baf5-676c2046591f.png)
 
 在此屏幕截图中，我们看到此模块中可用的所有常量和方法。我们首先在返回的结构中看到的常量。在最常用的常量中，我们可以突出显示以下内容：
 
@@ -63,7 +63,7 @@ socket.AF_INET
 socket.SOCK_STREAM
 ```
 
-构建在 TCP 级别工作的套接字的典型调用如下：
+构建在TCP级别工作的套接字的典型调用如下：
 
 ```py
 socket.socket(socket.AF_INET,socket.SOCK_STREAM)
@@ -95,7 +95,7 @@ socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 
 +   `socket.bind(address)`: 这个方法允许我们将地址与套接字连接起来，要求在与地址建立连接之前套接字必须是打开的
 
-+   `socket.listen(count)`: 这个方法接受客户端的最大连接数作为参数，并启动用于传入连接的 TCP 监听器
++   `socket.listen(count)`: 这个方法接受客户端的最大连接数作为参数，并启动用于传入连接的TCP监听器
 
 +   `socket.accept()`: 这个方法允许我们接受来自客户端的连接。这个方法返回两个值：`client_socket` 和客户端地址。`client_socket` 是一个用于发送和接收数据的新套接字对象。在使用这个方法之前，必须调用`socket.bind(address)`和`socket.listen(q)`方法。
 
@@ -103,17 +103,17 @@ socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 
 这是我们可以在套接字客户端中用于与服务器连接的套接字方法：
 
-+   `socket.connect(ip_address)`: 这个方法将客户端连接到服务器 IP 地址
++   `socket.connect(ip_address)`: 这个方法将客户端连接到服务器IP地址
 
 我们可以使用`help(socket)`命令获取有关这个方法的更多信息。我们了解到这个方法与`connect_ex`方法相同，并且在无法连接到该地址时还提供了返回错误的可能性。
 
 我们可以使用`help(socket)`命令获取有关这些方法的更多信息：
 
-![](img/6d26def8-753b-4270-8ae2-909cb98b0051.png)
+![](assets/6d26def8-753b-4270-8ae2-909cb98b0051.png)
 
 # 使用套接字模块的基本客户端
 
-在这个例子中，我们正在测试如何从网站发送和接收数据。一旦建立连接，我们就可以发送和接收数据。通过两个函数`send()`和`recv()`，可以非常容易地与套接字通信，用于 TCP 通信。对于 UDP 通信，我们使用`sendto()`和`recvfrom()`
+在这个例子中，我们正在测试如何从网站发送和接收数据。一旦建立连接，我们就可以发送和接收数据。通过两个函数`send()`和`recv()`，可以非常容易地与套接字通信，用于TCP通信。对于UDP通信，我们使用`sendto()`和`recvfrom()`
 
 在这个`socket_data.py`脚本中，我们使用`AF_INET`和`SOCK_STREAM`参数创建了一个套接字对象。然后将客户端连接到远程主机并发送一些数据。最后一步是接收一些数据并打印出响应。我们使用一个无限循环（while `True`）并检查数据变量是否为空。如果发生这种情况，我们结束循环。
 
@@ -138,7 +138,7 @@ print 'closing the socket'
 s.close()
 ```
 
-# 创建一个简单的 TCP 客户端和 TCP 服务器
+# 创建一个简单的TCP客户端和TCP服务器
 
 创建这个应用的想法是，套接字客户端可以针对给定的主机、端口和协议建立连接。套接字服务器负责在特定端口和协议上接收来自客户端的连接。
 
@@ -154,7 +154,7 @@ s.close()
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 ```
 
-现在，我们必须使用 bind 方法指示服务器将监听哪个端口。对于 IP 套接字，就像我们的情况一样，bind 参数是一个包含主机和端口的元组。主机可以留空，表示可以使用任何可用的名称。
+现在，我们必须使用bind方法指示服务器将监听哪个端口。对于IP套接字，就像我们的情况一样，bind参数是一个包含主机和端口的元组。主机可以留空，表示可以使用任何可用的名称。
 
 `bind(IP,PORT)`方法允许将主机和端口与特定套接字关联起来，考虑到`1-1024`端口保留用于标准协议：
 
@@ -162,7 +162,7 @@ server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind(("localhost", 9999))
 ```
 
-最后，我们使用 listen 方法使套接字接受传入的连接并开始监听。listen 方法需要一个参数，指示我们要接受的最大连接数。
+最后，我们使用listen方法使套接字接受传入的连接并开始监听。listen方法需要一个参数，指示我们要接受的最大连接数。
 
 `accept`方法继续等待传入连接，阻塞执行直到消息到达。
 
@@ -175,9 +175,9 @@ socket_client, (host, port) = server.accept()
 
 我们可以使用`help(socket)`命令获取有关这些方法的更多信息：
 
-![](img/d1606fe2-424f-4112-9426-0d1abf78022c.png)
+![](assets/d1606fe2-424f-4112-9426-0d1abf78022c.png)
 
-一旦我们有了这个套接字对象，我们就可以通过它与客户端进行通信，使用`recv`和`send`方法（或 UDP 中的`recvfrom`和`sendfrom`）来接收或发送消息。send 方法的参数是要发送的数据，而`recv`方法的参数是要接受的最大字节数：
+一旦我们有了这个套接字对象，我们就可以通过它与客户端进行通信，使用`recv`和`send`方法（或UDP中的`recvfrom`和`sendfrom`）来接收或发送消息。send方法的参数是要发送的数据，而`recv`方法的参数是要接受的最大字节数：
 
 ```py
 received = socket_client.recv(1024)
@@ -185,7 +185,7 @@ print "Received: ", received
 socket_client.send(received)
 ```
 
-要创建客户端，我们必须创建套接字对象，使用 connect 方法连接到服务器，并使用之前看到的 send 和 recv 方法。connect 参数是一个包含主机和端口的元组，与 bind 完全相同：
+要创建客户端，我们必须创建套接字对象，使用connect方法连接到服务器，并使用之前看到的send和recv方法。connect参数是一个包含主机和端口的元组，与bind完全相同：
 
 ```py
 socket_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -195,11 +195,11 @@ socket_client.send("message")
 
 让我们看一个完整的例子。在这个例子中，客户端向服务器发送用户写的任何消息，服务器重复接收到的消息。
 
-# 实现 TCP 服务器在本例中，我们将创建一个多线程 TCP 服务器。
+# 实现TCP服务器在本例中，我们将创建一个多线程TCP服务器。
 
-服务器套接字在`localhost:9999`上打开一个 TCP 套接字，并在无限循环中监听请求。当您从客户端套接字接收到请求时，它将返回一条消息，指示已从另一台机器建立连接。
+服务器套接字在`localhost:9999`上打开一个TCP套接字，并在无限循环中监听请求。当您从客户端套接字接收到请求时，它将返回一条消息，指示已从另一台机器建立连接。
 
-while 循环使服务器程序保持活动状态，并且不允许代码结束。`server.listen(5)`语句监听连接并等待客户端。此指令告诉服务器以最大连接数设置为`5`开始监听。
+while循环使服务器程序保持活动状态，并且不允许代码结束。`server.listen(5)`语句监听连接并等待客户端。此指令告诉服务器以最大连接数设置为`5`开始监听。
 
 您可以在`tcp_server.py`文件中的`tcp_client_server`文件夹中找到以下代码：
 
@@ -231,7 +231,7 @@ while True:
     client_handler.start()
 ```
 
-# 实现 TCP 客户端
+# 实现TCP客户端
 
 客户端套接字打开与服务器正在侦听的套接字相同类型的套接字并发送消息。服务器做出响应并结束执行，关闭客户端套接字。
 
@@ -254,33 +254,33 @@ s.close()
 
 在上述代码中，`new: s.connect((host,port))`方法将客户端连接到服务器，`s.recv(1024)`方法接收服务器发送的字符串。
 
-# 创建一个简单的 UDP 客户端和 UDP 服务器
+# 创建一个简单的UDP客户端和UDP服务器
 
-在本节中，我们将介绍如何使用 Python 的`Socket`模块设置自己的 UDP 客户端服务器应用程序。该应用程序将是一个服务器，它监听特定端口上的所有连接和消息，并将任何消息打印到控制台。
+在本节中，我们将介绍如何使用Python的`Socket`模块设置自己的UDP客户端服务器应用程序。该应用程序将是一个服务器，它监听特定端口上的所有连接和消息，并将任何消息打印到控制台。
 
-# UDP 协议简介
+# UDP协议简介
 
-UDP 是与 TCP 处于同一级别的协议，即在 IP 层之上。它为使用它的应用程序提供了一种断开连接模式的服务。该协议适用于需要高效通信且无需担心数据包丢失的应用程序。UDP 的典型应用包括互联网电话和视频流。UDP 帧的标头由四个字段组成：
+UDP是与TCP处于同一级别的协议，即在IP层之上。它为使用它的应用程序提供了一种断开连接模式的服务。该协议适用于需要高效通信且无需担心数据包丢失的应用程序。UDP的典型应用包括互联网电话和视频流。UDP帧的标头由四个字段组成：
 
-+   UDP 源端口
++   UDP源端口
 
-+   UDP 目的端口
++   UDP目的端口
 
-+   UDP 消息的长度
++   UDP消息的长度
 
 +   检查和校验和作为错误控制字段
 
-在 Python 中使用 TCP 的唯一区别是，在创建套接字时，必须使用`SOCK_DGRAM`而不是`SOCK_STREAM`。
+在Python中使用TCP的唯一区别是，在创建套接字时，必须使用`SOCK_DGRAM`而不是`SOCK_STREAM`。
 
-TCP 和 UDP 之间的主要区别在于 UDP 不是面向连接的，这意味着我们的数据包不一定会到达目的地，并且如果传输失败，也不会收到错误通知。
+TCP和UDP之间的主要区别在于UDP不是面向连接的，这意味着我们的数据包不一定会到达目的地，并且如果传输失败，也不会收到错误通知。
 
-# 使用 socket 模块的 UDP 客户端和服务器
+# 使用socket模块的UDP客户端和服务器
 
-在这个例子中，我们将创建一个同步 UDP 服务器，这意味着每个请求必须等待前一个请求的过程结束。`bind()`方法将用于将端口与 IP 地址关联起来。对于消息的接收，我们使用`recvfrom()`和`sendto()`方法进行发送。
+在这个例子中，我们将创建一个同步UDP服务器，这意味着每个请求必须等待前一个请求的过程结束。`bind()`方法将用于将端口与IP地址关联起来。对于消息的接收，我们使用`recvfrom()`和`sendto()`方法进行发送。
 
-# 实现 UDP 服务器
+# 实现UDP服务器
 
-与 TCP 的主要区别在于 UDP 不控制发送的数据包的错误。TCP 套接字和 UDP 套接字之间的唯一区别是在创建套接字对象时必须指定`SOCK_DGRAM`而不是`SOCK_STREAM`。使用以下代码创建 UDP 服务器：
+与TCP的主要区别在于UDP不控制发送的数据包的错误。TCP套接字和UDP套接字之间的唯一区别是在创建套接字对象时必须指定`SOCK_DGRAM`而不是`SOCK_STREAM`。使用以下代码创建UDP服务器：
 
 你可以在`udp_client_server`文件夹中的`udp_server.py`文件中找到以下代码：
 
@@ -307,13 +307,13 @@ while True:
 socket_server.close()
 ```
 
-在上面的代码中，我们看到`socket.SOCK_DGRAM`创建了一个 UDP 套接字，而`data，**`addr = s.recvfrom(buffer)`**返回了数据和源地址。
+在上面的代码中，我们看到`socket.SOCK_DGRAM`创建了一个UDP套接字，而`data，**`addr = s.recvfrom(buffer)`**返回了数据和源地址。
 
-现在我们已经完成了服务器，需要实现我们的客户端程序。服务器将持续监听我们定义的 IP 地址和端口号，以接收任何 UDP 消息。在执行 Python 客户端脚本之前，必须先运行该服务器，否则客户端脚本将失败。
+现在我们已经完成了服务器，需要实现我们的客户端程序。服务器将持续监听我们定义的IP地址和端口号，以接收任何UDP消息。在执行Python客户端脚本之前，必须先运行该服务器，否则客户端脚本将失败。
 
-# 实现 UDP 客户端
+# 实现UDP客户端
 
-要开始实现客户端，我们需要声明要尝试发送 UDP 消息的 IP 地址，以及端口号。这个端口号是任意的，但你必须确保你没有使用已经被占用的套接字：
+要开始实现客户端，我们需要声明要尝试发送UDP消息的IP地址，以及端口号。这个端口号是任意的，但你必须确保你没有使用已经被占用的套接字：
 
 ```py
 UDP_IP_ADDRESS = "127.0.0.1"
@@ -321,13 +321,13 @@ UDP_IP_ADDRESS = "127.0.0.1"
  message = "Hello, Server"
 ```
 
-现在是时候创建我们将用来向服务器发送 UDP 消息的套接字了：
+现在是时候创建我们将用来向服务器发送UDP消息的套接字了：
 
 ```py
 clientSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 ```
 
-最后，一旦我们构建了新的套接字，就该编写发送 UDP 消息的代码了：
+最后，一旦我们构建了新的套接字，就该编写发送UDP消息的代码了：
 
 ```py
 clientSocket.sendto(Message, (UDP_IP_ADDRESS, UDP_PORT))
@@ -353,27 +353,27 @@ while True:
 socket_client.close()
 ```
 
-如果我们尝试在 UDP 套接字中使用`SOCK_STREAM`，我们会得到`error: Traceback (most recent call last): File ".\udp_server.py", line 15, in <module> data,addr = socket_server.recvfrom(buffer)socket.error: [Errno 10057] A request to send or receive data was disallowed because the socket is not connected and no address was supplied`。
+如果我们尝试在UDP套接字中使用`SOCK_STREAM`，我们会得到`error: Traceback (most recent call last): File ".\udp_server.py", line 15, in <module> data,addr = socket_server.recvfrom(buffer)socket.error: [Errno 10057] A request to send or receive data was disallowed because the socket is not connected and no address was supplied`。
 
-# 解析 IP 地址和域名
+# 解析IP地址和域名
 
-在本章中，我们已经学习了如何在 Python 中构建套接字，包括面向 TCP 连接和不面向连接的 UDP。在本节中，我们将回顾一些有用的方法，以获取有关 IP 地址或域名的更多信息。
+在本章中，我们已经学习了如何在Python中构建套接字，包括面向TCP连接和不面向连接的UDP。在本节中，我们将回顾一些有用的方法，以获取有关IP地址或域名的更多信息。
 
 # 使用套接字收集信息
 
 收集更多信息的有用方法包括：
 
-+   `gethostbyaddr(address)`:允许我们从 IP 地址获取域名
++   `gethostbyaddr(address)`:允许我们从IP地址获取域名
 
-+   `gethostbyname(hostname)`:允许我们从域名获取 IP 地址
++   `gethostbyname(hostname)`:允许我们从域名获取IP地址
 
 我们可以使用`help(socket)`命令获取有关这些方法的更多信息：
 
-![](img/dcfa6c52-52f4-4d99-95c6-fe9fcf06dd81.png)
+![](assets/dcfa6c52-52f4-4d99-95c6-fe9fcf06dd81.png)
 
-现在我们将详细介绍一些与主机、IP 地址和域名解析相关的方法。对于每个方法，我们将展示一个简单的例子：
+现在我们将详细介绍一些与主机、IP地址和域名解析相关的方法。对于每个方法，我们将展示一个简单的例子：
 
-+   `socket.gethostbyname(hostname)`:该方法将主机名转换为 IPv4 地址格式。IPv4 地址以字符串形式返回。这个方法相当于我们在许多操作系统中找到的`nslookup`命令：
++   `socket.gethostbyname(hostname)`:该方法将主机名转换为IPv4地址格式。IPv4地址以字符串形式返回。这个方法相当于我们在许多操作系统中找到的`nslookup`命令：
 
 ```py
 >>> import socket
@@ -383,7 +383,7 @@ socket_client.close()
 '216.58.210.142'
 ```
 
-+   `socket.gethostbyname_ex(name)`:该方法返回单个域名的多个 IP 地址。这意味着一个域名运行在多个 IP 上：
++   `socket.gethostbyname_ex(name)`:该方法返回单个域名的多个IP地址。这意味着一个域名运行在多个IP上：
 
 ```py
 >> socket.gethostbyname_ex('packtpub.com')
@@ -398,7 +398,7 @@ socket_client.close()
 >> socket.getfqdn('google.com')
 ```
 
-+   `socket.gethostbyaddr(ip_address)`:该方法返回一个元组（`hostname`，`name`，`ip_address_list`），其中`hostname`是响应给定 IP 地址的主机名，`name`是与同一地址关联的名称列表，`ip_address_list`是同一主机上同一网络接口的 IP 地址列表：
++   `socket.gethostbyaddr(ip_address)`:该方法返回一个元组（`hostname`，`name`，`ip_address_list`），其中`hostname`是响应给定IP地址的主机名，`name`是与同一地址关联的名称列表，`ip_address_list`是同一主机上同一网络接口的IP地址列表：
 
 ```py
 >>> socket.gethostbyaddr('8.8.8.8')
@@ -424,7 +424,7 @@ socket_client.close()
 'telnet'
 ```
 
-以下脚本是一个示例，演示了如何使用这些方法从 Google 服务器获取信息。
+以下脚本是一个示例，演示了如何使用这些方法从Google服务器获取信息。
 
 您可以在`socket_methods.py`文件中找到以下代码：
 
@@ -446,7 +446,7 @@ except socket.error as error:
     sys.exit()
 ```
 
-`socket.connect_ex(address)`方法用于使用套接字实现端口扫描。此脚本显示了在本地主机上使用回环 IP 地址接口`127.0.0.1`的打开端口。
+`socket.connect_ex(address)`方法用于使用套接字实现端口扫描。此脚本显示了在本地主机上使用回环IP地址接口`127.0.0.1`的打开端口。
 
 您可以在`socket_ports_open.py`文件中找到以下代码：
 
@@ -463,7 +463,7 @@ for port in portlist:
 
 # 反向查找
 
-此命令从 IP 地址获取主机名。为此任务，我们可以使用`gethostbyaddr()`函数。在此脚本中，我们从`8.8.8.8`的 IP 地址获取主机名。
+此命令从IP地址获取主机名。为此任务，我们可以使用`gethostbyaddr()`函数。在此脚本中，我们从`8.8.8.8`的IP地址获取主机名。
 
 您可以在`socket_reverse_lookup.py`文件中找到以下代码：
 
@@ -488,9 +488,9 @@ except socket.herror,e:
 
 套接字是网络通信的基本构建模块，我们可以通过调用`connect_ex`方法来轻松地检查特定端口是打开、关闭还是被过滤。
 
-例如，我们可以编写一个函数，该函数接受 IP 和端口列表作为参数，并针对每个端口返回该端口是打开还是关闭。
+例如，我们可以编写一个函数，该函数接受IP和端口列表作为参数，并针对每个端口返回该端口是打开还是关闭。
 
-在此示例中，我们需要导入 socket 和`sys`模块。如果我们从主程序执行该函数，我们可以看到它如何检查每个端口，并返回特定 IP 地址的端口是打开还是关闭。第一个参数可以是 IP 地址，也可以是域名，因为该模块能够从 IP 解析名称，反之亦然。
+在此示例中，我们需要导入socket和`sys`模块。如果我们从主程序执行该函数，我们可以看到它如何检查每个端口，并返回特定IP地址的端口是打开还是关闭。第一个参数可以是IP地址，也可以是域名，因为该模块能够从IP解析名称，反之亦然。
 
 您可以在`port_scan`文件夹中的`check_ports_socket.py`文件中找到以下代码：
 
@@ -517,11 +517,11 @@ def checkPortsSocket(ip,portlist):
 checkPortsSocket('localhost',[80,8080,443])
 ```
 
-以下 Python 代码将允许您扫描本地或远程主机的开放端口。该程序会扫描用户输入的特定 IP 地址上的选定端口，并将开放的端口反馈给用户。如果端口关闭，它还会显示有关关闭原因的信息，例如超时连接。
+以下Python代码将允许您扫描本地或远程主机的开放端口。该程序会扫描用户输入的特定IP地址上的选定端口，并将开放的端口反馈给用户。如果端口关闭，它还会显示有关关闭原因的信息，例如超时连接。
 
 您可以在`port_scan`文件夹中的`socket_port_scanner.py`文件中找到以下代码。
 
-脚本从用户输入的 IP 地址和端口相关信息开始：
+脚本从用户输入的IP地址和端口相关信息开始：
 
 ```py
 #!/usr/bin/env python
@@ -547,7 +547,7 @@ t1 = datetime.now()
 
 ```
 
-我们继续脚本，使用从`startPort`到`endPort`的 for 循环来分析每个端口。最后，我们显示完成端口扫描所需的总时间：
+我们继续脚本，使用从`startPort`到`endPort`的for循环来分析每个端口。最后，我们显示完成端口扫描所需的总时间：
 
 ```py
 #Specify Range - From startPort to startPort
@@ -584,13 +584,13 @@ print 'Port Scanning Completed in: ', total
 
 在执行上一个脚本时，我们可以看到打开的端口以及完成端口扫描所需的时间（以秒为单位）：
 
-![](img/4cd90073-6b11-4d10-bc57-cf996c26d4db.png)
+![](assets/4cd90073-6b11-4d10-bc57-cf996c26d4db.png)
 
-以下 Python 脚本将允许我们使用`portScanning`和`socketScan`函数扫描 IP 地址。该程序会扫描用户输入的 IP 地址解析出的特定域上的选定端口。
+以下Python脚本将允许我们使用`portScanning`和`socketScan`函数扫描IP地址。该程序会扫描用户输入的IP地址解析出的特定域上的选定端口。
 
 在此脚本中，用户必须输入主机和端口作为必填参数，用逗号分隔：
 
-![](img/fb2d53e2-8076-426f-a13f-c52a0c3148e9.png)
+![](assets/fb2d53e2-8076-426f-a13f-c52a0c3148e9.png)
 
 您可以在`port_scan`文件夹中的`socket_portScan.py`文件中找到以下代码：
 
@@ -630,7 +630,7 @@ def portScanning(host, ports):
         t.start()
 ```
 
-这是我们的主程序，当我们获取脚本执行的必填参数主机和端口时。一旦我们获得这些参数，我们调用`portScanning`函数，该函数将解析 IP 地址和主机名，并调用`socketScan`函数，该函数将使用`socket`模块确定端口状态：
+这是我们的主程序，当我们获取脚本执行的必填参数主机和端口时。一旦我们获得这些参数，我们调用`portScanning`函数，该函数将解析IP地址和主机名，并调用`socketScan`函数，该函数将使用`socket`模块确定端口状态：
 
 ```py
 def main():
@@ -654,15 +654,15 @@ python .\socket_portScan.py -H 8.8.8.8 -P 80,21,22,23
 
 在执行上一个脚本时，我们可以看到`google-public-dns-a.google.com`域中的所有端口都已关闭。
 
-![](img/45a671e7-9e5a-47e5-84df-0880e69b1ec8.png)
+![](assets/45a671e7-9e5a-47e5-84df-0880e69b1ec8.png)
 
 # 处理套接字异常
 
-为了处理异常，我们将使用 try 和 except 块。Python 的套接字库为不同的错误定义了不同类型的异常。这些异常在这里描述：
+为了处理异常，我们将使用try和except块。Python的套接字库为不同的错误定义了不同类型的异常。这些异常在这里描述：
 
 +   `exception socket.timeout`：此块捕获与等待时间到期相关的异常。
 
-+   `exception socket.gaierror`：此块捕获在搜索有关 IP 地址的信息时发生的错误，例如当我们使用`getaddrinfo()`和`getnameinfo()`方法时。
++   `exception socket.gaierror`：此块捕获在搜索有关IP地址的信息时发生的错误，例如当我们使用`getaddrinfo()`和`getnameinfo()`方法时。
 
 +   `exception socket.error`：此块捕获通用输入和输出错误以及通信。这是一个通用块，您可以捕获任何类型的异常。
 
@@ -693,17 +693,17 @@ except socket.error, e:
     sys.exit(1)
 ```
 
-在上一个脚本中，当与 IP 地址的连接超时时，它会抛出与服务器的套接字连接相关的异常。如果尝试获取不存在的特定域或 IP 地址的信息，它可能会抛出`socket.gaierror`异常，并显示`连接到服务器的错误：[Errno 11001] getaddrinfo failed`消息。如果与目标的连接不可能，它将抛出`socket.error`异常，并显示`连接错误：[Errno 10061] 由于目标计算机积极拒绝，无法建立连接`消息。
+在上一个脚本中，当与IP地址的连接超时时，它会抛出与服务器的套接字连接相关的异常。如果尝试获取不存在的特定域或IP地址的信息，它可能会抛出`socket.gaierror`异常，并显示`连接到服务器的错误：[Errno 11001] getaddrinfo failed`消息。如果与目标的连接不可能，它将抛出`socket.error`异常，并显示`连接错误：[Errno 10061] 由于目标计算机积极拒绝，无法建立连接`消息。
 
 # 摘要
 
-在本章中，我们回顾了`socket`模块，用于在 Python 中实现客户端-服务器架构的 TCP 和 UDP 协议。我们还回顾了从域解析 IP 地址和反之的主要功能和方法。最后，我们实现了端口扫描和如何在产生错误时处理异常等实际用例。
+在本章中，我们回顾了`socket`模块，用于在Python中实现客户端-服务器架构的TCP和UDP协议。我们还回顾了从域解析IP地址和反之的主要功能和方法。最后，我们实现了端口扫描和如何在产生错误时处理异常等实际用例。
 
-在下一个*章节*中，我们将探讨用 Python 处理 http 请求包、REST API 和服务器身份验证。
+在下一个*[章节](9e79dfe8-9de4-4aaf-9d24-42b67a7da39c.xhtml)*中，我们将探讨用Python处理http请求包、REST API和服务器身份验证。
 
 # 问题
 
-1.  `sockets`模块的哪种方法允许从 IP 地址解析域名？
+1.  `sockets`模块的哪种方法允许从IP地址解析域名？
 
 1.  `socket`模块的哪种方法允许服务器套接字接受来自另一台主机的客户端套接字的请求？
 
@@ -711,30 +711,30 @@ except socket.error, e:
 
 1.  `socket`模块的哪种方法允许您将主机和端口与特定套接字关联起来？
 
-1.  TCP 和 UDP 协议之间的区别是什么，以及如何在 Python 中使用`socket`模块实现它们？
+1.  TCP和UDP协议之间的区别是什么，以及如何在Python中使用`socket`模块实现它们？
 
-1.  `socket`模块的哪种方法允许您将主机名转换为 IPv4 地址格式？
+1.  `socket`模块的哪种方法允许您将主机名转换为IPv4地址格式？
 
 1.  `socket`模块的哪种方法允许您使用套接字实现端口扫描并检查端口状态？
 
 1.  `socket`模块的哪个异常允许您捕获与等待时间到期相关的异常？
 
-1.  `socket`模块的哪个异常允许您捕获在搜索有关 IP 地址的信息时发生的错误？
+1.  `socket`模块的哪个异常允许您捕获在搜索有关IP地址的信息时发生的错误？
 
 1.  `socket`模块的哪个异常允许您捕获通用输入和输出错误以及通信？
 
 # 进一步阅读
 
-在这些链接中，您将找到有关提到的工具和一些评论模块的官方 Python 文档的更多信息：
+在这些链接中，您将找到有关提到的工具和一些评论模块的官方Python文档的更多信息：
 
-+   [`wiki.python.org/moin/HowTo/Sockets`](https://wiki.python.org/moin/HowTo/Sockets)
++   [https://wiki.python.org/moin/HowTo/Sockets](https://wiki.python.org/moin/HowTo/Sockets)
 
-+   [`docs.python.org/2/library/socket.html`](https://docs.python.org/2/library/socket.html)
++   [https://docs.python.org/2/library/socket.html](https://docs.python.org/2/library/socket.html)
 
-+   [`docs.python.org/3/library/socket.html`](https://docs.python.org/3/library/socket.html)
++   [https://docs.python.org/3/library/socket.html](https://docs.python.org/3/library/socket.html)
 
-+   [`www.geeksforgeeks.org/socket-programming-python/`](https://www.geeksforgeeks.org/socket-programming-python/)
++   [https://www.geeksforgeeks.org/socket-programming-python/](https://www.geeksforgeeks.org/socket-programming-python/)
 
-+   [`realpython.com/python-sockets/`](https://realpython.com/python-sockets/)
++   [https://realpython.com/python-sockets/](https://realpython.com/python-sockets/)
 
-Python 3.7 中套接字的新功能：[`www.agnosticdev.com/blog-entry/python/whats-new-sockets-python-37`](https://www.agnosticdev.com/blog-entry/python/whats-new-sockets-python-37)
+Python 3.7中套接字的新功能：[https://www.agnosticdev.com/blog-entry/python/whats-new-sockets-python-37](https://www.agnosticdev.com/blog-entry/python/whats-new-sockets-python-37)

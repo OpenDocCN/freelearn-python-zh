@@ -1,20 +1,20 @@
 # 文件存档、加密和解密
 
-在上一章中，我们学习了如何处理文件、目录和数据。我们还学习了`tarfile`模块。在本章中，我们将学习文件存档、加密和解密。存档在管理文件、目录和数据方面起着重要作用。但首先，什么是存档？存档是将文件和目录存储到单个文件中的过程。Python 有`tarfile`模块用于创建这样的存档文件。
+在上一章中，我们学习了如何处理文件、目录和数据。我们还学习了`tarfile`模块。在本章中，我们将学习文件存档、加密和解密。存档在管理文件、目录和数据方面起着重要作用。但首先，什么是存档？存档是将文件和目录存储到单个文件中的过程。Python有`tarfile`模块用于创建这样的存档文件。
 
 在本章中，我们将涵盖以下主题：
 
 +   创建和解压存档
 
-+   Tar 存档
++   Tar存档
 
-+   ZIP 创建
++   ZIP创建
 
 +   文件加密和解密
 
 # 创建和解压存档
 
-在本节中，我们将学习如何使用 Python 的`shutil`模块创建和解压存档。`shutil`模块有`make_archive()`函数，用于创建新的存档文件。使用`make_archive()`，我们可以存档整个目录及其内容。
+在本节中，我们将学习如何使用Python的`shutil`模块创建和解压存档。`shutil`模块有`make_archive()`函数，用于创建新的存档文件。使用`make_archive()`，我们可以存档整个目录及其内容。
 
 # 创建存档
 
@@ -48,7 +48,7 @@ work/welcome.py
 work/hello.py
 ```
 
-在前面的例子中，为了创建一个存档文件，我们使用了 Python 的`shutil`和`tarfile`模块。在`shutil.make_archive()`中，我们指定了`work_sample`，这将是存档文件的名称，并且将以`gz`格式。我们在基本目录属性中指定了我们的工作目录名称。最后，我们打印了已存档的文件的名称。
+在前面的例子中，为了创建一个存档文件，我们使用了Python的`shutil`和`tarfile`模块。在`shutil.make_archive()`中，我们指定了`work_sample`，这将是存档文件的名称，并且将以`gz`格式。我们在基本目录属性中指定了我们的工作目录名称。最后，我们打印了已存档的文件的名称。
 
 # 解压存档
 
@@ -76,7 +76,7 @@ student@ubuntu:~/work$ python3 shutil_unpack_archive.py
 
 现在，检查您的`work/`目录，您将在其中找到`work/`文件夹，其中将有提取的文件。
 
-# Tar 存档
+# Tar存档
 
 在本节中，我们将学习`tarfile`模块。我们还将学习如何测试输入的文件名，评估它是否是有效的存档文件。我们将看看如何将新文件添加到已存档的文件中，如何使用`tarfile`模块读取元数据，以及如何使用`extractall()`函数从存档中提取文件。
 
@@ -105,7 +105,7 @@ nofile.tar         [Errno 2] No such file or directory: 'nofile.tar'
 sample.tar.xz   True
 ```
 
-因此，`tarfile.is_tarfile()`将检查列表中提到的每个文件名。`hello.py，welcome.py`文件不是 tar 文件，所以我们得到了一个布尔值`False`。`work.tar.gz`和`sample.tar.xz`是 tar 文件，所以我们得到了布尔值`True`。而我们的目录中没有`nofile.tar`这样的文件，所以我们得到了一个异常，因为我们在脚本中写了它。
+因此，`tarfile.is_tarfile()`将检查列表中提到的每个文件名。`hello.py，welcome.py`文件不是tar文件，所以我们得到了一个布尔值`False`。`work.tar.gz`和`sample.tar.xz`是tar文件，所以我们得到了布尔值`True`。而我们的目录中没有`nofile.tar`这样的文件，所以我们得到了一个异常，因为我们在脚本中写了它。
 
 现在，我们将在已创建的存档文件中添加一个新文件。创建一个名为`add_to_archive.py`的脚本，并在其中编写以下代码：
 
@@ -210,9 +210,9 @@ student@ubuntu:~/work$ python3 extract_contents.py
 
 检查你的当前工作目录，你会发现`work/`目录。导航到该目录，你可以找到你提取的文件。
 
-# ZIP 创建
+# ZIP创建
 
-在本节中，我们将学习关于 ZIP 文件的知识。我们将学习`python`的`zipfile`模块，如何创建 ZIP 文件，如何测试输入的文件名是否是有效的`zip`文件名，读取元数据等等。
+在本节中，我们将学习关于ZIP文件的知识。我们将学习`python`的`zipfile`模块，如何创建ZIP文件，如何测试输入的文件名是否是有效的`zip`文件名，读取元数据等等。
 
 首先，我们将学习如何使用`shutil`模块的`make_archive()`函数创建一个`zip`文件。创建一个名为`make_zip_file.py`的脚本，并在其中写入以下代码：
 
@@ -256,7 +256,7 @@ test.zip            True
 
 在这个例子中，我们使用了一个`for`循环，我们在其中检查列表中的文件名。`is_zipfile()`函数将逐个检查文件名，并将布尔值作为结果。
 
-现在，我们将看看如何使用 Python 的`zipfile`模块从存档的 ZIP 文件中读取元数据。创建一个名为`read_metadata.py`的脚本，并在其中写入以下内容：
+现在，我们将看看如何使用Python的`zipfile`模块从存档的ZIP文件中读取元数据。创建一个名为`read_metadata.py`的脚本，并在其中写入以下内容：
 
 ```py
 import zipfile
@@ -315,7 +315,7 @@ Uncompressed   : 243 bytes
 
 # 文件加密和解密
 
-在本节中，我们将学习 Python 的`pyAesCrypt`模块。`pyAesCrypt`是一个文件加密模块，它使用`AES256-CBC`来加密/解密文件和二进制流。
+在本节中，我们将学习Python的`pyAesCrypt`模块。`pyAesCrypt`是一个文件加密模块，它使用`AES256-CBC`来加密/解密文件和二进制流。
 
 按如下方式安装`pyAesCrypt`：
 
@@ -380,26 +380,26 @@ student@ubuntu:~/work$ python3 file_decrypt.py
 
 在本章中，我们学习了如何创建和提取存档文件。存档在管理文件、目录和数据方面起着重要作用。它还将文件和目录存储到一个单一文件中。
 
-我们详细学习了 Python 模块`tarfile`和`zipfile`，它们使你能够创建、提取和测试存档文件。你将能够将一个新文件添加到已存档的文件中，读取元数据，从存档中提取文件。你还学习了使用`pyAescrypt`模块进行文件加密和解密。
+我们详细学习了Python模块`tarfile`和`zipfile`，它们使你能够创建、提取和测试存档文件。你将能够将一个新文件添加到已存档的文件中，读取元数据，从存档中提取文件。你还学习了使用`pyAescrypt`模块进行文件加密和解密。
 
-在下一章中，你将学习 Python 中的文本处理和正则表达式。Python 有一个非常强大的库叫做正则表达式，它可以执行搜索和提取数据等任务。
+在下一章中，你将学习Python中的文本处理和正则表达式。Python有一个非常强大的库叫做正则表达式，它可以执行搜索和提取数据等任务。
 
 # 问题
 
 1.  我们能使用密码保护来压缩数据吗？如果可以，怎么做？
 
-1.  什么是 Python 中的上下文管理器？
+1.  什么是Python中的上下文管理器？
 
-1.  什么是 pickling 和 unpickling？
+1.  什么是pickling和unpickling？
 
-1.  Python 中有哪些不同类型的函数？
+1.  Python中有哪些不同类型的函数？
 
 # 进一步阅读
 
-+   数据压缩和归档：[`docs.python.org/3/library/archiving.html`](https://docs.python.org/3/library/archiving.html)
++   数据压缩和归档：[https://docs.python.org/3/library/archiving.html](https://docs.python.org/3/library/archiving.html)
 
-+   `tempfile`文档：[`docs.python.org/2/library/tempfile.html`](https://docs.python.org/2/library/tempfile.html)
++   `tempfile`文档：[https://docs.python.org/2/library/tempfile.html](https://docs.python.org/2/library/tempfile.html)
 
-+   密码学 Python 文档：[`docs.python.org/3/library/crypto.html`](https://docs.python.org/3/library/crypto.html)
++   密码学Python文档：[https://docs.python.org/3/library/crypto.html](https://docs.python.org/3/library/crypto.html)
 
-+   `shutil`文档：[`docs.python.org/3/library/shutil.html`](https://docs.python.org/3/library/shutil.html)
++   `shutil`文档：[https://docs.python.org/3/library/shutil.html](https://docs.python.org/3/library/shutil.html)

@@ -1,6 +1,6 @@
 # 实现天气应用程序
 
-本书中的第一个应用程序将是一个网络爬虫应用程序，它将从[`weather.com`](https://weather.com)爬取天气预报信息并在终端中呈现。我们将添加一些选项，可以将其作为应用程序的参数传递，例如：
+本书中的第一个应用程序将是一个网络爬虫应用程序，它将从[https://weather.com](https://weather.com)爬取天气预报信息并在终端中呈现。我们将添加一些选项，可以将其作为应用程序的参数传递，例如：
 
 +   温度单位（摄氏度或华氏度）
 
@@ -14,7 +14,7 @@
 
 在本章中，您将学习如何：
 
-+   在 Python 应用程序中使用面向对象编程概念
++   在Python应用程序中使用面向对象编程概念
 
 +   使用`BeautifulSoup`包从网站上爬取数据
 
@@ -22,21 +22,21 @@
 
 +   利用`inspect`模块
 
-+   动态加载 Python 模块
++   动态加载Python模块
 
-+   使用 Python 推导
++   使用Python推导
 
-+   使用`Selenium`请求网页并检查其 DOM 元素
++   使用`Selenium`请求网页并检查其DOM元素
 
-在开始之前，重要的是要说，当开发网络爬虫应用程序时，您应该牢记这些类型的应用程序容易受到更改的影响。如果您从中获取数据的网站的开发人员更改了 CSS 类名或 HTML DOM 的结构，应用程序将停止工作。此外，如果我们获取数据的网站的 URL 更改，应用程序将无法发送请求。
+在开始之前，重要的是要说，当开发网络爬虫应用程序时，您应该牢记这些类型的应用程序容易受到更改的影响。如果您从中获取数据的网站的开发人员更改了CSS类名或HTML DOM的结构，应用程序将停止工作。此外，如果我们获取数据的网站的URL更改，应用程序将无法发送请求。
 
 # 设置环境
 
-在我们开始编写第一个示例之前，我们需要设置一个环境来工作并安装项目可能具有的任何依赖项。幸运的是，Python 有一个非常好的工具系统来处理虚拟环境。
+在我们开始编写第一个示例之前，我们需要设置一个环境来工作并安装项目可能具有的任何依赖项。幸运的是，Python有一个非常好的工具系统来处理虚拟环境。
 
-Python 中的虚拟环境是一个广泛的主题，超出了本书的范围。但是，如果您不熟悉虚拟环境，知道虚拟环境是一个与全局 Python 安装隔离的 Python 环境即可。这种隔离允许开发人员轻松地使用不同版本的 Python，在环境中安装软件包，并管理项目依赖项，而不会干扰 Python 的全局安装。
+Python中的虚拟环境是一个广泛的主题，超出了本书的范围。但是，如果您不熟悉虚拟环境，知道虚拟环境是一个与全局Python安装隔离的Python环境即可。这种隔离允许开发人员轻松地使用不同版本的Python，在环境中安装软件包，并管理项目依赖项，而不会干扰Python的全局安装。
 
-Python 的安装包含一个名为`venv`的模块，您可以使用它来创建虚拟环境；语法非常简单。我们将要创建的应用程序称为`weatherterm`（天气终端），因此我们可以创建一个同名的虚拟环境，以使其简单。
+Python的安装包含一个名为`venv`的模块，您可以使用它来创建虚拟环境；语法非常简单。我们将要创建的应用程序称为`weatherterm`（天气终端），因此我们可以创建一个同名的虚拟环境，以使其简单。
 
 要创建一个新的虚拟环境，请打开终端并运行以下命令：
 
@@ -50,11 +50,11 @@ $ python3 -m venv weatherterm
 $ . weatherterm/bin/activate
 ```
 
-我建议安装并使用`virtualenvwrapper`，这是`virtualenv`工具的扩展。这使得管理、创建和删除虚拟环境以及快速在它们之间切换变得非常简单。如果您希望进一步了解，请访问：[`virtualenvwrapper.readthedocs.io/en/latest/#`](https://virtualenvwrapper.readthedocs.io/en/latest/#)。
+我建议安装并使用`virtualenvwrapper`，这是`virtualenv`工具的扩展。这使得管理、创建和删除虚拟环境以及快速在它们之间切换变得非常简单。如果您希望进一步了解，请访问：[https://virtualenvwrapper.readthedocs.io/en/latest/#](https://virtualenvwrapper.readthedocs.io/en/latest/#)。
 
 现在，我们需要创建一个目录，我们将在其中创建我们的应用程序。不要在创建虚拟环境的同一目录中创建此目录；相反，创建一个项目目录，并在其中创建应用程序目录。我建议您简单地使用与虚拟环境相同的名称命名它。
 
-我正在设置环境并在安装了 Debian 9.2 的机器上运行所有示例，并且在撰写本文时，我正在运行最新的 Python 版本（3.6.2）。如果您是 Mac 用户，情况可能不会有太大差异；但是，如果您使用 Windows，步骤可能略有不同，但是很容易找到有关如何在其中设置虚拟环境的信息。现在，Windows 上的 Python 3 安装效果很好。
+我正在设置环境并在安装了Debian 9.2的机器上运行所有示例，并且在撰写本文时，我正在运行最新的Python版本（3.6.2）。如果您是Mac用户，情况可能不会有太大差异；但是，如果您使用Windows，步骤可能略有不同，但是很容易找到有关如何在其中设置虚拟环境的信息。现在，Windows上的Python 3安装效果很好。
 
 进入刚创建的项目目录并创建一个名为`requirements.txt`的文件，内容如下：
 
@@ -65,9 +65,9 @@ selenium==3.6.0
 
 这些都是我们这个项目所需的所有依赖项：
 
-+   `BeautifulSoup`**：**这是一个用于解析 HTML 和 XML 文件的包。我们将使用它来解析从天气网站获取的 HTML，并在终端上获取所需的天气数据。它非常简单易用，并且有在线上有很好的文档：[`beautiful-soup-4.readthedocs.io/en/latest/`](http://beautiful-soup-4.readthedocs.io/en/latest/)。
++   `BeautifulSoup`**：**这是一个用于解析HTML和XML文件的包。我们将使用它来解析从天气网站获取的HTML，并在终端上获取所需的天气数据。它非常简单易用，并且有在线上有很好的文档：[http://beautiful-soup-4.readthedocs.io/en/latest/](http://beautiful-soup-4.readthedocs.io/en/latest/)。
 
-+   `selenium`**：**这是一个用于测试的知名工具集。有许多应用程序，但它主要用于自动测试 Web 应用程序。
++   `selenium`**：**这是一个用于测试的知名工具集。有许多应用程序，但它主要用于自动测试Web应用程序。
 
 要在我们的虚拟环境中安装所需的软件包，可以运行以下命令：
 
@@ -75,13 +75,13 @@ selenium==3.6.0
 pip install -r requirements.txt
 ```
 
-始终使用 GIT 或 Mercurial 等版本控制工具是一个好主意。它非常有助于控制更改，检查历史记录，回滚更改等。如果您对这些工具不熟悉，互联网上有很多教程。您可以通过查看 GIT 的文档来开始：[`git-scm.com/book/en/v1/Getting-Started`](https://git-scm.com/book/en/v1/Getting-Started)。
+始终使用GIT或Mercurial等版本控制工具是一个好主意。它非常有助于控制更改，检查历史记录，回滚更改等。如果您对这些工具不熟悉，互联网上有很多教程。您可以通过查看GIT的文档来开始：[https://git-scm.com/book/en/v1/Getting-Started](https://git-scm.com/book/en/v1/Getting-Started)。
 
-我们需要安装的最后一个工具是 PhantomJS；您可以从以下网址下载：[`phantomjs.org/download.html`](http://phantomjs.org/download.html)
+我们需要安装的最后一个工具是PhantomJS；您可以从以下网址下载：[http://phantomjs.org/download.html](http://phantomjs.org/download.html)
 
 下载后，提取`weatherterm`目录中的内容，并将文件夹重命名为`phantomjs`。
 
-在设置好我们的虚拟环境并安装了 PhantomJS 后，我们准备开始编码！
+在设置好我们的虚拟环境并安装了PhantomJS后，我们准备开始编码！
 
 # 核心功能
 
@@ -145,7 +145,7 @@ def load(dirname):
     return _import_parsers(parserfiles)
 ```
 
-首先，执行`_get_parser_list`函数并返回位于`weatherterm/parsers`中的所有文件的列表；它将根据先前描述的解析器规则过滤文件。返回文件列表后，就可以导入模块了。这是由`_import_parsers`函数完成的，它首先导入`weatherterm.parsers`模块，并利用标准库中的 inspect 包来查找模块中的解析器类。
+首先，执行`_get_parser_list`函数并返回位于`weatherterm/parsers`中的所有文件的列表；它将根据先前描述的解析器规则过滤文件。返回文件列表后，就可以导入模块了。这是由`_import_parsers`函数完成的，它首先导入`weatherterm.parsers`模块，并利用标准库中的inspect包来查找模块中的解析器类。
 
 `inspect.getmembers`函数返回一个元组列表，其中第一项是表示模块中的属性的键，第二项是值，可以是任何类型。在我们的情况下，我们对以`parser`结尾的键和类型为类的值感兴趣。
 
@@ -176,9 +176,9 @@ class ForecastType(Enum):
     WEEKEND = 'weekend'
 ```
 
-枚举自 Python 3.4 版本以来一直存在于 Python 标准库中，可以使用创建类的语法来创建。只需创建一个从`enum.Enum`继承的类，其中包含一组设置为常量值的唯一属性。在这里，我们为应用程序提供的四种类型的预报设置了值，可以访问`ForecastType.TODAY`、`ForecastType.WEEKEND`等值。
+枚举自Python 3.4版本以来一直存在于Python标准库中，可以使用创建类的语法来创建。只需创建一个从`enum.Enum`继承的类，其中包含一组设置为常量值的唯一属性。在这里，我们为应用程序提供的四种类型的预报设置了值，可以访问`ForecastType.TODAY`、`ForecastType.WEEKEND`等值。
 
-请注意，我们正在分配与枚举的属性项不同的常量值，原因是以后这些值将用于构建请求天气网站的 URL。
+请注意，我们正在分配与枚举的属性项不同的常量值，原因是以后这些值将用于构建请求天气网站的URL。
 
 应用程序需要另一个枚举来表示用户在命令行中可以选择的温度单位。这个枚举将包含摄氏度和华氏度项目。
 
@@ -215,7 +215,7 @@ class Unit(BaseEnum):
 from .unit import Unit
 ```
 
-如果我们在 Python REPL 中加载这个类并检查值，将会发生以下情况：
+如果我们在Python REPL中加载这个类并检查值，将会发生以下情况：
 
 ```py
 Python 3.6.2 (default, Sep 11 2017, 22:31:28) 
@@ -300,9 +300,10 @@ class Forecast:
                f'{self._wind} / Humidity: {self._humidity}\n')
 ```
 
-在 Forecast 类中，我们将定义我们将要解析的所有数据的属性：
+在Forecast类中，我们将定义我们将要解析的所有数据的属性：
 
 | `current_temp` | 表示当前温度。仅在获取今天的天气预报时才可用。 |
+| --- | --- |
 | `humidity` | 一天中的湿度百分比。 |
 | `wind` | 有关今天当前风级的信息。 |
 | `high_temp` | 一天中的最高温度。 |
@@ -311,7 +312,7 @@ class Forecast:
 | `forecast_date` | 预测日期；如果未提供，将设置为当前日期。 |
 | `forecast_type` | 枚举`ForecastType`中的任何值（`TODAY`，`FIVEDAYS`，`TENDAYS`或`WEEKEND`）。 |
 
-我们还可以实现两个名为`forecast_date`的方法，使用`@property`和`@forecast_date.setter`装饰器。`@property`装饰器将方法转换为`Forecast`类的`_forecast_date`属性的 getter，而`@forecast_date.setter`将方法转换为 setter。之所以在这里定义 setter，是因为每次需要在`Forecast`的实例中设置日期时，我们都需要确保它将被相应地格式化。在 setter 中，我们调用`strftime`方法，传递格式代码`%a`（缩写的星期几名称），`%b`（缩写的月份名称）和`%d`（月份的第几天）。
+我们还可以实现两个名为`forecast_date`的方法，使用`@property`和`@forecast_date.setter`装饰器。`@property`装饰器将方法转换为`Forecast`类的`_forecast_date`属性的getter，而`@forecast_date.setter`将方法转换为setter。之所以在这里定义setter，是因为每次需要在`Forecast`的实例中设置日期时，我们都需要确保它将被相应地格式化。在setter中，我们调用`strftime`方法，传递格式代码`%a`（缩写的星期几名称），`%b`（缩写的月份名称）和`%d`（月份的第几天）。
 
 格式代码`%a`和`%b`将使用在运行代码的机器上配置的区域设置。
 
@@ -382,7 +383,7 @@ class UnitConverter:
 return int(value) if value.is_integer() else f'{value:.1f}'
 ```
 
-`_format_results`方法检查数字是否为整数；如果`value.is_integer()`返回`True`，则表示数字是整数，例如 10.0。如果为`True`，我们将使用`int`函数将值转换为 10；否则，该值将作为具有精度为 1 的定点数返回。Python 中的默认精度为 6。最后，有两个实用方法执行温度转换，`_to_celsius`和`_to_fahrenheit`。
+`_format_results`方法检查数字是否为整数；如果`value.is_integer()`返回`True`，则表示数字是整数，例如10.0。如果为`True`，我们将使用`int`函数将值转换为10；否则，该值将作为具有精度为1的定点数返回。Python中的默认精度为6。最后，有两个实用方法执行温度转换，`_to_celsius`和`_to_fahrenheit`。
 
 现在，我们只需要编辑`weatherterm/core`目录中的`__init__.py`文件，并包含以下导入语句：
 
@@ -420,9 +421,9 @@ class Request:
         return self._driver.page_source
 ```
 
-这个类非常简单；初始化程序定义了基本 URL 并创建了一个 PhantomJS 驱动程序，使用 PhantomJS 安装的路径。`fetch_data`方法格式化 URL，添加预测选项和区域。之后，`webdriver`执行请求并返回页面源代码。如果返回的标记标题是`404 Not Found`，它将引发异常。不幸的是，`Selenium`没有提供获取 HTTP 状态代码的正确方法；这比比较字符串要好得多。
+这个类非常简单；初始化程序定义了基本URL并创建了一个PhantomJS驱动程序，使用PhantomJS安装的路径。`fetch_data`方法格式化URL，添加预测选项和区域。之后，`webdriver`执行请求并返回页面源代码。如果返回的标记标题是`404 Not Found`，它将引发异常。不幸的是，`Selenium`没有提供获取HTTP状态代码的正确方法；这比比较字符串要好得多。
 
-您可能会注意到，我在一些类属性前面加了下划线符号。我通常这样做是为了表明底层属性是私有的，不应该在类外部设置。在 Python 中，没有必要这样做，因为没有办法设置私有或公共属性；但是，我喜欢这样做，因为我可以清楚地表明我的意图。
+您可能会注意到，我在一些类属性前面加了下划线符号。我通常这样做是为了表明底层属性是私有的，不应该在类外部设置。在Python中，没有必要这样做，因为没有办法设置私有或公共属性；但是，我喜欢这样做，因为我可以清楚地表明我的意图。
 
 现在，我们可以在`weatherterm/core`目录中的`__init__.py`文件中导入它：
 
@@ -432,7 +433,7 @@ from .request import Request
 
 现在我们有一个解析器加载器，可以加载我们放入`weatherterm/parsers`目录中的任何解析器，我们有一个表示预测模型的类，以及一个枚举`ForecastType`，因此我们可以指定要解析的预测类型。该枚举表示温度单位和实用函数，用于将温度从`华氏度`转换为`摄氏度`和从`摄氏度`转换为`华氏度`。因此，现在，我们应该准备好创建应用程序的入口点，以接收用户传递的所有参数，运行解析器，并在终端上呈现数据。
 
-# 使用 ArgumentParser 获取用户输入
+# 使用ArgumentParser获取用户输入
 
 在我们第一次运行应用程序之前，我们需要添加应用程序的入口点。入口点是在执行应用程序时将首先运行的代码。
 
@@ -440,15 +441,15 @@ from .request import Request
 
 听起来很繁琐，对吧？
 
-幸运的是，Python 自带了很多功能，标准库中包含一个很棒的模块，可以让我们以非常简单的方式实现这一点；该模块称为`argparse`。
+幸运的是，Python自带了很多功能，标准库中包含一个很棒的模块，可以让我们以非常简单的方式实现这一点；该模块称为`argparse`。
 
-另一个很好的功能是让我们的应用程序易于分发给用户。一种方法是在`weatherterm`模块目录中创建一个`__main__.py`文件，然后可以像运行常规脚本一样运行模块。Python 将自动运行`__main__.py`文件，如下所示：
+另一个很好的功能是让我们的应用程序易于分发给用户。一种方法是在`weatherterm`模块目录中创建一个`__main__.py`文件，然后可以像运行常规脚本一样运行模块。Python将自动运行`__main__.py`文件，如下所示：
 
 ```py
 $ python -m weatherterm
 ```
 
-另一个选项是压缩整个应用程序目录并执行 Python，传递 ZIP 文件的名称。这是一种简单、快速、简单的分发 Python 程序的方法。
+另一个选项是压缩整个应用程序目录并执行Python，传递ZIP文件的名称。这是一种简单、快速、简单的分发Python程序的方法。
 
 还有许多其他分发程序的方法，但这超出了本书的范围；我只是想给你一些使用`__main__.py`文件的例子。
 
@@ -590,7 +591,7 @@ argparser.add_argument('-td', '--today',
 
 我们还使用了关键字参数`const`，它指定在命令行中使用标志时的常量默认值。
 
-记住我提到过可以创建自定义操作吗？参数 unit 是自定义操作的一个很好的用例。`choices`参数只是一个字符串列表，因此我们使用此推导式获取`Unit`枚举中每个项目的名称列表，如下所示：
+记住我提到过可以创建自定义操作吗？参数unit是自定义操作的一个很好的用例。`choices`参数只是一个字符串列表，因此我们使用此推导式获取`Unit`枚举中每个项目的名称列表，如下所示：
 
 ```py
 unit_values = [name.title() for name, value in Unit.__members__.items()]
@@ -604,7 +605,7 @@ required.add_argument('-u', '--unit',
                             'the temperatures.'))
 ```
 
-`parse_args()`返回的对象将包含一个名为 unit 的属性，其值为字符串（`Celsius`或`Fahrenheit`），但这并不是我们想要的。我们可以通过创建自定义操作来更改此行为。
+`parse_args()`返回的对象将包含一个名为unit的属性，其值为字符串（`Celsius`或`Fahrenheit`），但这并不是我们想要的。我们可以通过创建自定义操作来更改此行为。
 
 首先，在`weatherterm/core`目录中添加一个名为`set_unit_action.py`的新文件，内容如下：
 
@@ -631,13 +632,13 @@ Namespace(area_code=None, fields=None, forecast_option=None, parser=None, unit=N
 
 `values`参数是用户在命令行上传递的值；在我们的情况下，它可以是摄氏度或华氏度。最后，`option_string`参数是为参数定义的标志。对于单位参数，`option_string`的值将是`-u`。
 
-幸运的是，Python 中的枚举允许我们使用项目访问它们的成员和属性：
+幸运的是，Python中的枚举允许我们使用项目访问它们的成员和属性：
 
 ```py
 Unit[values.upper()]
 ```
 
-在 Python REPL 中验证这一点，我们有：
+在Python REPL中验证这一点，我们有：
 
 ```py
 >>> from weatherterm.core import Unit
@@ -678,7 +679,7 @@ required.add_argument('-u', '--unit',
 
 `<Unit.CELSIUS: 'CELSIUS'>`
 
-代码的其余部分非常简单；我们调用`parse_args`函数来解析参数并将结果设置在`args`变量中。然后，我们使用`args.parser`的值（所选解析器的名称）并访问解析器字典中的项。请记住，值是类类型，所以我们创建解析器的实例，最后调用 run 方法，这将启动网站抓取。
+代码的其余部分非常简单；我们调用`parse_args`函数来解析参数并将结果设置在`args`变量中。然后，我们使用`args.parser`的值（所选解析器的名称）并访问解析器字典中的项。请记住，值是类类型，所以我们创建解析器的实例，最后调用run方法，这将启动网站抓取。
 
 # 创建解析器
 
@@ -760,7 +761,7 @@ $ python -m weatherterm -u Celsius -a SWXX2372:1:SW -p WeatherComParser -td
 
 你会得到类似于这样的异常：
 
-![](img/c2b594fc-7ad7-4b4f-877a-3476564ec7f6.png)
+![](assets/c2b594fc-7ad7-4b4f-877a-3476564ec7f6.png)
 
 不用担心——这正是我们想要的！如果您跟踪堆栈跟踪，您会看到一切都按预期工作。当我们运行我们的代码时，我们在`__main__.py`文件中选择了所选解析器上的`run`方法，然后选择与预报选项相关联的方法，例如`_today_forecast`，最后将结果存储在`forecast_function`变量中。
 
@@ -770,15 +771,15 @@ $ python -m weatherterm -u Celsius -a SWXX2372:1:SW -p WeatherComParser -td
 
 核心功能已经就位，应用程序的入口点和参数解析器将为我们的应用程序的用户带来更好的体验。现在，终于到了我们一直在等待的时间，开始实现解析器的时间。我们将开始实现获取今天的天气预报的方法。
 
-由于我在瑞典，我将使用区号`SWXX2372:1:SW`（瑞典斯德哥尔摩）；但是，您可以使用任何您想要的区号。要获取您选择的区号，请转到[`weather.com`](https://weather.com)并搜索您想要的区域。选择区域后，将显示当天的天气预报。请注意，URL 会更改，例如，搜索瑞典斯德哥尔摩时，URL 会更改为：
+由于我在瑞典，我将使用区号`SWXX2372:1:SW`（瑞典斯德哥尔摩）；但是，您可以使用任何您想要的区号。要获取您选择的区号，请转到[https://weather.com](https://weather.com)并搜索您想要的区域。选择区域后，将显示当天的天气预报。请注意，URL会更改，例如，搜索瑞典斯德哥尔摩时，URL会更改为：
 
-[`weather.com/weather/today/l/SWXX2372:1:SW`](https://weather.com/weather/today/l/SWXX2372:1:SW)
+[https://weather.com/weather/today/l/SWXX2372:1:SW](https://weather.com/weather/today/l/SWXX2372:1:SW)
 
 对于巴西圣保罗，将是：
 
-[`weather.com/weather/today/l/BRXX0232:1:BR`](https://weather.com/weather/today/l/BRXX0232:1:BR)
+[https://weather.com/weather/today/l/BRXX0232:1:BR](https://weather.com/weather/today/l/BRXX0232:1:BR)
 
-请注意，URL 只有一个部分会更改，这就是我们要作为参数传递给我们的应用程序的区号。
+请注意，URL只有一个部分会更改，这就是我们要作为参数传递给我们的应用程序的区号。
 
 # 添加辅助方法
 
@@ -805,13 +806,13 @@ self._only_digits_regex = re.compile('[0-9]+')
 self._unit_converter = UnitConverter(Unit.FAHRENHEIT)
 ```
 
-在初始化程序中，我们定义了要使用的 URL 模板，以执行对天气网站的请求；然后，我们创建了一个`Request`对象。这是将代表我们执行请求的对象。
+在初始化程序中，我们定义了要使用的URL模板，以执行对天气网站的请求；然后，我们创建了一个`Request`对象。这是将代表我们执行请求的对象。
 
 只有在解析今天的天气预报温度时才使用正则表达式。
 
 我们还定义了一个`UnitConverter`对象，并将默认单位设置为`华氏度`。
 
-现在，我们准备开始添加两个方法，这两个方法将负责实际搜索某个类中的 HTML 元素并返回其内容。第一个方法称为`_get_data`：
+现在，我们准备开始添加两个方法，这两个方法将负责实际搜索某个类中的HTML元素并返回其内容。第一个方法称为`_get_data`：
 
 ```py
 def _get_data(self, container, search_items):
@@ -828,9 +829,9 @@ def _get_data(self, container, search_items):
     return scraped_data
 ```
 
-这种方法的想法是在匹配某些条件的容器中搜索项目。`container`只是 HTML 中的 DOM 元素，而`search_items`是一个字典，其中键是 CSS 类，值是 HTML 元素的类型。它可以是 DIV、SPAN 或您希望获取值的任何内容。
+这种方法的想法是在匹配某些条件的容器中搜索项目。`container`只是HTML中的DOM元素，而`search_items`是一个字典，其中键是CSS类，值是HTML元素的类型。它可以是DIV、SPAN或您希望获取值的任何内容。
 
-它开始循环遍历`search_items.items()`，并使用 find 方法在容器中查找元素。如果找到该项，我们使用`get_text`提取 DOM 元素的文本，并将其添加到一个字典中，当没有更多项目可搜索时将返回该字典。
+它开始循环遍历`search_items.items()`，并使用find方法在容器中查找元素。如果找到该项，我们使用`get_text`提取DOM元素的文本，并将其添加到一个字典中，当没有更多项目可搜索时将返回该字典。
 
 我们将实现的第二个方法是`_parser`方法。这将使用我们刚刚实现的`_get_data`：
 
@@ -842,7 +843,7 @@ def _parse(self, container, criteria):
     return [result for result in results if result]
 ```
 
-在这里，我们还会得到一个`container`和`criteria`，就像`_get_data`方法一样。容器是一个 DOM 元素，标准是我们要查找的节点的字典。第一个推导式获取所有容器的子元素，并将它们传递给刚刚实现的`_get_data`方法。
+在这里，我们还会得到一个`container`和`criteria`，就像`_get_data`方法一样。容器是一个DOM元素，标准是我们要查找的节点的字典。第一个推导式获取所有容器的子元素，并将它们传递给刚刚实现的`_get_data`方法。
 
 结果将是一个包含所有已找到项目的字典列表，我们只会返回不为空的字典。
 
@@ -928,7 +929,7 @@ def _today_forecast(self, args):
 
 这是在命令行上使用`-td` 或`--today` 标志时将被调用的函数。让我们分解这段代码，以便我们可以轻松理解它的作用。理解这个方法很重要，因为这些方法解析了与此非常相似的其他天气预报选项（五天、十天和周末）的数据。
 
-这个方法的签名非常简单；它只获取`args`，这是在`__main__` 方法中创建的`Argument` 对象。在这个方法中，我们首先创建一个包含我们想要在标记中找到的所有 DOM 元素的`criteria` 字典：
+这个方法的签名非常简单；它只获取`args`，这是在`__main__` 方法中创建的`Argument` 对象。在这个方法中，我们首先创建一个包含我们想要在标记中找到的所有DOM元素的`criteria` 字典：
 
 ```py
 criteria = {
@@ -938,15 +939,15 @@ criteria = {
 }
 ```
 
-如前所述，`criteria` 字典的关键是 DOM 元素的 CSS 类的名称，值是 HTML 元素的类型：
+如前所述，`criteria` 字典的关键是DOM元素的CSS类的名称，值是HTML元素的类型：
 
-+   `today_nowcard-temp` 类是包含当前温度的 DOM 元素的 CSS 类
++   `today_nowcard-temp` 类是包含当前温度的DOM元素的CSS类
 
-+   `today_nowcard-phrase` 类是包含天气条件文本（多云，晴天等）的 DOM 元素的 CSS 类
++   `today_nowcard-phrase` 类是包含天气条件文本（多云，晴天等）的DOM元素的CSS类
 
-+   `today_nowcard-hilo` 类是包含最高和最低温度的 DOM 元素的 CSS 类
++   `today_nowcard-hilo` 类是包含最高和最低温度的DOM元素的CSS类
 
-接下来，我们将获取、创建和使用`BeautifulSoup` 来解析 DOM：
+接下来，我们将获取、创建和使用`BeautifulSoup` 来解析DOM：
 
 ```py
 content = self._request.fetch_data(args.forecast_option.value, 
@@ -966,11 +967,11 @@ weatherinfo = weather_conditions[0]
 
 首先，我们利用我们在核心模块上创建的`Request` 类的`fetch_data` 方法，并传递两个参数；第一个是预报选项，第二个参数是我们在命令行上传递的地区代码。
 
-获取数据后，我们创建一个`BeautifulSoup` 对象，传递`content`和一个`parser`。因为我们得到的是 HTML，所以我们使用`html.parser`。
+获取数据后，我们创建一个`BeautifulSoup` 对象，传递`content`和一个`parser`。因为我们得到的是HTML，所以我们使用`html.parser`。
 
-现在是开始寻找我们感兴趣的 HTML 元素的时候了。记住，我们需要找到一个容器元素，`_parser` 函数将搜索子元素并尝试找到我们在字典条件中定义的项目。对于今天的天气预报，包含我们需要的所有数据的元素是一个带有 `today_nowcard-container` CSS 类的`section` 元素。
+现在是开始寻找我们感兴趣的HTML元素的时候了。记住，我们需要找到一个容器元素，`_parser` 函数将搜索子元素并尝试找到我们在字典条件中定义的项目。对于今天的天气预报，包含我们需要的所有数据的元素是一个带有 `today_nowcard-container` CSS类的`section` 元素。
 
-`BeautifulSoup` 包含了 `find` 方法，我们可以使用它来查找具有特定条件的 HTML DOM 中的元素。请注意，关键字参数称为`class_` 而不是`class`，因为`class` 在 Python 中是一个保留字。
+`BeautifulSoup` 包含了 `find` 方法，我们可以使用它来查找具有特定条件的HTML DOM中的元素。请注意，关键字参数称为`class_` 而不是`class`，因为`class` 在Python中是一个保留字。
 
 现在我们有了容器元素，我们可以将其传递给`_parse` 方法，它将返回一个列表。我们检查结果列表是否至少包含一个元素，并在为空时引发异常。如果不为空，我们只需获取第一个元素并将其分配给`weatherinfo` 变量。`weatherinfo` 变量现在包含了我们正在寻找的所有项目的字典。
 
@@ -983,7 +984,7 @@ temp_info = temp_regex.search(weatherinfo['today_nowcard-hilo'])
 high_temp, low_temp = temp_info.groups()
 ```
 
-我们想解析从带有 `today_nowcard-hilo` CSS 类的 DOM 元素中提取的文本，文本应该看起来像 `H 50 L 60`，`H -- L 60` 等。提取我们想要的文本的一种简单方法是使用正则表达式：
+我们想解析从带有 `today_nowcard-hilo` CSS类的DOM元素中提取的文本，文本应该看起来像 `H 50 L 60`，`H -- L 60` 等。提取我们想要的文本的一种简单方法是使用正则表达式：
 
 `H\s+(\d+|\-{,2}).L\s+(\d+|\-{,2})`
 
@@ -991,7 +992,7 @@ high_temp, low_temp = temp_info.groups()
 
 执行搜索方法后，调用`groups()`函数返回了正则表达式组，这种情况下将返回两个组，一个是最高温度，另一个是最低温度。
 
-我们想要向用户提供的其他信息是关于风和湿度的信息。包含这些信息的容器元素具有一个名为`today_nowcard-sidecar`的 CSS 类：
+我们想要向用户提供的其他信息是关于风和湿度的信息。包含这些信息的容器元素具有一个名为`today_nowcard-sidecar`的CSS类：
 
 ```py
 side = container.find('div', class_='today_nowcard-sidecar')
@@ -1034,7 +1035,7 @@ $ python -m weatherterm -u Fahrenheit -a SWXX2372:1:SW -p WeatherComParser -td
 
 你应该看到类似于这样的输出：
 
-![](img/1f2ea039-104c-4786-a400-ae107a248609.png)
+![](assets/1f2ea039-104c-4786-a400-ae107a248609.png)
 
 恭喜！你已经实现了你的第一个网络爬虫应用。接下来，让我们添加其他的预报选项。
 
@@ -1044,7 +1045,7 @@ $ python -m weatherterm -u Fahrenheit -a SWXX2372:1:SW -p WeatherComParser -td
 
 五天和十天，所以在这一部分，我们将实现解析这些预报选项的方法。
 
-呈现五天和十天数据的页面的标记非常相似；它们具有相同的 DOM 结构和共享相同的 CSS 类，这使得我们可以实现只适用于这两个选项的方法。让我们继续并向`wheater_com_parser.py`文件添加一个新的方法，内容如下：
+呈现五天和十天数据的页面的标记非常相似；它们具有相同的DOM结构和共享相同的CSS类，这使得我们可以实现只适用于这两个选项的方法。让我们继续并向`wheater_com_parser.py`文件添加一个新的方法，内容如下：
 
 ```py
 def _parse_list_forecast(self, content, args):
@@ -1065,7 +1066,7 @@ def _parse_list_forecast(self, content, args):
     return self._parse(container, criteria)
 ```
 
-正如我之前提到的，五天和十天的天气预报的 DOM 结构非常相似，因此我们创建了`_parse_list_forecast`方法，可以用于这两个选项。首先，我们定义了标准：
+正如我之前提到的，五天和十天的天气预报的DOM结构非常相似，因此我们创建了`_parse_list_forecast`方法，可以用于这两个选项。首先，我们定义了标准：
 
 +   `date-time`是一个`span`元素，包含代表星期几的字符串
 
@@ -1079,7 +1080,7 @@ def _parse_list_forecast(self, content, args):
 
 +   `humidity`是一个`TD`元素，包含湿度信息
 
-现在我们有了标准，我们创建一个`BeatufulSoup`对象，传递内容和`html.parser`。我们想要获取的所有数据都在一个名为`twc-table`的 CSS 类的表格中。我们找到表格并将`tbody`元素定义为容器。
+现在我们有了标准，我们创建一个`BeatufulSoup`对象，传递内容和`html.parser`。我们想要获取的所有数据都在一个名为`twc-table`的CSS类的表格中。我们找到表格并将`tbody`元素定义为容器。
 
 最后，我们运行`_parse`方法，传递`container`和我们定义的`criteria`。这个函数的返回将看起来像这样：
 
@@ -1166,7 +1167,7 @@ def _five_and_ten_days_forecast(self, args):
     return self._prepare_data(results)
 ```
 
-这个方法只获取页面的内容，传递`forecast_option`值和区域代码，因此可以构建 URL 来执行请求。当数据返回时，我们将其传递给`_parse_list_forecast`，它将返回一个`Forecast`对象的列表（每天一个）；最后，我们使用`_prepare_data`方法准备要返回的数据。
+这个方法只获取页面的内容，传递`forecast_option`值和区域代码，因此可以构建URL来执行请求。当数据返回时，我们将其传递给`_parse_list_forecast`，它将返回一个`Forecast`对象的列表（每天一个）；最后，我们使用`_prepare_data`方法准备要返回的数据。
 
 在运行命令之前，我们需要在我们实现的命令行工具中启用此选项；转到`__main__.py`文件，并在`-td`标志的定义之后，添加以下代码：
 
@@ -1296,9 +1297,9 @@ $ python -m weatherterm -u Fahrenheit -a SWXX2372:1:SW -p WeatherComParser -10d
 
 我们将在我们的应用程序中实现的最后一个天气预报选项是获取即将到来的周末天气预报的选项。这个实现与其他实现有些不同，因为周末天气返回的数据与今天、五天和十天的天气预报略有不同。
 
-DOM 结构不同，一些 CSS 类名也不同。如果您还记得我们之前实现的方法，我们总是使用`_parser`方法，该方法为我们提供容器 DOM 和带有搜索条件的字典作为参数。该方法的返回值也是一个字典，其中键是我们正在搜索的 DOM 的类名，值是该 DOM 元素中的文本。
+DOM结构不同，一些CSS类名也不同。如果您还记得我们之前实现的方法，我们总是使用`_parser`方法，该方法为我们提供容器DOM和带有搜索条件的字典作为参数。该方法的返回值也是一个字典，其中键是我们正在搜索的DOM的类名，值是该DOM元素中的文本。
 
-由于周末页面的 CSS 类名不同，我们需要实现一些代码来获取结果数组并重命名所有键，以便`_prepare_data`函数可以正确使用抓取的结果。
+由于周末页面的CSS类名不同，我们需要实现一些代码来获取结果数组并重命名所有键，以便`_prepare_data`函数可以正确使用抓取的结果。
 
 说到这一点，让我们继续在`weatherterm/core`目录中创建一个名为`mapper.py`的新文件，内容如下：
 
@@ -1381,7 +1382,7 @@ def _weekend_forecast(self, args):
     return self._prepare_data(results, args)
 ```
 
-该方法首先通过以与其他方法完全相同的方式定义标准来开始；但是，DOM 结构略有不同，一些 CSS 名称也不同：
+该方法首先通过以与其他方法完全相同的方式定义标准来开始；但是，DOM结构略有不同，一些CSS名称也不同：
 
 +   `weather-cell`：包含预报日期：`FriSEP 29`
 
@@ -1417,9 +1418,9 @@ container = forecast_data.div.div
 partial_results = self._parse(container, criteria)
 ```
 
-我们获取所有数据，使用`html.parser`创建一个`BeautifulSoup`对象，并找到包含我们感兴趣的子元素的容器元素。对于周末预报，我们有兴趣获取具有名为`ls-mod`的 CSS 类的`article`元素，并在`article`中向下移动到第一个子元素，这是一个 DIV，并获取其第一个子元素，这也是一个 DIV 元素。
+我们获取所有数据，使用`html.parser`创建一个`BeautifulSoup`对象，并找到包含我们感兴趣的子元素的容器元素。对于周末预报，我们有兴趣获取具有名为`ls-mod`的CSS类的`article`元素，并在`article`中向下移动到第一个子元素，这是一个DIV，并获取其第一个子元素，这也是一个DIV元素。
 
-HTML 应该看起来像这样：
+HTML应该看起来像这样：
 
 ```py
 <article class='ls-mod'>
@@ -1431,7 +1432,7 @@ HTML 应该看起来像这样：
 </article>
 ```
 
-这就是我们首先找到文章，将其分配给`forecast_data`，然后使用`forecast_data.div.div`，这样我们就可以得到我们想要的 DIV 元素。
+这就是我们首先找到文章，将其分配给`forecast_data`，然后使用`forecast_data.div.div`，这样我们就可以得到我们想要的DIV元素。
 
 在定义容器之后，我们将其与容器元素一起传递给`_parse`方法；当我们收到结果时，我们只需要运行`Mapper`实例的`remap`方法，它将在我们调用`_prepare_data`之前为我们规范化数据。
 
@@ -1467,10 +1468,10 @@ argparser.add_argument('-w', '--weekend',
 
 # 总结
 
-在本章中，您学习了 Python 中面向对象编程的基础知识；我们介绍了如何创建类，使用继承，并使用`@property`装饰器创建 getter 和 setter。
+在本章中，您学习了Python中面向对象编程的基础知识；我们介绍了如何创建类，使用继承，并使用`@property`装饰器创建getter和setter。
 
-我们介绍了如何使用 inspect 模块来获取有关模块、类和函数的更多信息。最后但并非最不重要的是，我们利用了强大的`Beautifulsoup`包来解析 HTML 和`Selenium`来向天气网站发出请求。
+我们介绍了如何使用inspect模块来获取有关模块、类和函数的更多信息。最后但并非最不重要的是，我们利用了强大的`Beautifulsoup`包来解析HTML和`Selenium`来向天气网站发出请求。
 
-我们还学习了如何使用 Python 标准库中的`argparse`模块实现命令行工具，这使我们能够提供更易于使用且具有非常有用的文档的工具。
+我们还学习了如何使用Python标准库中的`argparse`模块实现命令行工具，这使我们能够提供更易于使用且具有非常有用的文档的工具。
 
-接下来，我们将开发一个小包装器，围绕 Spotify Rest API，并使用它来创建一个远程控制终端。
+接下来，我们将开发一个小包装器，围绕Spotify Rest API，并使用它来创建一个远程控制终端。

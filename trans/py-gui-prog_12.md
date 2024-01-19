@@ -1,18 +1,18 @@
-# 使用 Canvas 小部件可视化数据
+# 使用Canvas小部件可视化数据
 
-在数据库中记录了数月的实验数据后，现在是开始可视化和解释数据的过程。你的同事分析师们询问程序本身是否可以创建图形数据可视化，而不是将数据导出到电子表格中创建图表和图形。为了实现这一功能，你需要了解 Tkinter 的`Canvas`小部件。
+在数据库中记录了数月的实验数据后，现在是开始可视化和解释数据的过程。你的同事分析师们询问程序本身是否可以创建图形数据可视化，而不是将数据导出到电子表格中创建图表和图形。为了实现这一功能，你需要了解Tkinter的`Canvas`小部件。
 
 在本章中，你将学习以下主题：
 
-+   使用 Canvas 小部件进行绘图和动画
++   使用Canvas小部件进行绘图和动画
 
-+   使用 Canvas 构建简单的折线图
++   使用Canvas构建简单的折线图
 
-+   使用 Matplotlib 集成更高级的图表和图表
++   使用Matplotlib集成更高级的图表和图表
 
-# 使用 Tkinter 的 Canvas 进行绘图和动画
+# 使用Tkinter的Canvas进行绘图和动画
 
-`Canvas`小部件无疑是 Tkinter 中最强大的小部件。它可以用于构建从自定义小部件和视图到完整用户界面的任何内容。顾名思义，`Canvas`是一个可以绘制图形和图像的空白区域。
+`Canvas`小部件无疑是Tkinter中最强大的小部件。它可以用于构建从自定义小部件和视图到完整用户界面的任何内容。顾名思义，`Canvas`是一个可以绘制图形和图像的空白区域。
 
 可以像创建其他小部件一样创建`Canvas`对象：
 
@@ -38,7 +38,7 @@ canvas.create_rectangle(100, 100, 200, 200, fill='orange')
 canvas.create_rectangle((600, 100), (700, 200), fill='#FF8800')
 ```
 
-尽管这是更多的字符，但它显着提高了可读性。还要注意，就像 Tkinter 中的其他颜色一样，我们可以使用名称或十六进制代码。
+尽管这是更多的字符，但它显着提高了可读性。还要注意，就像Tkinter中的其他颜色一样，我们可以使用名称或十六进制代码。
 
 我们还可以创建椭圆，如下所示：
 
@@ -55,7 +55,7 @@ canvas.create_line((100, 400), (400, 500),
     (700, 400), (100, 400), width=5, fill='red')
 ```
 
-行可以由任意数量的点组成，Tkinter 将连接这些点。我们已经指定了线的宽度以及颜色（使用`fill`参数）。额外的参数可以控制角和端点的形状，线两端箭头的存在和样式，线条是否虚线，以及线条是直线还是曲线。
+行可以由任意数量的点组成，Tkinter将连接这些点。我们已经指定了线的宽度以及颜色（使用`fill`参数）。额外的参数可以控制角和端点的形状，线两端箭头的存在和样式，线条是否虚线，以及线条是直线还是曲线。
 
 类似地，我们可以创建多边形，如下所示：
 
@@ -64,7 +64,7 @@ canvas.create_polygon((400, 150), (350,  300), (450, 300),
     fill='blue', smooth=True)
 ```
 
-这与创建线条类似，只是 Tkinter 将最后一个点连接回第一个点，并填充内部。将`smooth`设置为`True`会使用贝塞尔曲线使角变圆。
+这与创建线条类似，只是Tkinter将最后一个点连接回第一个点，并填充内部。将`smooth`设置为`True`会使用贝塞尔曲线使角变圆。
 
 除了简单的形状之外，我们还可以按照以下方式在`canvas`对象上放置文本或图像：
 
@@ -85,13 +85,13 @@ canvas.tag_bind(image_item, '<Button-1>', lambda e: canvas.delete(image_item))
 
 在这里，我们使用`tag_bind`方法将鼠标左键单击我们的图像对象绑定到画布的`delete()`方法，该方法（给定一个项目标识符）会删除该项目。
 
-# 为 Canvas 对象添加动画
+# 为Canvas对象添加动画
 
-Tkinter 的`Canvas`小部件没有内置的动画框架，但我们仍然可以通过将其`move()`方法与对事件队列的理解相结合来创建简单的动画。
+Tkinter的`Canvas`小部件没有内置的动画框架，但我们仍然可以通过将其`move()`方法与对事件队列的理解相结合来创建简单的动画。
 
 为了演示这一点，我们将创建一个虫子赛跑模拟器，其中两只虫子（用彩色圆圈表示）将杂乱地向屏幕的另一侧的终点线赛跑。就像真正的虫子一样，它们不会意识到自己在比赛，会随机移动，赢家是哪只虫子碰巧先到达终点线。
 
-首先，打开一个新的 Python 文件，并从以下基本样板开始：
+首先，打开一个新的Python文件，并从以下基本样板开始：
 
 ```py
 import tkinter as tk
@@ -159,7 +159,7 @@ class Racer:
             fill=color)
 ```
 
-`Racer`类将使用对`canvas`的引用和一个`color`字符串创建，并从中派生其颜色和名称。我们将最初在屏幕的中间左侧绘制赛车，并使其大小为`50`像素。最后，我们将其项目 ID 字符串的引用保存在`self.id`中。
+`Racer`类将使用对`canvas`的引用和一个`color`字符串创建，并从中派生其颜色和名称。我们将最初在屏幕的中间左侧绘制赛车，并使其大小为`50`像素。最后，我们将其项目ID字符串的引用保存在`self.id`中。
 
 1.  现在，在`App.setup()`中，我们将通过执行以下代码创建两个赛车：
 
@@ -173,7 +173,7 @@ class Racer:
 
 # 动画赛车
 
-为了使我们的赛车动画化，我们将使用`Canvas.move()`方法。`move()`接受一个项目 ID，一定数量的`x`像素和一定数量的`y`像素，并将项目移动该数量。通过使用`random.randint()`和一些简单的逻辑，我们可以生成一系列移动，将每个赛车发送到一条蜿蜒的路径朝着终点线。
+为了使我们的赛车动画化，我们将使用`Canvas.move()`方法。`move()`接受一个项目ID，一定数量的`x`像素和一定数量的`y`像素，并将项目移动该数量。通过使用`random.randint()`和一些简单的逻辑，我们可以生成一系列移动，将每个赛车发送到一条蜿蜒的路径朝着终点线。
 
 一个简单的实现可能如下所示：
 
@@ -212,7 +212,7 @@ class Racer:
         self.animation_queue = Queue()
 ```
 
-`FRAME_RES`（帧分辨率的缩写）定义了每个`Canvas.move()`调用之间的毫秒数。`50`毫秒给我们 20 帧每秒，应该足够平滑移动。
+`FRAME_RES`（帧分辨率的缩写）定义了每个`Canvas.move()`调用之间的毫秒数。`50`毫秒给我们20帧每秒，应该足够平滑移动。
 
 现在创建一个方法来绘制到终点线的路径：
 
@@ -238,7 +238,7 @@ class Racer:
 
 除了`dx`和`dy`，我们还生成了移动所需的随机`time`数量，介于半秒和两秒之间，并将生成的值发送到`queue_move()`方法。
 
-`queue_move()`命令将需要将大移动分解为描述在一个`FRAME_RES`间隔中应该发生多少移动的单个帧。为此，我们需要一个**partition 函数**：一个数学函数，将整数`n`分解为大致相等的整数`k`。例如，如果我们想将-10 分成四部分，我们的函数应返回一个类似于[-3, -3, -2, -2]的列表。
+`queue_move()`命令将需要将大移动分解为描述在一个`FRAME_RES`间隔中应该发生多少移动的单个帧。为此，我们需要一个**partition函数**：一个数学函数，将整数`n`分解为大致相等的整数`k`。例如，如果我们想将-10分成四部分，我们的函数应返回一个类似于[-3, -3, -2, -2]的列表。
 
 将`partition()`创建为`Racer`的静态方法：
 
@@ -299,7 +299,7 @@ class Racer:
         self.canvas.after(self.FRAME_RES, self.animate)
 ```
 
-`animate()`方法检查队列是否有移动。如果有，将调用`canvas.move()`，并传递赛车的 ID 和需要进行的移动。最后，`animate()`方法被安排在`FRAME_RES`毫秒后再次运行。
+`animate()`方法检查队列是否有移动。如果有，将调用`canvas.move()`，并传递赛车的ID和需要进行的移动。最后，`animate()`方法被安排在`FRAME_RES`毫秒后再次运行。
 
 动画赛车的最后一步是在`__init__()`的末尾调用`self.plot_course()`和`self.animate()`。如果现在运行游戏，你的两个点应该从左到右在屏幕上漫游。但目前还没有人获胜！
 
@@ -307,7 +307,7 @@ class Racer:
 
 为了检测获胜条件，我们将定期检查赛车是否与终点线项目重叠。当其中一个重叠时，我们将宣布它为获胜者，并提供再玩一次的选项。
 
-物品之间的碰撞检测在 Tkinter 的 Canvas 小部件中有些尴尬。我们必须将一组边界框坐标传递给`find_overlapping()`，它会返回与边界框重叠的项目标识的元组。
+物品之间的碰撞检测在Tkinter的Canvas小部件中有些尴尬。我们必须将一组边界框坐标传递给`find_overlapping()`，它会返回与边界框重叠的项目标识的元组。
 
 让我们为我们的`Racer`类创建一个`overlapping()`方法：
 
@@ -318,7 +318,7 @@ class Racer:
         return [x for x in overlappers if x!=self.id]
 ```
 
-这个方法使用画布的`bbox()`方法检索`Racer`项目的边界框。然后使用`find_overlapping()`获取与此边界框重叠的项目的元组。接下来，我们将过滤此元组，以删除`Racer`项目的 ID，有效地返回与`Racer`类重叠的项目列表。
+这个方法使用画布的`bbox()`方法检索`Racer`项目的边界框。然后使用`find_overlapping()`获取与此边界框重叠的项目的元组。接下来，我们将过滤此元组，以删除`Racer`项目的ID，有效地返回与`Racer`类重叠的项目列表。
 
 回到我们的`App()`方法，我们将创建一个`check_for_winner()`方法：
 
@@ -363,11 +363,11 @@ class Racer:
 
 如您在下面的截图中所见，游戏现在已经完成：
 
-![](img/5199652b-2987-472d-b74e-4d00c79ddc46.png)
+![](assets/5199652b-2987-472d-b74e-4d00c79ddc46.png)
 
-虽然不是很简单，但 Tkinter 中的动画可以通过一些仔细的规划和一点数学来提供流畅和令人满意的结果。
+虽然不是很简单，但Tkinter中的动画可以通过一些仔细的规划和一点数学来提供流畅和令人满意的结果。
 
-不过，够玩游戏了；让我们回到实验室，看看如何使用 Tkinter 的`Canvas`小部件来可视化数据。
+不过，够玩游戏了；让我们回到实验室，看看如何使用Tkinter的`Canvas`小部件来可视化数据。
 
 # 在画布上创建简单的图表
 
@@ -377,7 +377,7 @@ class Racer:
 
 # 创建模型方法
 
-假设我们有一个 SQL 查询，通过从`plot_checks`表中的最旧日期中减去其日期来确定地块检查的天数，然后在给定实验室和给定日期上拉取`lab_id`和所有植物的`median_height`的平均值。
+假设我们有一个SQL查询，通过从`plot_checks`表中的最旧日期中减去其日期来确定地块检查的天数，然后在给定实验室和给定日期上拉取`lab_id`和所有植物的`median_height`的平均值。
 
 我们将在一个名为`get_growth_by_lab()`的新`SQLModel`方法中运行此查询：
 
@@ -393,6 +393,7 @@ class Racer:
 我们将得到一个数据表，看起来像这样：
 
 | **Day** | **Lab ID** | **Average height** |
+| --- | --- | --- |
 | 0 | A | 7.4198750000000000 |
 | 0 | B | 7.3320000000000000 |
 | 0 | C | 7.5377500000000000 |
@@ -420,7 +421,7 @@ class LineChartView(tk.Canvas):
         self.chart_height = chart_height
 ```
 
-`LineChartView`是`Canvas`的子类，因此我们将能够直接在其上绘制项目。我们将接受父小部件、图表部分的高度和宽度、`x`和`y`轴的标签作为参数，并显示`x`和`y`的最大值。我们将保存图表的尺寸和最大值以供以后使用，并将边距宽度设置为 20 像素的类属性。
+`LineChartView`是`Canvas`的子类，因此我们将能够直接在其上绘制项目。我们将接受父小部件、图表部分的高度和宽度、`x`和`y`轴的标签作为参数，并显示`x`和`y`的最大值。我们将保存图表的尺寸和最大值以供以后使用，并将边距宽度设置为20像素的类属性。
 
 让我们开始设置这个`Canvas`：
 
@@ -460,7 +461,7 @@ class LineChartView(tk.Canvas):
             text=y_axis, angle=90, anchor='s')
 ```
 
-在这里，我们创建了设置为`x`和`y`轴标签的`text`项目。这里使用了一些新的参数：`anchor`设置文本边界框的哪一侧与提供的坐标相连，`angle`将文本对象旋转给定的角度。请注意，`angle`是 Tkinter 8.6 的一个特性，因此对于 macOS 用户可能会有问题。另外，请注意，我们将旋转的文本的`anchor`设置为 south；即使它被旋转，基本方向仍然指的是未旋转的边，因此 south 始终是文本的底部，就像正常打印的那样。
+在这里，我们创建了设置为`x`和`y`轴标签的`text`项目。这里使用了一些新的参数：`anchor`设置文本边界框的哪一侧与提供的坐标相连，`angle`将文本对象旋转给定的角度。请注意，`angle`是Tkinter 8.6的一个特性，因此对于macOS用户可能会有问题。另外，请注意，我们将旋转的文本的`anchor`设置为south；即使它被旋转，基本方向仍然指的是未旋转的边，因此south始终是文本的底部，就像正常打印的那样。
 
 最后，我们需要创建一个包含实际图表的第二个`Canvas`：
 
@@ -556,17 +557,17 @@ class LineChartView(tk.Canvas):
 
 当您调用您的函数时，您应该看到类似这样的东西：
 
-![](img/db64ecf3-2169-4ea1-ac5c-954a960ba237.png)没有一些示例数据，图表看起来不会很好。除非您只是喜欢进行数据输入，否则在`sql`目录中有一个加载示例数据的脚本。
+![](assets/db64ecf3-2169-4ea1-ac5c-954a960ba237.png)没有一些示例数据，图表看起来不会很好。除非您只是喜欢进行数据输入，否则在`sql`目录中有一个加载示例数据的脚本。
 
-# 使用 Matplotlib 和 Tkinter 创建高级图表
+# 使用Matplotlib和Tkinter创建高级图表
 
 我们的折线图很漂亮，但要使其完全功能，仍需要相当多的工作：它缺少比例、网格线和其他功能，这些功能将使它成为一个完全有用的图表。
 
-我们可以花很多时间使它更完整，但在我们的 Tkinter 应用程序中获得更令人满意的图表和图形的更快方法是**Matplotlib**。
+我们可以花很多时间使它更完整，但在我们的Tkinter应用程序中获得更令人满意的图表和图形的更快方法是**Matplotlib**。
 
-Matplotlib 是一个第三方库，用于生成各种类型的专业质量、交互式图表。这是一个庞大的库，有许多附加组件，我们不会涵盖其实际用法的大部分内容，但我们应该看一下如何将 Matplotlib 集成到 Tkinter 应用程序中。为此，我们将创建一个气泡图，显示每个地块的产量与`湿度`和`温度`的关系。
+Matplotlib是一个第三方库，用于生成各种类型的专业质量、交互式图表。这是一个庞大的库，有许多附加组件，我们不会涵盖其实际用法的大部分内容，但我们应该看一下如何将Matplotlib集成到Tkinter应用程序中。为此，我们将创建一个气泡图，显示每个地块的产量与`湿度`和`温度`的关系。
 
-您应该能够使用`pip install --user matplotlib`命令使用`pip`安装`matplotlib`。有关安装的完整说明，请参阅[`matplotlib.org/users/installing.html.`](https://matplotlib.org/users/installing.html)
+您应该能够使用`pip install --user matplotlib`命令使用`pip`安装`matplotlib`。有关安装的完整说明，请参阅[https://matplotlib.org/users/installing.html.](https://matplotlib.org/users/installing.html)
 
 # 数据模型方法
 
@@ -587,7 +588,7 @@ Matplotlib 是一个第三方库，用于生成各种类型的专业质量、交
 
 # 创建气泡图表视图
 
-要将 MatplotLib 集成到 Tkinter 应用程序中，我们需要进行几次导入。
+要将MatplotLib集成到Tkinter应用程序中，我们需要进行几次导入。
 
 第一个是`matplotlib`本身：
 
@@ -596,7 +597,7 @@ import matplotlib
 matplotlib.use('TkAgg')
 ```
 
-在“导入”部分运行代码可能看起来很奇怪，甚至您的编辑器可能会对此进行投诉。但在我们从`matplotlib`导入任何其他内容之前，我们需要告诉它应该使用哪个后端。在这种情况下，我们想要使用`TkAgg`后端，这是专为集成到 Tkinter 中而设计的。
+在“导入”部分运行代码可能看起来很奇怪，甚至您的编辑器可能会对此进行投诉。但在我们从`matplotlib`导入任何其他内容之前，我们需要告诉它应该使用哪个后端。在这种情况下，我们想要使用`TkAgg`后端，这是专为集成到Tkinter中而设计的。
 
 现在我们可以从`matplotlib`中再引入一些内容：
 
@@ -606,7 +607,7 @@ from matplotlib.backends.backend_tkagg import (
     FigureCanvasTkAgg, NavigationToolbar2TkAgg)
 ```
 
-`Figure`类表示`matplotlib`图表可以绘制的基本绘图区域。`FigureCanvasTkAgg`类是`Figure`和 Tkinter`Canvas`之间的接口，`NavigationToolbar2TkAgg`允许我们在图表上放置一个预制的`Figure`工具栏。
+`Figure`类表示`matplotlib`图表可以绘制的基本绘图区域。`FigureCanvasTkAgg`类是`Figure`和Tkinter`Canvas`之间的接口，`NavigationToolbar2TkAgg`允许我们在图表上放置一个预制的`Figure`工具栏。
 
 为了看看这些如何配合，让我们在`views.py`中启动我们的`YieldChartView`类：
 
@@ -618,7 +619,7 @@ class YieldChartView(tk.Frame):
         self.canvas = FigureCanvasTkAgg(self.figure, master=self)
 ```
 
-在调用`super().__init__()`创建`Frame`对象之后，我们创建一个`Figure`对象来保存我们的图表。`Figure`对象不是以像素为单位的大小，而是以**英寸**和**每英寸点数**（**dpi**）设置为单位（在这种情况下，得到的是一个 600x400 像素的`Figure`）。接下来，我们创建一个`FigureCanvasTkAgg`对象，将我们的`Figure`对象与 Tkinter`Canvas`连接起来。`FigureCanvasTkAgg`对象本身不是`Canvas`对象或子类，但它有一个`Canvas`对象，我们可以将其放置在我们的应用程序中。
+在调用`super().__init__()`创建`Frame`对象之后，我们创建一个`Figure`对象来保存我们的图表。`Figure`对象不是以像素为单位的大小，而是以**英寸**和**每英寸点数**（**dpi**）设置为单位（在这种情况下，得到的是一个600x400像素的`Figure`）。接下来，我们创建一个`FigureCanvasTkAgg`对象，将我们的`Figure`对象与Tkinter`Canvas`连接起来。`FigureCanvasTkAgg`对象本身不是`Canvas`对象或子类，但它有一个`Canvas`对象，我们可以将其放置在我们的应用程序中。
 
 接下来，我们将工具栏和`pack()`添加到我们的`FigureCanvasTkAgg`对象中：
 
@@ -627,7 +628,7 @@ class YieldChartView(tk.Frame):
         self.canvas.get_tk_widget().pack(fill='both', expand=True)
 ```
 
-我们的工具栏被传递给了我们的`FigureCanvasTkAgg`对象和根窗口（在这种情况下是`self`），将其附加到我们的图表和它的画布上。要将`FigureCanvasTkAgg`对象放在我们的`Frame`对象上，我们需要调用`get_tk_widget()`来检索其 Tkinter`Canvas`小部件，然后我们可以使用`pack()`和`grid()`按需要对其进行打包或网格化。
+我们的工具栏被传递给了我们的`FigureCanvasTkAgg`对象和根窗口（在这种情况下是`self`），将其附加到我们的图表和它的画布上。要将`FigureCanvasTkAgg`对象放在我们的`Frame`对象上，我们需要调用`get_tk_widget()`来检索其Tkinter`Canvas`小部件，然后我们可以使用`pack()`和`grid()`按需要对其进行打包或网格化。
 
 下一步是设置轴：
 
@@ -638,9 +639,9 @@ class YieldChartView(tk.Frame):
         self.axes.set_title(title)
 ```
 
-在 Matplotlib 中，`axes`对象表示可以在其上绘制数据的单个`x`和`y`轴集，使用`add_subplot()`方法创建。传递给`add_subplot()`的三个整数建立了这是一个子图中一行中的第一个`axes`集。我们的图表可能包含多个以表格形式排列的子图，但我们只需要一个。创建后，我们设置`axes`对象上的标签。
+在Matplotlib中，`axes`对象表示可以在其上绘制数据的单个`x`和`y`轴集，使用`add_subplot()`方法创建。传递给`add_subplot()`的三个整数建立了这是一个子图中一行中的第一个`axes`集。我们的图表可能包含多个以表格形式排列的子图，但我们只需要一个。创建后，我们设置`axes`对象上的标签。
 
-要创建气泡图表，我们将使用 Matplotlib 的**散点图**功能，但使用每个点的大小来指示水果产量。我们还将对点进行颜色编码以指示种子样本。
+要创建气泡图表，我们将使用Matplotlib的**散点图**功能，但使用每个点的大小来指示水果产量。我们还将对点进行颜色编码以指示种子样本。
 
 让我们实现一个绘制散点图的方法：
 
@@ -656,7 +657,7 @@ class YieldChartView(tk.Frame):
 
 最后，我们通过调用`scatter()`将数据绘制到`axes`对象上，同时传递`color`和`label`值给点，并使用`alpha`参数使它们半透明。
 
-`zip(*data)`是一个 Python 习语，用于将 n 长度元组的列表分解为值的 n 个列表，本质上是`zip(x, y, s)`的反向操作。
+`zip(*data)`是一个Python习语，用于将n长度元组的列表分解为值的n个列表，本质上是`zip(x, y, s)`的反向操作。
 
 为了为我们的`axes`对象绘制图例，我们需要两样东西：我们的`scatter`对象的列表和它们的标签列表。为了获得这些，我们将不得不在`__init__()`中创建一些空列表，并在每次调用`draw_scatter()`时进行追加。
 
@@ -717,10 +718,10 @@ class YieldChartView(tk.Frame):
 
 您的气泡图应该看起来像这样：
 
-![](img/335e2505-6f35-4708-aaa0-5a5e1948112e.png)
+![](assets/335e2505-6f35-4708-aaa0-5a5e1948112e.png)
 
-请利用导航工具栏玩一下这个图表，注意你可以缩放和平移，调整图表的大小，并保存图像。这些都是 Matplotlib 自动提供的强大工具。
+请利用导航工具栏玩一下这个图表，注意你可以缩放和平移，调整图表的大小，并保存图像。这些都是Matplotlib自动提供的强大工具。
 
 # 总结
 
-在本章中，您了解了 Tkinter 的图形能力。您学会了如何在 Tkinter 的`Canvas`小部件上绘制和动画图形，以及如何利用这些能力来可视化数据。您还学会了如何将 Matplotlib 图形集成到您的应用程序中，并通过将 SQL 查询连接到我们的图表视图，在我们的应用程序中实现了两个图表。
+在本章中，您了解了Tkinter的图形能力。您学会了如何在Tkinter的`Canvas`小部件上绘制和动画图形，以及如何利用这些能力来可视化数据。您还学会了如何将Matplotlib图形集成到您的应用程序中，并通过将SQL查询连接到我们的图表视图，在我们的应用程序中实现了两个图表。

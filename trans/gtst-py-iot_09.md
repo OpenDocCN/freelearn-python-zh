@@ -8,11 +8,11 @@
 
 +   使用神经网络构建光学字符识别器
 
-+   应用 OCR 系统
++   应用OCR系统
 
 # 介绍
 
-OCR 系统用于将文本图像转换为字母、单词和句子。它被广泛应用于各个领域，用于从图像中提取信息。它还用于签名识别、自动数据评估和安全系统。它在商业上用于验证数据记录、护照文件、发票、银行对账单、电脑收据、名片、静态数据的打印输出等。OCR 是模式识别、人工智能和计算机视觉的研究领域。
+OCR系统用于将文本图像转换为字母、单词和句子。它被广泛应用于各个领域，用于从图像中提取信息。它还用于签名识别、自动数据评估和安全系统。它在商业上用于验证数据记录、护照文件、发票、银行对账单、电脑收据、名片、静态数据的打印输出等。OCR是模式识别、人工智能和计算机视觉的研究领域。
 
 # 可视化光学字符
 
@@ -60,11 +60,11 @@ with open(in_file, 'r') as f:
 
 1.  键入`python visualize_character.py`来执行代码：
 
-![](img/ca2ad22d-0452-4ddb-923a-04c264e6bf16.png)
+![](Images/ca2ad22d-0452-4ddb-923a-04c264e6bf16.png)
 
 1.  执行`visualize_character.py`时得到的结果如下：
 
-![](img/55eb558d-22dc-4190-9199-38d47ff974c6.png)
+![](Images/55eb558d-22dc-4190-9199-38d47ff974c6.png)
 
 # 使用神经网络构建光学字符识别器
 
@@ -85,7 +85,7 @@ import neurolab as nl
 in_file = 'words.data'
 ```
 
-1.  考虑 20 个数据点来构建基于神经网络的系统：
+1.  考虑20个数据点来构建基于神经网络的系统：
 
 ```py
 # Number of datapoints to load from the input file 
@@ -100,7 +100,7 @@ original_labels = 'omandig'
 num_of_charect = len(original_labels) 
 ```
 
-1.  使用 90%的数据来训练神经网络，剩下的 10%用于测试：
+1.  使用90%的数据来训练神经网络，剩下的10%用于测试：
 
 ```py
 train_param = int(0.9 * num_of_datapoints) 
@@ -154,7 +154,7 @@ with open(in_file, 'r') as f:
       break 
 ```
 
-1.  将信息和标签转换为 NumPy 数组：
+1.  将信息和标签转换为NumPy数组：
 
 ```py
 information = np.array(information) 
@@ -187,24 +187,24 @@ print "nTesting on unknown data:"
 
 1.  执行`optical_character_recognition.py`时得到的结果如下截图所示：
 
-![](img/9c777c60-2961-4856-b0b3-6966565f610f.png)
+![](Images/9c777c60-2961-4856-b0b3-6966565f610f.png)
 
 # 工作原理…
 
 构建了一个神经网络支持的光学字符识别系统，用于从图像中提取文本。该过程涉及训练神经网络系统，测试和验证使用字符数据集。
 
-读者可以参考文章*基于神经网络的光学字符识别系统*，了解 OCR 背后的基本原理：[`ieeexplore.ieee.org/document/6419976/`](http://ieeexplore.ieee.org/document/6419976/)
+读者可以参考文章*基于神经网络的光学字符识别系统*，了解OCR背后的基本原理：[http://ieeexplore.ieee.org/document/6419976/](http://ieeexplore.ieee.org/document/6419976/)
 
 # 另请参阅
 
 请参考以下内容：
 
-+   [`searchcontentmanagement.techtarget.com/definition/OCR-optical-character-recognition`](https://searchcontentmanagement.techtarget.com/definition/OCR-optical-character-recognition)
++   [https://searchcontentmanagement.techtarget.com/definition/OCR-optical-character-recognition](https://searchcontentmanagement.techtarget.com/definition/OCR-optical-character-recognition)
 
-+   [`thecodpast.org/2015/09/top-5-ocr-apps/`](https://thecodpast.org/2015/09/top-5-ocr-apps/)
++   [https://thecodpast.org/2015/09/top-5-ocr-apps/](https://thecodpast.org/2015/09/top-5-ocr-apps/)
 
-+   [`convertio.co/ocr/`](https://convertio.co/ocr/)
++   [https://convertio.co/ocr/](https://convertio.co/ocr/)
 
-# OCR 系统的应用
+# OCR系统的应用
 
-OCR 系统广泛用于从图像中提取/转换文本（字母和数字）。OCR 系统被广泛用于验证商业文件、自动车牌识别以及从文件中提取关键字符。它还用于使打印文件的电子图像可搜索，并为盲人和视障用户构建辅助技术。
+OCR系统广泛用于从图像中提取/转换文本（字母和数字）。OCR系统被广泛用于验证商业文件、自动车牌识别以及从文件中提取关键字符。它还用于使打印文件的电子图像可搜索，并为盲人和视障用户构建辅助技术。

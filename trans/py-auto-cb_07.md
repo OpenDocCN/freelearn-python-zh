@@ -39,9 +39,9 @@ $ echo "matplotlib==2.2.2" >> requirements.txt
 $ pip install -r requirements.txt
 ```
 
-在某些操作系统中，这可能需要我们安装额外的软件包；例如，在 Ubuntu 中可能需要我们运行`apt-get install python3-tk`。查看`matplolib`文档以获取详细信息。
+在某些操作系统中，这可能需要我们安装额外的软件包；例如，在Ubuntu中可能需要我们运行`apt-get install python3-tk`。查看`matplolib`文档以获取详细信息。
 
-如果您使用的是 macOS，可能会出现这样的错误—`RuntimeError: Python is not installed as a framework`。请参阅`matplolib`文档以了解如何解决：[`matplotlib.org/faq/osx_framework.html`](https://matplotlib.org/faq/osx_framework.html)。
+如果您使用的是macOS，可能会出现这样的错误—`RuntimeError: Python is not installed as a framework`。请参阅`matplolib`文档以了解如何解决：[https://matplotlib.org/faq/osx_framework.html](https://matplotlib.org/faq/osx_framework.html)。
 
 # 如何做...
 
@@ -86,17 +86,17 @@ $ pip install -r requirements.txt
 
 1.  结果将在新窗口中显示如下：
 
-![](img/bd9e3f18-0570-48cd-8817-7a9d8dca9732.png)
+![](assets/bd9e3f18-0570-48cd-8817-7a9d8dca9732.png)
 
 # 它是如何工作的...
 
-导入模块后，数据将以方便的方式呈现在第 2 步的*如何做*部分中，这很可能类似于数据最初的存储方式。
+导入模块后，数据将以方便的方式呈现在第2步的*如何做*部分中，这很可能类似于数据最初的存储方式。
 
-由于`matplotlib`的工作方式，它需要*X*组件以及*Y*组件。在这种情况下，我们的*X*组件只是一系列整数，与数据点一样多。我们在`POS`中创建了这个。在`VALUES`中，我们将销售的数值存储为一个序列，在`LABELS`中存储了每个数据点的相关标签。所有这些准备工作都在第 3 步完成。
+由于`matplotlib`的工作方式，它需要*X*组件以及*Y*组件。在这种情况下，我们的*X*组件只是一系列整数，与数据点一样多。我们在`POS`中创建了这个。在`VALUES`中，我们将销售的数值存储为一个序列，在`LABELS`中存储了每个数据点的相关标签。所有这些准备工作都在第3步完成。
 
-第 4 步创建了条形图，使用了*X*（`POS`）和*Y*（`VALUES`）的序列。这些定义了我们的条形。为了指定它所指的时期，我们使用`.xticks`在*x*轴上为每个值放置标签。为了澄清含义，我们使用`.ylabel`添加标签。
+第4步创建了条形图，使用了*X*（`POS`）和*Y*（`VALUES`）的序列。这些定义了我们的条形。为了指定它所指的时期，我们使用`.xticks`在*x*轴上为每个值放置标签。为了澄清含义，我们使用`.ylabel`添加标签。
 
-要显示结果图表，第 5 步调用`.show`，它会打开一个新窗口显示结果。
+要显示结果图表，第5步调用`.show`，它会打开一个新窗口显示结果。
 
 调用`.show`会阻止程序的执行。当窗口关闭时，程序将恢复。
 
@@ -114,31 +114,31 @@ $ pip install -r requirements.txt
 >>> axes.yaxis.set_major_formatter(FuncFormatter(value_format))
 ```
 
-`value_format`是一个根据数据的值和位置返回值的函数。在这里，它将返回值 100 作为`$ 100 M`。
+`value_format`是一个根据数据的值和位置返回值的函数。在这里，它将返回值100作为`$ 100 M`。
 
 值将以浮点数形式检索，需要将它们转换为整数进行显示。
 
 要应用格式化程序，我们需要使用`.gca`（获取当前轴）检索`axis`对象。然后，`.yaxis`获取格式化程序。
 
-条的颜色也可以使用`color`参数确定。颜色可以以多种格式指定，如[`matplotlib.org/api/colors_api.html`](https://matplotlib.org/api/colors_api.html)中所述，但我最喜欢的是遵循 XKCD 颜色调查，使用`xkcd:`前缀（冒号后没有空格）：
+条的颜色也可以使用`color`参数确定。颜色可以以多种格式指定，如[https://matplotlib.org/api/colors_api.html](https://matplotlib.org/api/colors_api.html)中所述，但我最喜欢的是遵循XKCD颜色调查，使用`xkcd:`前缀（冒号后没有空格）：
 
 ```py
 >>> plt.bar(POS, VALUES, color='xkcd:moss green')
 ```
 
-完整的调查可以在这里找到：[`xkcd.com/color/rgb/`](https://xkcd.com/color/rgb/)。
+完整的调查可以在这里找到：[https://xkcd.com/color/rgb/](https://xkcd.com/color/rgb/)。
 
 大多数常见的颜色，如蓝色或红色，也可以用于快速测试。但它们往往有点亮，不能用于漂亮的报告。
 
 将颜色与格式化轴结合起来，得到以下结果：
 
-![](img/2487d3fa-1b81-4594-97ba-1b5dfafbd44e.png)
+![](assets/2487d3fa-1b81-4594-97ba-1b5dfafbd44e.png)
 
 条形图不一定需要以时间顺序显示信息。正如我们所见，`matplotlib`要求我们指定每个条的*X*参数。这是一个生成各种图表的强大工具。
 
 例如，可以安排条形以显示直方图，比如显示特定身高的人。条形将从较低的高度开始增加到平均大小，然后再降低。不要局限于电子表格图表！
 
-完整的`matplotlib`文档可以在这里找到：[`matplotlib.org/`](https://matplotlib.org/)。
+完整的`matplotlib`文档可以在这里找到：[https://matplotlib.org/](https://matplotlib.org/)。
 
 # 另请参阅
 
@@ -161,7 +161,7 @@ $ echo "matplotlib==2.2.2" >> requirements.txt
 $ pip install -r requirements.txt
 ```
 
-如果您使用的是 macOS，可能会出现这样的错误：`RuntimeError: Python is not installed as a framework`。请参阅`matplolib`文档以了解如何解决：[`matplotlib.org/faq/osx_framework.html`](https://matplotlib.org/faq/osx_framework.html)。
+如果您使用的是macOS，可能会出现这样的错误：`RuntimeError: Python is not installed as a framework`。请参阅`matplolib`文档以了解如何解决：[https://matplotlib.org/faq/osx_framework.html](https://matplotlib.org/faq/osx_framework.html)。
 
 # 如何做...
 
@@ -208,21 +208,21 @@ $ pip install -r requirements.txt
 
 1.  结果将显示在一个新窗口中，如下所示：
 
-![](img/6d97abab-342a-4cee-b175-3786b4ae9dd5.png)
+![](assets/6d97abab-342a-4cee-b175-3786b4ae9dd5.png)
 
 # 它是如何工作的...
 
-导入模块后，在第 2 步以一种方便的方式呈现数据，这可能与数据最初存储的方式类似。
+导入模块后，在第2步以一种方便的方式呈现数据，这可能与数据最初存储的方式类似。
 
-在第 3 步中，数据准备为三个序列，`VALUESA`，`VALUEB`和`LABELS`。添加了一个`POS`序列以正确定位条形。
+在第3步中，数据准备为三个序列，`VALUESA`，`VALUEB`和`LABELS`。添加了一个`POS`序列以正确定位条形。
 
-第 4 步创建了条形图，使用了序列*X*（`POS`）和*Y*（`VALUESB`）。第二个条形序列`VALUESA`添加到前一个上面，使用`bottom`参数。这样就堆叠了条形。
+第4步创建了条形图，使用了序列*X*（`POS`）和*Y*（`VALUESB`）。第二个条形序列`VALUESA`添加到前一个上面，使用`bottom`参数。这样就堆叠了条形。
 
 请注意，我们首先堆叠第二个值`VALUESB`。第二个值代表市场上推出的新产品，而`VALUESA`更加稳定。这更好地显示了新产品的增长。
 
 每个期间都在*X*轴上用`.xticks`标记。为了澄清含义，我们使用`.ylabel`添加标签。
 
-要显示生成的图表，第 5 步调用`.show`，这将打开一个新窗口显示结果。
+要显示生成的图表，第5步调用`.show`，这将打开一个新窗口显示结果。
 
 调用`.show`会阻止程序的执行。当窗口关闭时，程序将恢复。
 
@@ -239,7 +239,7 @@ $ pip install -r requirements.txt
 
 这使得每个值都等于总数的百分比，总数始终加起来为`100`。这产生了以下图形：
 
-![](img/f1270a74-2f03-49e2-b731-c2a539e6a774.png)
+![](assets/f1270a74-2f03-49e2-b731-c2a539e6a774.png)
 
 条形不一定需要堆叠。有时，将条形相互对比呈现可能会更有趣。
 
@@ -253,9 +253,9 @@ $ pip install -r requirements.txt
 
 注意条的宽度设置为空间的三分之一，因为我们的参考空间在条之间是`1`。第一根条移到左边，第二根移到右边以使它们居中。已删除`bottom`参数，以不堆叠条形：
 
-![](img/7cd52074-9e8e-4407-ae9f-e751c8e64e3f.png)
+![](assets/7cd52074-9e8e-4407-ae9f-e751c8e64e3f.png)
 
-完整的`matplotlib`文档可以在这里找到：[`matplotlib.org/`](https://matplotlib.org/)。
+完整的`matplotlib`文档可以在这里找到：[https://matplotlib.org/](https://matplotlib.org/)。
 
 # 另请参阅
 
@@ -267,7 +267,7 @@ $ pip install -r requirements.txt
 
 # 绘制饼图
 
-饼图！商业 101 最喜欢的图表，也是呈现百分比的常见方式。在这个食谱中，我们将看到如何绘制一个饼图，不同的切片代表不同的比例。
+饼图！商业101最喜欢的图表，也是呈现百分比的常见方式。在这个食谱中，我们将看到如何绘制一个饼图，不同的切片代表不同的比例。
 
 # 准备工作
 
@@ -278,7 +278,7 @@ $ echo "matplotlib==2.2.2" >> requirements.txt
 $ pip install -r requirements.txt
 ```
 
-如果您使用的是 macOS，可能会出现这样的错误——`RuntimeError: Python is not installed as a framework`。请参阅`matplotlib`文档以了解如何解决此问题：[`matplotlib.org/faq/osx_framework.html`](https://matplotlib.org/faq/osx_framework.html)。
+如果您使用的是macOS，可能会出现这样的错误——`RuntimeError: Python is not installed as a framework`。请参阅`matplotlib`文档以了解如何解决此问题：[https://matplotlib.org/faq/osx_framework.html](https://matplotlib.org/faq/osx_framework.html)。
 
 # 如何做...
 
@@ -321,17 +321,17 @@ $ pip install -r requirements.txt
 
 1.  结果将显示在新窗口中，如下所示：
 
-![](img/d11a4172-49d1-4df0-a0a9-df33e6bb7c10.png)
+![](assets/d11a4172-49d1-4df0-a0a9-df33e6bb7c10.png)
 
 # 工作原理...
 
-在*如何做...*部分的第 1 步中导入了该模块，并在第 2 步中导入了要呈现的数据。在第 3 步中，数据被分成两个部分，一个是`VALUES`的列表，另一个是`LABELS`的列表。
+在*如何做...*部分的第1步中导入了该模块，并在第2步中导入了要呈现的数据。在第3步中，数据被分成两个部分，一个是`VALUES`的列表，另一个是`LABELS`的列表。
 
-图表的创建发生在第 4 步。饼图是通过添加`VALUES`和`LABELS`来创建的。`autopct`参数格式化值，以便将其显示为百分比到小数点后一位。
+图表的创建发生在第4步。饼图是通过添加`VALUES`和`LABELS`来创建的。`autopct`参数格式化值，以便将其显示为百分比到小数点后一位。
 
 对`axis`的调用确保饼图看起来是圆形的，而不是有一点透视并呈现为椭圆。
 
-要显示生成的图表，第 5 步调用`.show`，它会打开一个新窗口显示结果。
+要显示生成的图表，第5步调用`.show`，它会打开一个新窗口显示结果。
 
 调用`.show`会阻塞程序的执行。当窗口关闭时，程序将恢复。
 
@@ -358,7 +358,7 @@ $ pip install -r requirements.txt
 ...     return '{}'.format(value)
 ```
 
-一个或多个楔形也可以通过使用 explode 参数分开。这指定了楔形与中心的分离程度：
+一个或多个楔形也可以通过使用explode参数分开。这指定了楔形与中心的分离程度：
 
 ```py
 >>> explode = (0, 0, 0.1, 0)
@@ -368,9 +368,9 @@ $ pip install -r requirements.txt
 
 结合所有这些选项，我们得到以下结果：
 
-![](img/907bd5d6-c5cb-49cb-8f51-29aebf936ed1.png)
+![](assets/907bd5d6-c5cb-49cb-8f51-29aebf936ed1.png)
 
-完整的`matplotlib`文档可以在这里找到：[`matplotlib.org/`](https://matplotlib.org/)。
+完整的`matplotlib`文档可以在这里找到：[https://matplotlib.org/](https://matplotlib.org/)。
 
 # 另请参阅
 
@@ -391,7 +391,7 @@ $ echo "matplotlib==2.2.2" >> requirements.txt
 $ pip install -r requirements.txt
 ```
 
-如果您使用的是 macOS，可能会出现这样的错误——`RuntimeError: Python is not installed as a framework`。请参阅`matplolib`文档以了解如何解决此问题：[`matplotlib.org/faq/osx_framework.html`](https://matplotlib.org/faq/osx_framework.html)。
+如果您使用的是macOS，可能会出现这样的错误——`RuntimeError: Python is not installed as a framework`。请参阅`matplolib`文档以了解如何解决此问题：[https://matplotlib.org/faq/osx_framework.html](https://matplotlib.org/faq/osx_framework.html)。
 
 # 如何做...
 
@@ -438,31 +438,31 @@ $ pip install -r requirements.txt
 
 1.  结果将显示在一个新窗口中：
 
-![](img/defcbfbe-a08d-4ed8-b19d-b03b82ef8552.png)
+![](assets/defcbfbe-a08d-4ed8-b19d-b03b82ef8552.png)
 
 # 工作原理…
 
-在*如何做…*部分，第 1 步导入模块，第 2 步以格式化的方式显示要绘制的数据。
+在*如何做…*部分，第1步导入模块，第2步以格式化的方式显示要绘制的数据。
 
-在第 3 步中，数据准备好了三个序列`VALUESA`，`VALUEB`和`LABELS`。添加了一个`POS`序列来正确定位每个点。
+在第3步中，数据准备好了三个序列`VALUESA`，`VALUEB`和`LABELS`。添加了一个`POS`序列来正确定位每个点。
 
-第 4 步创建了图表，使用了序列*X*（`POS`）和*Y*（`VALUESA`），然后是`POS`和`VALUESB`。添加了值为`'o-'`，以在每个数据点上绘制一个圆圈，并在它们之间绘制一条实线。
+第4步创建了图表，使用了序列*X*（`POS`）和*Y*（`VALUESA`），然后是`POS`和`VALUESB`。添加了值为`'o-'`，以在每个数据点上绘制一个圆圈，并在它们之间绘制一条实线。
 
 默认情况下，图表将显示一条实线，每个点上没有标记。如果只使用标记（即`'o'`），就不会有线。
 
 *X*轴上的每个周期都带有`.xticks`标签。为了澄清含义，我们使用`.ylabel`添加了一个标签。
 
-要显示结果图表，第 5 步调用`.show`，它会打开一个新窗口显示结果。
+要显示结果图表，第5步调用`.show`，它会打开一个新窗口显示结果。
 
 调用`.show`会阻塞程序的执行。当窗口关闭时，程序将恢复。
 
 # 还有更多…
 
-带有线条的图表看起来简单，能够创建许多有趣的表示。在显示数学图表时，这可能是最方便的。例如，我们可以用几行代码显示 Moore 定律的图表。
+带有线条的图表看起来简单，能够创建许多有趣的表示。在显示数学图表时，这可能是最方便的。例如，我们可以用几行代码显示Moore定律的图表。
 
-摩尔定律是戈登·摩尔观察到的一个现象，即集成电路中的元件数量每两年翻一番。它首次在 1965 年被描述，然后在 1975 年得到修正。它似乎与过去 40 年的技术进步历史速度非常接近。
+摩尔定律是戈登·摩尔观察到的一个现象，即集成电路中的元件数量每两年翻一番。它首次在1965年被描述，然后在1975年得到修正。它似乎与过去40年的技术进步历史速度非常接近。
 
-我们首先创建了一条描述理论线的线，数据点从 1970 年到 2013 年。从 1000 个晶体管开始，每两年翻一番，直到 2013 年：
+我们首先创建了一条描述理论线的线，数据点从1970年到2013年。从1000个晶体管开始，每两年翻一番，直到2013年：
 
 ```py
 >>> POS = [year for year in range(1970, 2013)]
@@ -470,7 +470,7 @@ $ pip install -r requirements.txt
 >>> plt.plot(POS, MOORES)
 ```
 
-根据一些文档，我们从这里提取了一些商用 CPU 的例子，它们的发布年份以及集成元件的数量：[`www.wagnercg.com/Portals/0/FunStuff/AHistoryofMicroprocessorTransistorCount.pdf`](http://www.wagnercg.com/Portals/0/FunStuff/AHistoryofMicroprocessorTransistorCount.pdf)。由于数字很大，我们将使用 Python 3 中的`1_000_000`表示一百万：
+根据一些文档，我们从这里提取了一些商用CPU的例子，它们的发布年份以及集成元件的数量：[http://www.wagnercg.com/Portals/0/FunStuff/AHistoryofMicroprocessorTransistorCount.pdf](http://www.wagnercg.com/Portals/0/FunStuff/AHistoryofMicroprocessorTransistorCount.pdf)。由于数字很大，我们将使用Python 3中的`1_000_000`表示一百万：
 
 ```py
 >>> DATA = (
@@ -489,7 +489,7 @@ $ pip install -r requirements.txt
 >>> plt.plot(data_x, data_y, 'v')
 ```
 
-对于每个数据点，将一个标签附加在正确的位置，标有 CPU 的名称：
+对于每个数据点，将一个标签附加在正确的位置，标有CPU的名称：
 
 ```py
 >>> for label, y, x in DATA:
@@ -505,9 +505,9 @@ $ pip install -r requirements.txt
 
 结果图将显示：
 
-![](img/bc851b15-ef70-481c-b08e-51b3879cfb60.png)
+![](assets/bc851b15-ef70-481c-b08e-51b3879cfb60.png)
 
-完整的`matplotlib`文档可以在这里找到：[`matplotlib.org/`](https://matplotlib.org/)。特别是，可以在这里检查线条（实线、虚线、点线等）和标记（点、圆圈、三角形、星形等）的可用格式：[`matplotlib.org/api/_as_gen/matplotlib.pyplot.plot.html`](https://matplotlib.org/api/_as_gen/matplotlib.pyplot.plot.html)。
+完整的`matplotlib`文档可以在这里找到：[https://matplotlib.org/](https://matplotlib.org/)。特别是，可以在这里检查线条（实线、虚线、点线等）和标记（点、圆圈、三角形、星形等）的可用格式：[https://matplotlib.org/api/_as_gen/matplotlib.pyplot.plot.html](https://matplotlib.org/api/_as_gen/matplotlib.pyplot.plot.html)。
 
 # 另请参阅
 
@@ -528,9 +528,9 @@ $ echo "matplotlib==2.2.2" >> requirements.txt
 $ pip install -r requirements.txt
 ```
 
-如果您使用的是 macOS，可能会出现这样的错误——`RuntimeError: Python is not installed as a framework`。请参阅`matplolib`文档，了解如何解决此问题：[`matplotlib.org/faq/osx_framework.html`](https://matplotlib.org/faq/osx_framework.html)。
+如果您使用的是macOS，可能会出现这样的错误——`RuntimeError: Python is not installed as a framework`。请参阅`matplolib`文档，了解如何解决此问题：[https://matplotlib.org/faq/osx_framework.html](https://matplotlib.org/faq/osx_framework.html)。
 
-作为数据点，我们将使用`scatter.csv`文件来读取数据。此文件可在 GitHub 上找到：[`github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter07/scatter.csv`](https://github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter07/scatter.csv)。
+作为数据点，我们将使用`scatter.csv`文件来读取数据。此文件可在GitHub上找到：[https://github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter07/scatter.csv](https://github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter07/scatter.csv)。
 
 # 如何做...
 
@@ -579,19 +579,19 @@ $ pip install -r requirements.txt
 
 1.  结果将显示在新窗口中：
 
-![](img/ced40fbf-6f2b-4eb1-b8b9-f5483b9f4989.png)
+![](assets/ced40fbf-6f2b-4eb1-b8b9-f5483b9f4989.png)
 
 # 工作原理...
 
-*如何做…*部分的步骤 1 和 2 导入了我们稍后将使用的模块并从 CSV 文件中读取数据。数据被转换为列表，以允许我们多次迭代，这在第 3 步中是必要的。
+*如何做…*部分的步骤1和2导入了我们稍后将使用的模块并从CSV文件中读取数据。数据被转换为列表，以允许我们多次迭代，这在第3步中是必要的。
 
-第 3 步将数据准备为两个数组，然后使用`.scatter`来绘制它们。与`matplotlib`的其他方法一样，`.scatter`的参数需要*X*和*Y*值的数组。它们都需要具有相同的大小。数据从文件格式转换为`float`，以确保数字格式。
+第3步将数据准备为两个数组，然后使用`.scatter`来绘制它们。与`matplotlib`的其他方法一样，`.scatter`的参数需要*X*和*Y*值的数组。它们都需要具有相同的大小。数据从文件格式转换为`float`，以确保数字格式。
 
-第 4 步改进了数据在每个轴上的呈现方式。相同的操作被呈现两次——创建一个函数来定义该轴上的值应该如何显示（以美元或分钟）。该函数接受要显示的值和位置作为输入。通常，位置将被忽略。轴格式化程序将被覆盖为`.set_major_formatter`。请注意，两个轴都将使用`.gca`（获取当前轴）返回。
+第4步改进了数据在每个轴上的呈现方式。相同的操作被呈现两次——创建一个函数来定义该轴上的值应该如何显示（以美元或分钟）。该函数接受要显示的值和位置作为输入。通常，位置将被忽略。轴格式化程序将被覆盖为`.set_major_formatter`。请注意，两个轴都将使用`.gca`（获取当前轴）返回。
 
 使用`.xlabel`和`.ylabel`向轴添加标签。
 
-最后，第 5 步在新窗口中显示图表。分析结果，我们可以说似乎有两种用户，一些用户花费不到 10 分钟，从不花费超过 10 美元，还有一些用户花费更多时间，也更有可能花费高达 100 美元。
+最后，第5步在新窗口中显示图表。分析结果，我们可以说似乎有两种用户，一些用户花费不到10分钟，从不花费超过10美元，还有一些用户花费更多时间，也更有可能花费高达100美元。
 
 请注意，所呈现的数据是合成的，并且已经根据结果生成。现实生活中的数据可能看起来更分散。
 
@@ -601,7 +601,7 @@ $ pip install -r requirements.txt
 
 要添加这些元素，使用参数`s`表示*大小*，`c`表示*颜色*。
 
-大小被定义为点的直径的平方。因此，对于直径为 10 的球，将使用 100。颜色可以使用`matplotlib`中颜色的任何常规定义，例如十六进制颜色、RGB 等。有关更多详细信息，请参阅文档：[`matplotlib.org/users/colors.html`](https://matplotlib.org/users/colors.html)。例如，我们可以使用以下方式生成一个随机图表的四个维度：
+大小被定义为点的直径的平方。因此，对于直径为10的球，将使用100。颜色可以使用`matplotlib`中颜色的任何常规定义，例如十六进制颜色、RGB等。有关更多详细信息，请参阅文档：[https://matplotlib.org/users/colors.html](https://matplotlib.org/users/colors.html)。例如，我们可以使用以下方式生成一个随机图表的四个维度：
 
 ```py
 >>> import matplotlib.pyplot as plt
@@ -618,7 +618,7 @@ $ pip install -r requirements.txt
 
 `COLOR_SCALE`从绿色到红色，每个点的大小将在`0`到`50`之间。结果应该是这样的：
 
-![](img/ab8e4b1e-6dfa-4367-8e57-47e7557c5f45.png)
+![](assets/ab8e4b1e-6dfa-4367-8e57-47e7557c5f45.png)
 
 请注意，这是随机的，因此每次都会生成不同的图表。
 
@@ -626,7 +626,7 @@ $ pip install -r requirements.txt
 
 尽管可以在大小和颜色中显示两个独立的值，但它们也可以与任何其他值相关联。例如，使颜色依赖于大小将使所有相同大小的点具有相同的颜色，这可能有助于区分数据。请记住，图表的最终目标是使数据易于理解。尝试不同的方法来改进这一点。
 
-完整的`matplotlib`文档可以在这里找到：[`matplotlib.org/`](https://matplotlib.org/)。
+完整的`matplotlib`文档可以在这里找到：[https://matplotlib.org/](https://matplotlib.org/)。
 
 # 另请参阅
 
@@ -638,7 +638,7 @@ $ pip install -r requirements.txt
 
 要显示从区域到区域变化的信息，最好的方法是显示一张呈现信息的地图，同时为数据提供区域位置和位置的感觉。
 
-在此示例中，我们将利用`fiona`模块导入 GIS 信息，以及`matplotlib`来显示信息。 我们将显示西欧的地图，并显示每个国家的人口与颜色等级。 颜色越深，人口越多。
+在此示例中，我们将利用`fiona`模块导入GIS信息，以及`matplotlib`来显示信息。 我们将显示西欧的地图，并显示每个国家的人口与颜色等级。 颜色越深，人口越多。
 
 # 准备工作
 
@@ -650,13 +650,13 @@ $ echo "Fiona==1.7.13" >> requirements.txt
 $ pip install -r requirements.txt
 ```
 
-如果您使用的是 macOS，可能会出现这样的错误-`RuntimeError: Python is not installed as a framework`。 请参阅`matplolib`文档以了解如何解决此问题：[`matplotlib.org/faq/osx_framework.html`](https://matplotlib.org/faq/osx_framework.html)。
+如果您使用的是macOS，可能会出现这样的错误-`RuntimeError: Python is not installed as a framework`。 请参阅`matplolib`文档以了解如何解决此问题：[https://matplotlib.org/faq/osx_framework.html](https://matplotlib.org/faq/osx_framework.html)。
 
-需要下载地图数据。 幸运的是，有很多免费提供的地理信息数据。 在 Google 上搜索应该很快返回几乎您需要的所有内容，包括有关地区，县，河流或任何其他类型数据的详细信息。
+需要下载地图数据。 幸运的是，有很多免费提供的地理信息数据。 在Google上搜索应该很快返回几乎您需要的所有内容，包括有关地区，县，河流或任何其他类型数据的详细信息。
 
-来自许多公共组织的 GIS 信息以不同格式可用。 `fiona`能够理解大多数常见格式并以等效方式处理它们，但存在细微差异。 请阅读`fiona`文档以获取更多详细信息。
+来自许多公共组织的GIS信息以不同格式可用。 `fiona`能够理解大多数常见格式并以等效方式处理它们，但存在细微差异。 请阅读`fiona`文档以获取更多详细信息。
 
-我们将在此示例中使用的数据，涵盖所有欧洲国家，可在 GitHub 的以下网址找到：[`github.com/leakyMirror/map-of-europe/blob/master/GeoJSON/europe.geojson`](https://github.com/leakyMirror/map-of-europe/blob/master/GeoJSON/europe.geojson)。 请注意，它是 GeoJSON 格式，这是一种易于使用的标准。
+我们将在此示例中使用的数据，涵盖所有欧洲国家，可在GitHub的以下网址找到：[https://github.com/leakyMirror/map-of-europe/blob/master/GeoJSON/europe.geojson](https://github.com/leakyMirror/map-of-europe/blob/master/GeoJSON/europe.geojson)。 请注意，它是GeoJSON格式，这是一种易于使用的标准。
 
 # 如何操作...
 
@@ -705,7 +705,7 @@ $ pip install -r requirements.txt
 ... }
 ```
 
-1.  打开文件并读取数据，按照我们在第 1 步中定义的国家进行过滤：
+1.  打开文件并读取数据，按照我们在第1步中定义的国家进行过滤：
 
 ```py
 >>> with fiona.open('europe.geojson') as fd:
@@ -739,29 +739,29 @@ $ pip install -r requirements.txt
 
 1.  结果将显示在新窗口中：
 
-![](img/d4a76e46-e98f-4763-8e14-5658dd95e0e6.png)
+![](assets/d4a76e46-e98f-4763-8e14-5658dd95e0e6.png)
 
 # 它是如何工作的...
 
-在*如何操作...*部分的第 1 步中导入模块后，将在第 2 步中定义要显示的数据。 请注意，名称需要与 GEO 文件中的格式相同。 最小和最大人口将被计算以正确平衡范围。
+在*如何操作...*部分的第1步中导入模块后，将在第2步中定义要显示的数据。 请注意，名称需要与GEO文件中的格式相同。 最小和最大人口将被计算以正确平衡范围。
 
-人口已经舍入到一个显著数字，并以百万定义。 仅为此示例的目的定义了一些国家，但在 GIS 文件中还有更多可用的国家，并且地图可以向东扩展。
+人口已经舍入到一个显著数字，并以百万定义。 仅为此示例的目的定义了一些国家，但在GIS文件中还有更多可用的国家，并且地图可以向东扩展。
 
-在第 3 步中描述了定义绿色阴影（`Greens`）范围的`colormap`。 这是`matplotlib`中的一个标准`colormap`，但可以使用文档中描述的其他`colormap`（[`matplotlib.org/examples/color/colormaps_reference.html`](https://matplotlib.org/examples/color/colormaps_reference.html)），例如橙色，红色或等离子体，以获得更冷到热的方法。
+在第3步中描述了定义绿色阴影（`Greens`）范围的`colormap`。 这是`matplotlib`中的一个标准`colormap`，但可以使用文档中描述的其他`colormap`（[https://matplotlib.org/examples/color/colormaps_reference.html](https://matplotlib.org/examples/color/colormaps_reference.html)），例如橙色，红色或等离子体，以获得更冷到热的方法。
 
-`COUNTRY_COLOUR`字典存储了由`colormap`为每个国家定义的颜色。 人口减少到从 0.0（最少人口）到 1.0（最多）的数字，并传递给`colormap`以检索其对应的比例的颜色。
+`COUNTRY_COLOUR`字典存储了由`colormap`为每个国家定义的颜色。 人口减少到从0.0（最少人口）到1.0（最多）的数字，并传递给`colormap`以检索其对应的比例的颜色。
 
-然后在第 4 步中检索 GIS 信息。 使用`fiona`读取`europe.geojson`文件，并复制数据，以便在接下来的步骤中使用。 它还会过滤，只处理我们定义了人口的国家，因此不会绘制额外的国家。
+然后在第4步中检索GIS信息。 使用`fiona`读取`europe.geojson`文件，并复制数据，以便在接下来的步骤中使用。 它还会过滤，只处理我们定义了人口的国家，因此不会绘制额外的国家。
 
-步骤 5 中的循环逐个国家进行，然后我们使用`.fill`来绘制它，它绘制一个多边形。每个不同国家的几何形状都是一个单一的多边形（`Polygon`）或多个多边形（`MultiPolygon`）。在每种情况下，适当的多边形都以相同的颜色绘制。这意味着`MultiPolygon`会被绘制多次。
+步骤5中的循环逐个国家进行，然后我们使用`.fill`来绘制它，它绘制一个多边形。每个不同国家的几何形状都是一个单一的多边形（`Polygon`）或多个多边形（`MultiPolygon`）。在每种情况下，适当的多边形都以相同的颜色绘制。这意味着`MultiPolygon`会被绘制多次。
 
-GIS 信息以描述纬度和经度的坐标点的形式存储。区域，如国家，有一系列坐标来描述其中的区域。一些地图更精确，有更多的点来定义区域。可能需要多个多边形来定义一个国家，因为一些部分可能相互分离，岛屿是最明显的情况，但也有飞地。
+GIS信息以描述纬度和经度的坐标点的形式存储。区域，如国家，有一系列坐标来描述其中的区域。一些地图更精确，有更多的点来定义区域。可能需要多个多边形来定义一个国家，因为一些部分可能相互分离，岛屿是最明显的情况，但也有飞地。
 
 最后，通过调用`.show`来显示数据。
 
 # 还有更多...
 
-利用 GIS 文件中包含的信息，我们可以向地图添加额外的信息。`properties`对象包含有关国家名称的信息，还有 ISO 名称、FID 代码和中心位置的`LON`和`LAT`。我们可以使用这些信息来使用`.text`显示国家的名称：
+利用GIS文件中包含的信息，我们可以向地图添加额外的信息。`properties`对象包含有关国家名称的信息，还有ISO名称、FID代码和中心位置的`LON`和`LAT`。我们可以使用这些信息来使用`.text`显示国家的名称：
 
 ```py
     long, lat = data['properties']['LON'], data['properties']['LAT']
@@ -769,11 +769,11 @@ GIS 信息以描述纬度和经度的坐标点的形式存储。区域，如国�
     plt.text(long, lat, iso3, horizontalalignment='center')
 ```
 
-这段代码将存在于*如何做*部分的步骤 6 中的循环中。
+这段代码将存在于*如何做*部分的步骤6中的循环中。
 
-如果你分析这个文件，你会发现`properties`对象包含有关人口的信息，存储为 POP2005，所以你可以直接从地图上绘制人口信息。这留作练习。不同的地图文件将包含不同的信息，所以一定要尝试一下，释放所有可能性。
+如果你分析这个文件，你会发现`properties`对象包含有关人口的信息，存储为POP2005，所以你可以直接从地图上绘制人口信息。这留作练习。不同的地图文件将包含不同的信息，所以一定要尝试一下，释放所有可能性。
 
-此外，你可能会注意到在某些情况下地图可能会变形。`matplotlib`会尝试将其呈现为一个正方形的框，如果地图不是大致正方形，这将是明显的。例如，尝试只显示西班牙、葡萄牙、爱尔兰和英国。我们可以强制图表以 1 点纬度与 1 点经度相同的空间来呈现，这是一个很好的方法，如果我们不是在靠近极地的地方绘制东西。这是通过在轴上调用`.set_aspect`来实现的。当前轴可以通过`.gca`（**获取当前轴**）获得。
+此外，你可能会注意到在某些情况下地图可能会变形。`matplotlib`会尝试将其呈现为一个正方形的框，如果地图不是大致正方形，这将是明显的。例如，尝试只显示西班牙、葡萄牙、爱尔兰和英国。我们可以强制图表以1点纬度与1点经度相同的空间来呈现，这是一个很好的方法，如果我们不是在靠近极地的地方绘制东西。这是通过在轴上调用`.set_aspect`来实现的。当前轴可以通过`.gca`（**获取当前轴**）获得。
 
 ```py
 >>> axes = plt.gca()
@@ -789,7 +789,7 @@ GIS 信息以描述纬度和经度的坐标点的形式存储。区域，如国�
 >>> axes.set_facecolor('xkcd:light blue')
 ```
 
-最后，为了更好地区分不同的区域，可以添加一个包围每个区域的线。这可以通过在`.fill`之后用相同的数据绘制一条细线来实现。请注意，这段代码在步骤 2 中重复了两次。
+最后，为了更好地区分不同的区域，可以添加一个包围每个区域的线。这可以通过在`.fill`之后用相同的数据绘制一条细线来实现。请注意，这段代码在步骤2中重复了两次。
 
 ```py
  plt.fill(data_x, data_y, c=color)
@@ -798,13 +798,13 @@ GIS 信息以描述纬度和经度的坐标点的形式存储。区域，如国�
 
 将所有这些元素应用到地图上，现在看起来是这样的：
 
-![](img/a57d8513-6d08-4ba4-a29c-9f03641ec34f.png)
+![](assets/a57d8513-6d08-4ba4-a29c-9f03641ec34f.png)
 
-生成的代码可以在 GitHub 上找到：[`github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter07/visualising_maps.py`](https://github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter07/visualising_maps.py)。
+生成的代码可以在GitHub上找到：[https://github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter07/visualising_maps.py](https://github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter07/visualising_maps.py)。
 
 正如我们所见，地图是以一般的多边形绘制的。不要害怕包括其他几何形状。你可以定义自己的多边形，并用`.fill`或一些额外的标签打印它们。例如，远离的地区可能需要被运输，以避免地图太大。或者，可以使用矩形在地图的部分上打印额外的信息。
 
-完整的`fiona`文档可以在这里找到：[`toblerity.org/fiona/`](http://toblerity.org/fiona/)。完整的`matplotlib`文档可以在这里找到：[`matplotlib.org/`](https://matplotlib.org/)。
+完整的`fiona`文档可以在这里找到：[http://toblerity.org/fiona/](http://toblerity.org/fiona/)。完整的`matplotlib`文档可以在这里找到：[https://matplotlib.org/](https://matplotlib.org/)。
 
 # 另请参阅
 
@@ -827,7 +827,7 @@ $ echo "matplotlib==2.2.2" >> requirements.txt
 $ pip install -r requirements.txt
 ```
 
-如果您正在使用 macOS，可能会出现这样的错误——`RuntimeError: Python is not installed as a framework`。请参阅`matplolib`文档以了解如何解决：[`matplotlib.org/faq/osx_framework.html`](https://matplotlib.org/faq/osx_framework.html)。
+如果您正在使用macOS，可能会出现这样的错误——`RuntimeError: Python is not installed as a framework`。请参阅`matplolib`文档以了解如何解决：[https://matplotlib.org/faq/osx_framework.html](https://matplotlib.org/faq/osx_framework.html)。
 
 # 操作步骤...
 
@@ -892,19 +892,19 @@ $ pip install -r requirements.txt
 
 1.  结果将显示在新窗口中：
 
-![](img/7284a61f-70fe-43e5-b151-152dd0086307.png)
+![](assets/7284a61f-70fe-43e5-b151-152dd0086307.png)
 
 # 它是如何工作的...
 
-*操作步骤*的第 1 步和第 2 步准备了导入和将在条形图中显示的数据，格式类似于良好结构化的输入数据。在第 3 步中，数据被拆分成不同的数组，以准备在`matplotlib`中输入。基本上，每个数据序列都存储在不同的数组中。
+*操作步骤*的第1步和第2步准备了导入和将在条形图中显示的数据，格式类似于良好结构化的输入数据。在第3步中，数据被拆分成不同的数组，以准备在`matplotlib`中输入。基本上，每个数据序列都存储在不同的数组中。
 
-第 4 步绘制数据。每个数据序列都会调用`.bar`，指定其位置和值。标签与`.xticks`相同。为了在标签周围分隔每个条形图，第一个条形图向左偏移，第三个向右偏移。
+第4步绘制数据。每个数据序列都会调用`.bar`，指定其位置和值。标签与`.xticks`相同。为了在标签周围分隔每个条形图，第一个条形图向左偏移，第三个向右偏移。
 
 在第二季度的`ProductC`条形图上方添加了一个注释。请注意，注释包括`xy`中的点和`xytext`中的文本位置。
 
-在第 6 步中，添加了图例。请注意，标签需要按照输入数据的顺序添加。图例会自动放置在不覆盖任何数据的区域。`arroprops`详细说明了指向数据的箭头。
+在第6步中，添加了图例。请注意，标签需要按照输入数据的顺序添加。图例会自动放置在不覆盖任何数据的区域。`arroprops`详细说明了指向数据的箭头。
 
-最后，在第 7 步通过调用`.show`绘制图表。
+最后，在第7步通过调用`.show`绘制图表。
 
 调用`.show`会阻止程序的执行。当窗口关闭时，程序将恢复执行。
 
@@ -930,9 +930,9 @@ $ pip install -r requirements.txt
 
 调整`bbox_to_anchor`参数和`.subplots_adjust`将需要一些试错，直到产生预期的结果。
 
-`.subplots_adjust`引用了位置，作为将显示的轴的位置。这意味着`right=0.80`将在绘图的右侧留下 20%的屏幕空间，而左侧的默认值为 0.125，这意味着在绘图的左侧留下 12.5%的空间。有关更多详细信息，请参阅文档：[`matplotlib.org/api/_as_gen/matplotlib.pyplot.subplots_adjust.html`](https://matplotlib.org/api/_as_gen/matplotlib.pyplot.subplots_adjust.html)。
+`.subplots_adjust`引用了位置，作为将显示的轴的位置。这意味着`right=0.80`将在绘图的右侧留下20%的屏幕空间，而左侧的默认值为0.125，这意味着在绘图的左侧留下12.5%的空间。有关更多详细信息，请参阅文档：[https://matplotlib.org/api/_as_gen/matplotlib.pyplot.subplots_adjust.html](https://matplotlib.org/api/_as_gen/matplotlib.pyplot.subplots_adjust.html)。
 
-注释可以以不同的样式进行，并可以通过不同的选项进行调整，例如连接方式等。例如，这段代码将创建一个箭头，使用“fancy”样式连接一个曲线。结果显示在这里：
+注释可以以不同的样式进行，并可以通过不同的选项进行调整，例如连接方式等。例如，这段代码将创建一个箭头，使用`fancy`样式连接一个曲线。结果显示在这里：
 
 ```py
 plt.annotate('400% growth', xy=(1.2, 18), xytext=(1.3, 40),
@@ -947,11 +947,11 @@ plt.annotate('400% growth', xy=(1.2, 18), xytext=(1.3, 40),
 
 调整注释的确切位置和文本的位置将需要进行一些测试。文本的位置也是通过寻找最佳位置来避免与条形图重叠而定位的。字体大小和颜色可以使用`.legend`和`.annotate`调用中的`fontsize`和`color`参数进行更改。
 
-应用所有这些元素，图表可能看起来类似于这样。可以通过调用 GitHub 上的`legend_and_annotation.py`脚本来复制此图表：[`github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter07/adding_legend_and_annotations.py`](https://github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter07/adding_legend_and_annotations.py)：
+应用所有这些元素，图表可能看起来类似于这样。可以通过调用GitHub上的`legend_and_annotation.py`脚本来复制此图表：[https://github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter07/adding_legend_and_annotations.py](https://github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter07/adding_legend_and_annotations.py)：
 
-![](img/cbe93454-92bf-4133-a125-e94c0269ba18.png)
+![](assets/cbe93454-92bf-4133-a125-e94c0269ba18.png)
 
-完整的`matplotlib`文档可以在这里找到：[`matplotlib.org/`](https://matplotlib.org/)。特别是图例的指南在这里：[`matplotlib.org/users/legend_guide.html#plotting-guide-legend`](https://matplotlib.org/users/legend_guide.html#plotting-guide-legend)，注释的指南在这里：[`matplotlib.org/users/annotations.html`](https://matplotlib.org/users/annotations.html)。
+完整的`matplotlib`文档可以在这里找到：[https://matplotlib.org/](https://matplotlib.org/)。特别是图例的指南在这里：[https://matplotlib.org/users/legend_guide.html#plotting-guide-legend](https://matplotlib.org/users/legend_guide.html#plotting-guide-legend)，注释的指南在这里：[https://matplotlib.org/users/annotations.html](https://matplotlib.org/users/annotations.html)。
 
 # 另请参阅
 
@@ -972,7 +972,7 @@ $ echo "matplotlib==2.2.2" >> requirements.txt
 $ pip install -r requirements.txt
 ```
 
-如果您使用的是 macOS，可能会出现这样的错误——`RuntimeError: Python is not installed as a framework`。请参阅`matplolib`文档，了解如何解决此问题：[`matplotlib.org/faq/osx_framework.html`](https://matplotlib.org/faq/osx_framework.html)。
+如果您使用的是macOS，可能会出现这样的错误——`RuntimeError: Python is not installed as a framework`。请参阅`matplolib`文档，了解如何解决此问题：[https://matplotlib.org/faq/osx_framework.html](https://matplotlib.org/faq/osx_framework.html)。
 
 # 如何做…
 
@@ -1046,33 +1046,33 @@ $ pip install -r requirements.txt
 
 1.  结果将显示在一个新窗口中：
 
-![](img/ba4d0d65-86cb-462a-a017-9b5bc32a8d21.png)
+![](assets/ba4d0d65-86cb-462a-a017-9b5bc32a8d21.png)
 
 # 它是如何工作的…
 
-导入模块后，数据以一种方便的方式呈现在“如何做…”部分的第 2 步中，这很可能类似于数据最初的存储方式。第 3 步是一个准备步骤，将数据分割成不同的数组，以便进行下一步。
+导入模块后，数据以一种方便的方式呈现在“如何做…”部分的第2步中，这很可能类似于数据最初的存储方式。第3步是一个准备步骤，将数据分割成不同的数组，以便进行下一步。
 
-第 4 步创建一个新的`.subplot`。这将把整个图形分成两个元素。参数是行数、列数和所选的子图。因此，我们在一列中创建了两个子图，并在第一个子图中绘制。
+第4步创建一个新的`.subplot`。这将把整个图形分成两个元素。参数是行数、列数和所选的子图。因此，我们在一列中创建了两个子图，并在第一个子图中绘制。
 
-第 5 步使用`VALUESA`数据在此子图中打印了一个`.bar`图，并使用`.ylabel`标记了*Y*轴为`Sales A`。
+第5步使用`VALUESA`数据在此子图中打印了一个`.bar`图，并使用`.ylabel`标记了*Y*轴为`Sales A`。
 
-第 6 步使用`.twinx`创建一个新的*Y*轴，通过`.plot`绘制`VALUESB`为线图。标签使用`.ylabel`标记为`Sales B`。使用`.xticks`标记*X*轴。
+第6步使用`.twinx`创建一个新的*Y*轴，通过`.plot`绘制`VALUESB`为线图。标签使用`.ylabel`标记为`Sales B`。使用`.xticks`标记*X*轴。
 
 `VALUESB`图形设置为红色，以避免两个图形具有相同的颜色。默认情况下，两种情况下的第一种颜色是相同的，这将导致混淆。数据点使用`'o'`选项标记。
 
-在第 7 步中，我们使用`.subplot`切换到第二个子图。图形以线条形式打印`VALUESC`，然后使用`.xticker`在*X*轴上放置标签，并将*Y*轴的最小值设置为`0`。然后在第 8 步显示图形。
+在第7步中，我们使用`.subplot`切换到第二个子图。图形以线条形式打印`VALUESC`，然后使用`.xticker`在*X*轴上放置标签，并将*Y*轴的最小值设置为`0`。然后在第8步显示图形。
 
 # 还有更多...
 
 通常情况下，具有多个轴的图形很难阅读。只有在有充分理由这样做并且数据高度相关时才使用它们。
 
-默认情况下，线图中的*Y*轴将尝试呈现*Y*值的最小值和最大值之间的信息。通常截断轴不是呈现信息的最佳方式，因为它可能扭曲感知的差异。例如，如果图形从 10 到 11，那么在 10 到 11 之间的值的变化可能看起来很重要，但这不到 10%。将*Y*轴最小值设置为`0`，使用`plt.gca().set_ylim(ymin=0)`是一个好主意，特别是在有两个不同的轴时。
+默认情况下，线图中的*Y*轴将尝试呈现*Y*值的最小值和最大值之间的信息。通常截断轴不是呈现信息的最佳方式，因为它可能扭曲感知的差异。例如，如果图形从10到11，那么在10到11之间的值的变化可能看起来很重要，但这不到10%。将*Y*轴最小值设置为`0`，使用`plt.gca().set_ylim(ymin=0)`是一个好主意，特别是在有两个不同的轴时。
 
 选择子图的调用将首先按行，然后按列进行，因此`.subplot(2, 2, 3)`将选择第一列，第二行的子图。
 
 分割的子图网格可以更改。首先调用`.subplot(2, 2, 1)`和`.subplot(2, 2, 2)`，然后调用`.subplot(2, 1, 2)`，将在第一行创建两个小图和第二行一个较宽的图的结构。返回将覆盖先前绘制的子图。
 
-完整的`matplotlib`文档可以在这里找到：[`matplotlib.org/`](https://matplotlib.org/)。特别是，图例指南在这里：[`matplotlib.org/users/legend_guide.html#plotting-guide-legend`](https://matplotlib.org/users/legend_guide.html#plotting-guide-legend)。有关注释的信息在这里：[`matplotlib.org/users/annotations.html`](https://matplotlib.org/users/annotations.html)。
+完整的`matplotlib`文档可以在这里找到：[https://matplotlib.org/](https://matplotlib.org/)。特别是，图例指南在这里：[https://matplotlib.org/users/legend_guide.html#plotting-guide-legend](https://matplotlib.org/users/legend_guide.html#plotting-guide-legend)。有关注释的信息在这里：[https://matplotlib.org/users/annotations.html](https://matplotlib.org/users/annotations.html)。
 
 # 另请参阅
 
@@ -1093,7 +1093,7 @@ $ echo "matplotlib==2.2.2" >> requirements.txt
 $ pip install -r requirements.txt
 ```
 
-如果您使用的是 macOS，可能会出现这样的错误——`RuntimeError: Python is not installed as a framework`。请参阅`matplolib`文档以了解如何解决此问题：[`matplotlib.org/faq/osx_framework.html`](https://matplotlib.org/faq/osx_framework.html)。
+如果您使用的是macOS，可能会出现这样的错误——`RuntimeError: Python is not installed as a framework`。请参阅`matplolib`文档以了解如何解决此问题：[https://matplotlib.org/faq/osx_framework.html](https://matplotlib.org/faq/osx_framework.html)。
 
 # 如何做…
 
@@ -1133,9 +1133,9 @@ $ pip install -r requirements.txt
 
 # 工作原理...
 
-在*如何做…*部分的第 1 和第 2 步中导入和准备数据后，通过调用`.bar`在第 3 步生成图表。添加了一个`.ylabel`，并通过`.xticks`标记了*X*轴的适当时间描述。
+在*如何做…*部分的第1和第2步中导入和准备数据后，通过调用`.bar`在第3步生成图表。添加了一个`.ylabel`，并通过`.xticks`标记了*X*轴的适当时间描述。
 
-第 4 步将文件保存到硬盘上，文件名为`data.png`。
+第4步将文件保存到硬盘上，文件名为`data.png`。
 
 # 还有更多...
 
@@ -1145,11 +1145,11 @@ $ pip install -r requirements.txt
 >>> plt.savefig('data.png', dpi=72)
 ```
 
-`matplotlib`了解如何存储最常见的文件格式，如 JPEG、PDF 和 PNG。当文件名具有适当的扩展名时，它将自动使用。
+`matplotlib`了解如何存储最常见的文件格式，如JPEG、PDF和PNG。当文件名具有适当的扩展名时，它将自动使用。
 
-除非您有特定要求，否则请使用 PNG。与其他格式相比，它在存储具有有限颜色的图形时非常高效。如果您需要找到所有支持的文件，可以调用`plt.gcf().canvas.get_supported_filetypes()`。
+除非您有特定要求，否则请使用PNG。与其他格式相比，它在存储具有有限颜色的图形时非常高效。如果您需要找到所有支持的文件，可以调用`plt.gcf().canvas.get_supported_filetypes()`。
 
-完整的`matplotlib`文档可以在这里找到：[`matplotlib.org/`](https://matplotlib.org/)。特别是图例指南在这里：[`matplotlib.org/users/legend_guide.html#plotting-guide-legend`](https://matplotlib.org/users/legend_guide.html#plotting-guide-legend)。有关注释的信息在这里：[`matplotlib.org/users/annotations.html`](https://matplotlib.org/users/annotations.html)。
+完整的`matplotlib`文档可以在这里找到：[https://matplotlib.org/](https://matplotlib.org/)。特别是图例指南在这里：[https://matplotlib.org/users/legend_guide.html#plotting-guide-legend](https://matplotlib.org/users/legend_guide.html#plotting-guide-legend)。有关注释的信息在这里：[https://matplotlib.org/users/annotations.html](https://matplotlib.org/users/annotations.html)。
 
 # 另请参阅
 

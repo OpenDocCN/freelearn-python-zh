@@ -16,7 +16,7 @@
 
 但是，为了能够让它们在后台运行而不用担心更紧急的问题，任务需要适合以 *fire-and-forget* 模式运行。我们应该能够监控它是否正确运行，确保我们能够捕获未来的动作（比如在出现有趣的情况时接收通知），并知道在运行过程中是否出现了任何错误。
 
-确保软件始终以高可靠性一致运行实际上是一件大事，这是一个需要专业知识和人员的领域，通常被称为系统管理员、运维或 **SRE**（**站点可靠性工程**）。像亚马逊和谷歌这样的网站需要巨大的投资来确保一切都能 24/7 正常运行。
+确保软件始终以高可靠性一致运行实际上是一件大事，这是一个需要专业知识和人员的领域，通常被称为系统管理员、运维或 **SRE**（**站点可靠性工程**）。像亚马逊和谷歌这样的网站需要巨大的投资来确保一切都能24/7正常运行。
 
 这本书的目标要比那更加谦虚。你可能不需要每年低于几秒的停机时间。以合理的可靠性运行任务要容易得多。但是，要意识到还有维护工作要做，所以要有所准备。
 
@@ -40,7 +40,7 @@
 
 命令行程序已经具备了许多这些特点。它有明确的运行方式，有定义的参数，并且结果可以被存储，即使只是以文本格式。但是，通过配置文件来澄清参数，并且输出到一个文件，可以进一步改进。
 
-注意，第 6 点是 *捕获错误和问题* 配方的目标，并将在那里进行介绍。
+注意，第6点是 *捕获错误和问题* 配方的目标，并将在那里进行介绍。
 
 为了避免交互，不要使用任何需要用户输入的命令，比如 `input`。记得删除调试时的断点！
 
@@ -48,11 +48,11 @@
 
 我们将按照一个结构开始，其中一个主函数作为入口点，并将所有参数提供给它。
 
-这与第一章中 *添加命令行参数* 配方中呈现的基本结构相同，*让我们开始自动化之旅*。
+这与[第1章](e139aa50-5631-4b75-9257-d4eb2e12ef90.xhtml)中 *添加命令行参数* 配方中呈现的基本结构相同，*让我们开始自动化之旅*。
 
-定义一个主函数，包含所有明确的参数，涵盖了第 1 和第 2 点。第 3 点并不难实现。
+定义一个主函数，包含所有明确的参数，涵盖了第1和第2点。第3点并不难实现。
 
-为了改进第 2 和第 5 点，我们将研究如何从文件中检索配置并将结果存储在另一个文件中。另一个选项是发送通知，比如电子邮件，这将在本章后面介绍。
+为了改进第2和第5点，我们将研究如何从文件中检索配置并将结果存储在另一个文件中。另一个选项是发送通知，比如电子邮件，这将在本章后面介绍。
 
 # 如何做...
 
@@ -112,7 +112,7 @@ n1=5
 n2=7
 ```
 
-1.  使用配置文件运行命令。注意，配置文件会覆盖命令行参数，就像第 2 步中描述的那样：
+1.  使用配置文件运行命令。注意，配置文件会覆盖命令行参数，就像第2步中描述的那样：
 
 ```py
 $ python3 prepare_task_step2.py -c config.ini
@@ -169,9 +169,9 @@ The result is 35
 
 请注意，`argparse`模块允许我们将文件定义为参数，使用`argparse.FileType`类型，并自动打开它们。这非常方便，如果文件无效，将会引发错误。
 
-记得以正确的模式打开文件。在步骤 5 中，配置文件以读模式（`r`）打开，输出文件以写模式（`w`）打开，如果文件存在，将覆盖该文件。您可能会发现追加模式（`a`），它将在现有文件的末尾添加下一段数据。
+记得以正确的模式打开文件。在步骤5中，配置文件以读模式（`r`）打开，输出文件以写模式（`w`）打开，如果文件存在，将覆盖该文件。您可能会发现追加模式（`a`），它将在现有文件的末尾添加下一段数据。
 
-`configparser`模块允许我们轻松使用配置文件。如步骤 2 所示，文件的解析就像下面这样简单：
+`configparser`模块允许我们轻松使用配置文件。如步骤2所示，文件的解析就像下面这样简单：
 
 ```py
 config = configparser.ConfigParser()
@@ -182,7 +182,7 @@ config.read_file(file)
 
 如果需要获取布尔值，请不要执行`value = bool(config[raw_value])`，因为无论如何都会转换为`True`；例如，字符串`False`是一个真字符串，因为它不是空的。相反，使用`.getboolean`方法，例如，`value = config.getboolean(raw_value)`。
 
-Python3 允许我们向`print`函数传递一个`file`参数，它将写入该文件。步骤 5 展示了将所有打印信息重定向到文件的用法。
+Python3允许我们向`print`函数传递一个`file`参数，它将写入该文件。步骤5展示了将所有打印信息重定向到文件的用法。
 
 请注意，默认参数是`sys.stdout`，它将值打印到终端（标准输出）。这样做会使得在没有`-o`参数的情况下调用脚本将在屏幕上显示信息，这在调试时很有帮助：
 
@@ -196,11 +196,11 @@ The result is 35
 
 # 还有更多...
 
-请查看官方 Python 文档中`configparse`的完整文档：[`docs.python.org/3/library/configparser.html.`](https://docs.python.org/3/library/configparser.html)
+请查看官方Python文档中`configparse`的完整文档：[https://docs.python.org/3/library/configparser.html.](https://docs.python.org/3/library/configparser.html)
 
-在大多数情况下，这个配置解析器应该足够好用，但如果需要更多的功能，可以使用 YAML 文件作为配置文件。YAML 文件（[`learn.getgrav.org/advanced/yaml`](https://learn.getgrav.org/advanced/yaml)）作为配置文件非常常见，结构更好，可以直接解析，考虑到数据类型。
+在大多数情况下，这个配置解析器应该足够好用，但如果需要更多的功能，可以使用YAML文件作为配置文件。YAML文件（[https://learn.getgrav.org/advanced/yaml](https://learn.getgrav.org/advanced/yaml)）作为配置文件非常常见，结构更好，可以直接解析，考虑到数据类型。
 
-1.  将 PyYAML 添加到`requirements.txt`文件并安装它：
+1.  将PyYAML添加到`requirements.txt`文件并安装它：
 
 ```py
 PyYAML==3.12
@@ -239,7 +239,7 @@ if __name__ == '__main__':
     main(args.n1, args.n2, args.output)
 ```
 
-1.  定义配置文件`config.yaml`，可在 GitHub [`github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter02/config.yaml`](https://github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter02/config.yaml) 中找到：
+1.  定义配置文件`config.yaml`，可在GitHub [https://github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter02/config.yaml](https://github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter02/config.yaml) 中找到：
 
 ```py
 ARGUMENTS:
@@ -261,19 +261,19 @@ The result is 28
 
 # 另请参阅
 
-+   第一章中的*命令行参数*配方，*让我们开始自动化之旅*
++   [第1章](e139aa50-5631-4b75-9257-d4eb2e12ef90.xhtml)中的*命令行参数*配方，*让我们开始自动化之旅*
 
 +   *发送电子邮件通知*配方
 
-+   第十章中的*使用断点进行调试*配方，*调试技术*
++   [第10章](8c793eca-22a6-4688-afa9-e5175b4fb380.xhtml)中的*使用断点进行调试*配方，*调试技术*
 
-# 设置 cron 作业
+# 设置cron作业
 
-Cron 是一种老式但可靠的执行命令的方式。它自 Unix 的 70 年代以来就存在，并且是系统管理中常用的维护方式，比如释放空间、旋转日志、制作备份和其他常见操作。
+Cron是一种老式但可靠的执行命令的方式。它自Unix的70年代以来就存在，并且是系统管理中常用的维护方式，比如释放空间、旋转日志、制作备份和其他常见操作。
 
-这个配方是特定于 Unix 的，因此它将在 Linux 和 MacOS 中工作。虽然在 Windows 中安排任务是可能的，但非常不同，并且使用任务计划程序，这里不会描述。如果你有 Linux 服务器的访问权限，这可能是安排周期性任务的好方法。其主要优点如下：
+这个配方是特定于Unix的，因此它将在Linux和MacOS中工作。虽然在Windows中安排任务是可能的，但非常不同，并且使用任务计划程序，这里不会描述。如果你有Linux服务器的访问权限，这可能是安排周期性任务的好方法。其主要优点如下：
 
-+   它几乎存在于所有的 Unix 或 Linux 系统中，并配置为自动运行。
++   它几乎存在于所有的Unix或Linux系统中，并配置为自动运行。
 
 +   它很容易使用，尽管有点欺骗性。
 
@@ -285,13 +285,13 @@ Cron 是一种老式但可靠的执行命令的方式。它自 Unix 的 70 年�
 
 +   默认情况下，它可能不会提供太多反馈。检索输出、记录执行和错误是至关重要的。
 
-+   任务应尽可能自包含，以避免环境变量的问题，比如使用错误的 Python 解释器，或者应该执行的路径。
++   任务应尽可能自包含，以避免环境变量的问题，比如使用错误的Python解释器，或者应该执行的路径。
 
-+   它是特定于 Unix 的。
++   它是特定于Unix的。
 
 +   只有固定的周期时间可用。
 
-+   它不控制同时运行的任务数量。每次倒计时结束时，它都会创建一个新任务。例如，一个需要一个小时才能完成的任务，计划每 45 分钟运行一次，将有 15 分钟的重叠时间，两个任务将同时运行。
++   它不控制同时运行的任务数量。每次倒计时结束时，它都会创建一个新任务。例如，一个需要一个小时才能完成的任务，计划每45分钟运行一次，将有15分钟的重叠时间，两个任务将同时运行。
 
 不要低估最新效果。同时运行多个昂贵的任务可能会对性能产生不良影响。昂贵的任务重叠可能导致竞争条件，使每个任务都无法完成！充分时间让你的任务完成并密切关注它们。
 
@@ -352,14 +352,14 @@ $ cat /path/automate.log
 
 # 如何做...
 
-1.  获取 Python 解释器的完整路径。这是你的虚拟环境中的解释器：
+1.  获取Python解释器的完整路径。这是你的虚拟环境中的解释器：
 
 ```py
 $ which python
 /your/path/.venv/bin/python
 ```
 
-1.  准备执行 cron。获取完整路径并检查是否可以无问题执行。执行几次：
+1.  准备执行cron。获取完整路径并检查是否可以无问题执行。执行几次：
 
 ```py
 $ /your/path/.venv/bin/python /your/path/cron.py -o /path/automate.log
@@ -375,7 +375,7 @@ $ cat /path/automate.log
 [2018-05-15 22:28:10.510743] The result is 35
 ```
 
-1.  编辑 crontab 文件，以便每五分钟运行一次任务：
+1.  编辑crontab文件，以便每五分钟运行一次任务：
 
 ```py
 $ crontab -e
@@ -385,11 +385,11 @@ $ crontab -e
 
 请注意，这将使用默认的命令行编辑器打开一个编辑终端。
 
-如果你还没有设置默认的命令行编辑器，默认情况下可能是 Vim。如果你对 Vim 没有经验，这可能会让你感到困惑。按*I*开始插入文本，*Esc*完成后退出。然后，在保存文件后退出，使用`:wq`。有关 Vim 的更多信息，请参阅此介绍：[`null-byte.wonderhowto.com/how-to/intro-vim-unix-text-editor-every-hacker-should-be-familiar-with-0174674`](https://null-byte.wonderhowto.com/how-to/intro-vim-unix-text-editor-every-hacker-should-be-familiar-with-0174674)。
+如果你还没有设置默认的命令行编辑器，默认情况下可能是Vim。如果你对Vim没有经验，这可能会让你感到困惑。按*I*开始插入文本，*Esc*完成后退出。然后，在保存文件后退出，使用`:wq`。有关Vim的更多信息，请参阅此介绍：[https://null-byte.wonderhowto.com/how-to/intro-vim-unix-text-editor-every-hacker-should-be-familiar-with-0174674](https://null-byte.wonderhowto.com/how-to/intro-vim-unix-text-editor-every-hacker-should-be-familiar-with-0174674)。
 
-有关如何更改默认命令行编辑器的信息，请参阅以下链接：[`www.a2hosting.com/kb/developer-corner/linux/setting-the-default-text-editor-in-linux.`](https://www.a2hosting.com/kb/developer-corner/linux/setting-the-default-text-editor-in-linux)
+有关如何更改默认命令行编辑器的信息，请参阅以下链接：[https://www.a2hosting.com/kb/developer-corner/linux/setting-the-default-text-editor-in-linux.](https://www.a2hosting.com/kb/developer-corner/linux/setting-the-default-text-editor-in-linux)
 
-1.  检查 crontab 内容。请注意，这会显示 crontab 内容，但不会设置为编辑：
+1.  检查crontab内容。请注意，这会显示crontab内容，但不会设置为编辑：
 
 ```py
 $ contab -l
@@ -407,7 +407,7 @@ $ tail -F /path/automate.log
 
 # 它的工作原理...
 
-crontab 行由描述任务运行频率的行（前六个元素）和任务组成。初始的六个元素中的每一个代表不同的执行时间单位。它们大多数是星号，表示*任何*：
+crontab行由描述任务运行频率的行（前六个元素）和任务组成。初始的六个元素中的每一个代表不同的执行时间单位。它们大多数是星号，表示*任何*：
 
 ```py
 * * * * * *
@@ -420,7 +420,7 @@ crontab 行由描述任务运行频率的行（前六个元素）和任务组成
 +------------ Minute            (range: 0-59)
 ```
 
-因此，我们的行，`*/5 * * * * *`，意味着*每当分钟可被 5 整除时，在所有小时、所有天...所有年*。
+因此，我们的行，`*/5 * * * * *`，意味着*每当分钟可被5整除时，在所有小时、所有天...所有年*。
 
 以下是一些例子：
 
@@ -432,15 +432,15 @@ crontab 行由描述任务运行频率的行（前六个元素）和任务组成
 0    0 * * 1 * means "every Monday at 00:00"
 ```
 
-不要试图猜测太多。使用像[`crontab.guru/`](https://crontab.guru/)这样的备忘单来获取示例和调整。大多数常见用法将直接在那里描述。您还可以编辑一个公式并获得有关其运行方式的描述性文本。
+不要试图猜测太多。使用像[https://crontab.guru/](https://crontab.guru/)这样的备忘单来获取示例和调整。大多数常见用法将直接在那里描述。您还可以编辑一个公式并获得有关其运行方式的描述性文本。
 
-在描述如何运行 cron 作业之后，包括执行任务的行，如*如何操作…*部分的第 2 步中准备的那样。
+在描述如何运行cron作业之后，包括执行任务的行，如*如何操作…*部分的第2步中准备的那样。
 
 请注意，任务的描述中包含了每个相关文件的完整路径——解释器、脚本和输出文件。这消除了与路径相关的所有歧义，并减少了可能出现错误的机会。一个非常常见的错误是无法确定其中一个（或多个）元素。
 
 # 还有更多...
 
-如果 crontab 执行时出现任何问题，您应该收到系统邮件。这将显示为终端中的消息，如下所示：
+如果crontab执行时出现任何问题，您应该收到系统邮件。这将显示为终端中的消息，如下所示：
 
 ```py
 You have mail.
@@ -464,7 +464,7 @@ Message 1:
 
 # 另请参阅
 
-+   第一章《让我们开始自动化之旅》中的*添加命令行选项*食谱
++   第1章《让我们开始自动化之旅》中的*添加命令行选项*食谱
 
 +   *捕获错误和问题*食谱
 
@@ -478,7 +478,7 @@ Message 1:
 
 作为起点，我们将使用一个任务，该任务将按照命令行中的描述来除两个数字。
 
-这个任务与*如何操作…*部分中的第 5 步中介绍的任务非常相似，但是我们将除法代替乘法。
+这个任务与*如何操作…*部分中的第5步中介绍的任务非常相似，但是我们将除法代替乘法。
 
 # 如何操作...
 
@@ -603,7 +603,7 @@ ZeroDivisionError: division by zero
 
 # 它是如何工作的...
 
-为了正确捕获任何意外异常，主函数应该被包装到一个`try-except`块中，就像*如何操作…*部分中的第 4 步中所做的那样。将此与第 1 步中未包装代码的方式进行比较：
+为了正确捕获任何意外异常，主函数应该被包装到一个`try-except`块中，就像*如何操作…*部分中的第4步中所做的那样。将此与第1步中未包装代码的方式进行比较：
 
 ```py
     try:
@@ -618,7 +618,7 @@ ZeroDivisionError: division by zero
 
 这种异常被昵称为*宝可梦*，因为它可以*捕获所有*，因此它将在最高级别捕获任何意外错误。不要在代码的其他区域使用它，因为捕获所有可能会隐藏意外错误。至少，任何意外异常都应该被记录下来以便进行进一步分析。
 
-使用`exit(1)`调用额外的步骤来以状态 1 退出通知操作系统我们的脚本出了问题。
+使用`exit(1)`调用额外的步骤来以状态1退出通知操作系统我们的脚本出了问题。
 
 `logging`模块允许我们记录。请注意基本配置，其中包括一个可选的文件来存储日志、格式和要显示的日志级别。
 
@@ -669,11 +669,11 @@ Python `logging`模块具有许多功能，例如以下内容：
 
 与创建复杂规则相比，尝试进行广泛的日志记录，但使用适当的级别，然后进行过滤。
 
-有关详细信息，请查看模块的 Python 文档[`docs.python.org/3.7/library/logging.html`](https://docs.python.org/3.7/library/logging.html)，或者查看教程[`docs.python.org/3.7/howto/logging.html`](https://docs.python.org/3.7/howto/logging.html)。
+有关详细信息，请查看模块的Python文档[https://docs.python.org/3.7/library/logging.html](https://docs.python.org/3.7/library/logging.html)，或者查看教程[https://docs.python.org/3.7/howto/logging.html](https://docs.python.org/3.7/howto/logging.html)。
 
 # 另请参阅
 
-+   在第一章的*添加命令行选项*中，*让我们开始自动化之旅*中的*添加命令行选项*。
++   在[第1章](e139aa50-5631-4b75-9257-d4eb2e12ef90.xhtml)的*添加命令行选项*中，*让我们开始自动化之旅*中的*添加命令行选项*。
 
 +   *准备任务*配方
 
@@ -699,9 +699,9 @@ Python `logging`模块具有许多功能，例如以下内容：
 
 这四个元素应该足以发送电子邮件。
 
-例如，Gmail 等一些电子邮件服务将鼓励您设置 2FA，这意味着仅密码不足以发送电子邮件。通常，它们允许您为应用程序创建一个特定的密码来使用，绕过 2FA 请求。查看您的电子邮件提供商的信息以获取选项。
+例如，Gmail等一些电子邮件服务将鼓励您设置2FA，这意味着仅密码不足以发送电子邮件。通常，它们允许您为应用程序创建一个特定的密码来使用，绕过2FA请求。查看您的电子邮件提供商的信息以获取选项。
 
-要使用的电子邮件提供商应指示 SMTP 服务器和端口在其文档中使用。它们也可以从电子邮件客户端中检索，因为它们是相同的参数。查看您的提供商文档。在以下示例中，我们将使用 Gmail 帐户。
+要使用的电子邮件提供商应指示SMTP服务器和端口在其文档中使用。它们也可以从电子邮件客户端中检索，因为它们是相同的参数。查看您的提供商文档。在以下示例中，我们将使用Gmail帐户。
 
 # 如何做...
 
@@ -754,7 +754,7 @@ if __name__ == '__main__':
          password=config['DEFAULT']['password'])
 ```
 
-1.  创建一个名为`email_conf.ini`的配置文件，其中包含您的电子邮件账户的具体信息。例如，对于 Gmail 账户，请填写以下模板。该模板可在 GitHub [`github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter02/email_conf.ini`](https://github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter02/email_conf.ini) 中找到，但请确保用您的数据填写它：
+1.  创建一个名为`email_conf.ini`的配置文件，其中包含您的电子邮件账户的具体信息。例如，对于Gmail账户，请填写以下模板。该模板可在GitHub [https://github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter02/email_conf.ini](https://github.com/PacktPublishing/Python-Automation-Cookbook/blob/master/Chapter02/email_conf.ini) 中找到，但请确保用您的数据填写它：
 
 ```py
 [DEFAULT]
@@ -786,7 +786,7 @@ $ python3 email_task.py -c email_config.ini destination_email@server.com
 
 从一个与发送邮件的账户不同的邮箱发送邮件在技术上是可能的。尽管如此，这是不被鼓励的，因为你的电子邮件提供商可能会认为你试图冒充另一个邮箱。您可以使用`reply-to`头部来允许回复到不同的账户。
 
-发送邮件需要连接到指定的服务器并启动 SMPT 连接。SMPT 是电子邮件通信的标准。
+发送邮件需要连接到指定的服务器并启动SMPT连接。SMPT是电子邮件通信的标准。
 
 步骤非常简单——配置服务器，登录，发送准备好的消息，然后退出。
 
@@ -794,7 +794,7 @@ $ python3 email_task.py -c email_config.ini destination_email@server.com
 
 # 还有更多...
 
-如果目标是更大规模的操作，比如营销活动，或者生产邮件，比如确认用户的电子邮件，请查看第八章，*处理通信渠道*
+如果目标是更大规模的操作，比如营销活动，或者生产邮件，比如确认用户的电子邮件，请查看[第8章](aefbed90-7a63-4611-b430-85d216ab03c0.xhtml)，*处理通信渠道*
 
 本步骤中使用的电子邮件消息内容非常简单，但电子邮件可能比这更复杂。
 
@@ -804,7 +804,7 @@ $ python3 email_task.py -c email_config.ini destination_email@server.com
 message['To'] = ','.join(recipients)
 ```
 
-电子邮件可以以 HTML 格式定义，并附有纯文本和附件。基本操作是设置一个`MIMEMultipart`，然后附加组成邮件的每个 MIME 部分：
+电子邮件可以以HTML格式定义，并附有纯文本和附件。基本操作是设置一个`MIMEMultipart`，然后附加组成邮件的每个MIME部分：
 
 ```py
 from email.mime.multipart import MIMEMultipart
@@ -816,12 +816,12 @@ with open('path/image', 'rb') as image:
  part2 = MIMEImage(image.read()) message.attach(part2)
 ```
 
-最常见的 SMPT 连接是`SMPT_SSL`，它更安全，需要登录和密码，但也存在普通的未经身份验证的 SMPT；请查看您的电子邮件提供商的文档。
+最常见的SMPT连接是`SMPT_SSL`，它更安全，需要登录和密码，但也存在普通的未经身份验证的SMPT；请查看您的电子邮件提供商的文档。
 
-请记住，这个步骤是为简单的通知而设计的。如果附加不同的信息，电子邮件可能会变得非常复杂。如果您的目标是为客户或任何一般群体发送电子邮件，请尝试使用第八章，*处理通信渠道*中的想法。
+请记住，这个步骤是为简单的通知而设计的。如果附加不同的信息，电子邮件可能会变得非常复杂。如果您的目标是为客户或任何一般群体发送电子邮件，请尝试使用[第8章](aefbed90-7a63-4611-b430-85d216ab03c0.xhtml)，*处理通信渠道*中的想法。
 
 # 另请参阅
 
-+   在第一章，*让我们开始自动化之旅*中的*添加命令行选项*步骤
++   在[第1章](e139aa50-5631-4b75-9257-d4eb2e12ef90.xhtml)，*让我们开始自动化之旅*中的*添加命令行选项*步骤
 
 +   准备任务的步骤
