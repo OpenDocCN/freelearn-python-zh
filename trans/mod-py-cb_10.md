@@ -985,7 +985,7 @@ Counter({8: 10, 19: 1})**
 
 我们已经计算了相互偏移 T 的*x*值之间的相关性。如果 T = 0，我们将每个项目与自身进行比较，相关性为*r[xx]*（0）= 1。
 
-我们将使用一些我们怀疑其中有季节信号的数据。这是来自[`www.esrl.noaa.gov/gmd/ccgg/trends/`](http://www.esrl.noaa.gov/gmd/ccgg/trends/)的数据。我们可以访问ftp://ftp.cmdl.noaa.gov/ccg/co2/trends/co2_mm_mlo.txt来下载原始数据文件。
+我们将使用一些我们怀疑其中有季节信号的数据。这是来自[`www.esrl.noaa.gov/gmd/ccgg/trends/`](http://www.esrl.noaa.gov/gmd/ccgg/trends/)的数据。我们可以访问 ftp://ftp.cmdl.noaa.gov/ccg/co2/trends/co2_mm_mlo.txt 来下载原始数据文件。
 
 文件有一些以`#`开头的前言行。这些必须从数据中过滤掉。我们将使用第八章中的 *Picking a subset – three ways to filter* 配方，*Functional and Reactive Programming Features*，它将删除无用的行。
 
