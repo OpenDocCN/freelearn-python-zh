@@ -215,101 +215,101 @@ StopIteration
 1.  首先，我们想要编写一个函数，根据通用公式*α*n *= α*1 *+ (n – 1)d* 返回第*n*项：
 
 ```py
-    def a_n(a1, d, n):
-        '''Return the n-th term of the arithmetic sequence.
-        :a1: first term of the sequence. Integer or real.
-        :n: the n-th term in sequence
-        returns: n-th term. Integer or real.'''
-        an = a1 + (n - 1)*d
-        return an
-    ```
+def a_n(a1, d, n):
+    '''Return the n-th term of the arithmetic sequence.
+    :a1: first term of the sequence. Integer or real.
+    :n: the n-th term in sequence
+    returns: n-th term. Integer or real.'''
+    an = a1 + (n - 1)*d
+    return an
+```
 
 通过这样做，我们获得了序列的第*n*项，而无需知道任何其他前面的项。例如，让我们用参数`(4, 3, 10)`调用我们的函数：
 
 ```py
-    a_n(4, 3, 10)
-    ```
+a_n(4, 3, 10)
+```
 
 我们将得到以下输出：
 
 ```py
-    31
-    ```
+31
+```
 
 1.  现在，让我们编写一个函数，它将初始项`a1`递增`d`，`n`次，并将所有项存储在列表中：
 
 ```py
-    def a_seq(a1, d, n):
-        '''Obtain the whole arithmetic sequence up to n.
-        :a1: first term of the sequence. Integer or real.
-        :d: common difference of the sequence. Integer or real.
-        :n: length of sequence
-        returns: sequence as a list.'''
-        sequence = []
-        for _ in range(n):
-            sequence.append(a1)
-            a1 = a1 + d
-        return sequence
-    ```
+def a_seq(a1, d, n):
+    '''Obtain the whole arithmetic sequence up to n.
+    :a1: first term of the sequence. Integer or real.
+    :d: common difference of the sequence. Integer or real.
+    :n: length of sequence
+    returns: sequence as a list.'''
+    sequence = []
+    for _ in range(n):
+        sequence.append(a1)
+        a1 = a1 + d
+    return sequence
+```
 
 1.  要检查结果列表，请添加以下代码：
 
 ```py
-    a_seq(4, 3, 10)
-    ```
+a_seq(4, 3, 10)
+```
 
 输出如下：
 
 ```py
-    [4, 7, 10, 13, 16, 19, 22, 25, 28, 31]
-    ```
+[4, 7, 10, 13, 16, 19, 22, 25, 28, 31]
+```
 
 在这里，我们得到了一个长度为 10 的算术序列，从`4`开始，增加 3。
 
 1.  现在，让我们生成无限序列。我们可以使用之前介绍的 Python 生成器来实现这一点：
 
 ```py
-    def infinite_a_sequence(a1, d):
-        while True:
-            yield a1
-            a1 = a1 + d
-    for i in infinite_a_sequence(4,3):
-        print(i, end=" ")
-    ```
+def infinite_a_sequence(a1, d):
+    while True:
+        yield a1
+        a1 = a1 + d
+for i in infinite_a_sequence(4,3):
+    print(i, end=" ")
+```
 
 如果运行上述代码，您会注意到我们必须手动中止执行；否则，`for`循环将永远打印出序列的元素。使用 Python 生成器的另一种方法是，如前所述，直接在生成器对象（这里是`infinite_a_sequence()`）上调用`next()`方法。
 
 1.  让我们通过调用`sum()` Python 方法来计算我们序列的项的和：
 
 ```py
-    sum(a_seq(4, 3, 10))
-    ```
+sum(a_seq(4, 3, 10))
+```
 
 输出如下：
 
 ```py
-    175
-    ```
+175
+```
 
 1.  最后，实现*α*n *= α*1 *+ (n – 1)d* 公式，这给我们算术级数，以便我们可以将其与我们的求和结果进行比较：
 
 ```py
-    def a_series(a1, d, n):
-        result = n * (a1 + a_n(a1, d, n)) / 2
-        return result
-    ```
+def a_series(a1, d, n):
+    result = n * (a1 + a_n(a1, d, n)) / 2
+    return result
+```
 
 1.  运行函数，如下：
 
 ```py
-    a_series(4, 3, 10)
-    ```
+a_series(4, 3, 10)
+```
 
 输出如下：
 
 ```py
-    175.0
-    ```
+175.0
+```
 
 注意
 
@@ -408,82 +408,82 @@ sum_n(2, 3, 10)
 1.  编写一个函数，接受可变数量的参数（`*args`）并计算任何元素与其前一个元素之间的比率（从第二个元素开始）。然后，检查找到的所有比率是否相同，并返回它们的唯一值。否则，函数返回`-1`（序列没有唯一的公共比率）：
 
 ```py
-    def find_ratio(*args):
-        arg0=args[0]
-        ratios = []
-        for arg in args[1:]:
-            ratio = round(arg/arg0,8)
-            arg0=arg
-            ratios.append(ratio)
-        if len(set(ratios)) == 1:
-            return ratio
-        else:
-            return -1
-    ```
+def find_ratio(*args):
+    arg0=args[0]
+    ratios = []
+    for arg in args[1:]:
+        ratio = round(arg/arg0,8)
+        arg0=arg
+        ratios.append(ratio)
+    if len(set(ratios)) == 1:
+        return ratio
+    else:
+        return -1
+```
 
 1.  现在，检查`find_ratio`函数的两种不同情况。首先，让我们使用以下序列：
 
 ```py
-    find_ratio(1,2,4,8,16,32,64,128,256,512)
-    ```
+find_ratio(1,2,4,8,16,32,64,128,256,512)
+```
 
 输出如下：
 
 ```py
-    2.0
-    ```
+2.0
+```
 
 1.  现在，让我们使用以下序列：
 
 ```py
-    find_ratio(1,2,3)
-    ```
+find_ratio(1,2,3)
+```
 
 输出如下：
 
 ```py
-    -1
-    ```
+-1
+```
 
 如前面的输出所示，`find_ratio`函数打印出比率，如果存在的话，或者如果序列不是几何序列，则打印`-1`。
 
 1.  现在，编写第二个函数，读取一个序列并打印出下一个项将是什么。为此，读取一个（逗号分隔的）数字列表，找到它们的比率，然后预测下一个项：
 
 ```py
-    def find_next(*args):
-        if find_ratio(*args) == -1:
-            raise ValueError('The sequence you entered' \
-                             'is not a geometric sequence. '\
-                             'Please check input.')
-        else:
-            return args[-1]*find_ratio(*args)
-    ```
+def find_next(*args):
+    if find_ratio(*args) == -1:
+        raise ValueError('The sequence you entered' \
+                         'is not a geometric sequence. '\
+                         'Please check input.')
+    else:
+        return args[-1]*find_ratio(*args)
+```
 
 请注意，我们要通过调用我们之前编写的`find_ratio()`函数来检查序列是否具有公共比率。如果没有，就引发一个错误；如果有，就找到下一个项并返回它。
 
 1.  通过使用以下序列来检查它是否有效：
 
 ```py
-    find_next(1,2,4)
-    ```
+find_next(1,2,4)
+```
 
 以下是前面代码的输出：
 
 ```py
-    8.0
-    ```
+8.0
+```
 
 1.  现在，尝试使用不同的序列：
 
 ```py
-    find_next(1.36,0.85680,0.539784,0.34006392)
-    ```
+find_next(1.36,0.85680,0.539784,0.34006392)
+```
 
 输出如下：
 
 ```py
-    0.2142402696
-    ```
+0.2142402696
+```
 
 它有效。在第一种情况下，明显的结果`8.0`被打印出来。在第二种情况下，找到并打印出了递减的几何序列的不太明显的结果。总之，我们能够编写一个函数，检测几何序列，找到它的比率，并用它来预测下一个序列项。这在现实生活中非常有用，比如需要验证复利利率的情况。
 
@@ -538,57 +538,57 @@ factorial(11)
 1.  定义一个 Python 函数，它是递归的，并实现了前面给出的序列的第*n*个元素的关系：
 
 ```py
-    def p_n(n):
-        if n < 1:
-            return -1
-        elif n == 1:
-            return 1
-        elif n == 2:
-            return 7
-        elif n == 3:
-            return 2
-        else:
-            pn = (3*p_n(n-2) - p_n(n-1) )/ (p_n(n-3) + 1)
-            return pn
-    ```
+def p_n(n):
+    if n < 1:
+        return -1
+    elif n == 1:
+        return 1
+    elif n == 2:
+        return 7
+    elif n == 3:
+        return 2
+    else:
+        pn = (3*p_n(n-2) - p_n(n-1) )/ (p_n(n-3) + 1)
+        return pn
+```
 
 在这里，我们首先定义了基本情况，也就是在简介中给出的已知结果：如果*n=1*，那么*P=1*，如果*n=2*，那么*P=7*，如果*n=3*，那么*P=2*。我们还包括了*n<1*的情况。这是无效的输入，惯例上，我们的函数返回值为`-1`。这使得我们的函数*有界*，并且受到保护，不会进入无限循环和无效输入。一旦处理了这些情况，我们就定义了递归关系。
 
 1.  现在，让我们测试我们的函数，并打印出序列的前 10 个值（三个对应于基本情况，另外七个是我们要找的）：
 
 ```py
-    for i in range(1,11):
-        print(p_n(i))
-    ```
+for i in range(1,11):
+    print(p_n(i))
+```
 
 输出如下：
 
 ```py
-    1
-    7
-    2
-    9.5
-    -0.4375
-    9.645833333333334
-    -1.0436507936507937
-    53.29982363315697
-    -5.30073825572847
-    -3784.586609737289
-    ```
+1
+7
+2
+9.5
+-0.4375
+9.645833333333334
+-1.0436507936507937
+53.29982363315697
+-5.30073825572847
+-3784.586609737289
+```
 
 从前面的输出中可以看出，我们的函数有效，并返回了序列的已知值（*P*1 *= 1*，*P*2 *= 7*，和*P*3 *= 2*）以及我们正在寻找的下一个项（*P_1*到*P_10*）。
 
 1.  作为奖励，让我们使用`matplotlib`模块绘制我们的发现。我们将创建一个包含序列前九个值的列表，然后用`pyplot`绘制它：
 
 ```py
-    from matplotlib import pyplot as plt
-    plist = []
-    for i in range(1,40):
-        plist.append(p_n(i))
+from matplotlib import pyplot as plt
+plist = []
+for i in range(1,40):
+    plist.append(p_n(i))
 
-    plt.plot(plist, linestyle='--', marker='o', color='b')
-    plt.show()
-    ```
+plt.plot(plist, linestyle='--', marker='o', color='b')
+plt.show()
+```
 
 输出如下：
 
@@ -664,57 +664,57 @@ hypotenuse(a = 3, b = 4)
 1.  导入`numpy`和`pyplot`库：
 
 ```py
-    import numpy as np
-    from matplotlib import pyplot as plt
-    ```
+import numpy as np
+from matplotlib import pyplot as plt
+```
 
 现在，编写一个函数，当给定两边*p*1 和*p*2 时，使用毕达哥拉斯定理返回斜边：
 
 ```py
-    def find_hypotenuse(p1, p2):
-        p3 = round( (p1**2 + p2**2)**0.5, 8)
-        return p3
-    ```
+def find_hypotenuse(p1, p2):
+    p3 = round( (p1**2 + p2**2)**0.5, 8)
+    return p3
+```
 
 1.  现在，让我们编写另一个函数，实现`sin`、`cos`和`tan`函数的关系。输入是给定角的邻边、对边和斜边的长度，结果是三角函数值的元组：
 
 ```py
-    def find_trig(adjacent, opposite, hypotenuse):
-        '''Returns the tuple (sin, cos, tan)'''
-        return opposite/hypotenuse, adjacent/hypotenuse, \
-               opposite/adjacent
-    ```
+def find_trig(adjacent, opposite, hypotenuse):
+    '''Returns the tuple (sin, cos, tan)'''
+    return opposite/hypotenuse, adjacent/hypotenuse, \
+           opposite/adjacent
+```
 
 1.  现在，编写绘制三角形的函数。为简单起见，将直角放在坐标轴的原点（0,0），第一个输入点沿*x*轴放在（p1,0），第二个输入点沿*y*轴放在（0,p2）：
 
 ```py
-    def plot_triangle(p1, p2, lw=5):
-        x = [0, p1, 0]
-        y = [0, 0, p2]
-        n = ['0', 'p1', 'p2']
-        fig, ax = plt.subplots(figsize=(p1,p2))
-        # plot points
-        ax.scatter(x, y,  s=400, c="#8C4799", alpha=0.4)
-        ax.annotate(find_hypotenuse(p1,p2),(p1/2,p2/2))
+def plot_triangle(p1, p2, lw=5):
+    x = [0, p1, 0]
+    y = [0, 0, p2]
+    n = ['0', 'p1', 'p2']
+    fig, ax = plt.subplots(figsize=(p1,p2))
+    # plot points
+    ax.scatter(x, y,  s=400, c="#8C4799", alpha=0.4)
+    ax.annotate(find_hypotenuse(p1,p2),(p1/2,p2/2))
 
-        # plot edges
-        ax.plot([0, p1], [0, 0], lw=lw, color='r')
-        ax.plot([0, 0], [0, p2], lw=lw, color='b')
-        ax.plot([0, p1], [p2, 0], lw=lw, color='y')
-        for i, txt in enumerate(n):
-            ax.annotate(txt, (x[i], y[i]), va='center')
-    ```
+    # plot edges
+    ax.plot([0, p1], [0, 0], lw=lw, color='r')
+    ax.plot([0, 0], [0, p2], lw=lw, color='b')
+    ax.plot([0, p1], [p2, 0], lw=lw, color='y')
+    for i, txt in enumerate(n):
+        ax.annotate(txt, (x[i], y[i]), va='center')
+```
 
 在这里，我们创建了包含点的列表`x`和`y`，还有一个标签列表`n`。然后，我们创建了一个`pyplot`对象，首先绘制点，然后绘制边。最后两行用于注释我们的绘图；即，在我们的点旁边添加标签（从列表`n`中）。
 
 1.  我们需要选择两个点来定义一个三角形。然后，我们需要调用我们的函数来显示绘图：
 
 ```py
-    p01 = 4
-    p02 = 4
-    print(find_trig(p01,p02,find_hypotenuse(p01,p02)))
-    plot_triangle(p01,p02)
-    ```
+p01 = 4
+p02 = 4
+print(find_trig(p01,p02,find_hypotenuse(p01,p02)))
+plot_triangle(p01,p02)
+```
 
 第一行打印三角函数`sin`、`cos`和`tan`的值。然后，我们绘制我们的三角形，在这种情况下是等腰三角形，因为它有两条相等长度的边。
 
@@ -729,18 +729,18 @@ hypotenuse(a = 3, b = 4)
 1.  最后，为了对`sin`和`cos`三角函数有一个总体概述，让我们绘制它们：
 
 ```py
-    x = np.linspace(0, 10, 200)
-    sin = np.sin(x)
-    cos = np.cos(x)
-    plt.xticks([0, np.pi/2, np.pi, 3*np.pi/2, 2*np.pi, \
-                5*np.pi/2, 3*np.pi], \
-               ['0','','\u03C0','','2\u03C0','','3\u03C0'])
-    plt.plot(x, sin, marker='o', label='sin')
-    plt.plot(x, cos, marker='x', label='cos')
-    plt.legend(loc="upper left")
-    plt.ylim(-1.1, 1.6)
-    plt.show()
-    ```
+x = np.linspace(0, 10, 200)
+sin = np.sin(x)
+cos = np.cos(x)
+plt.xticks([0, np.pi/2, np.pi, 3*np.pi/2, 2*np.pi, \
+            5*np.pi/2, 3*np.pi], \
+           ['0','','\u03C0','','2\u03C0','','3\u03C0'])
+plt.plot(x, sin, marker='o', label='sin')
+plt.plot(x, cos, marker='x', label='cos')
+plt.legend(loc="upper left")
+plt.ylim(-1.1, 1.6)
+plt.show()
+```
 
 输出将如下所示：
 
@@ -879,42 +879,42 @@ print(acos(cos(0.2)))
 1.  导入`atan`（arctan 或反正切）函数：
 
 ```py
-    from math import atan, pi
-    ```
+from math import atan, pi
+```
 
 1.  使用`BC`和`AC`找到*θ*的正切：
 
 ```py
-    AC = 33
-    BC = 20
-    tan_th = BC/AC
-    print(tan_th)
-    ```
+AC = 33
+BC = 20
+tan_th = BC/AC
+print(tan_th)
+```
 
 输出如下：
 
 ```py
-    0.6060606060606061
-    ```
+0.6060606060606061
+```
 
 1.  然后，通过取反正切函数来找到角度。其参数是*θ*的正切：
 
 ```py
-    theta = atan(tan_th)
-    ```
+theta = atan(tan_th)
+```
 
 1.  将其转换为度并打印出值：
 
 ```py
-    theta_degrees = theta*180/pi
-    print(theta_degrees)
-    ```
+theta_degrees = theta*180/pi
+print(theta_degrees)
+```
 
 输出如下：
 
 ```py
-    31.218402764346372
-    ```
+31.218402764346372
+```
 
 因此，答案是我们需要转动 31.22 度才能正确导航。
 
@@ -925,15 +925,15 @@ print(acos(cos(0.2)))
 在 Python 中，使用以下代码：
 
 ```py
-    AB = (AC**2 + BC**2)**0.5
-    print(AB)
-    ```
+AB = (AC**2 + BC**2)**0.5
+print(AB)
+```
 
 输出如下：
 
 ```py
-    38.58756276314948
-    ```
+38.58756276314948
+```
 
 课程将是 38.59 公里。
 
@@ -978,18 +978,18 @@ print(acos(cos(0.2)))
 1.  让我们绘制这个函数，看看它是如何变化的。首先，加载必要的库：
 
 ```py
-    from matplotlib import pyplot as plt
-    import numpy as np
-    ```
+from matplotlib import pyplot as plt
+import numpy as np
+```
 
 1.  然后，通过使用`numpy`的`arctan`方法，通过定义域`x`和值`y`来绘制函数。这些可以使用`pyplot`的`plot()`方法轻松绘制，如下所示：
 
 ```py
-    x = np.linspace(0.1, 50, 2000)
-    y = np.arctan(7*x / (30+x**2) )
-    plt.plot(x,y)
-    plt.show()
-    ```
+x = np.linspace(0.1, 50, 2000)
+y = np.arctan(7*x / (30+x**2) )
+plt.plot(x,y)
+plt.show()
+```
 
 输出将如下所示：
 
@@ -1002,29 +1002,29 @@ print(acos(cos(0.2)))
 1.  确定函数的最大值`y`和位置`x`，以及发生这种情况的位置：
 
 ```py
-    ymax = max(y)
-    xmax = x[list(y).index(ymax)]
-    print(round(xmax,2), round(ymax,2))
-    ```
+ymax = max(y)
+xmax = x[list(y).index(ymax)]
+print(round(xmax,2), round(ymax,2))
+```
 
 输出如下：
 
 ```py
-    5.47 0.57
-    ```
+5.47 0.57
+```
 
 1.  最后，将找到的角度转换为度数：
 
 ```py
-    ymax_degrees = round(ymax * 180 / np.pi, 2)
-    print(ymax_degrees)
-    ```
+ymax_degrees = round(ymax * 180 / np.pi, 2)
+print(ymax_degrees)
+```
 
 输出如下：
 
 ```py
-    32.58
-    ```
+32.58
+```
 
 因此，观察角度*θ*2 在 32.58 度时达到最大值，并且当我们站在距屏幕 5.47 米的地方时发生。我们使用三角函数和反三角函数，在 Python 中实现它们，并找到了一个来自现实生活中*几何*设置的问题的答案。这更加清楚地说明了几何和三角学概念如何被有用地和轻松地编码以提供预期的结果。
 
@@ -1228,91 +1228,91 @@ print(theta)
 1.  导入必要的库，即`numpy`和`matplotlib`：
 
 ```py
-    import numpy as np
-    import matplotlib.pyplot as plt
-    ```
+import numpy as np
+import matplotlib.pyplot as plt
+```
 
 1.  创建一个函数，接受两个向量作为输入，每个向量作为一个列表，绘制它们，并可选择绘制它们的和向量：
 
 ```py
-    def plot_vectors(vec1, vec2, isSum = False):
+def plot_vectors(vec1, vec2, isSum = False):
 
-        label1 = "A"; label2 = "B"; label3 = "A+B"
-        orig = [0.0, 0.0]  # position of origin of axes
-    ```
+    label1 = "A"; label2 = "B"; label3 = "A+B"
+    orig = [0.0, 0.0]  # position of origin of axes
+```
 
 `vec1`和`vec2`列表中分别包含两个实数。每对数字表示相应向量的端点（头部）坐标，而原点设置为（0,0）。标签设置为`"A"`、`"B"`和`"A+B"`，但您可以更改它们，甚至将它们设置为`plot_vectors`函数的变量（或不带）默认值。布尔变量`isSum`默认设置为`False`，和`vec1+vec2`将不会被绘制，除非显式设置为`True`。
 
 1.  接下来，我们将坐标放在一个`matplotlib.pyplot`对象上：
 
 ```py
-        ax = plt.axes()
-        ax.annotate(label1, [vec1[0]+0.5,vec1[1]+0.5] )   
-        # shift position of label for better visibility
-        ax.annotate(label2, [vec2[0]+0.5,vec2[1]+0.5] )
-        if isSum: 
-            vec3 = [vec1[0]+vec2[0], vec1[1]+vec2[1]]     
-            # if isSum=True calculate the sum of the two vectors
-            ax.annotate(label3, [vec3[0]+0.5,vec3[1]+0.5] )
+    ax = plt.axes()
+    ax.annotate(label1, [vec1[0]+0.5,vec1[1]+0.5] )   
+    # shift position of label for better visibility
+    ax.annotate(label2, [vec2[0]+0.5,vec2[1]+0.5] )
+    if isSum: 
+        vec3 = [vec1[0]+vec2[0], vec1[1]+vec2[1]]     
+        # if isSum=True calculate the sum of the two vectors
+        ax.annotate(label3, [vec3[0]+0.5,vec3[1]+0.5] )
 
-        ax.arrow(*orig, *vec1, head_width=0.4, head_length=0.65)
-        ax.arrow(*orig, *vec2, head_width=0.4, head_length=0.65, \
-                 ec='blue')
-        if isSum:
-            ax.arrow(*orig, *vec3, head_width=0.2, \
-                     head_length=0.25, ec='yellow')
-            # plot the vector sum as well
+    ax.arrow(*orig, *vec1, head_width=0.4, head_length=0.65)
+    ax.arrow(*orig, *vec2, head_width=0.4, head_length=0.65, \
+             ec='blue')
+    if isSum:
+        ax.arrow(*orig, *vec3, head_width=0.2, \
+                 head_length=0.25, ec='yellow')
+        # plot the vector sum as well
 
-        plt.grid()
-        e=3 
-        # shift limits by e for better visibility
-        plt.xlim(min(vec1[0],vec2[0],0)-e, max(vec1[0],\
-                     vec2[0],0)+e) 
-        # set plot limits to the min/max of coordinates
-        plt.ylim(min(vec1[1],vec2[1],0)-e, max(vec1[1],\
-                     vec2[1],0)+e) 
-        # so that all vectors are inside the plot area
-    ```
+    plt.grid()
+    e=3 
+    # shift limits by e for better visibility
+    plt.xlim(min(vec1[0],vec2[0],0)-e, max(vec1[0],\
+                 vec2[0],0)+e) 
+    # set plot limits to the min/max of coordinates
+    plt.ylim(min(vec1[1],vec2[1],0)-e, max(vec1[1],\
+                 vec2[1],0)+e) 
+    # so that all vectors are inside the plot area
+```
 
 在这里，我们使用 annotate 方法向我们的向量添加标签，以及 arrow 方法来创建我们的向量。星号运算符`*`用于解包列表`orig`和`vec1`、`vec2`中的参数，以便它们可以从`arrow()`方法中正确读取。`plt.grid()`在绘图的背景上创建一个网格，以引导眼睛，这是可选的。添加`e`参数是为了使绘图限制足够宽，绘图可读。
 
 1.  接下来，给我们的图表加上标题并绘制它：
 
 ```py
-        plt.title('Vector sum',fontsize=14)
-        plt.show()
-        plt.close()
-    ```
+    plt.title('Vector sum',fontsize=14)
+    plt.show()
+    plt.close()
+```
 
 1.  现在，我们将编写一个函数，计算两个输入向量之间的角度，如前所述，借助点（内）积：
 
 ```py
-    def find_angle(vec1, vec2, isRadians = True, isSum = False):
-        vec1 = np.array(vec1)
-        vec2 = np.array(vec2)
+def find_angle(vec1, vec2, isRadians = True, isSum = False):
+    vec1 = np.array(vec1)
+    vec2 = np.array(vec2)
 
-        product12 = np.dot(vec1,vec2)
-        cos_theta = product12/(np.dot(vec1,vec1)**0.5 * \
-                               np.dot(vec2,vec2)**0.5 )
-        cos_theta = round(cos_theta, 12)
-        theta = np.arccos(cos_theta)
+    product12 = np.dot(vec1,vec2)
+    cos_theta = product12/(np.dot(vec1,vec1)**0.5 * \
+                           np.dot(vec2,vec2)**0.5 )
+    cos_theta = round(cos_theta, 12)
+    theta = np.arccos(cos_theta)
 
-        plot_vectors(vec1, vec2, isSum=isSum)
-        if isRadians:
-            return theta
-        else:
-            return 180*theta/np.pi
-    ```
+    plot_vectors(vec1, vec2, isSum=isSum)
+    if isRadians:
+        return theta
+    else:
+        return 180*theta/np.pi
+```
 
 首先，我们将我们的输入列表映射到`numpy`数组，以便我们可以使用这个模块的方法。我们计算点积（命名为`product12`），然后将其除以`vec1`的大小与`vec2`的大小的乘积。回想一下，向量的大小由其与自身的点积的平方根（或`**0.5`）给出。根据点积的定义，我们知道这个数量是两个向量之间角度的余弦。最后，在四舍五入余弦以避免输入错误后，利用`numpy`的`arccos`方法计算角度。
 
 1.  我们希望将我们编写的两个函数`find_angle`和`plot_vectors`结合起来，并在后者内部调用前者。我们还希望给用户选择以弧度（`isRadians=True`）或度数（`isRadians=False`）打印角度结果的选项。现在我们准备尝试我们的函数。首先，让我们尝试使用两个垂直向量：
 
 ```py
-    ve1 = [1,5]
-    ve2 = [5,-1]
-    find_angle(ve1, ve2, isRadians = False, isSum = True)
-    ```
+ve1 = [1,5]
+ve2 = [5,-1]
+find_angle(ve1, ve2, isRadians = False, isSum = True)
+```
 
 输出如下：
 
@@ -1325,10 +1325,10 @@ print(theta)
 1.  现在，让我们尝试使用相同的函数创建两个共线向量：
 
 ```py
-    ve1 = [1,5]
-    ve2 = [0.5,2.5]
-    find_angle(ve1, ve2, isRadians = False, isSum = True)
-    ```
+ve1 = [1,5]
+ve2 = [0.5,2.5]
+find_angle(ve1, ve2, isRadians = False, isSum = True)
+```
 
 输出如下：
 
@@ -1341,10 +1341,10 @@ print(theta)
 1.  最后，再次使用相同的函数，让我们创建两个通用向量：
 
 ```py
-    ve1 = [1,5]
-    ve2 = [-3,-5]
-    find_angle(ve1, ve2, isRadians = False, isSum = True)
-    ```
+ve1 = [1,5]
+ve2 = [-3,-5]
+find_angle(ve1, ve2, isRadians = False, isSum = True)
+```
 
 输出如下：
 
@@ -1626,56 +1626,56 @@ Rectangular Coordinates = (3.0000000000000004+3.9999999999999996j)
 1.  导入必要的库，并且可以选择地抑制任何警告（这不是必需的，但如果您希望保持输出整洁，这是有帮助的，因为警告取决于您使用的库的版本）：
 
 ```py
-    import cmath
-    from matplotlib import pyplot as plt
-    import warnings
-    warnings.filterwarnings("ignore")
-    ```
+import cmath
+from matplotlib import pyplot as plt
+import warnings
+warnings.filterwarnings("ignore")
+```
 
 1.  现在，定义一个函数，该函数使用 Matplotlib 的`pyplot`函数来绘制输入复数`c`的向量：
 
 ```py
-    def plot_complex(c, color='b', label=None):
+def plot_complex(c, color='b', label=None):
 
-        ax = plt.axes()
-        ax.arrow(0, 0, c.real, c.imag, head_width=0.2, \
-                 head_length=0.3, color=color)
-        ax.annotate(label, xy=(0.6*c.real, 1.15*c.imag))
-        plt.xlim(-3,3)
-        plt.ylim(-3,3)
-        plt.grid(b=True, which='major') #<-- plot grid lines
-    ```
+    ax = plt.axes()
+    ax.arrow(0, 0, c.real, c.imag, head_width=0.2, \
+             head_length=0.3, color=color)
+    ax.annotate(label, xy=(0.6*c.real, 1.15*c.imag))
+    plt.xlim(-3,3)
+    plt.ylim(-3,3)
+    plt.grid(b=True, which='major') #<-- plot grid lines
+```
 
 1.  现在，创建一个函数，读取输入复数`c`，通过调用之前定义的函数绘制它，然后根据输入的相位研究不同的情况。绘制操作前后的相位以及结果，以便将结果向量与输入向量进行比较：
 
 ```py
-    def mult_complex(c, label1='old', label2='new'):
+def mult_complex(c, label1='old', label2='new'):
 
-        phase = cmath.phase(c)
-        plot_complex(c, label=label1)
+    phase = cmath.phase(c)
+    plot_complex(c, label=label1)
 
-        if phase == 0:
-            result = -1
-        elif phase < 0:
-            print('old phase:', phase)
-            result = cmath.sqrt(c)
-            print('new phase:', cmath.phase(result))
-            plot_complex(result, 'red', label=label2)
-        elif phase > 0:
-            print('old phase:', phase)
-            result = c*c
-            print('new phase:', cmath.phase(result))
-            plot_complex(result, 'red', label=label2)
-        return result
-    ```
+    if phase == 0:
+        result = -1
+    elif phase < 0:
+        print('old phase:', phase)
+        result = cmath.sqrt(c)
+        print('new phase:', cmath.phase(result))
+        plot_complex(result, 'red', label=label2)
+    elif phase > 0:
+        print('old phase:', phase)
+        result = c*c
+        print('new phase:', cmath.phase(result))
+        plot_complex(result, 'red', label=label2)
+    return result
+```
 
 请注意，对于负相位，我们取`c`的平方根（使用`math.sqrt()`方法），而对于正相位，我们取`c`的平方。
 
 1.  现在，转换一个位于复平面上半部的数字：
 
 ```py
-    mult_complex(1 + 1.2j)
-    ```
+mult_complex(1 + 1.2j)
+```
 
 输出如下：
 
@@ -1688,8 +1688,8 @@ Rectangular Coordinates = (3.0000000000000004+3.9999999999999996j)
 1.  接下来，转换一个位于复平面下半部的数字：
 
 ```py
-    mult_complex(1-1.2j)
-    ```
+mult_complex(1-1.2j)
+```
 
 输出如下：
 
@@ -1706,12 +1706,12 @@ Rectangular Coordinates = (3.0000000000000004+3.9999999999999996j)
 1.  编写一个`while`迭代，调用`mult_complex()`函数*n*次，以检查如果我们保持向量旋转会发生什么：
 
 ```py
-    c0 = 1+1.2j
-    n = 0
-    while n < 6:
-        c0 = mult_complex(c0, None, str(n))
-        n+=1
-    ```
+c0 = 1+1.2j
+n = 0
+while n < 6:
+    c0 = mult_complex(c0, None, str(n))
+    n+=1
+```
 
 输出如下：
 

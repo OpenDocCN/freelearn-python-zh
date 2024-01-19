@@ -194,12 +194,12 @@ student_df
 1.  在一个新的 Jupyter 笔记本中，导入 pandas、Matplotlib 和 seaborn，并使用 pandas 读取上述数据集：
 
 ```py
-    import pandas as pd
-    import matplotlib.pyplot as plt
-    import seaborn as sns
-    weather_df = pd.read_csv('weather_data.csv')
-    weather_df.head()
-    ```
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+weather_df = pd.read_csv('weather_data.csv')
+weather_df.head()
+```
 
 当打印出此数据集的前五行时，您应该看到以下输出：
 
@@ -212,9 +212,9 @@ student_df
 1.  在笔记本中的下一个代码单元中，计算数据集中所有天气类型的计数（发生次数），并使用`plot.bar()`方法可视化该信息：
 
 ```py
-    weather_df['weather'].value_counts().plot.bar()
-    plt.show()
-    ```
+weather_df['weather'].value_counts().plot.bar()
+plt.show()
+```
 
 此代码将产生以下输出：
 
@@ -225,10 +225,10 @@ student_df
 1.  使用`plot.pie(autopct='%1.1f%%')`方法将与上一步相同的信息可视化为饼图：
 
 ```py
-    weather_df['weather'].value_counts().plot.pie(autopct='%1.1f%%')
-    plt.ylabel('')
-    plt.show()
-    ```
+weather_df['weather'].value_counts().plot.pie(autopct='%1.1f%%')
+plt.ylabel('')
+plt.show()
+```
 
 此代码将产生以下输出：
 
@@ -239,31 +239,31 @@ student_df
 1.  现在，我们想要可视化这些天气类型的计数，以及每种天气类型在每个城市中所占百分比的信息。首先，可以使用`groupby()`方法计算这些信息，如下所示：
 
 ```py
-    weather_df.groupby(['weather', 'city'])['weather'].count()\
-                                            .unstack('city')
-    ```
+weather_df.groupby(['weather', 'city'])['weather'].count()\
+                                        .unstack('city')
+```
 
 输出如下：
 
 ```py
-    city       New York    San Francisco    St Louis
-    weather            
-    cloudy     3.0         NaN              3.0
-    rain       1.0         NaN              1.0
-    sunny      1.0         4.0              1.0
-    windy      NaN         1.0              NaN
-    ```
+city       New York    San Francisco    St Louis
+weather            
+cloudy     3.0         NaN              3.0
+rain       1.0         NaN              1.0
+sunny      1.0         4.0              1.0
+windy      NaN         1.0              NaN
+```
 
 我们看到这个对象包含了我们想要的信息。例如，看看表中`cloudy`行，我们可以看到`cloudy`天气类型在纽约出现了三次，在圣路易斯也出现了三次。我们有多个地方有`NaN`值，表示没有发生。
 
 1.  最后，我们将上一步中的表可视化为堆叠条形图：
 
 ```py
-    weather_df.groupby(['weather', 'city'])\
-                       ['weather'].count().unstack('city')\
-                       .fillna(0).plot(kind='bar', stacked=True)
-    plt.show()
-    ```
+weather_df.groupby(['weather', 'city'])\
+                   ['weather'].count().unstack('city')\
+                   .fillna(0).plot(kind='bar', stacked=True)
+plt.show()
+```
 
 这将产生以下图表：
 
@@ -373,47 +373,47 @@ sample_sd = np.std(samples)
 1.  创建一个新的 Jupyter 笔记本，在第一个代码单元格中，导入我们将在本练习中使用的库，如下所示：
 
 ```py
-    import pandas as pd
-    import numpy as np
-    import matplotlib.pyplot as plt
-    ```
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+```
 
 在我们将要使用的数据集中，第一列名为`'Column 1'`，包含来自均值为 4，标准差为 10 的正态分布的 1,000 个样本。第二列名为`'Column 2'`，包含来自 1 到 2 的均匀分布的 1,000 个样本。第三列名为`'Column 3'`，包含参数为 2 和 5 的 Beta 分布的 1,000 个样本。在下一个代码单元格中，读取我们预先为您生成的`'data.csv'`文件（可以在[`packt.live/2YTrdKt`](https://packt.live/2YTrdKt)找到），使用 pandas 作为`DataFrame`对象，并打印出前五行：
 
 ```py
-    df = pd.read_csv('data.csv')
-    df.head()
-    ```
+df = pd.read_csv('data.csv')
+df.head()
+```
 
 您应该看到以下数字：
 
 ```py
-         Column 1    Column 2    Column 3
-    0    -1.231356   1.305917    0.511994
-    1    7.874195    1.291636    0.155032
-    2    13.169984   1.274973    0.183988
-    3    13.442203   1.549126    0.391825
-    4    -8.032985   1.895236    0.398122
-    ```
+     Column 1    Column 2    Column 3
+0    -1.231356   1.305917    0.511994
+1    7.874195    1.291636    0.155032
+2    13.169984   1.274973    0.183988
+3    13.442203   1.549126    0.391825
+4    -8.032985   1.895236    0.398122
+```
 
 1.  在下一个单元格中，编写一个名为`min_max_scale()`的函数，它接受三个参数：`data`、`a`和`b`。如前所述，`data`应该是数据集属性中的值数组，而`a`和`b`指定输入数据要转换成的范围。
 
 1.  考虑到我们对`data`的（隐含）要求（一个 NumPy 数组或 pandas 的`Series`对象——两者都可以利用矢量化），使用矢量化操作实现缩放函数：
 
 ```py
-    def min_max_scale(data, a, b):
-        data_max = np.max(data)
-        data_min = np.min(data)
-        return a + (b - a) * (data - data_min) / (data_max \
-                                                  - data_min)
-    ```
+def min_max_scale(data, a, b):
+    data_max = np.max(data)
+    data_min = np.min(data)
+    return a + (b - a) * (data - data_min) / (data_max \
+                                              - data_min)
+```
 
 1.  首先我们将考虑`'Column 1'`属性中的数据。为了观察这个函数对我们数据的影响，让我们首先可视化当前数据的分布：
 
 ```py
-    plt.hist(df['Column 1'], bins=20)
-    plt.show()
-    ```
+plt.hist(df['Column 1'], bins=20)
+plt.show()
+```
 
 这段代码将生成类似以下的图表：
 
@@ -424,9 +424,9 @@ sample_sd = np.std(samples)
 1.  现在，使用相同的`plt.hist()`函数来可视化调用`df['Column 1']`上的`min_max_scale()`函数返回的值，将数据缩放到范围`[-3, 3]`：
 
 ```py
-    plt.hist(min_max_scale(df['Column 1'], -3, 3), bins=20)
-    plt.show()
-    ```
+plt.hist(min_max_scale(df['Column 1'], -3, 3), bins=20)
+plt.show()
+```
 
 这将产生以下结果：
 
@@ -439,16 +439,16 @@ sample_sd = np.std(samples)
 1.  对于`'Column 2'`属性，进行相同的过程（使用直方图可视化缩放前后的数据）。首先，我们可视化原始数据：
 
 ```py
-    plt.hist(df['Column 2'], bins=20)
-    plt.show()
-    ```
+plt.hist(df['Column 2'], bins=20)
+plt.show()
+```
 
 1.  现在我们可视化缩放后的数据，应该缩放到范围`[0, 1]`：
 
 ```py
-    plt.hist(min_max_scale(df['Column 2'], 0, 1), bins=20)
-    plt.show()
-    ```
+plt.hist(min_max_scale(df['Column 2'], 0, 1), bins=20)
+plt.show()
+```
 
 1.  第二个代码块应该生成类似以下的图表：![图 3.13：缩放数据的直方图](img/B15968_03_13.jpg)
 
@@ -457,17 +457,17 @@ sample_sd = np.std(samples)
 1.  对于`'Column 3'`属性，进行相同的过程（使用直方图可视化缩放前后的数据）。首先，我们可视化原始数据：
 
 ```py
-    plt.hist(df['Column 3'], bins=20)
-    plt.show()
-    ```
+plt.hist(df['Column 3'], bins=20)
+plt.show()
+```
 
 1.  现在我们可视化缩放后的数据，应该缩放到范围`[10, 20]`：
 
 ```py
-    plt.hist(min_max_scale(df['Column 3'], 10, 20), \
-                              bins=20)
-    plt.show()
-    ```
+plt.hist(min_max_scale(df['Column 3'], 10, 20), \
+                          bins=20)
+plt.show()
+```
 
 1.  第二个代码块应该生成类似以下的图表：![图 3.14：缩放数据的直方图](img/B15968_03_14.jpg)
 
@@ -550,31 +550,31 @@ sample_sd = np.std(samples)
 1.  在新的 Jupyter 笔记本的第一个单元格中，导入 NumPy 和 Matplotlib：
 
 ```py
-    import numpy as np
-    import matplotlib.pyplot as plt
-    ```
+import numpy as np
+import matplotlib.pyplot as plt
+```
 
 1.  在一个新的单元格中，使用`np.random.normal()`随机生成来自正态分布的 1,000 个样本。计算均值、中位数和 25%和 75%四分位数的描述性统计如下：
 
 ```py
-    samples = np.random.normal(size=1000)
-    mean = np.mean(samples)
-    median = np.median(samples)
-    q1 = np.percentile(samples, 25)
-    q2 = np.percentile(samples, 75)
-    ```
+samples = np.random.normal(size=1000)
+mean = np.mean(samples)
+median = np.median(samples)
+q1 = np.percentile(samples, 25)
+q2 = np.percentile(samples, 75)
+```
 
 1.  在下一个单元格中，使用直方图可视化样本。我们还将通过绘制垂直线来指示各种描述性统计的位置——在均值点处绘制红色垂直线，在中位数处绘制黑色垂直线，在每个四分位数处绘制蓝色线：
 
 ```py
-    plt.hist(samples, bins=20)
-    plt.axvline(x=mean, c='red', label='Mean')
-    plt.axvline(x=median, c='black', label='Median')
-    plt.axvline(x=q1, c='blue', label='Interquartile')
-    plt.axvline(x=q2, c='blue')
-    plt.legend()
-    plt.show()
-    ```
+plt.hist(samples, bins=20)
+plt.axvline(x=mean, c='red', label='Mean')
+plt.axvline(x=median, c='black', label='Median')
+plt.axvline(x=q1, c='blue', label='Interquartile')
+plt.axvline(x=q2, c='blue')
+plt.legend()
+plt.show()
+```
 
 请注意，我们在各种绘图函数调用中结合了`label`参数的规范和`plt.legend()`函数。这将帮助我们创建一个带有适当标签的图例，如下所示：
 
@@ -587,19 +587,19 @@ sample_sd = np.std(samples)
 1.  将相同的过程应用于参数为`2`和`5`的 Beta 分布，如下所示：
 
 ```py
-    samples = np.random.beta(2, 5, size=1000)
-    mean = np.mean(samples)
-    median = np.median(samples)
-    q1 = np.percentile(samples, 25)
-    q2 = np.percentile(samples, 75)
-    plt.hist(samples, bins=20)
-    plt.axvline(x=mean, c='red', label='Mean')
-    plt.axvline(x=median, c='black', label='Median')
-    plt.axvline(x=q1, c='blue', label='Interquartile')
-    plt.axvline(x=q2, c='blue')
-    plt.legend()
-    plt.show()
-    ```
+samples = np.random.beta(2, 5, size=1000)
+mean = np.mean(samples)
+median = np.median(samples)
+q1 = np.percentile(samples, 25)
+q2 = np.percentile(samples, 75)
+plt.hist(samples, bins=20)
+plt.axvline(x=mean, c='red', label='Mean')
+plt.axvline(x=median, c='black', label='Median')
+plt.axvline(x=q1, c='blue', label='Interquartile')
+plt.axvline(x=q2, c='blue')
+plt.legend()
+plt.show()
+```
 
 这应该生成一个类似于以下的图表：
 
@@ -610,19 +610,19 @@ sample_sd = np.std(samples)
 1.  将相同的过程应用于参数为`5`的 Gamma 分布，如下所示：
 
 ```py
-    samples = np.random.gamma(5, size=1000)
-    mean = np.mean(samples)
-    median = np.median(samples)
-    q1 = np.percentile(samples, 25)
-    q2 = np.percentile(samples, 75)
-    plt.hist(samples, bins=20)
-    plt.axvline(x=mean, c='red', label='Mean')
-    plt.axvline(x=median, c='black', label='Median')
-    plt.axvline(x=q1, c='blue', label='Interquartile')
-    plt.axvline(x=q2, c='blue')
-    plt.legend()
-    plt.show()
-    ```
+samples = np.random.gamma(5, size=1000)
+mean = np.mean(samples)
+median = np.median(samples)
+q1 = np.percentile(samples, 25)
+q2 = np.percentile(samples, 75)
+plt.hist(samples, bins=20)
+plt.axvline(x=mean, c='red', label='Mean')
+plt.axvline(x=median, c='black', label='Median')
+plt.axvline(x=q1, c='blue', label='Interquartile')
+plt.axvline(x=q2, c='blue')
+plt.legend()
+plt.show()
+```
 
 这应该生成一个类似于以下的图表：
 
@@ -935,11 +935,11 @@ plt.show()
 1.  在一个新的 Jupyter 笔记本中，导入`pandas`、`matplotlib`、`seaborn`，以及从 SciPy 的`stats`模块中导入`ttest_ind()`方法：
 
 ```py
-    import pandas as pd
-    from scipy.stats import ttest_ind
-    import matplotlib.pyplot as plt
-    import seaborn as sns
-    ```
+import pandas as pd
+from scipy.stats import ttest_ind
+import matplotlib.pyplot as plt
+import seaborn as sns
+```
 
 1.  读取您下载的数据集。前五行应该如下所示：![图 3.25：读取数据集的前五行](img/B15968_03_25.jpg)
 
@@ -948,11 +948,11 @@ plt.show()
 1.  在下一个代码单元中，使用 seaborn 生成代表该数据集相关矩阵的热力图。从可视化中，确定哪对属性彼此相关性最高：
 
 ```py
-    sns.heatmap(df.corr(), center=0, annot=True)
-    bottom, top = plt.ylim()
-    plt.ylim(bottom + 0.5, top - 0.5)
-    plt.show()
-    ```
+sns.heatmap(df.corr(), center=0, annot=True)
+bottom, top = plt.ylim()
+plt.ylim(bottom + 0.5, top - 0.5)
+plt.show()
+```
 
 这段代码应该产生以下可视化效果：
 
@@ -965,9 +965,9 @@ plt.show()
 1.  使用 seaborn 中的`jointplot()`方法，创建一个组合图，其中包括一个二维平面上的散点图，点的坐标分别对应于'x'和'y'中的个别值，以及代表这些值分布的两个直方图。观察输出并决定这两个分布是否具有相同的均值：
 
 ```py
-    sns.jointplot(x='x', y='y', data=df)
-    plt.show()
-    ```
+sns.jointplot(x='x', y='y', data=df)
+plt.show()
+```
 
 这将产生以下输出：
 
@@ -980,14 +980,14 @@ plt.show()
 1.  不使用可视化，而是使用 0.05 的显著性水平运行 t 检验，以决定这两个属性是否具有相同的均值：
 
 ```py
-    ttest_ind(df['x'], df['y']).pvalue
-    ```
+ttest_ind(df['x'], df['y']).pvalue
+```
 
 该命令将产生以下输出：
 
 ```py
-    0.011436482008949079
-    ```
+0.011436482008949079
+```
 
 这个 p 值确实低于 0.05，使我们能够拒绝这两个分布具有相同均值的零假设，尽管它们高度相关。
 
@@ -1086,15 +1086,15 @@ array([2.10790143, 4.15087605])
 1.  在新的 Jupyter 笔记本的第一个代码单元中，导入以下工具：
 
 ```py
-    import numpy as np
-    from sklearn.datasets import make_blobs
-    from sklearn.model_selection import train_test_split
-    from sklearn.metrics import accuracy_score
-    from sklearn.neighbors import KNeighborsClassifier
-    from sklearn.svm import SVC
-    from sklearn.ensemble import GradientBoostingClassifier
-    import matplotlib.pyplot as plt
-    ```
+import numpy as np
+from sklearn.datasets import make_blobs
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
+from sklearn.ensemble import GradientBoostingClassifier
+import matplotlib.pyplot as plt
+```
 
 注意
 
@@ -1105,11 +1105,11 @@ array([2.10790143, 4.15087605])
 1.  这些合成数据可以使用我们从`sklearn.datasets`包中导入的`make_blobs`函数生成：
 
 ```py
-    n_samples = 10000
-    centers = [(-2, 2), (0, 0), (2, 2)]
-    X, y = make_blobs(n_samples=n_samples, centers=centers, \
-                      shuffle=False, random_state=0)
-    ```
+n_samples = 10000
+centers = [(-2, 2), (0, 0), (2, 2)]
+X, y = make_blobs(n_samples=n_samples, centers=centers, \
+                  shuffle=False, random_state=0)
+```
 
 正如我们所看到的，这个函数接受一个名为`n_samples`的参数，该参数指定应该生成的数据点的数量。另一方面，`centers`参数指定了个体点所属的总组数以及它们各自的坐标。在这种情况下，我们有三组围绕着`(-2, 2)`，`(0, 0)`和`(2, 2)`的点。
 
@@ -1122,39 +1122,39 @@ array([2.10790143, 4.15087605])
 1.  打印出这些变量，看看我们正在处理什么。将`X`作为输入类型：
 
 ```py
-    X
-    ```
+X
+```
 
 这将产生以下输出：
 
 ```py
-    array([[-0.23594765,  2.40015721],
-           [-1.02126202,  4.2408932 ],
-           [-0.13244201,  1.02272212],
-           ...,
-           [ 0.98700332,  2.27166174],
-           [ 1.89100272,  1.94274075],
-           [ 0.94106874,  1.67347156]])
-    ```
+array([[-0.23594765,  2.40015721],
+       [-1.02126202,  4.2408932 ],
+       [-0.13244201,  1.02272212],
+       ...,
+       [ 0.98700332,  2.27166174],
+       [ 1.89100272,  1.94274075],
+       [ 0.94106874,  1.67347156]])
+```
 
 现在，将`y`作为输入类型：
 
 ```py
-    y
-    ```
+y
+```
 
 这将产生以下输出：
 
 ```py
-    array([0, 0, 0, ..., 2, 2, 2])
-    ```
+array([0, 0, 0, ..., 2, 2, 2])
+```
 
 1.  现在，在一个新的代码单元中，我们想要使用散点图来可视化这个数据集：
 
 ```py
-    plt.scatter(X[:, 0], X[:, 1], c=y)
-    plt.show()
-    ```
+plt.scatter(X[:, 0], X[:, 1], c=y)
+plt.show()
+```
 
 我们使用数据集中的第一个属性作为* x *坐标，第二个属性作为散点图中点的* y *坐标。我们还可以通过将我们的预测目标`y`传递给参数`c`来快速指定属于同一组的点应该具有相同的颜色。
 
@@ -1169,46 +1169,46 @@ array([2.10790143, 4.15087605])
 1.  `sklearn.model_selection`包中的`train_test_split()`函数简化了将数据集拆分为训练和测试数据集的过程。在下一个代码单元中，输入以下代码：
 
 ```py
-    X_train, X_test, \
-    y_train, y_test = train_test_split(X, y, shuffle=True, \
-                                       random_state=0)
-    ```
+X_train, X_test, \
+y_train, y_test = train_test_split(X, y, shuffle=True, \
+                                   random_state=0)
+```
 
 正如我们所看到的，这个函数返回了四个对象的元组，我们将其分配给了前面的四个变量：`X_train`包含训练数据集中独立特征的数据，而`X_test`包含测试数据集中相同特征的数据，`y_train`和`y_test`也是如此。
 
 1.  我们可以通过考虑我们的训练数据集的形状来检查拆分是如何进行的：
 
 ```py
-    X_train.shape
-    (7500, 2)
-    ```
+X_train.shape
+(7500, 2)
+```
 
 默认情况下，训练数据集是从输入数据的 75%中随机选择的，而测试数据集是剩余的数据，随机洗牌。这由前面的输出所示，我们的训练数据集中有 7500 条记录，原始数据中有 10000 条记录。
 
 1.  在下一个代码单元中，我们将初始化我们导入的机器学习模型，而不指定任何超参数（稍后会详细介绍）：
 
 ```py
-    models = [KNeighborsClassifier(), SVC(),\
-              GradientBoostingClassifier()]
-    ```
+models = [KNeighborsClassifier(), SVC(),\
+          GradientBoostingClassifier()]
+```
 
 1.  接下来，我们将循环遍历每个模型，在我们的训练数据集上对它们进行训练，并最终使用`accuracy_score`函数计算它们在测试数据集上的准确性，该函数比较`y_test`中存储的值和我们模型在`y_pred`中生成的预测值：
 
 ```py
-    for model in models:
-        model.fit(X_train, y_train)
-        y_pred = model.predict(X_test)
+for model in models:
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
 
-        print(f'{type(model).__name__}: {accuracy_score(y_pred, y_test)}')
-    ```
+    print(f'{type(model).__name__}: {accuracy_score(y_pred, y_test)}')
+```
 
 同样，`fit()`方法用于在`X_train`和`y_train`上训练每个模型，而`predict()`用于让模型对`X_test`进行预测。这将产生类似以下的输出：
 
 ```py
-    KNeighborsClassifier: 0.8792
-    SVC: 0.8956
-    GradientBoostingClassifier: 0.8876
-    ```
+KNeighborsClassifier: 0.8792
+SVC: 0.8956
+GradientBoostingClassifier: 0.8876
+```
 
 从这里，我们可以看到`SVC`模型表现最好，这在某种程度上是预期的，因为它是使用的三种模型中最复杂的模型。在实际的模型选择过程中，您可能会加入更多的任务，比如交叉验证，以确保最终选择的模型是最佳选项。
 

@@ -122,20 +122,20 @@ Python 有两个内置的测试框架。其中一个检查文档字符串中包�
 +   在命令提示符下：
 
 ```py
-         **$ python3.5 -m doctest code/ch11_r01.py** 
+ **$ python3.5 -m doctest code/ch11_r01.py** 
 
-        ```
+```
 
 如果所有示例都通过，就不会有输出。使用`-v`选项会产生总结测试的详细输出。
 
 +   通过包含一个`__name__ == '__main__'`部分。这可以导入 doctest 模块并执行`testmod()`函数：
 
 ```py
-                        if __name__ == '__main__': 
-                            import doctest 
-                            doctest.testmod() 
+                if __name__ == '__main__': 
+                    import doctest 
+                    doctest.testmod() 
 
-        ```
+```
 
 如果所有示例都通过，就不会有输出。要查看一些输出，可以使用`testmod()`函数的`verbose=1`参数创建更详细的输出。
 
@@ -144,96 +144,96 @@ Python 有两个内置的测试框架。其中一个检查文档字符串中包�
 1.  用摘要开始文档字符串：
 
 ```py
-            '''Computes the binomial coefficient. 
-            This shows how many combinations of 
-            *n* things taken in groups of size *k*. 
+        '''Computes the binomial coefficient. 
+        This shows how many combinations of 
+        *n* things taken in groups of size *k*. 
 
-    ```
+```
 
 1.  包括参数定义：
 
 ```py
-            :param n: size of the universe 
-            :param k: size of each subset 
+        :param n: size of the universe 
+        :param k: size of each subset 
 
-    ```
+```
 
 1.  包括返回值定义：
 
 ```py
-            :returns: the number of combinations 
+        :returns: the number of combinations 
 
-    ```
+```
 
 1.  模拟一个在 Python 的`>>>`提示下使用该函数的示例：
 
 ```py
-     **>>> binom(52, 5) 
-          2598960** 
+ **>>> binom(52, 5) 
+      2598960** 
 
-    ```
+```
 
 1.  用适当的引号关闭长文档字符串：
 
 ```py
-            ''' 
+        ''' 
 
-    ```
+```
 
 ### 为有状态对象编写示例
 
 1.  用摘要编写类级别的文档字符串：
 
 ```py
-            '''Computes summary statistics. 
+        '''Computes summary statistics. 
 
-            ''' 
+        ''' 
 
-    ```
+```
 
 我们留下了填写示例的空间。
 
 1.  使用摘要编写方法级别的文档字符串。这是`add()`方法：
 
 ```py
-            def add(self, value): 
-                '''Adds a value to be summarized. 
+        def add(self, value): 
+            '''Adds a value to be summarized. 
 
-                :param value: Adds a new value to the collection. 
-                ''' 
-                self.counts[value] += 1 
+            :param value: Adds a new value to the collection. 
+            ''' 
+            self.counts[value] += 1 
 
-    ```
+```
 
 1.  这是`mean()`方法：
 
 ```py
-            @property 
-            def mean(self): 
-                '''Computes the mean of the collection. 
-                :return: mean value as a float 
-                ''' 
-                s0 = sum(f for v,f in self.counts.items()) 
-                s1 = sum(v*f for v,f in self.counts.items()) 
-                return s1/s0 
+        @property 
+        def mean(self): 
+            '''Computes the mean of the collection. 
+            :return: mean value as a float 
+            ''' 
+            s0 = sum(f for v,f in self.counts.items()) 
+            s1 = sum(v*f for v,f in self.counts.items()) 
+            return s1/s0 
 
-    ```
+```
 
 `median()`方法和其他写入的方法也需要类似的字符串。
 
 1.  扩展类级别的文档字符串具体示例。在这种情况下，我们将写两个。第一个示例显示`add()`方法没有返回值，但改变了对象的状态。`mean()`方法显示了这个状态：
 
 ```py
-          **>>> s = Summary() 
-          >>> s.add(8) 
-          >>> s.add(9) 
-          >>> s.add(9) 
-          >>> round(s.mean, 2) 
-          8.67 
-          >>> s.median 
-          9** 
+      **>>> s = Summary() 
+      >>> s.add(8) 
+      >>> s.add(9) 
+      >>> s.add(9) 
+      >>> round(s.mean, 2) 
+      8.67 
+      >>> s.median 
+      9** 
 
-    ```
+```
 
 我们将平均值的结果四舍五入，以避免显示一个长的浮点值，在所有平台上可能没有完全相同的文本表示。当我们运行 doctest 时，通常会得到一个静默的响应，因为测试通过了。
 
@@ -404,48 +404,48 @@ Doctest 程序会找到这些测试用例，并将其包含在整体测试套件
 1.  在模块中创建一个全局的`__test__`变量：
 
 ```py
-            __test__ = { 
+        __test__ = { 
 
-            } 
+        } 
 
-    ```
+```
 
 我们留下了空间来插入一个或多个测试用例。
 
 1.  对于每个测试用例，提供一个名称和一个示例的占位符：
 
 ```py
-            __test__ = { 
-            'GIVEN_binom_WHEN_wrong_relationship_THEN_error':  
-            ''' 
-                example goes here. 
-            ''', 
-            } 
+        __test__ = { 
+        'GIVEN_binom_WHEN_wrong_relationship_THEN_error':  
+        ''' 
+            example goes here. 
+        ''', 
+        } 
 
-    ```
+```
 
 1.  包括一个带有`doctest`指令注释的调用，`IGNORE_EXCEPTION_DETAIL`。这将替换“示例在这里”：
 
 ```py
-     **>>> binom(5, 52)  # doctest: +IGNORE_EXCEPTION_DETAIL** 
+ **>>> binom(5, 52)  # doctest: +IGNORE_EXCEPTION_DETAIL** 
 
-    ```
+```
 
 该指令以`# doctest:`开头。指令通过`+`启用，通过`-`禁用。
 
 1.  包括一个实际的回溯消息。这是*示例在这里*的一部分；它在`>>>`语句之后显示预期的响应：
 
 ```py
-            Traceback (most recent call last):
-              File "/Library/Frameworks/Python.framework/Versions/3.5/lib/python3.5/doctest.py", line 1320, in __run 
-                compileflags, 1), test.globs) 
-              File "<doctest __main__.__test__.GIVEN_binom_WHEN_wrong_relationship_THEN_error[0]>", line 1, in <module> 
-                binom(5, 52) 
-              File "/Users/slott/Documents/Writing/Python Cookbook/code/ch11_r01.py", line 24, in binom 
-                return factorial(n) // (factorial(k) * factorial(n-k)) 
-            ValueError: factorial() not defined for negative values 
+        Traceback (most recent call last):
+          File "/Library/Frameworks/Python.framework/Versions/3.5/lib/python3.5/doctest.py", line 1320, in __run 
+            compileflags, 1), test.globs) 
+          File "<doctest __main__.__test__.GIVEN_binom_WHEN_wrong_relationship_THEN_error[0]>", line 1, in <module> 
+            binom(5, 52) 
+          File "/Users/slott/Documents/Writing/Python Cookbook/code/ch11_r01.py", line 24, in binom 
+            return factorial(n) // (factorial(k) * factorial(n-k)) 
+        ValueError: factorial() not defined for negative values 
 
-    ```
+```
 
 1.  以`File...`开头的三行将被忽略。`ValueError:`行将被检查以确保测试产生了预期的异常。
 
@@ -607,55 +607,55 @@ Doctest 将忽略第一个`Traceback...`行和最后一个`ValueError:...`行之
 1.  导入必要的库并定义函数：
 
 ```py
-            import csv 
-            def raw_reader(data_file): 
-                """ 
-                Read from a given, open file. 
+        import csv 
+        def raw_reader(data_file): 
+            """ 
+            Read from a given, open file. 
 
-                :param data_file: Open file, ready to be processed. 
-                :returns: iterator over individual rows as dictionaries. 
+            :param data_file: Open file, ready to be processed. 
+            :returns: iterator over individual rows as dictionaries. 
 
-                Example: 
+            Example: 
 
-                """ 
-                data_reader = csv.DictReader(data_file) 
-                for row in data_reader: 
-                    yield row 
+            """ 
+            data_reader = csv.DictReader(data_file) 
+            for row in data_reader: 
+                yield row 
 
-    ```
+```
 
 我们在文档字符串中包含了示例标题。
 
 1.  我们可以用`io`包中的`StringIO`类的实例替换实际数据文件。这可以在示例内部使用，以提供固定的样本数据：
 
 ```py
-     **>>> from io import StringIO 
-          >>> mock_file = StringIO('''lat,lon,date,time 
-          ... 32.8321,-79.9338,2012-11-27,09:15:00 
-          ... ''') 
-          >>> row_iter = iter(raw_reader(mock_file))** 
+ **>>> from io import StringIO 
+      >>> mock_file = StringIO('''lat,lon,date,time 
+      ... 32.8321,-79.9338,2012-11-27,09:15:00 
+      ... ''') 
+      >>> row_iter = iter(raw_reader(mock_file))** 
 
-    ```
+```
 
 1.  从概念上讲，测试用例是这样的。这段代码将无法正常工作，因为键将被打乱。但是，可以很容易地重构它：
 
 ```py
-     **>>> row = next(row_iter) 
-          >>> row 
-          {'time': '09:15:00', 'lat': '32.8321', etc. }** 
+ **>>> row = next(row_iter) 
+      >>> row 
+      {'time': '09:15:00', 'lat': '32.8321', etc. }** 
 
-    ```
+```
 
 我们省略了其余的输出，因为每次运行测试时都会有所不同：
 
 代码必须这样编写，以强制将键按固定顺序排列：
 
 ```py
-     **>>> sorted(row.items())  # doctest: +NORMALIZE_WHITESPACE 
-          [('date', '2012-11-27'), ('lat', '32.8321'), 
-          ('lon', '-79.9338'), ('time', '09:15:00')]** 
+ **>>> sorted(row.items())  # doctest: +NORMALIZE_WHITESPACE 
+      [('date', '2012-11-27'), ('lat', '32.8321'), 
+      ('lon', '-79.9338'), ('time', '09:15:00')]** 
 
-    ```
+```
 
 排序后的项目是按一致的顺序排列的。
 
@@ -664,34 +664,34 @@ Doctest 将忽略第一个`Traceback...`行和最后一个`ValueError:...`行之
 1.  导入必要的库并定义函数：
 
 ```py
-            from math import * 
-            def phi(n): 
-                """ 
-                The cumulative distribution function for the standard normal 
-                distribution. 
+        from math import * 
+        def phi(n): 
+            """ 
+            The cumulative distribution function for the standard normal 
+            distribution. 
 
-                :param n: number of standard deviations 
-                :returns: cumulative fraction of values below n. 
+            :param n: number of standard deviations 
+            :returns: cumulative fraction of values below n. 
 
-                Examples: 
-                """ 
-                return (1+erf(n/sqrt(2)))/2 
+            Examples: 
+            """ 
+            return (1+erf(n/sqrt(2)))/2 
 
-    ```
+```
 
 我们在文档字符串中留下了示例的空间。
 
 1.  对于每个示例，包括显式使用`round()`：
 
 ```py
-     **>>> round(phi(0), 3) 
-          0.399 
-          >>> round(phi(-1), 3) 
-          0.242 
-          >>> round(phi(+1), 3) 
-          0.242** 
+ **>>> round(phi(0), 3) 
+      0.399 
+      >>> round(phi(-1), 3) 
+      0.242 
+      >>> round(phi(+1), 3) 
+      0.242** 
 
-    ```
+```
 
 浮点值四舍五入，以便浮点实现细节的差异不会导致看似不正确的结果。
 
@@ -704,23 +704,23 @@ Doctest 将忽略第一个`Traceback...`行和最后一个`ValueError:...`行之
 +   我们可以编写针对每个键具体的测试用例：
 
 ```py
-     **>>> row['date'] 
-          '2012-11-27' 
-          >>> row['lat'] 
-          '32.8321' 
-          >>> row['lon'] 
-          '-79.9338' 
-          >>> row['time'] 
-          '09:15:00'** 
+ **>>> row['date'] 
+      '2012-11-27' 
+      >>> row['lat'] 
+      '32.8321' 
+      >>> row['lon'] 
+      '-79.9338' 
+      >>> row['time'] 
+      '09:15:00'** 
 
-    ```
+```
 
 +   我们可以将其转换为一个具有固定顺序的数据结构。`row.items()`的值是一个可迭代的键值对序列。顺序不是提前设置的，但我们可以使用以下方法来强制排序：
 
 ```py
-     **>>> sorted(row.items())** 
+ **>>> sorted(row.items())** 
 
-    ```
+```
 
 这将返回一个按顺序排列的键列表。这使我们能够创建一个一致的文字值，每次评估测试时都将是相同的。
 
@@ -837,58 +837,58 @@ Python `dict`对象出现在令人惊讶的许多地方：
 1.  我们将测试代码包含在与工作代码相同的模块中。这将遵循将测试和代码捆绑在一起的 doctest 模式。我们将使用`unittest`模块来创建测试类：
 
 ```py
-            import unittest 
-            import random 
+        import unittest 
+        import random 
 
-    ```
+```
 
 我们还将使用`random`来打乱输入数据。
 
 1.  创建一个`unittest.TestCase`的子类。为这个类提供一个显示测试意图的名称：
 
 ```py
-            class GIVEN_Summary_WHEN_1k_samples_THEN_mean(unittest.TestCase): 
+        class GIVEN_Summary_WHEN_1k_samples_THEN_mean(unittest.TestCase): 
 
-    ```
+```
 
 *GIVEN-WHEN-THEN*的名称非常长。我们将依赖`unittest`来发现`TestCase`的所有子类，这样我们就不必多次输入这个类名。
 
 1.  在这个类中定义一个`setUp()`方法，处理测试的*Given*方面。这将为测试处理创建一个上下文：
 
 ```py
-            def setUp(self): 
-                self.summary = Summary() 
-                self.data = list(range(1001)) 
-                random.shuffle(self.data) 
+        def setUp(self): 
+            self.summary = Summary() 
+            self.data = list(range(1001)) 
+            random.shuffle(self.data) 
 
-    ```
+```
 
 我们创建了一个包含`1,001`个样本的集合，值范围从`0`到`1,000`。平均值恰好是 500，中位数也是。我们将数据随机排序。
 
 1.  定义一个`runTest()`方法，处理测试的*When*方面。这将执行状态变化：
 
 ```py
-            def runTest(self): 
-                for sample in self.data: 
-                    self.summary.add(sample) 
+        def runTest(self): 
+            for sample in self.data: 
+                self.summary.add(sample) 
 
-    ```
+```
 
 1.  添加断言来实现测试的*Then*方面。这将确认状态变化是否正常工作：
 
 ```py
-            self.assertEqual(500, self.summary.mean) 
-            self.assertEqual(500, self.summary.median) 
+        self.assertEqual(500, self.summary.mean) 
+        self.assertEqual(500, self.summary.median) 
 
-    ```
+```
 
 1.  为了使运行变得非常容易，添加一个主程序部分：
 
 ```py
-            if __name__ == "__main__": 
-                unittest.main() 
+        if __name__ == "__main__": 
+            unittest.main() 
 
-    ```
+```
 
 有了这个，测试可以在命令提示符下运行。也可以从命令行运行。
 
@@ -1145,39 +1145,39 @@ OK**
 要使用 doctest 测试，导入`doctest`模块。我们将把 doctest 示例与`TestCase`类结合起来，创建一个全面的测试套件：
 
 ```py
-            import unittest 
-            import doctest 
+        import unittest 
+        import doctest 
 
-    ```
+```
 
 我们假设`unittest`的`TestCase`类已经就位，我们正在向测试套件中添加更多的测试。
 
 1.  导入正在测试的模块。这个模块将包含一些 doctests 的字符串：
 
 ```py
-            import ch11_r01 
+        import ch11_r01 
 
-    ```
+```
 
 1.  要实现`load_tests`协议，请在测试模块中包含以下函数：
 
 ```py
-            def load_tests(loader, standard_tests, pattern): 
-                return standard_tests 
+        def load_tests(loader, standard_tests, pattern): 
+            return standard_tests 
 
-    ```
+```
 
 这个函数必须有这个名字才能被测试加载器找到。
 
 1.  要包含 doctest 测试，需要一个额外的加载器。我们将使用`doctest.DocTestSuite`类来创建一个测试套件。这些测试将被添加到作为`standard_tests`参数值提供的测试套件中：
 
 ```py
-            def load_tests(loader, standard_tests, pattern): 
-                dt = doctest.DocTestSuite(ch11_r01) 
-                standard_tests.addTests(dt) 
-                return standard_tests 
+        def load_tests(loader, standard_tests, pattern): 
+            dt = doctest.DocTestSuite(ch11_r01) 
+            standard_tests.addTests(dt) 
+            return standard_tests 
 
-    ```
+```
 
 `loader`参数是当前正在使用的测试用例加载器。`standard_tests`值将是默认加载的所有测试。通常，这是所有`TestCase`的子类的测试套件。模式值是提供给加载器的值。
 
@@ -1280,10 +1280,10 @@ OK**
 1.  对于这个示例，我们将假设`unittest`测试用例与被测试的代码是同一个模块。导入`unittest`和`unittest.mock`模块：
 
 ```py
-            import unittest 
-            from unittest.mock import * 
+        import unittest 
+        from unittest.mock import * 
 
-    ```
+```
 
 `unittest`模块只是被导入。要使用这个模块的特性，我们必须用`unittest.`来限定名称。从`unittest.mock`导入了所有名称，因此可以在没有任何限定符的情况下使用这些名称。我们将使用模拟模块的许多特性，而且长的限定名称很笨拙。
 
@@ -1292,17 +1292,17 @@ OK**
 1.  为测试创建以下骨架。我们提供了一个类定义，以及一个可以用来执行测试的主脚本：
 
 ```py
-            class GIVEN_data_WHEN_save_data_THEN_file(unittest.TestCase): 
-                def setUp(self): 
-                    '''GIVEN conditions for the test.''' 
+        class GIVEN_data_WHEN_save_data_THEN_file(unittest.TestCase): 
+            def setUp(self): 
+                '''GIVEN conditions for the test.''' 
 
-                def runTest(self): 
-                    '''WHEN and THEN conditions for this test.'''' 
+            def runTest(self): 
+                '''WHEN and THEN conditions for this test.'''' 
 
-            if __name__ == "__main__": 
-                unittest.main() 
+        if __name__ == "__main__": 
+            unittest.main() 
 
-    ```
+```
 
 我们没有定义`load_tests()`函数，因为我们没有任何文档字符串测试要包含。
 
@@ -1311,57 +1311,57 @@ OK**
 +   要处理的示例数据：
 
 ```py
-                    self.data = {'primes': [2, 3, 5, 7, 11, 13, 17, 19]} 
+            self.data = {'primes': [2, 3, 5, 7, 11, 13, 17, 19]} 
 
-        ```
+```
 
 +   `datetime`模块的模拟对象。这个对象提供了被测试单元使用的精确特性。`Mock`模块包含了`datetime`类的一个单一`Mock`类定义。在该类中，它提供了一个单一的模拟方法`utcnow()`，它总是提供相同的响应：
 
 ```py
-                    self.mock_datetime = Mock( 
-                        datetime = Mock( 
-                            utcnow = Mock( 
-                                return_value = datetime.datetime(2017, 7, 4, 1, 2, 3) 
-                            ) 
-                        ) 
+            self.mock_datetime = Mock( 
+                datetime = Mock( 
+                    utcnow = Mock( 
+                        return_value = datetime.datetime(2017, 7, 4, 1, 2, 3) 
                     ) 
+                ) 
+            ) 
 
-        ```
+```
 
 +   给出上面显示的`datetime`对象的预期文件名：
 
 ```py
-                    self.expected_name = 'extract_20170704010203.json' 
+            self.expected_name = 'extract_20170704010203.json' 
 
-        ```
+```
 
 +   需要进行一些额外的配置处理来建立*Given*条件。我们将删除要完全确保测试断言不使用来自先前测试运行的文件的任何先前版本：
 
 ```py
-                    self.expected_path = Path(self.expected_name) 
-                    if self.expected_path.exists(): 
-                        self.expected_path.unlink() 
+            self.expected_path = Path(self.expected_name) 
+            if self.expected_path.exists(): 
+                self.expected_path.unlink() 
 
-        ```
+```
 
 1.  `runTest()`方法将有两个部分：
 
 +   *When*处理。这将修补当前模块`__main__`，以便将对`datetime`的引用替换为`self.mock_datetime`对象。然后在修补的上下文中执行请求：
 
 ```py
-                    with patch('__main__.datetime', self.mock_datetime): 
-                        save_data(self.data) 
+            with patch('__main__.datetime', self.mock_datetime): 
+                save_data(self.data) 
 
-        ```
+```
 
 +   *Then*处理。在这种情况下，我们将打开预期的文件，加载内容，并确认结果与源数据匹配。这将以必要的断言结束。如果文件不存在，这将引发`IOError`异常：
 
 ```py
-                with self.expected_path.open() as result_file: 
-                    result_data = json.load(result_file) 
-                self.assertDictEqual(self.data, result_data) 
+            with self.expected_path.open() as result_file: 
+                result_data = json.load(result_file) 
+            self.assertDictEqual(self.data, result_data) 
 
-    ```
+```
 
 ## 它是如何工作的...
 
@@ -1515,43 +1515,43 @@ OK**
 1.  定义整体测试类的大纲：
 
 ```py
-            class GIVEN_resample_WHEN_evaluated_THEN_fair(unittest.TestCase): 
-                def setUp(self): 
+        class GIVEN_resample_WHEN_evaluated_THEN_fair(unittest.TestCase): 
+            def setUp(self): 
 
-                def runTest(self): 
+            def runTest(self): 
 
-            if __name__ == "__main__": 
-                unittest.main() 
+        if __name__ == "__main__": 
+            unittest.main() 
 
-    ```
+```
 
 我们已经包含了一个主程序，这样我们就可以简单地运行模块来测试它。在使用诸如 IDLE 之类的工具时，这很方便；我们可以在进行更改后使用*F5*键来测试模块。
 
 1.  定义`random.choice()`函数的模拟版本。我们将提供一个模拟数据集`self.data`，以及对`choice()`函数的模拟响应：
 
 ```py
-            self.expected_resample_data.self.data = [2, 3, 5, 7, 11, 13, 17, 19] 
-            self.expected_resample_data = [23, 29, 31, 37, 41, 43, 47, 53] 
-            self.mock_random = Mock( 
-                choice = Mock( 
-                    side_effect = self.expected_resample_data 
-                ) 
+        self.expected_resample_data.self.data = [2, 3, 5, 7, 11, 13, 17, 19] 
+        self.expected_resample_data = [23, 29, 31, 37, 41, 43, 47, 53] 
+        self.mock_random = Mock( 
+            choice = Mock( 
+                side_effect = self.expected_resample_data 
             ) 
+        ) 
 
-    ```
+```
 
 我们使用`side_effect`属性定义了`choice()`函数。这将从给定序列中一次返回一个值。我们提供了八个模拟值，这些值与源序列不同，因此我们可以很容易地识别`choice()`函数的输出。
 
 1.  定义测试的*When*和*Then*方面。在这种情况下，我们将修补`__main__`模块，以替换对`random`模块的引用。然后测试可以建立结果是否具有预期的值，并且`choice()`函数是否被多次调用：
 
 ```py
-            with patch('__main__.random', self.mock_random): 
-                resample_data = list(resample(self.data, 8)) 
+        with patch('__main__.random', self.mock_random): 
+            resample_data = list(resample(self.data, 8)) 
 
-            self.assertListEqual(self.expected_resample_data, resample_data) 
-            self.mock_random.choice.assert_has_calls( 8*[call(self.data)] ) 
+        self.assertListEqual(self.expected_resample_data, resample_data) 
+        self.mock_random.choice.assert_has_calls( 8*[call(self.data)] ) 
 
-    ```
+```
 
 ## 工作原理...
 
@@ -1632,9 +1632,9 @@ StopIteration**
 在本地计算机上创建和访问对象的 URL 将如下所示：
 
 ```py
-            http://localhost:9200/eventlog/event/ 
+        http://localhost:9200/eventlog/event/ 
 
-    ```
+```
 
 请求将在请求的正文中使用多个数据项。这些请求不需要任何 HTTP 头部用于安全或认证目的。
 
@@ -1643,9 +1643,9 @@ StopIteration**
 在远程服务器上处理对象的 URL 将如下所示：
 
 ```py
-            https://api.orchestrate.io/v0/eventlog/ 
+        https://api.orchestrate.io/v0/eventlog/ 
 
-    ```
+```
 
 请求还将使用多个 HTTP 头部向主机提供信息。接下来，我们将详细了解这项服务。
 
@@ -1748,14 +1748,14 @@ StopIteration**
 +   响应还将包括头信息。对于创建请求，这些将包括以下内容：
 
 ```py
-            [ 
-             ('Content-Type', 'application/json'), 
-             ('Location', '/v0/eventlog/12950a87ef024e43/refs/8e50b6bfc50b2dfa'), 
-             ('ETag', '"8e50b6bfc50b2dfa"'), 
-             ... 
-             ] 
+        [ 
+         ('Content-Type', 'application/json'), 
+         ('Location', '/v0/eventlog/12950a87ef024e43/refs/8e50b6bfc50b2dfa'), 
+         ('ETag', '"8e50b6bfc50b2dfa"'), 
+         ... 
+         ] 
 
-    ```
+```
 
 `Content-Type` 头告诉我们内容是以 JSON 编码的。`Location` 头提供了一个 URL，可以用来检索创建的对象。它还提供了一个 `ETag` 头，这是对象当前状态的哈希摘要；这有助于支持缓存对象的本地副本。其他头可能存在；我们在示例中只显示了 `...` 。
 
@@ -1839,78 +1839,78 @@ StopIteration**
 1.  这个示例将使用`unittest`和`doctest`来创建一个统一的测试套件。它将使用`unittest.mock`中的`Mock`类，以及`json`。由于这个模块是与被测试的单元分开的，它需要导入`ch11_r08_load`，该模块包含将被测试的类定义：
 
 ```py
-            import unittest 
-            from unittest.mock import * 
-            import doctest 
-            import json 
-            import ch11_r08_load 
+        import unittest 
+        from unittest.mock import * 
+        import doctest 
+        import json 
+        import ch11_r08_load 
 
-    ```
+```
 
 1.  这是一个测试用例的整体框架。我们将在下面填写这个测试的`setUp()`和`runTest()`方法。名称显示了当我们调用`load_eventlog()`时，我们得到了一个`ElasticClient`实例，然后进行了一个正确的 RESTful API 请求：
 
 ```py
-            class GIVEN_ElasticClient_WHEN_load_eventlog_THEN_request(unittest.TestCase): 
+        class GIVEN_ElasticClient_WHEN_load_eventlog_THEN_request(unittest.TestCase): 
 
-                def setUp(self): 
+            def setUp(self): 
 
-                def runTest(self): 
+            def runTest(self): 
 
-    ```
+```
 
 1.  `setUp()`方法的第一部分是一个模拟上下文管理器，提供类似于`urlopen()`函数的响应：
 
 ```py
-            def setUp(self): 
-                # The context manager object itself. 
-                self.mock_context = Mock( 
-                    __exit__ = Mock(return_value=None), 
-                    __enter__ = Mock( 
-                        side_effect = self.create_response 
-                    ),      
-                ) 
+        def setUp(self): 
+            # The context manager object itself. 
+            self.mock_context = Mock( 
+                __exit__ = Mock(return_value=None), 
+                __enter__ = Mock( 
+                    side_effect = self.create_response 
+                ),      
+            ) 
 
-                # The urlopen() function that returns a context. 
-                self.mock_urlopen = Mock( 
-                    return_value = self.mock_context, 
-                ) 
+            # The urlopen() function that returns a context. 
+            self.mock_urlopen = Mock( 
+                return_value = self.mock_context, 
+            ) 
 
-    ```
+```
 
 当调用`urlopen()`时，返回值是一个行为像上下文管理器的响应对象。模拟这个的最佳方法是返回一个模拟上下文管理器。模拟上下文管理器的`__enter__()`方法执行真正的工作来创建响应对象。在这种情况下，`side_effect`属性标识了一个辅助函数，该函数将被调用来准备从调用`__enter__()`方法的结果。`self.create_response`还没有被定义。我们将使用一个函数，定义如下。
 
 1.  `setUp()`方法的第二部分是一些要加载的模拟数据：
 
 ```py
-            # The test document. 
-            self.document = { 
-                "timestamp": "2016-06-15T17:57:54.715", 
-                "levelname": "INFO", 
-                "module": "ch09_r10", 
-                "message": "Sample Message One" 
-            } 
+        # The test document. 
+        self.document = { 
+            "timestamp": "2016-06-15T17:57:54.715", 
+            "levelname": "INFO", 
+            "module": "ch09_r10", 
+            "message": "Sample Message One" 
+        } 
 
-    ```
+```
 
 在一个更复杂的测试中，我们可能想要模拟一个大型的可迭代文档集合。
 
 1.  这是一个`create_response()`辅助方法，用于构建类似响应的对象。响应对象可能很复杂，因此我们定义了一个函数来创建它们：
 
 ```py
-            def create_response(self): 
-                self.database_id = hex(hash(self.mock_urlopen.call_args[0][0].data))[2:] 
-                self.location = '/v0/eventlog/{id}'.format(id=self.database_id) 
-                response_headers = [ 
-                    ('Location', self.location), 
-                    ('ETag', self.database_id), 
-                    ('Content-Type', 'application/json'), 
-                ] 
-                return Mock( 
-                    status = 201, 
-                    getheaders = Mock(return_value=response_headers) 
-                ) 
+        def create_response(self): 
+            self.database_id = hex(hash(self.mock_urlopen.call_args[0][0].data))[2:] 
+            self.location = '/v0/eventlog/{id}'.format(id=self.database_id) 
+            response_headers = [ 
+                ('Location', self.location), 
+                ('ETag', self.database_id), 
+                ('Content-Type', 'application/json'), 
+            ] 
+            return Mock( 
+                status = 201, 
+                getheaders = Mock(return_value=response_headers) 
+            ) 
 
-    ```
+```
 
 这个方法使用`self.mock_urlopen.call_args`来检查对这个`Mock`对象的最后一次调用。这个调用的参数是一个包含位置参数值和关键字参数的元组。第一个`[0]`索引从元组中选择位置参数值。第二个`[0]`索引选择第一个位置参数值。这将是要加载到数据库中的对象。`hex()`函数的值是一个包含`0x`前缀的字符串，我们将其丢弃。
 
@@ -1919,30 +1919,30 @@ StopIteration**
 1.  `runTest()`方法对被测试的模块进行了补丁。它定位了从`ch11_r08_load`到`urllib.request`和`urlopen()`函数的引用。这些引用被替换为`mock_urlopen`替代品：
 
 ```py
-            def runTest(self): 
-                with patch('ch11_r08_load.urllib.request.urlopen', self.mock_urlopen): 
-                    client = ch11_r08_load.ElasticClient('Aladdin', 'OpenSesame') 
-                    response = client.load_eventlog(self.document) 
+        def runTest(self): 
+            with patch('ch11_r08_load.urllib.request.urlopen', self.mock_urlopen): 
+                client = ch11_r08_load.ElasticClient('Aladdin', 'OpenSesame') 
+                response = client.load_eventlog(self.document) 
 
-                self.assertEqual(self.location, response) 
+            self.assertEqual(self.location, response) 
 
-                call_request = self.mock_urlopen.call_args[0][0] 
-                self.assertEqual( 
-                    'https://api.orchestrate.io/v0/eventlog', call_request.full_url) 
-                self.assertDictEqual( 
-                    {'Accept': 'application/json', 
-                     'Authorization': 'Basic QWxhZGRpbjpPcGVuU2VzYW1l', 
-                     'Content-type': 'application/json' 
-                    }, 
-                     call_request.headers) 
-                self.assertEqual('POST', call_request.method) 
-                self.assertEqual( 
-                    json.dumps(self.document).encode('utf-8'), call_request.data) 
+            call_request = self.mock_urlopen.call_args[0][0] 
+            self.assertEqual( 
+                'https://api.orchestrate.io/v0/eventlog', call_request.full_url) 
+            self.assertDictEqual( 
+                {'Accept': 'application/json', 
+                 'Authorization': 'Basic QWxhZGRpbjpPcGVuU2VzYW1l', 
+                 'Content-type': 'application/json' 
+                }, 
+                 call_request.headers) 
+            self.assertEqual('POST', call_request.method) 
+            self.assertEqual( 
+                json.dumps(self.document).encode('utf-8'), call_request.data) 
 
-                self.mock_context.__enter__.assert_called_once_with() 
-                self.mock_context.__exit__.assert_called_once_with(None, None, None) 
+            self.mock_context.__enter__.assert_called_once_with() 
+            self.mock_context.__exit__.assert_called_once_with(None, None, None) 
 
-    ```
+```
 
 这个测试遵循`ElasticClient`首先创建一个客户端对象的要求。它不使用实际的 API 密钥，而是使用用户名和密码，这将为`Authorization`头创建一个已知的值。`load_eventlog()`的结果是一个类似响应的对象，可以检查它是否具有正确的值。
 
@@ -1951,20 +1951,20 @@ StopIteration**
 1.  我们还将定义一个`load_tests()`函数，将这个`unittest`套件与`ch11_r08_load`的文档字符串中找到的任何测试示例结合起来：
 
 ```py
-            def load_tests(loader, standard_tests, pattern): 
-                dt = doctest.DocTestSuite(ch11_r08_load) 
-                standard_tests.addTests(dt) 
-                return standard_tests 
+        def load_tests(loader, standard_tests, pattern): 
+            dt = doctest.DocTestSuite(ch11_r08_load) 
+            standard_tests.addTests(dt) 
+            return standard_tests 
 
-    ```
+```
 
 1.  最后，我们将提供一个整体的主程序来运行完整的测试套件。这样可以很容易地将测试模块作为独立的脚本运行：
 
 ```py
-            if __name__ == "__main__": 
-                unittest.main() 
+        if __name__ == "__main__": 
+            unittest.main() 
 
-    ```
+```
 
 ## 工作原理...
 

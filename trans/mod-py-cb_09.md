@@ -147,22 +147,22 @@
 1.  从输入文件名字符串创建`Path`对象。`Path`类将正确解析字符串以确定路径的元素：
 
 ```py
-     **>>> input_path = Path(options.input) 
-          >>> input_path 
-          PosixPath('/path/to/some/file.csv')** 
+ **>>> input_path = Path(options.input) 
+      >>> input_path 
+      PosixPath('/path/to/some/file.csv')** 
 
-    ```
+```
 
 在这个例子中，显示了`PosixPath`类，因为作者使用 Mac OS X。在 Windows 机器上，该类将是`WindowsPath`。
 
 1.  使用`with_suffix()`方法创建输出`Path`对象：
 
 ```py
-     **>>> output_path = input_path.with_suffix('.out') 
-          >>> output_path 
-          PosixPath('/path/to/some/file.out')** 
+ **>>> output_path = input_path.with_suffix('.out') 
+      >>> output_path 
+      PosixPath('/path/to/some/file.out')** 
 
-    ```
+```
 
 所有的文件名解析都由`Path`类无缝处理。`with_suffix()`方法使我们不必手动解析文件名的文本。
 
@@ -173,39 +173,39 @@
 1.  从输入文件名字符串创建`Path`对象。`Path`类将正确解析字符串以确定路径的元素：
 
 ```py
-     **>>> input_path = Path(options.input) 
-          >>> input_path 
-          PosixPath('/path/to/some/file.csv')** 
+ **>>> input_path = Path(options.input) 
+      >>> input_path 
+      PosixPath('/path/to/some/file.csv')** 
 
-    ```
+```
 
 在这个例子中，显示了`PosixPath`类，因为作者使用 Linux。在 Windows 机器上，该类将是`WindowsPath`。
 
 1.  从文件名中提取父目录和干部。干部是没有后缀的名称：
 
 ```py
-     **>>> input_directory = input_path.parent 
-          >>> input_stem = input_path.stem** 
+ **>>> input_directory = input_path.parent 
+      >>> input_stem = input_path.stem** 
 
-    ```
+```
 
 1.  构建所需的输出名称。在这个例子中，我们将在文件名后附加`_pass`。输入文件`file.csv`将产生输出`file_pass.csv`：
 
 ```py
-     **>>> output_stem_pass = input_stem+"_pass" 
-          >>> output_stem_pass 
-          'file_pass'** 
+ **>>> output_stem_pass = input_stem+"_pass" 
+      >>> output_stem_pass 
+      'file_pass'** 
 
-    ```
+```
 
 1.  构建完整的`Path`对象：
 
 ```py
-     **>>> output_path = (input_directory / output_stem_pass).with_suffix('.csv') 
-          >>> output_path 
-          PosixPath('/path/to/some/file_pass.csv')** 
+ **>>> output_path = (input_directory / output_stem_pass).with_suffix('.csv') 
+      >>> output_path 
+      PosixPath('/path/to/some/file_pass.csv')** 
 
-    ```
+```
 
 `/`运算符从`path`组件组装一个新路径。我们需要将其放在括号中，以确保它首先执行并创建一个新的`Path`对象。`input_directory`变量具有父`Path`对象，`output_stem_pass`是一个简单的字符串。使用`/`运算符组装新路径后，使用`with_suffix()`方法来确保使用特定的后缀。
 
@@ -216,30 +216,30 @@
 1.  从输入文件名字符串创建`Path`对象。`Path`类将正确解析字符串以确定路径的元素：
 
 ```py
-     **>>> input_path = Path(options.input) 
-          >>> input_path 
-          PosixPath('/path/to/some/file.csv')** 
+ **>>> input_path = Path(options.input) 
+      >>> input_path 
+      PosixPath('/path/to/some/file.csv')** 
 
-    ```
+```
 
 在这个例子中，显示了`PosixPath`类，因为作者使用 Linux。在 Windows 机器上，该类将是`WindowsPath`。
 
 1.  为输出目录创建`Path`对象。在这种情况下，我们将创建一个`output`目录作为与源文件相同父目录的子目录：
 
 ```py
-     **>>> output_parent = input_path.parent / "output" 
-          >>> output_parent 
-          PosixPath('/path/to/some/output')** 
+ **>>> output_parent = input_path.parent / "output" 
+      >>> output_parent 
+      PosixPath('/path/to/some/output')** 
 
-    ```
+```
 
 1.  使用输出`Path`对象创建输出文件名。在这个例子中，输出目录将包含一个与输入文件同名但具有不同后缀的文件：
 
 ```py
-     **>>> input_stem = input_path.stem 
-          >>> output_path = (output_parent / input_stem).with_suffix('.src')** 
+ **>>> input_stem = input_path.stem 
+      >>> output_path = (output_parent / input_stem).with_suffix('.src')** 
 
-    ```
+```
 
 我们使用`/`运算符从父`Path`和基于文件名的干部的字符串组装一个新的`Path`对象。创建了`Path`对象后，我们可以使用`with_suffix()`方法为文件设置所需的后缀。
 
@@ -250,24 +250,24 @@
 1.  从输入文件名字符串创建`Path`对象。`Path`类将正确解析字符串以确定路径的元素：
 
 ```py
-     **>>> file1_path = Path(options.file1) 
-          >>> file1_path 
-          PosixPath('/Users/slott/Documents/Writing/Python Cookbook/code/ch08_r09.py') 
-          >>> file2_path = Path(options.file2) 
-          >>> file2_path 
-          PosixPath('/Users/slott/Documents/Writing/Python Cookbook/code/ch08_r10.py')** 
+ **>>> file1_path = Path(options.file1) 
+      >>> file1_path 
+      PosixPath('/Users/slott/Documents/Writing/Python Cookbook/code/ch08_r09.py') 
+      >>> file2_path = Path(options.file2) 
+      >>> file2_path 
+      PosixPath('/Users/slott/Documents/Writing/Python Cookbook/code/ch08_r10.py')** 
 
-    ```
+```
 
 1.  使用每个`Path`对象的`stat()`方法获取文件的时间戳。这个方法返回一个`stat`对象，在`stat`对象中，该对象的`st_mtime`属性提供了文件的最近修改时间：
 
 ```py
-     **>>> file1_path.stat().st_mtime 
-          1464460057.0 
-          >>> file2_path.stat().st_mtime 
-          1464527877.0** 
+ **>>> file1_path.stat().st_mtime 
+      1464460057.0 
+      >>> file2_path.stat().st_mtime 
+      1464527877.0** 
 
-    ```
+```
 
 这些值是以秒为单位测量的时间戳。我们可以轻松比较这两个值，看哪个更新。
 
@@ -290,22 +290,22 @@ datetime.datetime(2016, 5, 28, 14, 27, 37)**
 1.  从输入文件名字符串创建`Path`对象。`Path`类将正确解析字符串以确定路径的元素：
 
 ```py
-          **>>> input_path = Path(options.input) 
-          >>> input_path 
-          PosixPath('/path/to/some/file.csv')** 
+      **>>> input_path = Path(options.input) 
+      >>> input_path 
+      PosixPath('/path/to/some/file.csv')** 
 
-    ```
+```
 
 1.  使用这个`Path`对象的`unlink()`方法来删除目录条目。如果这是数据的最后一个目录条目，那么空间可以被操作系统回收：
 
 ```py
-     **>>> try: 
-          ...     input_path.unlink() 
-          ... except FileNotFoundError as ex: 
-          ...     print("File already deleted") 
-          File already deleted** 
+ **>>> try: 
+      ...     input_path.unlink() 
+      ... except FileNotFoundError as ex: 
+      ...     print("File already deleted") 
+      File already deleted** 
 
-    ```
+```
 
 如果文件不存在，将引发`FileNotFoundError`。在某些情况下，这个异常需要用`pass`语句来消除。在其他情况下，警告消息可能很重要。也有可能缺少文件代表严重错误。
 
@@ -318,25 +318,25 @@ datetime.datetime(2016, 5, 28, 14, 27, 37)**
 1.  从输入目录名称创建`Path`对象。`Path`类将正确解析字符串以确定路径的元素：
 
 ```py
-     **>>> directory_path = Path(options.file1).parent 
-          >>> directory_path 
-          PosixPath('/Users/slott/Documents/Writing/Python Cookbook/code')** 
+ **>>> directory_path = Path(options.file1).parent 
+      >>> directory_path 
+      PosixPath('/Users/slott/Documents/Writing/Python Cookbook/code')** 
 
-    ```
+```
 
 1.  使用`Path`对象的`glob()`方法来定位所有与给定模式匹配的文件。默认情况下，这不会递归遍历整个目录树：
 
 ```py
-     **>>> list(directory_path.glob("ch08_r*.py")) 
-          [PosixPath('/Users/slott/Documents/Writing/Python Cookbook/code/ch08_r01.py'),
-           PosixPath('/Users/slott/Documents/Writing/Python Cookbook/code/ch08_r02.py'), 
-           PosixPath('/Users/slott/Documents/Writing/Python Cookbook/code/ch08_r06.py'),
-           PosixPath('/Users/slott/Documents/Writing/Python Cookbook/code/ch08_r07.py'),
-           PosixPath('/Users/slott/Documents/Writing/Python Cookbook/code/ch08_r08.py'),
-           PosixPath('/Users/slott/Documents/Writing/Python Cookbook/code/ch08_r09.py'),
-           PosixPath('/Users/slott/Documents/Writing/Python Cookbook/code/ch08_r10.py')]** 
+ **>>> list(directory_path.glob("ch08_r*.py")) 
+      [PosixPath('/Users/slott/Documents/Writing/Python Cookbook/code/ch08_r01.py'),
+       PosixPath('/Users/slott/Documents/Writing/Python Cookbook/code/ch08_r02.py'), 
+       PosixPath('/Users/slott/Documents/Writing/Python Cookbook/code/ch08_r06.py'),
+       PosixPath('/Users/slott/Documents/Writing/Python Cookbook/code/ch08_r07.py'),
+       PosixPath('/Users/slott/Documents/Writing/Python Cookbook/code/ch08_r08.py'),
+       PosixPath('/Users/slott/Documents/Writing/Python Cookbook/code/ch08_r09.py'),
+       PosixPath('/Users/slott/Documents/Writing/Python Cookbook/code/ch08_r10.py')]** 
 
-    ```
+```
 
 ## 工作原理...
 
@@ -450,23 +450,23 @@ PureWindowsPath('C:/Users/slott/filename.ini')
 1.  我们将使用文件路径，因此重要的是导入`Path`类：
 
 ```py
-            from pathlib import Path 
+        from pathlib import Path 
 
-    ```
+```
 
 1.  创建一个标识输出文件的`Path`：
 
 ```py
-            summary_path = Path('summary.dat') 
+        summary_path = Path('summary.dat') 
 
-    ```
+```
 
 1.  `with`语句创建`file`对象，并将其分配给变量`summary_file`。它还将这个`file`对象用作上下文管理器：
 
 ```py
-            with summary_path.open('w') as summary_file: 
+        with summary_path.open('w') as summary_file: 
 
-    ```
+```
 
 现在我们可以使用`summary_file`变量作为输出文件。无论`with`语句内部引发什么异常，文件都将被正确关闭，所有操作系统资源都将被释放。
 
@@ -571,44 +571,44 @@ PureWindowsPath('C:/Users/slott/filename.ini')
 1.  导入`Path`类：
 
 ```py
-     **>>> from pathlib import Path** 
+ **>>> from pathlib import Path** 
 
-    ```
+```
 
 1.  为了演示目的，我们将通过提供以下`Namespace`对象来模拟参数解析：
 
 ```py
-     **>>> from argparse import Namespace 
-          >>> options = Namespace( 
-          ...     target='/Users/slott/Documents/Writing/Python Cookbook/code/output.csv' 
-          ... )** 
+ **>>> from argparse import Namespace 
+      >>> options = Namespace( 
+      ...     target='/Users/slott/Documents/Writing/Python Cookbook/code/output.csv' 
+      ... )** 
 
-    ```
+```
 
 我们为`target`命令行参数提供了一个模拟值。这个`options`对象的行为类似于`argparse`模块创建的选项。
 
 1.  为所需的输出文件创建纯`Path`。这个文件还不存在，这就是为什么这是一个纯路径：
 
 ```py
-     **>>> output_path = Path(options.target) 
-          >>> output_path 
-          PosixPath('/Users/slott/Documents/Writing/Python Cookbook/code/output.csv')** 
+ **>>> output_path = Path(options.target) 
+      >>> output_path 
+      PosixPath('/Users/slott/Documents/Writing/Python Cookbook/code/output.csv')** 
 
-    ```
+```
 
 1.  创建一个临时输出文件的纯`Path`。这将用于创建输出：
 
 ```py
-          >>> output_temp_path = output_path.with_suffix('.csv.tmp') 
+      >>> output_temp_path = output_path.with_suffix('.csv.tmp') 
 
-    ```
+```
 
 1.  将内容写入临时文件。当然，这是应用程序的核心。通常相当复杂。对于这个例子，我们将它缩短为只写一个字面字符串：
 
 ```py
-     **>>> output_temp_path.write_text("Heading1,Heading2\r\n355,113\r\n")** 
+ **>>> output_temp_path.write_text("Heading1,Heading2\r\n355,113\r\n")** 
 
-    ```
+```
 
 ### 注意
 
@@ -617,13 +617,13 @@ PureWindowsPath('C:/Users/slott/filename.ini')
 1.  删除任何先前的`.old 文件`：
 
 ```py
-     **>>> output_old_path = output_path.with_suffix('.csv.old') 
-          >>> try: 
-          ...     output_old_path.unlink() 
-          ... except FileNotFoundError as ex: 
-          ...     pass # No previous file** 
+ **>>> output_old_path = output_path.with_suffix('.csv.old') 
+      >>> try: 
+      ...     output_old_path.unlink() 
+      ... except FileNotFoundError as ex: 
+      ...     pass # No previous file** 
 
-    ```
+```
 
 ### 注意
 
@@ -632,18 +632,18 @@ PureWindowsPath('C:/Users/slott/filename.ini')
 1.  如果存在文件，将其重命名为`.old 文件`：
 
 ```py
-     **>>> output_path.rename(output_old_path)** 
+ **>>> output_path.rename(output_old_path)** 
 
-    ```
+```
 
 在此之后的任何失败都会保留`.old`文件。这个额外的文件可以作为恢复过程的一部分重命名。
 
 1.  将临时文件重命名为新的输出文件：
 
 ```py
-     **>>> output_temp_path.rename(output_path)** 
+ **>>> output_temp_path.rename(output_path)** 
 
-    ```
+```
 
 1.  此时，文件已经被重命名临时文件覆盖。一个`.old`文件将保留下来，以防需要将处理回滚到先前的状态。
 
@@ -750,9 +750,9 @@ PureWindowsPath('C:/Users/slott/filename.ini')
 1.  导入`csv`模块和`Path`类：
 
 ```py
-            import csv 
+        import csv 
 
-    ```
+```
 
 1.  从`pathlib`导入`Path`检查数据以确认以下特性：
 
@@ -765,33 +765,33 @@ PureWindowsPath('C:/Users/slott/filename.ini')
 1.  创建标识文件的`Path`对象：
 
 ```py
-            data_path = Path('waypoints.csv') 
+        data_path = Path('waypoints.csv') 
 
-    ```
+```
 
 1.  使用`Path`对象在`with`语句中打开文件：
 
 ```py
-            with data_path.open() as data_file: 
+        with data_path.open() as data_file: 
 
-    ```
+```
 
 有关 with 语句的更多信息，请参阅*使用上下文管理器读写文件*配方。
 
 1.  从打开文件对象创建 CSV 读取器。这在`with`语句内缩进：
 
 ```py
-            data_reader = csv.DictReader(data_file) 
+        data_reader = csv.DictReader(data_file) 
 
-    ```
+```
 
 1.  读取（和处理）各行数据。这在`with`语句内正确缩进。对于此示例，我们将只打印它们：
 
 ```py
-            for row in data_reader: 
-                print(row) 
+        for row in data_reader: 
+            print(row) 
 
-    ```
+```
 
 输出是一系列如下的字典：
 
@@ -965,46 +965,46 @@ CSV 文件中的值始终为字符串。像`7331`这样的字符串值对我们�
 1.  定义编译的正则表达式对象：
 
 ```py
-            import re 
-            pattern_text = (r'\[(?P<date>\d+-\d+-\d+ \d+:\d+:\d+,\d+)\]' 
-                '\s+(?P<level>\w+)' 
-                '\s+in\s+(?P<module>[\w_\.]+):' 
-                '\s+(?P<message>.*)') 
-            pattern = re.compile(pattern_text) 
+        import re 
+        pattern_text = (r'\[(?P<date>\d+-\d+-\d+ \d+:\d+:\d+,\d+)\]' 
+            '\s+(?P<level>\w+)' 
+            '\s+in\s+(?P<module>[\w_\.]+):' 
+            '\s+(?P<message>.*)') 
+        pattern = re.compile(pattern_text) 
 
-    ```
+```
 
 我们使用了`(?P<name>...)`正则表达式构造来为每个捕获的组提供名称。生成的字典将与`csv.DictReader`的结果相同。
 
 1.  定义一个接受文本行作为参数的函数：
 
 ```py
-            def log_parser(source_line): 
+        def log_parser(source_line): 
 
-    ```
+```
 
 1.  应用正则表达式创建匹配对象。我们将其分配给`match`变量：
 
 ```py
-            match = pattern.match(source_line) 
+        match = pattern.match(source_line) 
 
-    ```
+```
 
 1.  如果匹配对象是`None`，则该行与模式不匹配。这行可能会被静默地跳过。在某些应用中，应该以某种方式记录它，以提供有用于调试或增强应用的信息。对于无法解析的输入行，提出异常也可能是有意义的：
 
 ```py
-            if match is None: 
-                raise ValueError( 
-                    "Unexpected input {0!r}".format(source_line)) 
+        if match is None: 
+            raise ValueError( 
+                "Unexpected input {0!r}".format(source_line)) 
 
-    ```
+```
 
 1.  返回一个有用的数据结构，其中包含来自此输入行的各个数据片段：
 
 ```py
-            return match.groupdict() 
+        return match.groupdict() 
 
-    ```
+```
 
 这个函数可以用来解析每一行输入。文本被转换成一个带有字段名和值的字典。
 
@@ -1013,23 +1013,23 @@ CSV 文件中的值始终为字符串。像`7331`这样的字符串值对我们�
 1.  导入`csv`模块和`Path`类：
 
 ```py
-            import csv 
+        import csv 
 
-    ```
+```
 
 1.  从`pathlib`导入`PathCreate`，标识文件的`Path`对象：
 
 ```py
-            data_path = Path('sample.log') 
+        data_path = Path('sample.log') 
 
-    ```
+```
 
 1.  使用`Path`对象在`with`语句中打开文件：
 
 ```py
-            with data_path.open() as data_file: 
+        with data_path.open() as data_file: 
 
-    ```
+```
 
 ### 注意
 
@@ -1038,17 +1038,17 @@ CSV 文件中的值始终为字符串。像`7331`这样的字符串值对我们�
 1.  从打开的文件对象`data_file`创建日志文件解析器。在这种情况下，我们将使用`map()`将解析器应用于源文件的每一行：
 
 ```py
-            data_reader = map(log_parser, data_file) 
+        data_reader = map(log_parser, data_file) 
 
-    ```
+```
 
 1.  读取（和处理）各行数据。在这个例子中，我们将只是打印它们：
 
 ```py
-            for row in data_reader: 
-                pprint(row) 
+        for row in data_reader: 
+            pprint(row) 
 
-    ```
+```
 
 输出是一系列如下所示的字典：
 
@@ -1228,26 +1228,26 @@ JSON 格式的数据看起来像一个包含列表的 Python 字典。Python 语
 1.  导入`json`模块：
 
 ```py
-     **>>> import json** 
+ **>>> import json** 
 
-    ```
+```
 
 1.  定义一个标识要处理的文件的`Path`对象：
 
 ```py
-     **>>> from pathlib import Path 
-          >>> source_path = Path("code/race_result.json")** 
+ **>>> from pathlib import Path 
+      >>> source_path = Path("code/race_result.json")** 
 
-    ```
+```
 
 `json`模块目前不能直接处理`Path`对象。因此，我们将把内容读取为一个大文本块，并处理该文本对象。
 
 1.  通过解析 JSON 文档创建 Python 对象：
 
 ```py
-     **>>> document = json.loads(source_path.read_text())** 
+ **>>> document = json.loads(source_path.read_text())** 
 
-    ```
+```
 
 我们使用了`source_path.read_text()`来读取由`Path`命名的文件。我们将这个字符串提供给`json.loads()`函数进行解析。
 
@@ -1560,27 +1560,27 @@ XML 允许**混合内容模型**。这反映了 XML 与文本混合的情况，X
 1.  我们需要两个模块—`xml.etree`和`pathlib`：
 
 ```py
-     **>>> import xml.etree.ElementTree as XML 
-          >>> from pathlib import Path** 
+ **>>> import xml.etree.ElementTree as XML 
+      >>> from pathlib import Path** 
 
-    ```
+```
 
 我们已将`ElementTree`模块名称更改为`XML`，以使其更容易输入。通常也会将其重命名为类似`ET`的名称。
 
 1.  定义一个定位源文档的`Path`对象：
 
 ```py
-     **>>> source_path = Path("code/race_result.xml")** 
+ **>>> source_path = Path("code/race_result.xml")** 
 
-    ```
+```
 
 1.  通过解析源文件创建文档的内部`ElementTree`版本：
 
 ```py
-     **>>> source_text = source_path.read_text(encoding='UTF-8') 
-          >>> document = XML.fromstring(source_text)** 
+ **>>> source_text = source_path.read_text(encoding='UTF-8') 
+      >>> document = XML.fromstring(source_text)** 
 
-    ```
+```
 
 XML 解析器不太容易使用`Path`对象。我们选择从`Path`对象中读取文本，然后解析该文本。
 
@@ -1779,27 +1779,27 @@ HTML 页面包含大量的开销。通常有大量的代码和样式表部分，
 1.  我们需要两个模块：bs4 和 pathlib：
 
 ```py
-     **>>> from bs4 import BeautifulSoup 
-          >>> from pathlib import Path** 
+ **>>> from bs4 import BeautifulSoup 
+      >>> from pathlib import Path** 
 
-    ```
+```
 
 我们只从`bs4`模块中导入了`BeautifulSoup`类。这个类将提供解析和分析 HTML 文档所需的所有功能。
 
 1.  定义一个命名源文档的`Path`对象：
 
 ```py
-     **>>> source_path = Path("code/Volvo Ocean Race.html")** 
+ **>>> source_path = Path("code/Volvo Ocean Race.html")** 
 
-    ```
+```
 
 1.  从 HTML 内容创建 soup 结构。我们将把它分配给一个变量`soup`：
 
 ```py
-     **>>> with source_path.open(encoding='utf8') as source_file: 
-          ...     soup = BeautifulSoup(source_file, 'html.parser')** 
+ **>>> with source_path.open(encoding='utf8') as source_file: 
+      ...     soup = BeautifulSoup(source_file, 'html.parser')** 
 
-    ```
+```
 
 我们使用上下文管理器来访问文件。作为替代，我们可以简单地使用`source_path.read_text(encodig='utf8')`来读取内容。这与为`BeautifulSoup`类提供一个打开的文件一样有效。
 
@@ -1965,45 +1965,45 @@ Beautiful Soup 的`Tag`对象表示文档结构的层次结构。标签之间有
 1.  导入所需的模块和定义。在这种情况下，它们将来自`collections`，`csv`和`pathlib`：
 
 ```py
-            from collections import namedtuple 
-            from pathlib import Path 
-            import csv 
+        from collections import namedtuple 
+        from pathlib import Path 
+        import csv 
 
-    ```
+```
 
 1.  定义与实际数据匹配的`namedtuple`。在这种情况下，我们称之为`Waypoint`并为四列数据提供名称。在这个例子中，属性恰好与列名匹配；这不是必须的：
 
 ```py
-            Waypoint = namedtuple('Waypoint', ['lat', 'lon', 'date', 'time'])
-    ```
+        Waypoint = namedtuple('Waypoint', ['lat', 'lon', 'date', 'time'])
+```
 
 1.  定义引用数据的`Path`对象：
 
 ```py
-            waypoints_path = Path('waypoints.csv') 
+        waypoints_path = Path('waypoints.csv') 
 
-    ```
+```
 
 1.  为打开的文件创建处理上下文：
 
 ```py
-            with waypoints_path.open() as waypoints_file: 
+        with waypoints_path.open() as waypoints_file: 
 
-    ```
+```
 
 1.  为数据定义一个 CSV 读取器。我们将其称为原始读取器。从长远来看，我们将遵循第八章中的*使用堆叠的生成器表达式*配方，*功能和响应式编程特性*和第八章中的*使用一堆生成器表达式*配方，*功能和响应式编程特性*来清理和过滤数据：
 
 ```py
-            raw_reader = csv.reader(waypoints_file) 
+        raw_reader = csv.reader(waypoints_file) 
 
-    ```
+```
 
 1.  定义一个生成器，从输入数据的元组构建`Waypoint`对象：
 
 ```py
-            waypoints_reader = (Waypoint(*row) for row in raw_reader) 
+        waypoints_reader = (Waypoint(*row) for row in raw_reader) 
 
-    ```
+```
 
 现在我们可以使用`waypoints_reader`生成器表达式来处理行：
 
@@ -2038,28 +2038,28 @@ Beautiful Soup 的`Tag`对象表示文档结构的层次结构。标签之间有
 +   我们可以使用显式迭代器并丢弃第一项。总体思路如下：
 
 ```py
-            with waypoints_path.open() as waypoints_file: 
-                raw_reader = csv.reader(waypoints_file) 
-                waypoints_iter = iter(waypoints_reader) 
-                next(waypoints_iter)  # The header 
-                for row in waypoints_iter: 
-                    print(row) 
+        with waypoints_path.open() as waypoints_file: 
+            raw_reader = csv.reader(waypoints_file) 
+            waypoints_iter = iter(waypoints_reader) 
+            next(waypoints_iter)  # The header 
+            for row in waypoints_iter: 
+                print(row) 
 
-    ```
+```
 
 这个片段展示了如何从原始 CSV 读取器创建一个迭代器对象`waypoints_iter`。我们可以使用`next()`函数从这个读取器中跳过一个项目。剩下的项目可以用来构建有用的数据行。我们也可以使用`itertools.islice()`函数来实现这一点。
 
 +   我们可以编写一个生成器或使用`filter()`函数来排除选定的行：
 
 ```py
-            with waypoints_path.open() as waypoints_file: 
-                raw_reader = csv.reader(waypoints_file) 
-                skip_header = filter(lambda row: row[0] != 'lat', raw_reader) 
-                waypoints_reader = (Waypoint(*row) for row in skip_header) 
-                for row in waypoints_reader: 
-                    print(row) 
+        with waypoints_path.open() as waypoints_file: 
+            raw_reader = csv.reader(waypoints_file) 
+            skip_header = filter(lambda row: row[0] != 'lat', raw_reader) 
+            waypoints_reader = (Waypoint(*row) for row in skip_header) 
+            for row in waypoints_reader: 
+                print(row) 
 
-    ```
+```
 
 这个例子展示了如何从原始 CSV 读取器创建过滤生成器`skip_header`。过滤器使用一个简单的表达式`row[0] != 'lat'`来确定一行是否是标题或者有用的数据。只有有用的行通过了这个过滤器。标题行被拒绝了。
 
@@ -2166,38 +2166,38 @@ Beautiful Soup 的`Tag`对象表示文档结构的层次结构。标签之间有
 1.  导入所需的模块和定义。在这种情况下，它将是来自`types`，`csv`和`pathlib`：
 
 ```py
-            from types import SimpleNamespace 
-            from pathlib import Path 
+        from types import SimpleNamespace 
+        from pathlib import Path 
 
-    ```
+```
 
 1.  导入`csv`并定义一个指向数据的`Path`对象：
 
 ```py
-            waypoints_path = Path('waypoints.csv') 
+        waypoints_path = Path('waypoints.csv') 
 
-    ```
+```
 
 1.  为打开的文件创建处理上下文：
 
 ```py
-            with waypoints_path.open() as waypoints_file: 
+        with waypoints_path.open() as waypoints_file: 
 
-    ```
+```
 
 1.  为数据定义一个 CSV 读取器。我们将其称为原始读取器。从长远来看，我们将遵循第八章中的*使用堆叠的生成器表达式*，*功能和响应式编程特性*并使用多个生成器表达式来清理和过滤数据：
 
 ```py
-            raw_reader = csv.DictReader(waypoints_file) 
+        raw_reader = csv.DictReader(waypoints_file) 
 
-    ```
+```
 
 1.  定义一个生成器，将这些字典转换为`SimpleNamespace`对象：
 
 ```py
-            ns_reader = (SimpleNamespace(**row) for row in raw_reader) 
+        ns_reader = (SimpleNamespace(**row) for row in raw_reader) 
 
-    ```
+```
 
 这使用了通用的`SimpleNamespace`类。当我们需要使用更具体的类时，我们可以用应用程序特定的类名替换`SimpleNamespace`。该类的`__init__`必须使用与电子表格列名匹配的关键字参数。
 
@@ -2352,95 +2352,95 @@ Beautiful Soup 的`Tag`对象表示文档结构的层次结构。标签之间有
 1.  这个食谱将需要三个组件：
 
 ```py
-            import re 
-            from pathlib import Path 
-            import csv 
+        import re 
+        from pathlib import Path 
+        import csv 
 
-    ```
+```
 
 1.  这是匹配简单 Flask 日志的模式。对于其他类型的日志，或者配置到 Flask 中的其他格式，将需要不同的模式：
 
 ```py
-            log_pattern = re.compile( 
-                r"\[(?P<timestamp>.*?)\]" 
-                r"\s(?P<levelname>\w+)" 
-                r"\sin\s(?P<module>[\w\._]+):" 
-                r"\s(?P<message>.*)") 
+        log_pattern = re.compile( 
+            r"\[(?P<timestamp>.*?)\]" 
+            r"\s(?P<levelname>\w+)" 
+            r"\sin\s(?P<module>[\w\._]+):" 
+            r"\s(?P<message>.*)") 
 
-    ```
+```
 
 1.  这是产生匹配行的字典的函数。这应用了正则表达式模式。不匹配的行将被静默跳过。匹配将产生一个项目名称及其值的字典：
 
 ```py
-            def extract_row_iter(source_log_file): 
-                for line in source_log_file: 
-                    match = log_pattern.match(line) 
-                    if match is None: continue 
-                    yield match.groupdict() 
+        def extract_row_iter(source_log_file): 
+            for line in source_log_file: 
+                match = log_pattern.match(line) 
+                if match is None: continue 
+                yield match.groupdict() 
 
-    ```
+```
 
 1.  我们将为生成的日志摘要文件定义`Path`对象：
 
 ```py
-            summary_path = Path('summary_log.csv') 
+        summary_path = Path('summary_log.csv') 
 
-    ```
+```
 
 1.  然后我们可以打开结果上下文。因为我们使用了`with`语句，所以可以确保无论在脚本中发生什么，文件都会被正确关闭：
 
 ```py
-            with summary_path.open('w') as summary_file: 
+        with summary_path.open('w') as summary_file: 
 
-    ```
+```
 
 1.  由于我们正在基于字典编写 CSV 文件，我们将定义一个`csv.DictWriter`。这是在`with`语句内缩进了四个空格。我们必须提供输入字典中的预期键。这将定义结果文件中列的顺序：
 
 ```py
-            writer = csv.DictWriter(summary_file, 
-                ['timestamp', 'levelname', 'module', 'message']) 
-            writer.writeheader() 
+        writer = csv.DictWriter(summary_file, 
+            ['timestamp', 'levelname', 'module', 'message']) 
+        writer.writeheader() 
 
-    ```
+```
 
 1.  我们将为包含日志文件的源目录定义`Path`对象。在这种情况下，日志文件碰巧在脚本所在的目录中。这是罕见的，使用环境变量可能会更有用：
 
 ```py
-            source_log_dir = Path('.') 
+        source_log_dir = Path('.') 
 
-    ```
+```
 
 我们可以想象使用`os.environ.get('LOG_PATH', '/var/log')`作为一个比硬编码路径更一般的解决方案。
 
 1.  我们将使用`Path`对象的`glob()`方法来查找所有与所需名称匹配的文件：
 
 ```py
-            for source_log_path in source_log_dir.glob('*.log'): 
+        for source_log_path in source_log_dir.glob('*.log'): 
 
-    ```
+```
 
 这也可以从环境变量或命令行参数中获取模式字符串。
 
 1.  我们将为每个源文件定义一个读取上下文。这个上下文管理器将确保输入文件被正确关闭并释放资源。请注意，这是在前面的`with`和`for`语句内缩进，总共有八个空格。在处理大量文件时，这一点尤为重要：
 
 ```py
-            with source_log_path.open() as source_log_file: 
+        with source_log_path.open() as source_log_file: 
 
-    ```
+```
 
 1.  我们将使用写入器的`writerows()`方法来从`extract_row_iter()`函数中写入所有有效行。这是在两个`with`语句以及`for`语句内缩进的。这是整个过程的核心：
 
 ```py
-            writer.writerows(extract_row_iter(source_log_file) ) 
+        writer.writerows(extract_row_iter(source_log_file) ) 
 
-    ```
+```
 
 1.  我们还可以编写一个摘要。这是在外部`with`和`for`语句内缩进的。它总结了前面的`with`语句的处理：
 
 ```py
-            print('Converted', source_log_path, 'to', summary_path) 
+        print('Converted', source_log_path, 'to', summary_path) 
 
-    ```
+```
 
 ## 工作原理...
 

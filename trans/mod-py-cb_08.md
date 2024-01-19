@@ -99,35 +99,35 @@
 1.  这需要`datetime`模块：
 
 ```py
-            import datetime 
+        import datetime 
 
-    ```
+```
 
 1.  定义一个处理源集合的函数：
 
 ```py
-            def parse_date_iter(source): 
+        def parse_date_iter(source): 
 
-    ```
+```
 
 我们在后缀`_iter`中包含了这个函数将是一个可迭代对象而不是一个简单集合的提醒。
 
 1.  包括一个`for`语句，访问源集合中的每个项目：
 
 ```py
-            for item in source: 
+        for item in source: 
 
-    ```
+```
 
 1.  `for`语句的主体可以将项目映射到一个新项目：
 
 ```py
-            date = datetime.datetime.strptime( 
-                item[0], 
-                "%Y-%m-%d %H:%M:%S,%f") 
-            new_item = (date,)+item[1:] 
+        date = datetime.datetime.strptime( 
+            item[0], 
+            "%Y-%m-%d %H:%M:%S,%f") 
+        new_item = (date,)+item[1:] 
 
-    ```
+```
 
 在这种情况下，我们将一个字段从字符串映射到`datetime`对象。变量`date`是从`item[0]`中的字符串构建的。
 
@@ -136,9 +136,9 @@
 1.  使用`yield`语句产生新项目：
 
 ```py
-            yield new_item 
+        yield new_item 
 
-    ```
+```
 
 整个结构看起来是这样的，正确缩进：
 
@@ -441,19 +441,19 @@ StopIteration**
 另一种方法是注意到第零列在组的开头有数据；在组的下两行为空。这给了我们一个稍微更一般的方法来创建行的组。这是一种**头尾合并**算法。我们将收集数据，并在到达下一个组的头部时每次产生数据：
 
 ```py
-            def row_merge(source_iter): 
-                group = [] 
-                for row in source_iter: 
-                    if len(row[0]) != 0: 
-                        if group: 
-                            yield group 
-                        group = row.copy() 
-                    else: 
-                        group.extend(row) 
-                if group: 
-                    yield group 
+        def row_merge(source_iter): 
+            group = [] 
+            for row in source_iter: 
+                if len(row[0]) != 0: 
+                    if group: 
+                        yield group 
+                    group = row.copy() 
+                else: 
+                    group.extend(row) 
+            if group: 
+                yield group 
 
-    ```
+```
 
 这个算法使用`len(row[0])`来确定这是一个组的头部还是组的尾部中的一行。在头部行的情况下，任何先前的组都会被产生。在那之后被消耗后，`group`集合的值将被重置为头部行的列数据。
 
@@ -464,22 +464,22 @@ StopIteration**
 1.  定义将在合并后的数据上执行的各种映射操作。这些应用于原始行中的数据。我们将使用单独的函数来转换两个时间列，并将时间与日期列合并：
 
 ```py
-            import datetime 
-            def start_datetime(row): 
-                travel_date = datetime.datetime.strptime(row[0], "%m/%d/%y").date() 
-                start_time = datetime.datetime.strptime(row[1], "%I:%M:%S %p").time() 
-                start_datetime = datetime.datetime.combine(travel_date, start_time) 
-                new_row = row+[start_datetime] 
-                return new_row 
+        import datetime 
+        def start_datetime(row): 
+            travel_date = datetime.datetime.strptime(row[0], "%m/%d/%y").date() 
+            start_time = datetime.datetime.strptime(row[1], "%I:%M:%S %p").time() 
+            start_datetime = datetime.datetime.combine(travel_date, start_time) 
+            new_row = row+[start_datetime] 
+            return new_row 
 
-            def end_datetime(row): 
-                travel_date = datetime.datetime.strptime(row[0], "%m/%d/%y").date() 
-                end_time = datetime.datetime.strptime(row[4], "%I:%M:%S %p").time() 
-                end_datetime = datetime.datetime.combine(travel_date, end_time) 
-                new_row = row+[end_datetime] 
-                return new_row 
+        def end_datetime(row): 
+            travel_date = datetime.datetime.strptime(row[0], "%m/%d/%y").date() 
+            end_time = datetime.datetime.strptime(row[4], "%I:%M:%S %p").time() 
+            end_datetime = datetime.datetime.combine(travel_date, end_time) 
+            new_row = row+[end_datetime] 
+            return new_row 
 
-    ```
+```
 
 我们将把第零列中的日期与第一列中的时间结合起来，创建一个起始`datetime`对象。同样，我们将把第零列中的日期与第四列中的时间结合起来，创建一个结束`datetime`对象。
 
@@ -488,39 +488,39 @@ StopIteration**
 1.  定义适用于派生数据的映射操作。第八和第九列包含日期时间戳：
 
 ```py
-            for starting and ending.def duration(row): 
-                travel_hours = round((row[10]-row[9]).total_seconds()/60/60, 1) 
-                new_row = row+[travel_hours] 
-                return new_row 
+        for starting and ending.def duration(row): 
+            travel_hours = round((row[10]-row[9]).total_seconds()/60/60, 1) 
+            new_row = row+[travel_hours] 
+            return new_row 
 
-    ```
+```
 
 我们使用`start_datetime`和`end_datetime`创建的值作为输入。我们计算了时间差，这提供了以秒为单位的结果。我们将秒转换为小时，这是这组数据更有用的时间单位。
 
 1.  合并任何需要拒绝或排除坏数据的过滤器。在这种情况下，我们必须排除一个标题行：
 
 ```py
-            def skip_header_date(rows): 
-                for row in rows: 
-                    if row[0] == 'date': 
-                        continue 
-                    yield row 
+        def skip_header_date(rows): 
+            for row in rows: 
+                if row[0] == 'date': 
+                    continue 
+                yield row 
 
-    ```
+```
 
 这个函数将拒绝任何第一列中有`date`的行。`continue`语句恢复`for`语句，跳过体中的所有其他语句；它跳过`yield`语句。所有其他行将通过这个过程。输入是一个可迭代对象，这个生成器将产生没有以任何方式转换的行。
 
 1.  将操作组合起来。我们可以编写一系列生成器表达式，也可以使用内置的`map()`函数。以下是使用生成器表达式的示例：
 
 ```py
-            def date_conversion(source): 
-                tail_gen = skip_header_date(source) 
-                start_gen = (start_datetime(row) for row in tail_gen) 
-                end_gen = (end_datetime(row) for row in start_gen) 
-                duration_gen = (duration(row) for row in end_gen) 
-                return duration_gen 
+        def date_conversion(source): 
+            tail_gen = skip_header_date(source) 
+            start_gen = (start_datetime(row) for row in tail_gen) 
+            end_gen = (end_datetime(row) for row in start_gen) 
+            duration_gen = (duration(row) for row in end_gen) 
+            return duration_gen 
 
-    ```
+```
 
 这个操作由一系列转换组成。每个转换对原始数据集中的一个值进行小的转换。添加或更改操作相对简单，因为每个操作都是独立定义的：
 
@@ -789,49 +789,49 @@ StopIteration**
 1.  编写应用于数据单行的转换函数。这不是一个生成器，也不使用`yield`语句。它只是修改集合中的单个项目：
 
 ```py
-            def parse_date(item): 
-                date = datetime.datetime.strptime( 
-                    item[0], 
-                    "%Y-%m-%d %H:%M:%S,%f") 
-                new_item = (date,)+item[1:] 
-                return new_item 
+        def parse_date(item): 
+            date = datetime.datetime.strptime( 
+                item[0], 
+                "%Y-%m-%d %H:%M:%S,%f") 
+            new_item = (date,)+item[1:] 
+            return new_item 
 
-    ```
+```
 
 这可以用三种方式：语句、表达式和`map()`函数。这是语句的显式`for...yield`模式：
 
 ```py
-            for item in collection: 
-                new_item = parse_date(item) 
-                yield new_item 
+        for item in collection: 
+            new_item = parse_date(item) 
+            yield new_item 
 
-    ```
+```
 
 这使用了一个`for`语句来使用孤立的`parse_date()`函数处理集合中的每个项目。第二个选择是一个生成器表达式，看起来像这样：
 
 ```py
-            (parse_date(item) for item in data) 
+        (parse_date(item) for item in data) 
 
-    ```
+```
 
 这是一个生成器表达式，将`parse_date()`函数应用于每个项目。第三个选择是`map()`函数。
 
 1.  使用`map()`函数将转换应用于源数据。
 
 ```py
-            map(parse_date, data) 
+        map(parse_date, data) 
 
-    ```
+```
 
 我们提供函数名`parse_date`，在名称后面没有任何`()`。我们此时不应用函数。我们提供对象名给`map()`函数，以将`parse_date()`函数应用于可迭代的数据源`data`。
 
 我们可以这样使用：
 
 ```py
-            for row in map(parse_date, data): 
-                print(row[0], row[3]) 
+        for row in map(parse_date, data): 
+            print(row[0], row[3]) 
 
-    ```
+```
 
 `map()`函数创建一个可迭代对象，将`parse_date()`函数应用于数据可迭代中的每个项目。它产生每个单独的项目。它使我们不必编写生成器表达式或生成器函数。
 
@@ -1014,47 +1014,47 @@ StopIteration**
 1.  编写谓词函数，测试一个项目是否应该通过过滤器进行进一步处理。在某些情况下，我们将不得不从拒绝规则开始，然后编写反向规则，使其成为通过规则：
 
 ```py
-            def pass_non_date(row): 
-                return row[0] != 'date' 
+        def pass_non_date(row): 
+            return row[0] != 'date' 
 
-    ```
+```
 
 这可以用三种方式来使用：语句、表达式和`filter()`函数。这是一个显式的`for...if...yield`模式的语句示例，用于传递行：
 
 ```py
-            for item in collection: 
-                if pass_non_date(item): 
-                    yield item 
+        for item in collection: 
+            if pass_non_date(item): 
+                yield item 
 
-    ```
+```
 
 这使用一个`for`语句来使用过滤函数处理集合中的每个项目。选择的项目被产生。其他项目被拒绝。
 
 使用这个函数的第二种方式是在生成器表达式中使用它：
 
 ```py
-            (item for item in data if pass_non_date(item)) 
+        (item for item in data if pass_non_date(item)) 
 
-    ```
+```
 
 这个生成器表达式应用了`filter`函数`pass_non_date()`到每个项目。第三种选择是`filter()`函数。
 
 1.  使用`filter()`函数将函数应用于源数据：
 
 ```py
-            filter(pass_non_date, data) 
+        filter(pass_non_date, data) 
 
-    ```
+```
 
 我们提供了函数名`pass_non_date`。我们在函数名后面不使用`()`字符，因为这个表达式不会评估函数。`filter()`函数将给定的函数应用于可迭代的数据源`data`。在这种情况下，`data`是一个集合，但它可以是任何可迭代的对象，包括以前生成器表达式的结果。`pass_non_date()`函数为`true`的每个项目将被过滤器传递；所有其他值都被拒绝。
 
 我们可以这样使用：
 
 ```py
-            for row in filter(pass_non_date, row_merge(data)): 
-                print(row[0], row[1], row[4]) 
+        for row in filter(pass_non_date, row_merge(data)): 
+            print(row[0], row[1], row[4]) 
 
-    ```
+```
 
 `filter()`函数创建一个可迭代对象，将`pass_non_date()`函数作为规则应用于`row_merge(data)`可迭代对象中的每个项目，它产生了在第零列中没有`date`的行。
 
@@ -1215,40 +1215,40 @@ StopIteration**
 1.  从`functools`模块导入`reduce()`函数：
 
 ```py
-     **>>> from functools import reduce** 
+ **>>> from functools import reduce** 
 
-    ```
+```
 
 1.  选择运算符。对于求和，是`+`。对于乘积，是`*`。这些可以以多种方式定义。这是长版本。其他定义必要的二进制运算符的方法将在后面展示：
 
 ```py
-     **>>> def mul(a, b): 
-          ...     return a * b** 
+ **>>> def mul(a, b): 
+      ...     return a * b** 
 
-    ```
+```
 
 1.  选择所需的基值。对于求和，它是零。对于乘积，它是一。这使我们能够定义一个计算通用乘积的`prod()`函数：
 
 ```py
-     **>>> def prod(values): 
-          ...    return reduce(mul, values, 1)** 
+ **>>> def prod(values): 
+      ...    return reduce(mul, values, 1)** 
 
-    ```
+```
 
 1.  对于阶乘，我们需要定义将被减少的数值序列：
 
 ```py
-     **range(1, n+1)** 
+ **range(1, n+1)** 
 
-    ```
+```
 
 这是`prod()`函数的工作原理：
 
 ```py
-     **>>> prod(range(1, 5+1)) 
-          120** 
+ **>>> prod(range(1, 5+1)) 
+      120** 
 
-    ```
+```
 
 这是整个阶乘函数：
 
@@ -1426,10 +1426,10 @@ StopIteration**
 1.  从目标开始。在这种情况下，我们想要一个可以像这样使用的函数：
 
 ```py
-     **>>> round(sum_fuel(clean_data(row_merge(log_rows))), 3) 
-          7.0** 
+ **>>> round(sum_fuel(clean_data(row_merge(log_rows))), 3) 
+      7.0** 
 
-    ```
+```
 
 这显示了这种处理的三步模式。这三步将定义我们创建减少的各个部分的方法：
 
@@ -1442,26 +1442,26 @@ StopIteration**
 1.  如果需要，定义数据结构规范化函数。这几乎总是必须是一个生成器函数。结构性的改变不能通过`map()`应用：
 
 ```py
-            from ch08_r02 import row_merge 
+        from ch08_r02 import row_merge 
 
-    ```
+```
 
 如*使用堆叠的生成器表达式*食谱所示，此生成器函数将把每次航行的三行数据重组为每次航行的一行数据。当所有列都在一行中时，数据处理起来更容易。
 
 1.  定义整体数据清洗和增强数据函数。这是一个由简单函数构建的生成器函数。它是一系列`map()`和`filter()`操作，将从源字段派生数据：
 
 ```py
-            def clean_data(source): 
-                namespace_iter = map(make_namespace, source) 
-                fitered_source = filter(remove_date, namespace_iter) 
-                start_iter = map(start_datetime, fitered_source) 
-                end_iter = map(end_datetime, start_iter) 
-                delta_iter = map(duration, end_iter) 
-                fuel_iter = map(fuel_use, delta_iter) 
-                per_hour_iter = map(fuel_per_hour, fuel_iter) 
-                return per_hour_iter 
+        def clean_data(source): 
+            namespace_iter = map(make_namespace, source) 
+            fitered_source = filter(remove_date, namespace_iter) 
+            start_iter = map(start_datetime, fitered_source) 
+            end_iter = map(end_datetime, start_iter) 
+            delta_iter = map(duration, end_iter) 
+            fuel_iter = map(fuel_use, delta_iter) 
+            per_hour_iter = map(fuel_per_hour, fuel_iter) 
+            return per_hour_iter 
 
-    ```
+```
 
 每个`map()`和`filter()`操作都涉及一个小函数，对数据进行单个转换或计算。
 
@@ -1470,85 +1470,85 @@ StopIteration**
 1.  将合并的数据行转换为`SimpleNamespace`。这将允许我们使用名称，如`start_time`，而不是`row[1]`：
 
 ```py
-            from types import SimpleNamespace 
-            def make_namespace(row): 
-                ns = SimpleNamespace( 
-                    date = row[0], 
-                    start_time = row[1], 
-                    start_fuel_height = row[2], 
-                    end_time = row[4], 
-                    end_fuel_height = row[5], 
-                    other_notes = row[7] 
-                ) 
-                return ns 
+        from types import SimpleNamespace 
+        def make_namespace(row): 
+            ns = SimpleNamespace( 
+                date = row[0], 
+                start_time = row[1], 
+                start_fuel_height = row[2], 
+                end_time = row[4], 
+                end_fuel_height = row[5], 
+                other_notes = row[7] 
+            ) 
+            return ns 
 
-    ```
+```
 
 此函数从源数据的选定列构建一个`SimpleNamspace`。第三列和第六列被省略，因为它们始终是零长度的字符串，`''`。
 
 1.  这是由`filter()`用于删除标题行的函数。如果需要，这可以扩展到从源数据中删除空行或其他不良数据。想法是尽快在处理中删除不良数据：
 
 ```py
-            def remove_date(row_ns): 
-                return not(row_ns.date == 'date') 
+        def remove_date(row_ns): 
+            return not(row_ns.date == 'date') 
 
-    ```
+```
 
 1.  将数据转换为可用形式。首先，我们将字符串转换为日期。接下来的两个函数依赖于这个`timestamp()`函数，它将一个列中的`date`字符串加上另一个列中的`time`字符串转换为一个适当的`datetime`实例：
 
 ```py
-            import datetime 
-            def timestamp(date_text, time_text): 
-                date = datetime.datetime.strptime(date_text, "%m/%d/%y").date() 
-                time = datetime.datetime.strptime(time_text, "%I:%M:%S %p").time() 
-                timestamp = datetime.datetime.combine(date, time) 
-                return timestamp 
+        import datetime 
+        def timestamp(date_text, time_text): 
+            date = datetime.datetime.strptime(date_text, "%m/%d/%y").date() 
+            time = datetime.datetime.strptime(time_text, "%I:%M:%S %p").time() 
+            timestamp = datetime.datetime.combine(date, time) 
+            return timestamp 
 
-    ```
+```
 
 这使我们能够根据`datetime`库进行简单的日期计算。特别是，减去两个时间戳将创建一个`timedelta`对象，其中包含任何两个日期之间的确切秒数。
 
 这是我们将如何使用此函数为航行的开始和结束创建适当的时间戳：
 
 ```py
-            def start_datetime(row_ns): 
-                row_ns.start_timestamp = timestamp(row_ns.date, row_ns.start_time) 
-                return row_ns 
+        def start_datetime(row_ns): 
+            row_ns.start_timestamp = timestamp(row_ns.date, row_ns.start_time) 
+            return row_ns 
 
-            def end_datetime(row_ns): 
-                row_ns.end_timestamp = timestamp(row_ns.date, row_ns.end_time) 
-                return row_ns 
+        def end_datetime(row_ns): 
+            row_ns.end_timestamp = timestamp(row_ns.date, row_ns.end_time) 
+            return row_ns 
 
-    ```
+```
 
 这两个函数都将向`SimpleNamespace`添加一个新属性，并返回命名空间对象。这允许这些函数在`map()`操作的堆栈中使用。我们还可以重写这些函数，用不可变的`namedtuple()`替换可变的`SimpleNamespace`，并仍然保留`map()`操作的堆栈。
 
 1.  计算派生时间数据。在这种情况下，我们也可以计算持续时间。这是一个必须在前两个之后执行的函数：
 
 ```py
-            def duration(row_ns): 
-                travel_time = row_ns.end_timestamp - row_ns.start_timestamp 
-                row_ns.travel_hours = round(travel_time.total_seconds()/60/60, 1) 
-                return row_ns 
+        def duration(row_ns): 
+            travel_time = row_ns.end_timestamp - row_ns.start_timestamp 
+            row_ns.travel_hours = round(travel_time.total_seconds()/60/60, 1) 
+            return row_ns 
 
-    ```
+```
 
 这将把秒数差转换为小时值。它还会四舍五入到最接近的十分之一小时。比这更精确的信息基本上是噪音。出发和到达时间（通常）至少相差一分钟；它们取决于船长记得看手表的时间。在某些情况下，她可能已经估计了时间。
 
 1.  计算分析所需的其他指标。这包括创建转换为浮点数的高度值。最终的计算基于另外两个计算结果：
 
 ```py
-            def fuel_use(row_ns): 
-                end_height = float(row_ns.end_fuel_height) 
-                start_height = float(row_ns.start_fuel_height) 
-                row_ns.fuel_change = start_height - end_height 
-                return row_ns 
+        def fuel_use(row_ns): 
+            end_height = float(row_ns.end_fuel_height) 
+            start_height = float(row_ns.start_fuel_height) 
+            row_ns.fuel_change = start_height - end_height 
+            return row_ns 
 
-            def fuel_per_hour(row_ns): 
-                row_ns.fuel_per_hour = row_ns.fuel_change/row_ns.travel_hours 
-                return row_ns 
+        def fuel_per_hour(row_ns): 
+            row_ns.fuel_per_hour = row_ns.fuel_change/row_ns.travel_hours 
+            return row_ns 
 
-    ```
+```
 
 每小时燃料消耗量取决于整个前面的计算堆栈。旅行小时数来自分别计算的开始和结束时间戳。
 
@@ -1667,34 +1667,34 @@ StopIteration**
 1.  定义一个生成器函数模板，它将跳过项目，直到找到所需的项目。这将产生只有一个通过谓词测试的值：
 
 ```py
-            def find_first(predicate, iterable): 
-                for item in iterable: 
-                    if predicate(item): 
-                        yield item 
-                        break 
+        def find_first(predicate, iterable): 
+            for item in iterable: 
+                if predicate(item): 
+                    yield item 
+                    break 
 
-    ```
+```
 
 1.  定义一个谓词函数。对于我们的目的，一个简单的`lambda`对象就可以了。此外，lambda 允许我们使用一个绑定到迭代的变量和一个自由于迭代的变量。这是表达式：
 
 ```py
-            lambda i: n % i == 0 
+        lambda i: n % i == 0 
 
-    ```
+```
 
 在这个 lambda 中，我们依赖一个非局部值`n`。这将是 lambda 的*全局*值，但仍然是整个函数的局部值。如果`n % i`是`0`，那么`i`是`n`的一个因子，`n`不是素数。
 
 1.  使用给定的范围和谓词应用该函数：
 
 ```py
-            import math 
-            def prime(n): 
-                factors = find_first( 
-                    lambda i: n % i == 0, 
-                    range(2, int(math.sqrt(n)+1)) ) 
-                return len(list(factors)) == 0 
+        import math 
+        def prime(n): 
+            factors = find_first( 
+                lambda i: n % i == 0, 
+                range(2, int(math.sqrt(n)+1)) ) 
+            return len(list(factors)) == 0 
 
-    ```
+```
 
 如果`factors`可迭代对象有一个项，那么`n`是合数。否则，`factors`可迭代对象中没有值，这意味着`n`是一个素数。
 
@@ -1936,16 +1936,16 @@ namespace(x=13.0, y=7.58),
 1.  从`functools`导入`partial`函数：
 
 ```py
-            from functools import partial 
+        from functools import partial 
 
-    ```
+```
 
 1.  使用`partial()`创建对象。我们提供基本函数，以及需要包括的位置参数。在定义部分时未提供的任何参数在评估部分时必须提供：
 
 ```py
-            z = partial(standardize, mean_x, stdev_x) 
+        z = partial(standardize, mean_x, stdev_x) 
 
-    ```
+```
 
 1.  我们已为前两个位置参数`mean`和`stdev`提供了值。第三个位置参数`x`必须在计算值时提供。
 
@@ -1954,16 +1954,16 @@ namespace(x=13.0, y=7.58),
 1.  定义绑定固定参数的`lambda`对象：
 
 ```py
-            lambda x: standardize(mean_v1, stdev_v1, x) 
+        lambda x: standardize(mean_v1, stdev_v1, x) 
 
-    ```
+```
 
 1.  使用`lambda`创建对象：
 
 ```py
-            z = lambda x: standardize(mean_v1, stdev_v1, x) 
+        z = lambda x: standardize(mean_v1, stdev_v1, x) 
 
-    ```
+```
 
 ## 它是如何工作的...
 
@@ -2201,32 +2201,32 @@ namespace(x=13.0, y=7.58),
 1.  定义丰富的`namedtuple`：
 
 ```py
-            RankYDataPair = namedtuple('RankYDataPair', ['y_rank', 'pair']) 
+        RankYDataPair = namedtuple('RankYDataPair', ['y_rank', 'pair']) 
 
-    ```
+```
 
 请注意，我们特意在这个新的数据结构中将原始对作为数据项包含在内。我们不想复制各个字段；相反，我们将原始对象作为一个整体合并在一起。
 
 1.  定义丰富函数：
 
 ```py
-            PairIter = Iterable[DataPair] 
-            RankPairIter = Iterator[RankYDataPair] 
+        PairIter = Iterable[DataPair] 
+        RankPairIter = Iterator[RankYDataPair] 
 
-            def rank_by_y(iterable:PairIter) -> RankPairIter: 
+        def rank_by_y(iterable:PairIter) -> RankPairIter: 
 
-    ```
+```
 
 我们在这个函数中包含了类型提示，以清楚地表明这个丰富函数期望和返回的类型。我们单独定义了类型提示，这样它们会更短，并且可以在其他函数中重复使用。
 
 1.  编写丰富的主体。在这种情况下，我们将进行排名排序，因此我们需要使用原始`y`属性进行排序。我们从旧对象创建新对象，因此函数会生成`RankYDataPair`的实例：
 
 ```py
-            all_data = sorted(iterable, key=lambda pair:pair.y) 
-            for y_rank, pair in enumerate(all_data, start=1): 
-                yield RankYDataPair(y_rank, pair) 
+        all_data = sorted(iterable, key=lambda pair:pair.y) 
+        for y_rank, pair in enumerate(all_data, start=1): 
+            yield RankYDataPair(y_rank, pair) 
 
-    ```
+```
 
 我们使用`enumerate()`为每个值创建排名顺序号。对于一些统计处理来说，起始值为`1`有时很方便。在其他情况下，默认的起始值`0`也能很好地工作。
 
@@ -2386,19 +2386,19 @@ Python 类型提示最适合用于创建新对象。因此，这种技术可以�
 1.  写出完整的`for`语句：
 
 ```py
-            for match in find_value(value, node[key], path+[key]): 
-                yield match 
+        for match in find_value(value, node[key], path+[key]): 
+            yield match 
 
-    ```
+```
 
 出于调试目的，我们可以在`for`语句的主体中插入一个`print()`函数。
 
 1.  一旦确定事情运行正常，就用`yield from`语句替换这个：
 
 ```py
-            yield from find_value(value, node[key], path+[key]) 
+        yield from find_value(value, node[key], path+[key]) 
 
-    ```
+```
 
 完整的深度优先`find_value()`搜索函数将如下所示：
 

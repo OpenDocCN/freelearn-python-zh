@@ -107,9 +107,9 @@ BBEdit 非常适合 Mac OS X 开发人员。请参阅[`www.barebones.com/product
 1.  大多数 Python 脚本文件的第一行应该是这样的：
 
 ```py
-                #!/usr/bin/env python3 
+            #!/usr/bin/env python3 
 
-    ```
+```
 
 这将在你正在编写的文件和 Python 之间建立关联。
 
@@ -122,20 +122,20 @@ Windows 开发人员可以无论如何包含序言行。这将使 Mac OS X 和 L
 1.  在序言之后，应该有一个三引号的文本块。这是我们要创建的文件的文档字符串（称为**docstring**）。这在技术上不是强制性的，但对于解释文件包含的内容至关重要。
 
 ```py
-            ''' 
-            A summary of this script. 
-            ''' 
+        ''' 
+        A summary of this script. 
+        ''' 
 
-    ```
+```
 
 因为 Python 的三引号字符串可以无限长，所以可以随意写入必要的内容。这应该是描述脚本或库模块的主要方式。这甚至可以包括它是如何工作的示例。
 
 1.  现在来到脚本的有趣部分：真正执行操作的部分。我们可以编写所有需要完成工作的语句。现在，我们将使用这个作为占位符：
 
 ```py
-            print('hello world') 
+        print('hello world') 
 
-    ```
+```
 
 有了这个，我们的脚本就有了作用。在其他示例中，我们将看到许多其他用于执行操作的语句。通常会创建函数和类定义，并编写语句来使用函数和类执行操作。
 
@@ -278,24 +278,24 @@ Python 允许我们使用`\`并换行。
 1.  将整个语句写在一行上，即使它很混乱：
 
 ```py
-     **>>> message_text = 'the internal representation is {mantissa:d}/2**53*2**{exponent:d}'.format(mantissa=mantissa_whole, exponent=exponent)** 
+ **>>> message_text = 'the internal representation is {mantissa:d}/2**53*2**{exponent:d}'.format(mantissa=mantissa_whole, exponent=exponent)** 
 
-    ```
+```
 
 1.  如果有*逻辑*断点，在那里插入`\`。有时，没有真正好的断点：
 
 ```py
-     **>>> message_text = 'the internal representation is \** 
+ **>>> message_text = 'the internal representation is \** 
 
-     **... {mantissa:d}/2**53*2**{exponent:d}'.\** 
+ **... {mantissa:d}/2**53*2**{exponent:d}'.\** 
 
-     **... format(mantissa=mantissa_whole, exponent=exponent)** 
+ **... format(mantissa=mantissa_whole, exponent=exponent)** 
 
-     **>>> message_text** 
+ **>>> message_text** 
 
-     **'the internal representation is 7074237752514592/2**53*2**2'** 
+ **'the internal representation is 7074237752514592/2**53*2**2'** 
 
-    ```
+```
 
 为了使其工作，`\`必须是行上的最后一个字符。我们甚至不能在`\`后有一个空格。这很难看出来；因此，我们不鼓励这样做。
 
@@ -306,39 +306,39 @@ Python 允许我们使用`\`并换行。
 1.  将整个语句写在一行上，即使它很混乱：
 
 ```py
-     **>>> import math** 
+ **>>> import math** 
 
-     **>>> example_value1 = (63/25) * (17+15*math.sqrt(5)) / (7+15*math.sqrt(5))** 
+ **>>> example_value1 = (63/25) * (17+15*math.sqrt(5)) / (7+15*math.sqrt(5))** 
 
-    ```
+```
 
 1.  添加额外的`()`字符不改变值，但允许将表达式分解为多行：
 
 ```py
-     **>>> example_value2 = (63/25) * ( (17+15*math.sqrt(5)) / (7+15*math.sqrt(5)) )** 
+ **>>> example_value2 = (63/25) * ( (17+15*math.sqrt(5)) / (7+15*math.sqrt(5)) )** 
 
-     **>>> example_value2 == example_value1** 
+ **>>> example_value2 == example_value1** 
 
-     **True** 
+ **True** 
 
-    ```
+```
 
 1.  在`()`字符内部断开行：
 
 ```py
-     **>>> example_value3 = (63/25) * (** 
+ **>>> example_value3 = (63/25) * (** 
 
-     **...      (17+15*math.sqrt(5))** 
+ **...      (17+15*math.sqrt(5))** 
 
-     **...    / ( 7+15*math.sqrt(5))** 
+ **...    / ( 7+15*math.sqrt(5))** 
 
-     **... )** 
+ **... )** 
 
-     **>>> example_value3 == example_value1** 
+ **>>> example_value3 == example_value1** 
 
-     **True** 
+ **True** 
 
-    ```
+```
 
 匹配`()`字符的技术非常强大，适用于各种情况。这是被广泛使用和强烈推荐的。
 
@@ -353,21 +353,21 @@ Python 允许我们使用`\`并换行。
 1.  将字符串分解为子字符串：
 
 ```py
-     **>>> message_text = (** 
+ **>>> message_text = (** 
 
-     **... 'the internal representation '** 
+ **... 'the internal representation '** 
 
-     **... 'is {mantissa:d}/2**53*2**{exponent:d}'** 
+ **... 'is {mantissa:d}/2**53*2**{exponent:d}'** 
 
-     **... ).format(** 
+ **... ).format(** 
 
-     **... mantissa=mantissa_whole, exponent=exponent)** 
+ **... mantissa=mantissa_whole, exponent=exponent)** 
 
-     **>>> message_text** 
+ **>>> message_text** 
 
-     **'the internal representation is 7074237752514592/2**53*2**2'** 
+ **'the internal representation is 7074237752514592/2**53*2**2'** 
 
-    ```
+```
 
 我们总是可以将长字符串分解为相邻的片段。通常，当片段被`()`字符包围时，这是最有效的。然后我们可以使用尽可能多的物理行断开。这仅限于那些我们有特别长的字符串值的情况。
 
@@ -387,22 +387,22 @@ Python 允许我们使用`\`并换行。
 1.  识别整体表达式中的子表达式。将这些分配给变量：
 
 ```py
-     **>>> a = (63/25)** 
+ **>>> a = (63/25)** 
 
-     **>>> b = (17+15*math.sqrt(5))** 
+ **>>> b = (17+15*math.sqrt(5))** 
 
-     **>>> c = (7+15*math.sqrt(5))** 
+ **>>> c = (7+15*math.sqrt(5))** 
 
-    ```
+```
 
 这通常相当简单。可能需要一点小心来进行代数运算，以找到合理的子表达式。
 
 1.  用创建的变量替换子表达式：
 
 ```py
-     **>>> example_value = a * b / c** 
+ **>>> example_value = a * b / c** 
 
-    ```
+```
 
 这是对原始复杂子表达式的一个必要的文本替换，用一个变量来代替。
 
@@ -600,11 +600,11 @@ RST 有一个简单的语法规则，即段落之间用空行分隔。
 +   提供一个`::`前缀。我们可以将其作为自己单独的段落，或者作为引导段落末尾的特殊双冒号：
 
 ```py
-            Here's an example:: 
+        Here's an example:: 
 
-                more_code()  
+            more_code()  
 
-    ```
+```
 
 +   `::`用于引导段落。
 
@@ -649,10 +649,10 @@ RST 有一个简单的语法规则，即段落之间用空行分隔。
 标题将看起来像这样。
 
 ```py
-            Topic 
-            ===== 
+        Topic 
+        ===== 
 
-    ```
+```
 
 标题文本在一行上，下划线字符在下一行上。这必须被空行包围。下划线字符可以比标题字符多，但不能少。
 
@@ -752,11 +752,11 @@ RST 解析器可以识别几种不同类型的正文元素。我们展示了一�
 +   **指令**：指令是一个段落，通常看起来像`.. directive::`。它可能有一些内容，缩进以便包含在指令内。它可能看起来像这样：
 
 ```py
-            ..  important:: 
+        ..  important:: 
 
-                Do not flip the bozo bit. 
+            Do not flip the bozo bit. 
 
-    ```
+```
 
 `.. important::`段落是指令。这之后是一个缩进在指令内的短段落文字。在这种情况下，它创建了一个包含*important*警告的单独段落。
 
@@ -890,7 +890,7 @@ game.craps()
 
 2.  Add an `else` clause that raises an exception, like this:
 
-    ```
+```
 
 否则：
 
@@ -978,15 +978,15 @@ We'll look at a six-step process that outlines the core of designing this kind o
 
 1.  Define done. In our case, we'll have two copies of the password, `password_text` and `confirming_password_text` . The condition which must be `true` after the loop is that `password_text == confirming_password_text` . Ideally, reading from people (or files) is a bounded activity. Eventually, people will enter the matching pair of values. Until they enter the matching pair, we'll iterate indefinitely.
 
-    There are other boundary conditions. For example, end of file. Or we allow the person to go back to a previous prompt. Generally, we handle these other conditions with exceptions in Python.
+There are other boundary conditions. For example, end of file. Or we allow the person to go back to a previous prompt. Generally, we handle these other conditions with exceptions in Python.
 
-    Of course, we can always add these additional conditions to our definition of done. We may need to have a complex terminating condition like end of file OR `password_text == confirming_password_text` .
+Of course, we can always add these additional conditions to our definition of done. We may need to have a complex terminating condition like end of file OR `password_text == confirming_password_text` .
 
-    In this example, we'll opt for exception handling and assume that a `try:` block will be used. It greatly simplifies the design to have only a single clause in the terminating condition.
+In this example, we'll opt for exception handling and assume that a `try:` block will be used. It greatly simplifies the design to have only a single clause in the terminating condition.
 
-    We can rough out the loop like this:
+We can rough out the loop like this:
 
-    ```
+```
 
 # 初始化一些东西
 
@@ -998,17 +998,17 @@ We'll look at a six-step process that outlines the core of designing this kind o
 
 ```py
 
-    We've written our definition of done as a final `assert` statement. We've included comments for the rest of the iteration that we'll fill in in subsequent steps.
+We've written our definition of done as a final `assert` statement. We've included comments for the rest of the iteration that we'll fill in in subsequent steps.
 
 2.  Define a condition that's `true` while the loop is iterating. This is called an **invariant** because it's always `true` at the start and end of loop processing. It's often created by generalizing the post-condition or introducing another variable.
 
-    When reading from people (or files) we have an implied state change that is an important part of the invariant. We can call this the *get the next input* change in state. We often have to articulate clearly that our loop will be acquiring some next value from an input stream.
+When reading from people (or files) we have an implied state change that is an important part of the invariant. We can call this the *get the next input* change in state. We often have to articulate clearly that our loop will be acquiring some next value from an input stream.
 
-    We have to be sure that our loop properly gets the next item in spite of any complex logic in the body of the `while` statement. It's a common bug to have a condition where a next input is not actually fetched. This leads to programs which *hang* —there's no state change in one logic path through the `if` statements in the body of the `while` statement. The invariant wasn't reset properly, or it wasn't articulated properly when designing the loop.
+We have to be sure that our loop properly gets the next item in spite of any complex logic in the body of the `while` statement. It's a common bug to have a condition where a next input is not actually fetched. This leads to programs which *hang* —there's no state change in one logic path through the `if` statements in the body of the `while` statement. The invariant wasn't reset properly, or it wasn't articulated properly when designing the loop.
 
-    In our case, the invariant will use a conceptual `new-input()` condition. This condition is `true` when we've read a new value using the `getpass()` function. Here's our expanded loop design:
+In our case, the invariant will use a conceptual `new-input()` condition. This condition is `true` when we've read a new value using the `getpass()` function. Here's our expanded loop design:
 
-    ```
+```
 
 # 初始化一些东西
 
@@ -1030,9 +1030,9 @@ We'll look at a six-step process that outlines the core of designing this kind o
 
 3.  Define the condition for leaving the loop. We need to be sure that this condition depends on the invariant being `true` . We also need to be sure that, when this termination condition is finally `false,` the target state will become `true` .
 
-    In most cases, the loop condition is the logical negation of the target state. Here's the expanded design:
+In most cases, the loop condition is the logical negation of the target state. Here's the expanded design:
 
-    ```
+```
 
 # 初始化一些东西
 
@@ -1054,7 +1054,7 @@ We'll look at a six-step process that outlines the core of designing this kind o
 
 4.  Define the initialization that will make sure that both the invariant will be `true` and that we can actually test the terminating condition. In this case, we need to get values for the two variables. The loop now looks like this:
 
-    ```
+```
 
 password_text= getpass()
 
@@ -1078,7 +1078,7 @@ password_text= getpass()
 
 5.  Write the body of the loop which will reset the invariant to `true` . We need to write the fewest statements that will do this. For this example loop, the fewest statements are pretty obvious—they match the initialization. Our updated loop looks like this:
 
-    ```
+```
 
 password_text= getpass()
 
@@ -1231,7 +1231,7 @@ Ideally, the post-condition would be something simple like `text[position] in '=
 
 1.  Write the obvious post-condition. We sometimes call this the *happy-path* condition because it's the one that's `true` when nothing unusual has happened.
 
-    ```
+```
 
 文本[位置]在'：='中
 
@@ -1242,7 +1242,7 @@ Ideally, the post-condition would be something simple like `text[position] in '=
     *   There's no `=` or `:` .
     *   There are no characters at all. The `len()` is zero, and the loop never actually does anything. In this case, the position variable will never be created.
 
-        ```
+```
 
 （len（text）== 0
 
@@ -1255,7 +1255,7 @@ Ideally, the post-condition would be something simple like `text[position] in '=
 3.  If a `while` statement is being used, consider redesigning it to have completion conditions. This can eliminate the need for a `break` statement.
 4.  If a `for` statement is being used, be sure a proper initialization is done, and add the various terminating conditions to the statements after the loop. It can look redundant to have `x = 0` followed by `for x = ...` . It's necessary in the case of a loop which doesn't execute the `break` statement, though.
 
-    ```
+```
 
 **>>>位置= -1#如果长度为零
 
@@ -1426,7 +1426,7 @@ How do we create a `try` statement that handles the exceptions in the proper ord
 
 1.  Write the code we want to use indented in the `try` block:
 
-    ```
+```
 
 尝试：
 
@@ -1436,7 +1436,7 @@ shutil.copy（str（source_file_path），str（target_file_path））
 
 2.  Include the most specific exception classes first. In this case, we have separate responses for the specific `FileNotFoundError` and the more general `OSError` .
 
-    ```
+```
 
 尝试：
 
@@ -1452,7 +1452,7 @@ shutil.copy（str（source_file_path），str（target_file_path））
 
 3.  Include any more general exceptions later:
 
-    ```
+```
 
 尝试：
 
@@ -1632,7 +1632,7 @@ Assume we're writing some complex string processing. We'd like to treat a number
 
 1.  To create a new exception, we can do this:
 
-    ```
+```
 
 类错误（异常）：
 
@@ -1640,11 +1640,11 @@ Assume we're writing some complex string processing. We'd like to treat a number
 
 ```py
 
-    That's sufficient to define a new class of exception.
+That's sufficient to define a new class of exception.
 
 2.  When handling exceptions, we can chain them using the `raise from` statement like this:
 
-    ```
+```
 
 尝试：
 
@@ -1805,7 +1805,7 @@ This will give us a context in which to learn about the `with` statement.
 
 1.  Create the context by opening the file, or creating the network connection with `urllib.request.urlopen()` . Other common contexts include archives like `zip` files and `tar` files:
 
-    ```
+```
 
 target_path = pathlib.Path（'code/test.csv'）
 
@@ -1815,7 +1815,7 @@ target_path = pathlib.Path（'code/test.csv'）
 
 2.  Include all the processing, indented within the `with` statement:
 
-    ```
+```
 
 target_path = pathlib.Path（'code/test.csv'）
 
@@ -1833,7 +1833,7 @@ writer.writerow（data）
 
 3.  When we use a file as a context manager, the file is automatically closed at the end of the indented context block. Even if an exception is raised, the file is still closed properly. Outdent the processing that is done after the context is finished and the resources are released:
 
-    ```
+```
 
 target_path = pathlib.Path（'code/test.csv'）
 

@@ -489,43 +489,43 @@ def test_simulation_34():
 +   `condition`：如果给定，第一个参数是一个`True`/`False`条件，类似于`@pytest.mark.skipif`中使用的条件：如果为`False`，则忽略`xfail`标记。它可用于根据外部条件（例如平台、Python 版本、库版本等）标记测试为`xfail`。
 
 ```py
-    @pytest.mark.xfail(
-     sys.platform.startswith("win"), 
-        reason="flaky on Windows #42", strict=False
-    )
-    def test_login_dialog():
-        ...
-    ```
+@pytest.mark.xfail(
+ sys.platform.startswith("win"), 
+    reason="flaky on Windows #42", strict=False
+)
+def test_login_dialog():
+    ...
+```
 
 +   `reason`：一个字符串，在使用`-ra`标志时将显示在短测试摘要中。强烈建议始终使用此参数来解释为什么将测试标记为`xfail`和/或包括一个票号。
 
 ```py
-    @pytest.mark.xfail(
-        sys.platform.startswith("win"), 
-        reason="flaky on Windows #42", strict=False
-    )
-    def test_login_dialog():
-        ...
-    ```
+@pytest.mark.xfail(
+    sys.platform.startswith("win"), 
+    reason="flaky on Windows #42", strict=False
+)
+def test_login_dialog():
+    ...
+```
 
 +   `raises`：给定一个异常类型，它声明我们期望测试引发该异常的实例。如果测试引发了另一种类型的异常（甚至是`AssertionError`），测试将正常“失败”。这对于缺少功能或测试已知错误特别有用。
 
 ```py
-    @pytest.mark.xfail(raises=NotImplementedError,
-                       reason='will be implemented in #987')
-    def test_credential_check():
-        check_credentials('Hawkwood') # not implemented yet
-    ```
+@pytest.mark.xfail(raises=NotImplementedError,
+                   reason='will be implemented in #987')
+def test_credential_check():
+    check_credentials('Hawkwood') # not implemented yet
+```
 
 +   `run`：如果为`False`，则测试甚至不会被执行，并且将作为 XFAIL 失败。这对于运行可能导致测试套件进程崩溃的代码的测试特别有用（例如，由于已知问题，C/C++扩展导致分段错误）。
 
 ```py
-    @pytest.mark.xfail(
-        run=False, reason="undefined particles cause a crash #625"
-    )
-    def test_undefined_particle_collision_crash():
-        collide(Particle(), Particle())
-    ```
+@pytest.mark.xfail(
+    run=False, reason="undefined particles cause a crash #625"
+)
+def test_undefined_particle_collision_crash():
+    collide(Particle(), Particle())
+```
 
 +   `strict`：如果为`True`，则通过的测试将使测试套件失败。如果为`False`，则无论结果如何，测试都不会使测试套件失败（默认为`False`）。这在本节开始时已经详细讨论过。
 

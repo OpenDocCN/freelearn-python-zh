@@ -59,56 +59,56 @@
 1.  编写函数的一个版本。我们将从*Craps*游戏开始，因为它似乎最简单：
 
 ```py
-     **>>> import random** 
+ **>>> import random** 
 
-     **>>> def die():** 
+ **>>> def die():** 
 
-     **...    return random.randint(1,6)** 
+ **...    return random.randint(1,6)** 
 
-     **>>> def craps():** 
+ **>>> def craps():** 
 
-     **...    return (die(), die())** 
+ **...    return (die(), die())** 
 
-    ```
+```
 
 我们定义了一个方便的辅助函数`die()`，它封装了有时被称为标准骰子的基本事实。有五个可以使用的立体几何体，可以产生四面体、六面体、八面体、十二面体和二十面体骰子。六面骰子有着悠久的历史，最初是作为*骰子*骨头，很容易修剪成六面立方体。
 
 这是底层`die()`函数的一个示例：
 
 ```py
-     **>>> random.seed(113)** 
+ **>>> random.seed(113)** 
 
-     **>>> die(), die()** 
+ **>>> die(), die()** 
 
-     **(1, 6)** 
+ **(1, 6)** 
 
-    ```
+```
 
 我们掷了两个骰子，以展示值如何组合以掷更大堆的骰子。
 
 我们的*Craps*游戏函数看起来是这样的：
 
 ```py
-     **>>> craps()** 
+ **>>> craps()** 
 
-     **(6, 3)** 
+ **(6, 3)** 
 
-     **>>> craps()** 
+ **>>> craps()** 
 
-     **(1, 4)** 
+ **(1, 4)** 
 
-    ```
+```
 
 这显示了*Craps*游戏的一些两个骰子投掷。
 
 1.  编写函数的另一个版本：
 
 ```py
-     **>>> def zonk():** 
+ **>>> def zonk():** 
 
-     **...    return tuple(die() for x in range(6))** 
+ **...    return tuple(die() for x in range(6))** 
 
-    ```
+```
 
 我们使用了一个生成器表达式来创建一个有六个骰子的元组对象。我们将在第八章中深入研究生成器表达式，*函数式和反应式编程特性*。
 
@@ -117,11 +117,11 @@
 这是使用`zonk()`函数的一个例子：
 
 ```py
-     **>>> zonk()** 
+ **>>> zonk()** 
 
-     **(5, 3, 2, 4, 1, 1)** 
+ **(5, 3, 2, 4, 1, 1)** 
 
-    ```
+```
 
 这显示了六个单独骰子的结果。有一个短顺（1-5）以及一对一。在游戏的某些版本中，这是一个很好的得分手。
 
@@ -130,44 +130,44 @@
 在这种情况下，我们可以将两元组的创建概括化。我们可以引入一个基于`range(2)`的生成器表达式，它将两次评估`die()`函数：
 
 ```py
-     **>>> def craps():** 
+ **>>> def craps():** 
 
-     **...     return tuple(die() for x in range(2))** 
+ **...     return tuple(die() for x in range(2))** 
 
-    ```
+```
 
 这似乎比解决特定的两个骰子问题需要更多的代码。从长远来看，使用一个通用函数意味着我们可以消除许多特定的函数。
 
 1.  合并这两个函数。这通常涉及到暴露一个之前是常数或其他硬编码假设的变量：
 
 ```py
-     **>>> def dice(n):** 
+ **>>> def dice(n):** 
 
-     **...     return tuple(die() for x in range(n))** 
+ **...     return tuple(die() for x in range(n))** 
 
-    ```
+```
 
 这提供了一个通用函数，涵盖了*Craps*和*Zonk*的需求：
 
 ```py
-     **>>> dice(2)** 
+ **>>> dice(2)** 
 
-     **(3, 2)** 
+ **(3, 2)** 
 
-     **>>> dice(6)** 
+ **>>> dice(6)** 
 
-     **(5, 3, 4, 3, 3, 4)** 
+ **(5, 3, 4, 3, 3, 4)** 
 
-    ```
+```
 
 1.  确定最常见的用例，并将其作为引入的任何参数的默认值。如果我们最常见的模拟是*Craps*，我们可能会这样做：
 
 ```py
-     **>>> def dice(n=2):** 
+ **>>> def dice(n=2):** 
 
-     **...     return tuple(die() for x in range(n))** 
+ **...     return tuple(die() for x in range(n))** 
 
-    ```
+```
 
 现在我们可以简单地在*Craps*中使用`dice()`。我们需要在*Zonk*中使用`dice(6)`。
 
@@ -200,11 +200,11 @@
 1.  编写符合一般模式的函数：
 
 ```py
-     **>>> def dice(n):** 
+ **>>> def dice(n):** 
 
-     **...    return (die() for x in range(n))** 
+ **...    return (die() for x in range(n))** 
 
-    ```
+```
 
 在第三种情况下——*Zonk*中的后续掷骰子——我们确定了一个*1≤n≤6*的约束。我们需要确定这是否是我们`dice()`函数的约束，还是这个约束是由使用`dice`函数的模拟应用所施加的。
 
@@ -213,11 +213,11 @@
 1.  为最常见的用例提供一个默认值。如果我们最常见的模拟是*Craps*，我们可能会这样做：
 
 ```py
-     **>>> def dice(n=2):** 
+ **>>> def dice(n=2):** 
 
-     **...     return tuple(die() for x in range(n))** 
+ **...     return tuple(die() for x in range(n))** 
 
-    ```
+```
 
 现在我们可以简单地在*Craps*中使用`dice()`。我们需要在*Zonk*中使用`dice(6)`。
 
@@ -346,45 +346,45 @@ Python 提供参数值的规则非常灵活。有几种方法可以确保每个�
 1.  根据一个值为`None`时未知的情况，将每个表达式包装在一个`if`语句中：
 
 ```py
+        if distance is None:
+            distance = rate * time
+        elif rate is None:
+            rate = distance / time
+        elif time is None:
+            time = distance / rate
+
+```
+
+1.  参考第二章中的*设计复杂的 if...elif 链*，*语句和语法*，以指导设计这些复杂的`if...elif`链。包括`else`崩溃选项的变体：
+
+```py
+        else:
+            warnings.warning( "Nothing to solve for" )
+
+```
+
+1.  构建生成的字典对象。在简单情况下，我们可以使用`vars()`函数简单地将所有本地变量作为生成的字典发出。在某些情况下，我们可能有一些本地变量不想包括；在这种情况下，我们需要显式构建字典：
+
+```py
+        return dict(distance=distance, rate=rate, time=time)
+
+```
+
+1.  使用关键字参数将所有这些包装为一个函数：
+
+```py
+        def rtd(distance=None, rate=None, time=None):
             if distance is None:
                 distance = rate * time
             elif rate is None:
                 rate = distance / time
             elif time is None:
                 time = distance / rate
-
-    ```
-
-1.  参考第二章中的*设计复杂的 if...elif 链*，*语句和语法*，以指导设计这些复杂的`if...elif`链。包括`else`崩溃选项的变体：
-
-```py
             else:
                 warnings.warning( "Nothing to solve for" )
-
-    ```
-
-1.  构建生成的字典对象。在简单情况下，我们可以使用`vars()`函数简单地将所有本地变量作为生成的字典发出。在某些情况下，我们可能有一些本地变量不想包括；在这种情况下，我们需要显式构建字典：
-
-```py
             return dict(distance=distance, rate=rate, time=time)
 
-    ```
-
-1.  使用关键字参数将所有这些包装为一个函数：
-
-```py
-            def rtd(distance=None, rate=None, time=None):
-                if distance is None:
-                    distance = rate * time
-                elif rate is None:
-                    rate = distance / time
-                elif time is None:
-                    time = distance / rate
-                else:
-                    warnings.warning( "Nothing to solve for" )
-                return dict(distance=distance, rate=rate, time=time)
-
-    ```
+```
 
 我们可以像这样使用生成的函数：
 
@@ -605,22 +605,22 @@ TypeError: wind_chill() takes 0 positional arguments but 7 were given**
 +   这是在控制台上打印表的方法：
 
 ```py
-                wind_chill( 
-                    start_T=0, stop_T=-45, step_T=-5, 
-                    start_V=0, stop_V=20, step_V=2) 
+            wind_chill( 
+                start_T=0, stop_T=-45, step_T=-5, 
+                start_V=0, stop_V=20, step_V=2) 
 
-    ```
+```
 
 +   这是写入文件的方法：
 
 ```py
-                path = pathlib.Path("code/wc.csv") 
-                with path.open('w', newline='') as target: 
-                    wind_chill(output=target, 
-                        start_T=0, stop_T=-45, step_T=-5, 
-                        start_V=0, stop_V=20, step_V=2) 
+            path = pathlib.Path("code/wc.csv") 
+            with path.open('w', newline='') as target: 
+                wind_chill(output=target, 
+                    start_T=0, stop_T=-45, step_T=-5, 
+                    start_V=0, stop_V=20, step_V=2) 
 
-    ```
+```
 
 我们在这里改变了方法，稍微更加通用。这遵循了*设计具有可选参数的函数*配方。
 
@@ -708,33 +708,33 @@ Python 3.5 引入了语言类型提示。我们可以在三个地方使用它们
 1.  为各种数字定义一个方便的类型：
 
 ```py
-            from decimal import Decimal 
-            from typing import * 
-            Number = Union[int, float, complex, Decimal] 
+        from decimal import Decimal 
+        from typing import * 
+        Number = Union[int, float, complex, Decimal] 
 
-    ```
+```
 
 理想情况下，我们希望在 numbers 模块中使用抽象的`Number`类。目前，该模块没有可用的正式类型规范，因此我们将为`Number`定义自己的期望。这个定义是几种数字类型的联合。理想情况下，`mypy`或 Python 的未来版本将包括所需的定义。
 
 1.  像这样注释函数的参数：
 
 ```py
-            def temperature(*, 
-                f_temp: Optional[Number]=None, 
-                c_temp: Optional[Number]=None): 
+        def temperature(*, 
+            f_temp: Optional[Number]=None, 
+            c_temp: Optional[Number]=None): 
 
-    ```
+```
 
 我们在参数的一部分添加了`:`和类型提示。在这种情况下，我们使用我们自己的`Number`类型定义来声明任何数字都可以在这里。我们将其包装在`Optional[]`类型操作中，以声明参数值可以是`Number`或`None`。
 
 1.  函数的返回值可以这样注释：
 
 ```py
-            def temperature(*, 
-                f_temp: Optional[Number]=None, 
-                c_temp: Optional[Number]=None) -> Dict[str, Number]: 
+        def temperature(*, 
+            f_temp: Optional[Number]=None, 
+            c_temp: Optional[Number]=None) -> Dict[str, Number]: 
 
-    ```
+```
 
 我们为此函数的返回值添加了`->`和类型提示。在这种情况下，我们声明结果将是一个具有字符串键`str`和使用我们的`Number`类型定义的数字值的字典对象。
 
@@ -743,10 +743,10 @@ Python 3.5 引入了语言类型提示。我们可以在三个地方使用它们
 1.  如果需要的话，我们可以在赋值和`with`语句中添加类型提示作为注释。这些很少需要，但可能会澄清一长串复杂的语句。如果我们想要添加它们，注释可能看起来像这样：
 
 ```py
-            result = {'c_temp': c_temp, 
-                'f_temp': f_temp} # type: Dict[str, Number] 
+        result = {'c_temp': c_temp, 
+            'f_temp': f_temp} # type: Dict[str, Number] 
 
-    ```
+```
 
 我们在构建最终字典对象的语句上添加了`# type: Dict[str, Number]`。
 
@@ -925,20 +925,20 @@ Dict[Color, Line]
 我们可能会将基本的 haversine 函数更改为这样：
 
 ```py
-            def haversine(lat_1: float, lon_1: float, 
-                lat_2: float, lon_2: float, *, R: float) -> float: 
+        def haversine(lat_1: float, lon_1: float, 
+            lat_2: float, lon_2: float, *, R: float) -> float: 
 
-    ```
+```
 
 我们插入了`*`来将参数分成两组。第一组可以通过位置或关键字提供参数。第二组，- 在这种情况下是`R` - 必须通过关键字给出。
 
 1.  然后，我们可以编写一个包装函数，它将应用所有的位置参数而不加修改。它将作为长期上下文的一部分提供额外的关键字参数：
 
 ```py
-            def nm_haversine(*args): 
-                return haversine(*args, R=NM) 
+        def nm_haversine(*args): 
+            return haversine(*args, R=NM) 
 
-    ```
+```
 
 我们在函数声明中使用了`*args`构造来接受一个单独的元组`args`中的所有位置参数值。当评估`haversine()`函数时，我们还使用了`*args`来将元组扩展为该函数的所有位置参数值。
 
@@ -949,18 +949,18 @@ Dict[Color, Line]
 1.  我们可以遵循*使用*分隔符强制关键字参数*的方法。我们可能会将基本的 haversine 函数更改为这样：
 
 ```py
-            def haversine(lat_1: float, lon_1: float, 
-                lat_2: float, lon_2: float, *, R: float) -> float: 
+        def haversine(lat_1: float, lon_1: float, 
+            lat_2: float, lon_2: float, *, R: float) -> float: 
 
-    ```
+```
 
 1.  使用关键字参数创建一个偏函数：
 
 ```py
-            from functools import partial 
-            nm_haversine = partial(haversine, R=NM) 
+        from functools import partial 
+        nm_haversine = partial(haversine, R=NM) 
 
-    ```
+```
 
 `partial()`函数从现有函数和一组具体的参数值中构建一个新函数。`nm_haversine()`函数在构建偏函数时提供了`R`的特定值。
 
@@ -983,18 +983,18 @@ Dict[Color, Line]
 1.  我们可能会将基本的`haversine`函数更改为这样：
 
 ```py
-            def haversine(R: float, lat_1: float, lon_1: float, 
-                lat_2: float, lon_2: float) -> float: 
+        def haversine(R: float, lat_1: float, lon_1: float, 
+            lat_2: float, lon_2: float) -> float: 
 
-    ```
+```
 
 1.  使用位置参数创建一个部分函数：
 
 ```py
-            from functools import partial 
-            nm_haversine = partial(haversine, NM) 
+        from functools import partial 
+        nm_haversine = partial(haversine, NM) 
 
-    ```
+```
 
 `partial()`函数从现有函数和具体的参数值集构建一个新的函数。`nm_haversine()`函数在构建部分时为第一个参数`R`提供了一个特定的值。
 
@@ -1089,22 +1089,22 @@ Dict[Color, Line]
 1.  写概要：不需要一个适当的主题——我们不写 *这个函数计算...* ；我们从 *计算...* 开始。没有理由过分强调上下文：
 
 ```py
-            def Twc(T, V): 
-                """Computes the wind chill temperature.""" 
+        def Twc(T, V): 
+            """Computes the wind chill temperature.""" 
 
-    ```
+```
 
 1.  用详细描述写：
 
 ```py
-            def Twc(T, V): 
-                """Computes the wind chill temperature 
+        def Twc(T, V): 
+            """Computes the wind chill temperature 
 
-                The wind-chill, :math:`T_{wc}`, is based on 
-                air temperature, T, and wind speed, V. 
-                """ 
+            The wind-chill, :math:`T_{wc}`, is based on 
+            air temperature, T, and wind speed, V. 
+            """ 
 
-    ```
+```
 
 在这种情况下，我们在描述中使用了一小块排版数学。`:math:` 解释文本角色使用 LaTeX 数学排版。如果你安装了 LaTeX，Sphinx 将使用它来准备一个带有数学的小`.png`文件。如果你愿意，Sphinx 可以使用 MathJax 或 JSMath 来进行 JavaScript 数学排版，而不是创建一个`.png`文件。
 
@@ -1113,17 +1113,17 @@ Dict[Color, Line]
 对于必须是关键字的参数，通常使用 `:key name: description` 。使用 `key` 而不是 `param` 显示它是一个仅限关键字的参数：
 
 ```py
-            def Twc(T: float, V: float): 
-                """Computes the wind chill temperature 
+        def Twc(T: float, V: float): 
+            """Computes the wind chill temperature 
 
-                The wind-chill, :math:`T_{wc}`, is based on 
-                air temperature, T, and wind speed, V. 
+            The wind-chill, :math:`T_{wc}`, is based on 
+            air temperature, T, and wind speed, V. 
 
-                :param T: Temperature in °C 
-                :param V: Wind Speed in kph 
-                """ 
+            :param T: Temperature in °C 
+            :param V: Wind Speed in kph 
+            """ 
 
-    ```
+```
 
 有两种包含类型信息的方法：
 
@@ -1136,18 +1136,18 @@ Dict[Color, Line]
 1.  使用 `:returns:` 描述返回值：
 
 ```py
-            def Twc(T: float, V: float) -> float: 
-                """Computes the wind chill temperature 
+        def Twc(T: float, V: float) -> float: 
+            """Computes the wind chill temperature 
 
-                The wind-chill, :math:`T_{wc}`, is based on 
-                air temperature, T, and wind speed, V. 
+            The wind-chill, :math:`T_{wc}`, is based on 
+            air temperature, T, and wind speed, V. 
 
-                :param T: Temperature in °C 
-                :param V: Wind Speed in kph 
-                :returns: Wind-Chill temperature in °C 
-                """ 
+            :param T: Temperature in °C 
+            :param V: Wind Speed in kph 
+            :returns: Wind-Chill temperature in °C 
+            """ 
 
-    ```
+```
 
 有两种包含返回类型信息的方法：
 
@@ -1160,51 +1160,51 @@ Dict[Color, Line]
 1.  确定可能引发的重要异常。使用 `:raises exception:` 原因标记。有几种可能的变化，但 `:raises exception:` 似乎最受欢迎：
 
 ```py
-            def Twc(T: float, V: float) -> float: 
-                """Computes the wind chill temperature 
+        def Twc(T: float, V: float) -> float: 
+            """Computes the wind chill temperature 
 
-                The wind-chill, :math:`T_{wc}`, is based on 
-                air temperature, T, and wind speed, V. 
+            The wind-chill, :math:`T_{wc}`, is based on 
+            air temperature, T, and wind speed, V. 
 
-                :param T: Temperature in °C 
-                :param V: Wind Speed in kph 
-                :returns: Wind-Chill temperature in °C 
-                :raises ValueError: for wind speeds under over 4.8 kph or T above 10°C 
-                """ 
+            :param T: Temperature in °C 
+            :param V: Wind Speed in kph 
+            :returns: Wind-Chill temperature in °C 
+            :raises ValueError: for wind speeds under over 4.8 kph or T above 10°C 
+            """ 
 
-    ```
+```
 
 1.  如果可能的话，包括一个 doctest 测试用例：
 
 ```py
-            def Twc(T: float, V: float) -> float: 
-                """Computes the wind chill temperature 
+        def Twc(T: float, V: float) -> float: 
+            """Computes the wind chill temperature 
 
-                The wind-chill, :math:`T_{wc}`, is based on 
-                air temperature, T, and wind speed, V. 
+            The wind-chill, :math:`T_{wc}`, is based on 
+            air temperature, T, and wind speed, V. 
 
-                :param T: Temperature in °C 
-                :param V: Wind Speed in kph 
-                :returns: Wind-Chill temperature in °C 
-                :raises ValueError: for wind speeds under over 4.8 kph or T above 10°C 
+            :param T: Temperature in °C 
+            :param V: Wind Speed in kph 
+            :returns: Wind-Chill temperature in °C 
+            :raises ValueError: for wind speeds under over 4.8 kph or T above 10°C 
 
-                >>> round(Twc(-10, 25), 1) 
-                -18.8 
+            >>> round(Twc(-10, 25), 1) 
+            -18.8 
 
-                """ 
+            """ 
 
-    ```
+```
 
 1.  写任何其他附加说明和有用信息。我们可以将以下内容添加到文档字符串中：
 
 ```py
-                See https://en.wikipedia.org/wiki/Wind_chill 
+            See https://en.wikipedia.org/wiki/Wind_chill 
 
-                ..  math:: 
+            ..  math:: 
 
-                    T_{wc}(T_a, V) = 13.12 + 0.6215 T_a - 11.37 V^{0.16} + 0.3965 T_a V^{0.16} 
+                T_{wc}(T_a, V) = 13.12 + 0.6215 T_a - 11.37 V^{0.16} + 0.3965 T_a V^{0.16} 
 
-    ```
+```
 
 我们已经包含了一个维基百科页面的参考，该页面总结了风冷计算并链接到更详细的信息。
 
@@ -1296,22 +1296,22 @@ def fact(n: int) -> int:
 *N =* { *f(i):* 1 *≤ i < n* +1}如果我们必须执行某种转换，它在 Python 中可能看起来像这样：
 
 ```py
-            N = (f(i) for i in range(1,n+1)) 
+        N = (f(i) for i in range(1,n+1)) 
 
-    ```
+```
 
 1.  整合归约函数。在这种情况下，我们正在计算一个大的乘积，使用乘法。我们可以使用 ![如何做...](img/Image00008.jpg)   *x*  表示这一点。对于这个例子，我们只对产品中计算的值施加了一个简单的边界:![如何做...](img/Image00009.jpg)
 
 以下是 Python 中的实现：
 
 ```py
-            def prod(int_iter): 
-                p = 1 
-                for x in int_iter: 
-                    p *= x 
-                return p 
+        def prod(int_iter): 
+            p = 1 
+            for x in int_iter: 
+                p *= x 
+            return p 
 
-    ```
+```
 
 我们可以将这个重新陈述为这样的解决方案。这使用了更高级的函数：
 
@@ -1342,25 +1342,25 @@ def fact(n: int) -> int:
 +   使用相对简单的代数规则重新排列语句，使递归子句实际上是最后一个。`if`子句可以重新组织成不同的物理顺序，以便`return fact(n-1) * n`是最后一个。这种重新排列对于这样组织的代码是必要的：
 
 ```py
-            def ugly_fact(n): 
-                if n > 0: 
-                    return fact(n-1) * n 
-                elif n == 0: 
-                    return 1 
-                else: 
-                    raise Exception("Logic Error") 
+        def ugly_fact(n): 
+            if n > 0: 
+                return fact(n-1) * n 
+            elif n == 0: 
+                return 1 
+            else: 
+                raise Exception("Logic Error") 
 
-    ```
+```
 
 +   将一个特殊指令注入到虚拟机的字节码中 - 或者实际的机器码中 - 重新评估函数，而不创建新的堆栈帧。Python 没有这个特性。实际上，这个特殊指令将递归转换成一种`while`语句：
 
 ```py
-            p = n 
-            while n != 1: 
-                n = n-1 
-                p *= n 
+        p = n 
+        while n != 1: 
+            n = n-1 
+            p *= n 
 
-    ```
+```
 
 这种纯机械的转换会导致相当丑陋的代码。在 Python 中，它也可能非常慢。在其他语言中，特殊的字节码指令的存在将导致代码运行速度快。
 
@@ -1503,65 +1503,65 @@ Python 脚本可以很容易编写。事实上，创建一个可工作的脚本�
 以下是通常的定义性语句：
 
 ```py
-            MI= 3959 
-            NM= 3440 
-            KM= 6373 
+        MI= 3959 
+        NM= 3440 
+        KM= 6373 
 
-            def haversine( lat_1: float, lon_1: float, 
-                lat_2: float, lon_2: float, *, R: float ) -> float: 
-                ... and more ... 
+        def haversine( lat_1: float, lon_1: float, 
+            lat_2: float, lon_2: float, *, R: float ) -> float: 
+            ... and more ... 
 
-            nm_haversine = partial(haversine, R=NM) 
+        nm_haversine = partial(haversine, R=NM) 
 
-    ```
+```
 
 其余的语句明显是朝着产生打印结果的动作。
 
 1.  将动作封装成一个函数：
 
 ```py
-            def analyze(): 
-                source_path = pathlib.Path("waypoints.csv") 
-                with source_path.open() as source_file: 
-                    reader= csv.DictReader(source_file) 
-                    start = next(reader) 
-                    for point in reader: 
-                        d = nm_haversine( 
-                            float(start['lat']), float(start['lon']), 
-                            float(point['lat']), float(point['lon']) 
-                            ) 
-                        print(start, point, d) 
-                        start= point 
+        def analyze(): 
+            source_path = pathlib.Path("waypoints.csv") 
+            with source_path.open() as source_file: 
+                reader= csv.DictReader(source_file) 
+                start = next(reader) 
+                for point in reader: 
+                    d = nm_haversine( 
+                        float(start['lat']), float(start['lon']), 
+                        float(point['lat']), float(point['lon']) 
+                        ) 
+                    print(start, point, d) 
+                    start= point 
 
-    ```
+```
 
 1.  在可能的情况下，提取文字并将其转换为参数。这通常是将文字移到具有默认值的参数中。
 
 从这里开始：
 
 ```py
-            def analyze(): 
-                source_path = pathlib.Path("waypoints.csv") 
+        def analyze(): 
+            source_path = pathlib.Path("waypoints.csv") 
 
-    ```
+```
 
 到这里：
 
 ```py
-            def analyze(source_name="waypoints.csv"): 
-                source_path = pathlib.Path(source_name) 
+        def analyze(source_name="waypoints.csv"): 
+            source_path = pathlib.Path(source_name) 
 
-    ```
+```
 
 这使得脚本可重用，因为路径现在是一个参数而不是一个假设。
 
 1.  将以下内容作为脚本文件中唯一的高级动作语句包括：
 
 ```py
-            if __name__ == "__main__": 
-                analyze() 
+        if __name__ == "__main__": 
+            analyze() 
 
-    ```
+```
 
 我们已经将脚本的动作封装为一个函数。顶层动作脚本现在被包裹在一个`if`语句中，以便在导入时不被执行。
 

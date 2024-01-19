@@ -121,79 +121,79 @@ bash shell 的设计模式使用了两个单独的文件。当我们包含应用
 1.  导入`Path`类和`ChainMap`类：
 
 ```py
-            from pathlib import Path 
-            from collections import ChainMap
+        from pathlib import Path 
+        from collections import ChainMap
 
-    ```
+```
 
 1.  定义一个获取配置文件的整体函数：
 
 ```py
-            def get_config():
+        def get_config():
 
-    ```
+```
 
 1.  为各种位置创建路径。这些被称为纯路径，因为它们与文件系统没有关系。它们起初是*潜在*文件的名称：
 
 ```py
-            system_path = Path('/etc/profile') 
-            home_path = Path('~').expanduser() 
-            local_paths = [home_path/'.bash_profile', 
-                home_path/'.bash_login', 
-                home_path/'.profile'] 
+        system_path = Path('/etc/profile') 
+        home_path = Path('~').expanduser() 
+        local_paths = [home_path/'.bash_profile', 
+            home_path/'.bash_login', 
+            home_path/'.profile'] 
 
-    ```
+```
 
 1.  定义应用程序的内置默认值：
 
 ```py
-            configuration_items = [ 
-                dict( 
-                    some_setting = 'Default Value', 
-                    another_setting = 'Another Default', 
-                    some_option = 'Built-In Choice', 
-                ) 
-            ] 
+        configuration_items = [ 
+            dict( 
+                some_setting = 'Default Value', 
+                another_setting = 'Another Default', 
+                some_option = 'Built-In Choice', 
+            ) 
+        ] 
 
-    ```
+```
 
 1.  每个单独的配置文件都是从键到值的映射。各种映射对象将形成一个列表；这将成为最终的`ChainMap`配置映射。我们将通过追加项目来组装映射列表，然后在加载文件后反转顺序。
 
 1.  如果存在系统范围的配置文件，则加载该文件：
 
 ```py
-            if system_path.exists(): 
-                with system_path.open() as config_file: 
-                    configuration_items.append(config_file) 
+        if system_path.exists(): 
+            with system_path.open() as config_file: 
+                configuration_items.append(config_file) 
 
-    ```
+```
 
 1.  遍历其他位置，寻找要加载的文件。这会加载它找到的第一个文件：
 
 ```py
-            for config_path in local_paths:
-                if config_path.exists(): 
-                    with config_path.open() as config_file: 
-                        configuration_items.append(config_file) 
-                    break
+        for config_path in local_paths:
+            if config_path.exists(): 
+                with config_path.open() as config_file: 
+                    configuration_items.append(config_file) 
+                break
 
-    ```
+```
 
 我们已经包含了**if-break**模式，以在找到第一个文件后停止。这修改了循环的默认语义，从 For All 变为 There Exists。有关更多信息，请参阅避免使用 break 语句配方中的潜在问题。
 
 1.  反转列表并创建最终的`ChainMap`。需要反转列表，以便首先搜索本地文件，然后是系统设置，最后是应用程序默认设置：
 
 ```py
-            configuration = ChainMap(*reversed(configuration_items)) 
+        configuration = ChainMap(*reversed(configuration_items)) 
 
-    ```
+```
 
 1.  返回最终的配置映射：
 
 ```py
-            return configuration
+        return configuration
 
-    ```
+```
 
 一旦我们构建了`configuration`对象，我们就可以像使用简单映射一样使用最终的配置。这个对象支持所有预期的字典操作。
 
@@ -254,58 +254,58 @@ bash shell 的设计模式使用了两个单独的文件。当我们包含应用
 1.  对`Path`类的调用创建一个`Path`对象。测试过程将创建两个`Path`对象，因此我们可以使用`side_effect`特性返回每个对象。我们需要确保基于要测试的代码的正确顺序返回这些值：
 
 ```py
-            self.mock_path = Mock( 
-                side_effect = [self.mock_system_path, self.mock_home_path] 
-            ) 
+        self.mock_path = Mock( 
+            side_effect = [self.mock_system_path, self.mock_home_path] 
+        ) 
 
-    ```
+```
 
 1.  对于`system_path`的值，将调用`Path`对象的`exists()`方法；这将确定具体文件是否存在。然后将调用打开文件并读取内容：
 
 ```py
-            self.mock_path = Mock( 
-                side_effect = [self.mock_system_path, self.mock_home_path] 
-            ) 
+        self.mock_path = Mock( 
+            side_effect = [self.mock_system_path, self.mock_home_path] 
+        ) 
 
-    ```
+```
 
 1.  对于`home_path`的值，将调用`expanduser()`方法将`~`更改为正确的主目录：
 
 ```py
-            self.mock_home_path = Mock( 
-                expanduser = Mock( 
-                    return_value = self.mock_expanded_home_path 
-                ) 
+        self.mock_home_path = Mock( 
+            expanduser = Mock( 
+                return_value = self.mock_expanded_home_path 
             ) 
+        ) 
 
-    ```
+```
 
 1.  然后，使用`/`运算符将扩展的`home_path`与三个备用目录一起创建：
 
 ```py
-            self.mock_expanded_home_path = MagicMock( 
-                __truediv__ = Mock( 
-                    side_effect = [self.not_exist, self.exist, self.exist] 
-                ) 
+        self.mock_expanded_home_path = MagicMock( 
+            __truediv__ = Mock( 
+                side_effect = [self.not_exist, self.exist, self.exist] 
             ) 
+        ) 
 
-    ```
+```
 
 1.  为了进行单元测试，我们决定第一个要搜索的路径不存在。其他两个存在，但我们期望只有一个会被读取。第二个将被忽略：
 
 +   对于不存在的模拟路径，我们可以使用这个：
 
 ```py
-                    self.not_exist = Mock( 
-                        exists = Mock(return_value=False) )
-        ```
+            self.not_exist = Mock( 
+                exists = Mock(return_value=False) )
+```
 
 +   对于存在的模拟路径，我们将有更复杂的东西：
 
 ```py
-                    self.exist = Mock( exists = Mock(return_value=True), open = mock_open() ) 
+            self.exist = Mock( exists = Mock(return_value=True), open = mock_open() ) 
 
-        ```
+```
 
 我们还必须通过模拟模块中的`mock_open()`函数来处理文件的处理。这可以处理文件作为上下文管理器使用的各种细节，这变得相当复杂。`with`语句需要`__enter__()`和`__exit__()`方法，这由`mock_open()`处理。
 
@@ -496,24 +496,24 @@ description: >
 1.  导入`yaml`模块：
 
 ```py
-            import yaml 
+        import yaml 
 
-    ```
+```
 
 1.  使用`yaml.load()`函数加载 YAML 语法文档：
 
 ```py
-            def load_config_file(config_file) -> dict: 
-                '''Loads a configuration mapping object with contents 
-                of a given file. 
+        def load_config_file(config_file) -> dict: 
+            '''Loads a configuration mapping object with contents 
+            of a given file. 
 
-                :param config_file: File-like object that can be read. 
-                :returns: mapping with configuration parameter values 
-                ''' 
-                document = yaml.load(config_file) 
-            return document 
+            :param config_file: File-like object that can be read. 
+            :returns: mapping with configuration parameter values 
+            ''' 
+            document = yaml.load(config_file) 
+        return document 
 
-    ```
+```
 
 ## 工作原理…
 
@@ -542,23 +542,23 @@ YAML 提供的另一种选择是块样式。文档结构由换行和缩进定义
 +   **块序列**：我们用-在序列的每一行前面加上。这看起来像一个项目列表，很容易阅读。这是一个例子：
 
 ```py
-     **zoneid: 
-            - ANZ532 
-            - AMZ117 
-            - AMZ080** 
+ **zoneid: 
+        - ANZ532 
+        - AMZ117 
+        - AMZ080** 
 
-    ```
+```
 
 加载后，这将在 Python 中创建一个带有字符串列表的字典：`{zoneid: ['ANZ532', 'AMZ117', 'AMZ080']}`。
 
 +   **块映射**：我们可以使用简单的`key: value`语法将键与简单的标量关联起来。我们可以单独在一行上使用`key:`；值缩进在下面的行上。这是一个例子：
 
 ```py
-     **url: 
-            scheme: http 
-            netloc: marine.weather.gov** 
+ **url: 
+        scheme: http 
+        netloc: marine.weather.gov** 
 
-    ```
+```
 
 这将创建一个嵌套字典，在 Python 中看起来像这样：`{'url': {'scheme': 'http', 'netloc': 'marine.weather.gov'}}`。
 
@@ -597,24 +597,24 @@ YAML 中有一些 JSON 中没有的其他功能：
 +   具有两个单独文档的 YAML 文件：
 
 ```py
-     **>>> import yaml 
-          >>> yaml_text = ''' 
-          ... --- 
-          ... id: 1 
-          ... text: "Some Words." 
-          ... --- 
-          ... id: 2 
-          ... text: "Different Words." 
-          ... ''' 
-          >>> document_iterator = iter(yaml.load_all(yaml_text)) 
-          >>> document_1 = next(document_iterator) 
-          >>> document_1['id'] 
-          1 
-          >>> document_2 = next(document_iterator) 
-          >>> document_2['text'] 
-          'Different Words.'** 
+ **>>> import yaml 
+      >>> yaml_text = ''' 
+      ... --- 
+      ... id: 1 
+      ... text: "Some Words." 
+      ... --- 
+      ... id: 2 
+      ... text: "Different Words." 
+      ... ''' 
+      >>> document_iterator = iter(yaml.load_all(yaml_text)) 
+      >>> document_1 = next(document_iterator) 
+      >>> document_1['id'] 
+      1 
+      >>> document_2 = next(document_iterator) 
+      >>> document_2['text'] 
+      'Different Words.'** 
 
-    ```
+```
 
 +   `yaml_text`值包含两个 YAML 文档，每个文档都以`---`开头。`load_all()`函数是一个迭代器，一次加载一个文档。应用程序必须迭代处理流中的每个文档的结果。
 
@@ -625,13 +625,13 @@ YAML 中有一些 JSON 中没有的其他功能：
 +   重要的是，Python 要求映射键的哈希表是不可变的对象。这意味着复杂的键必须转换为不可变的 Python 对象，通常是`tuple`。为了创建一个特定于 Python 的对象，我们需要使用更复杂的本地标签。以下是一个例子：
 
 ```py
-     **>>> yaml.load(''' 
-          ... ? !!python/tuple ["a", "b"] 
-          ... : "value" 
-          ... ''') 
-          {('a', 'b'): 'value'}** 
+ **>>> yaml.load(''' 
+      ... ? !!python/tuple ["a", "b"] 
+      ... : "value" 
+      ... ''') 
+      {('a', 'b'): 'value'}** 
 
-    ```
+```
 
 +   这个例子使用`?`和`:`来标记映射的键和值。我们这样做是因为键是一个复杂对象。键`value`使用了一个本地标签`!!python/tuple`，来创建一个元组，而不是默认的`list`。键的文本使用了一个流类型的 YAML 值`["a", "b"]`。
 
@@ -640,23 +640,23 @@ YAML 中有一些 JSON 中没有的其他功能：
 +   请注意，`!!set`标签与集合中的值处于相同的缩进级别。它在`data_values`的字典键内缩进：
 
 ```py
-     **>>> import yaml 
-          >>> yaml_text = ''' 
-          ... document: 
-          ...     id: 3 
-          ...     data_values: 
-          ...       !!set 
-          ...       ? some 
-          ...       ? more 
-          ...       ? words 
-          ... ''' 
-          >>> some_document = yaml.load(yaml_text) 
-          >>> some_document['document']['id'] 
-          3 
-          >>> some_document['document']['data_values'] == {'some', 'more', 'words'} 
-          True** 
+ **>>> import yaml 
+      >>> yaml_text = ''' 
+      ... document: 
+      ...     id: 3 
+      ...     data_values: 
+      ...       !!set 
+      ...       ? some 
+      ...       ? more 
+      ...       ? words 
+      ... ''' 
+      >>> some_document = yaml.load(yaml_text) 
+      >>> some_document['document']['id'] 
+      3 
+      >>> some_document['document']['data_values'] == {'some', 'more', 'words'} 
+      True** 
 
-    ```
+```
 
 +   `!!set`本地标签修改以下序列，使其成为一个`set`对象，而不是默认的列表对象。结果集等于预期的 Python 集合对象`{'some', 'more', 'words'}`。
 
@@ -665,29 +665,29 @@ YAML 中有一些 JSON 中没有的其他功能：
 +   我们还可以创建一个 Python 的两元组列表序列，它实现了有序映射。`yaml`模块不会为我们直接创建`OrderedDict`：
 
 ```py
-     **>>> import yaml 
-          >>> yaml_text = ''' 
-          ... !!omap 
-          ... - key1: string value 
-          ... - numerator: 355 
-          ... - denominator: 113 
-          ... ''' 
-          >>> yaml.load(yaml_text) 
-          [('key1', 'string value'), ('numerator', 355), ('denominator', 113)]** 
+ **>>> import yaml 
+      >>> yaml_text = ''' 
+      ... !!omap 
+      ... - key1: string value 
+      ... - numerator: 355 
+      ... - denominator: 113 
+      ... ''' 
+      >>> yaml.load(yaml_text) 
+      [('key1', 'string value'), ('numerator', 355), ('denominator', 113)]** 
 
-    ```
+```
 
 +   请注意，很难在不指定大量细节的情况下，进一步创建`OrderedDict`。以下是创建`OrderedDict`实例的 YAML。
 
 ```py
-            !!python/object/apply:collections.OrderedDict 
-            args: 
-                -   !!omap 
-                    -   key1: string value 
-                    -   numerator: 355 
-                    -   denominator: 113 
+        !!python/object/apply:collections.OrderedDict 
+        args: 
+            -   !!omap 
+                -   key1: string value 
+                -   numerator: 355 
+                -   denominator: 113 
 
-    ```
+```
 
 +   `args`关键字是必需的，以支持`!!python/object/apply`标签。只有一个位置参数，它是一个从键和值序列构建的 YAML`!!omap`。
 
@@ -696,24 +696,24 @@ YAML 中有一些 JSON 中没有的其他功能：
 这是一个简单的类定义：
 
 ```py
-            class Card: 
-                def __init__(self, rank, suit): 
-                    self.rank = rank 
-                    self.suit = suit 
-                def __repr__(self): 
-                    return "{rank} {suit}".format_map(vars(self)) 
+        class Card: 
+            def __init__(self, rank, suit): 
+                self.rank = rank 
+                self.suit = suit 
+            def __repr__(self): 
+                return "{rank} {suit}".format_map(vars(self)) 
 
-    ```
+```
 
 我们定义了一个具有两个位置属性的类。以下是该对象的 YAML 描述：
 
 ```py
-            !!python/object/apply:__main__.Card 
-            kwds: 
-                rank: 7 
-                suit: ♣
+        !!python/object/apply:__main__.Card 
+        kwds: 
+            rank: 7 
+            suit: ♣
 
-    ```
+```
 
 我们使用`kwds`键为`Card`构造函数提供了两个基于关键字的参数值。Unicode`♣`字符很好用，因为 YAML 文件是使用 UTF-8 编码的文本。
 
@@ -784,20 +784,20 @@ Python 赋值语句符号特别优雅。它非常简单，易于阅读，而且�
 1.  使用内置的`compile()`函数编译配置文件中的代码。这个函数需要源文本以及从中读取文本的文件名。文件名对于创建有用和正确的回溯消息是必不可少的：
 
 ```py
-            code = compile(config_file.read(), config_file.name, 'exec') 
+        code = compile(config_file.read(), config_file.name, 'exec') 
 
-    ```
+```
 
 1.  在罕见的情况下，代码不是来自文件时，一般的做法是提供一个名字，比如`<string>`，而不是文件名。
 
 1.  执行`compile()`函数创建的代码对象。这需要两个上下文。全局上下文提供了任何先前导入的模块，以及`__builtins__`模块。本地上下文是新变量将被创建的地方：
 
 ```py
-            locals = {} 
-            exec(code, {'__builtins__':__builtins__}, locals) 
-            return locals 
+        locals = {} 
+        exec(code, {'__builtins__':__builtins__}, locals) 
+        return locals 
 
-    ```
+```
 
 1.  当代码在脚本文件的顶层执行时——通常在`if __name__ == "__main__"`条件内部执行——它在全局和本地是相同的上下文中执行。当代码在函数、方法或类定义内部执行时，该上下文的本地变量与全局变量是分开的。
 
@@ -942,21 +942,21 @@ Python 用于定义类属性的符号特别优雅。它非常简单，易于阅�
 1.  使用内置的`compile()`函数编译给定文件中的代码。这个函数需要源文本以及从中读取文本的文件名。文件名对于创建有用和正确的回溯消息是必不可少的：
 
 ```py
-            code = compile(config_file.read(), config_file.name, 'exec') 
+        code = compile(config_file.read(), config_file.name, 'exec') 
 
-    ```
+```
 
 1.  执行`compile()`方法创建的代码对象。我们需要提供两个上下文。全局上下文可以提供`__builtins__`模块，以及`Path`类和`platform`模块。本地上下文是新变量将被创建的地方：
 
 ```py
-            globals = {'__builtins__':__builtins__, 
-                       'Path': Path, 
-                       'platform': platform} 
-            locals = {} 
-            exec(code, globals, locals) 
-            return locals['Configuration'] 
+        globals = {'__builtins__':__builtins__, 
+                   'Path': Path, 
+                   'platform': platform} 
+        locals = {} 
+        exec(code, globals, locals) 
+        return locals['Configuration'] 
 
-    ```
+```
 
 1.  这只会从执行模块设置的本地变量中返回定义的`Configuration`类。任何其他变量都将被忽略。
 
@@ -1175,29 +1175,29 @@ mappingproxy({'__doc__': '\\n    Weather for Cheaspeake Bay\\n    ',
 掷出的序列需要写入文件。这表明`write_rolls()`函数被给定一个迭代器作为参数。这是一个迭代并以 YAML 格式将值转储到文件的函数：
 
 ```py
-            def write_rolls(output_path, roll_iterator): 
-                face_count = Counter() 
-                with output_path.open('w') as output_file: 
-                    for roll in roll_iterator: 
-                        output_file.write( 
-                            yaml.dump( 
-                                roll, 
-                                default_flow_style=True, 
-                                explicit_start=True)) 
-                        for dice in roll: 
-                            face_count[sum(dice)] += 1 
-                return face_count 
+        def write_rolls(output_path, roll_iterator): 
+            face_count = Counter() 
+            with output_path.open('w') as output_file: 
+                for roll in roll_iterator: 
+                    output_file.write( 
+                        yaml.dump( 
+                            roll, 
+                            default_flow_style=True, 
+                            explicit_start=True)) 
+                    for dice in roll: 
+                        face_count[sum(dice)] += 1 
+            return face_count 
 
-    ```
+```
 
 监控和控制输出应显示用于控制处理的输入参数。它还应提供显示骰子公平的计数：
 
 ```py
-            def summarize(configuration, counts): 
-                print(configuration) 
-                print(counts) 
+        def summarize(configuration, counts): 
+            print(configuration) 
+            print(counts) 
 
-    ```
+```
 
 1.  设计（或重构）应用程序的基本处理，使其看起来像一个单一函数：
 
@@ -1208,13 +1208,13 @@ mappingproxy({'__doc__': '\\n    Weather for Cheaspeake Bay\\n    ',
 在这个例子中，我们可以很容易地将核心功能设为一个发出值序列迭代的函数。输出函数可以使用这个迭代器：
 
 ```py
-            def roll_iter(total_games, seed=None): 
-                random.seed(seed) 
-                for i in range(total_games): 
-                    sequence = craps_game() 
-                    yield sequence 
+        def roll_iter(total_games, seed=None): 
+            random.seed(seed) 
+            for i in range(total_games): 
+                sequence = craps_game() 
+                yield sequence 
 
-    ```
+```
 
 此函数依赖于`craps_game()`函数生成请求的样本数量。每个样本都是一个完整的游戏，显示所有的骰子掷出。此函数提供`face_count`计数器给这个低级函数以累积一些总数以确认一切是否正常工作。
 
@@ -1223,25 +1223,25 @@ mappingproxy({'__doc__': '\\n    Weather for Cheaspeake Bay\\n    ',
 1.  将所有的输入收集重构为一个函数（或类），它收集各种输入源。这可以包括环境变量、命令行参数和配置文件。它还可以包括多个输入文件的名称：
 
 ```py
-            def get_options(argv): 
-                parser = argparse.ArgumentParser() 
-                parser.add_argument('-s', '--samples', type=int) 
-                parser.add_argument('-o', '--output') 
-                options = parser.parse_args(argv) 
+        def get_options(argv): 
+            parser = argparse.ArgumentParser() 
+            parser.add_argument('-s', '--samples', type=int) 
+            parser.add_argument('-o', '--output') 
+            options = parser.parse_args(argv) 
 
-                options.output_path = Path(options.output) 
+            options.output_path = Path(options.output) 
 
-                if "RANDOMSEED" in os.environ: 
-                    seed_text = os.environ["RANDOMSEED"] 
-                    try: 
-                        options.seed = int(seed_text) 
-                    except ValueError: 
-                        sys.exit("RANDOMSEED={0!r} invalid".format(seed_text)) 
-                else: 
-                    options.seed = None 
-                return options 
+            if "RANDOMSEED" in os.environ: 
+                seed_text = os.environ["RANDOMSEED"] 
+                try: 
+                    options.seed = int(seed_text) 
+                except ValueError: 
+                    sys.exit("RANDOMSEED={0!r} invalid".format(seed_text)) 
+            else: 
+                options.seed = None 
+            return options 
 
-    ```
+```
 
 这个函数收集命令行参数。它还检查`os.environ`环境变量的集合。
 
@@ -1252,12 +1252,12 @@ mappingproxy({'__doc__': '\\n    Weather for Cheaspeake Bay\\n    ',
 1.  编写最终的`main()`函数，它包含了前面的三个元素，以创建最终的整体脚本：
 
 ```py
-            def main(): 
-                options = get_options(sys.argv[1:]) 
-                face_count = write_rolls(options.output_path, roll_iter(options.samples, options.seed)) 
-                summarize(options, face_count) 
+        def main(): 
+            options = get_options(sys.argv[1:]) 
+            face_count = write_rolls(options.output_path, roll_iter(options.samples, options.seed)) 
+            summarize(options, face_count) 
 
-    ```
+```
 
 这将应用程序的各个方面汇集在一起。它解析命令行和环境选项。它创建一个控制总计计数器。
 
@@ -1600,166 +1600,166 @@ Python 提供了`logging`包，可以用来将辅助输出定向到单独的文�
 1.  我们将首先将基本的日志记录功能实现到现有的函数中。这意味着我们需要`logging`模块：
 
 ```py
-            import logging
+        import logging
 
-    ```
+```
 
 应用程序的其余部分将使用许多其他软件包：
 
 ```py
-            import argparse 
-            import sys 
-            from pathlib import Path 
-            from collections import Counter 
-            import yaml 
+        import argparse 
+        import sys 
+        from pathlib import Path 
+        from collections import Counter 
+        import yaml 
 
-    ```
+```
 
 1.  我们将创建两个作为模块全局变量的记录器对象。创建函数可以放在创建全局变量的脚本的任何位置。一个位置是在`import`语句之后尽早放置这些内容。另一个常见的选择是在最后附近，但在任何`__name__ == "__main__"`脚本处理之外。这些变量必须始终被创建，即使模块作为库导入。
 
 记录器具有分层名称。我们将使用应用程序名称和内容后缀来命名记录器。`overview_stats.detail`记录器将具有处理详细信息。`overview_stats.write`记录器将标识已读取和已写入的文件；这与审计日志的概念相对应，因为文件写入跟踪输出文件集合中的状态更改：
 
 ```py
-            detail_log = logging.getLogger("overview_stats.detail") 
-            write_log = logging.getLogger("overview_stats.write") 
+        detail_log = logging.getLogger("overview_stats.detail") 
+        write_log = logging.getLogger("overview_stats.write") 
 
-    ```
+```
 
 我们现在不需要配置这些记录器。如果我们什么都不做，这两个记录器对象将默默地接受单独的日志条目，但不会进一步处理数据。
 
 1.  我们将重写`main()`函数以总结处理的两个方面。这将使用`write_log`记录器对象来显示何时创建新文件：
 
 ```py
-            def main(): 
-                options = get_options(sys.argv[1:]) 
-                if options.output is not None: 
-                    report_path = Path(options.output) 
-                    with report_path.open('w') as result_file: 
-                        process_all_files(result_file, options.file) 
-                    write_log.info("wrote {}".format(report_path)) 
-                else: 
-                    process_all_files(sys.stdout, options.file) 
+        def main(): 
+            options = get_options(sys.argv[1:]) 
+            if options.output is not None: 
+                report_path = Path(options.output) 
+                with report_path.open('w') as result_file: 
+                    process_all_files(result_file, options.file) 
+                write_log.info("wrote {}".format(report_path)) 
+            else: 
+                process_all_files(sys.stdout, options.file) 
 
-    ```
+```
 
 我们添加了`write_log.info("wrote {}".format(result_path))`一行，将信息消息放入日志中已写入的文件。
 
 1.  我们将重写`process_all_files()`函数，以在读取文件时提供注释：
 
 ```py
-            def process_all_files(result_file, file_names): 
-                for source_path in (Path(n) for n in file_names): 
-                    detail_log.info("read {}".format(source_path)) 
-                    with source_path.open() as source_file: 
-                        game_iter = yaml.load_all(source_file) 
-                        statistics = gather_stats(game_iter) 
-                    result_file.write( 
-                        yaml.dump(dict(statistics), explicit_start=True) 
-                    ) 
+        def process_all_files(result_file, file_names): 
+            for source_path in (Path(n) for n in file_names): 
+                detail_log.info("read {}".format(source_path)) 
+                with source_path.open() as source_file: 
+                    game_iter = yaml.load_all(source_file) 
+                    statistics = gather_stats(game_iter) 
+                result_file.write( 
+                    yaml.dump(dict(statistics), explicit_start=True) 
+                ) 
 
-    ```
+```
 
 我们添加了`detail_log.info("read {}".format(source_path))`行，以在每次读取文件时将信息消息放入详细日志中。
 
 1.  `gather_stats()`函数可以添加一行日志来跟踪正常操作。此外，我们还为逻辑错误添加了一个日志条目：
 
 ```py
-            def gather_stats(game_iter): 
-                counts = Counter() 
-                for game in game_iter: 
-                    if len(game) == 1 and sum(game[0]) in (2, 3, 12): 
-                        outcome = "loss" 
-                    elif len(game) == 1 and sum(game[0]) in (7, 11): 
-                        outcome = "win" 
-                    elif len(game) > 1 and sum(game[-1]) == 7: 
-                        outcome = "loss" 
-                    elif len(game) > 1 and sum(game[0]) == sum(game[-1]): 
-                        outcome = "win" 
-                    else: 
-                        detail_log.error("problem with {}".format(game)) 
-                        raise Exception("Wait, What?") 
-                    event = (outcome, len(game)) 
-                    detail_log.debug("game {} -> event {}".format(game, event)) 
-                    counts[event] += 1 
-                return counts 
+        def gather_stats(game_iter): 
+            counts = Counter() 
+            for game in game_iter: 
+                if len(game) == 1 and sum(game[0]) in (2, 3, 12): 
+                    outcome = "loss" 
+                elif len(game) == 1 and sum(game[0]) in (7, 11): 
+                    outcome = "win" 
+                elif len(game) > 1 and sum(game[-1]) == 7: 
+                    outcome = "loss" 
+                elif len(game) > 1 and sum(game[0]) == sum(game[-1]): 
+                    outcome = "win" 
+                else: 
+                    detail_log.error("problem with {}".format(game)) 
+                    raise Exception("Wait, What?") 
+                event = (outcome, len(game)) 
+                detail_log.debug("game {} -> event {}".format(game, event)) 
+                counts[event] += 1 
+            return counts 
 
-    ```
+```
 
 `detail_log`记录器用于收集调试信息。如果将整体日志级别设置为包括调试消息，我们将看到此额外输出。
 
 1.  `get_options()`函数还将写入一个调试行。这可以通过将选项显示在日志中来帮助诊断问题：
 
 ```py
-            def get_options(argv): 
-                parser = argparse.ArgumentParser() 
-                parser.add_argument('file', nargs='*') 
-                parser.add_argument('-o', '--output') 
-                options = parser.parse_args(argv) 
-                detail_log.debug("options: {}".format(options)) 
-                return options 
+        def get_options(argv): 
+            parser = argparse.ArgumentParser() 
+            parser.add_argument('file', nargs='*') 
+            parser.add_argument('-o', '--output') 
+            options = parser.parse_args(argv) 
+            detail_log.debug("options: {}".format(options)) 
+            return options 
 
-    ```
+```
 
 1.  我们可以添加一个简单的配置来查看日志条目。这是作为第一步来简单确认有两个记录器，并且它们被正确使用：
 
 ```py
-            if __name__ == "__main__": 
-                logging.basicConfig(stream=sys.stderr, level=logging.INFO) 
-                main() 
+        if __name__ == "__main__": 
+            logging.basicConfig(stream=sys.stderr, level=logging.INFO) 
+            main() 
 
-    ```
+```
 
 此日志配置构建了默认处理程序对象。此对象仅在给定流上打印所有日志消息。此处理程序分配给根记录器；它将应用于此记录器的所有子记录器。因此，前面代码中创建的两个记录器将发送到同一个流。
 
 以下是运行此脚本的示例：
 
 ```py
-     **slott$ python3 ch13_r06a.py -o sum.yaml x.yaml 
-          INFO:overview_stats.detail:read x.yaml 
-          INFO:overview_stats.write:wrote sum.yaml** 
+ **slott$ python3 ch13_r06a.py -o sum.yaml x.yaml 
+      INFO:overview_stats.detail:read x.yaml 
+      INFO:overview_stats.write:wrote sum.yaml** 
 
-    ```
+```
 
 日志中有两行。两者的严重性都是 INFO。第一行来自`overview_stats.detail`记录器。第二行来自`overview_stats.write`记录器。默认配置将所有记录器发送到`sys.stdout`。
 
 1.  为了将不同的记录器路由到不同的目的地，我们需要比`basicConfig()`函数更复杂的配置。我们将使用`logging.config`模块。`dictConfig()`方法可以提供完整的配置选项。这样做的最简单方法是将配置写入 YAML，然后使用`yaml.load()`函数将其转换为内部的`dict`对象：
 
 ```py
-                import logging.config 
-                config_yaml = ''' 
-            version: 1 
-            formatters: 
-                default: 
-                    style: "{" 
-                    format: "{levelname}:{name}:{message}" 
-                    #   Example: INFO:overview_stats.detail:read x.yaml 
-                timestamp: 
-                    style: "{" 
-                    format: "{asctime}//{levelname}//{name}//{message}" 
+            import logging.config 
+            config_yaml = ''' 
+        version: 1 
+        formatters: 
+            default: 
+                style: "{" 
+                format: "{levelname}:{name}:{message}" 
+                #   Example: INFO:overview_stats.detail:read x.yaml 
+            timestamp: 
+                style: "{" 
+                format: "{asctime}//{levelname}//{name}//{message}" 
 
-            handlers: 
-                console: 
-                    class: logging.StreamHandler 
-                    stream: ext://sys.stderr 
-                    formatter: default 
-                file: 
-                    class: logging.FileHandler 
-                    filename: write.log 
-                    formatter: timestamp 
+        handlers: 
+            console: 
+                class: logging.StreamHandler 
+                stream: ext://sys.stderr 
+                formatter: default 
+            file: 
+                class: logging.FileHandler 
+                filename: write.log 
+                formatter: timestamp 
 
-            loggers: 
-                overview_stats.detail: 
-                    handlers: 
-                    -   console 
-                overview_stats.write: 
-                    handlers: 
-                    -   file 
-                    -   console 
-            root: 
-                level: INFO 
-            ''' 
+        loggers: 
+            overview_stats.detail: 
+                handlers: 
+                -   console 
+            overview_stats.write: 
+                handlers: 
+                -   file 
+                -   console 
+        root: 
+            level: INFO 
+        ''' 
 
-    ```
+```
 
 YAML 文档被包含在一个三重撇号字符串中。这使我们能够写入尽可能多的文本。我们使用 YAML 表示法在大块文本中定义了五件事：
 
@@ -1782,10 +1782,10 @@ YAML 文档被包含在一个三重撇号字符串中。这使我们能够写入
 1.  使用配置来包装`main()`函数，如下所示：
 
 ```py
-            logging.config.dictConfig(yaml.load(config_yaml)) 
-            main()
-            logging.shutdown()
-    ```
+        logging.config.dictConfig(yaml.load(config_yaml)) 
+        main()
+        logging.shutdown()
+```
 
 1.  这将以已知状态开始记录。它将处理应用程序。它将完成所有日志缓冲区的处理，并正确关闭任何文件。
 
@@ -1893,52 +1893,52 @@ YAML 文档被包含在一个三重撇号字符串中。这使我们能够写入
 1.  从工作模块中导入基本函数。在这种情况下，这两个模块的名称相对不那么有趣，`ch13_r05`和`ch13_r06`：
 
 ```py
-            from ch13_r05 import roll_iter 
-            from ch13_r06 import gather_stats 
+        from ch13_r05 import roll_iter 
+        from ch13_r06 import gather_stats 
 
-    ```
+```
 
 1.  导入所需的任何其他模块。在本示例中，我们将使用`Counter`函数来准备摘要：
 
 ```py
-            from collections import Counter 
+        from collections import Counter 
 
-    ```
+```
 
 1.  创建一个新函数，该函数将来自其他应用程序的现有函数组合在一起。一个函数的输出是另一个函数的输入：
 
 ```py
-            def summarize_games(total_games, *, seed=None): 
-                game_statistics = gather_stats(roll_iter(total_games, seed=seed)) 
-                return game_statistics 
+        def summarize_games(total_games, *, seed=None): 
+            game_statistics = gather_stats(roll_iter(total_games, seed=seed)) 
+            return game_statistics 
 
-    ```
+```
 
 在许多情况下，明确地堆叠函数，创建中间结果更有意义。当有多个函数创建一种映射-减少管道时，这一点尤为重要：
 
 ```py
-            def summarize_games_2(total_games, *, seed=None): 
-                game_roll_history = roll_iter(total_games, counts, seed=seed) 
-                game_statistics = gather_stats(game_roll_history) 
-                return game_statistics 
+        def summarize_games_2(total_games, *, seed=None): 
+            game_roll_history = roll_iter(total_games, counts, seed=seed) 
+            game_statistics = gather_stats(game_roll_history) 
+            return game_statistics 
 
-    ```
+```
 
 我们已将处理分解为具有中间变量的步骤。`game_roll_history`变量是`roll_iter()`函数的输出。这个生成器的输出是`gather_states()`函数的可迭代输入，保存在`game_statistics`变量中。
 
 1.  编写使用此复合过程的输出格式化函数。例如，这是一个练习`summarize_games()`函数的复合过程。这也编写了输出报告：
 
 ```py
-            def simple_composite(games=100000): 
-                start = time.perf_counter() 
-                stats = summarize_games(games) 
-                end = time.perf_counter() 
-                games = sum(stats.values()) 
-                print('games', games) 
-                print(win_loss(stats)) 
-                print("{:.2f} seconds".format(end-start)) 
+        def simple_composite(games=100000): 
+            start = time.perf_counter() 
+            stats = summarize_games(games) 
+            end = time.perf_counter() 
+            games = sum(stats.values()) 
+            print('games', games) 
+            print(win_loss(stats)) 
+            print("{:.2f} seconds".format(end-start)) 
 
-    ```
+```
 
 1.  可以使用`argparse`模块来收集命令行选项。有关此内容的示例包括*设计用于组合的脚本*食谱。
 
@@ -2071,12 +2071,12 @@ YAML 文档被包含在一个三重撇号字符串中。这使我们能够写入
 +   尽可能外部化。在这种情况下，日志配置仅在应用程序的最外层全局范围内完成：
 
 ```py
-                    if __name__ == "__main__": 
-                        logging configuration goes only here. 
-                        main() 
-                        logging.shutdown() 
+            if __name__ == "__main__": 
+                logging configuration goes only here. 
+                main() 
+                logging.shutdown() 
 
-        ```
+```
 
 这保证了日志系统只有一个配置。
 
@@ -2127,63 +2127,63 @@ YAML 文档被包含在一个三重撇号字符串中。这使我们能够写入
 这是`Command`超类：
 
 ```py
-            from argparse import Namespace 
+        from argparse import Namespace 
 
-            class Command: 
-                def execute(self, options: Namespace): 
-                    pass 
+        class Command: 
+            def execute(self, options: Namespace): 
+                pass 
 
-    ```
+```
 
 我们将依赖于`argparse.Namespace`为每个子类提供一个非常灵活的选项集合。这不是必需的，但在*管理复合应用程序中的参数和配置*配方中会很有帮助。由于该配方将包括选项解析，因此似乎最好专注于每个类使用`argparse.Namespace`。
 
 1.  为`Simulate`命令创建`Command`超类的子类：
 
 ```py
-            import ch13_r05 
+        import ch13_r05 
 
-            class Simulate(Command): 
-                def __init__(self, seed=None): 
-                    self.seed = seed 
-                def execute(self, options): 
-                    self.game_path = Path(options.game_file) 
-                    data = ch13_r05.roll_iter(options.games, self.seed) 
-                    ch13_r05.write_rolls(self.game_path, data) 
+        class Simulate(Command): 
+            def __init__(self, seed=None): 
+                self.seed = seed 
+            def execute(self, options): 
+                self.game_path = Path(options.game_file) 
+                data = ch13_r05.roll_iter(options.games, self.seed) 
+                ch13_r05.write_rolls(self.game_path, data) 
 
-    ```
+```
 
 我们已经将`ch13_r05`模块的处理和输出包装到这个类的`execute()`方法中。
 
 1.  为`Summarize`命令创建`Command`超类的子类：
 
 ```py
-            import ch13_r06 
+        import ch13_r06 
 
-            class Summarize(Command): 
-                def execute(self, options): 
-                    self.summary_path = Path(options.summary_file) 
-                    with self.summary_path.open('w') as result_file: 
-                        ch13_r06.process_all_files(result_file, options.game_files) 
+        class Summarize(Command): 
+            def execute(self, options): 
+                self.summary_path = Path(options.summary_file) 
+                with self.summary_path.open('w') as result_file: 
+                    ch13_r06.process_all_files(result_file, options.game_files) 
 
-    ```
+```
 
 对于这个类，我们已经将文件创建和文件处理包装到类的`execute()`方法中。
 
 1.  所有的整体过程都可以由以下`main()`函数执行：
 
 ```py
-            from argparse import Namespace 
+        from argparse import Namespace 
 
-            def main(): 
-                options_1 = Namespace(games=100, game_file='x.yaml') 
-                command1 = Simulate() 
-                command1.execute(options_1) 
+        def main(): 
+            options_1 = Namespace(games=100, game_file='x.yaml') 
+            command1 = Simulate() 
+            command1.execute(options_1) 
 
-                options_2 = Namespace(summary_file='y.yaml', game_files=['x.yaml']) 
-                command2 = Summarize() 
-                command2.execute(options_2) 
+            options_2 = Namespace(summary_file='y.yaml', game_files=['x.yaml']) 
+            command2 = Summarize() 
+            command2.execute(options_2) 
 
-    ```
+```
 
 我们创建了两个命令，一个是`Simulate`类的实例，另一个是`Summarize`类的实例。这些可以被执行以提供一个同时模拟和总结数据的组合功能。
 
@@ -2314,11 +2314,11 @@ SOLID 设计原则之一是**Liskov 替换原则**（**LSP**）。`Command`抽�
 早些时候，我们注意到根应用程序将是`craps`。它将有以下三个子命令：
 
 ```py
-     **craps simulate -o game_file -g games 
-          craps summarize -o summary_file game_file ... 
-          craps simsum -g games** 
+ **craps simulate -o game_file -g games 
+      craps summarize -o summary_file game_file ... 
+      craps simsum -g games** 
 
-    ```
+```
 
 1.  定义根 Python 应用程序。与本书中的其他文件一致，我们将称其为`ch13_r08.py`。在操作系统级别，我们可以提供一个别名或链接，使可见界面与用户对`craps`的期望相匹配。
 
@@ -2327,55 +2327,55 @@ SOLID 设计原则之一是**Liskov 替换原则**（**LSP**）。`Command`抽�
 1.  创建整体参数解析器，然后创建一个子解析器构建器。`subparsers`对象将用于创建每个子命令的参数定义：
 
 ```py
-            import argparse 
-            def get_options(argv): 
-                parser = argparse.ArgumentParser(prog='craps') 
-                subparsers = parser.add_subparsers() 
+        import argparse 
+        def get_options(argv): 
+            parser = argparse.ArgumentParser(prog='craps') 
+            subparsers = parser.add_subparsers() 
 
-    ```
+```
 
 对于每个命令，创建一个解析器，并添加该命令特有的参数。
 
 1.  使用两个唯一于模拟的选项定义`simulate`命令。我们还将提供一个特殊的默认值，用于初始化生成的`Namespace`对象：
 
 ```py
-                simulate_parser = subparsers.add_parser('simulate') 
-                simulate_parser.add_argument('-g', '--games', type=int, default=100000) 
-                simulate_parser.add_argument('-o', '--output', dest='game_file') 
-                simulate_parser.set_defaults(command=Simulate) 
+            simulate_parser = subparsers.add_parser('simulate') 
+            simulate_parser.add_argument('-g', '--games', type=int, default=100000) 
+            simulate_parser.add_argument('-o', '--output', dest='game_file') 
+            simulate_parser.set_defaults(command=Simulate) 
 
-    ```
+```
 
 1.  定义`summarize`命令，带有此命令特有的参数。提供将填充`Namespace`对象的默认值：
 
 ```py
-                summarize_parser = subparsers.add_parser('summarize') 
-                summarize_parser.add_argument('-o', '--output', dest='summary_file') 
-                summarize_parser.add_argument('game_files', nargs='*') 
-                summarize_parser.set_defaults(command=Summarize) 
+            summarize_parser = subparsers.add_parser('summarize') 
+            summarize_parser.add_argument('-o', '--output', dest='summary_file') 
+            summarize_parser.add_argument('game_files', nargs='*') 
+            summarize_parser.set_defaults(command=Summarize) 
 
-    ```
+```
 
 1.  定义`simsum`命令，并类似地提供一个独特的默认值，以便更轻松地处理`Namespace`：
 
 ```py
-                simsum_parser = subparsers.add_parser('simsum') 
-                simsum_parser.add_argument('-g', '--games', type=int, default=100000) 
-                simsum_parser.add_argument('-o', '--output', dest='summary_file') 
-                simsum_parser.set_defaults(command=SimSum) 
+            simsum_parser = subparsers.add_parser('simsum') 
+            simsum_parser.add_argument('-g', '--games', type=int, default=100000) 
+            simsum_parser.add_argument('-o', '--output', dest='summary_file') 
+            simsum_parser.set_defaults(command=SimSum) 
 
-    ```
+```
 
 1.  解析命令行值。在这种情况下，`get_options()`函数的整体参数预期是`sys.argv[1:]`的值，其中包括 Python 命令的参数。我们可以覆盖参数值以进行测试：
 
 ```py
-                options = parser.parse_args(argv) 
-                if 'command' not in options: 
-                    parser.print_help() 
-                    sys.exit(2) 
-                return options 
+            options = parser.parse_args(argv) 
+            if 'command' not in options: 
+                parser.print_help() 
+                sys.exit(2) 
+            return options 
 
-    ```
+```
 
 整体解析器包括三个子命令解析器。一个将处理`craps simulate`命令，另一个处理`craps summarize`，第三个处理`craps simsum`。每个子命令具有略有不同的选项组合。
 
@@ -2384,30 +2384,30 @@ SOLID 设计原则之一是**Liskov 替换原则**（**LSP**）。`Command`抽�
 1.  整体应用程序由以下`main()`函数定义：
 
 ```py
-            def main(): 
-                options = get_options(sys.argv[1:]) 
-                command = options.command(options) 
-                command.execute() 
+        def main(): 
+            options = get_options(sys.argv[1:]) 
+            command = options.command(options) 
+            command.execute() 
 
-    ```
+```
 
 选项将被解析。每个不同的子命令为`options.command`参数设置一个唯一的类值。这个类用于构建`Command`子类的实例。这个对象将有一个`execute()`方法，用于执行这个命令的真正工作。
 
 1.  实现根命令的操作系统包装器。我们可能有一个名为`craps`的文件。该文件将具有 rx 权限，以便其他用户可以读取。文件的内容可能是这一行：
 
 ```py
-     **python3.5 ch13_r08.py $*** 
+ **python3.5 ch13_r08.py $*** 
 
-    ```
+```
 
 这个小的 shell 脚本提供了一个方便的方式来输入一个`**craps**`命令，并使其正确执行一个具有不同名称的 Python 脚本。
 
 我们可以这样创建一个 bash shell 别名：
 
 ```py
-     **alias craps='python3.5 ch13_r08.py'** 
+ **alias craps='python3.5 ch13_r08.py'** 
 
-    ```
+```
 
 这可以放在`.bashrc`文件中以定义一个`**craps**`命令。
 
@@ -2545,38 +2545,38 @@ SOLID 设计原则之一是 Liskov 替换原则。命令抽象类的任何子类
 1.  导入 `subprocess` 模块：
 
 ```py
-            import subprocess 
+        import subprocess 
 
-    ```
+```
 
 1.  设计命令行。通常，应该在操作系统提示符下进行测试，以确保它执行正确的操作：
 
 ```py
-     **slott$ python3 ch13_r05.py --samples 10 --output x.yaml** 
+ **slott$ python3 ch13_r05.py --samples 10 --output x.yaml** 
 
-    ```
+```
 
 输出文件名需要灵活，这样我们可以运行程序数百次。这意味着创建名称为 `game_{n}.yaml` 的文件。
 
 1.  编写一个语句，通过适当的命令进行迭代。每个命令可以构建为一系列单词的序列。从工作的 shell 命令开始，并在空格上拆分该行，以创建适当的单词序列：
 
 ```py
-            files = 100 
-            for n in range(files): 
-                filename = 'game_{n}.yaml'.format_map(vars()) 
-                command = ['python3', 'ch13_r05.py', 
-                    '--samples', '10', '--output', filename] 
+        files = 100 
+        for n in range(files): 
+            filename = 'game_{n}.yaml'.format_map(vars()) 
+            command = ['python3', 'ch13_r05.py', 
+                '--samples', '10', '--output', filename] 
 
-    ```
+```
 
 这将创建各种命令。我们可以使用 `print()` 函数显示每个命令，并确认文件名是否定义正确。
 
 1.  评估 `subprocess` 模块中的 `run()` 函数。这将执行给定的命令。提供 `check=True`，这样如果有任何问题，它将引发 `subprocess.CalledProcessError` 异常：
 
 ```py
-            subprocess.run(command, check=True)
+        subprocess.run(command, check=True)
 
-    ```
+```
 
 1.  为了正确测试这一点，整个序列应该转换为一个适当的函数。如果将来会有更多相关的命令，它应该是 `Command` 类层次结构中的子类的方法。参见*在复合应用程序中管理参数和配置*配方。
 
@@ -2781,37 +2781,37 @@ Python 的 `subprocess` 模块提供了许多类似于 shell 的功能。最重�
 1.  导入`subprocess`模块：
 
 ```py
-            import subprocess 
+        import subprocess 
 
-    ```
+```
 
 1.  设计命令行。通常，这应该在操作系统提示符下进行测试，以确保它执行正确的操作。我们展示了一个命令的示例。
 
 1.  为要执行的各种命令定义一个生成器。每个命令都可以作为一个单词序列构建。原始的 shell 命令被拆分成单词序列。
 
 ```py
-            def command_iter(files): 
-                for n in range(files): 
-                    filename = 'game_{n}.yaml'.format_map(vars()) 
-                    command = ['python3', 'ch13_r05.py', 
-                        '--samples', '10', '--output', filename] 
-                    yield command 
+        def command_iter(files): 
+            for n in range(files): 
+                filename = 'game_{n}.yaml'.format_map(vars()) 
+                command = ['python3', 'ch13_r05.py', 
+                    '--samples', '10', '--output', filename] 
+                yield command 
 
-    ```
+```
 
 这个生成器将产生一系列命令字符串。客户端可以使用`for`语句来消耗生成的每个命令。
 
 1.  定义一个执行各种命令并收集输出的函数：
 
 ```py
-            def command_output_iter(iterable): 
-                for command in iterable: 
-                    process = subprocess.run(command, stdout=subprocess.PIPE, check=True) 
-                    output_bytes = process.stdout 
-                    output_lines = list(l.strip() for l in output_bytes.splitlines()) 
-                    yield output_lines 
+        def command_output_iter(iterable): 
+            for command in iterable: 
+                process = subprocess.run(command, stdout=subprocess.PIPE, check=True) 
+                output_bytes = process.stdout 
+                output_lines = list(l.strip() for l in output_bytes.splitlines()) 
+                yield output_lines 
 
-    ```
+```
 
 使用`stdout=subprocess.PIPE`的参数值意味着父进程将收集子进程的输出。创建一个操作系统级的管道，以便父进程可以读取子进程的输出。
 
@@ -2820,15 +2820,15 @@ Python 的 `subprocess` 模块提供了许多类似于 shell 的功能。最重�
 1.  定义一个整体流程，将这两个生成器结合起来，以便执行生成的每个命令：
 
 ```py
-            command_sequence = command_iter(100) 
-            output_lines_sequence = command_output_iter(command_sequence) 
-            for batch in output_lines_sequence: 
-                for line in batch: 
-                    if line.startswith('Counter'): 
-                        batch_counter = eval(line) 
-                        print(batch_counter) 
+        command_sequence = command_iter(100) 
+        output_lines_sequence = command_output_iter(command_sequence) 
+        for batch in output_lines_sequence: 
+            for line in batch: 
+                if line.startswith('Counter'): 
+                    batch_counter = eval(line) 
+                    print(batch_counter) 
 
-    ```
+```
 
 `command_sequence`变量是一个生成器，将产生多个命令。这个序列是由`command_iter()`函数构建的。
 
@@ -2935,18 +2935,18 @@ Python 的 `subprocess` 模块提供了许多类似于 shell 的功能。最重�
 1.  我们将定义一个抽象的`Command`类。其他命令将被定义为子类。我们将将子进程处理推入此类定义以简化子类：
 
 ```py
-            import subprocess 
-            class Command: 
-                def execute(self, options): 
-                    self.command = self.create_command(options) 
-                    results = subprocess.run(self.command, 
-                        check=True, stdout=subprocess.PIPE) 
-                    self.output = results.stdout 
-                    return self.output 
-                def create_command(self, options): 
-                    return ['echo', self.__class__.__name__, repr(self.options)] 
+        import subprocess 
+        class Command: 
+            def execute(self, options): 
+                self.command = self.create_command(options) 
+                results = subprocess.run(self.command, 
+                    check=True, stdout=subprocess.PIPE) 
+                self.output = results.stdout 
+                return self.output 
+            def create_command(self, options): 
+                return ['echo', self.__class__.__name__, repr(self.options)] 
 
-    ```
+```
 
 `execute()`方法首先通过创建 OS 级别的要执行的命令来工作。每个子类将为包装的命令提供不同的规则。一旦命令构建完成，`subprocess`模块的`run()`函数将处理此命令。
 
@@ -2955,21 +2955,21 @@ Python 的 `subprocess` 模块提供了许多类似于 shell 的功能。最重�
 1.  我们可以使用`Command`超类来定义一个命令来模拟游戏并创建样本：
 
 ```py
-            import ch13_r05 
+        import ch13_r05 
 
-            class Simulate(Command): 
-                def __init__(self, seed=None): 
-                    self.seed = seed 
-                def execute(self, options): 
-                    if self.seed: 
-                        os.environ['RANDOMSEED'] = str(self.seed) 
-                    super().execute(options) 
-                def create_command(self, options): 
-                    return ['python3', 'ch13_r05.py`, 
-                        '--samples', str(options.samples), 
-                        '-o', options.game_file] 
+        class Simulate(Command): 
+            def __init__(self, seed=None): 
+                self.seed = seed 
+            def execute(self, options): 
+                if self.seed: 
+                    os.environ['RANDOMSEED'] = str(self.seed) 
+                super().execute(options) 
+            def create_command(self, options): 
+                return ['python3', 'ch13_r05.py`, 
+                    '--samples', str(options.samples), 
+                    '-o', options.game_file] 
 
-    ```
+```
 
 在这种情况下，我们提供了对`execute()`方法的重写，以便这个类可以更改环境变量。这允许集成测试设置特定的随机种子，并确认结果与固定的预期值匹配。
 
@@ -2978,33 +2978,33 @@ Python 的 `subprocess` 模块提供了许多类似于 shell 的功能。最重�
 1.  我们还可以使用`Command`超类来定义一个命令来总结各种模拟过程：
 
 ```py
-            import ch13_r06 
+        import ch13_r06 
 
-            class Summarize(Command): 
-                def create_command(self, options): 
-                    return ['python3', 'ch13_r06.py', 
-                        '-o', options.summary_file, 
-                        ] + options.game_files 
+        class Summarize(Command): 
+            def create_command(self, options): 
+                return ['python3', 'ch13_r06.py', 
+                    '-o', options.summary_file, 
+                    ] + options.game_files 
 
-    ```
+```
 
 在这种情况下，我们只实现了`create_command()`。此实现为`ch13_r06`命令提供了参数。
 
 1.  鉴于这两个命令，整个主程序可以遵循*为组合设计脚本*配方的设计模式。我们需要收集选项，然后使用这些选项来执行这两个命令：
 
 ```py
-            from argparse import Namespace 
+        from argparse import Namespace 
 
-            def demo(): 
-                options = Namespace(samples=100, 
-                    game_file='x12.yaml', game_files=['x12.yaml'], 
-                    summary_file='y12.yaml') 
-                step1 = Simulate() 
-                step2 = Summarize() 
-                step1.execute(options) 
-                step2.execute(options) 
+        def demo(): 
+            options = Namespace(samples=100, 
+                game_file='x12.yaml', game_files=['x12.yaml'], 
+                summary_file='y12.yaml') 
+            step1 = Simulate() 
+            step2 = Summarize() 
+            step1.execute(options) 
+            step2.execute(options) 
 
-    ```
+```
 
 此演示函数`demo()`创建了一个带有可能来自命令行的参数的`Namespace`实例。它构建了两个处理步骤。最后，它执行每个步骤。
 

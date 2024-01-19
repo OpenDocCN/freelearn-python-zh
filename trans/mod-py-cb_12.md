@@ -272,40 +272,40 @@ WSGI 应用程序函数的返回值是 HTTP 响应正文。这通常是一系列
 1.  导入所需的模块和对象。我们将使用`HTTPStatus`类，因为它定义了常用的 HTTP 状态码。需要`json`模块来生成 JSON 响应。我们还将使用`os`模块来初始化随机数种子：
 
 ```py
-            from http import HTTPStatus 
-            import json 
-            import os 
-            import random 
+        from http import HTTPStatus 
+        import json 
+        import os 
+        import random 
 
-    ```
+```
 
 1.  导入或定义底层类，`Card`和`Deck`。通常，最好将这些定义为一个单独的模块。基本功能应该存在并在 Web 服务环境之外进行测试。这样做的想法是 Web 服务应该包装现有的、可工作的软件。
 
 1.  创建所有会话共享的对象。`deck`的值是一个模块全局变量：
 
 ```py
-            random.seed(os.environ.get('DEAL_APP_SEED')) 
-            deck = Deck() 
+        random.seed(os.environ.get('DEAL_APP_SEED')) 
+        deck = Deck() 
 
-    ```
+```
 
 我们依赖`os`模块来检查环境变量。如果环境变量`DEAL_APP_SEED`被定义，我们将使用该字符串值来生成随机数。否则，我们将依赖`random`模块的内置随机化特性。
 
 1.  将目标 WSGI 应用程序定义为一个函数。该函数将通过发一手牌来响应请求，然后创建`Card`信息的 JSON 表示形式：
 
 ```py
-            def deal_cards(environ, start_response): 
-                global deck 
-                hand_size = int(environ.get('HAND_SIZE', 5)) 
-                cards = deck.deal(hand_size) 
-                status = "{status.value} {status.phrase}".format(
-                 status=HTTPStatus.OK) 
-                headers = [('Content-Type', 'application/json;charset=utf-8')] 
-                start_response(status, headers) 
-                json_cards = list(card.to_json() for card in cards) 
-                return [json.dumps(json_cards, indent=2).encode('utf-8')] 
+        def deal_cards(environ, start_response): 
+            global deck 
+            hand_size = int(environ.get('HAND_SIZE', 5)) 
+            cards = deck.deal(hand_size) 
+            status = "{status.value} {status.phrase}".format(
+             status=HTTPStatus.OK) 
+            headers = [('Content-Type', 'application/json;charset=utf-8')] 
+            start_response(status, headers) 
+            json_cards = list(card.to_json() for card in cards) 
+            return [json.dumps(json_cards, indent=2).encode('utf-8')] 
 
-    ```
+```
 
 `deal_cards()`函数从`deck`中发牌下一组牌。操作系统环境可以定义`HAND_SIZE`环境变量来改变发牌的大小。全局`deck`对象用于执行相关处理。
 
@@ -314,11 +314,11 @@ WSGI 应用程序函数的返回值是 HTTP 响应正文。这通常是一系列
 1.  出于演示和调试目的，构建一个运行 WSGI 应用程序的服务器是有帮助的。我们将使用`wsgiref`模块的服务器。在 Werkzeug 中定义了良好的服务器。像 GUnicorn 这样的服务器甚至更好：
 
 ```py
-            from wsgiref.simple_server import make_server 
-            httpd = make_server('', 8080, deal_cards) 
-            httpd.serve_forever() 
+        from wsgiref.simple_server import make_server 
+        httpd = make_server('', 8080, deal_cards) 
+        httpd.serve_forever() 
 
-    ```
+```
 
 服务器运行后，我们可以打开浏览器查看`http://localhost:8080/`。这将返回一批五张卡片。每次刷新，我们都会得到不同的一批卡片。
 
@@ -585,68 +585,68 @@ Flask 允许我们大大简化我们的网络服务应用程序。我们不需�
 1.  从`flask`包中导入一些核心定义。`Flask`类定义了整个应用程序。`request`对象保存当前的 web 请求：
 
 ```py
-            from flask import Flask, request, jsonify, abort 
-            from http import HTTPStatus 
+        from flask import Flask, request, jsonify, abort 
+        from http import HTTPStatus 
 
-    ```
+```
 
 `jsonify()`函数将从 Flask 视图函数返回一个 JSON 格式对象。`abort()`函数返回一个 HTTP 错误状态并结束请求的处理。
 
 1.  导入底层类`Card`和`Deck`。理想情况下，这些应该从一个单独的模块中导入。应该可以在 web 服务环境之外测试所有功能：
 
 ```py
-            from ch12_r01 import Card, Deck 
+        from ch12_r01 import Card, Deck 
 
-    ```
+```
 
 为了正确洗牌，我们还需要`random`模块：
 
 ```py
-            import random 
+        import random 
 
-    ```
+```
 
 1.  创建`Flask`对象。这是整个网络服务应用程序。我们将称 Flask 应用程序为`dealer`，并且还将将对象分配给全局变量`dealer`：
 
 ```py
-            dealer = Flask('dealer') 
+        dealer = Flask('dealer') 
 
-    ```
+```
 
 1.  创建应用程序中使用的任何对象。这些可以分配给`Flask`对象`dealer`作为属性。确保创建一个不会与 Flask 的内部属性冲突的唯一名称。另一种方法是使用模块全局变量。
 
 有状态的全局对象必须能够在多线程环境中工作，或者必须显式禁用线程：
 
 ```py
-            import os 
-            random.seed(os.environ.get('DEAL_APP_SEED')) 
-            deck = Deck() 
+        import os 
+        random.seed(os.environ.get('DEAL_APP_SEED')) 
+        deck = Deck() 
 
-    ```
+```
 
 对于这个示例，`Deck`类的实现不是线程安全的，所以我们将依赖于单线程服务器。`deal()`方法应该使用`threading`模块中的`Lock`类来定义一个独占锁，以确保与并发线程的正确操作。
 
 1.  定义一个路由-到执行特定请求的视图函数的 URL 模式。这是一个装饰器，直接放在函数的前面。它将把函数绑定到 Flask 应用程序：
 
 ```py
-            @dealer.route('/dealer/hand/') 
+        @dealer.route('/dealer/hand/') 
 
-    ```
+```
 
 1.  定义视图函数，检索数据或更新应用程序状态。在这个例子中，函数两者都做：
 
 ```py
-            def deal(): 
-                try: 
-                    hand_size = int(request.args.get('cards', 5)) 
-                    assert 1 <= hand_size < 53 
-                except Exception as ex: 
-                    abort(HTTPStatus.BAD_REQUEST) 
-                cards = deck.deal(hand_size) 
-                response = jsonify([card.to_json() for card in cards]) 
-                return response 
+        def deal(): 
+            try: 
+                hand_size = int(request.args.get('cards', 5)) 
+                assert 1 <= hand_size < 53 
+            except Exception as ex: 
+                abort(HTTPStatus.BAD_REQUEST) 
+            cards = deck.deal(hand_size) 
+            response = jsonify([card.to_json() for card in cards]) 
+            return response 
 
-    ```
+```
 
 Flask 解析 URL 中`?`后面的字符串-查询字符串-以创建`request.args`值。客户端应用程序或浏览器可以使用查询字符串设置此值，例如`?cards=13`。这将为桥牌发牌 13 张牌。
 
@@ -659,10 +659,10 @@ Flask 解析 URL 中`?`后面的字符串-查询字符串-以创建`request.args
 1.  定义运行服务器的主程序：
 
 ```py
-            if __name__ == "__main__": 
-                dealer.run(use_reloader=True, threaded=False, debug=True) 
+        if __name__ == "__main__": 
+            dealer.run(use_reloader=True, threaded=False, debug=True) 
 
-    ```
+```
 
 我们包含了`debug=True`选项，以在浏览器和 Flask 日志文件中提供丰富的调试信息。服务器运行后，我们可以打开浏览器查看`http://localhost:5000/`。这将返回一批五张卡片。每次刷新，我们都会得到不同的一批卡片。
 
@@ -839,42 +839,42 @@ Flask 依赖于另一个项目`Werkzeug`。当我们使用`pip`安装 Flask 时�
 1.  定义一个路由——一个 URL 模式——到执行特定请求的视图函数。这是一个装饰器，直接放在函数前面。它将把函数绑定到 Flask 应用程序上：
 
 ```py
-            @dealer.route('/dealer/hands/') 
+        @dealer.route('/dealer/hands/') 
 
-    ```
+```
 
 1.  定义一个视图函数，响应发送到特定路由的请求：
 
 ```py
-            def multi_hand(): 
+        def multi_hand(): 
 
-    ```
+```
 
 1.  在视图函数中，使用`get()`方法提取唯一键的值，或者使用适用于内置 dict 类型的普通`[]`语法。这会返回单个值，而不会出现列表的复杂情况，其中列表只有一个元素的常见情况。
 
 1.  对于重复的键，使用`getlist()`方法。这会将每个值作为列表返回。以下是一个查找查询字符串的视图函数，例如`?card=5&card=5`来发放两手五张牌：
 
 ```py
-            try: 
-                hand_sizes = request.args.getlist('cards', type=int) 
-                if len(hand_sizes) == 0: 
-                    hand_sizes = [13,13,13,13] 
-                assert all(1 <= hand_size < 53 for hand_size in hand_sizes) 
-            except Exception as ex: 
-                dealer.logger.exception(ex) 
-                abort(HTTPStatus.BAD_REQUEST) 
+        try: 
+            hand_sizes = request.args.getlist('cards', type=int) 
+            if len(hand_sizes) == 0: 
+                hand_sizes = [13,13,13,13] 
+            assert all(1 <= hand_size < 53 for hand_size in hand_sizes) 
+        except Exception as ex: 
+            dealer.logger.exception(ex) 
+            abort(HTTPStatus.BAD_REQUEST) 
 
-            hands = [deck.deal(hand_size) for hand_size in hand_sizes] 
-            response = jsonify( 
-                [ 
-                    {'hand':i, 
-                     'cards':[card.to_json() for card in hand] 
-                    } for i, hand in enumerate(hands) 
-                ] 
-            ) 
-            return response 
+        hands = [deck.deal(hand_size) for hand_size in hand_sizes] 
+        response = jsonify( 
+            [ 
+                {'hand':i, 
+                 'cards':[card.to_json() for card in hand] 
+                } for i, hand in enumerate(hands) 
+            ] 
+        ) 
+        return response 
 
-    ```
+```
 
 这个函数将从查询字符串中获取所有`cards`键。如果值都是整数，并且每个值都在 1 到 52 的范围内（包括 1 和 52），那么这些值就是有效的，视图函数将返回一个结果。如果查询中没有`cards`键值，那么将发放 13 张牌的四手牌。
 
@@ -883,10 +883,10 @@ Flask 依赖于另一个项目`Werkzeug`。当我们使用`pip`安装 Flask 时�
 1.  定义一个运行服务器的主程序：
 
 ```py
-            if __name__ == "__main__": 
-                dealer.run(use_reloader=True, threaded=False) 
+        if __name__ == "__main__": 
+            dealer.run(use_reloader=True, threaded=False) 
 
-    ```
+```
 
 服务器运行后，我们可以打开浏览器查看这个 URL：
 
@@ -1091,32 +1091,32 @@ Web 应用程序有两个基本部分：
 1.  导入所需的`urllib`组件。我们将发出 URL 请求，并构建更复杂的对象，如查询字符串。我们将需要`urllib.request`和`urllib.parse`模块来实现这两个功能。由于预期的响应是 JSON 格式，因此`json`模块也将很有用：
 
 ```py
-            import urllib.request 
-            import urllib.parse 
-            import json 
+        import urllib.request 
+        import urllib.parse 
+        import json 
 
-    ```
+```
 
 1.  定义将要使用的查询字符串。在这种情况下，所有值恰好是固定的。在更复杂的应用程序中，一些值可能是固定的，而另一些可能基于用户输入：
 
 ```py
-            query = {'hand': 5} 
+        query = {'hand': 5} 
 
-    ```
+```
 
 1.  使用查询构建完整 URL 的各个部分：
 
 ```py
-            full_url = urllib.parse.ParseResult( 
-                scheme="http", 
-                netloc="127.0.0.1:5000", 
-                path="/dealer" + "/hand/", 
-                params=None, 
-                query=urllib.parse.urlencode(query), 
-                fragment=None 
-            ) 
+        full_url = urllib.parse.ParseResult( 
+            scheme="http", 
+            netloc="127.0.0.1:5000", 
+            path="/dealer" + "/hand/", 
+            params=None, 
+            query=urllib.parse.urlencode(query), 
+            fragment=None 
+        ) 
 
-    ```
+```
 
 在这种情况下，我们使用`ParseResult`对象来保存 URL 的相关部分。这个类对于缺少的项目并不优雅，所以我们必须为 URL 的未使用部分提供明确的`None`值。
 
@@ -1127,33 +1127,33 @@ Web 应用程序有两个基本部分：
 1.  构建最终的`Request`实例。我们将使用从各种部分构建的 URL。我们将明确提供一个 HTTP 方法（浏览器通常使用`GET`作为默认值）。此外，我们可以提供明确的头部：
 
 ```py
-            request = urllib.request.Request( 
-                url = urllib.parse.urlunparse(full_url), 
-                method = "GET", 
-                headers = { 
-                    'Accept': 'application/json', 
-                } 
-            ) 
+        request = urllib.request.Request( 
+            url = urllib.parse.urlunparse(full_url), 
+            method = "GET", 
+            headers = { 
+                'Accept': 'application/json', 
+            } 
+        ) 
 
-    ```
+```
 
 我们已经提供了 HTTP Accept 头部来声明服务器将产生的 MIME 类型结果，并被客户端接受。我们已经提供了 HTTP `Content-Type`头部来声明服务器消耗的请求，并由我们的客户端脚本提供。
 
 1.  打开一个上下文来处理响应。`urlopen()`函数发出请求，处理 HTTP 协议的所有复杂性。最终的`result`对象可用于作为响应进行处理：
 
 ```py
-            with urllib.request.urlopen(request) as response: 
+        with urllib.request.urlopen(request) as response: 
 
-    ```
+```
 
 1.  一般来说，响应的三个属性特别重要：
 
 ```py
-            print(response.status) 
-            print(response.headers) 
-            print(json.loads(response.read().decode("utf-8"))) 
+        print(response.status) 
+        print(response.headers) 
+        print(json.loads(response.read().decode("utf-8"))) 
 
-    ```
+```
 
 `status`是最终的状态码。我们期望一个正常请求的 HTTP 状态码为`200`。`headers`包括响应的所有头部。例如，我们可能想要检查`response.headers['Content-Type']`是否真的是`application/json`。
 
@@ -1265,13 +1265,13 @@ Date: Sat, 23 Jul 2016 19:46:35 GMT
 这是一个我们可以添加的视图函数，它将发送一个文件。当然，我们还需要将规范放入命名文件中：
 
 ```py
-            from flask import send_file 
-            @dealer.route('/dealer/swagger.json') 
-            def swagger(): 
-                response = send_file('swagger.json', mimetype='application/json') 
-                return response 
+        from flask import send_file 
+        @dealer.route('/dealer/swagger.json') 
+        def swagger(): 
+            response = send_file('swagger.json', mimetype='application/json') 
+            return response 
 
-    ```
+```
 
 这种方法的缺点是规范与实现模块分开。
 
@@ -1280,30 +1280,30 @@ Date: Sat, 23 Jul 2016 19:46:35 GMT
 这个视图函数发送模块文档字符串，假设该字符串是一个有效的 JSON 文档：
 
 ```py
-            from flask import make_response 
-            @dealer.route('/dealer/swagger.json') 
-            def swagger(): 
-                response = make_response(__doc__.encode('utf-8')) 
-                response.headers['Content-Type'] = 'application/json' 
-                return response 
+        from flask import make_response 
+        @dealer.route('/dealer/swagger.json') 
+        def swagger(): 
+            response = make_response(__doc__.encode('utf-8')) 
+            response.headers['Content-Type'] = 'application/json' 
+            return response 
 
-    ```
+```
 
 这种方法的缺点是需要检查文档字符串的语法以确保其是有效的 JSON。这除了验证模块实现实际上是否符合规范之外。
 
 1.  在适当的 Python 语法中创建一个 Python 规范对象。然后可以将其编码为 JSON 并传输。这个视图函数发送一个 `specification` 对象。这将是一个有效的 Python 对象，可以序列化为 JSON 表示法：
 
 ```py
-            from flask import make_response 
-            import json 
-            @dealer.route('/dealer/swagger.json') 
-            def swagger3(): 
-                response = make_response( 
-                    json.dumps(specification, indent=2).encode('utf-8')) 
-                response.headers['Content-Type'] = 'application/json' 
-                return response 
+        from flask import make_response 
+        import json 
+        @dealer.route('/dealer/swagger.json') 
+        def swagger3(): 
+            response = make_response( 
+                json.dumps(specification, indent=2).encode('utf-8')) 
+            response.headers['Content-Type'] = 'application/json' 
+            return response 
 
-    ```
+```
 
 在所有情况下，拥有正式规范可用有几个好处：
 
@@ -1370,59 +1370,59 @@ URL 是一个复杂的对象。它至少包含六个单独的信息片段。可�
 1.  从*解析请求中的查询字符串*的模板开始，作为 Flask 应用程序的模板。我们将改变那个例子中的视图函数：
 
 ```py
-            from flask import Flask, jsonify, request, abort, make_response 
-            from http import HTTPStatus 
-            dealer = Flask('dealer') 
+        from flask import Flask, jsonify, request, abort, make_response 
+        from http import HTTPStatus 
+        dealer = Flask('dealer') 
 
-    ```
+```
 
 1.  导入任何额外的模块。在这种情况下，我们将使用`uuid`模块为洗牌后的牌组创建一个唯一的键：
 
 ```py
-            import uuid 
+        import uuid 
 
-    ```
+```
 
 我们还将使用 Werkzeug 的`BadRequest`响应。这使我们能够提供详细的错误消息。这比对于错误请求使用`abort(400)`要好一点：
 
 ```py
-            from werkzeug.exceptions import BadRequest 
+        from werkzeug.exceptions import BadRequest 
 
-    ```
+```
 
 1.  定义全局状态。这包括牌组的集合。它还包括随机数生成器。为了测试目的，有一种方法可以强制使用特定的种子值：
 
 ```py
-            import os 
-            import random 
-            random.seed(os.environ.get('DEAL_APP_SEED')) 
-            decks = {} 
+        import os 
+        import random 
+        random.seed(os.environ.get('DEAL_APP_SEED')) 
+        decks = {} 
 
-    ```
+```
 
 1.  定义一个路由——到执行特定请求的视图函数的 URL 模式。这是一个装饰器，直接放在函数的前面。它将把函数绑定到 Flask 应用程序：
 
 ```py
-            @dealer.route('/dealer/decks', methods=['POST']) 
+        @dealer.route('/dealer/decks', methods=['POST']) 
 
-    ```
+```
 
 我们已经定义了牌组资源，并将路由限制为只处理`HTTP POST`请求。这缩小了这个特定端点的语义——`POST`请求通常意味着 URL 将在服务器上创建新的东西。在这个例子中，它在牌组集合中创建了一个新实例。
 
 1.  定义支持这个资源的视图函数：
 
 ```py
-            def make_deck(): 
-                id = str(uuid.uuid1()) 
-                decks[id]= Deck() 
-                response_json = jsonify( 
-                    status='ok', 
-                    id=id 
-                ) 
-                response = make_response(response_json, HTTPStatus.CREATED) 
-                return response 
+        def make_deck(): 
+            id = str(uuid.uuid1()) 
+            decks[id]= Deck() 
+            response_json = jsonify( 
+                status='ok', 
+                id=id 
+            ) 
+            response = make_response(response_json, HTTPStatus.CREATED) 
+            return response 
 
-    ```
+```
 
 `uuid1()`函数将基于当前主机和随机种子序列生成器创建一个通用唯一 ID。这个字符串版本是一个长的十六进制字符串，看起来像`93b8fc06-5395-11e6-9e73-38c9861bf556`。
 
@@ -1437,39 +1437,39 @@ URL 是一个复杂的对象。它至少包含六个单独的信息片段。可�
 1.  定义一个需要参数的路由。在这种情况下，路由将包括要处理的特定牌组 ID：
 
 ```py
-            @dealer.route('/dealer/decks/<id>/hands', methods=['GET']) 
+        @dealer.route('/dealer/decks/<id>/hands', methods=['GET']) 
 
-    ```
+```
 
 `<id>`使这成为一个路径模板，而不是一个简单的文字路径。Flask 将解析`/`字符并分隔`<id>`字段。
 
 1.  定义一个视图函数，其参数与模板匹配。由于模板包含`<id>`，视图函数也有一个名为`id`的参数：
 
 ```py
-            def get_hands(id): 
-                if id not in decks: 
-                    dealer.logger.debug(id) 
-                    return make_response( 
-                        'ID {} not found'.format(id), HTTPStatus.NOT_FOUND) 
-                try: 
-                    cards = int(request.args.get('cards',13)) 
-                    top = int(request.args.get('$top',1)) 
-                    skip = int(request.args.get('$skip',0)) 
-                    assert skip*cards+top*cards <= len(decks[id].cards), \ 
-                        "$skip, $top, and cards larger than the deck" 
-                except ValueError as ex: 
-                    return BadRequest(repr(ex)) 
-                subset = decks[id].cards[skip*cards:(skip+top)*cards] 
-                hands = [subset[h*cards:(h+1)*cards] for h in range(top)] 
-                response = jsonify( 
-                    [ 
-                        {'hand':i, 'cards':[card.to_json() for card in hand]} 
-                         for i, hand in enumerate(hands) 
-                    ] 
-                ) 
-                return response 
+        def get_hands(id): 
+            if id not in decks: 
+                dealer.logger.debug(id) 
+                return make_response( 
+                    'ID {} not found'.format(id), HTTPStatus.NOT_FOUND) 
+            try: 
+                cards = int(request.args.get('cards',13)) 
+                top = int(request.args.get('$top',1)) 
+                skip = int(request.args.get('$skip',0)) 
+                assert skip*cards+top*cards <= len(decks[id].cards), \ 
+                    "$skip, $top, and cards larger than the deck" 
+            except ValueError as ex: 
+                return BadRequest(repr(ex)) 
+            subset = decks[id].cards[skip*cards:(skip+top)*cards] 
+            hands = [subset[h*cards:(h+1)*cards] for h in range(top)] 
+            response = jsonify( 
+                [ 
+                    {'hand':i, 'cards':[card.to_json() for card in hand]} 
+                     for i, hand in enumerate(hands) 
+                ] 
+            ) 
+            return response 
 
-    ```
+```
 
 如果`id`参数的值不是牌组集合的键之一，函数将生成`404 NOT FOUND`响应。这个函数使用`BadRequest`而不是`abort()`函数，以包括解释性的错误消息。我们也可以在 Flask 中使用`make_response()`函数。
 
@@ -1482,10 +1482,10 @@ URL 是一个复杂的对象。它至少包含六个单独的信息片段。可�
 1.  定义一个运行服务器的主程序：
 
 ```py
-            if __name__ == "__main__": 
-                dealer.run(use_reloader=True, threaded=False) 
+        if __name__ == "__main__": 
+            dealer.run(use_reloader=True, threaded=False) 
 
-    ```
+```
 
 ### 客户端
 
@@ -1494,38 +1494,38 @@ URL 是一个复杂的对象。它至少包含六个单独的信息片段。可�
 1.  导入用于处理 RESTful API 的基本模块：
 
 ```py
-            import urllib.request 
-            import urllib.parse 
-            import json 
+        import urllib.request 
+        import urllib.parse 
+        import json 
 
-    ```
+```
 
 1.  有一系列步骤来进行`POST`请求，以创建一个新的洗牌牌组。首先通过手动创建`ParseResult`对象来定义 URL 的各个部分。稍后将将其合并为单个字符串：
 
 ```py
-            full_url = urllib.parse.ParseResult( 
-                scheme="http", 
-                netloc="127.0.0.1:5000", 
-                path="/dealer" + "/decks", 
-                params=None, 
-                query=None, 
-                fragment=None 
-            ) 
+        full_url = urllib.parse.ParseResult( 
+            scheme="http", 
+            netloc="127.0.0.1:5000", 
+            path="/dealer" + "/decks", 
+            params=None, 
+            query=None, 
+            fragment=None 
+        ) 
 
-    ```
+```
 
 1.  从 URL、方法和标头构建`Request`对象：
 
 ```py
-            request = urllib.request.Request( 
-                url = urllib.parse.urlunparse(full_url), 
-                method = "POST", 
-                headers = { 
-                    'Accept': 'application/json', 
-                } 
-            ) 
+        request = urllib.request.Request( 
+            url = urllib.parse.urlunparse(full_url), 
+            method = "POST", 
+            headers = { 
+                'Accept': 'application/json', 
+            } 
+        ) 
 
-    ```
+```
 
 默认方法是`GET`，这对于此 API 请求是不合适的。
 
@@ -1534,63 +1534,63 @@ URL 是一个复杂的对象。它至少包含六个单独的信息片段。可�
 响应文档应该是 Python 字典的 JSON 序列化，具有两个字段，状态和 ID。此客户端在使用`id`字段中的值之前确认响应中的状态为`ok`：
 
 ```py
-            with urllib.request.urlopen(request) as response: 
-                # print(response.status) 
-                assert response.status == 201 
-                # print(response.headers) 
-                document = json.loads(response.read().decode("utf-8")) 
+        with urllib.request.urlopen(request) as response: 
+            # print(response.status) 
+            assert response.status == 201 
+            # print(response.headers) 
+            document = json.loads(response.read().decode("utf-8")) 
 
-            print(document) 
-            assert document['status'] == 'ok' 
-            id = document['id'] 
+        print(document) 
+        assert document['status'] == 'ok' 
+        id = document['id'] 
 
-    ```
+```
 
 在许多 RESTful API 中，将会有一个位置标头，它提供了一个链接到创建的对象的 URL。
 
 1.  创建一个 URL，其中包括将 ID 插入 URL 路径以及提供一些查询字符串参数。这是通过创建一个模拟查询字符串的字典，然后使用`ParseResult`对象构建 URL 来完成的：
 
 ```py
-            query = {'$top': 4, 'cards': 13} 
+        query = {'$top': 4, 'cards': 13} 
 
-            full_url = urllib.parse.ParseResult( 
-                scheme="http", 
-                netloc="127.0.0.1:5000", 
-                path="/dealer" + "/decks/{id}/hands".format(id=id), 
-                params=None, 
-                query=urllib.parse.urlencode(query), 
-                fragment=None 
-            ) 
+        full_url = urllib.parse.ParseResult( 
+            scheme="http", 
+            netloc="127.0.0.1:5000", 
+            path="/dealer" + "/decks/{id}/hands".format(id=id), 
+            params=None, 
+            query=urllib.parse.urlencode(query), 
+            fragment=None 
+        ) 
 
-    ```
+```
 
 我们使用`"/decks/{id}/hands/".format(id=id)`将`id`值插入路径。另一种方法是使用`"/".join(["", "decks", id, "hands", ""])`。请注意，空字符串是强制`"/"`出现在开头和结尾的一种方法。
 
 1.  使用完整 URL、方法和标准标头创建`Request`对象：
 
 ```py
-            request = urllib.request.Request( 
-                url = urllib.parse.urlunparse(full_url), 
-                method = "GET", 
-                headers = { 
-                    'Accept': 'application/json', 
-                } 
-            ) 
+        request = urllib.request.Request( 
+            url = urllib.parse.urlunparse(full_url), 
+            method = "GET", 
+            headers = { 
+                'Accept': 'application/json', 
+            } 
+        ) 
 
-    ```
+```
 
 1.  发送请求并处理响应。我们将确认响应为`200 OK`。然后可以解析响应以获取所请求手牌的详细信息：
 
 ```py
-            with urllib.request.urlopen(request) as response: 
-                # print(response.status) 
-                assert response.status == 200 
-                # print(response.headers) 
-                cards = json.loads(response.read().decode("utf-8")) 
+        with urllib.request.urlopen(request) as response: 
+            # print(response.status) 
+            assert response.status == 200 
+            # print(response.headers) 
+            cards = json.loads(response.read().decode("utf-8")) 
 
-            print(cards) 
+        print(cards) 
 
-    ```
+```
 
 当我们运行此代码时，它将创建一个新的`Deck`实例。然后它将发出四手牌，每手 13 张牌。查询定义了每手的确切数量和每手中的牌数。
 
@@ -1631,10 +1631,10 @@ Python 代码创建了手 *H[n=0]*  ，其中有牌 *H* [0] *=* { *D* [0] *, D*
 1.  理想情况下，操作从 `GET` 到 `swagger.json` 开始，以获取服务器的规范。根据服务器的不同，这可能会很简单：
 
 ```py
-            with urllib.request.urlopen('http://127.0.0.1:5000/dealer/swagger.json') as         response 
-                swagger = json.loads(response.read().decode("utf-8")) 
+        with urllib.request.urlopen('http://127.0.0.1:5000/dealer/swagger.json') as         response 
+            swagger = json.loads(response.read().decode("utf-8")) 
 
-    ```
+```
 
 1.  然后，有一个 `POST` 来创建一个新的 `Deck` 实例。这需要创建一个 `Request` 对象，以便可以将方法设置为 `POST` 。
 
@@ -1869,44 +1869,44 @@ RESTful web 服务通常会接受 JSON 文档形式的输入（和产生输出�
 1.  以下是 Swagger 规范的概要：
 
 ```py
-            specification = { 
-                'swagger': '2.0', 
-                'info': { 
-                    'title': '''Python Cookbook\nChapter 12, recipe 6.''', 
-                    'version': '1.0' 
-                }, 
-                'schemes': ['http'], 
-                'host': '127.0.0.1:5000', 
-                'basePath': '/dealer', 
-                'consumes': ['application/json'], 
-                'produces': ['application/json'], 
-                'paths': { 
-                    '/players': {...}, 
-                    '/players/{id}': {...}, 
-                } 
-                'definitions': { 
-                    'player: {..} 
-                } 
+        specification = { 
+            'swagger': '2.0', 
+            'info': { 
+                'title': '''Python Cookbook\nChapter 12, recipe 6.''', 
+                'version': '1.0' 
+            }, 
+            'schemes': ['http'], 
+            'host': '127.0.0.1:5000', 
+            'basePath': '/dealer', 
+            'consumes': ['application/json'], 
+            'produces': ['application/json'], 
+            'paths': { 
+                '/players': {...}, 
+                '/players/{id}': {...}, 
             } 
+            'definitions': { 
+                'player: {..} 
+            } 
+        } 
 
-    ```
+```
 
 首先的字段是 RESTful web 服务的基本样板。`paths`和`definitions`将填入服务的 URL 和模式定义。
 
 1.  以下是用于验证新玩家的模式定义。这将放在整体规范的定义中：
 
 ```py
-            'player': { 
-                'type': 'object', 
-                'properties': { 
-                    'name': {'type': 'string'}, 
-                    'email': {'type': 'string', 'format': 'email'}, 
-                    'year': {'type': 'integer'}, 
-                    'twitter': {'type': 'string', 'format': 'uri'} 
-                } 
+        'player': { 
+            'type': 'object', 
+            'properties': { 
+                'name': {'type': 'string'}, 
+                'email': {'type': 'string', 'format': 'email'}, 
+                'year': {'type': 'integer'}, 
+                'twitter': {'type': 'string', 'format': 'uri'} 
             } 
+        } 
 
-    ```
+```
 
 整体输入文档正式描述为对象类型。该对象有四个属性：
 
@@ -1923,28 +1923,28 @@ JSON 模式规范语言中有一些定义的格式。`email`和`url`格式被广
 1.  这是用于创建新玩家或获取所有玩家集合的整体`players`路径：
 
 ```py
-            '/players': { 
-                'post': { 
-                    'parameters': [ 
-                            { 
-                                'name': 'player', 
-                                'in': 'body', 
-                                'schema': {'$ref': '#/definitions/player'} 
-                            }, 
-                        ], 
-                    'responses': { 
-                        '201': {'description': 'Player created', }, 
-                        '403': {'description': 'Player is invalid or a duplicate'} 
-                    } 
-                }, 
-                'get': { 
-                    'responses': { 
-                        '200': {'description': 'All of the players defined so far'}, 
-                    } 
+        '/players': { 
+            'post': { 
+                'parameters': [ 
+                        { 
+                            'name': 'player', 
+                            'in': 'body', 
+                            'schema': {'$ref': '#/definitions/player'} 
+                        }, 
+                    ], 
+                'responses': { 
+                    '201': {'description': 'Player created', }, 
+                    '403': {'description': 'Player is invalid or a duplicate'} 
                 } 
             }, 
+            'get': { 
+                'responses': { 
+                    '200': {'description': 'All of the players defined so far'}, 
+                } 
+            } 
+        }, 
 
-    ```
+```
 
 该路径定义了两种方法——`post`和`get`。`post`方法有一个名为`player`的参数。这个参数是请求的主体，并且遵循定义部分提供的玩家模式。
 
@@ -1953,26 +1953,26 @@ JSON 模式规范语言中有一些定义的格式。`email`和`url`格式被广
 1.  这是一个用于获取有关特定玩家的详细信息的路径的定义：
 
 ```py
-            '/players/{id}': { 
-                'get': { 
-                    'parameters': [ 
-                        { 
-                            'name': 'id', 
-                            'in': 'path', 
-                            'type': 'string' 
-                        } 
-                    ], 
-                    'responses': { 
-                        '200': { 
-                            'description': 'The details of a specific player', 
-                            'schema': {'$ref': '#/definitions/player'} 
-                        }, 
-                        '404': {'description': 'Player ID not found'} 
+        '/players/{id}': { 
+            'get': { 
+                'parameters': [ 
+                    { 
+                        'name': 'id', 
+                        'in': 'path', 
+                        'type': 'string' 
                     } 
+                ], 
+                'responses': { 
+                    '200': { 
+                        'description': 'The details of a specific player', 
+                        'schema': {'$ref': '#/definitions/player'} 
+                    }, 
+                    '404': {'description': 'Player ID not found'} 
                 } 
-            }, 
+            } 
+        }, 
 
-    ```
+```
 
 该路径类似于*解析 URL 路径*配方中所示的路径。URL 中提供了`player`键。显示了当玩家 ID 有效时的响应细节。响应具有一个定义的模式，该模式还使用了定义部分中的玩家模式定义。
 
@@ -1983,62 +1983,62 @@ JSON 模式规范语言中有一些定义的格式。`email`和`url`格式被广
 1.  以*解析请求中的查询字符串*配方作为 Flask 应用程序的模板开始。我们将改变视图函数：
 
 ```py
-            from flask import Flask, jsonify, request, abort, make_response 
-            from http import HTTPStatus 
+        from flask import Flask, jsonify, request, abort, make_response 
+        from http import HTTPStatus 
 
-    ```
+```
 
 1.  导入所需的额外库。我们将使用 JSON 模式进行验证。我们还将计算字符串的哈希值，以作为 URL 中有用的外部标识符：
 
 ```py
-            from jsonschema import validate 
-            from jsonschema.exceptions import ValidationError 
-            import hashlib 
+        from jsonschema import validate 
+        from jsonschema.exceptions import ValidationError 
+        import hashlib 
 
-    ```
+```
 
 1.  创建应用程序和玩家数据库。我们将使用一个简单的全局变量。一个更大的应用程序可能会使用一个适当的数据库服务器来保存这些信息：
 
 ```py
-            dealer = Flask('dealer') 
-            players = {} 
+        dealer = Flask('dealer') 
+        players = {} 
 
-    ```
+```
 
 1.  定义用于发布到整体`players`集合的路由：
 
 ```py
-            @dealer.route('/dealer/players', methods=['POST']) 
+        @dealer.route('/dealer/players', methods=['POST']) 
 
-    ```
+```
 
 1.  定义将解析输入文档、验证内容，然后创建持久`player`对象的函数：
 
 ```py
-            def make_player(): 
-                document = request.json 
-                player_schema = specification['definitions']['player'] 
-                try: 
-                    validate(document, player_schema) 
-                except ValidationError as ex: 
-                    return make_response(ex.message, 403) 
+        def make_player(): 
+            document = request.json 
+            player_schema = specification['definitions']['player'] 
+            try: 
+                validate(document, player_schema) 
+            except ValidationError as ex: 
+                return make_response(ex.message, 403) 
 
-                id = hashlib.md5(document['twitter'].encode('utf-8')).hexdigest() 
-                if id in players: 
-                    return make_response('Duplicate player', 403) 
+            id = hashlib.md5(document['twitter'].encode('utf-8')).hexdigest() 
+            if id in players: 
+                return make_response('Duplicate player', 403) 
 
-                players[id] = document 
+            players[id] = document 
 
-                response = make_response( 
-                    jsonify( 
-                        status='ok', 
-                        id=id 
-                    ), 
-                    201 
-                ) 
-                return response 
+            response = make_response( 
+                jsonify( 
+                    status='ok', 
+                    id=id 
+                ), 
+                201 
+            ) 
+            return response 
 
-    ```
+```
 
 这个函数遵循一个常见的四步设计：
 
@@ -2053,10 +2053,10 @@ JSON 模式规范语言中有一些定义的格式。`email`和`url`格式被广
 1.  定义一个运行服务器的主程序：
 
 ```py
-            if __name__ == "__main__": 
-                dealer.run(use_reloader=True, threaded=False) 
+        if __name__ == "__main__": 
+            dealer.run(use_reloader=True, threaded=False) 
 
-    ```
+```
 
 我们可以添加其他方法来查看多个玩家或单个玩家。这些将遵循*解析 URL 路径*配方的基本设计。我们将在下一节中看到这些。
 
@@ -2067,69 +2067,69 @@ JSON 模式规范语言中有一些定义的格式。`email`和`url`格式被广
 1.  导入用于处理 RESTful API 的基本模块：
 
 ```py
-            import urllib.request 
-            import urllib.parse 
-            import json 
+        import urllib.request 
+        import urllib.parse 
+        import json 
 
-    ```
+```
 
 1.  通过手动创建`ParseResult`对象来逐步创建 URL。稍后将把它合并成一个字符串：
 
 ```py
-            full_url = urllib.parse.ParseResult( 
-                scheme="http", 
-                netloc="127.0.0.1:5000", 
-                path="/dealer" + "/players", 
-                params=None, 
-                query=None, 
-                fragment=None 
-            ) 
+        full_url = urllib.parse.ParseResult( 
+            scheme="http", 
+            netloc="127.0.0.1:5000", 
+            path="/dealer" + "/players", 
+            params=None, 
+            query=None, 
+            fragment=None 
+        ) 
 
-    ```
+```
 
 1.  创建一个可以序列化为 JSON 文档并发布到服务器的对象。研究`swagger.json`可以了解这个文档的模式必须是什么样的。`文档`将包括必需的四个属性：
 
 ```py
-            document = { 
-                'name': 'Xander Bowers', 
-                'email': 'x@example.com', 
-                'year': 1985, 
-                'twitter': 'https://twitter.com/PacktPub' 
-            } 
+        document = { 
+            'name': 'Xander Bowers', 
+            'email': 'x@example.com', 
+            'year': 1985, 
+            'twitter': 'https://twitter.com/PacktPub' 
+        } 
 
-    ```
+```
 
 1.  我们将结合 URL、文档、方法和标头来创建完整的请求。这将使用`urlunparse()`将 URL 部分合并成一个字符串。`Content-Type`标头通知服务器我们将提供一个 JSON 格式的文本文档：
 
 ```py
-            request = urllib.request.Request( 
-                url = urllib.parse.urlunparse(full_url), 
-                method = "POST", 
-                headers = { 
-                    'Accept': 'application/json', 
-                    'Content-Type': 'application/json;charset=utf-8', 
-                }, 
-                data = json.dumps(document).encode('utf-8') 
-            ) 
+        request = urllib.request.Request( 
+            url = urllib.parse.urlunparse(full_url), 
+            method = "POST", 
+            headers = { 
+                'Accept': 'application/json', 
+                'Content-Type': 'application/json;charset=utf-8', 
+            }, 
+            data = json.dumps(document).encode('utf-8') 
+        ) 
 
-    ```
+```
 
 我们已经包括了`charset`选项，它指定了用于从 Unicode 字符串创建字节的特定编码。由于`utf-8`编码是默认的，这是不需要的。在使用不同编码的罕见情况下，这显示了如何提供替代方案。
 
 1.  发送请求并处理`response`对象。出于调试目的，打印`status`和`headers`信息可能会有所帮助。通常，我们只需要确保`status`是预期的`201 CREATED`：
 
 ```py
-            with urllib.request.urlopen(request) as response: 
-                # print(response.status) 
-                assert response.status == 201 
-                # print(response.headers) 
-                document = json.loads(response.read().decode("utf-8")) 
+        with urllib.request.urlopen(request) as response: 
+            # print(response.status) 
+            assert response.status == 201 
+            # print(response.headers) 
+            document = json.loads(response.read().decode("utf-8")) 
 
-            print(document) 
-            assert document['status'] == 'ok' 
-            id = document['id'] 
+        print(document) 
+        assert document['status'] == 'ok' 
+        id = document['id'] 
 
-    ```
+```
 
 我们检查响应文档以确保它包含两个预期字段。
 
@@ -2230,42 +2230,42 @@ Swagger 规范允许响应文档的示例。这通常在几个方面很有帮助
 1.  首先，我们将为特定玩家创建 URL：
 
 ```py
-            id = '75f1bfbda3a8492b74a33ee28326649c' 
-            full_url = urllib.parse.ParseResult( 
-                scheme="http", 
-                netloc="127.0.0.1:5000", 
-                path="/dealer" + "/players/{id}".format(id=id), 
-                params=None, 
-                query=None, 
-                fragment=None 
-            ) 
+        id = '75f1bfbda3a8492b74a33ee28326649c' 
+        full_url = urllib.parse.ParseResult( 
+            scheme="http", 
+            netloc="127.0.0.1:5000", 
+            path="/dealer" + "/players/{id}".format(id=id), 
+            params=None, 
+            query=None, 
+            fragment=None 
+        ) 
 
-    ```
+```
 
 我们已经从信息片段构建了 URL。这被创建为一个`ParseResult`对象，具有单独的字段。
 
 1.  给定 URL 后，我们可以创建一个`Request`对象：
 
 ```py
-            request = urllib.request.Request( 
-                url = urllib.parse.urlunparse(full_url), 
-                method = "GET", 
-                headers = { 
-                    'Accept': 'application/json', 
-                } 
-            ) 
+        request = urllib.request.Request( 
+            url = urllib.parse.urlunparse(full_url), 
+            method = "GET", 
+            headers = { 
+                'Accept': 'application/json', 
+            } 
+        ) 
 
-    ```
+```
 
 1.  一旦我们有了`request`对象，我们就可以发出请求并检索响应。我们需要确认响应状态为`200`。如果是，我们就可以解析响应正文以获取描述给定玩家的 JSON 文档：
 
 ```py
-            with urllib.request.urlopen(request) as response: 
-                assert response.status == 200 
-                player= json.loads(response.read().decode("utf-8")) 
-            print(player) 
+        with urllib.request.urlopen(request) as response: 
+            assert response.status == 200 
+            player= json.loads(response.read().decode("utf-8")) 
+        print(player) 
 
-    ```
+```
 
 如果玩家不存在，`urlopen()`函数将引发异常。我们可以将其放在`try`语句中，以捕获可能引发的`403 NOT FOUND`异常，如果玩家 ID 不存在。
 
@@ -2355,45 +2355,45 @@ SSL 经常被 Web 服务器用来建立它们的真实性。因为这项技术�
 1.  创建一个私钥文件。通常使用以下 OS 级命令完成：
 
 ```py
-     **slott$ openssl genrsa 1024 > ssl.key** 
+ **slott$ openssl genrsa 1024 > ssl.key** 
 
-     **Generating RSA private key, 1024 bit long modulus** 
+ **Generating RSA private key, 1024 bit long modulus** 
 
-     **.......++++++** 
+ **.......++++++** 
 
-     **..........................++++++** 
+ **..........................++++++** 
 
-     **e is 65537 (0x10001)** 
+ **e is 65537 (0x10001)** 
 
-    ```
+```
 
 `openssl genrsa 1024`命令创建了一个私钥文件，保存在名为`ssl.key`的文件中。
 
 1.  使用密钥文件创建证书。以下命令是处理此事的一种方式：
 
 ```py
-     **slott$ openssl req -new -x509 -nodes -sha1 -days 365 -key ssl.key > ssl.cert** 
+ **slott$ openssl req -new -x509 -nodes -sha1 -days 365 -key ssl.key > ssl.cert** 
 
-    ```
+```
 
 您即将被要求输入将被合并到您的证书请求中的信息。您即将输入的是所谓的**Distinguished Name**（**DN**）。有相当多的字段，但您可以留下一些空白。对于某些字段，将有一个默认值。如果输入`.`，该字段将被留空。
 
 ```py
-     **Country Name (2 letter code) [AU]:US** 
+ **Country Name (2 letter code) [AU]:US** 
 
-     **State or Province Name (full name) [Some-State]:Virginia** 
+ **State or Province Name (full name) [Some-State]:Virginia** 
 
-     **Locality Name (eg, city) []:** 
+ **Locality Name (eg, city) []:** 
 
-     **Organization Name (eg, company) [Internet Widgits Pty Ltd]:ItMayBeAHack** 
+ **Organization Name (eg, company) [Internet Widgits Pty Ltd]:ItMayBeAHack** 
 
-     **Organizational Unit Name (eg, section) []:** 
+ **Organizational Unit Name (eg, section) []:** 
 
-     **Common Name (e.g. server FQDN or YOUR name) []:Steven F. Lott** 
+ **Common Name (e.g. server FQDN or YOUR name) []:Steven F. Lott** 
 
-     **Email Address []:** 
+ **Email Address []:** 
 
-    ```
+```
 
 `openssl req -new -x509 -nodes -sha1 -days 365 -key ssl.key`命令创建了私有证书文件，保存在`ssl.cert`中。这个证书是私下签署的，没有 CA。它只提供了有限的功能集。
 
@@ -2487,42 +2487,42 @@ Python 装饰器是一个包装另一个函数以扩展其功能的函数。核�
 1.  导入所需的模块以创建和检查密码：
 
 ```py
-            import hashlib 
-            import os 
-            import base64 
+        import hashlib 
+        import os 
+        import base64 
 
-    ```
+```
 
 其他有用的模块包括`json`，以便可以正确序列化`User`对象。
 
 1.  定义`User`类：
 
 ```py
-            class User: 
+        class User: 
 
-    ```
+```
 
 1.  由于我们将更改密码生成和检查的某些方面，因此我们将作为整体类定义的一部分提供两个常量：
 
 ```py
-            DIGEST = 'sha384' 
-            ROUNDS = 100000 
+        DIGEST = 'sha384' 
+        ROUNDS = 100000 
 
-    ```
+```
 
 我们将使用**SHA-384**摘要算法。这提供了 64 字节的摘要。我们将使用**基于密码的密钥派生函数 2**（**PBKDF2**）算法进行 100,000 轮。
 
 1.  大多数情况下，我们将从 JSON 文档创建用户。这将是一个可以使用`**`转换为关键字参数值的字典：
 
 ```py
-            def __init__(self, **document): 
-                self.name = document['name'] 
-                self.year = document['year'] 
-                self.email = document['email'] 
-                self.twitter = document['twitter'] 
-                self.password = None 
+        def __init__(self, **document): 
+            self.name = document['name'] 
+            self.year = document['year'] 
+            self.email = document['email'] 
+            self.twitter = document['twitter'] 
+            self.password = None 
 
-    ```
+```
 
 请注意，我们不希望直接设置密码。相反，我们将单独设置密码，而不是创建用户文档时。
 
@@ -2531,18 +2531,18 @@ Python 装饰器是一个包装另一个函数以扩展其功能的函数。核�
 1.  定义设置密码`hash`值的算法：
 
 ```py
-            def set_password(self, password): 
-                salt = os.urandom(30) 
-                hash = hashlib.pbkdf2_hmac( 
-                    self.DIGEST, password.encode('utf-8'), salt, self.ROUNDS) 
-                self.password = '$'.join( 
-                    [self.DIGEST, 
-                     base64.urlsafe_b64encode(salt).decode('ascii'), 
-                     base64.urlsafe_b64encode(hash).decode('ascii') 
-                    ] 
-                ) 
+        def set_password(self, password): 
+            salt = os.urandom(30) 
+            hash = hashlib.pbkdf2_hmac( 
+                self.DIGEST, password.encode('utf-8'), salt, self.ROUNDS) 
+            self.password = '$'.join( 
+                [self.DIGEST, 
+                 base64.urlsafe_b64encode(salt).decode('ascii'), 
+                 base64.urlsafe_b64encode(hash).decode('ascii') 
+                ] 
+            ) 
 
-    ```
+```
 
 我们使用`os.urandom()`构建了一个随机盐。然后，我们使用给定的摘要算法、密码和`salt`构建了完整的`hash`值。我们使用可配置的轮数。
 
@@ -2555,15 +2555,15 @@ Python 装饰器是一个包装另一个函数以扩展其功能的函数。核�
 1.  定义检查密码哈希值的算法：
 
 ```py
-            def check_password(self, password): 
-                digest, b64_salt, b64_expected_hash = self.password.split('$') 
-                salt = base64.urlsafe_b64decode(b64_salt) 
-                expected_hash = base64.urlsafe_b64decode(b64_expected_hash) 
-                computed_hash = hashlib.pbkdf2_hmac( 
-                    digest, password.encode('utf-8'), salt, self.ROUNDS) 
-                return computed_hash == expected_hash 
+        def check_password(self, password): 
+            digest, b64_salt, b64_expected_hash = self.password.split('$') 
+            salt = base64.urlsafe_b64decode(b64_salt) 
+            expected_hash = base64.urlsafe_b64decode(b64_expected_hash) 
+            computed_hash = hashlib.pbkdf2_hmac( 
+                digest, password.encode('utf-8'), salt, self.ROUNDS) 
+            return computed_hash == expected_hash 
 
-    ```
+```
 
 我们已经将密码哈希分解为`digest`、`salt`和`expected_hash`值。由于各部分都是`base64`编码的，因此必须对其进行解码以恢复原始字节。
 
@@ -2592,48 +2592,48 @@ True**
 1.  从`functools`导入`@wraps`装饰器。这有助于通过确保新函数具有从被装饰的函数复制的原始名称和文档字符串来定义装饰器：
 
 ```py
-            from functools import wraps 
+        from functools import wraps 
 
-    ```
+```
 
 1.  为了检查密码，我们需要`base64`模块来帮助分解`Authorization`头的值。我们还需要报告错误，并使用全局`g`对象更新 Flask 处理上下文：
 
 ```py
-            import base64 
-            from flask import g 
-            from http import HTTPStatus 
+        import base64 
+        from flask import g 
+        from http import HTTPStatus 
 
-    ```
+```
 
 1.  定义装饰器。所有装饰器都有这个基本的轮廓。我们将在下一步中替换`这里处理`部分：
 
 ```py
-            def authorization_required(view_function): 
-                @wraps(view_function) 
-                def decorated_function(*args, **kwargs): 
-                    processing here 
-                return decorated_function 
+        def authorization_required(view_function): 
+            @wraps(view_function) 
+            def decorated_function(*args, **kwargs): 
+                processing here 
+            return decorated_function 
 
-    ```
+```
 
 1.  以下是检查头的处理步骤。请注意，遇到的每个问题都会简单地中止处理，并将`401 UNAUTHORIZED`作为状态码。为了防止黑客探索算法，尽管根本原因不同，但所有结果都是相同的：
 
 ```py
-            if 'Authorization' not in request.headers: 
-                abort(HTTPStatus.UNAUTHORIZED) 
-            kind, data = request.headers['Authorization'].split() 
-            if kind.upper() != 'BASIC': 
-                abort(HTTPStatus.UNAUTHORIZED) 
-            credentials = base64.decode(data) 
-            username, _, password = credentials.partition(':') 
-            if username not in user_database: 
-                abort(HTTPStatus.UNAUTHORIZED) 
-            if not user_database[username].check_password(password): 
-                abort(HTTPStatus.UNAUTHORIZED) 
-            g.user = user_database[username] 
-            return view_function(*args, **kwargs) 
+        if 'Authorization' not in request.headers: 
+            abort(HTTPStatus.UNAUTHORIZED) 
+        kind, data = request.headers['Authorization'].split() 
+        if kind.upper() != 'BASIC': 
+            abort(HTTPStatus.UNAUTHORIZED) 
+        credentials = base64.decode(data) 
+        username, _, password = credentials.partition(':') 
+        if username not in user_database: 
+            abort(HTTPStatus.UNAUTHORIZED) 
+        if not user_database[username].check_password(password): 
+            abort(HTTPStatus.UNAUTHORIZED) 
+        g.user = user_database[username] 
+        return view_function(*args, **kwargs) 
 
-    ```
+```
 
 必须成功通过一些条件：
 
@@ -2658,50 +2658,50 @@ True**
 1.  导入构建服务器所需的模块。还要导入`User`类定义：
 
 ```py
-            from flask import Flask, jsonify, request, abort, url_for 
-            from ch12_r07_user import User 
-            from http import HTTPStatus 
+        from flask import Flask, jsonify, request, abort, url_for 
+        from ch12_r07_user import User 
+        from http import HTTPStatus 
 
-    ```
+```
 
 1.  包括`@authorization_required`装饰器定义。
 
 1.  定义一个无需身份验证的路由。这将用于创建新用户。在*解析 JSON 请求*配方中定义了一个类似的视图函数。这个版本需要传入文档中的密码属性。这将是用于创建哈希的明文密码。明文密码不会保存在任何地方；只有哈希值会被保留：
 
 ```py
-            @dealer.route('/dealer/players', methods=['POST']) 
-            def make_player(): 
-                try: 
-                    document = request.json 
-                except Exception as ex: 
-                    # Document wasn't even JSON. We can fine-tune 
-                    # the error message here. 
-                    raise 
-                player_schema = specification['definitions']['player'] 
-                try: 
-                    validate(document, player_schema) 
-                except ValidationError as ex: 
-                    return make_response(ex.message, 403) 
+        @dealer.route('/dealer/players', methods=['POST']) 
+        def make_player(): 
+            try: 
+                document = request.json 
+            except Exception as ex: 
+                # Document wasn't even JSON. We can fine-tune 
+                # the error message here. 
+                raise 
+            player_schema = specification['definitions']['player'] 
+            try: 
+                validate(document, player_schema) 
+            except ValidationError as ex: 
+                return make_response(ex.message, 403) 
 
-                id = hashlib.md5(document['twitter'].encode('utf-8')).hexdigest() 
-                if id in user_database: 
-                    return make_response('Duplicate player', 403) 
+            id = hashlib.md5(document['twitter'].encode('utf-8')).hexdigest() 
+            if id in user_database: 
+                return make_response('Duplicate player', 403) 
 
-                new_user = User(**document) 
-                new_user.set_password(document['password']) 
-                user_database[id] = new_user 
+            new_user = User(**document) 
+            new_user.set_password(document['password']) 
+            user_database[id] = new_user 
 
-                response = make_response( 
-                    jsonify( 
-                        status='ok', 
-                        id=id 
-                    ), 
-                    201 
-                ) 
-                response.headers['Location'] = url_for('get_player', id=str(id)) 
-                return response 
+            response = make_response( 
+                jsonify( 
+                    status='ok', 
+                    id=id 
+                ), 
+                201 
+            ) 
+            response.headers['Location'] = url_for('get_player', id=str(id)) 
+            return response 
 
-    ```
+```
 
 创建用户后，密码将单独设置。这遵循了一些应用程序设置的模式，其中用户是批量加载的。这个处理可能为每个用户提供一个临时密码，必须立即更改。
 
@@ -2712,119 +2712,119 @@ True**
 1.  为需要身份验证的路由定义路由。在*解析 JSON 请求*配方中定义了一个类似的视图函数。这个版本使用`@authorization_required`装饰器：
 
 ```py
-            @dealer.route('/dealer/players/<id>', methods=['GET']) 
-            @authorization_required 
-            def get_player(id): 
-                if id not in user_database: 
-                    return make_response("{} not found".format(id), 404) 
+        @dealer.route('/dealer/players/<id>', methods=['GET']) 
+        @authorization_required 
+        def get_player(id): 
+            if id not in user_database: 
+                return make_response("{} not found".format(id), 404) 
 
-                response = make_response( 
-                    jsonify( 
-                        players[id] 
-                    ) 
+            response = make_response( 
+                jsonify( 
+                    players[id] 
                 ) 
-                return response 
+            ) 
+            return response 
 
-    ```
+```
 
 大多数其他路由将具有类似的`@authorization_required`装饰器。一些路由，如`/swagger.json`路由，将不需要授权。
 
 1.  `ssl`模块定义了`ssl.SSLContext`类。上下文可以加载以前创建的自签名证书和私钥文件。然后 Flask 对象的`run()`方法使用该上下文。这将从`http://127.0.01:5000`的 URL 中更改方案为`https://127.0.0.1:5000`：
 
 ```py
-            import ssl 
-            ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23) 
-            ctx.load_cert_chain('ssl.cert', 'ssl.key') 
-            dealer.run(use_reloader=True, threaded=False, ssl_context=ctx) 
+        import ssl 
+        ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23) 
+        ctx.load_cert_chain('ssl.cert', 'ssl.key') 
+        dealer.run(use_reloader=True, threaded=False, ssl_context=ctx) 
 
-    ```
+```
 
 ### 创建一个示例客户端
 
 1.  创建一个与自签名证书一起使用的 SSL 上下文：
 
 ```py
-            import ssl 
-            context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH) 
-            context.check_hostname = False 
-            context.verify_mode = ssl.CERT_NONE 
+        import ssl 
+        context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH) 
+        context.check_hostname = False 
+        context.verify_mode = ssl.CERT_NONE 
 
-    ```
+```
 
 这个上下文可以用于所有`urllib`请求。这将礼貌地忽略证书上缺少 CA 签名。
 
 这是我们如何使用这个上下文来获取 Swagger 规范的方式：
 
 ```py
-            with urllib.request.urlopen(swagger_request, context=context) as response: 
-                swagger = json.loads(response.read().decode("utf-8")) 
-                pprint(swagger) 
+        with urllib.request.urlopen(swagger_request, context=context) as response: 
+            swagger = json.loads(response.read().decode("utf-8")) 
+            pprint(swagger) 
 
-    ```
+```
 
 1.  创建用于创建新玩家实例的 URL。请注意，我们必须使用`https`作为方案。我们已经构建了一个`ParseResult`对象，以便分别显示 URL 的各个部分：
 
 ```py
-            full_url = urllib.parse.ParseResult( 
-                scheme="https", 
-                netloc="127.0.0.1:5000", 
-                path="/dealer" + "/players", 
-                params=None, 
-                query=None, 
-                fragment=None 
-            ) 
+        full_url = urllib.parse.ParseResult( 
+            scheme="https", 
+            netloc="127.0.0.1:5000", 
+            path="/dealer" + "/players", 
+            params=None, 
+            query=None, 
+            fragment=None 
+        ) 
 
-    ```
+```
 
 1.  创建一个 Python 对象，将被序列化为 JSON 文档。这个模式类似于*解析 JSON 请求*食谱中显示的示例。这包括一个额外的属性，即纯文本：
 
 ```py
-            password.document = { 
-                'name': 'Hannah Bowers', 
-                'email': 'h@example.com', 
-                'year': 1987, 
-                'twitter': 'https://twitter.com/PacktPub', 
-                'password': 'OpenSesame' 
-            } 
+        password.document = { 
+            'name': 'Hannah Bowers', 
+            'email': 'h@example.com', 
+            'year': 1987, 
+            'twitter': 'https://twitter.com/PacktPub', 
+            'password': 'OpenSesame' 
+        } 
 
-    ```
+```
 
 因为 SSL 层使用加密套接字，所以发送这样的纯文本密码是可行的。
 
 1.  我们将 URL、文档、方法和标头组合成完整的`Request`对象。这将使用`urlunparse()`将 URL 部分合并为一个字符串。`Content-Type`标头通知服务器我们将以 JSON 表示法提供文本文档：
 
 ```py
-            request = urllib.request.Request( 
-                url = urllib.parse.urlunparse(full_url), 
-                method = "POST", 
-                headers = { 
-                    'Accept': 'application/json', 
-                    'Content-Type': 'application/json;charset=utf-8', 
-                }, 
-                data = json.dumps(document).encode('utf-8') 
-            ) 
+        request = urllib.request.Request( 
+            url = urllib.parse.urlunparse(full_url), 
+            method = "POST", 
+            headers = { 
+                'Accept': 'application/json', 
+                'Content-Type': 'application/json;charset=utf-8', 
+            }, 
+            data = json.dumps(document).encode('utf-8') 
+        ) 
 
-    ```
+```
 
 1.  我们可以发布此文档以创建新玩家：
 
 ```py
-            try: 
-                with urllib.request.urlopen(request, context=context) as response: 
-                    # print(response.status) 
-                    assert response.status == 201 
-                    # print(response.headers) 
-                    document = json.loads(response.read().decode("utf-8")) 
+        try: 
+            with urllib.request.urlopen(request, context=context) as response: 
+                # print(response.status) 
+                assert response.status == 201 
+                # print(response.headers) 
+                document = json.loads(response.read().decode("utf-8")) 
 
-                print(document) 
-                assert document['status'] == 'ok' 
-                id = document['id'] 
-            except urllib.error.HTTPError as ex: 
-                print(ex.status) 
-                print(ex.headers) 
-                print(ex.read()) 
+            print(document) 
+            assert document['status'] == 'ok' 
+            id = document['id'] 
+        except urllib.error.HTTPError as ex: 
+            print(ex.status) 
+            print(ex.headers) 
+            print(ex.read()) 
 
-    ```
+```
 
 快乐路径将收到`201`状态响应，并且用户将被创建。响应将包括分配的用户 ID 和多余的状态代码。
 
@@ -2833,52 +2833,52 @@ True**
 1.  我们可以使用分配的 ID 和已知密码创建一个`Authorization`标头：
 
 ```py
-            import base64 
-            credentials = base64.b64encode(b'75f1bfbda3a8492b74a33ee28326649c:OpenSesame') 
+        import base64 
+        credentials = base64.b64encode(b'75f1bfbda3a8492b74a33ee28326649c:OpenSesame') 
 
-    ```
+```
 
 `Authorization`标头有一个两个单词的值：`b"BASIC " + credentials`。单词`BASIC`是必需的。凭据必须是`username:password`字符串的`base64`编码。在这个例子中，用户名是在创建用户时分配的特定 ID。
 
 1.  这是一个查询所有玩家的 URL。我们已经构建了一个`ParseResult`对象，以便分别显示 URL 的各个部分：
 
 ```py
-            full_url = urllib.parse.ParseResult( 
-                scheme="https", 
-                netloc="127.0.0.1:5000", 
-                path="/dealer" + "/players", 
-                params=None, 
-                query=None, 
-                fragment=None 
-            ) 
+        full_url = urllib.parse.ParseResult( 
+            scheme="https", 
+            netloc="127.0.0.1:5000", 
+            path="/dealer" + "/players", 
+            params=None, 
+            query=None, 
+            fragment=None 
+        ) 
 
-    ```
+```
 
 1.  我们可以将 URL、方法和标头组合成一个单独的`Request`对象。这包括`Authorization`标头，其中包含用户名和密码的`base64`编码：
 
 ```py
-            request = urllib.request.Request( 
-                url = urllib.parse.urlunparse(full_url), 
-                method = "GET", 
-                headers = { 
-                    'Accept': 'application/json', 
-                    'Authorization': b"BASIC " + credentials 
-                } 
-            ) 
+        request = urllib.request.Request( 
+            url = urllib.parse.urlunparse(full_url), 
+            method = "GET", 
+            headers = { 
+                'Accept': 'application/json', 
+                'Authorization': b"BASIC " + credentials 
+            } 
+        ) 
 
-    ```
+```
 
 1.  `Request`对象可用于从服务器进行查询并使用`urllib`处理响应：
 
 ```py
-            request.urlopen(request, context=context) as response: 
-                assert response.status == 200 
-                # print(response.headers) 
-                players = json.loads(response.read().decode("utf-8")) 
+        request.urlopen(request, context=context) as response: 
+            assert response.status == 200 
+            # print(response.headers) 
+            players = json.loads(response.read().decode("utf-8")) 
 
-            pprint(players) 
+        pprint(players) 
 
-    ```
+```
 
 预期状态是`200`。响应应该是一个已知`players`列表的 JSON 文档。
 
@@ -2987,17 +2987,17 @@ Flask 支持使用装饰器定义必须在 RESTful Web 服务环境之外运行�
 +   使用`urllib`功能自动提供`Authorization`头：
 
 ```py
-            from urllib.request import HTTPBasicAuthHandler,         HTTPPasswordMgrWithDefaultRealm 
-            auth_handler = urllib.request.HTTPBasicAuthHandler( 
-                password_mgr=HTTPPasswordMgrWithDefaultRealm) 
-            auth_handler.add_password( 
-                realm=None, 
-                uri='https://127.0.0.1:5000/', 
-                user='Aladdin', 
-                passwd='OpenSesame') 
-            password_opener = urllib.request.build_opener(auth_handler) 
+        from urllib.request import HTTPBasicAuthHandler,         HTTPPasswordMgrWithDefaultRealm 
+        auth_handler = urllib.request.HTTPBasicAuthHandler( 
+            password_mgr=HTTPPasswordMgrWithDefaultRealm) 
+        auth_handler.add_password( 
+            realm=None, 
+            uri='https://127.0.0.1:5000/', 
+            user='Aladdin', 
+            passwd='OpenSesame') 
+        password_opener = urllib.request.build_opener(auth_handler) 
 
-    ```
+```
 
 我们创建了一个`HTTPBasicAuthHandler`的实例。这个实例包含了可能需要的所有用户名和密码。对于从多个站点收集数据的复杂应用程序，可能需要向处理程序添加多组凭据。
 

@@ -119,13 +119,13 @@ Python 不使用静态变量定义。当一个名称被赋予一个对象时，�
 1.  写下以下类型的陈述：*变量 = 对象*。以下是一些例子：
 
 ```py
-     **>>> circumference_diameter_ratio = 355/113** 
+ **>>> circumference_diameter_ratio = 355/113** 
 
-     **>>> target_color_name = 'FireBrick'** 
+ **>>> target_color_name = 'FireBrick'** 
 
-     **>>> target_color_rgb = (178, 34, 34)** 
+ **>>> target_color_rgb = (178, 34, 34)** 
 
-    ```
+```
 
 我们已经创建了一些对象并将它们分配给变量。第一个对象是计算的结果。接下来的两个对象是简单的文字。通常，对象是通过涉及函数或类的表达式创建的。
 
@@ -226,40 +226,40 @@ Python 不使用静态变量定义。当一个名称被赋予一个对象时，�
 1.  创建一个非常小的值——一个字节——看起来像这样：
 
 ```py
-     **>>> 2** 
+ **>>> 2** 
 
-     **2** 
+ **2** 
 
-    ```
+```
 
 或者，如果你想使用 16 进制，可能是这样：
 
 ```py
-     **>>> 0xff** 
+ **>>> 0xff** 
 
-     **255** 
+ **255** 
 
-    ```
+```
 
 在后续的示例中，我们将看到一个字节序列，其中只有一个值：
 
 ```py
-     **>>> b'\xfe'** 
+ **>>> b'\xfe'** 
 
-     **b'\xfe'** 
+ **b'\xfe'** 
 
-    ```
+```
 
 从技术上讲，这不是一个整数。它有一个`b'`的前缀，表明它是一个 1 字节序列。
 
 1.  使用计算创建一个非常大的数字可能看起来像这样：
 
 ```py
-     **>>> 2**2048** 
+ **>>> 2**2048** 
 
-     **323...656** 
+ **323...656** 
 
-    ```
+```
 
 这个数字有 617 位。我们没有展示所有的位数。
 
@@ -434,24 +434,24 @@ Python 为我们提供了几种处理有理数和无理数近似的方法。我�
 1.  要处理货币，我们将这样做。从`decimal`模块导入`Decimal`类：
 
 ```py
-     **>>> from decimal import Decimal** 
+ **>>> from decimal import Decimal** 
 
-    ```
+```
 
 1.  从字符串或整数创建`Decimal`对象：
 
 ```py
-     **>>> from decimal import Decimal** 
+ **>>> from decimal import Decimal** 
 
-     **>>> tax_rate = Decimal('7.25')/Decimal(100)** 
+ **>>> tax_rate = Decimal('7.25')/Decimal(100)** 
 
-     **>>> purchase_amount = Decimal('2.95')** 
+ **>>> purchase_amount = Decimal('2.95')** 
 
-     **>>> tax_rate * purchase_amount** 
+ **>>> tax_rate * purchase_amount** 
 
-     **Decimal('0.213875')** 
+ **Decimal('0.213875')** 
 
-    ```
+```
 
 我们从两个`Decimal`对象创建了`tax_rate`。一个是基于字符串的，另一个是基于整数的。我们可以使用`Decimal('0.0725')`而不是显式地进行除法。
 
@@ -460,20 +460,20 @@ Python 为我们提供了几种处理有理数和无理数近似的方法。我�
 1.  如果您尝试从浮点数值创建十进制对象，您将看到浮点数近似的不愉快的副作用。避免混合`Decimal`和`float`。要舍入到最接近的一分钱，创建一个`penny`对象：
 
 ```py
-     **>>> penny=Decimal('0.01')** 
+ **>>> penny=Decimal('0.01')** 
 
-    ```
+```
 
 1.  使用这个 penny 对象对数据进行量化：
 
 ```py
-     **>>> total_amount = purchase_amount + tax_rate*purchase_amount** 
+ **>>> total_amount = purchase_amount + tax_rate*purchase_amount** 
 
-     **>>> total_amount.quantize(penny)** 
+ **>>> total_amount.quantize(penny)** 
 
-     **Decimal('3.16')** 
+ **Decimal('3.16')** 
 
-    ```
+```
 
 这显示了我们如何使用`ROUND_HALF_EVEN`的默认舍入规则。
 
@@ -497,24 +497,24 @@ Python 为我们提供了几种处理有理数和无理数近似的方法。我�
 1.  从`fractions`模块导入`Fraction`类：
 
 ```py
-     **>>> from fractions import Fraction** 
+ **>>> from fractions import Fraction** 
 
-    ```
+```
 
 1.  从字符串、整数或整数对创建`Fraction`对象。如果从浮点数值创建分数对象，可能会看到浮点数近似的不愉快的副作用。当分母是 2 的幂时，事情可能会完全解决：
 
 ```py
-     **>>> from fractions import Fraction** 
+ **>>> from fractions import Fraction** 
 
-     **>>> sugar_cups = Fraction('2.5')** 
+ **>>> sugar_cups = Fraction('2.5')** 
 
-     **>>> scale_factor = Fraction(5/8)** 
+ **>>> scale_factor = Fraction(5/8)** 
 
-     **>>> sugar_cups * scale_factor** 
+ **>>> sugar_cups * scale_factor** 
 
-     **Fraction(25, 16)** 
+ **Fraction(25, 16)** 
 
-    ```
+```
 
 我们从一个字符串`2.5`创建了一个分数。我们从一个浮点计算`5/8`创建了第二个分数。因为分母是 2 的幂，这完全解决了。
 
@@ -536,30 +536,30 @@ Python 的内置`float`类型能够表示各种各样的值。这里的权衡是
 1.  要使用`float`，我们经常需要四舍五入值使其看起来合理。请认识到所有计算都是近似值：
 
 ```py
-     **>>> (19/155)*(155/19)** 
+ **>>> (19/155)*(155/19)** 
 
-     **0.9999999999999999** 
+ **0.9999999999999999** 
 
-    ```
+```
 
 1.  从数学上讲，该值应为`1`。由于`float`的近似值，答案并不精确。它并不错得很多，但是错了。当我们适当四舍五入时，该值更有用：
 
 ```py
-     **>>> answer= (19/155)*(155/19)** 
+ **>>> answer= (19/155)*(155/19)** 
 
-     **>>> round(answer, 3)
-          1.0** 
+ **>>> round(answer, 3)
+      1.0** 
 
-    ```
+```
 
 1.  了解误差项。在这种情况下，我们知道应该是什么精确答案，所以我们可以将我们的计算与已知的正确答案进行比较。这给了我们可能会渗入浮点数的一般误差值：
 
 ```py
-     **>>> 1-answer** 
+ **>>> 1-answer** 
 
-     **1.1102230246251565e-16** 
+ **1.1102230246251565e-16** 
 
-    ```
+```
 
 对于大多数浮点错误，这是典型值——约为 10^(-16)。Python 有巧妙的规则，通过一些自动四舍五入来隐藏这种错误。然而，对于这个计算，错误并没有被隐藏。
 
@@ -743,48 +743,48 @@ Python 为我们提供了两种类型的除法运算符。它们是什么，我�
 1.  我们将把秒数除以 3600 得到`小时`的值；余数可以分别转换为`分钟`和`秒`：
 
 ```py
-     **>>> total_seconds = 7385** 
+ **>>> total_seconds = 7385** 
 
-     **>>> hours = total_seconds//3600** 
+ **>>> hours = total_seconds//3600** 
 
-     **>>> remaining_seconds = total_seconds % 3600** 
+ **>>> remaining_seconds = total_seconds % 3600** 
 
-    ```
+```
 
 1.  再次使用剩余值，我们将把秒数除以 60 得到`分钟`；余数是小于 60 的秒数：
 
 ```py
-     **>>> minutes = remaining_seconds//60** 
+ **>>> minutes = remaining_seconds//60** 
 
-     **>>> seconds = remaining_seconds % 60** 
+ **>>> seconds = remaining_seconds % 60** 
 
-     **>>> hours, minutes, seconds** 
+ **>>> hours, minutes, seconds** 
 
-     **(2, 3, 5)** 
+ **(2, 3, 5)** 
 
-    ```
+```
 
 这是另一种方法，使用`divmod()`函数：
 
 1.  同时计算商和余数：
 
 ```py
-     **>>> total_seconds = 7385** 
+ **>>> total_seconds = 7385** 
 
-     **>>> hours, remaining_seconds = divmod(total_seconds, 3600)** 
+ **>>> hours, remaining_seconds = divmod(total_seconds, 3600)** 
 
-    ```
+```
 
 1.  再次计算商和余数：
 
 ```py
-     **>>> minutes, seconds = divmod(remaining_seconds, 60)** 
+ **>>> minutes, seconds = divmod(remaining_seconds, 60)** 
 
-     **>>> hours, minutes, seconds** 
+ **>>> hours, minutes, seconds** 
 
-     **(2, 3, 5)** 
+ **(2, 3, 5)** 
 
-    ```
+```
 
 ### 进行真正的除法
 
@@ -814,31 +814,31 @@ Python 为我们提供了两种类型的除法运算符。它们是什么，我�
 1.  创建至少一个`Fraction`值：
 
 ```py
-     **>>> from fractions import Fraction** 
+ **>>> from fractions import Fraction** 
 
-     **>>> total_seconds = Fraction(7385)** 
+ **>>> total_seconds = Fraction(7385)** 
 
-    ```
+```
 
 1.  在计算中使用`Fraction`值。任何整数都将被提升为`Fraction`：
 
 ```py
-     **>>> hours = total_seconds / 3600** 
+ **>>> hours = total_seconds / 3600** 
 
-     **>>> hours** 
+ **>>> hours** 
 
-     **Fraction(1477, 720)** 
+ **Fraction(1477, 720)** 
 
-    ```
+```
 
 1.  如果必要，将精确分数转换为浮点数近似值：
 
 ```py
-     **>>> round(float(hours),4)** 
+ **>>> round(float(hours),4)** 
 
-     **2.0514** 
+ **2.0514** 
 
-    ```
+```
 
 首先，我们为总秒数创建了一个`Fraction`对象。当我们对分数进行算术运算时，Python 会将任何整数提升为分数；这种提升意味着尽可能精确地进行数学运算。
 
@@ -851,11 +851,11 @@ Python 3 有两个除法运算符。
 +   `//`截断除法运算符总是尝试产生一个截断的结果。对于两个整数操作数，这是截断的商。对于两个浮点操作数，这是一个截断的浮点结果：
 
 ```py
-     **>>> 7358.0 // 3600.0** 
+ **>>> 7358.0 // 3600.0** 
 
-     **2.0** 
+ **2.0** 
 
-    ```
+```
 
 默认情况下，Python 2 只有一个除法运算符。对于仍在使用 Python 2 的程序员，我们可以开始使用这些新的除法运算符：
 
@@ -941,26 +941,26 @@ Python 3 有两个除法运算符。
 1.  找到边界：
 
 ```py
-     **>>> colon_position = title.index(':')** 
+ **>>> colon_position = title.index(':')** 
 
-    ```
+```
 
 索引函数定位特定的子字符串并返回该子字符串的位置。如果子字符串不存在，它会引发一个异常。这总是`true`的结果`title[colon_position] == ':'`。
 
 1.  选择子字符串：
 
 ```py
-     **>>> discard_text, post_colon_text = title[:colon_position], title[colon_position+1:]** 
+ **>>> discard_text, post_colon_text = title[:colon_position], title[colon_position+1:]** 
 
-     **>>> discard_text** 
+ **>>> discard_text** 
 
-     **'Recipe 5'** 
+ **'Recipe 5'** 
 
-     **>>> post_colon_text** 
+ **>>> post_colon_text** 
 
-     **' Rewriting, and the Immutable String'** 
+ **' Rewriting, and the Immutable String'** 
 
-    ```
+```
 
 我们使用切片表示法显示要选择的字符的`start:end`。我们还使用多重赋值从两个表达式中分配两个变量`discard_text`和`post_colon_text`。
 
@@ -1148,23 +1148,23 @@ Python 提供了几十种修改字符串的方法。*Python 标准库*的*第 4.
 1.  将示例泛化。在我们的情况下，我们有一些可以泛化的东西：
 
 ```py
-     **(ingredient words): (amount digits) (unit words)** 
+ **(ingredient words): (amount digits) (unit words)** 
 
-    ```
+```
 
 1.  我们用两部分摘要替换了文字：它的含义和它的表示方式。例如，成分表示为单词，数量表示为数字。导入`re`模块：
 
 ```py
-     **>>> import re** 
+ **>>> import re** 
 
-    ```
+```
 
 1.  将模式重写为**正则表达式**（**RE**）表示法：
 
 ```py
-     **>>> pattern_text = r'(?P<ingredient>\w+):\s+(?P<amount>\d+)\s+(?P<unit>\w+)'** 
+ **>>> pattern_text = r'(?P<ingredient>\w+):\s+(?P<amount>\d+)\s+(?P<unit>\w+)'** 
 
-    ```
+```
 
 我们已经用`\w+`替换了*单词*等表示提示。我们用`\d+`替换了*数字*。我们用`\s+`替换了*单个空格*，以允许使用一个或多个空格作为标点符号。我们保留了冒号，因为在正则表达式符号中，冒号与自身匹配。
 
@@ -1175,43 +1175,43 @@ REs 使用了很多`\`字符。为了使其在 Python 中工作得很好，我�
 1.  编译模式：
 
 ```py
-     **>>> pattern = re.compile(pattern_text)** 
+ **>>> pattern = re.compile(pattern_text)** 
 
-    ```
+```
 
 1.  根据输入文本匹配模式。如果输入与模式匹配，我们将得到一个显示匹配详细信息的匹配对象：
 
 ```py
-     **>>> match = pattern.match(ingredient)** 
+ **>>> match = pattern.match(ingredient)** 
 
-     **>>> match is None** 
+ **>>> match is None** 
 
-     **False** 
+ **False** 
 
-     **>>> match.groups()** 
+ **>>> match.groups()** 
 
-     **('Kumquat', '2', 'cups')** 
+ **('Kumquat', '2', 'cups')** 
 
-    ```
+```
 
 这本身就很酷：我们有一个元组，其中包含字符串中的不同字段。我们将在名为*使用元组*的食谱中再次使用元组。
 
 1.  从匹配对象中提取命名组的字符：
 
 ```py
-     **>>> match.group('ingredient')** 
+ **>>> match.group('ingredient')** 
 
-     **'Kumquat'** 
+ **'Kumquat'** 
 
-     **>>> match.group('amount')** 
+ **>>> match.group('amount')** 
 
-     **'2'** 
+ **'2'** 
 
-     **>>> match.group('unit')** 
+ **>>> match.group('unit')** 
 
-     **'cups'** 
+ **'cups'** 
 
-    ```
+```
 
 每个组都由我们在 RE 的`(?P<name>...)`部分中使用的名称标识。
 
@@ -1338,9 +1338,9 @@ REs 使用了很多`\`字符。为了使其在 Python 中工作得很好，我�
 1.  从结果中创建一个模板字符串，用`{}`占位符替换所有数据项。在每个占位符内，放入数据项的名称。
 
 ```py
-     **'{id} : {location} : {max_temp} / {min_temp} / {precipitation}'** 
+ **'{id} : {location} : {max_temp} / {min_temp} / {precipitation}'** 
 
-    ```
+```
 
 1.  对于每个数据项，在模板字符串的占位符后附加`:数据类型`信息。基本数据类型代码有：
 
@@ -1353,31 +1353,31 @@ REs 使用了很多`\`字符。为了使其在 Python 中工作得很好，我�
 它会看起来像这样：
 
 ```py
-     **'{id:s}  : {location:s} : {max_temp:d} / {min_temp:d} / {precipitation:f}'** 
+ **'{id:s}  : {location:s} : {max_temp:d} / {min_temp:d} / {precipitation:f}'** 
 
-    ```
+```
 
 1.  在必要的地方添加长度信息。长度并不总是必需的，在某些情况下甚至是不可取的。但在这个例子中，长度信息确保每条消息具有一致的格式。对于字符串和十进制数，前缀格式为长度，如`19s`或`3d`。对于浮点数，请使用两部分前缀，如`5.2f`，以指定总长度为五个字符，小数点右边为两个。这是整个格式：
 
 ```py
-     **'{id:3d}  : {location:19s} : {max_temp:3d} / {min_temp:3d} / {precipitation:5.2f}'** 
+ **'{id:3d}  : {location:19s} : {max_temp:3d} / {min_temp:3d} / {precipitation:5.2f}'** 
 
-    ```
+```
 
 1.  使用此字符串的`format()`方法创建最终字符串：
 
 ```py
-     **>>> '{id:3s}  : {location:19s} :  {max_temp:3d} / {min_temp:3d} / {precipitation:5.2f}'.format(** 
+ **>>> '{id:3s}  : {location:19s} :  {max_temp:3d} / {min_temp:3d} / {precipitation:5.2f}'.format(** 
 
-     **... id=id, location=location, max_temp=max_temp,** 
+ **... id=id, location=location, max_temp=max_temp,** 
 
-     **... min_temp=min_temp, precipitation=precipitation** 
+ **... min_temp=min_temp, precipitation=precipitation** 
 
-     **... )** 
+ **... )** 
 
-     **'IAD  : Dulles Intl Airport :   32 /  13 /  0.40'** 
+ **'IAD  : Dulles Intl Airport :   32 /  13 /  0.40'** 
 
-    ```
+```
 
 我们已经按名称在模板字符串的`format()`方法中提供了所有变量。这可能会变得乏味。在某些情况下，我们可能想要构建一个带有变量的字典对象。在这种情况下，我们可以使用`format_map()`方法：
 
@@ -1556,47 +1556,47 @@ REs 使用了很多`\`字符。为了使其在 Python 中工作得很好，我�
 1.  将字符串分解为`列表`对象：
 
 ```py
-     **>>> title_list = list(title)** 
+ **>>> title_list = list(title)** 
 
-    ```
+```
 
 1.  找到分区字符。列表的`index()`方法与列表的`index()`方法具有相同的语义。它定位具有给定值的位置：
 
 ```py
-     **>>> colon_position = title_list.index(':')** 
+ **>>> colon_position = title_list.index(':')** 
 
-    ```
+```
 
 1.  删除不再需要的字符。`del`语句可以从列表中删除项目。列表是可变数据结构：
 
 ```py
-     **>>> del title_list[:colon_position+1]** 
+ **>>> del title_list[:colon_position+1]** 
 
-    ```
+```
 
 我们不需要仔细处理原始字符串的有用部分。我们可以从列表中删除项目。
 
 1.  通过遍历每个位置来替换标点符号。在这种情况下，我们将使用`for`语句访问字符串中的每个索引：
 
 ```py
-     **>>> for position in range(len(title_list)):** 
+ **>>> for position in range(len(title_list)):** 
 
-     **...    if title_list[position] in whitespace+punctuation:** 
+ **...    if title_list[position] in whitespace+punctuation:** 
 
-     **...        title_list[position]= '_'** 
+ **...        title_list[position]= '_'** 
 
-    ```
+```
 
 1.  表达式`range(len(title_list))`生成`0`和`len(title_list)-1`之间的所有值。这确保了位置的值将是列表中每个值的索引。连接字符列表以创建新字符串。当将字符串连接在一起时，使用零长度字符串`''`作为分隔符似乎有点奇怪。但是，它完美地工作：
 
 ```py
-     **>>> title = ''.join(title_list)** 
+ **>>> title = ''.join(title_list)** 
 
-     **>>> title** 
+ **>>> title** 
 
-     **'_Rewriting_an_Immutable_String'** 
+ **'_Rewriting_an_Immutable_String'** 
 
-    ```
+```
 
 我们将结果字符串分配回原始变量。原始字符串对象，该对象已被该变量引用，不再需要：它已从内存中删除。新的字符串对象替换了变量的值。
 
@@ -1739,33 +1739,33 @@ Python 通常会使用我们操作系统的默认编码进行文件和互联网�
 1.  我们可以使用`PYTHONIOENCODING`环境变量进行一般设置。我们在 Python 之外设置这个变量，以确保在任何地方都使用特定的编码。设置环境变量如下：
 
 ```py
-     **export PYTHONIOENCODING=UTF-8** 
+ **export PYTHONIOENCODING=UTF-8** 
 
-    ```
+```
 
 1.  运行 Python：
 
 ```py
-     **python3.5** 
+ **python3.5** 
 
-    ```
+```
 
 1.  有时候我们需要在脚本中打开文件时进行特定的设置。我们将在第九章中返回这个问题，*输入/输出、物理格式、逻辑布局*。使用给定的编码打开文件。读取或写入 Unicode 字符到文件中：
 
 ```py
-     **>>> with open('some_file.txt', 'w', encoding='utf-8') as output:** 
+ **>>> with open('some_file.txt', 'w', encoding='utf-8') as output:** 
 
-     **...     print( 'You drew \U0001F000', file=output )** 
+ **...     print( 'You drew \U0001F000', file=output )** 
 
-     **>>> with open('some_file.txt', 'r', encoding='utf-8') as input:** 
+ **>>> with open('some_file.txt', 'r', encoding='utf-8') as input:** 
 
-     **...     text = input.read()** 
+ **...     text = input.read()** 
 
-     **>>> text** 
+ **>>> text** 
 
-     **'You drew �'** 
+ **'You drew �'** 
 
-    ```
+```
 
 在罕见的情况下，我们也可以手动编码字符，如果我们需要以字节模式打开文件；如果我们使用`wb`模式，我们需要手动编码：
 
@@ -1893,36 +1893,36 @@ Unicode 定义了许多编码方案。虽然 UTF-8 是最流行的，但还有 U
 1.  如果可能的话，确定编码方案。为了解码字节以创建合适的 Unicode 字符，我们需要知道使用了什么编码方案。当我们读取 XML 文档时，文档中提供了一个重要提示：
 
 ```py
-     **<?xml version="1.0" encoding="UTF-8"?>** 
+ **<?xml version="1.0" encoding="UTF-8"?>** 
 
-    ```
+```
 
 在浏览网页时，通常会有包含此信息的页眉：
 
 ```py
-     **Content-Type: text/html; charset=ISO-8859-4** 
+ **Content-Type: text/html; charset=ISO-8859-4** 
 
-    ```
+```
 
 有时，HTML 页面可能包括这部分内容作为页眉的一部分：
 
 ```py
-     **<meta http-equiv="Content-Type" content="text/html; charset=utf-8">** 
+ **<meta http-equiv="Content-Type" content="text/html; charset=utf-8">** 
 
-    ```
+```
 
 在其他情况下，我们只能猜测。在美国天气数据的情况下，UTF-8 是一个很好的第一猜测。其他好的猜测包括 ISO-8859-1。在某些情况下，猜测将取决于语言。
 
 1.  *第 7.2.3 节*，*Python 标准库*列出了可用的标准编码。解码数据：
 
 ```py
-     **>>> document = forecast_text.decode("UTF-8")** 
+ **>>> document = forecast_text.decode("UTF-8")** 
 
-     **>>> document[:80]** 
+ **>>> document[:80]** 
 
-     **'<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.or'** 
+ **'<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.or'** 
 
-    ```
+```
 
 `b'`前缀消失了。我们从字节流中创建了一个合适的 Unicode 字符字符串。
 
@@ -2004,11 +2004,11 @@ Unicode 定义了许多编码方案。虽然 UTF-8 是最流行的，但还有 U
 1.  用`,`分隔项目。
 
 ```py
-     **>>> from fractions import Fraction** 
+ **>>> from fractions import Fraction** 
 
-     **>>> my_data = ('Rice', Fraction(1/4), 'cups')** 
+ **>>> my_data = ('Rice', Fraction(1/4), 'cups')** 
 
-    ```
+```
 
 对于单元素元组或单例，有一个重要的特殊情况。即使元组中只有一个项目，我们也必须包含一个额外的`,`。
 
@@ -2041,26 +2041,26 @@ Unicode 定义了许多编码方案。虽然 UTF-8 是最流行的，但还有 U
 +   按索引位置：位置从左边开始编号为零：
 
 ```py
-     **>>> my_data[1]** 
+ **>>> my_data[1]** 
 
-     **Fraction(1, 4)** 
+ **Fraction(1, 4)** 
 
-    ```
+```
 
 +   使用多重赋值：
 
 ```py
-     **>>> ingredient, amount, unit = my_data** 
+ **>>> ingredient, amount, unit = my_data** 
 
-     **>>> ingredient** 
+ **>>> ingredient** 
 
-     **'Rice'** 
+ **'Rice'** 
 
-     **>>> unit** 
+ **>>> unit** 
 
-     **'cups'** 
+ **'cups'** 
 
-    ```
+```
 
 元组——就像字符串一样——是不可变的。我们不能改变元组中的单个项目。当我们想要将数据保持在一起时，我们使用元组。
 
@@ -2080,55 +2080,55 @@ Unicode 定义了许多编码方案。虽然 UTF-8 是最流行的，但还有 U
 +   `t`中有多少个项目？
 
 ```py
-     **>>> len(t)** 
+ **>>> len(t)** 
 
-     **3** 
+ **3** 
 
-    ```
+```
 
 +   特定值在`t`中出现了多少次？
 
 ```py
-     **>>> t.count('2')** 
+ **>>> t.count('2')** 
 
-     **1** 
+ **1** 
 
-    ```
+```
 
 +   哪个位置有特定的值？
 
 ```py
-     **>>> t.index('cups')** 
+ **>>> t.index('cups')** 
 
-     **2** 
+ **2** 
 
-     **>>> t[2]** 
+ **>>> t[2]** 
 
-     **'cups'** 
+ **'cups'** 
 
-    ```
+```
 
 +   当一个项目不存在时，我们会得到一个异常：
 
 ```py
-     **>>> t.index('Rice')** 
+ **>>> t.index('Rice')** 
 
-     **Traceback (most recent call last):** 
+ **Traceback (most recent call last):** 
 
-     **File "<stdin>", line 1, in <module>** 
+ **File "<stdin>", line 1, in <module>** 
 
-     **ValueError: tuple.index(x): x not in tuple** 
+ **ValueError: tuple.index(x): x not in tuple** 
 
-    ```
+```
 
 +   特定值是否存在？
 
 ```py
-     **>>> 'Rice' in t** 
+ **>>> 'Rice' in t** 
 
-     **False** 
+ **False** 
 
-    ```
+```
 
 ## 还有更多
 

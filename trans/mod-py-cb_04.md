@@ -59,22 +59,22 @@ Python 提供了许多内置数据结构，帮助我们处理数据集合。确�
 简单成员资格建议使用`set`：
 
 ```py
-            valid_inputs = {"yes", "y", "no", "n"} 
-            answer = None 
-            while answer not in valid_inputs: 
-                answer = input("Continue? [y, n] ").lower() 
+        valid_inputs = {"yes", "y", "no", "n"} 
+        answer = None 
+        while answer not in valid_inputs: 
+            answer = input("Continue? [y, n] ").lower() 
 
-    ```
+```
 
 `set`不按特定顺序保存项目。一旦项目是成员，我们就无法再次添加它：
 
 ```py
-     **>>> valid_inputs = {"yes", "y", "no", "n"} 
-          >>> valid_inputs.add("y") 
-          >>> valid_inputs  
-          {'no', 'y', 'n', 'yes'}** 
+ **>>> valid_inputs = {"yes", "y", "no", "n"} 
+      >>> valid_inputs.add("y") 
+      >>> valid_inputs  
+      {'no', 'y', 'n', 'yes'}** 
 
-    ```
+```
 
 我们创建了一个名为`valid_inputs`的集合，其中包含四个不同的字符串项目。我们不能向已包含`y`的集合中再添加`y`。集合的内容不会改变。
 
@@ -85,15 +85,15 @@ Python 提供了许多内置数据结构，帮助我们处理数据集合。确�
 当我们必须使用索引或位置来标识项目时，我们必须使用`list`：
 
 ```py
-     **>>> month_name_list = ["Jan", "Feb", "Mar", "Apr", 
-          ...    "May", "Jun", "Jul", "Aug", 
-          ...    "Sep", "Oct", "Nov", "Dec"] 
-          >>> month_name_list[8] 
-          "Sep" 
-          >>> month_name_list.index("Feb") 
-          1** 
+ **>>> month_name_list = ["Jan", "Feb", "Mar", "Apr", 
+      ...    "May", "Jun", "Jul", "Aug", 
+      ...    "Sep", "Oct", "Nov", "Dec"] 
+      >>> month_name_list[8] 
+      "Sep" 
+      >>> month_name_list.index("Feb") 
+      1** 
 
-    ```
+```
 
 我们创建了一个名为`month_name_list`的列表，其中包含 12 个字符串项目。我们可以通过提供其位置来选择一个项目。我们还可以使用`index()`方法来定位列表中项目的索引。
 
@@ -106,13 +106,13 @@ Python 中的列表始终从位置零开始。元组和字符串也是如此。
 当我们必须使用非位置键标识项目时，我们使用某种映射。内置映射是`dict`。有几个扩展可以添加更多功能：
 
 ```py
-     **>>> scheme = {"Crimson": (220, 14, 60), 
-          ... "DarkCyan": (0, 139, 139), 
-          ... "Yellow": (255, 255, 00)} 
-          >>> scheme['Crimson'] 
-          (220, 14, 60)** 
+ **>>> scheme = {"Crimson": (220, 14, 60), 
+      ... "DarkCyan": (0, 139, 139), 
+      ... "Yellow": (255, 255, 00)} 
+      >>> scheme['Crimson'] 
+      (220, 14, 60)** 
 
-    ```
+```
 
 在这个字典中，`scheme`，我们创建了从颜色名称到 RGB 颜色元组的映射。当我们使用一个键，例如`"Crimson"`，我们可以检索绑定到该键的值。
 
@@ -226,11 +226,11 @@ Python 的库提供了大量这些核心集合类型的附加实现。我们可�
 +   我们可以使用一系列值围绕在`[]`字符中来创建`list`的文字显示。它看起来像这样：`[value, ...]`。Python 需要匹配`[`和`]`来看到一个完整的逻辑行，因此文字可以跨越物理行。有关更多信息，请参阅第二章中的*编写长行代码*配方，*语句和语法*。
 
 ```py
-          **[2353, 2889, 2195, 3094, 725, 
-          1099, 690, 1207, 926, 758, 
-          615, 521, 1320]** 
+      **[2353, 2889, 2195, 3094, 725, 
+      1099, 690, 1207, 926, 758, 
+      615, 521, 1320]** 
 
-    ```
+```
 
 +   我们可以使用`list()`函数将其他数据集转换为列表。我们可以转换`set`，或`dict`的键，或`dict`的值。我们将在*Slicing and dicing a list*配方中看到一个更复杂的例子。
 
@@ -245,23 +245,23 @@ Python 的库提供了大量这些核心集合类型的附加实现。我们可�
 1.  创建一个空列表，`[]`：
 
 ```py
-     **>>> file_sizes = []** 
+ **>>> file_sizes = []** 
 
-    ```
+```
 
 1.  通过一些数据源进行迭代。使用`append()`方法将项目附加到列表中：
 
 ```py
-     **>>> home = pathlib.Path('source') 
-          >>> for path in home.glob('*/index.rst'): 
-          ...     file_sizes.append(path.stat().st_size) 
-          >>> print(file_sizes) 
-          [2353, 2889, 2195, 3094, 725, 1099, 690,
-          1207, 926, 758, 615, 521, 1320] 
-          >>> print(sum(file_sizes)) 
-          18392** 
+ **>>> home = pathlib.Path('source') 
+      >>> for path in home.glob('*/index.rst'): 
+      ...     file_sizes.append(path.stat().st_size) 
+      >>> print(file_sizes) 
+      [2353, 2889, 2195, 3094, 725, 1099, 690,
+      1207, 926, 758, 615, 521, 1320] 
+      >>> print(sum(file_sizes)) 
+      18392** 
 
-    ```
+```
 
 我们使用路径的`glob()`方法来查找与给定模式匹配的所有文件。路径的`stat()`方法提供了包括大小`st_size`在内的 OS **stat**数据结构，以字节为单位。
 
@@ -292,17 +292,17 @@ Python 的库提供了大量这些核心集合类型的附加实现。我们可�
 1.  编写数据的来源。这将包括目标变量。请注意，末尾没有`:`，因为我们不是在写一个完整的语句：
 
 ```py
-            for path in home.glob('*/index.rst') 
+        for path in home.glob('*/index.rst') 
 
-    ```
+```
 
 1.  在这个表达式之前加上要评估的目标变量的每个值。同样，由于这是一个简单的表达式，我们不能在这里使用复杂的语句：
 
 ```py
-            path.stat().st_size 
-                for path in home.glob('*/index.rst') 
+        path.stat().st_size 
+            for path in home.glob('*/index.rst') 
 
-    ```
+```
 
 在某些情况下，我们需要添加一个过滤器。这是在`for`子句之后的`if`子句。我们可以使生成器表达式非常复杂。
 
@@ -328,10 +328,10 @@ Python 的库提供了大量这些核心集合类型的附加实现。我们可�
 1.  我们将重用列表推导版本的步骤二和步骤三来创建一个生成器表达式。这是生成器表达式：
 
 ```py
-            path.stat().st_size 
-                for path in home.glob('*/index.rst') 
+        path.stat().st_size 
+            for path in home.glob('*/index.rst') 
 
-    ```
+```
 
 这是整个列表对象：
 
@@ -504,17 +504,17 @@ Python 的`list`对象具有动态大小。当添加或插入项目，或者使�
 1.  我们需要做的第一件事是从行列表中删除四行标题。我们将使用两个部分切片表达式来在第四行处分割列表：
 
 ```py
-     **>>> head, tail = log_rows[:4], log_rows[4:] 
-          >>> head[0] 
-          ['date', 'engine on', 'fuel height'] 
-          >>> head[-1] 
-          ['', '', ''] 
-          >>> tail[0] 
-          ['10/25/13', '08:24:00 AM', '29'] 
-          >>> tail[-1] 
-          ['', "choppy -- anchor in jackson's creek", '']** 
+ **>>> head, tail = log_rows[:4], log_rows[4:] 
+      >>> head[0] 
+      ['date', 'engine on', 'fuel height'] 
+      >>> head[-1] 
+      ['', '', ''] 
+      >>> tail[0] 
+      ['10/25/13', '08:24:00 AM', '29'] 
+      >>> tail[-1] 
+      ['', "choppy -- anchor in jackson's creek", '']** 
 
-    ```
+```
 
 我们使用`log_rows[:4]`和`log_rows[4:]`将列表切片成两个部分。`head`变量将包含四行标题。我们实际上不想对头部进行任何处理，所以我们忽略了那个变量。然而，`tail`变量有我们关心的表的行。
 
@@ -523,28 +523,28 @@ Python 的`list`对象具有动态大小。当添加或插入项目，或者使�
 这里是每三行的一个切片，从第零行开始：
 
 ```py
-     **>>> tail[0::3] 
-          [['10/25/13', '08:24:00 AM', '29'],
-           ['10/26/13', '09:12:00 AM', '27']]** 
+ **>>> tail[0::3] 
+      [['10/25/13', '08:24:00 AM', '29'],
+       ['10/26/13', '09:12:00 AM', '27']]** 
 
-    ```
+```
 
 我们还想要每三行，从第一行开始：
 
 ```py
-     **>>> tail[1::3] 
-          [['', '01:15:00 PM', '27'], ['', '06:25:00 PM', '22']]** 
+ **>>> tail[1::3] 
+      [['', '01:15:00 PM', '27'], ['', '06:25:00 PM', '22']]** 
 
-    ```
+```
 
 1.  然后这两个切片可以被合并在一起：
 
 ```py
-     **>>> list( zip(tail[0::3], tail[1::3]) )  
-          [(['10/25/13', '08:24:00 AM', '29'], ['', '01:15:00 PM', '27']), 
-           (['10/26/13', '09:12:00 AM', '27'], ['', '06:25:00 PM', '22'])]** 
+ **>>> list( zip(tail[0::3], tail[1::3]) )  
+      [(['10/25/13', '08:24:00 AM', '29'], ['', '01:15:00 PM', '27']), 
+       (['10/26/13', '09:12:00 AM', '27'], ['', '06:25:00 PM', '22'])]** 
 
-    ```
+```
 
 我们将列表切片成了两个并行的组：
 
@@ -557,12 +557,12 @@ Python 的`list`对象具有动态大小。当添加或插入项目，或者使�
 1.  展平结果：
 
 ```py
-     **>>> paired_rows = list( zip(tail[0::3], tail[1::3]) ) 
-          >>> [a+b for a,b in paired_rows]  
-          [['10/25/13', '08:24:00 AM', '29', '', '01:15:00 PM', '27'], 
-           ['10/26/13', '09:12:00 AM', '27', '', '06:25:00 PM', '22']]** 
+ **>>> paired_rows = list( zip(tail[0::3], tail[1::3]) ) 
+      >>> [a+b for a,b in paired_rows]  
+      [['10/25/13', '08:24:00 AM', '29', '', '01:15:00 PM', '27'], 
+       ['10/26/13', '09:12:00 AM', '27', '', '06:25:00 PM', '22']]** 
 
-    ```
+```
 
 我们使用了来自*构建列表-文字，附加和理解*食谱的列表理解，将每对行中的两个元素组合成一个单独的行。现在我们可以将日期和时间转换为单个的`datetime`值。然后我们可以计算时间差来得到船的运行时间，以及计算高度差来估算燃烧的燃料。
 
@@ -759,29 +759,29 @@ Python 的`list`对象具有动态大小。当添加或插入项目，或者使�
 1.  编写过滤测试函数。如果很简单，可以使用 lambda 对象。否则，编写一个单独的函数：
 
 ```py
-     **>>> def number_column(row, column=2): 
-          ...    try: 
-          ...        float(row[column]) 
-          ...        return True 
-          ...    except ValueError: 
-          ...        return False** 
+ **>>> def number_column(row, column=2): 
+      ...    try: 
+      ...        float(row[column]) 
+      ...        return True 
+      ...    except ValueError: 
+      ...        return False** 
 
-    ```
+```
 
 我们使用内置的`float()`函数来查看给定的字符串是否是一个合适的数字。如果`float()`函数没有引发异常，则数据是有效的数字，我们希望通过这一行。如果引发了异常，则数据不是数字，我们将拒绝这一行。
 
 1.  使用`filter()`函数中的数据测试函数（或 lambda）：
 
 ```py
-     **>>> tail_rows = list(filter(number_column, log_rows)) 
-          >>> len(tail_rows) 
-          4 
-          >>> tail_rows[0] 
-          ['10/25/13', '08:24:00 AM', '29'] 
-          >>> tail_rows[-1] 
-          ['', '06:25:00 PM', '22']** 
+ **>>> tail_rows = list(filter(number_column, log_rows)) 
+      >>> len(tail_rows) 
+      4 
+      >>> tail_rows[0] 
+      ['10/25/13', '08:24:00 AM', '29'] 
+      >>> tail_rows[-1] 
+      ['', '06:25:00 PM', '22']** 
 
-    ```
+```
 
 我们提供了我们的测试，`number_column()`和原始数据，`log_rows`。`filter()`函数的输出是一个可迭代对象。为了从可迭代结果创建一个列表，我们将使用`list()`函数。结果只有我们想要的四行；其余的行被拒绝了。
 
@@ -832,26 +832,26 @@ IndexError: list assignment index out of range**
 +   制作列表的副本：
 
 ```py
-            for f in data_items[:]: 
+        for f in data_items[:]: 
 
-    ```
+```
 
 +   使用`while`循环和手动索引：
 
 ```py
-     **>>> data_items = [1, 1, 2, 3, 5, 8, 10, 
-          ...    13, 21, 34, 36, 55] 
-          >>> position = 0 
-          >>> while position != len(data_items): 
-          ...    f= data_items[position] 
-          ...    if f%2 == 0: 
-          ...        data_items.remove(f) 
-          ...    else: 
-          ...        position += 1 
-          >>> data_items 
-          [1, 1, 3, 5, 13, 21, 55]** 
+ **>>> data_items = [1, 1, 2, 3, 5, 8, 10, 
+      ...    13, 21, 34, 36, 55] 
+      >>> position = 0 
+      >>> while position != len(data_items): 
+      ...    f= data_items[position] 
+      ...    if f%2 == 0: 
+      ...        data_items.remove(f) 
+      ...    else: 
+      ...        position += 1 
+      >>> data_items 
+      [1, 1, 3, 5, 13, 21, 55]** 
 
-    ```
+```
 
 我们设计了一个循环，只有在项目为奇数时才增加位置。如果项目是偶数，则将其删除，并将其他项目向列表中的下一个位置移动。
 
@@ -1265,26 +1265,26 @@ Python 给了我们几种方法来从 `set` 集合中移除项目。我们可以
 1.  创建一个我们想要忽略的项目集：
 
 ```py
-     **>>> to_be_ignored = {'IP: 0.0.0.0', 'IP: 1.2.3.4'}** 
+ **>>> to_be_ignored = {'IP: 0.0.0.0', 'IP: 1.2.3.4'}** 
 
-    ```
+```
 
 1.  收集日志中的所有条目。我们将使用`re`模块进行此操作，如前所示。假设我们的数据包括来自日志其他部分的良好地址以及虚拟和占位符地址：
 
 ```py
-     **>>> matches = {'IP: 111.222.111.222', 'IP: 1.2.3.4'}** 
+ **>>> matches = {'IP: 111.222.111.222', 'IP: 1.2.3.4'}** 
 
-    ```
+```
 
 1.  使用集合减法形式从匹配集中删除项目。以下是两个示例：
 
 ```py
-     **>>> matches - to_be_ignored 
-          {'IP: 111.222.111.222'} 
-          >>> matches.difference(to_be_ignored) 
-          {'IP: 111.222.111.222'}** 
+ **>>> matches - to_be_ignored 
+      {'IP: 111.222.111.222'} 
+      >>> matches.difference(to_be_ignored) 
+      {'IP: 111.222.111.222'}** 
 
-    ```
+```
 
 请注意，这两者都是返回新集合作为其结果的运算符。这两者都不会改变基础集合对象。
 
@@ -1403,9 +1403,9 @@ Python 给了我们几种方法来从 `set` 集合中移除项目。我们可以
 1.  使用 `{}` 创建一个空字典。我们也可以使用 `dict()` 创建一个空字典。由于我们将创建一个统计每个客户到达次数的直方图，我们将称其为 `histogram`：
 
 ```py
-            histogram = {} 
+        histogram = {} 
 
-    ```
+```
 
 1.  对于每个客户号，如果是新的，则向字典添加一个空列表。我们可以使用 `if` 语句来实现这一点，或者我们可以使用字典的 `setdefault()` 方法。我们将首先展示 `if` 语句版本。稍后，我们将看看 `setdefault()` 优化。
 
@@ -1578,27 +1578,27 @@ Counter({1: 150, 0: 130, 2: 129, 4: 128, 5: 127, 6: 118, 3: 117, 7: 101})**
 1.  创建整个字典对象：
 
 ```py
-            working_bets = {} 
+        working_bets = {} 
 
-    ```
+```
 
 1.  为我们要插入字典的每个对象定义键和值。例如，键可以是赌注的描述：`come`，`pass`，`come odds`或`pass odds`。值可以是赌注的金额。通常我们避免使用货币，而是使用桌面最低赌注的单位。通常这些都是简单的整数倍数，最常见的是整数值 1 来表示最低赌注。
 
 1.  在下注时输入值：
 
 ```py
-            working_bets[bet_name] = bet_amount 
+        working_bets[bet_name] = bet_amount 
 
-    ```
+```
 
 具体例子，我们会有`working_bets["pass"] = 1`。
 
 1.  随着赌注得到回报或取消，删除值。我们可以使用`del`语句或字典的`pop()`方法：
 
 ```py
-            del working_bets['come odds'] 
+        del working_bets['come odds'] 
 
-    ```
+```
 
 如果键不存在，这将引发`KeyError`异常。
 
@@ -1707,27 +1707,27 @@ Counter({1: 150, 0: 130, 2: 129, 4: 128, 5: 127, 6: 118, 3: 117, 7: 101})**
 1.  使用生成器表达式按正确顺序创建字段。我们会有类似这样的东西：
 
 ```py
-            ((name, raw_row[name]) for name in reader.fieldnames) 
+        ((name, raw_row[name]) for name in reader.fieldnames) 
 
-    ```
+```
 
 1.  从生成器创建一个`OrderedDict`。整个顺序如下：
 
 ```py
-     **>>> from collections import OrderedDict 
-          >>> with data_path.open() as data_file: 
-          ...     reader = csv.DictReader(data_file) 
-          ...     for raw_row in reader: 
-          ...         column_sequence = ((name, raw_row[name]) 
-          ...            for name in reader.fieldnames) 
-          ...         good_row = OrderedDict(column_sequence) 
-          ...         print(good_row) 
-          OrderedDict([('final', '5'), ('least', '0'), ('most', '6')]) 
-          OrderedDict([('final', '-3'), ('least', '-4'), ('most', '0')]) 
-          OrderedDict([('final', '-1'), ('least', '-3'), ('most', '1')]) 
-          OrderedDict([('final', '3'), ('least', '0'), ('most', '4')])** 
+ **>>> from collections import OrderedDict 
+      >>> with data_path.open() as data_file: 
+      ...     reader = csv.DictReader(data_file) 
+      ...     for raw_row in reader: 
+      ...         column_sequence = ((name, raw_row[name]) 
+      ...            for name in reader.fieldnames) 
+      ...         good_row = OrderedDict(column_sequence) 
+      ...         print(good_row) 
+      OrderedDict([('final', '5'), ('least', '0'), ('most', '6')]) 
+      OrderedDict([('final', '-3'), ('least', '-4'), ('most', '0')]) 
+      OrderedDict([('final', '-1'), ('least', '-3'), ('most', '1')]) 
+      OrderedDict([('final', '3'), ('least', '0'), ('most', '4')])** 
 
-    ```
+```
 
 这样可以按特定顺序构建字典。
 
@@ -1893,54 +1893,54 @@ Python 的内置结构是三个主题的变体：
 1.  将每个集合分配给一个额外的变量。这将创建两个对结构的引用：
 
 ```py
-     **>>> mutable_b = mutable 
-          >>> immutable_b = immutable** 
+ **>>> mutable_b = mutable 
+      >>> immutable_b = immutable** 
 
-    ```
+```
 
 现在我们有两个对列表`[1, 1, 2, 3, 5, 8]`的引用和两个对元组`(5, 8, 13, 21)`的引用。
 
 我们可以使用`is`运算符来确认这一点。这确定了两个变量是否指向同一个基础对象：
 
 ```py
-     **>>> mutable_b is mutable 
-          True 
-          >>> immutable_b is immutable 
-          True** 
+ **>>> mutable_b is mutable 
+      True 
+      >>> immutable_b is immutable 
+      True** 
 
-    ```
+```
 
 1.  对集合的两个引用中的一个进行更改。对于可变结构，我们有`append()`或`add()`等方法：
 
 ```py
-     **>>> mutable += [mutable[-2] + mutable[-1]]** 
+ **>>> mutable += [mutable[-2] + mutable[-1]]** 
 
-    ```
+```
 
 对于列表结构，`+=`赋值实际上是内部使用`extend()`方法。
 
 我们可以用不可变结构做类似的事情：
 
 ```py
-     **>>> immutable += (immutable[-2] + immutable[-1],)** 
+ **>>> immutable += (immutable[-2] + immutable[-1],)** 
 
-    ```
+```
 
 由于元组没有像`extend()`这样的方法，`+=`将构建一个新的元组对象，并用该新对象替换`immutable`的值。
 
 1.  看看结构的另一个引用：
 
 ```py
-     **>>> mutable_b 
-          [1, 1, 2, 3, 5, 8, 13] 
-          >>> mutable is mutable_b 
-          True 
-          >>> immutable_b 
-          (5, 8, 13, 21) 
-          >>> immutable 
-          (5, 8, 13, 21, 34)** 
+ **>>> mutable_b 
+      [1, 1, 2, 3, 5, 8, 13] 
+      >>> mutable is mutable_b 
+      True 
+      >>> immutable_b 
+      (5, 8, 13, 21) 
+      >>> immutable 
+      (5, 8, 13, 21, 34)** 
 
-    ```
+```
 
 两个变量`mutable`和`mutable_b`指向同一个基础对象。因此，我们可以使用任一变量来改变对象，并看到改变反映在另一个变量的值中。
 
@@ -2086,17 +2086,17 @@ Python 通常通过共享引用来工作。它只会勉强复制对象。默认�
 1.  导入`copy`库：
 
 ```py
-     **>>> import copy** 
+ **>>> import copy** 
 
-    ```
+```
 
 1.  使用`copy.deepcopy()`函数来复制一个对象以及该对象中包含的所有可变项目：
 
 ```py
-     **>>> some_dict = {'a': [1, 1, 2, 3]} 
-          >>> another_dict = copy.deepcopy(some_dict)** 
+ **>>> some_dict = {'a': [1, 1, 2, 3]} 
+      >>> another_dict = copy.deepcopy(some_dict)** 
 
-    ```
+```
 
 这将创建没有共享引用的副本。对一个副本的可变内部项目的更改不会在其他任何地方产生任何影响：
 
@@ -2259,16 +2259,16 @@ Counter({7: 336, 6: 294, 8: 272, 9: 228, 5: 220, 10: 154, 11: 142, 4: 140, 3: 10
 1.  用 `None` 替换任何可变的默认参数值：
 
 ```py
-            def gather_stats(n, samples=1000, summary=None): 
+        def gather_stats(n, samples=1000, summary=None): 
 
-    ```
+```
 
 1.  添加一个 `if` 语句来检查参数值是否为 `None`，并将其替换为一个新的可变对象：
 
 ```py
-            if summary is None: summary = Counter() 
+        if summary is None: summary = Counter() 
 
-    ```
+```
 
 这将确保每次函数在没有参数值的情况下被评估时，我们都创建一个新的可变对象。我们将避免一次又一次地共享一个可变对象。
 

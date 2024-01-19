@@ -79,17 +79,17 @@
 1.  用`class`语句开始编写类：
 
 ```py
-            class Dice: 
+        class Dice: 
 
-    ```
+```
 
 1.  在`__init__`方法中初始化对象的属性：
 
 ```py
-            def __init__(self): 
-                self.faces = None 
+        def __init__(self): 
+            self.faces = None 
 
-    ```
+```
 
 我们将用`self.faces`属性来模拟骰子的内部状态。`self`变量是必需的，以确保我们引用的是类的给定实例的属性。对象由实例变量`self`的值来标识。
 
@@ -100,10 +100,10 @@
 +   以下是我们如何实现玩家掷骰子的方法：
 
 ```py
-                        def roll(self): 
-                            self.faces = (random.randint(1,6), random.randint(1,6)) 
+                def roll(self): 
+                    self.faces = (random.randint(1,6), random.randint(1,6)) 
 
-        ```
+```
 
 通过设置`self.faces`属性来更新骰子的内部状态。同样，`self`变量对于标识要更新的对象是至关重要的。
 
@@ -112,20 +112,20 @@
 +   这种方法有助于实现骰子的总和改变了*craps*游戏的状态。游戏是一个独立的对象，但这个方法提供了一个符合句子的总和。
 
 ```py
-                        def total(self): 
-                            return sum(self.faces) 
+                def total(self): 
+                    return sum(self.faces) 
 
-        ```
+```
 
 这两种方法有助于回答 hardways 和 easyways 的问题。
 
 ```py
-                        def hardway(self): 
-                            return self.faces[0] == self.faces[1] 
-                        def easyway(self): 
-                            return self.faces[0] != self.faces[1] 
+                def hardway(self): 
+                    return self.faces[0] == self.faces[1] 
+                def easyway(self): 
+                    return self.faces[0] != self.faces[1] 
 
-        ```
+```
 
 在赌场游戏中很少有一个具有简单逻辑反义的规则。更常见的是有一个罕见的第三种选择，它有一个非常糟糕的回报规则。在这种情况下，我们可以将`easyway`定义为返回`not self.hardway()`。
 
@@ -134,45 +134,45 @@
 1.  首先，我们将用一个固定值来初始化随机数生成器，这样我们就可以得到一个固定的结果序列。这是为这个类创建一个单元测试的一种方式：
 
 ```py
-     **>>> import random 
-          >>> random.seed(1)** 
+ **>>> import random 
+      >>> random.seed(1)** 
 
-    ```
+```
 
 1.  我们将创建一个`Dice`对象，`d1`。然后我们可以用`roll()`方法设置它的状态。然后我们将查看`total()`方法来看看掷出了什么。我们可以通过查看`faces`属性来检查状态：
 
 ```py
-     **>>> from ch06_r01 import Dice 
-          >>> d1 = Dice() 
-          >>> d1.roll() 
-          >>> d1.total() 
-          7 
-          >>> d1.faces 
-          (2, 5)** 
+ **>>> from ch06_r01 import Dice 
+      >>> d1 = Dice() 
+      >>> d1.roll() 
+      >>> d1.total() 
+      7 
+      >>> d1.faces 
+      (2, 5)** 
 
-    ```
+```
 
 1.  我们将创建第二个`Dice`对象，`d2`。然后我们可以用`roll()`方法设置它的状态。我们将查看`total()`方法的结果，以及`hardway()`方法。我们可以通过查看`faces`属性来检查状态：
 
 ```py
-     **>>> d2 = Dice() 
-          >>> d2.roll() 
-          >>> d2.total() 
-          4 
-          >>> d2.hardway() 
-          False 
-          >>> d2.faces 
-          (1, 3)** 
+ **>>> d2 = Dice() 
+      >>> d2.roll() 
+      >>> d2.total() 
+      4 
+      >>> d2.hardway() 
+      False 
+      >>> d2.faces 
+      (1, 3)** 
 
-    ```
+```
 
 1.  由于这两个对象是`Dice`类的独立实例，对`d2`的更改不会影响`d1`：
 
 ```py
-     **>>> d1.total() 
-          7** 
+ **>>> d1.total() 
+      7** 
 
-    ```
+```
 
 ## 它是如何工作的...
 
@@ -278,53 +278,53 @@
 1.  用一个描述性的名称定义类：
 
 ```py
-            class CounterStatistics: 
+        class CounterStatistics: 
 
-    ```
+```
 
 1.  编写`__init__`方法以包括将连接到该对象的对象：
 
 ```py
-            def __init__(self, raw_counter:Counter): 
-                self.raw_counter = raw_counter 
+        def __init__(self, raw_counter:Counter): 
+            self.raw_counter = raw_counter 
 
-    ```
+```
 
 我们定义了一个方法函数，它以`Counter`对象作为参数值。这个`Counter`对象被保存为`Counter_Statistics`实例的一部分。
 
 1.  初始化可能有用的任何其他本地变量。由于我们将急切地计算值，最急切的可能时间是在创建对象时。我们将写一些尚未定义的函数的引用：
 
 ```py
-            self.mean = self.compute_mean() 
-            self.stddev = self.compute_stddev() 
+        self.mean = self.compute_mean() 
+        self.stddev = self.compute_stddev() 
 
-    ```
+```
 
 我们已经急切地从`Counter`对象计算了平均值和标准差，并将它们保存在两个实例变量中。
 
 1.  为各种值定义所需的方法。这是平均值的计算：
 
 ```py
-            def compute_mean(self): 
-                total, count = 0, 0 
-                for value, frequency in self.raw_counter.items(): 
-                    total += value*frequency 
-                    count += frequency 
-                return total/count 
+        def compute_mean(self): 
+            total, count = 0, 0 
+            for value, frequency in self.raw_counter.items(): 
+                total += value*frequency 
+                count += frequency 
+            return total/count 
 
-    ```
+```
 
 1.  这是我们如何计算标准差的方法：
 
 ```py
-            def compute_stddev(self): 
-                total, count = 0, 0 
-                for value, frequency in self.raw_counter.items(): 
-                    total += frequency*(value-self.mean)**2 
-                    count += frequency 
-                return math.sqrt(total/(count-1)) 
+        def compute_stddev(self): 
+            total, count = 0, 0 
+            for value, frequency in self.raw_counter.items(): 
+                total += frequency*(value-self.mean)**2 
+                count += frequency 
+            return math.sqrt(total/(count-1)) 
 
-    ```
+```
 
 请注意，这个计算要求首先计算平均值，并且`self.mean`实例变量已经被创建。
 
@@ -489,23 +489,23 @@ Standard Deviation: 7.025**
 1.  我们将基于`collections.namedtuple`来构建无状态对象。：
 
 ```py
-            from collections import namedtuple 
+        from collections import namedtuple 
 
-    ```
+```
 
 1.  定义类名，将使用两次：
 
 ```py
-            Card = namedtuple('Card', 
+        Card = namedtuple('Card', 
 
-    ```
+```
 
 1.  定义对象的属性：
 
 ```py
-            Card = namedtuple('Card', ('rank', 'suit')) 
+        Card = namedtuple('Card', ('rank', 'suit')) 
 
-    ```
+```
 
 这是我们如何使用这个类定义来创建`Card`对象：
 
@@ -548,17 +548,17 @@ AttributeError: can't set attribute**
 1.  定义新类：
 
 ```py
-            class Player: 
-                pass 
+        class Player: 
+            pass 
 
-    ```
+```
 
 1.  我们已经编写了一个空的类定义。可以使用类似以下的方式轻松创建此类的实例：
 
 ```py
-            p = Player() 
+        p = Player() 
 
-    ```
+```
 
 然后我们可以使用以下语句向对象添加属性：
 
@@ -578,22 +578,22 @@ AttributeError: can't set attribute**
 `argparse`模块包括`Namespace`类，可以用来代替空的类定义：
 
 ```py
-            from argparse import Namespace
-    ```
+        from argparse import Namespace
+```
 
 我们还可以使用`types`模块中的`SimpleNamespace`。它看起来像这样：
 
 ```py
-            from types import SimpleNamespace 
+        from types import SimpleNamespace 
 
-    ```
+```
 
 1.  将类创建为对`SimpleNamespace`或`Namespace`的引用：
 
 ```py
-            Player = SimpleNamespace 
+        Player = SimpleNamespace 
 
-    ```
+```
 
 ## 工作原理...
 
@@ -668,48 +668,48 @@ namespace(bet=10, hand=[Card(rank=8, suit='♡')], insurance=None, stake=90)**
 1.  定义一个具有描述性名称的类：
 
 ```py
-            class Hand: 
+        class Hand: 
 
-    ```
+```
 
 1.  定义属性名称列表：
 
 ```py
-                __slots__ = ('hand', 'bet') 
+            __slots__ = ('hand', 'bet') 
 
-    ```
+```
 
 这标识了允许该类的实例的唯一两个属性。任何尝试添加其他属性的尝试都将引发`AttributeError`异常。
 
 1.  添加一个初始化方法：
 
 ```py
-            def __init__(self, bet, hand=None): 
-                self.hand= hand or [] 
-                self.bet= bet 
+        def __init__(self, bet, hand=None): 
+            self.hand= hand or [] 
+            self.bet= bet 
 
-    ```
+```
 
 一般来说，每手牌都以赌注开始。然后庄家向手牌发两张初始牌。但在某些情况下，我们可能想要从一系列`Card`实例重新构建一个`Hand`对象。我们使用了`or`运算符的一个特性。如果左侧操作数不是假值（即`None`），那么它就是`or`表达式的值。如果左侧操作数是假值，那么将评估右侧操作数。有关为什么这是必要的更多信息，请参阅第三章中的*设计具有可选参数的函数*配方，*函数定义*。
 
 1.  添加一个更新集合的方法。我们称之为`deal`，因为它用于向`Hand`发牌：
 
 ```py
-            def deal(self, card): 
-                self.hand.append(card) 
+        def deal(self, card): 
+            self.hand.append(card) 
 
-    ```
+```
 
 1.  添加一个`__repr__()`方法，以便可以轻松打印：
 
 ```py
-            def __repr__(self): 
-                return "{class_}({bet}, {hand})".format( 
-                    class_= self.__class__.__name__, 
-                    **vars(self) 
-                ) 
+        def __repr__(self): 
+            return "{class_}({bet}, {hand})".format( 
+                class_= self.__class__.__name__, 
+                **vars(self) 
+            ) 
 
-    ```
+```
 
 这是我们如何使用这个类来构建一手牌的方法。我们将需要基于*设计具有少量独特处理的类*配方中的示例来定义`Card`类：
 
@@ -832,9 +832,9 @@ Python 有各种各样的内置集合。在第四章中，我们仔细研究了�
 +   在某些情况下，我们需要提供不同的文字值作为默认值：
 
 ```py
-                    lookup = defaultdict(lambda:"N/A") 
+                lookup = defaultdict(lambda:"N/A") 
 
-    ```
+```
 
 这使用 lambda 对象来定义一个没有名称并始终返回字符串`N/A`的非常小的函数。这将为缺失的键创建一个默认项目`N/A`。
 
@@ -861,20 +861,20 @@ Python 有各种各样的内置集合。在第四章中，我们仔细研究了�
 +   我们有多个需要合并的字典。这可能发生在读取配置文件时。我们可能有一个单独的配置，一个系统范围的配置，以及一个需要合并的默认应用程序配置。
 
 ```py
-                        import json 
-                        user = json.load('~/app.json') 
-                        system = json.load('/etc/app.json') 
-                        application = json.load('/opt/app/default.json') 
+                import json 
+                user = json.load('~/app.json') 
+                system = json.load('/etc/app.json') 
+                application = json.load('/opt/app/default.json') 
 
-        ```
+```
 
 1.  我们如何结合这些？
 
 ```py
-                from collections import ChainMap 
-                config = ChainMap(user, system, application) 
+            from collections import ChainMap 
+            config = ChainMap(user, system, application) 
 
-    ```
+```
 
 生成的`config`对象将通过各种字典进行顺序搜索。它将在用户、系统和应用程序字典中查找给定的键。
 
@@ -941,9 +941,9 @@ Python 有各种各样的内置集合。在第四章中，我们仔细研究了�
 1.  选择一个名称，也可以进行简单的统计。将类定义为内置`list`类的扩展：
 
 ```py
-            class StatsList(list): 
+        class StatsList(list): 
 
-    ```
+```
 
 这显示了定义内置类的扩展的语法。如果我们提供的主体只包含`pass`语句，那么新的`StatsList`类可以在任何使用`list`类的地方使用。
 
@@ -952,42 +952,42 @@ Python 有各种各样的内置集合。在第四章中，我们仔细研究了�
 1.  将附加处理定义为新方法。`self`变量将是一个从超类继承了所有属性和方法的对象。这是一个`sum()`方法：
 
 ```py
-            def sum(self): 
-                return sum(v for v in self) 
+        def sum(self): 
+            return sum(v for v in self) 
 
-    ```
+```
 
 我们使用了生成器表达式，以清楚地表明`sum()`函数应用于列表中的每个项目。使用生成器表达式可以让我们非常容易地进行计算或引入过滤器。
 
 1.  这是我们经常应用于列表的另一种方法。这计算项目数：
 
 ```py
-            def count(self): 
-                return sum(1 for v in self) 
+        def count(self): 
+            return sum(1 for v in self) 
 
-    ```
+```
 
 这将计算列表中的项目数。我们选择使用生成器表达式，而不是使用`len()`函数，以防将来想要添加过滤功能。
 
 1.  这是`mean`函数：
 
 ```py
-                def mean(self): 
-                    return self.sum() / self.count() 
+            def mean(self): 
+                return self.sum() / self.count() 
 
-    ```
+```
 
 1.  以下是一些附加方法：
 
 ```py
-            def sum2(self): 
-                return sum(v**2 for v in self) 
-            def variance(self): 
-                return (self.sum2() - self.sum()**2/self.count())/(self.count()-1) 
-            def stddev(self): 
-                return math.sqrt(self.variance()) 
+        def sum2(self): 
+            return sum(v**2 for v in self) 
+        def variance(self): 
+            return (self.sum2() - self.sum()**2/self.count())/(self.count()-1) 
+        def stddev(self): 
+            return math.sqrt(self.variance()) 
 
-    ```
+```
 
 `sum2()`方法计算列表中值的平方和。这用于计算方差。然后使用方差来计算列表中值的标准差。
 
@@ -1131,70 +1131,70 @@ Python 有各种各样的内置集合。在第四章中，我们仔细研究了�
 1.  定义一个具有描述性名称的类：
 
 ```py
-            class LazyCounterStatistics: 
+        class LazyCounterStatistics: 
 
-    ```
+```
 
 1.  编写初始化方法以包括将连接到该对象的对象：
 
 ```py
-            def __init__(self, raw_counter:Counter): 
-                self.raw_counter = raw_counter 
+        def __init__(self, raw_counter:Counter): 
+            self.raw_counter = raw_counter 
 
-    ```
+```
 
 我们已经定义了一个方法函数，它以`Counter`对象作为参数值。这个`counter`对象被保存为`Counter_Statistics`实例的一部分。
 
 1.  定义一些有用的辅助方法。每个方法都使用`@property`进行装饰，使其表现得像一个简单的属性：
 
 ```py
-            @property 
-            def sum(self): 
-                return sum(f*v for v, f in self.raw_counter.items()) 
-            @property 
-            def count(self): 
-                return sum(f for v, f in self.raw_counter.items()) 
+        @property 
+        def sum(self): 
+            return sum(f*v for v, f in self.raw_counter.items()) 
+        @property 
+        def count(self): 
+            return sum(f for v, f in self.raw_counter.items()) 
 
-    ```
+```
 
 1.  定义各种值所需的方法。这是平均值的计算。这也是用`@property`装饰的。其他方法可以被引用，就像它们是属性一样，尽管它们是适当的方法函数：
 
 ```py
-            @property 
-            def mean(self): 
-                return self.sum / self.count 
+        @property 
+        def mean(self): 
+            return self.sum / self.count 
 
-    ```
+```
 
 1.  这是我们如何计算标准偏差的方法：
 
 ```py
-            @property 
-            def sum2(self): 
-                return sum(f*v**2 for v, f in self.raw_counter.items()) 
-            @property 
-            def variance(self): 
-                return (self.sum2 - self.sum**2/self.count)/(self.count-1) 
-            @property 
-            def stddev(self): 
-                return math.sqrt(self.variance) 
+        @property 
+        def sum2(self): 
+            return sum(f*v**2 for v, f in self.raw_counter.items()) 
+        @property 
+        def variance(self): 
+            return (self.sum2 - self.sum**2/self.count)/(self.count-1) 
+        @property 
+        def stddev(self): 
+            return math.sqrt(self.variance) 
 
-    ```
+```
 
 请注意，我们一直在使用`math.sqrt()`。确保在 Python 文件中添加所需的`import math`语句。
 
 1.  这是我们如何创建一些样本数据的方法：
 
 ```py
-     **>>> from ch04_r06 import * 
-          >>> from collections import Counter 
-          >>> def raw_data(n=8, limit=1000, arrival_function=arrival1): 
-          ...    expected_time = float(expected(n)) 
-          ...    data = samples(limit, arrival_function(n)) 
-          ...    wait_times = Counter(coupon_collector(n, data)) 
-          ...    return wait_times** 
+ **>>> from ch04_r06 import * 
+      >>> from collections import Counter 
+      >>> def raw_data(n=8, limit=1000, arrival_function=arrival1): 
+      ...    expected_time = float(expected(n)) 
+      ...    data = samples(limit, arrival_function(n)) 
+      ...    wait_times = Counter(coupon_collector(n, data)) 
+      ...    return wait_times** 
 
-    ```
+```
 
 我们已经从`ch04_r06`模块导入了`expected()`、`arrival1()`和`coupon_collector()`等函数。我们从标准库`collections`模块导入了`Counter`集合。
 
@@ -1205,19 +1205,19 @@ Python 有各种各样的内置集合。在第四章中，我们仔细研究了�
 1.  这是我们如何分析`Counter`对象的方法：
 
 ```py
-     **>>> import random 
-          >>> from ch06_r07 import LazyCounterStatistics 
-          >>> random.seed(1)** 
+ **>>> import random 
+      >>> from ch06_r07 import LazyCounterStatistics 
+      >>> random.seed(1)** 
 
-     **>>> data = raw_data() 
-          >>> stats = LazyCounterStatistics(data) 
-          >>> print("Mean: {0:.2f}".format(stats.mean)) 
-          Mean: 20.81** 
+ **>>> data = raw_data() 
+      >>> stats = LazyCounterStatistics(data) 
+      >>> print("Mean: {0:.2f}".format(stats.mean)) 
+      Mean: 20.81** 
 
-     **>>> print("Standard Deviation: {0:.3f}".format(stats.stddev)) 
-          Standard Deviation: 7.025** 
+ **>>> print("Standard Deviation: {0:.3f}".format(stats.stddev)) 
+      Standard Deviation: 7.025** 
 
-    ```
+```
 
 首先，我们导入了`random`模块，以便我们可以选择一个已知的`seed`值。这样做可以更容易地测试和演示应用程序，因为随机数是一致的。我们还从`ch06_r07`模块中导入了`LazyCounterStatistics`类。
 
@@ -1335,32 +1335,32 @@ Python 有各种各样的内置集合。在第四章中，我们仔细研究了�
 1.  提供隐藏属性。这些将被公开为属性：
 
 ```py
-            class Leg: 
-            def __init__(self): 
-                self._rate= rate 
-                self._time= time 
-                self._distance= distance. 
+        class Leg: 
+        def __init__(self): 
+            self._rate= rate 
+            self._time= time 
+            self._distance= distance. 
 
-    ```
+```
 
 1.  对于每个可获取的属性，提供一个计算属性值的方法。在许多情况下，这些方法将与隐藏属性并行：
 
 ```py
-            @property 
-            def rate(self): 
-                return self._rate 
+        @property 
+        def rate(self): 
+            return self._rate 
 
-    ```
+```
 
 1.  对于每个可设置的属性，提供一个设置属性值的方法：
 
 ```py
-            @rate.setter 
-            def rate(self, value): 
-                self._rate = value 
-                self._calculate('rate') 
+        @rate.setter 
+        def rate(self, value): 
+            self._rate = value 
+            self._calculate('rate') 
 
-    ```
+```
 
 设置方法具有基于获取方法名称的特殊属性装饰器。在这个例子中，`@property`装饰器在`rate()`方法上还创建了一个`rate.setter`装饰器，可以用来定义该属性的设置方法。
 
@@ -1371,54 +1371,54 @@ Python 有各种各样的内置集合。在第四章中，我们仔细研究了�
 1.  这可以重复应用到所有其他属性上。在我们的例子中，时间和距离的代码是相似的：
 
 ```py
-            @property 
-            def time(self): 
-                return self._time 
-            @time.setter 
-            def time(self, value): 
-                self._time = value 
-                self._calculate('time') 
-            @property 
-            def distance(self): 
-                return self._distance 
-            @distance.setter 
-            def distance(self, value): 
-                self._distance = value 
-                self._calculate('distance') 
+        @property 
+        def time(self): 
+            return self._time 
+        @time.setter 
+        def time(self, value): 
+            self._time = value 
+            self._calculate('time') 
+        @property 
+        def distance(self): 
+            return self._distance 
+        @distance.setter 
+        def distance(self, value): 
+            self._distance = value 
+            self._calculate('distance') 
 
-    ```
+```
 
 跟踪状态更改的细节依赖于`collections.deque`类的一个特性。计算规则可以实现为两个元素的有界队列，其中包含不同的更改。当每个不同的字段被更改时，我们可以将字段名称入队。队列中的两个不同名称是最近更改的最后两个字段；第三个可以通过集合减法从中确定：
 
 1.  导入`deque`类：
 
 ```py
-            from collections import deque 
+        from collections import deque 
 
-    ```
+```
 
 1.  在`__init__()`方法中初始化队列：
 
 ```py
-            self._changes= deque(maxlen=2) 
+        self._changes= deque(maxlen=2) 
 
-    ```
+```
 
 1.  入队每个不同的更改。确定队列中缺少什么，并计算出来：
 
 ```py
-                def _calculate(self, change): 
-                if change not in self._changes: 
-                    self._changes.append(change) 
-                compute = {'rate', 'time', 'distance'} - set(self._changes) 
-                if compute == {'distance'}: 
-                    self._distance = self._time * self._rate 
-                elif compute == {'time'}: 
-                    self._time = self._distance / self._rate 
-                elif compute == {'rate'}: 
-                    self._rate = self._distance / self._time 
+            def _calculate(self, change): 
+            if change not in self._changes: 
+                self._changes.append(change) 
+            compute = {'rate', 'time', 'distance'} - set(self._changes) 
+            if compute == {'distance'}: 
+                self._distance = self._time * self._rate 
+            elif compute == {'time'}: 
+                self._time = self._distance / self._rate 
+            elif compute == {'rate'}: 
+                self._rate = self._distance / self._time 
 
-    ```
+```
 
 如果最新的更改尚未在队列中，它将被追加。由于队列有一个有界的大小，最老的项目，即最近更改的项目，将被悄悄地弹出以保持队列大小固定。
 

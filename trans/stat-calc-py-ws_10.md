@@ -118,41 +118,41 @@ for i in range(-3,4):
 1.  首先，我们需要从`math`模块导入平方根函数：
 
 ```py
-    from math import sqrt
-    ```
+from math import sqrt
+```
 
 1.  以下是前述方程中的函数，转换为 Python 代码：
 
 ```py
-    def f(x):
-        return 6*x**3
-    def g(x):
-        return sqrt(2*x + 5)
-    def h(x):
-        return 1/(x-3)**3
-    ```
+def f(x):
+    return 6*x**3
+def g(x):
+    return sqrt(2*x + 5)
+def h(x):
+    return 1/(x-3)**3
+```
 
 1.  如果您还没有定义导数函数，请定义它：
 
 ```py
-    def derivative(f,x):
-        """Returns the value of the derivative of
-        the function at a given x-value."""
-        delta_x = 1/1000000
-        return (f(x+delta_x) - f(x))/delta_x
-    ```
+def derivative(f,x):
+    """Returns the value of the derivative of
+    the function at a given x-value."""
+    delta_x = 1/1000000
+    return (f(x+delta_x) - f(x))/delta_x
+```
 
 1.  然后通过调用每个函数和所需的*x*值打印出导数：
 
 ```py
-    print(derivative(f,-2),derivative(g,3),derivative(h,5))
-    ```
+print(derivative(f,-2),derivative(g,3),derivative(h,5))
+```
 
 输出如下：
 
 ```py
-    71.99996399265274 0.30151133101341543 -0.18749981253729509
-    ```
+71.99996399265274 0.30151133101341543 -0.18749981253729509
+```
 
 您刚刚学会了一个非常重要的技能：在特定*x*值处找到函数（任何函数）的导数。这就是微积分学生要做大量艰难代数的原因：要将导数作为一个函数得到，然后他们可以代入*x*值。然而，使用 Python，我们直接计算了函数的数值导数，而不需要进行任何代数运算。
 
@@ -195,54 +195,54 @@ for i in range(-3,4):
 1.  首先，我们将定义我们的`f(x)`函数：
 
 ```py
-    def f(x):
-        return x**3 - 2*x**2 + 1
-    ```
+def f(x):
+    return x**3 - 2*x**2 + 1
+```
 
 1.  然后，我们将编写一个函数，根据斜率和一个点返回直线的*y*截距。将其命名为`point_slope`：
 
 ```py
-    def point_slope(m,x,y):
-        """Finds the y-intercept of a line
-        given its slope m and a point (x,y)"""
-        return y-m*x
-    ```
+def point_slope(m,x,y):
+    """Finds the y-intercept of a line
+    given its slope m and a point (x,y)"""
+    return y-m*x
+```
 
 1.  最后，我们将编写一个函数，该函数接受函数`f`和一个`x`值，并找到`f`在`x`处的导数，将其放入`point_slope`函数中，并以*y = mx + b*的形式打印出直线的方程。将其命名为`tangent_line`：
 
 ```py
-    def tangent_line(f,x):
-        """Finds the equation of the line 
-        tangent to f at x."""
-    ```
+def tangent_line(f,x):
+    """Finds the equation of the line 
+    tangent to f at x."""
+```
 
 1.  我们通过对`f`在`x`处进行导数运算来找到切线的斜率：
 
 ```py
-        m = derivative(f,x)
-    ```
+    m = derivative(f,x)
+```
 
 1.  然后我们使用`point_slope`函数来找到*y*截距：
 
 ```py
-        y0 = f(x)
-        b = point_slope(m,x,y0)
-        print("y = ",round(m,2),"x + ",round(b,2))
-    ```
+    y0 = f(x)
+    b = point_slope(m,x,y0)
+    print("y = ",round(m,2),"x + ",round(b,2))
+```
 
 1.  现在，要得到在*x = -0.48*和*x = 0.67*处切线的方程，使用以下代码：
 
 ```py
-    for x in [-0.48,0.67]:
-        tangent_line(f,x)
-    ```
+for x in [-0.48,0.67]:
+    tangent_line(f,x)
+```
 
 输出如下：
 
 ```py
-    y =  2.61 x +  1.68
-    y =  -1.33 x +  1.3
-    ```
+y =  2.61 x +  1.68
+y =  -1.33 x +  1.3
+```
 
 在本节中，我们学习了如何找出在特定 `x` 值处的切线方程。
 
@@ -269,58 +269,58 @@ for i in range(-3,4):
 首先，我们将定义函数并选择矩形的数量（以便两者的值都容易更改）。在这种情况下，我们将使用 20 个矩形，这将比 *图 10.11* 中显示的 10 个矩形给我们更高的准确度：
 
 ```py
-    def f(x):
-        return x**2
-    number_of_rectangles = 20
-    ```
+def f(x):
+    return x**2
+number_of_rectangles = 20
+```
 
 然后我们定义我们的积分函数。首先，通过将范围 `(b – a)` 划分为 `num` 个矩形来获得等宽：
 
 ```py
-    def integral(f,a,b,num):
-        """Returns the sum of num rectangles
-        under f between a and b"""
-        width = (b-a)/num
-    ```
+def integral(f,a,b,num):
+    """Returns the sum of num rectangles
+    under f between a and b"""
+    width = (b-a)/num
+```
 
 然后我们将循环遍历范围，随着我们的遍历，我们将矩形的面积相加。我们可以使用一行列表推导来实现这一点。对于每个 `n`，我们将矩形的底部（`width`）乘以高度（*f(x)*）来获得每个矩形的面积。最后，我们返回所有面积的总和：
 
 ```py
-        area = sum([width*f(a+width*n) for n in range(num)])
-        return area
-    ```
+    area = sum([width*f(a+width*n) for n in range(num)])
+    return area
+```
 
 这就是函数调用的样子：
 
 ```py
-    for i in range(1,21):
-        print(i,integral(f,0,1,i))
-    ```
+for i in range(1,21):
+    print(i,integral(f,0,1,i))
+```
 
 输出显示，随着更多的矩形，我们越来越接近实际面积的值：
 
 ```py
-    1 0.0
-    2 0.125
-    3 0.18518518518518517
-    4 0.21875
-    5 0.24000000000000005
-    6 0.2546296296296296
-    7 0.26530612244897955
-    8 0.2734375
-    9 0.279835390946502
-    10 0.2850000000000001
-    11 0.2892561983471075
-    12 0.292824074074074
-    13 0.2958579881656805
-    14 0.29846938775510196
-    15 0.30074074074074075
-    16 0.302734375
-    17 0.3044982698961938
-    18 0.3060699588477366
-    19 0.3074792243767312
-    20 0.3087500000000001
-    ```
+1 0.0
+2 0.125
+3 0.18518518518518517
+4 0.21875
+5 0.24000000000000005
+6 0.2546296296296296
+7 0.26530612244897955
+8 0.2734375
+9 0.279835390946502
+10 0.2850000000000001
+11 0.2892561983471075
+12 0.292824074074074
+13 0.2958579881656805
+14 0.29846938775510196
+15 0.30074074074074075
+16 0.302734375
+17 0.3044982698961938
+18 0.3060699588477366
+19 0.3074792243767312
+20 0.3087500000000001
+```
 
 看起来增长得很慢。如果我们直接跳到 100 个矩形呢？这将产生 *图 10.12* 中所示的情况：
 
@@ -331,26 +331,26 @@ for i in range(-3,4):
 下面是我们如何更改 `print` 语句以给出 100 个矩形的面积：
 
 ```py
-    print(100,integral(f,0,1,100))
-    ```
+print(100,integral(f,0,1,100))
+```
 
 输出将如下所示：
 
 ```py
-    100 0.32835000000000014
-    ```
+100 0.32835000000000014
+```
 
 那么，使用 1,000 个矩形，这个积分将会非常困难和耗时地手工计算？使用 Python，我们只需将 `100` 改为 `1000`，就可以得到一个更准确的逼近：
 
 ```py
-    print(1000,integral(f,0,1,1000))
-    ```
+print(1000,integral(f,0,1,1000))
+```
 
 输出将如下所示：
 
 ```py
-    1000 0.33283350000000034
-    ```
+1000 0.33283350000000034
+```
 
 将 100,000 个矩形相加得到 0.3333283333\. 看起来它接近于 0.333，或者 1/3\. 但增加更多的零不会花费我们任何代价，所以随时增加矩形的数量以获得更准确的结果。
 
@@ -371,25 +371,25 @@ for i in range(-3,4):
 端点*x = a*和*x = b*处的段的高度计算一次，而所有其他高度计算两次。这是因为在梯形面积的公式中有两个*高度*。您能猜到如何调整您的积分函数以成为梯形吗？
 
 ```py
-    def trap_integral(f,a,b,num):
-        """Returns the sum of num trapezoids
-        under f between a and b"""
-        width = (b-a)/num
-        area = 0.5*width*(f(a) + f(b) + 2*sum([f(a+width*n) for n in range(1,num)]))
-        return area
-    ```
+def trap_integral(f,a,b,num):
+    """Returns the sum of num trapezoids
+    under f between a and b"""
+    width = (b-a)/num
+    area = 0.5*width*(f(a) + f(b) + 2*sum([f(a+width*n) for n in range(1,num)]))
+    return area
+```
 
 现在我们将使用`5`个梯形运行`trap_integral`函数：
 
 ```py
-    print(trap_integral(f,0,1,5))
-    ```
+print(trap_integral(f,0,1,5))
+```
 
 输出将如下：
 
 ```py
-    0.3400000000000001
-    ```
+0.3400000000000001
+```
 
 因此，仅使用 5 个梯形，我们将误差降低到 3%。（请记住，我们知道该函数的真实面积值为 0.333...）使用 10 个梯形，我们得到 0.335，误差为 0.6%。
 
@@ -406,30 +406,30 @@ for i in range(-3,4):
 1.  首先，导入您需要的`math`函数并定义`f`，`g`和`h`：
 
 ```py
-    from math import cos,pi
-    def f(x):
-        return x**3 + 3
-    def g(x):
-        return 3*cos(x)
-    def h(x):
-        return ((x**2 - 1)*(x**2+1))/x**2
-    ```
+from math import cos,pi
+def f(x):
+    return x**3 + 3
+def g(x):
+    return 3*cos(x)
+def h(x):
+    return ((x**2 - 1)*(x**2+1))/x**2
+```
 
 1.  然后在指定的*x*值之间对每个函数调用`trap_integral`函数：
 
 ```py
-    print(trap_integral(f,3,4,100))
-    print(trap_integral(g,0,pi/4,100))
-    print(trap_integral(h,2,4,100))
-    ```
+print(trap_integral(f,3,4,100))
+print(trap_integral(g,0,pi/4,100))
+print(trap_integral(h,2,4,100))
+```
 
 输出如下：
 
 ```py
-    46.75017499999999
-    2.1213094390731206
-    18.416792708494786
-    ```
+46.75017499999999
+2.1213094390731206
+18.416792708494786
+```
 
 到目前为止，您可能已经看到了这种数值方法的威力。如果您可以用 Python 表达一个函数，您可以使用用于在曲线下添加所有矩形的函数或更准确地说，用于在曲线下添加所有梯形的函数来获得其积分的非常准确的近似值。
 
@@ -530,43 +530,43 @@ print(vol_solid(f,0,1))
 1.  像往常一样创建`f`和`g`，以及第三个函数（`h`）作为`f`和`g`的平方的差，来自环面积公式：
 
 ```py
-    def f(x):
-        return 4 -4*x**2
-    def g(x):
-        return 1-x**2
-    def h(x):
-        return f(x)**2-g(x)**2
-    ```
+def f(x):
+    return 4 -4*x**2
+def g(x):
+    return 1-x**2
+def h(x):
+    return f(x)**2-g(x)**2
+```
 
 1.  现在，固体的体积将是在函数之间制成的给定数量（`num`）的圆柱体的总和。我们和我们的积分函数做同样的事情。圆柱的半径与我们积分时的矩形的高度相同：
 
 ```py
-    def vol_solid(f,a,b):
-        volume = 0
-        num = 10000
-        width = (b-a)/num
-        for i in range(num):
-    ```
+def vol_solid(f,a,b):
+    volume = 0
+    num = 10000
+    width = (b-a)/num
+    for i in range(num):
+```
 
 1.  圆柱的体积是*pi*r*2**h*，我们将其加到总体积中：
 
 ```py
-            vol = pi*(f(a+i*width))*width
-            volume += vol    
-        return volume
-    ```
+        vol = pi*(f(a+i*width))*width
+        volume += vol    
+    return volume
+```
 
 1.  在这里，我们在`-1`和`1`之间的*x*上调用`vol_solid`函数：
 
 ```py
-    print(vol_solid(h,-1,1))
-    ```
+print(vol_solid(h,-1,1))
+```
 
 输出将如下所示：
 
 ```py
-    50.26548245743666
-    ```
+50.26548245743666
+```
 
 因此，得到的固体的体积为 50.3 立方单位。因此，我们已经使用我们的函数找到了固体的体积，并且已经调整它以找到两个曲线之间的固体的体积。
 
@@ -642,18 +642,18 @@ Max/Min at x= 1.6200000001133703 y= -0.3027919999998646
 1.  这就是我们需要最小化的函数。最佳的*x*将在 0 到 9 公里之间，所以当我们调用我们的`find_max_mins`函数时，我们将把它们设置为我们的起始和结束值：
 
 ```py
-    from math import sqrt
-    def t(x):
-        return sqrt(x**2+36)/3 + (9-x)/5
+from math import sqrt
+def t(x):
+    return sqrt(x**2+36)/3 + (9-x)/5
 
-    find_max_mins(t,0,9)
-    ```
+find_max_mins(t,0,9)
+```
 
 输出将如下所示：
 
 ```py
-    Max/Min at x= 4.4999999999998375 y= 3.4000000000000004
-    ```
+Max/Min at x= 4.4999999999998375 y= 3.4000000000000004
+```
 
 这非常接近沿着海滩的 4.5 公里。这是一个非常有用的计算：我们找到了两点之间的最短距离，当其他约束条件已经放置。
 
@@ -680,21 +680,21 @@ Max/Min at x= 1.6200000001133703 y= -0.3027919999998646
 1.  以下是如何在 Python 中定义这个函数的方法：
 
 ```py
-    def v(x):
-        return x*(10-2*x)*(12-2*x)
-    ```
+def v(x):
+    return x*(10-2*x)*(12-2*x)
+```
 
 1.  到目前为止，您知道如何将其放入您的`find_max_mins`函数中。我们只想插入 0 到 5 之间的值，因为超过 5 英寸将意味着我们将没有一边（宽度为 10 英寸）：
 
 ```py
-    find_max_mins(v,0,5)
-    ```
+find_max_mins(v,0,5)
+```
 
 输出将如下所示：
 
 ```py
-    Max/Min at x= 1.8109999999999113 y= 96.77057492400002
-    ```
+Max/Min at x= 1.8109999999999113 y= 96.77057492400002
+```
 
 通过切割边长为 1.81 英寸的正方形来实现最大体积。这是体积的图表：
 
@@ -725,17 +725,17 @@ Max/Min at x= 1.6200000001133703 y= -0.3027919999998646
 1.  让我们用 Python 表达它，并把它放到我们的`find_max_mins`函数中：
 
 ```py
-    from math import pi
-    def surf_area(r):
-        return pi*r**2 + 710/r
-    find_max_mins(surf_area,0.1,10)
-    ```
+from math import pi
+def surf_area(r):
+    return pi*r**2 + 710/r
+find_max_mins(surf_area,0.1,10)
+```
 
 运行代码时，输出将如下所示：
 
 ```py
-    Max/Min at x= 4.834999999999949 y= 220.28763352297025
-    ```
+Max/Min at x= 4.834999999999949 y= 220.28763352297025
+```
 
 因此，解决方案是半径约为 4.8 厘米，高度约为 355/(π(4.8)2) = 4.9 厘米。这意味着罐子的宽度大约是高度的两倍。这是一个`surf_area`函数的图，显示了 2 到 6 厘米之间的罐子。你可以看到最小化材料的点，在 4.5 和 5 厘米之间。我们计算得到确切的值是 4.9 厘米：
 
@@ -766,22 +766,22 @@ Max/Min at x= 1.6200000001133703 y= -0.3027919999998646
 1.  让我们用 Python 表达这个问题，并把它放到我们的`find_max_mins`函数中：
 
 ```py
-    from math import sqrt
-    def d(t):
-        return sqrt((20-6*t)**2+(8*t)**2)
-    ```
+from math import sqrt
+def d(t):
+    return sqrt((20-6*t)**2+(8*t)**2)
+```
 
 1.  我们假设时间将在`0`和`4`小时之间：
 
 ```py
-    find_max_mins(d,0,4)
-    ```
+find_max_mins(d,0,4)
+```
 
 输出将如下所示：
 
 ```py
-    Max/Min at x= 1.1999999999999786 y= 16.0
-    ```
+Max/Min at x= 1.1999999999999786 y= 16.0
+```
 
 因此时间是 1.2 小时，由下图上的最小点表示。两小时的十分之一是 12 分钟，这意味着两艘船在下午 1:12 时最接近。这是距离与时间的图：
 

@@ -202,86 +202,86 @@ Week 12: student_5
 1.  导入 NumPy 库：
 
 ```py
-    import numpy as np
-    ```
+import numpy as np
+```
 
 1.  创建两个包含四种不同花色和 13 种不同等级的标准牌组的列表：
 
 ```py
-    suits = ['hearts', 'diamonds', 'spades', 'clubs']
-    ranks = ['Ace', '2', '3', '4', '5', '6', '7', '8', \
-             '9', '10', 'Jack', 'Queen', 'King']
-    ```
+suits = ['hearts', 'diamonds', 'spades', 'clubs']
+ranks = ['Ace', '2', '3', '4', '5', '6', '7', '8', \
+         '9', '10', 'Jack', 'Queen', 'King']
+```
 
 1.  创建一个名为`cards`的列表，其中包含标准牌组的 52 张牌：
 
 ```py
-    cards = [rank + '-' + suit for rank in ranks for suit in suits]
-    ```
+cards = [rank + '-' + suit for rank in ranks for suit in suits]
+```
 
 1.  使用`np.random.choice`函数从牌组中抽取一手（五张牌）。使用`replace=False`，以便每张牌只被选择一次：
 
 ```py
-    print(np.random.choice(cards, size=5, replace=False)) 
-    ```
+print(np.random.choice(cards, size=5, replace=False)) 
+```
 
 结果应该看起来像这样（你可能会得到不同的卡片）：
 
 ```py
-    ['Ace-clubs' '5-clubs' '7-clubs' '9-clubs' '6-clubs']
-    ```
+['Ace-clubs' '5-clubs' '7-clubs' '9-clubs' '6-clubs']
+```
 
 1.  现在，创建一个名为`deal_hands`的函数，返回两个列表，每个列表中都有五张牌，从同一副牌中抽取。在`np.random.choice`函数中使用`replace=False`。这个函数将执行*无*替换的抽样：
 
 ```py
-    def deal_hands():
-        drawn_cards = np.random.choice(cards, size=10, \
-                                       replace=False)
-        hand_1 = drawn_cards[:5].tolist()
-        hand_2 = drawn_cards[5:].tolist()
-        return hand_1, hand_2
-    ```
+def deal_hands():
+    drawn_cards = np.random.choice(cards, size=10, \
+                                   replace=False)
+    hand_1 = drawn_cards[:5].tolist()
+    hand_2 = drawn_cards[5:].tolist()
+    return hand_1, hand_2
+```
 
 要打印输出，请这样运行函数：
 
 ```py
-    deal_hands()
-    ```
+deal_hands()
+```
 
 你应该得到类似这样的结果：
 
 ```py
-    (['9-spades', 'Ace-clubs', 'Queen-diamonds', '2-diamonds', 
-      '9-diamonds'],
-     ['Jack-hearts', '8-clubs', '10-clubs', '4-spades', 
-      'Queen-hearts'])
-    ```
+(['9-spades', 'Ace-clubs', 'Queen-diamonds', '2-diamonds', 
+  '9-diamonds'],
+ ['Jack-hearts', '8-clubs', '10-clubs', '4-spades', 
+  'Queen-hearts'])
+```
 
 1.  创建一个名为`deal_hands2`的第二个函数，它与上一个函数相同，但在`np.random.choice`函数中使用了`replace=True`参数。这个函数将执行*带*替换的抽样：
 
 ```py
-    def deal_hands2():
-        drawn_cards = np.random.choice(cards, size=10, \
-                                       replace=True)
-        hand_1 = drawn_cards[:5].tolist()
-        hand_2 = drawn_cards[5:].tolist()
-        return hand_1, hand_2
-    ```
+def deal_hands2():
+    drawn_cards = np.random.choice(cards, size=10, \
+                                   replace=True)
+    hand_1 = drawn_cards[:5].tolist()
+    hand_2 = drawn_cards[5:].tolist()
+    return hand_1, hand_2
+```
 
 1.  最后，运行以下代码：
 
 ```py
-    np.random.seed(2)
-    deal_hands2()
-    ```
+np.random.seed(2)
+deal_hands2()
+```
 
 结果如下：
 
 ```py
-    (['Jack-hearts', '4-clubs', 'Queen-diamonds', '3-hearts', 
-      '6-spades'],
-     ['Jack-clubs', '5-spades', '3-clubs', 'Jack-hearts', '2-clubs'])
-    ```
+(['Jack-hearts', '4-clubs', 'Queen-diamonds', '3-hearts', 
+  '6-spades'],
+ ['Jack-clubs', '5-spades', '3-clubs', 'Jack-hearts', '2-clubs'])
+```
 
 正如你所看到的，通过允许*带替换*抽样，`Jack-hearts`牌在两手中都被抽中，这意味着在抽取每张牌时，考虑了所有 52 张牌。
 
@@ -652,74 +652,74 @@ P(4<=Y<=6) = 0.657158
 1.  导入 NumPy 库：
 
 ```py
-    import numpy as np
-    ```
+import numpy as np
+```
 
 1.  使用`np.random.choice`函数编写一个名为`roulette`的函数，模拟欧洲轮盘赌的任意次数的游戏：
 
 ```py
-    def roulette(number_of_games=1):
+def roulette(number_of_games=1):
 
-        # generate the Roulette numbers
-        roulette_numbers = np.arange(0, 37)
+    # generate the Roulette numbers
+    roulette_numbers = np.arange(0, 37)
 
-        outcome = np.random.choice(a = roulette_numbers, \
-                                   size = number_of_games,\
-                                   replace = True)
-        return outcome
-    ```
+    outcome = np.random.choice(a = roulette_numbers, \
+                               size = number_of_games,\
+                               replace = True)
+    return outcome
+```
 
 1.  编写一个名为`payoff`的函数，它编码了前面的赔付逻辑。它接收两个参数：`outcome`，轮盘赌的数字（0 到 36 之间的整数）；以及`units`，默认值为 1 的赌注单位：
 
 ```py
-    def payoff(outcome, units=1):
-        # 1\. Bet m units on the numbers from 19 to 36
-        # 2\. If the outcome of the roulette is any of the 
-        #    selected numbers, then you win m units
-        if outcome > 18:
-            pay = units
-        else:
-        # 3\. If the outcome of the roulette is any number 
-        #    between 0 and 18 (inclusive) then you lose m units
-            pay = -units
-        return pay
-    ```
+def payoff(outcome, units=1):
+    # 1\. Bet m units on the numbers from 19 to 36
+    # 2\. If the outcome of the roulette is any of the 
+    #    selected numbers, then you win m units
+    if outcome > 18:
+        pay = units
+    else:
+    # 3\. If the outcome of the roulette is any number 
+    #    between 0 and 18 (inclusive) then you lose m units
+        pay = -units
+    return pay
+```
 
 1.  使用`np.vectorize`对函数进行矢量化，以便它也可以接受轮盘赌结果的矢量。这将允许你传递一个结果的矢量，并获得相应的赔付：
 
 ```py
-    payoff = np.vectorize(payoff)
-    ```
+payoff = np.vectorize(payoff)
+```
 
 1.  现在，模拟玩 20 次轮盘赌（押注一单位）。使用`payoff`函数获得结果向量：
 
 ```py
-    outcomes = roulette(20)
-    payoffs = payoff(outcomes)
-    print(outcomes)
-    print(payoffs)
-    ```
+outcomes = roulette(20)
+payoffs = payoff(outcomes)
+print(outcomes)
+print(payoffs)
+```
 
 输出如下：
 
 ```py
-    [29 36 11  6 11  6  1 24 30 13  0 35  7 34 30  7 36 32 12 10]
-    [ 1  1 -1 -1 -1 -1 -1  1  1 -1 -1  1 -1  1  1 -1  1  1 -1 -1]
-    ```
+[29 36 11  6 11  6  1 24 30 13  0 35  7 34 30  7 36 32 12 10]
+[ 1  1 -1 -1 -1 -1 -1  1  1 -1 -1  1 -1  1  1 -1  1  1 -1 -1]
+```
 
 1.  模拟 100 万次轮盘赌游戏，并使用结果获得相应的赔偿。将赔偿保存在名为`payoffs`的向量中：
 
 ```py
-    number_of_games = int(1e6)
-    outcomes = roulette(number_of_games)
-    payoffs = payoff(outcomes)
-    ```
+number_of_games = int(1e6)
+outcomes = roulette(number_of_games)
+payoffs = payoff(outcomes)
+```
 
 1.  使用`np.mean`函数计算赔偿向量的平均值。你得到的值应该接近-0.027027：
 
 ```py
-    np.mean(payoffs)
-    ```
+np.mean(payoffs)
+```
 
 负数意味着平均每下注一单位就会损失-0.027027。请记住，你的损失就是赌场的利润。这是他们的生意。
 
@@ -957,11 +957,11 @@ plt.grid();
 1.  按照通常的惯例导入 NumPy、Matplotlib 和`scipy.stats`：
 
 ```py
-    import numpy as np
-    import scipy.stats as stats
-    import matplotlib.pyplot as plt
-    %matplotlib inline
-    ```
+import numpy as np
+import scipy.stats as stats
+import matplotlib.pyplot as plt
+%matplotlib inline
+```
 
 1.  就像我们在*定义离散随机变量*部分所做的那样，尝试概念性地检查*Z*是否满足二项随机变量的三个特征：
 
@@ -980,24 +980,24 @@ c. **条件 3**：我们假设有缺陷的零件之间没有关系，因为机�
 1.  使用`scipy.stats`模块生成*Z*随机变量的实例。将其命名为`Z_rv`：
 
 ```py
-    # number of parts per box
-    parts_per_box = 12
-    Z_rv = stats.binom\
-           (n = parts_per_box,\
-            p = 0.04 # probability of defective piece (success)
-            )
-    ```
+# number of parts per box
+parts_per_box = 12
+Z_rv = stats.binom\
+       (n = parts_per_box,\
+        p = 0.04 # probability of defective piece (success)
+        )
+```
 
 1.  绘制*Z*的概率质量函数：
 
 ```py
-    z_possible_values = np.arange(0, parts_per_box + 1)
-    Z_probs = Z_rv.pmf(z_possible_values)
-    fig, ax = plt.subplots()
-    ax.bar(z_possible_values, Z_probs)
-    ax.set_xticks(z_possible_values)
-    ax.grid();
-    ```
+z_possible_values = np.arange(0, parts_per_box + 1)
+Z_probs = Z_rv.pmf(z_possible_values)
+fig, ax = plt.subplots()
+ax.bar(z_possible_values, Z_probs)
+ax.set_xticks(z_possible_values)
+ax.grid();
+```
 
 结果如下：
 
@@ -1424,30 +1424,30 @@ Probability of a male > 190 cm: 0.02275 (or 2.28%)
 1.  按照通常的惯例导入 NumPy、Matplotlib 和`scipy.stats`：
 
 ```py
-    import numpy as np
-    import scipy.stats as stats
-    import matplotlib.pyplot as plt
-    %matplotlib inline
-    ```
+import numpy as np
+import scipy.stats as stats
+import matplotlib.pyplot as plt
+%matplotlib inline
+```
 
 1.  使用`scipy.stats`模块生成一个名为`X_rv`的正态分布随机变量实例，其*平均值=100*和*标准差=15*：
 
 ```py
-    # producing the normal distribution
-    X_mean = 100
-    X_sd = 15
-    # create the random variable
-    X_rv = stats.norm(loc = X_mean, scale = X_sd)
-    ```
+# producing the normal distribution
+X_mean = 100
+X_sd = 15
+# create the random variable
+X_rv = stats.norm(loc = X_mean, scale = X_sd)
+```
 
 1.  绘制*X*的概率分布：
 
 ```py
-    x_values = np.linspace(X_mean - 4 * X_sd, X_mean + 4 * X_sd)
-    y_values = X_rv.pdf(x_values)
-    plt.plot(x_values, y_values, lw=2)
-    plt.grid();
-    ```
+x_values = np.linspace(X_mean - 4 * X_sd, X_mean + 4 * X_sd)
+y_values = X_rv.pdf(x_values)
+plt.plot(x_values, y_values, lw=2)
+plt.grid();
+```
 
 输出将如下：
 
@@ -1458,34 +1458,34 @@ Probability of a male > 190 cm: 0.02275 (or 2.28%)
 1.  教育部决定，被认为在数学上*胜任*的人的最低分数是 80。使用`cdf`方法计算将获得高于该分数的学生的比例：
 
 ```py
-    Prob_X_gt_80 = X_rv.cdf(np.Inf) - X_rv.cdf(80)
-    print(f'Prob(X >= 80): {Prob_X_gt_80:0.5f} \
-    (or {100*Prob_X_gt_80:0.2f}%)')
-    ```
+Prob_X_gt_80 = X_rv.cdf(np.Inf) - X_rv.cdf(80)
+print(f'Prob(X >= 80): {Prob_X_gt_80:0.5f} \
+(or {100*Prob_X_gt_80:0.2f}%)')
+```
 
 结果如下：
 
 ```py
-    Prob(X >= 80): 0.90879 (or 90.88%)
-    ```
+Prob(X >= 80): 0.90879 (or 90.88%)
+```
 
 大约 91%的学生在数学上被认为是*胜任*的。
 
 1.  一个非常严格的大学希望为被录取到他们的项目的高中生设定非常高的标准。该大学的政策是只录取人口中数学分数处于前 2%的学生。使用`ppf`方法（本质上是`cdf`方法的逆函数）并使用参数*1-0.02=0.98*来获得录取的分数线：
 
 ```py
-    proportion_of_admitted = 0.02
-    cut_off = X_rv.ppf(1-proportion_of_admitted)
-    print(f'To admit the top {100*proportion_of_admitted:0.0f}%, \
-    the cut-off score should be {cut_off:0.1f}')
-    top_percents = np.arange(0.9, 1, 0.01)
-    ```
+proportion_of_admitted = 0.02
+cut_off = X_rv.ppf(1-proportion_of_admitted)
+print(f'To admit the top {100*proportion_of_admitted:0.0f}%, \
+the cut-off score should be {cut_off:0.1f}')
+top_percents = np.arange(0.9, 1, 0.01)
+```
 
 结果应该如下：
 
 ```py
-    To admit the top 2%, the cut-off score should be 130.8
-    ```
+To admit the top 2%, the cut-off score should be 130.8
+```
 
 在这个练习中，我们使用了正态分布和`cdf`和`ppf`方法来回答关于教育政策的现实问题。
 
@@ -1536,16 +1536,16 @@ Probability of a male > 190 cm: 0.02275 (or 2.28%)
 1.  计算`returns`列的描述统计信息：
 
 ```py
-    count    1258.000000
-    mean        0.000996
-    std         0.014591
-    min        -0.092534
-    25%        -0.005956
-    50%         0.000651
-    75%         0.007830
-    max         0.104522
-    Name: returns, dtype: float64
-    ```
+count    1258.000000
+mean        0.000996
+std         0.014591
+min        -0.092534
+25%        -0.005956
+50%         0.000651
+75%         0.007830
+max         0.104522
+Name: returns, dtype: float64
+```
 
 1.  创建一个名为`R_rv`的随机变量，它将代表*微软股票的每日收益*。使用收益列的平均值和标准差作为该分布的参数。
 

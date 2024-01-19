@@ -144,15 +144,15 @@ plt.show()
 以下代码可用于重现绘图：
 
 ```py
-    import numpy as np
-    import matplotlib.pyplot as plt
-    x = np.linspace(-5, 5, 1000)
-    plt.plot(
-        x,  # evenly spaced numbers in the x-axis
-        np.ones(1000) * 2  # all 2s in the y-axis
-    )
-    plt.show()
-    ```
+import numpy as np
+import matplotlib.pyplot as plt
+x = np.linspace(-5, 5, 1000)
+plt.plot(
+    x,  # evenly spaced numbers in the x-axis
+    np.ones(1000) * 2  # all 2s in the y-axis
+)
+plt.show()
+```
 
 1.  **旋转的二次曲线**：![图 4.6：旋转的二次曲线](img/B15968_04_06.jpg)
 
@@ -169,9 +169,9 @@ plt.show()
 以下代码可用于重现绘图（使用与*水平线*解决方案中相同的`x`变量）：
 
 ```py
-    plt.plot(x, x)
-    plt.show()
-    ```
+plt.plot(x, x)
+plt.show()
+```
 
 1.  **二次曲线**：![图 4.8：二次曲线](img/B15968_04_08.jpg)
 
@@ -285,14 +285,14 @@ plt.show()
 以下代码可用于重现绘图：
 
 ```py
-    import numpy as np
-    import matplotlib.pyplot as plt
-    x = np.linspace(-5, 5, 1000)
-    plt.plot(x, x ** 3 - x, c='blue')  
-    plt.plot(x, (x + 2) ** 3 - (x + 2), c='red')  
-    plt.ylim(-5, 5)
-    plt.show()
-    ```
+import numpy as np
+import matplotlib.pyplot as plt
+x = np.linspace(-5, 5, 1000)
+plt.plot(x, x ** 3 - x, c='blue')  
+plt.plot(x, (x + 2) ** 3 - (x + 2), c='red')  
+plt.ylim(-5, 5)
+plt.show()
+```
 
 1.  **三次曲线的第二次变换**：![图 4.15：三次曲线的第二次变换](img/B15968_04_15.jpg)
 
@@ -303,11 +303,11 @@ plt.show()
 以下代码可用于重现绘图（使用相同的变量`x`）：
 
 ```py
-    plt.plot(x, x ** 3 - x, c='blue')  # original func
-    plt.plot(x, (x - 2) ** 3 - (x - 2) + 2, c='red')  # transformed func
-    plt.ylim(-5, 5)
-    plt.show()
-    ```
+plt.plot(x, x ** 3 - x, c='blue')  # original func
+plt.plot(x, (x - 2) ** 3 - (x - 2) + 2, c='red')  # transformed func
+plt.ylim(-5, 5)
+plt.show()
+```
 
 1.  **正弦波的第一次变换**：![图 4.16：正弦波的第一次变换](img/B15968_04_16.jpg)
 
@@ -318,11 +318,11 @@ plt.show()
 以下代码可用于重现绘图（使用相同的变量`x`）：
 
 ```py
-    plt.plot(x, np.sin(x), c='blue')  # original func
-    plt.plot(x, np.sin(x) * 2, c='red')  # transformed func
-    plt.ylim(-5, 5)
-    plt.show()
-    ```
+plt.plot(x, np.sin(x), c='blue')  # original func
+plt.plot(x, np.sin(x) * 2, c='red')  # transformed func
+plt.ylim(-5, 5)
+plt.show()
+```
 
 1.  **正弦波的第二次变换**：![图 4.17：正弦波的第二次变换](img/B15968_04_17.jpg)
 
@@ -532,11 +532,11 @@ solve(3 * e ** (x + 2) + 3 - 2 * (e ** x + 100), x)
 1.  在第一个代码单元格中创建一个新的 Jupyter 笔记本，并导入 NumPy、Matplotlib 和 SymPy：
 
 ```py
-    import numpy as np
-    import matplotlib.pyplot as plt
-    from sympy.solvers import solve
-    from sympy import Symbol
-    ```
+import numpy as np
+import matplotlib.pyplot as plt
+from sympy.solvers import solve
+from sympy import Symbol
+```
 
 1.  假设餐厅将每个卖出的汉堡的价格定为 8.99 美元，让*x*表示每个月需要卖出的汉堡的数量，以便收入等于成本。写出这种情况下*x*的方程。
 
@@ -551,9 +551,9 @@ solve(3 * e ** (x + 2) + 3 - 2 * (e ** x + 100), x)
 以下代码可以使用 SymPy 来解决*x*的问题：
 
 ```py
-    x = Symbol('x')
-    sols = solve(8.99 * x - 6.56 * x - 1312.13, x)
-    ```
+x = Symbol('x')
+sols = solve(8.99 * x - 6.56 * x - 1312.13, x)
+```
 
 `sols`变量应该有值`[539.971193415638]`，这对应于我们的解决方案。
 
@@ -564,11 +564,11 @@ solve(3 * e ** (x + 2) + 3 - 2 * (e ** x + 100), x)
 1.  在 Jupyter 笔记本的下一个代码单元格中，使用 NumPy 和 Matplotlib 绘制这个函数，*x*的值在 0 到 1000 之间，并在 0 处绘制一条水平线，颜色应为黑色：
 
 ```py
-    xs = np.linspace(0, 1000, 1000)
-    plt.plot(xs, 2.43 * xs - 1312.13)
-    plt.axhline(0, c='k')
-    plt.show()
-    ```
+xs = np.linspace(0, 1000, 1000)
+plt.plot(xs, 2.43 * xs - 1312.13)
+plt.axhline(0, c='k')
+plt.show()
+```
 
 这应该产生以下图表：
 
@@ -587,18 +587,18 @@ solve(3 * e ** (x + 2) + 3 - 2 * (e ** x + 100), x)
 通过将两边都除以 400，可以简单地解出方程，得到*x = 9.84*。解决相同方程的 Python 代码如下，也得到相同的结果：
 
 ```py
-    sols1 = solve(400 * x - 3936.13, x)
-    sols1
-    ```
+sols1 = solve(400 * x - 3936.13, x)
+sols1
+```
 
 1.  在下一个代码单元格中，绘制代表利润和成本之间差异的函数，*x*值在`0`和`10`之间，以及水平线在`0`处：
 
 ```py
-    xs = np.linspace(0, 10, 1000)
-    plt.plot(xs, 400 * xs - 3936.13)
-    plt.axhline(0, c='k')
-    plt.show()
-    ```
+xs = np.linspace(0, 10, 1000)
+plt.plot(xs, 400 * xs - 3936.13)
+plt.axhline(0, c='k')
+plt.show()
+```
 
 这应该产生以下图表：
 
@@ -753,15 +753,15 @@ solve(3 * e ** (x + 2) + 3 - 2 * (e ** x + 100), x)
 1.  创建一个 Jupyter 笔记本。在其第一个单元格中，导入 NumPy 及其`linalg`包中的`inv()`函数：
 
 ```py
-    import numpy as np
-    from numpy.linalg import inv
-    ```
+import numpy as np
+from numpy.linalg import inv
+```
 
 1.  在下一个代码单元格中，声明一个名为`solve_eq_sys()`的函数（用于测试目的），它接受两个参数：`coeff_matrix`，它存储线性方程组中常数系数的矩阵，以及`c`，它存储方程右侧的常数值向量：
 
 ```py
-    def solve_eq_sys(coeff_matrix, c):
-    ```
+def solve_eq_sys(coeff_matrix, c):
+```
 
 这两个参数完全定义了线性方程组的一个实例，`solve_eq_sys()`函数的工作是计算其解。我们进一步假设这些参数都存储为 NumPy 数组。
 
@@ -770,22 +770,22 @@ solve(3 * e ** (x + 2) + 3 - 2 * (e ** x + 100), x)
 可以使用 NumPy 的`inv()`函数计算逆矩阵：
 
 ```py
-    inv_matrix = inv(coeff_matrix)
-    ```
+inv_matrix = inv(coeff_matrix)
+```
 
 最后，可以使用`dot()`方法计算解决方案，该方法计算矩阵和向量的点积：
 
 ```py
-    return inv_matrix.dot(c)
-    ```
+return inv_matrix.dot(c)
+```
 
 我们的函数应该如下所示：
 
 ```py
-    def solve_eq_sys(coeff_matrix, c):
-        inv_matrix = inv(coeff_matrix)
-        return inv_matrix.dot(c)
-    ```
+def solve_eq_sys(coeff_matrix, c):
+    inv_matrix = inv(coeff_matrix)
+    return inv_matrix.dot(c)
+```
 
 1.  在下一个代码单元格中，为我们之前考虑的方程组声明相应的系数矩阵和`c`向量，并对它们调用`solve_eq_sys()`函数：![图 4.40：线性方程组](img/B15968_04_40.jpg)
 
@@ -794,18 +794,18 @@ solve(3 * e ** (x + 2) + 3 - 2 * (e ** x + 100), x)
 这段代码应该是：
 
 ```py
-    coeff_matrix = np.array([[1, 3, -2],\
-                             [3, 5, 6],\
-                             [2, 4, 3]])
-    c = np.array([1, 31, 19])
-    solve_eq_sys(coeff_matrix, c)
-    ```
+coeff_matrix = np.array([[1, 3, -2],\
+                         [3, 5, 6],\
+                         [2, 4, 3]])
+c = np.array([1, 31, 19])
+solve_eq_sys(coeff_matrix, c)
+```
 
 这段代码应该产生以下输出：
 
 ```py
-    array([1., 2., 3.])
-    ```
+array([1., 2., 3.])
+```
 
 我们看到，这个输出恰好对应于使用行简化方法得出的方程组的实际解：*x = 1*，*y = 2*，*z = 3*。
 
@@ -818,10 +818,10 @@ solve(3 * e ** (x + 2) + 3 - 2 * (e ** x + 100), x)
 在下一个代码单元格中，对此系数矩阵调用`inv()`函数：
 
 ```py
-    inv(np.array([[1, 3, -2],\
-                  [3, 5, 6],\
-                   [2, 6, -4]]))
-    ```
+inv(np.array([[1, 3, -2],\
+              [3, 5, 6],\
+               [2, 6, -4]]))
+```
 
 我们将看到这段代码产生了一个`LinAlgError: Singular matrix`错误，我们将在下一步中修复这个错误。
 
@@ -830,29 +830,29 @@ solve(3 * e ** (x + 2) + 3 - 2 * (e ** x + 100), x)
 1.  回到我们的代码，并用一个`try...except`块修改我们当前的`solve_eq_sys()`函数来处理这个错误，这将需要从 NumPy 中导入：
 
 ```py
-    from numpy.linalg import inv, LinAlgError
-    ```
+from numpy.linalg import inv, LinAlgError
+```
 
 现在，如果输入矩阵是奇异的，函数应该返回`False`。它应该如下所示：
 
 ```py
-    def solve_eq_sys(coeff_matrix, c):
-        try:
-            inv_matrix = inv(coeff_matrix)
-            return inv_matrix.dot(c)
-        except LinAlgError:
-            return False
-    ```
+def solve_eq_sys(coeff_matrix, c):
+    try:
+        inv_matrix = inv(coeff_matrix)
+        return inv_matrix.dot(c)
+    except LinAlgError:
+        return False
+```
 
 1.  在下一个代码单元格中，对我们在*步骤 5*中使用的示例方程组调用此函数：
 
 ```py
-    coeff_matrix = np.array([[1, 3, -2],\
-                             [3, 5, 6],\
-                             [2, 6, -4]])
-    c = np.array([1, 31, 19])
-    solve_eq_sys(coeff_matrix, c)
-    ```
+coeff_matrix = np.array([[1, 3, -2],\
+                         [3, 5, 6],\
+                         [2, 6, -4]])
+c = np.array([1, 31, 19])
+solve_eq_sys(coeff_matrix, c)
+```
 
 这次，函数返回值`False`，这是我们期望的行为。
 

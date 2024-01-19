@@ -49,66 +49,66 @@
 1.  我们首先需要导入`random` Python 包并设置`seed`方法：
 
 ```py
-    # coin_flip_scenario.py
-    # import the random module
-    import random
-    random.seed(54321)
-    ```
+# coin_flip_scenario.py
+# import the random module
+import random
+random.seed(54321)
+```
 
 1.  让我们为样本大小定义一个变量，并在这种情况下将其设置为`10`：
 
 ```py
-    # set the sample size or coin flips you what to run
-    sample_size = 10
-    ```
+# set the sample size or coin flips you what to run
+sample_size = 10
+```
 
 1.  我们创建一个空列表，以便收集我们抛硬币实验的结果：
 
 ```py
-    # create a for loop and collect the results in a list
-    # 1 = heads and 0 = tails
-    result_list = []
-    for i in range(sample_size):
-        result = random.randint(0, 1)
-        result_list.append(result)
-    ```
+# create a for loop and collect the results in a list
+# 1 = heads and 0 = tails
+result_list = []
+for i in range(sample_size):
+    result = random.randint(0, 1)
+    result_list.append(result)
+```
 
 1.  定义两个变量来编译结果（正面次数和每次抛硬币的平均正面次数）：
 
 ```py
-    # compile results
-    num_of_heads = sum(result_list)
-    avg_of_heads = float(num_of_heads) / sample_size
-    ```
+# compile results
+num_of_heads = sum(result_list)
+avg_of_heads = float(num_of_heads) / sample_size
+```
 
 1.  最后，我们将结果打印到控制台：
 
 ```py
-    # print the results
-    print(f'Results: {num_of_heads} heads out of {sample_size} \
-    flips.')
-    print(f'Average number of heads per flip is {avg_of_heads}.')
-    ```
+# print the results
+print(f'Results: {num_of_heads} heads out of {sample_size} \
+flips.')
+print(f'Average number of heads per flip is {avg_of_heads}.')
+```
 
 1.  运行你的笔记本应该得到以下类似的结果：
 
 ```py
-    Results: 4 heads out of 10 flips. Average number of 
-    heads per flip is 0.4.
-    ```
+Results: 4 heads out of 10 flips. Average number of 
+heads per flip is 0.4.
+```
 
 1.  由于我们在这个模拟中生成随机数，你得到的结果可能会有所不同。在 10 次抛硬币中得到 4 次正面（每次抛硬币平均 0.4 次正面）似乎是可能的，但与我们的期望值 0.5 不同。但是请注意，当我们将样本大小从 10 增加到 100 时会发生什么：
 
 ```py
-    # set the sample size or coin flips you what to run
-    sample_size = 100
-    ```
+# set the sample size or coin flips you what to run
+sample_size = 100
+```
 
 1.  重新运行整个程序（确保包括带有`random.seed(54321)`的行），这次结果将如下所示：
 
 ```py
-    Results: 51 heads out of 100 flips. Average number     of heads per flip is 0.51.
-    ```
+Results: 51 heads out of 100 flips. Average number     of heads per flip is 0.51.
+```
 
 注意，样本平均值（`0.51`）现在与样本大小为 100 相比，更接近期望值（`0.50`）而不是 10。这是大数定律的一个典型例子。
 
@@ -125,70 +125,70 @@
 1.  导入`random`和`matplotlib` Python 包并设置随机种子：
 
 ```py
-    # coin_clip_scenario_2.py
-    # import the module
-    import random
-    import matplotlib.pyplot as plt
-    random.seed(54321)
-    ```
+# coin_clip_scenario_2.py
+# import the module
+import random
+import matplotlib.pyplot as plt
+random.seed(54321)
+```
 
 1.  定义样本大小或抛硬币次数：
 
 ```py
-    # set the sample size or coin flips you what to run
-    sample_size = 20000
-    ```
+# set the sample size or coin flips you what to run
+sample_size = 20000
+```
 
 1.  初始化我们将用来收集模拟结果的变量：
 
 ```py
-    # initialize the variables required for our loop
-    # 1 = heads and 0 = tails
-    num_of_heads = 0
-    heads_list = []
-    trials_list = []
-    freq_list = []
-    ```
+# initialize the variables required for our loop
+# 1 = heads and 0 = tails
+num_of_heads = 0
+heads_list = []
+trials_list = []
+freq_list = []
+```
 
 1.  运行模拟并收集结果：
 
 ```py
-    # create a for loop and collect the results in a list
-    for i in range(1,sample_size+1):
-        result = random.randint(0, 1)
-        if result == 1:
-            num_of_heads += 1
-        avg_of_heads = float(num_of_heads) / i
-        heads_list.append(num_of_heads)
-        trials_list.append(i)
-        freq_list.append(avg_of_heads)
-    ```
+# create a for loop and collect the results in a list
+for i in range(1,sample_size+1):
+    result = random.randint(0, 1)
+    if result == 1:
+        num_of_heads += 1
+    avg_of_heads = float(num_of_heads) / i
+    heads_list.append(num_of_heads)
+    trials_list.append(i)
+    freq_list.append(avg_of_heads)
+```
 
 1.  将结果打印到控制台：
 
 ```py
-    # print the results
-    print(f'Results: {num_of_heads} heads out of {sample_size} flips.')
-    print(f'Average number of heads is {avg_of_heads}')
-    ```
+# print the results
+print(f'Results: {num_of_heads} heads out of {sample_size} flips.')
+print(f'Average number of heads is {avg_of_heads}')
+```
 
 1.  创建一条线图，显示随时间变化的样本均值，并使用虚线标记我们的期望值：
 
 ```py
-    #create a simple line graph to show our results over time
-    plt.plot(trials_list, freq_list)
-    plt.ylabel('Sample Average')
-    plt.xlabel('Sample Size')
-    plt.hlines(0.50,0,sample_size,linestyles='dashed')
-    plt.show()
-    ```
+#create a simple line graph to show our results over time
+plt.plot(trials_list, freq_list)
+plt.ylabel('Sample Average')
+plt.xlabel('Sample Size')
+plt.hlines(0.50,0,sample_size,linestyles='dashed')
+plt.show()
+```
 
 1.  运行我们的笔记本将产生以下结果：
 
 ```py
-    Results: 10008 heads out of 20000 flips. Average number of 
-    heads is 0.5004
-    ```
+Results: 10008 heads out of 20000 flips. Average number of 
+heads is 0.5004
+```
 
 该代码将生成以下图表，显示随着样本量的增加，每次抛硬币的平均正面朝上数量的变化（用实线表示）。请注意，大约在 2,000 次抛硬币后，样本均值与期望值相匹配（约为每次抛硬币 0.5 个正面朝上）：
 
@@ -237,76 +237,76 @@
 1.  导入`random`和`matplotlib`包：
 
 ```py
-    # roulette simulation.py
-    # import the module
-    import random
-    import matplotlib.pyplot as plt
-    random.seed(54321)
-    ```
+# roulette simulation.py
+# import the module
+import random
+import matplotlib.pyplot as plt
+random.seed(54321)
+```
 
 1.  创建一个样本大小的变量，并将其设置为`10`。创建一个名为`bet`的变量，并将其设置为 1 美元：
 
 ```py
-    # set the number of games of roulette you want to play
-    sample_size = 10
-    #set the amount of money you want to bet
-    bet = 1
-    ```
+# set the number of games of roulette you want to play
+sample_size = 10
+#set the amount of money you want to bet
+bet = 1
+```
 
 1.  初始化我们将用于收集模拟结果的变量：
 
 ```py
-    # initialize the variables required for our loop
-    # 1 to 36 represent numbers on roulette wheel, 37 represents 0, 38 represents 00
-    net_money = 0
-    wins = 0
-    money_track = []
-    trials_track = []
-    ```
+# initialize the variables required for our loop
+# 1 to 36 represent numbers on roulette wheel, 37 represents 0, 38 represents 00
+net_money = 0
+wins = 0
+money_track = []
+trials_track = []
+```
 
 1.  运行模拟并收集结果：
 
 ```py
-    # create a for loop and collect the results in a list
-    for i in range(1,sample_size+1):
-        result = random.randint(1,38)
-        if result % 2 == 1 and result != 37:
-            net_money += bet
-            wins += 1
-        else:
-            net_money -= bet
-        money_track.append(net_money/i)
-        trials_track.append(i)
-    ```
+# create a for loop and collect the results in a list
+for i in range(1,sample_size+1):
+    result = random.randint(1,38)
+    if result % 2 == 1 and result != 37:
+        net_money += bet
+        wins += 1
+    else:
+        net_money -= bet
+    money_track.append(net_money/i)
+    trials_track.append(i)
+```
 
 1.  打印模拟结果和平均期望值：
 
 ```py
-    # print the results
-    print(f'Results: You won {wins} games out of\
-    {sample_size} and won an average of\
-    {net_money/sample_size} dollars per game')
-    print(f'Results: You are expected to win\
-    {((18/38)*bet+(20/38)*(-bet))} per game')
-    ```
+# print the results
+print(f'Results: You won {wins} games out of\
+{sample_size} and won an average of\
+{net_money/sample_size} dollars per game')
+print(f'Results: You are expected to win\
+{((18/38)*bet+(20/38)*(-bet))} per game')
+```
 
 1.  绘制每场游戏中净变化的期望值和净变化的样本平均值的图表：
 
 ```py
-    #create a simple line graph to show our results over time
-    plt.plot(trials_track, money_track)
-    plt.ylabel('Net Money')
-    plt.xlabel('Number of games')
-    plt.hlines(((18/38)*bet+(20/38)*(-bet)), 0,            sample_size, linestyles='dashed')
-    plt.show()
-    ```
+#create a simple line graph to show our results over time
+plt.plot(trials_track, money_track)
+plt.ylabel('Net Money')
+plt.xlabel('Number of games')
+plt.hlines(((18/38)*bet+(20/38)*(-bet)), 0,            sample_size, linestyles='dashed')
+plt.show()
+```
 
 1.  运行你的笔记本，你会得到以下结果：
 
 ```py
-    Results: You won 4 games out of 10 and won an average of -0.2 dollars per game
-    Results: You are expected to win -0.05263157894736842 per game
-    ```
+Results: You won 4 games out of 10 and won an average of -0.2 dollars per game
+Results: You are expected to win -0.05263157894736842 per game
+```
 
 上述代码将生成以下图表：
 
@@ -361,56 +361,56 @@
 1.  导入我们将使用的以下 Python 包并设置`seed`：
 
 ```py
-    # sample_from_uniform_dist.py
-    # import the module
-    import random
-    import matplotlib.pyplot as plt
-    import math
-    import numpy as np
-    import scipy.stats as stats
-    random.seed(54312)
-    ```
+# sample_from_uniform_dist.py
+# import the module
+import random
+import matplotlib.pyplot as plt
+import math
+import numpy as np
+import scipy.stats as stats
+random.seed(54312)
+```
 
 1.  创建每个样本的大小和要抽取的总样本数的变量。由于中心极限定理规定我们需要足够大的样本，我们选择了样本大小为 30。接下来，我们需要大量的样本均值来绘制图表，并将该值设置为 10,000：
 
 ```py
-    # select the sample size you want to take
-    sample_size = 30
-    # select the number of sample mean you want to simulate
-    calc_means = 10000
-    ```
+# select the sample size you want to take
+sample_size = 30
+# select the number of sample mean you want to simulate
+calc_means = 10000
+```
 
 1.  初始化我们将用于收集样本均值的列表，并运行我们的模拟指定次数，收集每个样本的样本均值：
 
 ```py
-    mean_list = []
-    # run our loop and collect a sample
-    for j in range(calc_means):
-        # initialize the variables to track our results
-        sample_list = []
-        for i in range(sample_size):
-            sample_list.append(random.randint(0, 100))
-        sample_mean = sum(sample_list) / sample_size
-        mean_list.append(sample_mean)
-    ```
+mean_list = []
+# run our loop and collect a sample
+for j in range(calc_means):
+    # initialize the variables to track our results
+    sample_list = []
+    for i in range(sample_size):
+        sample_list.append(random.randint(0, 100))
+    sample_mean = sum(sample_list) / sample_size
+    mean_list.append(sample_mean)
+```
 
 1.  创建我们收集的样本均值的直方图。在直方图的顶部，我们将覆盖中心极限定理所说的样本均值分布应该是什么样子的：
 
 ```py
-    """
-    create a histogram of our sample and compare it 
-    to what the CLT says it should be 
-    """
-    n, bins, patches = plt.hist(mean_list, \
-                                math.floor(math.sqrt(calc_means)),\
-                                density=True, facecolor='g', alpha=0.75)
-    plt.grid(True)
-    mu = 50
-    sigma = math.sqrt(((100 ** 2) / 12)) / (math.sqrt(sample_size))
-    x = np.linspace(mu - 3 * sigma, mu + 3 * sigma, 100)
-    plt.plot(x, stats.norm.pdf(x, mu, sigma))
-    plt.show()
-    ```
+"""
+create a histogram of our sample and compare it 
+to what the CLT says it should be 
+"""
+n, bins, patches = plt.hist(mean_list, \
+                            math.floor(math.sqrt(calc_means)),\
+                            density=True, facecolor='g', alpha=0.75)
+plt.grid(True)
+mu = 50
+sigma = math.sqrt(((100 ** 2) / 12)) / (math.sqrt(sample_size))
+x = np.linspace(mu - 3 * sigma, mu + 3 * sigma, 100)
+plt.plot(x, stats.norm.pdf(x, mu, sigma))
+plt.show()
+```
 
 在我们的笔记本中运行此代码将给我们以下结果：
 
@@ -443,49 +443,49 @@
 1.  导入我们需要的 Python 包。为了看到取较小样本的影响，我们将样本大小设置为`5`（参考以下代码），但保持样本数为`10000`：
 
 ```py
-    # sample_from_exp_dist.py
-    # import the module
-    import random
-    import matplotlib.pyplot as plt
-    import math
-    import numpy as np
-    import scipy.stats as stats
-    # select the sample size you want to take
-    sample_size = 5
-    # select the number of sample mean you want to simulate
-    calc_means = 10000
-    ```
+# sample_from_exp_dist.py
+# import the module
+import random
+import matplotlib.pyplot as plt
+import math
+import numpy as np
+import scipy.stats as stats
+# select the sample size you want to take
+sample_size = 5
+# select the number of sample mean you want to simulate
+calc_means = 10000
+```
 
 1.  初始化我们将用来收集模拟结果的变量。运行模拟，但这次从指数分布中取样，而不是均匀分布：
 
 ```py
-    mean_list = []
-    # run our loop and collect a sample
-    for j in range(calc_means):
-        # initialize the variables to track our results
-        sample_list = []
-        for i in range(sample_size):
-            draw = np.random.exponential(1)
-            sample_list.append(draw)
-        sample_mean = sum(sample_list) / sample_size
-        mean_list.append(sample_mean)
-    ```
+mean_list = []
+# run our loop and collect a sample
+for j in range(calc_means):
+    # initialize the variables to track our results
+    sample_list = []
+    for i in range(sample_size):
+        draw = np.random.exponential(1)
+        sample_list.append(draw)
+    sample_mean = sum(sample_list) / sample_size
+    mean_list.append(sample_mean)
+```
 
 1.  创建我们收集的样本均值的直方图，并叠加中心极限定理对其的预期：
 
 ```py
-    """ create a histogram of our sample and compare it to what the CLT says it should be """
-    n, bins, patches = plt.hist(mean_list, \
-                       math.floor(math.sqrt(calc_means)), \
-                       density=True, facecolor='g', \
-                       alpha=0.75)
-    plt.grid(True)
-    mu = 1
-    sigma = 1 / (math.sqrt(sample_size))
-    x = np.linspace(mu - 3 * sigma, mu + 3 * sigma, 100)
-    plt.plot(x, stats.norm.pdf(x, mu, sigma))
-    plt.show()
-    ```
+""" create a histogram of our sample and compare it to what the CLT says it should be """
+n, bins, patches = plt.hist(mean_list, \
+                   math.floor(math.sqrt(calc_means)), \
+                   density=True, facecolor='g', \
+                   alpha=0.75)
+plt.grid(True)
+mu = 1
+sigma = 1 / (math.sqrt(sample_size))
+x = np.linspace(mu - 3 * sigma, mu + 3 * sigma, 100)
+plt.plot(x, stats.norm.pdf(x, mu, sigma))
+plt.show()
+```
 
 1.  在我们的 Jupyter 笔记本中输入的代码将给我们以下图形：![图 9.9：来自指数分布的 5 个样本的 10,000 个样本平均值分布](img/B15968_09_09.jpg)
 
@@ -585,24 +585,24 @@ def z_confidence_interval(data, st_dev, con_lvl):
 1.  导入`random` Python 包并将种子设置为`39809`。这将确保我们每次运行程序时都获得相同的结果：
 
 ```py
-    import random
-    random.seed(39809)
-    ```
+import random
+random.seed(39809)
+```
 
 1.  初始化我们的样本列表并从焦点群体中收集我们的样本。然后，我们只需将信息输入到我们的函数中：
 
 ```py
-    sample_list = []
-    for i in range(30):
-        sample_list.append(random.randint(0, 10))
-    z_confidence_interval(sample_list,2.89,0.95)
-    ```
+sample_list = []
+for i in range(30):
+    sample_list.append(random.randint(0, 10))
+z_confidence_interval(sample_list,2.89,0.95)
+```
 
 1.  如果您做得正确，那么在运行笔记本时应打印出以下内容：
 
 ```py
-    Your 0.95 z confidence interval is (3.965845784931483, 6.034154215068517)
-    ```
+Your 0.95 z confidence interval is (3.965845784931483, 6.034154215068517)
+```
 
 这告诉我们，在典型的焦点群体中，每个群体中有 4 到 6 人会投票给我们的候选人。这向您表明，竞选活动应继续努力说服更多人投票给您的候选人。
 
@@ -783,97 +783,97 @@ Your 0.95 proportional confidence interval is (0.4877856513683282,0.592214348631
 1.  让我们从导入我们将需要的所有库开始这个练习，以便能够运行我们的代码并设置`seed`值：
 
 ```py
-    import scipy.stats as st
-    import numpy as np
-    import pandas as pd
-    import math as mt
-    import statistics as stat
-    import statsmodels.stats.weightstats as mod
-    import statsmodels.stats.proportion as prop
-    np.random.seed(12345)
-    ```
+import scipy.stats as st
+import numpy as np
+import pandas as pd
+import math as mt
+import statistics as stat
+import statsmodels.stats.weightstats as mod
+import statsmodels.stats.proportion as prop
+np.random.seed(12345)
+```
 
 1.  我们将编写一个函数来进行 z-检验。输入将是一个样本（以列表的形式），总体标准偏差（记住，指定这一点是 z-检验的要求之一），我们假设的值，测试的显著性水平，以及测试类型（上尾、下尾或双尾检验）。我们将从给定的列表中计算样本均值和样本大小。然后，我们将输入计算我们的检验统计量。然后，根据我们决定要进行的假设检验，我们相应地计算 p 值。最后，我们将我们的 p 值与显著性水平进行比较，如果它小于我们的显著性水平，我们拒绝零假设。否则，我们未能拒绝零假设：
 
 ```py
-    def z_test(sample, pop_st_dev, hypoth_value, \
-               sig_level, test_type):
-        sample_mean = stat.mean(sample)
-        sample_size = len(sample)
-        test_statistic = (sample_mean - hypoth_value) / \
-                         (pop_st_dev / (mt.sqrt(sample_size)))
-        if test_type == 'lower':
-            p_value = st.norm.cdf(test_statistic)
-        if test_type == 'upper':
-            p_value = 1 - st.norm.cdf(test_statistic)
-        if test_type == 'two':
-            p_value = 2 * (1 - st.norm.cdf(abs(            test_statistic)))
-        print(f'P Value = {p_value}')
-        if p_value < sig_level:
-            print(f'Results are significant. Reject the Null')
-        else:
-            print(f'Results are insignificant. '\
-                   'Do Not Reject the Null')
-    ```
+def z_test(sample, pop_st_dev, hypoth_value, \
+           sig_level, test_type):
+    sample_mean = stat.mean(sample)
+    sample_size = len(sample)
+    test_statistic = (sample_mean - hypoth_value) / \
+                     (pop_st_dev / (mt.sqrt(sample_size)))
+    if test_type == 'lower':
+        p_value = st.norm.cdf(test_statistic)
+    if test_type == 'upper':
+        p_value = 1 - st.norm.cdf(test_statistic)
+    if test_type == 'two':
+        p_value = 2 * (1 - st.norm.cdf(abs(            test_statistic)))
+    print(f'P Value = {p_value}')
+    if p_value < sig_level:
+        print(f'Results are significant. Reject the Null')
+    else:
+        print(f'Results are insignificant. '\
+               'Do Not Reject the Null')
+```
 
 1.  我们从均值为`15`，标准偏差为`1`的正态分布中抽取一个随机样本大小为`50`。我们将把样本均值打印到控制台，以便我们知道它是多少（每次运行此代码时它都会有所不同，因为我们每次都会抽取一个随机样本）。我们使用我们的 z-检验函数进行一个下尾检验，因为我们想要看到我们的均值是否显著小于`16`。我们指定包含我们数据的列表（`data1`），总体标准偏差（我们知道这是`1`），假设的值（我们想要看到它是否显著小于`16`），显著性水平（大多数情况下这将是`0.05`），最后是测试类型（因为我们想要看到均值是否小于`16`，这是一个下尾检验）：
 
 ```py
-    # 1 - Lower Tailed Test
-    # Randomly Sample from Normal Distribution mu=     and st_dev = 3
-    data1 = np.random.normal(15, 1, 50)
-    # Test to see if Mean is significantly less then 16
-    print(f'Sample mean: {stat.mean(data1)}')
-    z_test(data1,1,16,0.05,'lower')
-    # most of the time, the null should be rejected
-    ```
+# 1 - Lower Tailed Test
+# Randomly Sample from Normal Distribution mu=     and st_dev = 3
+data1 = np.random.normal(15, 1, 50)
+# Test to see if Mean is significantly less then 16
+print(f'Sample mean: {stat.mean(data1)}')
+z_test(data1,1,16,0.05,'lower')
+# most of the time, the null should be rejected
+```
 
 当我们运行此代码时，我们应该得到类似以下的结果：
 
 ```py
-    Sample mean: 14.94804802516884
-    P Value = 5.094688086201483e-14
-    Results are significant.  Reject the Null
-    (-7.43842374885694, 5.094688086201483e-14)
-    ```
+Sample mean: 14.94804802516884
+P Value = 5.094688086201483e-14
+Results are significant.  Reject the Null
+(-7.43842374885694, 5.094688086201483e-14)
+```
 
 由于我们的检验统计量的 p 值小于 0.05（从科学计数法写出来，是 0.0000000000000509），我们知道 15.06 的样本均值显著小于 16，基于我们的样本量为 50。由于我们从平均值为 15 的总体中抽取了样本，测试结果符合我们的预期。同样，由于我们一开始是随机抽样的，您的结果可能会有所不同，但是对于大多数样本来说，这个测试应该会拒绝零假设。在返回的元组中，第一个值是检验统计量，第二个是我们的 p 值。
 
 1.  接下来，让我们测试一下我们的均值是否显著大于`14`。按照单侧检验的相同模式，我们的代码将如下所示：
 
 ```py
-    #test to see if the mean is significantly more than 14
-    print(f'Sample mean: {stat.mean(data1)}')
-    z_test(data1,1,14,0.05,'upper')
-    #most of the time the null should reject
-    ```
+#test to see if the mean is significantly more than 14
+print(f'Sample mean: {stat.mean(data1)}')
+z_test(data1,1,14,0.05,'upper')
+#most of the time the null should reject
+```
 
 当我们运行代码时，以下输出将显示在控制台中：
 
 ```py
-    Sample mean: 14.94804802516884
-    P Value = 1.0159539876042345e-11
-    Results are significant.  Reject the Null
-    (6.703711874874011, 1.0159539876042345e-11)
-    ```
+Sample mean: 14.94804802516884
+P Value = 1.0159539876042345e-11
+Results are significant.  Reject the Null
+(6.703711874874011, 1.0159539876042345e-11)
+```
 
 1.  对于我们最后的 z 检验，我们将执行一个双侧检验，并查看我们的样本均值是否与`15`显著不同。在这个测试中，我们实际上并不关心它是高于还是低于`15`；我们只是想看看它是否不同：
 
 ```py
-    #test to see if the mean is significantly different than 15
-    print(f'Sample mean: {stat.mean(data1)}')
-    z_test(data1,1,15,0.05,'two')
-    #most of the type we should not reject the null
-    ```
+#test to see if the mean is significantly different than 15
+print(f'Sample mean: {stat.mean(data1)}')
+z_test(data1,1,15,0.05,'two')
+#most of the type we should not reject the null
+```
 
 当我们运行此代码时，结果如下：
 
 ```py
-    Sample mean: 14.94804802516884
-    P Value = 0.7133535345453159
-    Results are insignificant.  Do Not Reject the Null
-    (-0.3673559369914646, 0.7133535345453159)
-    ```
+Sample mean: 14.94804802516884
+P Value = 0.7133535345453159
+Results are insignificant.  Do Not Reject the Null
+(-0.3673559369914646, 0.7133535345453159)
+```
 
 这个结果是有道理的，因为我们对平均值为 15 的总体进行了抽样。
 
@@ -988,98 +988,98 @@ def t_test(sample, hypoth_value, sig_level, test_type):
 1.  首先，让我们导入我们将使用的库，设置种子，然后随机生成我们的大样本：
 
 ```py
-    import scipy.stats as st
-    import numpy as np
-    import pandas as pd
-    import math as mt
-    import statistics as stat
-    import statsmodels.stats.weightstats as mod
-    import statsmodels.stats.proportion as prop
-    np.random.seed(1)
-    data1 = np.random.normal(50, 10, 100)
-    ```
+import scipy.stats as st
+import numpy as np
+import pandas as pd
+import math as mt
+import statistics as stat
+import statsmodels.stats.weightstats as mod
+import statsmodels.stats.proportion as prop
+np.random.seed(1)
+data1 = np.random.normal(50, 10, 100)
+```
 
 1.  为我们的 t-检验创建函数：
 
 ```py
-    def t_test(sample, hypoth_value, sig_level, test_type):
-        sample_mean = stat.mean(sample)
-        sample_st_dev = stat.stdev(sample)
-        sample_size = len(sample)
-        test_statistic = (sample_mean - hypoth_value) / \
-                         (sample_st_dev/(mt.sqrt(sample_size)))
-        if test_type == 'lower':
-            p_value = st.t.cdf(test_statistic,df=sample_size-1)
-        if test_type == 'upper':
-            p_value = 1 - st.t.cdf(test_statistic,df=sample_size-1)
-        if test_type == 'two':
-            p_value = 2 * (1 - st.t.cdf(abs(test_statistic), \
-                                        df=sample_size-1))
-        print(f'P Value = {p_value}')
-        if p_value < sig_level:
-            print(f'Results are significant.  Reject the Null')
-        else:
-            print(f'Results are insignificant. '\
-                   'Do Not Reject the Null')
-    ```
+def t_test(sample, hypoth_value, sig_level, test_type):
+    sample_mean = stat.mean(sample)
+    sample_st_dev = stat.stdev(sample)
+    sample_size = len(sample)
+    test_statistic = (sample_mean - hypoth_value) / \
+                     (sample_st_dev/(mt.sqrt(sample_size)))
+    if test_type == 'lower':
+        p_value = st.t.cdf(test_statistic,df=sample_size-1)
+    if test_type == 'upper':
+        p_value = 1 - st.t.cdf(test_statistic,df=sample_size-1)
+    if test_type == 'two':
+        p_value = 2 * (1 - st.t.cdf(abs(test_statistic), \
+                                    df=sample_size-1))
+    print(f'P Value = {p_value}')
+    if p_value < sig_level:
+        print(f'Results are significant.  Reject the Null')
+    else:
+        print(f'Results are insignificant. '\
+               'Do Not Reject the Null')
+```
 
 1.  我们将运行三个不同的测试：一个是看样本均值是否与`50`显著不同，一个是看样本均值是否显著低于`51`，还有一个是看样本均值是否显著高于`48`：
 
 ```py
-    print('large sample')
-    print(f'Sample mean: {stat.mean(data1)}')
-    t_test(data1,50,0.05,'two')
-    t_test(data1,51,0.05,'lower')
-    t_test(data1,48,0.05,'upper')
-    ```
+print('large sample')
+print(f'Sample mean: {stat.mean(data1)}')
+t_test(data1,50,0.05,'two')
+t_test(data1,51,0.05,'lower')
+t_test(data1,48,0.05,'upper')
+```
 
 运行此代码将产生以下结果：
 
 ```py
-    large sample
-    Sample mean: 50.60582852075699
-    P Value = 0.4974609984410545
-    Results are insignificant.  Do Not Reject the Null
-    P Value = 0.32933701868279674
-    Results are insignificant.  Do Not Reject the Null
-    P Value = 0.002109341573010237
-    Results are significant.  Reject the Null
-    ```
+large sample
+Sample mean: 50.60582852075699
+P Value = 0.4974609984410545
+Results are insignificant.  Do Not Reject the Null
+P Value = 0.32933701868279674
+Results are insignificant.  Do Not Reject the Null
+P Value = 0.002109341573010237
+Results are significant.  Reject the Null
+```
 
 第一个测试是不显著的，我们没有证据表明均值与`50`显著不同。第二个测试也是不显著的；样本也不能证明均值显著大于`51`。最后一个测试是显著的；样本证明均值显著高于`48`。
 
 1.  现在，我们将运行相同的三个测试，只是这次我们将使用大小为`5`的样本（我们将使用大样本的前`5`个元素）：
 
 ```py
-    # select the first 5 elements of the data set
-    data2 = data1[:5]
-    print(data2)
-    #two-tailed test = Is the sample mean significantly 
-    #different from 50?
-    print('small sample')
-    print(f'Sample mean: {stat.mean(data2)}')
-    t_test(data2,50,0.05,'two')
-    #lower tailed = Is the sample mean significantly 
-    #lower than 51?
-    t_test(data2,51,0.05,'lower')
-    #upper tailed = is the sample mean significantly 
-    #more than 48?
-    t_test(data2,48,0.05,'upper')
-    ```
+# select the first 5 elements of the data set
+data2 = data1[:5]
+print(data2)
+#two-tailed test = Is the sample mean significantly 
+#different from 50?
+print('small sample')
+print(f'Sample mean: {stat.mean(data2)}')
+t_test(data2,50,0.05,'two')
+#lower tailed = Is the sample mean significantly 
+#lower than 51?
+t_test(data2,51,0.05,'lower')
+#upper tailed = is the sample mean significantly 
+#more than 48?
+t_test(data2,48,0.05,'upper')
+```
 
 运行上述代码会产生以下结果：
 
 ```py
-    [66.24345364 43.88243586 44.71828248 39.27031378 58.65407629]
-    small sample
-    Sample mean: 50.553712409836436
-    P Value = 0.918572770568147
-    Results are insignificant.  Do Not Reject the Null
-    P Value = 0.4671568669546634
-    Results are insignificant.  Do Not Reject the Null
-    P Value = 0.32103491333328793
-    Results are insignificant.  Do Not Reject the Null
-    ```
+[66.24345364 43.88243586 44.71828248 39.27031378 58.65407629]
+small sample
+Sample mean: 50.553712409836436
+P Value = 0.918572770568147
+Results are insignificant.  Do Not Reject the Null
+P Value = 0.4671568669546634
+Results are insignificant.  Do Not Reject the Null
+P Value = 0.32103491333328793
+Results are insignificant.  Do Not Reject the Null
+```
 
 前两个测试的结果没有改变，而第三个测试尽管样本均值几乎相同，但结果确实改变了。差异的原因是由于样本量较小；由于样本量较小，不确定性较小，测试更保守，不太可能拒绝零假设。这可以在我们的检验统计量方程中显示：
 
@@ -1138,57 +1138,57 @@ scipy.stats.ttest_ind(x1,x2,equal_var=False)
 1.  首先，让我们导入我们将使用的库：
 
 ```py
-    import scipy.stats as st
-    import numpy as np
-    ```
+import scipy.stats as st
+import numpy as np
+```
 
 1.  让我们绘制我们的随机样本并打印样本均值，这样我们就知道它们是什么。记得设置种子：
 
 ```py
-    # Randomly Sample from Normal Distributions 
-    np.random.seed(16172)
-    sample1 = np.random.normal(50, 10, 100)
-    sample2 = np.random.normal(100,10,100)
-    print(f'Sample mean 1: {stat.mean(sample1)}')
-    print(f'Sample mean 2: {stat.mean(sample2)}')
-    ```
+# Randomly Sample from Normal Distributions 
+np.random.seed(16172)
+sample1 = np.random.normal(50, 10, 100)
+sample2 = np.random.normal(100,10,100)
+print(f'Sample mean 1: {stat.mean(sample1)}')
+print(f'Sample mean 2: {stat.mean(sample2)}')
+```
 
 结果如下：
 
 ```py
-    Sample mean 1: 50.54824784997514
-    Sample mean 2: 97.95949096047315
-    ```
+Sample mean 1: 50.54824784997514
+Sample mean 2: 97.95949096047315
+```
 
 1.  我们将使用 `scipy` 包中的函数执行双样本 t 检验并打印结果：
 
 ```py
-    two_tail_results = st.ttest_ind(sample1, sample2, \
-                                    equal_var=False)
-    print(two_tail_results)
-    ```
+two_tail_results = st.ttest_ind(sample1, sample2, \
+                                equal_var=False)
+print(two_tail_results)
+```
 
 结果如下：
 
 ```py
-    Ttest_indResult(statistic=-33.72952277672986,     pvalue=6.3445365508664585e-84)
-    ```
+Ttest_indResult(statistic=-33.72952277672986,     pvalue=6.3445365508664585e-84)
+```
 
 由于默认情况下，该函数进行双尾检验，我们知道样本 1 的均值与样本 2 的均值显著不同。如果我们想进行下侧检验（其中样本 1 的均值显著低于样本 2），我们将使用相同的代码。唯一的区别是我们会将 p 值除以 2，并检查我们的检验统计量是否为负数。由于我们的 p 值除以 2 小于 0.05，并且我们的检验统计量为负数，我们知道样本 1 的均值显著低于样本 2 的均值。
 
 1.  如果我们想测试样本 2 的均值是否显著高于样本 1 的均值，我们只需在函数中交换样本 1 和样本 2 的位置：
 
 ```py
-    upper_tail = st.ttest_ind(sample2, sample1, equal_var=False)
-    print(upper_tail)
-    ```
+upper_tail = st.ttest_ind(sample2, sample1, equal_var=False)
+print(upper_tail)
+```
 
 结果如下：
 
 ```py
-    Ttest_indResult(statistic=33.72952277672986, 
-    pvalue=6.3445365508664585e-84)
-    ```
+Ttest_indResult(statistic=33.72952277672986, 
+pvalue=6.3445365508664585e-84)
+```
 
 就像下尾检验一样，我们会将 p 值除以 2。但是，我们会检查检验统计量是否为正。由于 p 值除以 2 小于 0.05 且检验统计量为正，我们知道样本 2 的均值明显大于样本 1 的均值。
 
@@ -1231,36 +1231,36 @@ scipy.stats.ttest_ind(x1,x2,equal_var=False)
 1.  导入我们需要的包并读取数据：
 
 ```py
-    # import packages and read in data
-    import pandas as pd
-    import statistics as st
-    import scipy.stats as sp
-    import math
-    import sklearn.linear_model as lm
-    import matplotlib.pyplot as plt
-    from mpl_toolkits import mplot3d
-    import numpy as np
-    data = pd.read_csv("winequality-red.csv")
-    ```
+# import packages and read in data
+import pandas as pd
+import statistics as st
+import scipy.stats as sp
+import math
+import sklearn.linear_model as lm
+import matplotlib.pyplot as plt
+from mpl_toolkits import mplot3d
+import numpy as np
+data = pd.read_csv("winequality-red.csv")
+```
 
 1.  将数据子集化为我们需要的两列（我们将尝试使用柠檬酸的量来预测`pH`水平）。将`pH`水平设置为我们的因变量，柠檬酸作为自变量：
 
 ```py
-    data1 = data[['pH','citric acid']]
-    plt.scatter(x=data1['citric acid'], y=data1['pH'])
-    y = data1['pH']
-    x = data1[['citric acid']]
-    ```
+data1 = data[['pH','citric acid']]
+plt.scatter(x=data1['citric acid'], y=data1['pH'])
+y = data1['pH']
+x = data1[['citric acid']]
+```
 
 1.  拟合线性模型并将数据作为散点图和我们的线性回归模型进行绘制：
 
 ```py
-    model = lm.LinearRegression()
-    model.fit(x,y)
-    plt.scatter(x, y,color='g')
-    plt.plot(x, model.predict(x),color='k')
-    plt.show()
-    ```
+model = lm.LinearRegression()
+model.fit(x,y)
+plt.scatter(x, y,color='g')
+plt.plot(x, model.predict(x),color='k')
+plt.show()
+```
 
 输出如下：
 
@@ -1273,30 +1273,30 @@ scipy.stats.ttest_ind(x1,x2,equal_var=False)
 1.  这一次，我们将柠檬酸和残留糖设置为自变量并拟合模型：
 
 ```py
-    #can we predict the pH of the wine using 
-    #citric acid and residual sugar?
-    data2 = data[['pH','citric acid','residual sugar']]
-    y = data2['pH']
-    x = data2[['citric acid', 'residual sugar']]
-    model = lm.LinearRegression()
-    model.fit(x,y)
-    y_pred = model.predict(x)
-    ```
+#can we predict the pH of the wine using 
+#citric acid and residual sugar?
+data2 = data[['pH','citric acid','residual sugar']]
+y = data2['pH']
+x = data2[['citric acid', 'residual sugar']]
+model = lm.LinearRegression()
+model.fit(x,y)
+y_pred = model.predict(x)
+```
 
 1.  创建一个三维散点图并在`3d`空间中绘制线以检查它是否很好地适配我们的数据：
 
 ```py
-    threedee = plt.figure().gca(projection='3d')
-    threedee.scatter(data2['citric acid'],     data2['residual sugar'],data2['pH'])
-    threedee.set_xlabel('citric acid')
-    threedee.set_ylabel('residual sugar')
-    threedee.set_zlabel('pH')
-    xline = np.linspace(0, 1, 100)
-    yline = np.linspace(0, 16, 100)
-    zline = xline*(-0.429) + yline*(-0.000877)+3.430
-    threedee.plot3D(xline, yline, zline, 'red')
-    plt.show()
-    ```
+threedee = plt.figure().gca(projection='3d')
+threedee.scatter(data2['citric acid'],     data2['residual sugar'],data2['pH'])
+threedee.set_xlabel('citric acid')
+threedee.set_ylabel('residual sugar')
+threedee.set_zlabel('pH')
+xline = np.linspace(0, 1, 100)
+yline = np.linspace(0, 16, 100)
+zline = xline*(-0.429) + yline*(-0.000877)+3.430
+threedee.plot3D(xline, yline, zline, 'red')
+plt.show()
+```
 
 输出如下：
 

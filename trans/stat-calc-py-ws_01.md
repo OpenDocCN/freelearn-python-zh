@@ -65,64 +65,64 @@ else:
 1.  创建一个新的 Jupyter 笔记本，并声明一个名为`x`的变量，其值为任何整数，如下面的代码所示：
 
 ```py
-    x = 130
-    ```
+x = 130
+```
 
 1.  在声明之后，编写一个`if`语句，检查`x`是否可以被 5 整除。相应的代码块应该打印出一个指示条件是否满足的语句：
 
 ```py
-    if x % 5 == 0:
-        print('x is divisible by 5')
-    ```
+if x % 5 == 0:
+    print('x is divisible by 5')
+```
 
 在这里，`%`是 Python 中的取模运算符；`var % n`表达式返回当我们用数字`n`除以变量`var`时的余数。
 
 1.  在同一个代码单元格中，编写两个`elif`语句，分别检查`x`是否可以被 6 和 7 整除。适当的`print`语句应该放在相应条件下面：
 
 ```py
-    elif x % 6 == 0:
-        print('x is divisible by 6')
-    elif x % 7 == 0:
-        print('x is divisible by 7')
-    ```
+elif x % 6 == 0:
+    print('x is divisible by 6')
+elif x % 7 == 0:
+    print('x is divisible by 7')
+```
 
 1.  编写最终的`else`语句，以打印一条消息，说明`x`既不能被 5 整除，也不能被 6 或 7 整除（在同一个代码单元格中）：
 
 ```py
-    else:
-        print('x is not divisible by 5, 6, or 7')
-    ```
+else:
+    print('x is not divisible by 5, 6, or 7')
+```
 
 1.  每次为`x`分配一个不同的值来测试我们的条件逻辑。以下输出是`x`被赋值为`104832`的一个示例：
 
 ```py
-    x is divisible by 6
-    ```
+x is divisible by 6
+```
 
 1.  现在，我们不想打印关于`x`的可整除性的消息，而是想将该消息写入文本文件。具体来说，我们想创建一个名为`output.txt`的文件，其中包含我们先前打印出的相同消息。
 
 为了做到这一点，我们可以使用`with`关键字和`open()`函数与文本文件进行交互。请注意，`open()`函数接受两个参数：要写入的文件名，在我们的例子中是`output.txt`，以及`w`（表示写入），指定我们想要写入文件，而不是从文件中读取内容：
 
 ```py
-    if x % 5 == 0:
-        with open('output.txt', 'w') as f:
-            f.write('x is divisible by 5')
-    elif x % 6 == 0:
-        with open('output.txt', 'w') as f:
-            f.write('x is divisible by 6')
-    elif x % 7 == 0:
-        with open('output.txt', 'w') as f:
-            f.write('x is divisible by 7')
-    else:
-        with open('output.txt', 'w') as f:
-            f.write('x is not divisible by 5, 6, or 7')
-    ```
+if x % 5 == 0:
+    with open('output.txt', 'w') as f:
+        f.write('x is divisible by 5')
+elif x % 6 == 0:
+    with open('output.txt', 'w') as f:
+        f.write('x is divisible by 6')
+elif x % 7 == 0:
+    with open('output.txt', 'w') as f:
+        f.write('x is divisible by 7')
+else:
+    with open('output.txt', 'w') as f:
+        f.write('x is not divisible by 5, 6, or 7')
+```
 
 1.  检查输出文本文件中的消息是否正确。如果`x`变量仍然保持值`104832`，则您的文本文件应该包含以下内容：
 
 ```py
-    x is divisible by 6
-    ```
+x is divisible by 6
+```
 
 在这个练习中，我们应用了条件语句来编写一个程序，使用`%`运算符来确定给定数字是否可以被 6、3 和 2 整除。我们还学习了如何在 Python 中向文本文件写入内容。在下一节中，我们将开始讨论 Python 中的循环。
 
@@ -187,9 +187,9 @@ else:
 1.  在新的 Jupyter 笔记本的第一个单元格中，导入 Python 中的`random`模块，并使用其`randint`函数生成随机数：
 
 ```py
-    import random
-    true_value = random.randint(0, 100)
-    ```
+import random
+true_value = random.randint(0, 100)
+```
 
 每次调用`randint()`函数时，它都会生成两个传递给它的数字之间的随机整数；在我们的情况下，将生成介于 0 和 100 之间的整数。
 
@@ -202,20 +202,20 @@ else:
 1.  使用 Python 中的`input()`函数接受用户的输入，并将返回的值赋给一个变量（在以下代码中为`guess`）。这个值将被解释为用户对目标的猜测：
 
 ```py
-    guess = input('Enter your guess: ')
-    ```
+guess = input('Enter your guess: ')
+```
 
 1.  使用`int()`函数将用户输入转换为整数，并将其与真实目标进行比较。针对比较的所有可能情况打印出适当的消息：
 
 ```py
-    guess = int(guess)
-    if guess == true_value:
-        print('Congratulations! You guessed correctly.')
-    elif guess > true_value:
-        print('Lower.')  # user guessed too high
-    else:
-        print('Higher.')  # user guessed too low
-    ```
+guess = int(guess)
+if guess == true_value:
+    print('Congratulations! You guessed correctly.')
+elif guess > true_value:
+    print('Lower.')  # user guessed too high
+else:
+    print('Higher.')  # user guessed too low
+```
 
 注意
 
@@ -224,51 +224,51 @@ else:
 1.  使用我们当前的代码，如果`int()`函数的输入无法转换为整数（例如，输入为字符串字符），它将抛出错误并使整个程序崩溃。因此，我们需要在`try...except`块中实现我们的代码，以处理用户输入非数字值的情况：
 
 ```py
-    try:
-        if guess == true_value:
-            print('Congratulations! You guessed correctly.')
-        elif guess > true_value:
-            print('Lower.')  # user guessed too high
-        else:
-            print('Higher.')  # user guessed too low
-    # when the input is invalid
-    except ValueError:
-        print('Please enter a valid number.')
-    ```
+try:
+    if guess == true_value:
+        print('Congratulations! You guessed correctly.')
+    elif guess > true_value:
+        print('Lower.')  # user guessed too high
+    else:
+        print('Higher.')  # user guessed too low
+# when the input is invalid
+except ValueError:
+    print('Please enter a valid number.')
+```
 
 1.  目前，用户只能在程序终止之前猜一次。为了实现允许用户重复猜测直到找到目标的功能，我们将迄今为止开发的逻辑包装在一个`while`循环中，只有当用户猜对时（通过适当放置`while True`循环和`break`关键字来实现）才会中断。
 
 完整的程序应该类似于以下代码：
 
 ```py
-    import random
-    true_value = random.randint(0, 100)
-    while True:
-        guess = input('Enter your guess: ')
-        try:
-            guess = int(guess)
-            if guess == true_value:
-                print('Congratulations! You guessed correctly.')
-                break
-            elif guess > true_value:
-                print('Lower.')  # user guessed too high
-            else:
-                print('Higher.')  # user guessed too low
-        # when the input is invalid
-        except ValueError:
-            print('Please enter a valid number.')
-    ```
+import random
+true_value = random.randint(0, 100)
+while True:
+    guess = input('Enter your guess: ')
+    try:
+        guess = int(guess)
+        if guess == true_value:
+            print('Congratulations! You guessed correctly.')
+            break
+        elif guess > true_value:
+            print('Lower.')  # user guessed too high
+        else:
+            print('Higher.')  # user guessed too low
+    # when the input is invalid
+    except ValueError:
+        print('Please enter a valid number.')
+```
 
 1.  尝试通过执行代码单元格重新运行程序，并尝试不同的输入选项，以确保程序可以很好地处理其指令，并处理无效输入的情况。例如，当目标数字被随机选择为 13 时，程序可能产生的输出如下：
 
 ```py
-    Enter your guess: 50
-    Lower.
-    Enter your guess: 25
-    Lower.
-    Enter your guess: 13
-    Congratulations! You guessed correctly.
-    ```
+Enter your guess: 50
+Lower.
+Enter your guess: 25
+Lower.
+Enter your guess: 13
+Congratulations! You guessed correctly.
+```
 
 在这个练习中，我们已经练习了在猜数字游戏中使用`while`循环，以巩固我们对编程中循环使用的理解。此外，您已经了解了在 Python 中读取用户输入和`random`模块的方法。
 
@@ -411,40 +411,40 @@ f-strings 的另一个好处是它们比其他两种字符串格式化方法更�
 1.  创建一个新的 Jupyter 笔记本，并在一个代码单元格中声明一个名为`a`的变量，如下所示：
 
 ```py
-    a = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
-    ```
+a = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+```
 
 这个变量表示一个 3 x 3 的 2D 表，列表中的各个子列表表示行。
 
 1.  在一个新的代码单元格中，通过循环遍历列表`a`中的元素来迭代行（暂时不要运行单元格）：
 
 ```py
-    for row in a:
-    ```
+for row in a:
+```
 
 1.  在这个`for`循环的每次迭代中，`a`中的一个子列表被分配给一个名为`row`的变量。然后，我们可以通过索引访问 2D 表中的单个单元格。以下`for`循环将打印出每个子列表中的第一个元素，或者换句话说，表中每行的第一个单元格中的数字（`1`、`4`和`7`）：
 
 ```py
-    for row in a:
-        print(row[0])
-    ```
+for row in a:
+    print(row[0])
+```
 
 1.  在一个新的代码单元格中，通过嵌套的`for`循环打印出表`a`中所有单元格的值，内部循环将遍历`a`中的子列表：
 
 ```py
-    for row in a:
-        for element in row:
-            print(element)
-    ```
+for row in a:
+    for element in row:
+        print(element)
+```
 
 这应该打印出从 1 到 9 的数字，每个数字在单独的行中。
 
 1.  最后，在一个新的单元格中，我们需要以格式良好的消息打印出这个表的对角线元素。为此，我们可以使用一个索引变量——在我们的例子中是`i`——从`0`循环到`2`来访问表的对角线元素：
 
 ```py
-    for i in range(3):
-        print(a[i][i])
-    ```
+for i in range(3):
+    print(a[i][i])
+```
 
 您的输出应该是 1、5 和 9，每个在单独的行中。
 
@@ -455,17 +455,17 @@ f-strings 的另一个好处是它们比其他两种字符串格式化方法更�
 1.  在一个新的单元格中，使用 f-strings 更改前面的`print`语句以格式化我们的打印输出：
 
 ```py
-    for i in range(3):
-        print(f'The {i + 1}-th diagonal element is: {a[i][i]}')
-    ```
+for i in range(3):
+    print(f'The {i + 1}-th diagonal element is: {a[i][i]}')
+```
 
 这应该产生以下输出：
 
 ```py
-    The 1-th diagonal element is: 1
-    The 2-th diagonal element is: 5
-    The 3-th diagonal element is: 9
-    ```
+The 1-th diagonal element is: 1
+The 2-th diagonal element is: 5
+The 3-th diagonal element is: 9
+```
 
 在这个练习中，我们结合了关于循环、索引和 f-string 格式化的知识，创建了一个动态迭代 2D 列表的程序。
 
@@ -607,9 +607,9 @@ KeyError: 'Alice'
 1.  在第一个代码单元中创建一个新的 Jupyter 笔记本，并声明一个字典，表示可以购买的任何商品及其相应的价格。在这里，我们将添加三种不同类型的笔记本电脑及其美元价格：
 
 ```py
-    prices = {'MacBook 13': 1300, 'MacBook 15': 2100, \
-              'ASUS ROG': 1600}
-    ```
+prices = {'MacBook 13': 1300, 'MacBook 15': 2100, \
+          'ASUS ROG': 1600}
+```
 
 注意
 
@@ -618,56 +618,56 @@ KeyError: 'Alice'
 1.  在下一个单元格中，初始化一个表示我们购物车的字典。字典在开始时应该是空的，但它应该将购物车中的商品映射到要购买的副本数量：
 
 ```py
-    cart = {}
-    ```
+cart = {}
+```
 
 1.  在一个新的单元格中，编写一个`while True`循环，表示购物过程的每个步骤，并询问用户是否想继续购物。使用条件语句来处理输入的不同情况（您可以留下用户想要继续购物直到下一步的情况）：
 
 ```py
-    while True:
-        _continue = input('Would you like to continue '\
-                          'shopping? [y/n]: ')
-        if _continue == 'y':
-            ...
-        elif _continue == 'n':
-            break
-        else:
-            print('Please only enter "y" or "n".')
-    ```
+while True:
+    _continue = input('Would you like to continue '\
+                      'shopping? [y/n]: ')
+    if _continue == 'y':
+        ...
+    elif _continue == 'n':
+        break
+    else:
+        print('Please only enter "y" or "n".')
+```
 
 1.  在第一个条件情况下，接受另一个用户输入，询问应该将哪个商品添加到购物车。使用条件语句来增加`cart`字典中商品的数量或处理无效情况：
 
 ```py
-        if _continue == 'y':
-            print(f'Available products and prices: {prices}')
-            new_item = input('Which product would you like to '\
-                             'add to your cart? ')
-            if new_item in prices:
-                if new_item in cart:
-                    cart[new_item] += 1
-                else:
-                    cart[new_item] = 1
-            else:
-                print('Please only choose from the available products.')
-    ```
+    if _continue == 'y':
+        print(f'Available products and prices: {prices}')
+        new_item = input('Which product would you like to '\
+                         'add to your cart? ')
+        if new_item in prices:
+            if new_item in cart:
+                cart[new_item] += 1
+            else:
+                cart[new_item] = 1
+        else:
+            print('Please only choose from the available products.')
+```
 
 1.  在下一个单元格中，循环遍历`cart`字典，并计算用户需要支付的总金额（通过查找购物车中每件商品的数量和价格）：
 
 ```py
-    # Calculation of total bill.
-    running_sum = 0
-    for item in cart:
-        running_sum += cart[item] * prices[item]  # quantity times price
-    ```
+# Calculation of total bill.
+running_sum = 0
+for item in cart:
+    running_sum += cart[item] * prices[item]  # quantity times price
+```
 
 1.  最后，在一个新的单元格中，通过`for`循环打印出购物车中的商品及其各自的数量，并在最后打印出总账单。使用 f-string 格式化打印输出：
 
 ```py
-    print(f'Your final cart is:')
-    for item in cart:
-        print(f'- {cart[item]} {item}(s)')
-    print(f'Your final bill is: {running_sum}')
-    ```
+print(f'Your final cart is:')
+for item in cart:
+    print(f'- {cart[item]} {item}(s)')
+print(f'Your final bill is: {running_sum}')
+```
 
 1.  运行程序并尝试使用不同的购物车来确保我们的程序是正确的。例如，如果您要将两台 MacBook 13 和一台华硕 ROG 添加到我的购物车中并停止，相应的输出将如下所示：![图 1.2：购物车应用程序的输出](img/B15968_01_02.jpg)
 
@@ -764,63 +764,63 @@ def get_first_even(my_list):
 1.  创建一个新的 Jupyter 笔记本，并在一个代码单元格中声明我们目标函数的一般结构：
 
 ```py
-    def get_max(my_list):
-        ...
-        return ...
-    ```
+def get_max(my_list):
+    ...
+    return ...
+```
 
 1.  创建一个变量来跟踪当前最大元素的索引，称为`running_max_index`，应初始化为`0`：
 
 ```py
-    def get_max(my_list):
-        running_max_index = 0
-        ...
-        return ...
-    ```
+def get_max(my_list):
+    running_max_index = 0
+    ...
+    return ...
+```
 
 1.  使用`for`循环和`enumerate`操作循环遍历参数列表中的值及其对应的索引：
 
 ```py
-    def get_max(my_list):
-        running_max_index = 0
-        # Iterate over index-value pairs.
-        for index, item in enumerate(my_list):
-             [...]
-        return ...
-    ```
+def get_max(my_list):
+    running_max_index = 0
+    # Iterate over index-value pairs.
+    for index, item in enumerate(my_list):
+         [...]
+    return ...
+```
 
 1.  在每一步迭代中，检查当前元素是否大于或等于与运行索引变量对应的元素。如果是这样，将当前元素的索引分配给运行的最大索引：
 
 ```py
-    def get_max(my_list):
-        running_max_index = 0
-        # Iterate over index-value pairs.
-        for index, item in enumerate(my_list):
-            if item >= my_list[running_max_index]:
-                running_max_index = index
-        return [...]
-    ```
+def get_max(my_list):
+    running_max_index = 0
+    # Iterate over index-value pairs.
+    for index, item in enumerate(my_list):
+        if item >= my_list[running_max_index]:
+            running_max_index = index
+    return [...]
+```
 
 1.  最后，将运行的最大索引及其对应的值作为一个元组返回：
 
 ```py
-    def get_max(my_list):
-        running_max_index = 0
-        # Iterate over index-value pairs.
-        for index, item in enumerate(my_list):
-            if item >= my_list[running_max_index]:
-                running_max_index = index
-        return running_max_index, my_list[running_max_index]
-    ```
+def get_max(my_list):
+    running_max_index = 0
+    # Iterate over index-value pairs.
+    for index, item in enumerate(my_list):
+        if item >= my_list[running_max_index]:
+            running_max_index = index
+    return running_max_index, my_list[running_max_index]
+```
 
 1.  在一个新的单元格中，调用这个函数来测试不同情况下的各种列表。一个例子如下：
 
 ```py
-    >>> get_max([1, 3, 2])
-    (1, 3)
-    >>>  get_max([1, 3, 56, 29, 100, 99, 3, 100, 10, 23])
-    (7, 100)
-    ```
+>>> get_max([1, 3, 2])
+(1, 3)
+>>>  get_max([1, 3, 56, 29, 100, 99, 3, 100, 10, 23])
+(7, 100)
+```
 
 这个练习帮助我们复习了 Python 函数的一般语法，也提供了一个循环的复习。此外，我们考虑的逻辑变体通常在科学计算项目中找到（例如，在迭代器中找到最小值或满足某些给定条件的元素）。
 
@@ -881,27 +881,27 @@ def get_first_even(my_list):
 1.  在一个新的 Jupyter 笔记本中，定义一个函数，该函数接受一个名为`n`的整数，并返回我们之前得到的数量：
 
 ```py
-    def solve(n):
-        return 2 * solve(n - 1) + 1
-    ```
+def solve(n):
+    return 2 * solve(n - 1) + 1
+```
 
 1.  在函数中创建一个条件来处理基本情况，即`n = 1`（注意，只需一步即可移动单个盘子）：
 
 ```py
-    def solve(n):
-        if n == 1:
-            return 1
-        return 2 * solve(n - 1) + 1
-    ```
+def solve(n):
+    if n == 1:
+        return 1
+    return 2 * solve(n - 1) + 1
+```
 
 1.  在另一个单元格中，调用该函数以验证函数返回问题的正确分析解决方案，即*2*n *- 1*：
 
 ```py
-    >>> print(solve(3) == 2 ** 3 - 1)
-    True
-    >>> print(solve(6) == 2 ** 6 - 1)
-    True
-    ```
+>>> print(solve(3) == 2 ** 3 - 1)
+True
+>>> print(solve(6) == 2 ** 6 - 1)
+True
+```
 
 在这里，我们使用`==`运算符来比较两个值：从我们的`solve()`函数返回的值和解决方案的分析表达式。如果它们相等，我们应该看到布尔值`True`被打印出来，这是我们这里的两个比较的情况。
 
@@ -954,19 +954,19 @@ b. 如果新的皇后棋子无法放置在当前行的任何单元格中，我�
 1.  创建一个新的 Jupyter 笔记本。在第一个单元格中，声明一个名为`N`的变量，表示棋盘的大小，以及我们需要在棋盘上放置的皇后数量：
 
 ```py
-    N = 8
-    ```
+N = 8
+```
 
 1.  国际象棋棋盘将被表示为一个 2D 的*n* x *n*列表，其中 0 表示一个空单元格，1 表示一个带有皇后棋子的单元格。现在，在一个新的代码单元中，实现一个函数，该函数接受这种形式的列表并以良好的格式打印出来：
 
 ```py
-    # Print out the board in a nice format.
-    def display_solution(board):
-        for i in range(N):
-            for j in range(N):
-                print(board[i][j], end=' ')
-            print()
-    ```
+# Print out the board in a nice format.
+def display_solution(board):
+    for i in range(N):
+        for j in range(N):
+            print(board[i][j], end=' ')
+        print()
+```
 
 请注意，我们`print`语句中的`end=' '`参数指定，不是用换行符结束打印输出，而是用空格字符。这样我们就可以使用不同的`print`语句打印出同一行中的单元格。
 
@@ -975,24 +975,24 @@ b. 如果新的皇后棋子无法放置在当前行的任何单元格中，我�
 请注意，由于我们正在逐行放置棋子，每次检查新棋子是否可以放在给定位置时，我们只需要检查位置上方的行：
 
 ```py
-    # Check if a queen can be placed in the position.
-    def check_next(board, row, col):
-        # Check the current column.
-        for i in range(row):
-            if board[i][col] == 1:
-                return False
-        # Check the upper-left diagonal.
-        for i, j in zip(range(row, -1, -1), \
-                        range(col, -1, -1)):
-            if board[i][j] == 1:
-                return False
-        # Check the upper-right diagonal.
-        for i, j in zip(range(row, -1, -1), \
-                        range(col, N)):
-            if board[i][j] == 1:
-                return False
-        return True
-    ```
+# Check if a queen can be placed in the position.
+def check_next(board, row, col):
+    # Check the current column.
+    for i in range(row):
+        if board[i][col] == 1:
+            return False
+    # Check the upper-left diagonal.
+    for i, j in zip(range(row, -1, -1), \
+                    range(col, -1, -1)):
+        if board[i][j] == 1:
+            return False
+    # Check the upper-right diagonal.
+    for i, j in zip(range(row, -1, -1), \
+                    range(col, N)):
+        if board[i][j] == 1:
+            return False
+    return True
+```
 
 1.  在同一个代码单元中，实现一个函数，该函数接受一个棋盘和一个行号。该函数应该遍历给定行中的所有单元格，并检查是否可以在特定单元格放置一个新的皇后棋子（使用前面步骤中编写的`check_next()`函数）。
 
@@ -1001,62 +1001,62 @@ b. 如果新的皇后棋子无法放置在当前行的任何单元格中，我�
 如果在考虑了给定行的所有单元格后没有找到有效解决方案，则返回`False`表示`无效`状态。函数还应该在开始时有一个条件检查，检查行号是否大于棋盘大小`N`，在这种情况下，我们只需返回`True`表示已经找到有效的最终解决方案：
 
 ```py
-    def recur_generate_solution(board, row_id):
-        # Return if we have reached the last row.
-        if row_id >= N:
-            return True
-        # Iteratively try out cells in the current row.
-        for i in range(N):
-            if check_next(board, row_id, i):
-                board[row_id][i] = 1 
-                # Return if a valid solution is found.
-                final_board = recur_generate_solution(\
-                              board, row_id + 1)
-                if final_board:
-                    return True
-                board[row_id][i] = 0  
-        # When the current board has no valid solutions.
-        return False
-    ```
+def recur_generate_solution(board, row_id):
+    # Return if we have reached the last row.
+    if row_id >= N:
+        return True
+    # Iteratively try out cells in the current row.
+    for i in range(N):
+        if check_next(board, row_id, i):
+            board[row_id][i] = 1 
+            # Return if a valid solution is found.
+            final_board = recur_generate_solution(\
+                          board, row_id + 1)
+            if final_board:
+                return True
+            board[row_id][i] = 0  
+    # When the current board has no valid solutions.
+    return False
+```
 
 1.  在同一个代码单元中，编写一个最终求解器函数，该函数包装了两个函数`check_next()`和`recur_generate_solution()`（换句话说，这两个函数应该是我们正在编写的函数的子函数）。该函数应该初始化一个空的 2D *n* x *n*列表（表示国际象棋棋盘），并调用`recur_generate_solution()`函数，行号为 0。
 
 函数还应该在最后打印出解决方案：
 
 ```py
-    # Generate a valid solution.
-    def generate_solution():
-        # Check if a queen can be placed in the position.
-        def check_next(board, row, col):
-            [...]
-        # Recursively generate a solution.
-        def recur_generate_solution(board, row_id):
-            [...]
-        # Start out with en empty board.
-        my_board = [[0 for _ in range(N)] for __ in range(N)]
-        final_solution = recur_generate_solution(my_board, 0)
-        # Display the final solution.
-        if final_solution is False:
-            print('A solution cannot be found.')
-        else:
-            print('A solution was found.')
-            display_solution(my_board)
-    ```
+# Generate a valid solution.
+def generate_solution():
+    # Check if a queen can be placed in the position.
+    def check_next(board, row, col):
+        [...]
+    # Recursively generate a solution.
+    def recur_generate_solution(board, row_id):
+        [...]
+    # Start out with en empty board.
+    my_board = [[0 for _ in range(N)] for __ in range(N)]
+    final_solution = recur_generate_solution(my_board, 0)
+    # Display the final solution.
+    if final_solution is False:
+        print('A solution cannot be found.')
+    else:
+        print('A solution was found.')
+        display_solution(my_board)
+```
 
 1.  在另一个代码单元中，运行前面步骤中的总体函数以生成并打印出解决方案：
 
 ```py
-    >>> generate_solution()
-    A solution was found.
-    1 0 0 0 0 0 0 0 
-    0 0 0 0 1 0 0 0 
-    0 0 0 0 0 0 0 1 
-    0 0 0 0 0 1 0 0 
-    0 0 1 0 0 0 0 0 
-    0 0 0 0 0 0 1 0 
-    0 1 0 0 0 0 0 0 
-    0 0 0 1 0 0 0 0 
-    ```
+>>> generate_solution()
+A solution was found.
+1 0 0 0 0 0 0 0 
+0 0 0 0 1 0 0 0 
+0 0 0 0 0 0 0 1 
+0 0 0 0 0 1 0 0 
+0 0 1 0 0 0 0 0 
+0 0 0 0 0 0 1 0 
+0 1 0 0 0 0 0 0 
+0 0 0 1 0 0 0 0 
+```
 
 在整个练习过程中，我们实现了一个回溯算法，该算法旨在通过迭代向潜在解决方案迈出一步（在安全单元格中放置一个皇后棋子），如果算法以某种方式达到无效状态，它将通过撤消先前的移动（在我们的情况下，通过移除我们放置的最后一个棋子）并寻找新的移动来进行*回溯*。正如您可能已经注意到的那样，回溯与递归密切相关，这就是为什么我们选择使用递归函数来实现我们的算法，从而巩固我们对一般概念的理解。
 
@@ -1163,83 +1163,83 @@ unittest.main(argv=[''], verbosity=2, exit=False)
 1.  创建一个新的`.py`脚本，并输入以下代码：
 
 ```py
-    import threading
-    import sys; sys.setswitchinterval(10 ** -10)
-    class Counter:
-        def __init__(self, target):
-            self.value = 0
-            self.target = target        
-        def update(self):
-            current_value = self.value
-            # breakpoint()
-            self.value = current_value + 1
+import threading
+import sys; sys.setswitchinterval(10 ** -10)
+class Counter:
+    def __init__(self, target):
+        self.value = 0
+        self.target = target        
+    def update(self):
+        current_value = self.value
+        # breakpoint()
+        self.value = current_value + 1
 
-        def run(self):
-            threads = [threading.Thread(target=self.update) \
-                                        for _ in range(self.target)]
-            for t in threads:
-                t.start()
-            for t in threads:
-                t.join()
-    ```
+    def run(self):
+        threads = [threading.Thread(target=self.update) \
+                                    for _ in range(self.target)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+```
 
 这段代码实现了我们之前讨论过的`Counter`类。请注意，有一行代码设置了系统的切换间隔；我们稍后会讨论这个。
 
 1.  希望`counter`对象的值应该增加到其真正的目标值，我们将用三个不同的目标值测试其性能。在同一个`.py`脚本中，输入以下代码来实现我们的单元测试：
 
 ```py
-    import unittest
-    class TestCounter(unittest.TestCase):
-        def setUp(self):
-            self.small_params = 5
-            self.med_params = 5000
-            self.large_params = 10000
+import unittest
+class TestCounter(unittest.TestCase):
+    def setUp(self):
+        self.small_params = 5
+        self.med_params = 5000
+        self.large_params = 10000
 
-        def test_small(self):
-            small_counter = Counter(self.small_params)
-            small_counter.run()
-            self.assertEqual(small_counter.value, \
-                             self.small_params)
+    def test_small(self):
+        small_counter = Counter(self.small_params)
+        small_counter.run()
+        self.assertEqual(small_counter.value, \
+                         self.small_params)
 
-        def test_med(self):
-            med_counter = Counter(self.med_params)
-            med_counter.run()
-            self.assertEqual(med_counter.value, \
-                             self.med_params)
+    def test_med(self):
+        med_counter = Counter(self.med_params)
+        med_counter.run()
+        self.assertEqual(med_counter.value, \
+                         self.med_params)
 
-        def test_large(self):
-            large_counter = Counter(self.large_params)
-            large_counter.run()
-            self.assertEqual(large_counter.value, \
-                             self.large_params)
-        if __name__ == '__main__':
-            unittest.main()
-    ```
+    def test_large(self):
+        large_counter = Counter(self.large_params)
+        large_counter.run()
+        self.assertEqual(large_counter.value, \
+                         self.large_params)
+    if __name__ == '__main__':
+        unittest.main()
+```
 
 在这里，我们可以看到在每个测试函数中，我们初始化一个新的`counter`对象，运行它，最后将其值与真实目标进行比较。测试用例的目标在`setUp()`方法中声明，正如我们之前提到的，在测试执行之前运行：
 
 ```py
-    Run this Python script:test_large (__main__.TestCounter) ... FAIL
-    test_med (__main__.TestCounter) ... FAIL
-    test_small (__main__.TestCounter) ... ok
-    ====================================================================
-    FAIL: test_large (__main__.TestCounter)
-    --------------------------------------------------------------------
-    Traceback (most recent call last):
-        File "<ipython-input-57-4ed47b9310ba>", line 22, in test_large
-        self.assertEqual(large_counter.value, self.large_params)
-    AssertionError: 9996 != 10000
-    ====================================================================
-    FAIL: test_med (__main__.TestCounter)
-    --------------------------------------------------------------------
-    Traceback (most recent call last):
-        File "<ipython-input-57-4ed47b9310ba>", line 17, in test_med
-        self.assertEqual(med_counter.value, self.med_params)
-    AssertionError: 4999 != 5000
-    --------------------------------------------------------------------
-    Ran 3 tests in 0.890s
-    FAILED (failures=2)
-    ```
+Run this Python script:test_large (__main__.TestCounter) ... FAIL
+test_med (__main__.TestCounter) ... FAIL
+test_small (__main__.TestCounter) ... ok
+====================================================================
+FAIL: test_large (__main__.TestCounter)
+--------------------------------------------------------------------
+Traceback (most recent call last):
+    File "<ipython-input-57-4ed47b9310ba>", line 22, in test_large
+    self.assertEqual(large_counter.value, self.large_params)
+AssertionError: 9996 != 10000
+====================================================================
+FAIL: test_med (__main__.TestCounter)
+--------------------------------------------------------------------
+Traceback (most recent call last):
+    File "<ipython-input-57-4ed47b9310ba>", line 17, in test_med
+    self.assertEqual(med_counter.value, self.med_params)
+AssertionError: 4999 != 5000
+--------------------------------------------------------------------
+Ran 3 tests in 0.890s
+FAILED (failures=2)
+```
 
 正如你所看到的，程序在两个测试中失败了：`test_med`（计数器的最终值只有 4,999，而不是 5,000）和`test_large`（值为 9,996，而不是 10,000）。你可能会得到不同的输出。
 
@@ -1248,21 +1248,21 @@ unittest.main(argv=[''], verbosity=2, exit=False)
 1.  现在我们知道程序中有一个 bug，我们将尝试调试它。在`update()`方法的两条指令之间放置一个`breakpoint()`语句，重新实现我们的`Counter`类，如下面的代码所示，并重新运行代码：
 
 ```py
-    class Counter:
-        ...
-        def update(self):
-            current_value = self.value
-            breakpoint()
-            self.value = current_value + 1
-        ...
-    ```
+class Counter:
+    ...
+    def update(self):
+        current_value = self.value
+        breakpoint()
+        self.value = current_value + 1
+    ...
+```
 
 1.  在我们的 Python 脚本的主范围内，注释掉对单元测试的调用。相反，声明一个新的`counter`对象，并使用终端运行脚本：
 
 ```py
-    sample_counter = Counter(10)
-    sample_counter.run()
-    ```
+sample_counter = Counter(10)
+sample_counter.run()
+```
 
 在这里，你会看到终端中出现一个`pdb`提示（你可能需要先按*Enter*让调试器继续）：
 
@@ -1273,34 +1273,34 @@ unittest.main(argv=[''], verbosity=2, exit=False)
 1.  输入`ll`并按*Enter*键，查看我们在程序中暂停的位置：
 
 ```py
-    (Pdb) ll
-      9         def update(self):
-     10             current_value = self.value
-     11             breakpoint()
-     12  ->         self.value = current_value + 1
-    ```
+(Pdb) ll
+  9         def update(self):
+ 10             current_value = self.value
+ 11             breakpoint()
+ 12  ->         self.value = current_value + 1
+```
 
 这里，输出表明我们当前在`update()`方法内增加计数器值的两条指令之间暂停。
 
 1.  再次按*Enter*返回到`pdb`提示符，并运行`p self.value`命令：
 
 ```py
-    (Pdb) p self.value
-    0
-    ```
+(Pdb) p self.value
+0
+```
 
 我们可以看到计数器的当前值是`0`。
 
 1.  返回到提示符并输入`n`命令。然后再次使用`p self.value`命令检查计数器的值：
 
 ```py
-    (Pdb) n
-    --Return--
-    > <ipython-input-61-066f5069e308>(12)update()->None
-    -> self.value = current_value + 1
-    (Pdb) p self.value
-    1
-    ```
+(Pdb) n
+--Return--
+> <ipython-input-61-066f5069e308>(12)update()->None
+-> self.value = current_value + 1
+(Pdb) p self.value
+1
+```
 
 1.  我们可以看到值已经增加了 1。重复这个在`n`和`p self.value`之间交替的过程，观察在程序进行过程中`self.value`中存储的值没有更新。换句话说，值通常保持在 1。这就是我们在计数器的大值中看到的 bug 表现方式，就像我们在单元测试中看到的那样。
 
@@ -1337,73 +1337,73 @@ unittest.main(argv=[''], verbosity=2, exit=False)
 1.  前往[`git-scm.com/downloads`](https://git-scm.com/downloads)并下载适用于您系统的 Git 客户端软件并安装。这个 Git 客户端将负责与 GitHub 服务器通信。如果您可以在终端中运行`git`命令，那么您就知道您的 Git 客户端已成功安装：
 
 ```py
-    $ git
-    usage: git [--version] [--help] [-C <path>] [-c <name>=<value>]
-               [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]
-               [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--bare]
-               [--git-dir=<path>] [--work-tree=<path>] [--namespace=<name>]
-               <command> [<args>]
-    ```
+$ git
+usage: git [--version] [--help] [-C <path>] [-c <name>=<value>]
+           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]
+           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--bare]
+           [--git-dir=<path>] [--work-tree=<path>] [--namespace=<name>]
+           <command> [<args>]
+```
 
 否则，您的系统可能需要重新启动才能完全生效。
 
 1.  现在，让我们开始将版本控制应用于一个示例项目的过程。首先，创建一个虚拟文件夹，并生成一个 Jupyter 笔记本和一个名为`input.txt`的文本文件，其中包含以下内容：
 
 ```py
-    1,1,1
-    1,1,1
-    ```
+1,1,1
+1,1,1
+```
 
 1.  在 Jupyter 笔记本的第一个单元格中，编写一个名为`add_elements()`的函数，该函数接受两个数字列表并按元素相加。该函数应返回一个由元素和总和组成的列表；您可以假设两个参数列表的长度相同：
 
 ```py
-    def add_elements(a, b):
-        result = []
-        for item_a, item_b in zip(a, b):
-            result.append(item_a + item_b)
-        return result
-    ```
+def add_elements(a, b):
+    result = []
+    for item_a, item_b in zip(a, b):
+        result.append(item_a + item_b)
+    return result
+```
 
 1.  在下一个代码单元格中，使用`with`语句读取`input.txt`文件，并使用`readlines()`函数和列表索引提取文件的最后两行：
 
 ```py
-    with open('input.txt', 'r') as f:
-        lines = f.readlines()
-    last_line1, last_line2 = lines[-2], lines[-1]
-    ```
+with open('input.txt', 'r') as f:
+    lines = f.readlines()
+last_line1, last_line2 = lines[-2], lines[-1]
+```
 
 请注意，在`open()`函数中，第二个参数`'r'`指定我们正在读取文件，而不是写入文件。
 
 1.  在一个新的代码单元格中，使用`str.split()`函数和`','`参数将这两个文本输入字符串转换为数字列表，然后使用`map()`和`int()`函数逐个元素地应用转换：
 
 ```py
-    list1 = list(map(int, last_line1[: -1].split(',')))
-    list2 = list(map(int, last_line2[: -1].split(',')))
-    ```
+list1 = list(map(int, last_line1[: -1].split(',')))
+list2 = list(map(int, last_line2[: -1].split(',')))
+```
 
 1.  在一个新的代码单元格中，对`list1`和`list2`调用`add_elements()`。将返回的列表写入相同的输入文件中的新行，格式为**逗号分隔值**（**CSV**）：
 
 ```py
-    new_list = add_elements(list1, list2)
-    with open('input.txt', 'a') as f:
-        for i, item in enumerate(new_list):
-            f.write(str(item))
+new_list = add_elements(list1, list2)
+with open('input.txt', 'a') as f:
+    for i, item in enumerate(new_list):
+        f.write(str(item))
 
-            if i < len(new_list) - 1:
-                f.write(',')
-            else:
-                f.write('\n')
-    ```
+        if i < len(new_list) - 1:
+            f.write(',')
+        else:
+            f.write('\n')
+```
 
 这里的`'a'`参数指定我们正在写入文件以追加一个新行，而不是完全读取和覆盖文件。
 
 1.  运行代码单元格，并验证文本文件是否已更新为以下内容：
 
 ```py
-    1,1,1
-    1,1,1
-    2,2,2
-    ```
+1,1,1
+1,1,1
+2,2,2
+```
 
 1.  到目前为止，我们的示例项目的当前设置是：我们有一个文件夹中的文本文件和 Python 脚本；当运行时，脚本可以更改文本文件的内容。这种设置在现实生活中是相当常见的：您可以有一个包含一些信息的数据文件，您希望跟踪，并且可以读取该数据并以某种方式更新它的 Python 程序（也许是通过预先指定的计算或添加外部收集的新数据）。
 
@@ -1420,31 +1420,31 @@ unittest.main(argv=[''], verbosity=2, exit=False)
 1.  在您的本地计算机上，打开终端并导航到文件夹。运行以下命令以初始化本地 Git 存储库，这将与我们的文件夹关联：
 
 ```py
-    $ git init
-    ```
+$ git init
+```
 
 1.  仍然在终端中，运行以下命令将我们项目中的所有内容添加到 Git 并提交它们：
 
 ```py
-    git add .
-    git commit -m [any message with double quotes]
-    ```
+git add .
+git commit -m [any message with double quotes]
+```
 
 您可以用文件的名称替换`git add .`中的`.`。当您只想注册一个或两个文件时，这个选项是有帮助的，而不是您在文件夹中的每个文件。
 
 1.  现在，我们需要链接我们的本地存储库和我们创建的在线存储库。为此，请运行以下命令：
 
 ```py
-    git remote add origin [URL to GitHub repository]
-    ```
+git remote add origin [URL to GitHub repository]
+```
 
 请注意，“origin”只是 URL 的一个传统昵称。
 
 1.  最后，通过运行以下命令将本地注册的文件上传到在线存储库：
 
 ```py
-    git push origin master
-    ```
+git push origin master
+```
 
 1.  转到在线存储库的网站，验证我们创建的本地文件是否确实已上传到 GitHub。
 
@@ -1453,10 +1453,10 @@ unittest.main(argv=[''], verbosity=2, exit=False)
 1.  现在，我们想要将这个更改提交到 GitHub 存储库。在您的终端上，再次运行以下命令：
 
 ```py
-    git add .
-    git commit
-    git push origin master
-    ```
+git add .
+git commit
+git push origin master
+```
 
 1.  转到 GitHub 网站验证我们第二次所做的更改是否也已在 GitHub 上进行了更改。
 
@@ -1483,20 +1483,20 @@ unittest.main(argv=[''], verbosity=2, exit=False)
 1.  添加一个辅助方法，以以下方式打印出谜题的格式：
 
 ```py
-    -----------------------
-    0 0 3 | 0 2 0 | 6 0 0 | 
-    9 0 0 | 3 0 5 | 0 0 1 | 
-    0 0 1 | 8 0 6 | 4 0 0 | 
-    -----------------------
-    0 0 8 | 1 0 2 | 9 0 0 | 
-    7 0 0 | 0 0 0 | 0 0 8 | 
-    0 0 6 | 7 0 8 | 2 0 0 | 
-    -----------------------
-    0 0 2 | 6 0 9 | 5 0 0 | 
-    8 0 0 | 2 0 3 | 0 0 9 | 
-    0 0 5 | 0 1 0 | 3 0 0 | 
-    -----------------------
-    ```
+-----------------------
+0 0 3 | 0 2 0 | 6 0 0 | 
+9 0 0 | 3 0 5 | 0 0 1 | 
+0 0 1 | 8 0 6 | 4 0 0 | 
+-----------------------
+0 0 8 | 1 0 2 | 9 0 0 | 
+7 0 0 | 0 0 0 | 0 0 8 | 
+0 0 6 | 7 0 8 | 2 0 0 | 
+-----------------------
+0 0 2 | 6 0 9 | 5 0 0 | 
+8 0 0 | 2 0 3 | 0 0 9 | 
+0 0 5 | 0 1 0 | 3 0 0 | 
+-----------------------
+```
 
 1.  在类中创建一个`get_presence(cells)`方法，该方法接受任何 9x9 的 2D 列表，表示未解决/半解决的谜题，并返回一个关于给定数字（1 到 9 之间）是否出现在给定行、列或象限中的指示器。
 
@@ -1523,38 +1523,38 @@ unittest.main(argv=[''], verbosity=2, exit=False)
 初始谜题：
 
 ```py
-    -----------------------
-    0 0 3 | 0 2 0 | 6 0 0 | 
-    9 0 0 | 3 0 5 | 0 0 1 | 
-    0 0 1 | 8 0 6 | 4 0 0 | 
-    -----------------------
-    0 0 8 | 1 0 2 | 9 0 0 | 
-    7 0 0 | 0 0 0 | 0 0 8 | 
-    0 0 6 | 7 0 8 | 2 0 0 | 
-    -----------------------
-    0 0 2 | 6 0 9 | 5 0 0 | 
-    8 0 0 | 2 0 3 | 0 0 9 | 
-    0 0 5 | 0 1 0 | 3 0 0 | 
-    -----------------------
-    ```
+-----------------------
+0 0 3 | 0 2 0 | 6 0 0 | 
+9 0 0 | 3 0 5 | 0 0 1 | 
+0 0 1 | 8 0 6 | 4 0 0 | 
+-----------------------
+0 0 8 | 1 0 2 | 9 0 0 | 
+7 0 0 | 0 0 0 | 0 0 8 | 
+0 0 6 | 7 0 8 | 2 0 0 | 
+-----------------------
+0 0 2 | 6 0 9 | 5 0 0 | 
+8 0 0 | 2 0 3 | 0 0 9 | 
+0 0 5 | 0 1 0 | 3 0 0 | 
+-----------------------
+```
 
 解决的谜题：
 
 ```py
-    -----------------------
-    4 8 3 | 9 2 1 | 6 5 7 | 
-    9 6 7 | 3 4 5 | 8 2 1 | 
-    2 5 1 | 8 7 6 | 4 9 3 | 
-    -----------------------
-    5 4 8 | 1 3 2 | 9 7 6 | 
-    7 2 9 | 5 6 4 | 1 3 8 | 
-    1 3 6 | 7 9 8 | 2 4 5 | 
-    -----------------------
-    3 7 2 | 6 8 9 | 5 1 4 | 
-    8 1 4 | 2 5 3 | 7 6 9 | 
-    6 9 5 | 4 1 7 | 3 8 2 | 
-    -----------------------
-    ```
+-----------------------
+4 8 3 | 9 2 1 | 6 5 7 | 
+9 6 7 | 3 4 5 | 8 2 1 | 
+2 5 1 | 8 7 6 | 4 9 3 | 
+-----------------------
+5 4 8 | 1 3 2 | 9 7 6 | 
+7 2 9 | 5 6 4 | 1 3 8 | 
+1 3 6 | 7 9 8 | 2 4 5 | 
+-----------------------
+3 7 2 | 6 8 9 | 5 1 4 | 
+8 1 4 | 2 5 3 | 7 6 9 | 
+6 9 5 | 4 1 7 | 3 8 2 | 
+-----------------------
+```
 
 扩展
 

@@ -160,9 +160,9 @@ print(curve_length2(f,-2,1))
 1.  首先，我们需要使用前述方程创建一个`circle`函数：
 
 ```py
-    def circle(x):
-        return sqrt(1-x**2)
-    ```
+def circle(x):
+    return sqrt(1-x**2)
+```
 
 注意
 
@@ -171,28 +171,28 @@ print(curve_length2(f,-2,1))
 1.  现在，我们将在该曲线上运行`curve_length2`函数（我们已经编码过了），以累加所有微小段，就像以前一样：
 
 ```py
-    def curve_length2(f,a,b,num=1000):
-        """Returns the length of f between\
-           a and b using num slices"""
-        output = 0
-        width = (b-a)/num
-        for i in range(num):
-            output += sqrt((f(a+(i+1)*width)-f(a+i*width))**2 \
-                            + width**2)
-        return output
-    ```
+def curve_length2(f,a,b,num=1000):
+    """Returns the length of f between\
+       a and b using num slices"""
+    output = 0
+    width = (b-a)/num
+    for i in range(num):
+        output += sqrt((f(a+(i+1)*width)-f(a+i*width))**2 \
+                        + width**2)
+    return output
+```
 
 1.  现在，我们打印函数的输出，从*x = -1*到*x = 1*进行测量：
 
 ```py
-    print(curve_length2 (circle,-1,1))
-    ```
+print(curve_length2 (circle,-1,1))
+```
 
 输出如下：
 
 ```py
-    3.1415663562164773
-    ```
+3.1415663562164773
+```
 
 这次没有错误消息。我们得到了一个很好的近似值，即半径为 1 的圆的半周长，我们知道是π。
 
@@ -217,20 +217,20 @@ print(curve_length2(f,-2,1))
 1.  我们将再次使用我们的`curve_length2`函数，但现在我们必须从`math`模块导入我们的`sin`和`pi`函数：
 
 ```py
-    from math import sin, pi
-    ```
+from math import sin, pi
+```
 
 1.  我们已经编写了`curve_length2`函数，它将累加曲线的所有部分。我们只需要告诉它要使用的函数，以及开始和结束的*x*值：
 
 ```py
-    print(curve_length2(sin,0,2*pi))
-    ```
+print(curve_length2(sin,0,2*pi))
+```
 
 输出如下：
 
 ```py
-    7.640391636335927
-    ```
+7.640391636335927
+```
 
 如您所见，使用`curve_length2`函数，计算正弦波的长度变得非常容易。
 
@@ -320,33 +320,33 @@ spiral(r,0,2*pi*7.5)
 1.  我们可以用 Python 这样表示：
 
 ```py
-    def r(theta):
-        return 3 + 0.1724*theta
-    ```
+def r(theta):
+    return 3 + 0.1724*theta
+```
 
 1.  我们可以检查以确保*r(0) = 3*和*r(24π) = 16*：
 
 ```py
-    print(r(0),r(24*pi))
-    ```
+print(r(0),r(24*pi))
+```
 
 输出如下：
 
 ```py
-    3.0 15.998653763493127
-    ```
+3.0 15.998653763493127
+```
 
 1.  现在，我们只需将其放入我们的螺旋函数中：
 
 ```py
-    spiral(r,0,2*pi*12)
-    ```
+spiral(r,0,2*pi*12)
+```
 
 输出如下：
 
 ```py
-    716.3778471288748
-    ```
+716.3778471288748
+```
 
 在这个练习中，我们仅通过知道曲线的起始值和结束值以及它围绕中心旋转的次数，就轻松找到了这个螺旋曲线的长度，即`716.3778471288748`。
 
@@ -379,21 +379,21 @@ spiral(r,0,2*pi*7.5)
 1.  现在，将我们的`r`代码更改为这个螺旋并不难：
 
 ```py
-    def r(theta):
-        return 2 + 0.0745*theta
-    ```
+def r(theta):
+    return 2 + 0.0745*theta
+```
 
 1.  现在，我们可以在这个函数上运行我们的螺旋函数，从*0*到*2*π*23.5*：
 
 ```py
-    spiral(r,0,2*pi*23.5)
-    ```
+spiral(r,0,2*pi*23.5)
+```
 
 输出如下：
 
 ```py
-    1107.502879450013
-    ```
+1107.502879450013
+```
 
 1,107 英寸只是超过 92 英尺的绝缘。
 
@@ -420,22 +420,22 @@ spiral(r,0,2*pi*7.5)
 1.  我们只需用指数函数重新定义`r`：
 
 ```py
-    from math import e
-    def r(theta):
-        return 2*e**(0.315*theta)
-    ```
+from math import e
+def r(theta):
+    return 2*e**(0.315*theta)
+```
 
 1.  然后，我们从*0*到*2π*运行螺旋函数：
 
 ```py
-    spiral(r,0,2*pi)
-    ```
+spiral(r,0,2*pi)
+```
 
 输出如下：
 
 ```py
-    41.518256747758976
-    ```
+41.518256747758976
+```
 
 这个螺旋的长度是`41.518256747758976`。
 
@@ -600,17 +600,17 @@ Area of hemisphere: 6.210356913122
 1.  让我们将函数放入我们的面积程序中，看看我们得到什么：
 
 ```py
-    from math import sin, cos, sqrt
-    def surface(x,y):
-        return 10*sin(sqrt(x**2+y**2))
-    print("Area of wave surface:",area(surface,-5,5,-5,5))
-    ```
+from math import sin, cos, sqrt
+def surface(x,y):
+    return 10*sin(sqrt(x**2+y**2))
+print("Area of wave surface:",area(surface,-5,5,-5,5))
+```
 
 1.  运行程序以查看输出：
 
 ```py
-    Area of wave surface: 608\. 2832236305994
-    ```
+Area of wave surface: 608\. 2832236305994
+```
 
 从前面的代码中，我们可以清楚地看到，使用 Python 几行代码就可以轻松找到甚至复杂表面的面积有多容易。
 
@@ -635,21 +635,21 @@ Area of hemisphere: 6.210356913122
 1.  定义我们的曲面函数以返回表达式：
 
 ```py
-    def surface(x,y):
-        return 3*cos(x)+2*cos(x)*cos(y) 
-    ```
+def surface(x,y):
+    return 3*cos(x)+2*cos(x)*cos(y) 
+```
 
 1.  运行`surface`函数以获得值：
 
 ```py
-    print("Area of surface:",area(surface,0,6.28,0,6.28))
-    ```
+print("Area of surface:",area(surface,0,6.28,0,6.28))
+```
 
 输出如下：
 
 ```py
-    Area of surface: 99.80676808568984
-    ```
+Area of surface: 99.80676808568984
+```
 
 这个 3D 曲面的面积是`99.80676808568984`。
 
@@ -674,21 +674,21 @@ Area of hemisphere: 6.210356913122
 1.  定义我们的曲面函数以返回新表达式：
 
 ```py
-    def surface(x,y):
-        return sqrt(1+sin(x)*cos(y))
-    ```
+def surface(x,y):
+    return sqrt(1+sin(x)*cos(y))
+```
 
 1.  运行`surface`函数：
 
 ```py
-    print("Area of surface:",area(surface,0,6.28,0,6.28))
-    ```
+print("Area of surface:",area(surface,0,6.28,0,6.28))
+```
 
 输出如下：
 
 ```py
-    Area of surface: 42.80527549685105
-    ```
+Area of surface: 42.80527549685105
+```
 
 这个曲面的面积是`42.80527549685105`。
 
@@ -868,14 +868,14 @@ for n in [100,1000,1000000]:
 1.  只需调用我们的 arctan 函数。10 个项应该足够了：
 
 ```py
-    print(4*(4*arctan(1/5,10)-arctan(1/239,10)))
-    ```
+print(4*(4*arctan(1/5,10)-arctan(1/239,10)))
+```
 
 1.  运行上述代码以查看输出：
 
 ```py
-    3.1415926535897922
-    ```
+3.1415926535897922
+```
 
 使用 10 个项可以得到一个相当不错的近似值。它甚至给出了超过 10 个正确的数字。
 
@@ -900,18 +900,18 @@ for n in [100,1000,1000000]:
 1.  以下是使用欧拉级数近似*π*的代码：
 
 ```py
-    from math import sqrt
-    for n in [100,1000,1000000]:
-        print(sqrt(6*sum([1/(i**2) for i in range(1,n+1)])))
-    ```
+from math import sqrt
+for n in [100,1000,1000000]:
+    print(sqrt(6*sum([1/(i**2) for i in range(1,n+1)])))
+```
 
 1.  它收敛得更快吗？运行前面的代码以查看输出：
 
 ```py
-    3.1320765318091053
-    3.1406380562059946
-    3.1415916986605086
-    ```
+3.1320765318091053
+3.1406380562059946
+3.1415916986605086
+```
 
 看起来它似乎并没有更快地收敛。100 万项后，您仍然只有五位正确的小数。
 
@@ -963,56 +963,56 @@ print(1/one_over_pi)
 1.  将总和输入 Python：
 
 ```py
-      def mystery_sum(x):
-        return sum([(((-1)**n)*n)/(4*n)*(x+3)**n for n in \
-                          range(1,1000000)])
-    ```
+  def mystery_sum(x):
+    return sum([(((-1)**n)*n)/(4*n)*(x+3)**n for n in \
+                      range(1,1000000)])
+```
 
 由于我们不能使用数字“无穷大”，我们找到了从 n = 1 到 100 万的所有项的和。
 
 1.  运行所有从-10 到 10 的整数，看看是否收敛到一个数字：
 
 ```py
-    for x in range(-10,11):
-        print(x,mystery_sum(x))
-    ```
+for x in range(-10,11):
+    print(x,mystery_sum(x))
+```
 
 1.  当您运行此代码时，将会出现`OverflowError`：
 
 ```py
-    OverflowError: int too large to convert to float
-    ```
+OverflowError: int too large to convert to float
+```
 
 这意味着一些数字变得很大，这正是我们预期的。我们需要添加一个条件，以便如果出现错误，它将简单地返回`Infinity`。这是通过`try...except`块完成的。
 
 1.  让我们告诉 Python 尝试一行代码。如果它抛出特定错误（在本例中是`OverflowError`），不要停止程序，而是执行以下操作：
 
 ```py
-    def mystery_sum(x):
-        try:
-            return sum([(((-1)**n)*n)/(4*n)*(x+3)**n \
-                                      for n in range(1,1000000)])
-        except OverflowError:
-            return "Infinity"
-    ```
+def mystery_sum(x):
+    try:
+        return sum([(((-1)**n)*n)/(4*n)*(x+3)**n \
+                                  for n in range(1,1000000)])
+    except OverflowError:
+        return "Infinity"
+```
 
 1.  现在，输出给我们一些无穷大和一些实际值：
 
 ```py
-    -10 Infinity
-    -9 Infinity
-    -8 Infinity
-    -7 Infinity
-    -6 Infinity
-    -5 Infinity
-    -4 249999.75
-    -3 0.0
-    -2 -0.25
-    -1 Infinity
-    0 Infinity
-    1 Infinity
-    ...
-    ```
+-10 Infinity
+-9 Infinity
+-8 Infinity
+-7 Infinity
+-6 Infinity
+-5 Infinity
+-4 249999.75
+-3 0.0
+-2 -0.25
+-1 Infinity
+0 Infinity
+1 Infinity
+...
+```
 
 看起来我们的收敛区间是-5 < x < -1。这意味着如果*x*在该区间内，我们可以使用该级数获得有用的值。否则，我们无法使用它。
 
@@ -1035,44 +1035,44 @@ print(1/one_over_pi)
 1.  在 Python 中定义总和：
 
 ```py
-    def mystery_sum(x):
-        try:
-            return sum([n*x**n/(5**(2*n)) for n in range(1,10000)])
-        except OverflowError:
-            return "Infinity"
+def mystery_sum(x):
+    try:
+        return sum([n*x**n/(5**(2*n)) for n in range(1,10000)])
+    except OverflowError:
+        return "Infinity"
 
-    for x in range(-30,30):
-        print(x,mystery_sum(x))
-    ```
+for x in range(-30,30):
+    print(x,mystery_sum(x))
+```
 
 1.  以下是一些输出：
 
 ```py
-    -30 Infinity 
-    -29 Infinity 
-    -28 Infinity 
-    -27 Infinity 
-    -26 -1.0561866634327267e+174 
-    -25 -5000.0 
-    -24 -0.24989587671803576 
-    -23 -0.24956597222222246 
-    -22 -0.24898143956541371 
-    -21 -0.24810964083175827 
-    -20 -0.24691358024691298
-    ...
-    18 9.18367346938776 
-    19 13.19444444444444 
-    20 19.999999999999993 
-    21 32.812499999999964 
-    22 61.11111111111108 
-    23 143.74999999999983 
-    24 599.9999999999994 
-    25 49995000.0 
-    26 5.3728208568640556e+175 
-    27 Infinity 
-    28 Infinity
-    29 Infinity
-    ```
+-30 Infinity 
+-29 Infinity 
+-28 Infinity 
+-27 Infinity 
+-26 -1.0561866634327267e+174 
+-25 -5000.0 
+-24 -0.24989587671803576 
+-23 -0.24956597222222246 
+-22 -0.24898143956541371 
+-21 -0.24810964083175827 
+-20 -0.24691358024691298
+...
+18 9.18367346938776 
+19 13.19444444444444 
+20 19.999999999999993 
+21 32.812499999999964 
+22 61.11111111111108 
+23 143.74999999999983 
+24 599.9999999999994 
+25 49995000.0 
+26 5.3728208568640556e+175 
+27 Infinity 
+28 Infinity
+29 Infinity
+```
 
 在*x*在-25 和 25 之间的所有输出都保持很小（在 0 和 600 之间），无论我们使用多少项，因此我们将称之为收敛区间*-25 < x < 25*。
 
@@ -1095,15 +1095,15 @@ print(1/one_over_pi)
 1.  导入阶乘模块并将前述方程转换为 Python，如下所示：
 
 ```py
-    from math import factorial
-    print(sum([1/factorial(n) for n in range(10000)]))
-    ```
+from math import factorial
+print(sum([1/factorial(n) for n in range(10000)]))
+```
 
 1.  运行前面的代码以查看输出：
 
 ```py
-    2.7182818284590455
-    ```
+2.7182818284590455
+```
 
 著名的常数是*e*，自然对数的底数。
 

@@ -135,87 +135,87 @@ print("Standard deviation ", np.std(z))
 1.  让我们打印一个矩阵的信息：
 
 ```py
-    # 1\. Information about a matrix
-    print("Information: ")
-    print(np.info(z))
-    ```
+# 1\. Information about a matrix
+print("Information: ")
+print(np.info(z))
+```
 
 输出将如下所示：
 
 ```py
-    Information: 
-    class:  ndarray
-    shape:  (2, 2)
-    strides:  (16, 8)
-    itemsize:  8
-    aligned:  True
-    contiguous:  True
-    fortran:  False
-    data pointer: 0x7ff57665fef0
-    byteorder:  little
-    byteswap:  False
-    type: int64
-    None
-    ```
+Information: 
+class:  ndarray
+shape:  (2, 2)
+strides:  (16, 8)
+itemsize:  8
+aligned:  True
+contiguous:  True
+fortran:  False
+data pointer: 0x7ff57665fef0
+byteorder:  little
+byteswap:  False
+type: int64
+None
+```
 
 1.  现在，为了确定矩阵的形状，请写下以下代码：
 
 ```py
-    # 2\. Gives the shape of the matrix
-    print("Shape: ")
-    print(np.shape(z))
-    ```
+# 2\. Gives the shape of the matrix
+print("Shape: ")
+print(np.shape(z))
+```
 
 输出将如下所示：
 
 ```py
-    Shape: 
-    (2, 2)
-    ```
+Shape: 
+(2, 2)
+```
 
 1.  要检查矩阵是 2D 还是 3D 矩阵，请写下以下代码：
 
 ```py
-    # 3\. Dimensions of the matrix
-    print("Dimensions: ")
-    print(np.ndim(z))
-    ```
+# 3\. Dimensions of the matrix
+print("Dimensions: ")
+print(np.ndim(z))
+```
 
 输出将如下所示：
 
 ```py
-    Dimensions: 
-    2
-    ```
+Dimensions: 
+2
+```
 
 1.  要打印矩阵的数据类型，请使用以下代码：
 
 ```py
-    # 4\. Data type of the matrix
-    print("Data type of elements")
-    print(z.dtype.name)
-    ```
+# 4\. Data type of the matrix
+print("Data type of elements")
+print(z.dtype.name)
+```
 
 输出将如下所示：
 
 ```py
-    Data type of elements
-    int64
-    ```
+Data type of elements
+int64
+```
 
 1.  要打印矩阵的长度，请使用以下代码：
 
 ```py
-    print("Length of the ndarray: ")
-    print(len(z))
-    ```
+print("Length of the ndarray: ")
+print(len(z))
+```
 
 输出将如下所示：
 
 ```py
-    Length of the ndarray: 
-    2
-    ```
+Length of the ndarray: 
+2
+```
 
 正如我们所看到的，`info`函数已经显示了我们调用的另外两个函数的值，即 shape 和 type。然而，这些函数只能起到有限的作用，有时这就是所需的。正如我们所知，多维`ndarray`是一个数组的数组，而 NumPy 数组的`len`函数将始终是第一维的长度。如果`z`是一个 2D 矩阵，那么`len(z)`将是`z`中的行数。
 
@@ -256,22 +256,22 @@ print("Standard deviation ", np.std(z))
 1.  首先，导入`math`和`numpy`库：
 
 ```py
-    import math
-    import numpy as np
-    ```
+import math
+import numpy as np
+```
 
 我们稍后将使用这些库。
 
 1.  接下来，定义两个常数并使用大写字母，这是命名这些常数的标准 Python 做法：
 
 ```py
-    def earth_sun_distance():
-        # Semi-major axis between earth and sun
-        A = 149600000
-        # Eccentricity of earth
-        E = 0.0167
-        l = []
-    ```
+def earth_sun_distance():
+    # Semi-major axis between earth and sun
+    A = 149600000
+    # Eccentricity of earth
+    E = 0.0167
+    l = []
+```
 
 `A`在这里是地球和太阳之间的半长轴距离。
 
@@ -282,54 +282,54 @@ print("Standard deviation ", np.std(z))
 1.  让我们跳到代码的主要部分。对于 365 天中的每一天，计算`theta`，因为每年的每一天它都不同。然后，计算地球到太阳的距离，最后将该距离附加到列表中：
 
 ```py
-        # Calculating the distance between earth and sun
-        for i in range(365):
-            theta = (2 * math.pi * i) / 365.25
-            r = A*(1 - E**2) / (1 - (E * math.cos(theta)))
-            l.append(r)
-        return l
-    ```
+    # Calculating the distance between earth and sun
+    for i in range(365):
+        theta = (2 * math.pi * i) / 365.25
+        r = A*(1 - E**2) / (1 - (E * math.cos(theta)))
+        l.append(r)
+    return l
+```
 
 请注意我们之前导入的`math`库中的`math.pi`和`math.cos`函数的使用。
 
 1.  计算所需的时间（以秒为单位），假设光速为恒定值 299,792 千米/秒：
 
 ```py
-    # Calculating the time taken
-    S = 299792
-    t = np.divide(l, S)
-    ```
+# Calculating the time taken
+S = 299792
+t = np.divide(l, S)
+```
 
 在这里，我们首先利用 NumPy 数组的功能，使用`divide`函数，它将值应用于列表的所有成员，而无需使用循环。我们将其值存储在`t`中，它会自动转换为 NumPy 数组。
 
 1.  最后，我们在这里做了两件事。首先，我们使用另一个有用的 Python 函数`zip()`，它将两个列表的相应元素绑在一起，然后我们使用`np.asarray()`函数，将元组列表转换为 NumPy 数组：
 
 ```py
-    sunny = np.asarray(list(zip(l, t)))
-    print("Earth sun distance: \n", sunny)
-    ```
+sunny = np.asarray(list(zip(l, t)))
+print("Earth sun distance: \n", sunny)
+```
 
 运行程序以查看输出：
 
 ```py
-    Earth sun distance:
-    [[  1.52098320e+08   5.07346160e+02]
-     [  1.52097938e+08   5.07344885e+02]
-     [  1.52096791e+08   5.07341061e+02]
-     [  1.52094881e+08   5.07334688e+02]
-     [  1.52092207e+08   5.07325770e+02]
-     [  1.52088771e+08   5.07314309e+02]
-     ...
-     [  1.52072354e+08   5.07259546e+02]
-     [  1.52078259e+08   5.07279242e+02]
-     [  1.52083406e+08   5.07296411e+02]
-     [  1.52087793e+08   5.07311046e+02]
-     [  1.52091420e+08   5.07323143e+02]
-     [  1.52094284e+08   5.07332697e+02]
-     [  1.52096385e+08   5.07339707e+02]
-     [  1.52097723e+08   5.07344168e+02]]
-    [Finished in 0.197s]
-    ```
+Earth sun distance:
+[[  1.52098320e+08   5.07346160e+02]
+ [  1.52097938e+08   5.07344885e+02]
+ [  1.52096791e+08   5.07341061e+02]
+ [  1.52094881e+08   5.07334688e+02]
+ [  1.52092207e+08   5.07325770e+02]
+ [  1.52088771e+08   5.07314309e+02]
+ ...
+ [  1.52072354e+08   5.07259546e+02]
+ [  1.52078259e+08   5.07279242e+02]
+ [  1.52083406e+08   5.07296411e+02]
+ [  1.52087793e+08   5.07311046e+02]
+ [  1.52091420e+08   5.07323143e+02]
+ [  1.52094284e+08   5.07332697e+02]
+ [  1.52096385e+08   5.07339707e+02]
+ [  1.52097723e+08   5.07344168e+02]]
+[Finished in 0.197s]
+```
 
 现在，我们以系统化的表格格式拥有了地球和太阳之间的距离值以及光线到达地球所需的时间。我们可以继续向我们的矩阵添加其他参数，这就是使用矩阵和 NumPy 数组的灵活性。
 
@@ -338,21 +338,21 @@ print("Standard deviation ", np.std(z))
 1.  将结果附加如下：
 
 ```py
-    d = []
-    for i in range(1,len(l) - 1):
-        d.append(l[i]-l[i-1])
-    print(d)
-    ```
+d = []
+for i in range(1,len(l) - 1):
+    d.append(l[i]-l[i-1])
+print(d)
+```
 
 输出的一部分如下：
 
 ```py
-    [-382.2014582455158, -1146.4797523021698, -1910.3842301666737,
-     -2673.6658524870872, -3436.075836390257, -4197.365758448839,
-     -4957.287656396627, -5715.5941315591335, -6472.038449823856,
-     -7226.374643236399, -7978.357610076666, -8727.743215203285,
-     -9474.288]
-    ```
+[-382.2014582455158, -1146.4797523021698, -1910.3842301666737,
+ -2673.6658524870872, -3436.075836390257, -4197.365758448839,
+ -4957.287656396627, -5715.5941315591335, -6472.038449823856,
+ -7226.374643236399, -7978.357610076666, -8727.743215203285,
+ -9474.288]
+```
 
 注意
 
@@ -555,71 +555,71 @@ numpy.core._internal.AxisError: axis 1 is out of bounds for array of dimension 1
 1.  让我们定义我们要搜索的输入矩阵：
 
 ```py
-    matrix = [[7, 10, 15, 18],\
-              [25, 29, 35, 47],\
-               [56, 78, 85, 104]]
-    ```
+matrix = [[7, 10, 15, 18],\
+          [25, 29, 35, 47],\
+           [56, 78, 85, 104]]
+```
 
 1.  现在，让我们定义并编写一个名为`matrixsearch()`的函数，它将以此矩阵作为输入，以及我们要搜索的值。我们首先将处理边缘情况，即矩阵为空或目标值为非零的情况：
 
 ```py
-    def matrixsearch(matrix, value):
-        # Check for edge cases
-        if value is None or not matrix:
-             return False
-    ```
+def matrixsearch(matrix, value):
+    # Check for edge cases
+    if value is None or not matrix:
+         return False
+```
 
 1.  接下来，我们将定义四个变量：
 
 ```py
-    # Initialize the variables
-        row = len(matrix)
-        col = len(matrix[0])
-        start = 0
-        end   = row * col - 1
-    ```
+# Initialize the variables
+    row = len(matrix)
+    col = len(matrix[0])
+    start = 0
+    end   = row * col - 1
+```
 
 请注意这里`row`和`column`变量的初始化方式。在任何矩阵中，它们的初始化方式都是一样的，值得理解。`start`和`end`变量被初始化为矩阵中的第一个和最后一个值，因为矩阵已经排序，可以被视为一个单一的列表，从起始到对角线的另一端。
 
 1.  现在是程序的实际逻辑，我们将把它分解成几个步骤来帮助理解。在从起始到结束的循环中，首先我们找到矩阵的中点（将矩阵视为一个列表）：
 
 ```py
-        while start <= end:
-            mid = int((start + end) / 2)
-    ```
+    while start <= end:
+        mid = int((start + end) / 2)
+```
 
 1.  然后，我们定义一个名为`pointer`的变量，它由我们找到的这个中间值的值初始化：
 
 ```py
-            pointer = matrix[int(mid/col)][int(mid%col)]
-            print(int(mid/col), int(mid%col))
-    ```
+        pointer = matrix[int(mid/col)][int(mid%col)]
+        print(int(mid/col), int(mid%col))
+```
 
 请注意，`/`用于除法，`%`在这里用作模数。因此，在第一次迭代中，它们的值将分别为（1,1）。
 
 1.  现在，我们来到二分查找的核心部分，我们通过与我们拥有的值进行比较来增加或减少我们的指针。如果我们找到该值，我们返回`True`，否则我们将继续循环，直到我们找到或者在最后找不到任何东西时返回`False`：
 
 ```py
-            if pointer == value:
-                return True
-            elif pointer < value:
-                start = mid + 1
-            else:
-                end = mid - 1
-        return False
-    sol = matrixsearch(matrix, 78)
-    print(sol)
-    ```
+        if pointer == value:
+            return True
+        elif pointer < value:
+            start = mid + 1
+        else:
+            end = mid - 1
+    return False
+sol = matrixsearch(matrix, 78)
+print(sol)
+```
 
 输出将如下所示：
 
 ```py
-    1 1
-    2 0
-    2 2
-    2 1
-    True
-    ```
+1 1
+2 0
+2 2
+2 1
+True
+```
 
 在这个练习中，我们使用 NumPy 实现了对矩阵的二分查找，并且根据矩阵的值，我们的代码返回了`True`。
 
@@ -909,12 +909,12 @@ Output using outer for getting cross product:
 1.  让我们使用 NumPy 数组将三天的已知值放入矩阵中：
 
 ```py
-    import numpy as np
-    # Input
-    z = np.array([[37, 20, 12],\
-                  [15, 32, 4],\
-                  [5,  40, 2]])
-    ```
+import numpy as np
+# Input
+z = np.array([[37, 20, 12],\
+              [15, 32, 4],\
+              [5,  40, 2]])
+```
 
 我们现在有了需要处理的矩阵。有几种方法可以解决这个问题。本质上，这就是我们需要做的：
 
@@ -925,8 +925,8 @@ Output using outer for getting cross product:
 1.  结果的*b*矩阵如下。这些是约翰在三天内的花费金额：
 
 ```py
-    r = np.array([[435],[178],[70]])
-    ```
+r = np.array([[435],[178],[70]])
+```
 
 有几种方法可以在 Python 中解决这个问题：
 
@@ -935,8 +935,8 @@ Output using outer for getting cross product:
 1.  让我们首先使用我们之前学到的函数来计算矩阵 A 的逆：
 
 ```py
-    print(np.linalg.inv(z))
-    ```
+print(np.linalg.inv(z))
+```
 
 注意
 
@@ -945,44 +945,44 @@ Output using outer for getting cross product:
 输出如下：
 
 ```py
-    [[-0.06282723  0.28795812 -0.19895288]
-     [-0.0065445   0.0091623   0.02094241]
-     [ 0.28795812 -0.90314136  0.57853403]]
-    ```
+[[-0.06282723  0.28795812 -0.19895288]
+ [-0.0065445   0.0091623   0.02094241]
+ [ 0.28795812 -0.90314136  0.57853403]]
+```
 
 这里不需要理解这个矩阵，因为这只是一个中间步骤。
 
 1.  然后，我们取两个矩阵的点积来产生一个矩阵`X`，这是我们的输出：
 
 ```py
-    X = np.linalg.inv(z).dot(r)
-    print(X)
-    ```
+X = np.linalg.inv(z).dot(r)
+print(X)
+```
 
 输出如下：
 
 ```py
-    [[10\.  ]
-     [ 0.25]
-     [ 5\.  ]]
-    ```
+[[10\.  ]
+ [ 0.25]
+ [ 5\.  ]]
+```
 
 **方法 2**：使用`linalg`包中的内置方法：
 
 1.  甚至可以使用另一个名为`solve()`的 NumPy 函数更轻松地完成相同的事情。让我们在这里将输出变量命名为`y`。
 
 ```py
-    y = np.linalg.solve(z,r)
-    print(y)
-    ```
+y = np.linalg.solve(z,r)
+print(y)
+```
 
 这产生了以下输出：
 
 ```py
-    [[10\.  ]
-     [ 0.25]
-     [ 5\.  ]]
-    ```
+[[10\.  ]
+ [ 0.25]
+ [ 5\.  ]]
+```
 
 而且在一行代码中，我们就能够用 Python 解决线性方程。我们可以推断和理解，使用 Python 可以轻松解决具有大量未知变量的类似方程。
 
@@ -993,31 +993,31 @@ Output using outer for getting cross product:
 1.  让我们首先添加我们收到的有关约翰开销的信息：
 
 ```py
-    a = np.array([[37, 20, 12]])
-    ```
+a = np.array([[37, 20, 12]])
+```
 
 1.  然后，让我们也添加有关约翰其他两笔开销的信息：
 
 ```py
-    b = np.array([[15, 32, 4]])
-    c = np.array([[5,  40, 2]])
-    ```
+b = np.array([[15, 32, 4]])
+c = np.array([[5,  40, 2]])
+```
 
 1.  我们可以轻松地使用`concat()`函数将这些数组绑定在一起形成一个矩阵：
 
 ```py
-    u = np.concatenate((a, b, c), axis=0)
-    print(u)
-    ```
+u = np.concatenate((a, b, c), axis=0)
+print(u)
+```
 
 这产生了以下输出：
 
 ```py
-    [[37 20 12]
-     [15 32  4]
-     [ 5 40  2]]
-    [Finished in 0.188s]
-    ```
+[[37 20 12]
+ [15 32  4]
+ [ 5 40  2]]
+[Finished in 0.188s]
+```
 
 这是我们用于前面程序的相同输入。
 
@@ -1136,21 +1136,21 @@ Output using outer for getting cross product:
 1.  使用 Python 中的`random`包生成一个包含字符`A`、`B`、`C`和`D`的随机状态数组。然后，我们将通过创建一个名为`LEN_STR`的常量来定义我们想要的元素数量，在这种情况下，我们将其设置为`50`：
 
 ```py
-    # Generate random letters from 4 states A B C D
-    import random
-    tokens = []
-    LEN_STR = 50
-    for i in range(LEN_STR):
-        tokens.append(random.choice("ABCD"))
-    print(tokens)
-    LEN_TOKENS = len("ABCD")
-    ```
+# Generate random letters from 4 states A B C D
+import random
+tokens = []
+LEN_STR = 50
+for i in range(LEN_STR):
+    tokens.append(random.choice("ABCD"))
+print(tokens)
+LEN_TOKENS = len("ABCD")
+```
 
 这产生了以下输出：
 
 ```py
-    ['C', 'A', 'A', 'B', 'A', 'A', 'D', 'C', 'B', 'A', 'B',  'A', 'A', 'D', 'A', 'A', 'C', 'B', 'C', 'D', 'D', 'C',  'C', 'B', 'A', 'D', 'D', 'C', 'A', 'A', 'D', 'C', 'A',  'D', 'A', 'A', 'A', 'C', 'B', 'D', 'D', 'C', 'A', 'A',  'B', 'A', 'C', 'A', 'D', 'D']
-    ```
+['C', 'A', 'A', 'B', 'A', 'A', 'D', 'C', 'B', 'A', 'B',  'A', 'A', 'D', 'A', 'A', 'C', 'B', 'C', 'D', 'D', 'C',  'C', 'B', 'A', 'D', 'D', 'C', 'A', 'A', 'D', 'C', 'A',  'D', 'A', 'A', 'A', 'C', 'B', 'D', 'D', 'C', 'A', 'A',  'B', 'A', 'C', 'A', 'D', 'D']
+```
 
 注意
 
@@ -1159,42 +1159,42 @@ Output using outer for getting cross product:
 1.  接下来，我们将找到字母的相对值并将它们转换为整数，主要是因为整数更容易进行计算：
 
 ```py
-    # Finding the relative values with ordinal values of 
-    # ASCII characters
-    relative_value = [(ord(t) - ord('A')) for t in tokens]
-    print(relative_value)
-    ```
+# Finding the relative values with ordinal values of 
+# ASCII characters
+relative_value = [(ord(t) - ord('A')) for t in tokens]
+print(relative_value)
+```
 
 这产生了以下输出：
 
 ```py
-    [2, 0, 0, 1, 0, 0, 3, 2, 1, 0, 1, 0, 0, 3, 0, 0, 2, 1, 
-     2, 3, 3, 2, 2, 1, 0, 3, 3, 2, 0, 0, 3, 2, 0, 3, 0, 0, 
-     0, 2, 1, 3, 3, 2, 0, 0, 1, 0, 2, 0, 3, 3]
-    ```
+[2, 0, 0, 1, 0, 0, 3, 2, 1, 0, 1, 0, 0, 3, 0, 0, 2, 1, 
+ 2, 3, 3, 2, 2, 1, 0, 3, 3, 2, 0, 0, 3, 2, 0, 3, 0, 0, 
+ 0, 2, 1, 3, 3, 2, 0, 0, 1, 0, 2, 0, 3, 3]
+```
 
 这里我们使用基数值是为了方便，但我们也可以使用字典或其他方法来做到这一点。如果你不知道，`ord()`函数在这里返回字符串中字符的 ASCII 值。例如，`A`和`D`的 ASCII 值分别为`65`和`68`。
 
 1.  现在，找到这些 ASCII 值之间的差异，并将它们放入一个名为`ti`的列表中。我们也可以直接更新令牌列表，但为了清晰起见，我们将它们分开保持在不同的列表中：
 
 ```py
-    #create Matrix of zeros
-    m = [[0]*LEN_TOKENS for j in range(LEN_TOKENS)]
-    print(m)
-    # Building the frequency table(matrix) from the given data
-    for (i,j) in zip(relative_value, relative_value [1:]):
-        m[i][j] += 1
-    print(list(zip(relative_value, relative_value [1:])))
-    print(m)
-    ```
+#create Matrix of zeros
+m = [[0]*LEN_TOKENS for j in range(LEN_TOKENS)]
+print(m)
+# Building the frequency table(matrix) from the given data
+for (i,j) in zip(relative_value, relative_value [1:]):
+    m[i][j] += 1
+print(list(zip(relative_value, relative_value [1:])))
+print(m)
+```
 
 这产生了以下输出：
 
 ```py
-    [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
-    [(2, 0), (0, 0), (0, 1), (1, 0), (0, 0), (0, 3), (3, 2),  (2, 1), (1, 0), (0, 1), (1, 0), (0, 0), (0, 3), (3, 0),  (0, 0), (0, 2), (2, 1), (1, 2), (2, 3), (3, 3), (3, 2),  (2, 2), (2, 1), (1, 0), (0, 3), (3, 3), (3, 2), (2, 0),  (0, 0), (0, 3), (3, 2), (2, 0), (0, 3), (3, 0), (0, 0),  (0, 0), (0, 2), (2, 1), (1, 3), (3, 3), (3, 2), (2, 0),  (0, 0), (0, 1), (1, 0), (0, 2), (2, 0), (0, 3), (3, 3)]
-    [[8, 3, 3, 6], [5, 0, 1, 1], [5, 4, 1, 1], [2, 0, 5, 4]]
-    ```
+[[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
+[(2, 0), (0, 0), (0, 1), (1, 0), (0, 0), (0, 3), (3, 2),  (2, 1), (1, 0), (0, 1), (1, 0), (0, 0), (0, 3), (3, 0),  (0, 0), (0, 2), (2, 1), (1, 2), (2, 3), (3, 3), (3, 2),  (2, 2), (2, 1), (1, 0), (0, 3), (3, 3), (3, 2), (2, 0),  (0, 0), (0, 3), (3, 2), (2, 0), (0, 3), (3, 0), (0, 0),  (0, 0), (0, 2), (2, 1), (1, 3), (3, 3), (3, 2), (2, 0),  (0, 0), (0, 1), (1, 0), (0, 2), (2, 0), (0, 3), (3, 3)]
+[[8, 3, 3, 6], [5, 0, 1, 1], [5, 4, 1, 1], [2, 0, 5, 4]]
+```
 
 我们现在根据我们之前生成的`LEN_TOKENS`常量的大小初始化了一个零矩阵，并用它来构建一个零矩阵。
 
@@ -1207,32 +1207,32 @@ Output using outer for getting cross product:
 1.  我们现在将生成概率，这仅仅是给定行中的相对频率。就像在第一行中，从 A 到 A 的转换是 8，从 A 到任何状态的总转换次数是 20。所以，在这种情况下，概率将是*8/20 = 0.4*：
 
 ```py
-    # Finding the Probability
-    for state in m:
-        total = sum(state)
-        if total > 0:
-            state[:] = [float(f)/sum(state) for f in state]
-    ```
+# Finding the Probability
+for state in m:
+    total = sum(state)
+    if total > 0:
+        state[:] = [float(f)/sum(state) for f in state]
+```
 
 代码对每一行都是这样的，如果`sum`函数大于`0`，我们就找到概率。请注意这里使用`float`函数是为了避免在某些 Python 版本中进行类型转换为`int`。另外，请注意使用`state[:]`，它创建了一个浅拷贝，从而防止内部类型转换冲突。
 
 1.  现在，让我们通过添加以下代码来打印`state`对象：
 
 ```py
-    for state in m:
-          print(state)
-    ```
+for state in m:
+      print(state)
+```
 
 在这里，我们遍历矩阵中的行并打印出值，这就是我们的转移矩阵。
 
 这产生了以下输出：
 
 ```py
-    [0.4, 0.15, 0.15, 0.3]
-    [0.7142857142857143, 0.0, 0.14285714285714285,  0.14285714285714285]
-    [0.45454545454545453, 0.36363636363636365,  0.09090909090909091, 0.09090909090909091]
-    [0.18181818181818182, 0.0, 0.45454545454545453,  0.36363636363636365]
-    ```
+[0.4, 0.15, 0.15, 0.3]
+[0.7142857142857143, 0.0, 0.14285714285714285,  0.14285714285714285]
+[0.45454545454545453, 0.36363636363636365,  0.09090909090909091, 0.09090909090909091]
+[0.18181818181818182, 0.0, 0.45454545454545453,  0.36363636363636365]
+```
 
 因此，我们能够构建一个描述状态转移的转移矩阵，它显示了从一个状态转移到下一个状态的概率。因此，`A`找到`A`作为下一个字母的可能性是`0.4`，`A`转到`B`的概率是`0.15`，依此类推。
 

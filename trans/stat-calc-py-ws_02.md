@@ -218,90 +218,90 @@ array([[[0.54376986, 0.94479229],
 1.  在新的 Jupyter 笔记本的第一个单元格中，导入 NumPy 包和`timeit`库中的`Timer`类。后者将用于实现我们的计时功能：
 
 ```py
-    import numpy as np
-    from timeit import Timer
-    ```
+import numpy as np
+from timeit import Timer
+```
 
 1.  在一个新的单元格中，使用`range()`函数初始化一个包含从 0（包括）到 1,000,000（不包括）的数字的 Python 列表，以及使用`np.array()`函数的 NumPy 数组对应项：
 
 ```py
-    my_list = list(range(10 ** 6))
-    my_array = np.array(my_list)
-    ```
+my_list = list(range(10 ** 6))
+my_array = np.array(my_list)
+```
 
 1.  现在，我们将在以下步骤中对这个列表和数组应用数学运算。在一个新的单元格中，编写一个名为`for_add()`的函数，它返回一个列表，其中的元素是`my_list`变量中的元素加上`1`（我们将使用列表推导式）。再编写一个名为`vec_add()`的函数，它返回相同数据的 NumPy 数组版本，即`my_array + 1`：
 
 ```py
-    def for_add():
-        return [item + 1 for item in my_list]
-    def vec_add():
-        return my_array + 1
-    ```
+def for_add():
+    return [item + 1 for item in my_list]
+def vec_add():
+    return my_array + 1
+```
 
 1.  在下一个代码单元格中，初始化两个`Timer`对象，同时传入前面两个函数。这些对象包含我们将用于跟踪函数速度的接口。
 
 对每个对象调用`repeat()`函数，并使用参数 10 和 10——实质上，我们重复了 100 次的定时实验。最后，由于`repeat()`函数返回表示每个函数的每次实验中经过的时间的数字列表，我们打印出此列表的最小值。简而言之，我们希望每个函数的最快运行时间：
 
 ```py
-    print('For-loop addition:')
-    print(min(Timer(for_add).repeat(10, 10)))
-    print('Vectorized addition:')
-    print(min(Timer(vec_add).repeat(10, 10)))
-    ```
+print('For-loop addition:')
+print(min(Timer(for_add).repeat(10, 10)))
+print('Vectorized addition:')
+print(min(Timer(vec_add).repeat(10, 10)))
+```
 
 该程序产生的输出如下：
 
 ```py
-    For-loop addition:
-    0.5640330809999909
-    Vectorized addition:
-    0.006047582000007878
-    ```
+For-loop addition:
+0.5640330809999909
+Vectorized addition:
+0.006047582000007878
+```
 
 虽然你的可能不同，但两个数字之间的关系应该是清楚的：`for`循环加法函数的速度应该比向量化加法函数的速度低得多。
 
 1.  在下一个代码单元格中，实现相同的速度比较，我们将数字乘以`2`。对于 NumPy 数组，只需返回`my_array * 2`：
 
 ```py
-    def for_mul():
-        return [item * 2 for item in my_list]
-    def vec_mul():
-        return my_array * 2
-    print('For-loop multiplication:')
-    print(min(Timer(for_mul).repeat(10, 10)))
-    print('Vectorized multiplication:')
-    print(min(Timer(vec_mul).repeat(10, 10)))
-    ```
+def for_mul():
+    return [item * 2 for item in my_list]
+def vec_mul():
+    return my_array * 2
+print('For-loop multiplication:')
+print(min(Timer(for_mul).repeat(10, 10)))
+print('Vectorized multiplication:')
+print(min(Timer(vec_mul).repeat(10, 10)))
+```
 
 从输出中验证，向量化的乘法函数也比`for`循环版本更快。运行此代码后的输出如下：
 
 ```py
-    For-loop multiplication: 0.5431750800000259
-    Vectorized multiplication: 0.005795304000002943
-    ```
+For-loop multiplication: 0.5431750800000259
+Vectorized multiplication: 0.005795304000002943
+```
 
 1.  在下一个代码单元格中，实现相同的比较，计算数字的平方根。对于 Python 列表，导入并在列表推导式中使用`math.sqrt()`函数。对于 NumPy 数组，返回表达式`np.sqrt(my_array)`：
 
 ```py
-    import math
-    def for_sqrt():
-        return [math.sqrt(item) for item in my_list]
-    def vec_sqrt():
-        return np.sqrt(my_array)
-    print('For-loop square root:')
-    print(min(Timer(for_sqrt).repeat(10, 10)))
-    print('Vectorized square root:')
-    print(min(Timer(vec_sqrt).repeat(10, 10)))
-    ```
+import math
+def for_sqrt():
+    return [math.sqrt(item) for item in my_list]
+def vec_sqrt():
+    return np.sqrt(my_array)
+print('For-loop square root:')
+print(min(Timer(for_sqrt).repeat(10, 10)))
+print('Vectorized square root:')
+print(min(Timer(vec_sqrt).repeat(10, 10)))
+```
 
 从输出中验证，向量化的平方根函数再次比其`for`循环对应函数更快：
 
 ```py
-    For-loop square root:
-    1.1018582749999268
-    Vectorized square root:
-    0.01677640299999439
-    ```
+For-loop square root:
+1.1018582749999268
+Vectorized square root:
+0.01677640299999439
+```
 
 还要注意，`np.sqrt()`函数被实现为向量化，这就是为什么我们能够将整个数组传递给该函数。
 
@@ -587,37 +587,37 @@ Name: col3, dtype: int64
 1.  从这个研讨会的 GitHub 存储库中，将`Exercise2.02/dataset.csv`文件复制到`Chapter02`文件夹中的新目录中。文件的内容如下：
 
 ```py
-    id,x,y,z
-    0,1,1,3
-    1,1,0,9
-    2,1,3,
-    3,2,0,10
-    4,1,,4
-    5,2,2,3
-    ```
+id,x,y,z
+0,1,1,3
+1,1,0,9
+2,1,3,
+3,2,0,10
+4,1,,4
+5,2,2,3
+```
 
 1.  在新目录中创建一个新的 Jupyter 笔记本。确保这个笔记本和 CSV 文件在同一个位置。
 
 1.  在这个笔记本的第一个单元格中，导入 pandas 和 NumPy，然后使用`pd.read_csv()`函数读取`dataset.csv`文件。指定这个函数的`index_col`参数为`'id'`，这是我们样本数据集中的第一列的名称：
 
 ```py
-    import pandas as pd
-    import numpy as np
-    df = pd.read_csv('dataset.csv', index_col='id')
-    ```
+import pandas as pd
+import numpy as np
+df = pd.read_csv('dataset.csv', index_col='id')
+```
 
 1.  当我们打印这个新创建的`DataFrame`对象时，我们可以看到它的值直接对应于我们原始的输入文件：
 
 ```py
-          x     y      z
-    id
-    0    1      1.0    3.0
-    1    1      0.0    9.0
-    2    1      3.0    NaN
-    3    2      0.0    10.0
-    4    1      NaN    4.0
-    5    2      2.0    3.0
-    ```
+      x     y      z
+id
+0    1      1.0    3.0
+1    1      0.0    9.0
+2    1      3.0    NaN
+3    2      0.0    10.0
+4    1      NaN    4.0
+5    2      2.0    3.0
+```
 
 注意这里的`NaN`（**不是一个数字**）值；`NaN`是`DataFrame`对象在初始化时将填充空单元格的默认值。由于我们的原始数据集被设计为包含两个空单元格，这些单元格被适当地填充为`NaN`，正如我们在这里所看到的。
 
@@ -626,127 +626,127 @@ Name: col3, dtype: int64
 1.  在下一个单元格中，使用`rename()`方法将当前列重命名为`'col_x'`、`'col_y'`和`'col_z'`。在这里，`columns`参数应该使用 Python 字典指定每个旧列名到它的新名字的映射：
 
 ```py
-    df = df.rename(columns={'x': 'col_x', 'y': 'col_y', \
-                            'z': 'col_z'})
-    ```
+df = df.rename(columns={'x': 'col_x', 'y': 'col_y', \
+                        'z': 'col_z'})
+```
 
 当运行代码行后，可以观察到`df`打印出的变化：
 
 ```py
-         col_x     col_y     col_z
-    id
-    0    1         1.0       3.0
-    1    1         0.0       9.0
-    2    1         3.0       NaN
-    3    2         0.0       10.0
-    4    1         NaN       4.0
-    5    2         2.0       3.0
-    ```
+     col_x     col_y     col_z
+id
+0    1         1.0       3.0
+1    1         0.0       9.0
+2    1         3.0       NaN
+3    2         0.0       10.0
+4    1         NaN       4.0
+5    2         2.0       3.0
+```
 
 1.  在下一个单元格中，使用`fillna()`函数将`NaN`值替换为零。之后，使用`astype(int)`将表格中的所有数据转换为整数：
 
 ```py
-    df = df.fillna(0)
-    df = df.astype(int)
-    ```
+df = df.fillna(0)
+df = df.astype(int)
+```
 
 结果的`DataFrame`对象现在如下所示：
 
 ```py
-         col_x    col_y    col_z
-    id
-    0    1        1        3
-    1    1        0        9
-    2    1        3        0
-    3    2        0        10
-    4    1        0        4
-    5    2        2        3
-    ```
+     col_x    col_y    col_z
+id
+0    1        1        3
+1    1        0        9
+2    1        3        0
+3    2        0        10
+4    1        0        4
+5    2        2        3
+```
 
 1.  在下一个代码单元格中，通过将`[1, 3, 4]`列表传递给`drop`方法，从数据集中删除第二、第四和第五行：
 
 ```py
-    df = df.drop([1, 3, 4], axis=0)
-    ```
+df = df.drop([1, 3, 4], axis=0)
+```
 
 注意，`axis=0`参数指定我们传递给方法的标签指定数据集的行，而不是列。类似地，要删除特定列，可以使用列标签的列表，同时指定`axis=1`。
 
 结果表现如下：
 
 ```py
-         col_x    col_y    col_z
-    id
-    0    1        1        3
-    2    1        3        0
-    5    2        2        3
-    ```
+     col_x    col_y    col_z
+id
+0    1        1        3
+2    1        3        0
+5    2        2        3
+```
 
 1.  在下一个单元格中，创建一个全零的 2 x 3 `DataFrame`对象，并使用相应的列标签作为当前`df`变量：
 
 ```py
-    zero_df = pd.DataFrame(np.zeros((2, 3)),                       columns=['col_x', 'col_y', \
-                                    'col_z'])
-    ```
+zero_df = pd.DataFrame(np.zeros((2, 3)),                       columns=['col_x', 'col_y', \
+                                'col_z'])
+```
 
 输出如下：
 
 ```py
-         col_x    col_y    col_z
-    0    0.0      0.0      0.0
-    1    0.0      0.0      0.0
-    ```
+     col_x    col_y    col_z
+0    0.0      0.0      0.0
+1    0.0      0.0      0.0
+```
 
 1.  在下一个代码单元格中，使用`pd.concat()`函数将两个`DataFrame`对象连接在一起（指定`axis=0`，以便垂直连接两个表，而不是水平连接）：
 
 ```py
-    df = pd.concat([df, zero_df], axis=0)
-    ```
+df = pd.concat([df, zero_df], axis=0)
+```
 
 我们当前的`df`变量现在打印出以下内容（注意表格底部新增的两行）：
 
 ```py
-         col_x    col_y    col_z
-    0    1.0      1.0      3.0
-    2    1.0      3.0      0.0
-    5    2.0      2.0      3.0
-    0    0.0      0.0      0.0
-    1    0.0      0.0      0.0
-    ```
+     col_x    col_y    col_z
+0    1.0      1.0      3.0
+2    1.0      3.0      0.0
+5    2.0      2.0      3.0
+0    0.0      0.0      0.0
+1    0.0      0.0      0.0
+```
 
 1.  在下一个单元格中，按`col_x`列中的数据按升序对我们当前的表进行排序：
 
 ```py
-    df = df.sort_values('col_x', axis=0)
-    ```
+df = df.sort_values('col_x', axis=0)
+```
 
 结果数据集现在如下所示：
 
 ```py
-         col_x    col_y    col_z
-    0    0.0      0.0      0.0
-    1    0.0      0.0      0.0
-    0    1.0      1.0      3.0
-    2    1.0      3.0      0.0
-    5    2.0      2.0      3.0
-    ```
+     col_x    col_y    col_z
+0    0.0      0.0      0.0
+1    0.0      0.0      0.0
+0    1.0      1.0      3.0
+2    1.0      3.0      0.0
+5    2.0      2.0      3.0
+```
 
 1.  最后，在另一个代码单元中，将我们的表转换为整数数据类型（与之前的方式相同），并使用`to_csv()`方法将此表写入文件。将`'output.csv'`作为输出文件的名称传递，并指定`index=False`，以便输出中不包括行标签：
 
 ```py
-    df = df.astype(int)
-    df.to_csv('output.csv', index=False)
-    ```
+df = df.astype(int)
+df.to_csv('output.csv', index=False)
+```
 
 书面输出应如下所示：
 
 ```py
-    col_x, col_y, col_z
-    0,0,0
-    0,0,0
-    1,1,3
-    1,3,0
-    2,2,3
-    ```
+col_x, col_y, col_z
+0,0,0
+0,0,0
+1,1,3
+1,3,0
+2,2,3
+```
 
 这就是本练习的结束。总的来说，这个练习模拟了使用表格数据集的简化工作流程：读取数据，以某种方式操纵数据，最后将数据写入文件。
 
@@ -867,30 +867,30 @@ Name: x_parity, dtype: int64
 1.  创建一个新的 Jupyter 笔记本，在它的第一个单元格中运行以下代码以生成我们的样本数据集：
 
 ```py
-    import pandas as pd
-    student_df = pd.DataFrame({'name': ['Alice', 'Bob', 'Carol', \
-                                        'Dan', 'Eli', 'Fran'],\
-                               'gender': ['female', 'male', \
-                                          'female', 'male', \
-                                          'male', 'female'],\
-                               'class': ['FY', 'SO', 'SR', \
-                                         'SO',' JR', 'SR'],\
-                               'gpa': [90, 93, 97, 89, 95, 92],\
-                               'num_classes': [4, 3, 4, 4, 3, 2]})
-    student_df
-    ```
+import pandas as pd
+student_df = pd.DataFrame({'name': ['Alice', 'Bob', 'Carol', \
+                                    'Dan', 'Eli', 'Fran'],\
+                           'gender': ['female', 'male', \
+                                      'female', 'male', \
+                                      'male', 'female'],\
+                           'class': ['FY', 'SO', 'SR', \
+                                     'SO',' JR', 'SR'],\
+                           'gpa': [90, 93, 97, 89, 95, 92],\
+                           'num_classes': [4, 3, 4, 4, 3, 2]})
+student_df
+```
 
 这段代码将产生以下输出，以表格形式显示我们的样本数据集：
 
 ```py
-         name    gender    class    gpa    num_classes
-    0    Alice   female    FY       90     4
-    1    Bob     male      SO       93     3
-    2    Carol   female    SR       97     4
-    3    Dan     male      SO       89     4
-    4    Eli     male      JR       95     3
-    5    Fran    female    SR       92     2
-    ```
+     name    gender    class    gpa    num_classes
+0    Alice   female    FY       90     4
+1    Bob     male      SO       93     3
+2    Carol   female    SR       97     4
+3    Dan     male      SO       89     4
+4    Eli     male      JR       95     3
+5    Fran    female    SR       92     2
+```
 
 我们数据集中的大多数属性都是不言自明的：在每一行（代表一个学生）中，`name`包含学生的姓名，`gender`表示学生是男性还是女性，`class`是一个可以取四个唯一值的分类属性（`FY`代表大一，`SO`代表大二，`JR`代表大三，`SR`代表大四），`gpa`表示学生的累积分数，最后，`num_classes`保存学生目前正在上多少门课的信息。
 
@@ -899,104 +899,104 @@ Name: x_parity, dtype: int64
 在这里，我们可以看到我们可以利用`apply()`方法，同时传入一个 lambda 对象，如下所示：
 
 ```py
-    student_df['female_flag'] = student_df['gender']\
-                                .apply(lambda x: x == 'female')
-    ```
+student_df['female_flag'] = student_df['gender']\
+                            .apply(lambda x: x == 'female')
+```
 
 但是，我们也可以简单地使用`student_df['gender'] == 'female'`表达式声明新属性，该表达式按顺序评估条件：
 
 ```py
-    student_df['female_flag'] = student_df['gender'] == 'female'
-    ```
+student_df['female_flag'] = student_df['gender'] == 'female'
+```
 
 1.  这个新创建的属性包含了旧的`gender`列中包含的所有信息，因此我们将使用`drop()`方法从数据集中删除后者（请注意，我们需要指定`axis=1`参数，因为我们正在删除一列）：
 
 ```py
-    student_df = student_df.drop('gender', axis=1)
-    ```
+student_df = student_df.drop('gender', axis=1)
+```
 
 我们当前的`DataFrame`对象应该如下所示：
 
 ```py
-         name    class    gpa    num_classes    female_flag
-    0    Alice   FY       90     4              True
-    1    Bob     SO       93     3              False
-    2    Carol   SR       97     4              True
-    3    Dan     SO       89     4              False
-    4    Eli     JR       95     3              False
-    5    Fran    SR       92     2              True
-    ```
+     name    class    gpa    num_classes    female_flag
+0    Alice   FY       90     4              True
+1    Bob     SO       93     3              False
+2    Carol   SR       97     4              True
+3    Dan     SO       89     4              False
+4    Eli     JR       95     3              False
+5    Fran    SR       92     2              True
+```
 
 1.  在一个新的代码单元格中，编写一个表达式，对分类属性`class`应用独热编码：
 
 ```py
-    pd.get_dummies(student_df['class'])
-    ```
+pd.get_dummies(student_df['class'])
+```
 
 1.  在同一个代码单元格中，将这个表达式包含在`pd.concat()`函数中，将这个新创建的`DataFrame`对象与我们的旧对象连接起来，同时删除`class`列（因为我们现在有了这个属性信息的替代）：
 
 ```py
-    student_df = pd.concat([student_df.drop('class', axis=1), \
-                 pd.get_dummies(student_df['class'])], axis=1)
-    ```
+student_df = pd.concat([student_df.drop('class', axis=1), \
+             pd.get_dummies(student_df['class'])], axis=1)
+```
 
 当前数据集现在应该如下所示：
 
 ```py
-         name    gpa    num_classes    female_flag    JR    FY    SO    SR
-    0    Alice   90     4              True           1     0     0     0
-    1    Bob     93     3              False          0     0     1     0
-    2    Carol   97     4              True           0     0     0     1
-    3    Dan     89     4              False          0     0     1     0
-    4    Eli     95     3              False          0     1     0     0
-    5    Fran    92     2              True           0     0     0     1
-    ```
+     name    gpa    num_classes    female_flag    JR    FY    SO    SR
+0    Alice   90     4              True           1     0     0     0
+1    Bob     93     3              False          0     0     1     0
+2    Carol   97     4              True           0     0     0     1
+3    Dan     89     4              False          0     0     1     0
+4    Eli     95     3              False          0     1     0     0
+5    Fran    92     2              True           0     0     0     1
+```
 
 1.  在下一个单元格中，对`student_df`调用`groupby()`方法，并使用`female_flag`参数将返回的值赋给一个名为`gender_group`的变量：
 
 ```py
-    gender_group = student_df.groupby('female_flag')
-    ```
+gender_group = student_df.groupby('female_flag')
+```
 
 正如你可能已经猜到的，这里我们将相同性别的学生分组，因此男性学生将被分在一起，女性学生也将被分在一起，但与第一组分开。
 
 重要的是要注意，当我们尝试打印存储在`gender_group`变量中的这个`GroupBy`对象时，我们只会得到一个通用的基于内存的字符串表示：
 
 ```py
-    <pandas.core.groupby.generic.DataFrameGroupBy object at  0x11d492550>
-    ```
+<pandas.core.groupby.generic.DataFrameGroupBy object at  0x11d492550>
+```
 
 1.  现在，我们想计算前面分组中每个组的平均 GPA。为此，我们可以使用以下简单的语法：
 
 ```py
-    gender_group['gpa'].mean()
-    ```
+gender_group['gpa'].mean()
+```
 
 输出将如下所示：
 
 ```py
-    female_flag
-    False    92.333333
-    True     93.000000
-    Name: gpa, dtype: float64
-    ```
+female_flag
+False    92.333333
+True     93.000000
+Name: gpa, dtype: float64
+```
 
 我们对`gender_group`变量的命令非常直观：我们想要计算特定属性的平均值，因此我们使用方括号`['gpa']`访问该属性，然后对其调用`mean()`方法。
 
 1.  类似地，我们可以使用以下代码计算男性学生和女性学生的总课程数：
 
 ```py
-    gender_group['num_classes'].sum()
-    ```
+gender_group['num_classes'].sum()
+```
 
 输出如下：
 
 ```py
-    female_flag
-    False    10
-    True     10
-    Name: num_classes, dtype: int64
-    ```
+female_flag
+False    10
+True     10
+Name: num_classes, dtype: int64
+```
 
 在整个练习中，我们提醒自己一些 pandas 中重要的方法，并通过一个真实数据集的示例看到了`groupby`操作的效果。这个练习也结束了我们关于 pandas 库的讨论，这是 Python 中处理表格数据的首选工具。
 
@@ -1323,45 +1323,45 @@ plt.show()
 1.  从您的终端，也就是您的 Python 环境中（如果您正在使用），安装 SciPy 包。您可以像往常一样使用 pip 进行安装：
 
 ```py
-    $ pip install scipy
-    ```
+$ pip install scipy
+```
 
 使用 Anaconda 安装 SciPy，请使用以下命令：
 
 ```py
-    $ conda install scipy
-    ```
+$ conda install scipy
+```
 
 SciPy 是 Python 中另一个流行的统计计算工具。它包含了各种概率分布的简单 API，我们将在这里使用。我们将在下一章中重新讨论这个库。
 
 1.  在 Jupyter 笔记本的第一个代码单元中，导入 NumPy、SciPy 的`stats`包和 Matplotlib，如下所示：
 
 ```py
-    import numpy as np
-    import scipy.stats as stats
-    import matplotlib.pyplot as plt
-    ```
+import numpy as np
+import scipy.stats as stats
+import matplotlib.pyplot as plt
+```
 
 1.  在下一个单元格中，使用 NumPy 从均值为`0`，标准差为`1`的正态分布中抽取 1,000 个样本：
 
 ```py
-    samples = np.random.normal(0, 1, size=1000)
-    ```
+samples = np.random.normal(0, 1, size=1000)
+```
 
 1.  接下来，我们将在我们绘制的样本的最小值和最大值之间创建一个`np.linspace`数组，并最终在数组中的数字上调用真实的 PDF。我们这样做是为了在下一步中将这些点绘制在图表中：
 
 ```py
-    x = np.linspace(samples.min(), samples.max(), 1000)
-    y = stats.norm.pdf(x)
-    ```
+x = np.linspace(samples.min(), samples.max(), 1000)
+y = stats.norm.pdf(x)
+```
 
 1.  为绘制的样本创建一个直方图，并为通过 PDF 获得的点创建一个折线图。在`plt.hist()`函数中，指定`density=True`参数，以便将条的高度归一化为概率值（0 到 1 之间的数字），`alpha=0.2`参数使直方图颜色较浅，`bins=20`参数使直方图的粒度更大：
 
 ```py
-    plt.hist(samples, alpha=0.2, bins=20, density=True)
-    plt.plot(x, y)
-    plt.show()
-    ```
+plt.hist(samples, alpha=0.2, bins=20, density=True)
+plt.plot(x, y)
+plt.show()
+```
 
 上述代码将创建（大致）以下可视化：
 
@@ -1380,13 +1380,13 @@ SciPy 是 Python 中另一个流行的统计计算工具。它包含了各种概
 在下一个代码单元格中，按照之前的步骤进行操作：
 
 ```py
-    samples = np.random.beta(2, 5, size=1000)
-    x = np.linspace(samples.min(), samples.max(), 1000)
-    y = stats.beta.pdf(x, 2, 5)
-    plt.hist(samples, alpha=0.2, bins=20, density=True)
-    plt.plot(x, y)
-    plt.show()
-    ```
+samples = np.random.beta(2, 5, size=1000)
+x = np.linspace(samples.min(), samples.max(), 1000)
+y = stats.beta.pdf(x, 2, 5)
+plt.hist(samples, alpha=0.2, bins=20, density=True)
+plt.plot(x, y)
+plt.show()
+```
 
 这将生成以下图表：
 
@@ -1397,13 +1397,13 @@ SciPy 是 Python 中另一个流行的统计计算工具。它包含了各种概
 1.  使用参数α = 1 为 Gamma 分布创建相同的可视化：
 
 ```py
-    samples = np.random.gamma(1, size=1000)
-    x = np.linspace(samples.min(), samples.max(), 1000)
-    y = stats.gamma.pdf(x, 1)
-    plt.hist(samples, alpha=0.2, bins=20, density=True)
-    plt.plot(x, y)
-    plt.show()
-    ```
+samples = np.random.gamma(1, size=1000)
+x = np.linspace(samples.min(), samples.max(), 1000)
+y = stats.gamma.pdf(x, 1)
+plt.hist(samples, alpha=0.2, bins=20, density=True)
+plt.plot(x, y)
+plt.show()
+```
 
 然后绘制以下可视化：
 

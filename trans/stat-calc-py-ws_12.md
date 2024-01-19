@@ -55,29 +55,29 @@
 1.  这是一个很好的机会来开始一个程序，它将接受初始金额、利率和时间，并使用前面的公式输出利息收入：
 
 ```py
-    def amount(p0,rate,t):
-        """Returns the amount after t
-        years starting at p0 and growing
-        at the given rate per year"""
-        return p0*rate*t
-    ```
+def amount(p0,rate,t):
+    """Returns the amount after t
+    years starting at p0 and growing
+    at the given rate per year"""
+    return p0*rate*t
+```
 
 1.  如您在`amount`函数的文档字符串中所看到的，它将接受一个起始金额和增长率，并返回给定年数后的投资金额。让我们看看 1-5 年内的利息收入：
 
 ```py
-    for i in range(1,6):
-        print(i,amount(3500,0.02,i))
-    ```
+for i in range(1,6):
+    print(i,amount(3500,0.02,i))
+```
 
 以下是输出：
 
 ```py
-    1 70.0
-    2 140.0
-    3 210.0
-    4 280.0
-    5 350.0
-    ```
+1 70.0
+2 140.0
+3 210.0
+4 280.0
+5 350.0
+```
 
 但这并不是利息的真正工作方式。每年几次，我们计算该年份的利息收入，将其加到本金中，新的本金更高。下一次的利息计算是在更高的数字上，因此称为*复利*。给定*每年 n 次复利*的*t*年后的金额的公式如下：
 
@@ -88,32 +88,32 @@
 1.  让我们将`amount`函数更改为以下内容：
 
 ```py
-    def amount(p0,rate,t,comps):
-        """Returns the amount after t
-        years starting at p0 and growing
-        at the given rate per year
-        compounded comps times per year"""
-        for i in range(int(t*comps)):
-            p0 += p0*rate/comps
-        return p0
-    ```
+def amount(p0,rate,t,comps):
+    """Returns the amount after t
+    years starting at p0 and growing
+    at the given rate per year
+    compounded comps times per year"""
+    for i in range(int(t*comps)):
+        p0 += p0*rate/comps
+    return p0
+```
 
 在这个函数中，我们添加了按复利次数给出的年份的利息收入。如果我们每年只计算一次复利，看起来是这样的：
 
 ```py
-    for i in range(1,6):
-        print(i,amount(3500,0.02,i,1))
-    ```
+for i in range(1,6):
+    print(i,amount(3500,0.02,i,1))
+```
 
 这就是我们得到的：
 
 ```py
-    1 3570.0
-    2 3641.4
-    3 3714.228
-    4 3788.51256
-    5 3864.2828112
-    ```
+1 3570.0
+2 3641.4
+3 3714.228
+4 3788.51256
+5 3864.2828112
+```
 
 因此，在 5 年结束时，我们赚了 364 美元，而不仅仅是 350 美元。即使利率相同，复利更频繁也会使金额增长更快。如果我们将复利更改为每年 12 次（每月复利），我们将在 5 年后得到 3867 美元，比年复利多一点。
 
@@ -130,112 +130,112 @@
 1.  我们将使用我们从上一个练习中的`amount`函数打印出投资的前 5 年：
 
 ```py
-    for i in range(1,6):
-        print(i,amount(2000,0.055,i,12))
-    ```
+for i in range(1,6):
+    print(i,amount(2000,0.055,i,12))
+```
 
 输出如下：
 
 ```py
-    1 2112.815720771071
-    2 2231.9951349686903
-    3 2357.8972049231984
-    4 2490.9011412619493
-    5 2631.4075450724245
-    ```
+1 2112.815720771071
+2 2231.9951349686903
+3 2357.8972049231984
+4 2490.9011412619493
+5 2631.4075450724245
+```
 
 1.  5 年后，金额只有 2631 美元。要达到 8000 美元，我们必须走 20 或 30 年：
 
 ```py
-    for i in [5,10,15,20,25,30]:
-        print(i,amount(2000,0.055,i,12))
-    ```
+for i in [5,10,15,20,25,30]:
+    print(i,amount(2000,0.055,i,12))
+```
 
 输出如下：
 
 ```py
-    5 2631.4075450724245
-    10 3462.1528341320413
-    15 4555.167544964467
-    20 5993.251123444263
-    25 7885.343112872511
-    30 10374.775681348801
-    ```
+5 2631.4075450724245
+10 3462.1528341320413
+15 4555.167544964467
+20 5993.251123444263
+25 7885.343112872511
+30 10374.775681348801
+```
 
 在 25 到 30 年之间的某个时候，我们将达到 8000 美元。更精确的方法是更聪明地猜测。
 
 1.  我们将范围减半，并根据我们得到的结果猜测更高或更低。例如，25 年和 30 年的平均值是 27.5，因此我们输入以下内容：
 
 ```py
-    print(amount(2000,0.055,27.5,12))
-    ```
+print(amount(2000,0.055,27.5,12))
+```
 
 以下是输出：
 
 ```py
-    9044.814313545687
-    ```
+9044.814313545687
+```
 
 因此，我们将在 27.5 年内达到 9000 美元。达到 8000 美元的时间必须少于这个时间。
 
 1.  我们将计算 25 和 27.5 的平均值并将其代入：
 
 ```py
-    def average(a,b):
-        return (a+b)/2
-    print(amount(2000,0.055,average(25,27.5),12))
-    ```
+def average(a,b):
+    return (a+b)/2
+print(amount(2000,0.055,average(25,27.5),12))
+```
 
 以下是输出：
 
 ```py
-    8445.203624219383
-    ```
+8445.203624219383
+```
 
 1.  让我们编写一个程序，直到找到答案为止。这称为**二分搜索**。让我们创建一个`bin_search`函数，它将使用我们正在使用的函数的名称，我们正在搜索的范围的下限和上限以及目标输出（在本例中为 8000）作为参数：
 
 ```py
-    def bin_search(f,lower,upper,target):
-        for i in range(20):
-            avg = average(lower,upper)
-    ```
+def bin_search(f,lower,upper,target):
+    for i in range(20):
+        avg = average(lower,upper)
+```
 
 1.  这是关键的一行。它将平均值插入函数中，使用所有其他必需的参数，并将输出分配给`guess`变量。我们将检查该变量是否等于我们的目标，或者我们是否需要猜测更高或更低：
 
 ```py
-            guess = f(2000,0.055,avg,12)
-            if guess == target:
-                return guess
-            if guess > target:
-                upper = avg
-            else:
-                lower = avg
-        return avg
-    ```
+        guess = f(2000,0.055,avg,12)
+        if guess == target:
+            return guess
+        if guess > target:
+            upper = avg
+        else:
+            lower = avg
+    return avg
+```
 
 1.  我们将我们范围的下限和上限以及我们的目标数字代入我们的函数，以获得我们的近似值：
 
 ```py
-    bin_search(amount,25,30,8000)
-    ```
+bin_search(amount,25,30,8000)
+```
 
 输出如下：
 
 ```py
-    25.333333015441895
-    ```
+25.333333015441895
+```
 
 1.  看起来我们将在**25 年零 4 个月**内达到 8000 美元。让我们检查一下：
 
 ```py
-    amount(2000,0.055,25.334,12)
-    ```
+amount(2000,0.055,25.334,12)
+```
 
 果然，复利后的余额超过了 8000 美元：
 
 ```py
-    8030.904658737448
-    ```
+8030.904658737448
+```
 
 我们将再次使用二分搜索，但现在，让我们使用我们的代码来找到一个在微分方程中经常出现的相当重要的数学常数。
 
@@ -254,14 +254,14 @@
 1.  为了近似连续复利，我们将每秒复利一次（每年*365*24*60*60*次）：
 
 ```py
-    print(amount(1,1,1,365*24*60*60))
-    ```
+print(amount(1,1,1,365*24*60*60))
+```
 
 输出如下：
 
 ```py
-    2.7182817853606362
-    ```
+2.7182817853606362
+```
 
 大约是$2.72。这个数字，2.71828…，是自然对数的底数*e*。它对于模拟自然界中的人口非常有用，因为动物、植物和微生物不会等到月底才繁殖-它们是持续不断地繁殖。因此，当利息连续复利或人口自然增长时，我们将使用这个公式：
 
@@ -272,15 +272,15 @@
 1.  让我们创建一个函数来快速完成这个任务。首先，我们需要从`math`模块中导入*e*以进行连续复利：
 
 ```py
-    from math import e
-    ```
+from math import e
+```
 
 1.  创建一个`pert`函数，它将插入初始金额或人口、增长率和时间，并返回最终金额：
 
 ```py
-    def pert(P,r,t):
-        return P*e**(r*t)
-    ```
+def pert(P,r,t):
+    return P*e**(r*t)
+```
 
 我们将在本章中多次使用这个函数。现在，让我们回答更多的投资问题。
 
@@ -297,28 +297,28 @@
 1.  我们可以将其放入我们的函数调用中：
 
 ```py
-    amount(5000,0.18,1,12)
-    ```
+amount(5000,0.18,1,12)
+```
 
 输出如下：
 
 ```py
-    5978.090857307678
-    ```
+5978.090857307678
+```
 
 为了比较，让我们看看如果利息是连续复利会发生什么。
 
 1.  我们将使用我们的`pert`函数输入`P = 5000`，`r = 0.18`和`t = 1`作为值：
 
 ```py
-    print("Continuous:",pert(5000,0.18,1))
-    ```
+print("Continuous:",pert(5000,0.18,1))
+```
 
 得到的金额如下：
 
 ```py
-    5986.096815609051
-    ```
+5986.096815609051
+```
 
 注意
 
@@ -333,99 +333,99 @@
 1.  首先，让我们定义`bin_search`函数，如下所示：
 
 ```py
-    def bin_search(f,lower,upper,target):
-        for i in range(20):
-            avg = average(lower,upper)
-            #Be sure to change this line
-            #if the principal, rate or
-            #compounding changes:
-            guess = f(1000,0.08,avg,365)
-            if guess == target:
-                return guess
-            if guess > target:
-                upper = avg
-            else:
-                lower = avg
-        return avg
-    ```
+def bin_search(f,lower,upper,target):
+    for i in range(20):
+        avg = average(lower,upper)
+        #Be sure to change this line
+        #if the principal, rate or
+        #compounding changes:
+        guess = f(1000,0.08,avg,365)
+        if guess == target:
+            return guess
+        if guess > target:
+            upper = avg
+        else:
+            lower = avg
+    return avg
+```
 
 1.  让我们猜一些野生的猜测，看看如果$1,000 投资这些年，我们会得到多少：
 
 ```py
-    for i in [10,20,30,40,50]:
-        print(i,amount(1000,0.08,i,365))
-    ```
+for i in [10,20,30,40,50]:
+    print(i,amount(1000,0.08,i,365))
+```
 
 这是输出：
 
 ```py
-    10 2225.34584963113
-    20 4952.164150470476
-    30 11020.277938941583
-    40 24523.929773205105
-    50 54574.22533744746
-    ```
+10 2225.34584963113
+20 4952.164150470476
+30 11020.277938941583
+40 24523.929773205105
+50 54574.22533744746
+```
 
 1.  50 年后，您仍然只有$54,000，而不是一百万。但是 100 年后，您将拥有近 300 万：
 
 ```py
-    amount(1000,0.08,100,365)
-    ```
+amount(1000,0.08,100,365)
+```
 
 这是输出：
 
 ```py
-    2978346.0711824815
-    ```
+2978346.0711824815
+```
 
 1.  答案必须在 50 和 100 之间。看起来是我们二分搜索的任务：
 
 ```py
-    print(bin_search(amount,50,100,1000000))
-    ```
+print(bin_search(amount,50,100,1000000))
+```
 
 我们得到以下输出：
 
 ```py
-    86.3588809967041
-    ```
+86.3588809967041
+```
 
 1.  这表明在 86.36 年后，我们将拥有 100 万美元。如果初始投资是$10,000，那么在`bin_search`函数中更新`guess`变量：
 
 ```py
-            guess = f(10000,0.08,avg,365)
-    ```
+        guess = f(10000,0.08,avg,365)
+```
 
 这是我们将打印所需输出的方法：
 
 ```py
-    for i in [10,15,20,30,40,50,60]:
-        print(i,amount(10000,0.08,i,365))
-    ```
+for i in [10,15,20,30,40,50,60]:
+    print(i,amount(10000,0.08,i,365))
+```
 
 输出如下：
 
 ```py
-    10 22253.458496311334
-    15 33196.803971077774
-    20 49521.64150470513
-    30 110202.77938941623
-    40 245239.2977320514
-    50 545742.2533744735
-    60 1214465.2585152255
-    ```
+10 22253.458496311334
+15 33196.803971077774
+20 49521.64150470513
+30 110202.77938941623
+40 245239.2977320514
+50 545742.2533744735
+60 1214465.2585152255
+```
 
 1.  因此，我们在 50 到 60 年之间就能达到 100 万美元。让我们在我们的二分搜索函数中将`1000`改为`10000`并检查一下：
 
 ```py
-    print(bin_search(amount,50,60,1000000))
-    ```
+print(bin_search(amount,50,60,1000000))
+```
 
 我们得到以下输出：
 
 ```py
-    57.57260322570801
-    ```
+57.57260322570801
+```
 
 超过 57.57 年才能达到一百万美元。
 
@@ -460,30 +460,30 @@
 1.  无论初始人口是多少，我们都在寻找使因子*e*rt 等于 2 的*t*。我们可以使用我们的`pert`函数和二项式搜索函数，稍作调整：
 
 ```py
-    def bin_search(f,lower,upper,target):
-        for i in range(40):
-            avg = average(lower,upper)
-            guess = f(1,0.04,avg)
-            if guess == target:
-                return guess
-            if guess > target:
-                upper = avg
-            else:
-                lower = avg
-        return avg
-    ```
+def bin_search(f,lower,upper,target):
+    for i in range(40):
+        avg = average(lower,upper)
+        guess = f(1,0.04,avg)
+        if guess == target:
+            return guess
+        if guess > target:
+            upper = avg
+        else:
+            lower = avg
+    return avg
+```
 
 1.  我们正在寻找时间*t*，以 4%的增长率将我们的初始人口从 1 增加到 2。我们估计这个时间会在 1 到 100 年之间：
 
 ```py
-    print(bin_search(pert,1,100,2))
-    ```
+print(bin_search(pert,1,100,2))
+```
 
 输出如下：
 
 ```py
-    17.32867951408025
-    ```
+17.32867951408025
+```
 
 我们可以用代数来验证这一点。我们取方程两边的对数并解出*t*：
 
@@ -494,14 +494,14 @@
 1.  这意味着在 17 年多一点的时间内，肯尼亚的人口将翻倍。我们可以用我们的`amount`函数来验证这一点。1989 年，肯尼亚的人口为 2100 万：
 
 ```py
-    print(amount(21000000,0.04,17.3,1000000))
-    ```
+print(amount(21000000,0.04,17.3,1000000))
+```
 
 以下是输出：
 
 ```py
-    41951845.46179989
-    ```
+41951845.46179989
+```
 
 是的，每年使用一百万次复利，人口在 17.3 年内增长到了将近 4200 万。
 
@@ -570,32 +570,32 @@ print(bin_search(pert,0,2,52.5/42))
 1.  在`bin_search`函数中的`guess =`行中将`t`更改为`1600`：
 
 ```py
-            guess = f(1,avg,1600)
-    ```
+        guess = f(1,avg,1600)
+```
 
 1.  然后，搜索增长因子，我们认为它将在-2 和 0 之间。我们的目标金额是起始金额的一半：
 
 ```py
-    print(bin_search(pert,-2,0,0.5))
-    ```
+print(bin_search(pert,-2,0,0.5))
+```
 
 以下是输出：
 
 ```py
-    -0.0004332169864937896
-    ```
+-0.0004332169864937896
+```
 
 1.  这就是镭-226 的衰变因子*r*。我们要做的就是将其插入我们的`pert`函数中，以找出 800 年后剩下的样本的百分比：
 
 ```py
-    pert(1,-0.0004332,800)
-    ```
+pert(1,-0.0004332,800)
+```
 
 以下是输出：
 
 ```py
-    0.7071163910309745
-    ```
+0.7071163910309745
+```
 
 因此，大约 71%的样本在 800 年后仍然存在。
 
@@ -620,30 +620,30 @@ print(bin_search(pert,0,2,52.5/42))
 1.  我们使用我们的二分搜索函数来解决*r*：
 
 ```py
-    def bin_search(f,lower,upper,target):
-        for i in range(40):
-            avg = average(lower,upper)
-    ```
+def bin_search(f,lower,upper,target):
+    for i in range(40):
+        avg = average(lower,upper)
+```
 
 1.  这是更改的那一行。如果我们在`pert`函数中放入一个起始金额为`1`，*r*将是`avg`，`5730`将是目标时间：
 
 ```py
-            guess = f(1,avg,5730)
-            if guess == target:
-                return guess
-            if guess > target:
-                upper = avg
-            else:
-                lower = avg
-        return avg
-    print(bin_search(pert,-2,0,0.5))
-    ```
+        guess = f(1,avg,5730)
+        if guess == target:
+            return guess
+        if guess > target:
+            upper = avg
+        else:
+            lower = avg
+    return avg
+print(bin_search(pert,-2,0,0.5))
+```
 
 以下是输出：
 
 ```py
-    -0.00012096809405193198
-    ```
+-0.00012096809405193198
+```
 
 *r = -0.000120968*，因此我们的 Pert 公式变为如下：
 
@@ -660,37 +660,37 @@ print(bin_search(pert,0,2,52.5/42))
 1.  我们方程中唯一未知的是*t*，因此我们正在更改我们的`bin_search`函数，以便有策略地猜测和检查正确的*t*。返回到您的`bin_search`函数；开头应该是这样的：
 
 ```py
-    def bin_search(f,lower,upper,target):
-        for i in range(40):
-            avg = average(lower,upper)
-    ```
+def bin_search(f,lower,upper,target):
+    for i in range(40):
+        avg = average(lower,upper)
+```
 
 1.  这是我们正在更改的行。我们将 1 代入原始量，长小数是我们的*r*，时间范围的平均值用于时间。目标是样本的 0.091，这将保持猜测和平均值，直到返回确切的年数以达到目标值：
 
 ```py
-            guess = f(1,-0.000120968,avg)
-            if guess == target:
-                return guess
-    ```
+        guess = f(1,-0.000120968,avg)
+        if guess == target:
+            return guess
+```
 
 1.  由于它是一个递减函数，如果猜测小于目标值，我们将会超过目标值，`upper`数字将被替换为平均值：
 
 ```py
-            if guess < target:
-                upper = avg
-            else:
-                lower = avg
-        return avg
-    print(bin_search(pert,1,100000,0.91))
-    print(pert(1,-0.000120968,5730))
-    ```
+        if guess < target:
+            upper = avg
+        else:
+            lower = avg
+    return avg
+print(bin_search(pert,1,100000,0.91))
+print(pert(1,-0.000120968,5730))
+```
 
 1.  请注意，我们更改了`if guess < target:`行。我们正在寻找从 1 到 0.91 的衰减量所需的年数，以给定的速率。我们怀疑它在 1 到 100,000 年之间。第二个`print`行只是检查我们的`pert`函数确认在 5,730 年后，剩余量正好是原始量的一半。当我们运行代码时，这是输出：
 
 ```py
-    779.633287019019
-    0.5000002702800457
-    ```
+779.633287019019
+0.5000002702800457
+```
 
 根据我们的计算，这块布大约有**780 年**的历史。
 
@@ -729,40 +729,40 @@ print(bin_search(pert,0,2,52.5/42))
 1.  我们可以使用二分搜索来找出温度的衰减率。我们需要导入`e`并确保我们有`pert`和`average`函数：
 
 ```py
-    from math import e
-    def pert(P,r,t):
-        return P*e**(r*t)
-    def average(a,b):
-        return (a+b)/2
-    ```
+from math import e
+def pert(P,r,t):
+    return P*e**(r*t)
+def average(a,b):
+    return (a+b)/2
+```
 
 1.  我们的`bin_search`函数的第一部分与以前相同：
 
 ```py
-    def bin_search(f,lower,upper,target):
-        for i in range(40):
-            avg = average(lower,upper)
-    ```
+def bin_search(f,lower,upper,target):
+    for i in range(40):
+        avg = average(lower,upper)
+```
 
 1.  这里的重要变化是：我们的原始量（温度差）为 15 度，我们想知道*r*，即我们 Pert 公式中的变化率：
 
 ```py
-            guess = f(15,avg,1)
-            if guess == target:
-                return guess
-            if guess > target:
-                upper = avg
-            else:
-                lower = avg
-        return avg
-    print(bin_search(pert,-2,0,10))
-    ```
+        guess = f(15,avg,1)
+        if guess == target:
+            return guess
+        if guess > target:
+            upper = avg
+        else:
+            lower = avg
+    return avg
+print(bin_search(pert,-2,0,10))
+```
 
 这是输出：
 
 ```py
-    -0.4054651081078191
-    ```
+-0.4054651081078191
+```
 
 这就是这种情况的衰减速率，所以我们知道了尸体温度与环境温度之间的初始差异（98.6-65），以及最终差异（10）和衰减速率。这是情况的图表：
 
@@ -779,46 +779,46 @@ print(bin_search(pert,0,2,52.5/42))
 1.  我们改变我们的二分搜索函数来获取时间：
 
 ```py
-    def bin_search(f,lower,upper,target):
-        for i in range(40):
-            avg = average(lower,upper)
-            guess = f(33.6,-.4055,avg)
-            if guess == target:
-                return guess
-            if guess > target:
-                upper = avg
-            else:
-                lower = avg
-        return avg
-    ```
+def bin_search(f,lower,upper,target):
+    for i in range(40):
+        avg = average(lower,upper)
+        guess = f(33.6,-.4055,avg)
+        if guess == target:
+            return guess
+        if guess > target:
+            upper = avg
+        else:
+            lower = avg
+    return avg
+```
 
 但是，如果时间太短，差异将太大。绕过这个最简单的方法是将更高的*t*作为函数调用的*较低*部分，将较低的*t*作为搜索范围的*上限*。
 
 1.  调查员推断时间必须在 0 到 5 小时之间：
 
 ```py
-    print(bin_search(pert,5,0,10))
-    ```
+print(bin_search(pert,5,0,10))
+```
 
 输出将如下：
 
 ```py
-    2.9887570258370033
-    ```
+2.9887570258370033
+```
 
 几乎正好 3 小时。这看起来接近前图中曲线的*y*值为 10 的时间。
 
 1.  让我们在我们的`pert`函数中检查一下。从*r = -0.4055*和*t = 3.0*开始，差异为 33.6 度。希望最终得到 10：
 
 ```py
-    pert(33.6,-0.4055,3)
-    ```
+pert(33.6,-0.4055,3)
+```
 
 以下是输出：
 
 ```py
-    9.954513505592326
-    ```
+9.954513505592326
+```
 
 所以，现在，当明星侦探在凌晨 2:30 到达现场时，调查员可以说，“死亡时间大约是晚上 11:30。”
 
@@ -839,32 +839,32 @@ print(bin_search(pert,0,2,52.5/42))
 1.  我们可以改变我们的二分搜索函数以反映这种情况。将`guess=`行更改为`bin_search`函数中的以下内容：
 
 ```py
-            guess = f(103,avg,0.25)
-    ```
+        guess = f(103,avg,0.25)
+```
 
 1.  运行它，找出在-2 和 0 之间的*r*将给我们带来 68°的差异：
 
 ```py
-    print(bin_search(pert,-2,0,68))
-    ```
+print(bin_search(pert,-2,0,68))
+```
 
 这是输出：
 
 ```py
-    -1.6608851322143892
-    ```
+-1.6608851322143892
+```
 
 1.  太快了！将其放入我们的 Pert 公式中，*P = 103*和*t=1*：
 
 ```py
-    pert(103,-1.6608851322143892,1)
-    ```
+pert(103,-1.6608851322143892,1)
+```
 
 以下是输出：
 
 ```py
-    19.566987911888482
-    ```
+19.566987911888482
+```
 
 这是 1 小时的差异。如果房间温度为 72°，那意味着咖啡将是*72 + 19.5 = 91.5°*。
 
@@ -887,18 +887,18 @@ print(bin_search(pert,0,2,52.5/42))
 1.  让我们创建一个函数，以找出在`t`分钟后的盐含量，给定我们的初始条件：
 
 ```py
-    def salt_content(t):
-        salt = 18 #pounds
-        brine = 82 #gallons
-    ```
+def salt_content(t):
+    salt = 18 #pounds
+    brine = 82 #gallons
+```
 
 1.  然后，每分钟都会添加 5 加仑的卤水，其中含有 15 磅（每加仑 3 磅盐*每加仑*）的盐：
 
 ```py
-        for i in range(t):
-            brine += 5
-            salt += 15
-    ```
+    for i in range(t):
+        brine += 5
+        salt += 15
+```
 
 1.  现在，每分钟流出 2 加仑的卤水，但其中含有多少盐呢？这要求我们找出每加仑卤水的浓度：![图 12.20：计算每加仑卤水浓度的公式](img/B15968_12_20.jpg)
 
@@ -907,64 +907,64 @@ print(bin_search(pert,0,2,52.5/42))
 这可以很容易地转换为代码，如下所示：
 
 ```py
-            concentration = salt/brine
-    ```
+        concentration = salt/brine
+```
 
 1.  因此，每分钟离开罐子的盐将是流出的溶液加仑数乘以盐的浓度：
 
 ```py
-            salt_out = 2*concentration
-            salt -= salt_out
-            brine -= 2
-    ```
+        salt_out = 2*concentration
+        salt -= salt_out
+        brine -= 2
+```
 
 1.  循环结束后，我们可以打印出卤水和盐的最终数量：
 
 ```py
-        print(i,brine,salt)
-    ```
+    print(i,brine,salt)
+```
 
 1.  为了解决我们的问题，我们只需运行我们的`salt_content`函数，*t=39*：
 
 ```py
-    salt_content(39)
-    ```
+salt_content(39)
+```
 
 输出如下：
 
 ```py
-    38 199 469.2592152141211
-    ```
+38 199 469.2592152141211
+```
 
 这意味着在 39 分钟后，我们最终得到 469 磅盐。这个数字非常接近解析解，但并不完全相同。我们该怎么做才能得到更准确的结果呢？记住，自然对数的底数*e*的背后思想是模拟值的恒定变化，而我们只是每分钟计算一次我们溶液的变化。
 
 1.  让我们引入一个名为`frac`的变量，它将让我们计算分钟的变化：
 
 ```py
-    def salt_content(t,frac=0.001):
-        salt = 18 #pounds
-        brine = 82 #gallons
-    ```
+def salt_content(t,frac=0.001):
+    salt = 18 #pounds
+    brine = 82 #gallons
+```
 
 1.  参数中的`frac=0.001`值表示我们将每分钟计算一千次变化。这意味着我们将循环的次数乘以 1,000，或者 1/`frac`，我们将我们的数量变化乘以`frac`：
 
 ```py
-        for i in range(int(t/frac)):
-            brine += 5*frac
-            salt += 15*frac
-            concentration = salt/brine
-            salt_out = 2*concentration*frac
-            salt -= salt_out
-            brine -= 2*frac
-        print(i,brine,salt)
-    salt_content(39)
-    ```
+    for i in range(int(t/frac)):
+        brine += 5*frac
+        salt += 15*frac
+        concentration = salt/brine
+        salt_out = 2*concentration*frac
+        salt -= salt_out
+        brine -= 2*frac
+    print(i,brine,salt)
+salt_content(39)
+```
 
 输出变成了以下内容：
 
 ```py
-    38999 198.99999999966812 470.74539697793307
-    ```
+38999 198.99999999966812 470.74539697793307
+```
 
 470.7 磅盐甚至更接近解析解，使用更小的分钟分数并不会改变输出太多。
 
@@ -983,30 +983,30 @@ print(bin_search(pert,0,2,52.5/42))
 1.  因此，我们需要进行一些简单的算术运算来找出我们的初始盐量，但是每 100 升 1 千克盐是 10,000 升中的 100 千克盐，而流入罐中的 20 升中是 0.4 千克盐。这是我们的新函数：
 
 ```py
-    def salt_content(t,frac=.001):
-        salt = 100
-        brine = 10000
-        for i in range(int(t/frac)):
-            brine += 20*frac
-            salt += 0.4*frac
-            concentration = salt/brine
-            salt_out = 10*concentration*frac
-            salt -= salt_out
-            brine -= 10*frac
-        return salt
-    ```
+def salt_content(t,frac=.001):
+    salt = 100
+    brine = 10000
+    for i in range(int(t/frac)):
+        brine += 20*frac
+        salt += 0.4*frac
+        concentration = salt/brine
+        salt_out = 10*concentration*frac
+        salt -= salt_out
+        brine -= 10*frac
+    return salt
+```
 
 现在，让我们调用`salt_content`函数：
 
 ```py
-    print(salt_content(5*60))
-    ```
+print(salt_content(5*60))
+```
 
 当我们调用函数时，输出如下：
 
 ```py
-    183.0769053279811
-    ```
+183.0769053279811
+```
 
 （记住，我们所有的数字都是以秒为单位的，我们想要 5 分钟，因此是`5*60`参数。）
 
@@ -1015,30 +1015,30 @@ print(bin_search(pert,0,2,52.5/42))
 1.  我们可以通过将硬编码的数字更改为变量来简化我们的任务，因此当我们遇到不同初始卤水量的问题时，例如，我们只需在函数调用中输入不同的数字。我们需要变量来表示初始卤水量（或任何溶液）、溶质的初始量（到目前为止，我们一直在使用盐）、卤水的流入速度、盐的流入速度和卤水的流出速度。以下是如何更改函数的方法：
 
 ```py
-    def salt_content(t,salt_0,brine_0,salt_in,brine_in,v_out,frac=.001):
-        salt = salt_0 #pounds
-        brine = brine_0 #gallons
-        for i in range(int(t/frac)):
-            brine += brine_in * frac
-            salt += salt_in* frac
-            concentration = salt/brine
-            salt_out = v_out*concentration* frac
-            salt -= salt_out
-            brine -= v_out* frac
-        return salt
-    ```
+def salt_content(t,salt_0,brine_0,salt_in,brine_in,v_out,frac=.001):
+    salt = salt_0 #pounds
+    brine = brine_0 #gallons
+    for i in range(int(t/frac)):
+        brine += brine_in * frac
+        salt += salt_in* frac
+        concentration = salt/brine
+        salt_out = v_out*concentration* frac
+        salt -= salt_out
+        brine -= v_out* frac
+    return salt
+```
 
 1.  现在，要解决最后一个问题，我们的函数调用将有更多的参数：
 
 ```py
-    salt_content(300,100,10000,0.4,20,10)
-    ```
+salt_content(300,100,10000,0.4,20,10)
+```
 
 输出如下：
 
 ```py
-    183.0769053279811
-    ```
+183.0769053279811
+```
 
 如您所见，输出应与*步骤 1*中的相同。让我们将其应用到更多问题上。
 
@@ -1055,14 +1055,14 @@ print(bin_search(pert,0,2,52.5/42))
 1.  这里唯一的诀窍是总溶液进入速度为每分钟 3 升，总溶质进入速度为每分钟 20 克。以下是函数调用：
 
 ```py
-    salt_content(60,900,100,20,3,3)
-    ```
+salt_content(60,900,100,20,3,3)
+```
 
 1.  输出将如下所示：
 
 ```py
-    705.2374486274181
-    ```
+705.2374486274181
+```
 
 溶质的量为 705 克。
 
@@ -1081,14 +1081,14 @@ print(bin_search(pert,0,2,52.5/42))
 1.  我们可以使用我们的`salt_content`函数，但`盐`变量将设置为`0`。这使得以下函数调用：
 
 ```py
-    print(salt_content(15,18,1200,0,15,10))
-    ```
+print(salt_content(15,18,1200,0,15,10))
+```
 
 1.  15 分钟后的盐含量输出如下：
 
 ```py
-    15.944648402124784
-    ```
+15.944648402124784
+```
 
 盐含量从 18 克减少到 15.9 克。
 
@@ -1141,59 +1141,59 @@ print(bin_search(pert,0,2,52.5/42))
 1.  让我们编写一个 Python 函数来做到这一点：
 
 ```py
-    def euler(x0,y0,target_x,stepsize):
-        x,y = x0,y0
-        while x<target_x:
-            slope = y #from diff eq
-            x += stepsize
-            y += stepsize*slope
-            print(x,y)
-        return y
-    ```
+def euler(x0,y0,target_x,stepsize):
+    x,y = x0,y0
+    while x<target_x:
+        slope = y #from diff eq
+        x += stepsize
+        y += stepsize*slope
+        print(x,y)
+    return y
+```
 
 1.  因此，我们知道初始的`x`和`y`。我们想知道`x=2`时的`y`；步长可以是½：
 
 ```py
-    print(euler(0,1,2,0.5))
-    ```
+print(euler(0,1,2,0.5))
+```
 
 以下是输出：
 
 ```py
-    0.5 1.5
-    1.0 2.25
-    1.5 3.375
-    2.0 5.0625
-    5.0625
-    ```
+0.5 1.5
+1.0 2.25
+1.5 3.375
+2.0 5.0625
+5.0625
+```
 
 1.  我们不再需要`euler`函数内的`print`语句，因此将其注释掉：
 
 ```py
-            #print(x,y)
-    ```
+        #print(x,y)
+```
 
 1.  第一行是计算斜率的结果，即*y*值 1，乘以步长½，然后向上移动该距离。如果导数为负，我们将向下移动。在第二行，我们将*y*值 1.5 乘以步长 0.5，得到 0.75。我们从 0.75 上升到 2.25 等等。在 x 方向上采取小步骤，直到达到目标 x 值 2，我们最终得到*y*值 5.0625。我们不再需要打印出每一步，但让我们将步长减半 10 次：
 
 ```py
-    for n in [0.5**i for i in range(10)]:
-        print(n,euler(0,1,2,n))
-    ```
+for n in [0.5**i for i in range(10)]:
+    print(n,euler(0,1,2,n))
+```
 
 以下是输出：
 
 ```py
-    1.0 4.0
-    0.5 5.0625
-    0.25 5.9604644775390625
-    0.125 6.583250172027423
-    0.0625 6.958666757218805
-    0.03125 7.166276152788222
-    0.015625 7.275669793128417
-    0.0078125 7.3318505987410365
-    0.00390625 7.3603235532692795
-    0.001953125 7.374657160341845
-    ```
+1.0 4.0
+0.5 5.0625
+0.25 5.9604644775390625
+0.125 6.583250172027423
+0.0625 6.958666757218805
+0.03125 7.166276152788222
+0.015625 7.275669793128417
+0.0078125 7.3318505987410365
+0.00390625 7.3603235532692795
+0.001953125 7.374657160341845
+```
 
 因此，步长越小，我们似乎越接近 7.37。这是近似路径的图形：
 
@@ -1230,26 +1230,26 @@ print(bin_search(pert,0,2,52.5/42))
 1.  在`euler`函数中，在`slope=`行中输入微分方程：
 
 ```py
-    def euler(x0,y0,target_x,stepsize):
-        x,y = x0,y0
-        while x<target_x:
-            slope = x+y**2 #from diff eq
-            x += stepsize
-            y += stepsize*slope
-        return y
-    ```
+def euler(x0,y0,target_x,stepsize):
+    x,y = x0,y0
+    while x<target_x:
+        slope = x+y**2 #from diff eq
+        x += stepsize
+        y += stepsize*slope
+    return y
+```
 
 1.  在函数调用中输入适当的参数：
 
 ```py
-    print(euler(0,1,0.3,0.001))
-    ```
+print(euler(0,1,0.3,0.001))
+```
 
 输出应该如下所示：
 
 ```py
-    1.48695561935322
-    ```
+1.48695561935322
+```
 
 这意味着通过从我们已知的点(0,1)开始，按微分方程指定的方向迈出微小步骤，我们能够预测 1.49 是对应于 x 值 0.3 的近似*y*值。
 
@@ -1294,71 +1294,71 @@ print(bin_search(pert,0,2,52.5/42))
 1.  首先，我们定义微分方程。让我们称之为`deriv(x,y)`：
 
 ```py
-    def deriv(x,y):
-        return x**2 + y**2
-    ```
+def deriv(x,y):
+    return x**2 + y**2
+```
 
 1.  现在，我们将定义 Runge-Kutta 方法，称之为`rk4`：
 
 ```py
-    def rk4(x0,y0,target_x,h):
-        while x0 <= target_x:
-            print(x0,y0)
-            k1 = h*deriv(x0,y0)
-            k2 = h*deriv(x0 + h/2, y0 + k1/2)
-            k3 = h*deriv(x0 + h/2, y0 + k2/2)
-            k4 = h*deriv(x0 + h, y0 + k3)
-            #These are the values that are fed back into the function:
-            y0 = y0 + (1/6)*(k1 + 2*k2 + 2*k3 + k4)
-            x0 = x0 + h
-    ```
+def rk4(x0,y0,target_x,h):
+    while x0 <= target_x:
+        print(x0,y0)
+        k1 = h*deriv(x0,y0)
+        k2 = h*deriv(x0 + h/2, y0 + k1/2)
+        k3 = h*deriv(x0 + h/2, y0 + k2/2)
+        k4 = h*deriv(x0 + h, y0 + k3)
+        #These are the values that are fed back into the function:
+        y0 = y0 + (1/6)*(k1 + 2*k2 + 2*k3 + k4)
+        x0 = x0 + h
+```
 
 1.  当我们从*y(0) = 0*开始，并且我们想要使用步长为 0.2 来计算*y(1)*时，这就是我们所说的：
 
 ```py
-    rk4(0,0,1,0.2)
-    ```
+rk4(0,0,1,0.2)
+```
 
 我们的进展如下打印出来：
 
 ```py
-    0 0
-    0.2 0.0026668666933346665
-    0.4 0.021360090381533078
-    0.6 0.0724512003541295
-    0.8 0.17409018097333867
-    1.0 0.35025754914481283
-    ```
+0 0
+0.2 0.0026668666933346665
+0.4 0.021360090381533078
+0.6 0.0724512003541295
+0.8 0.17409018097333867
+1.0 0.35025754914481283
+```
 
 1.  使用相同的步长解决相同的问题，但使用 Euler 方法的准确性较低。在`euler`函数中，将`slope=`行更改为匹配新微分方程：
 
 ```py
-            slope = x**2 + y**2
-    ```
+        slope = x**2 + y**2
+```
 
 1.  现在，我们使用 Euler 方法打印出解决方案：
 
 ```py
-    print(euler(0,0,1,0.2))
-    ```
+print(euler(0,0,1,0.2))
+```
 
 以下是输出：
 
 ```py
-    0.2428567456277198
-    ```
+0.2428567456277198
+```
 
 这与 Runge-Kutta 解决方案并不十分接近。然而，在计算机出现之前，Runge-Kutta 改进可能更有用，因为我们可以简单地减小 Euler 方法中的步长并获得更好的近似值。这是步长为 0.001 的 Euler 方法的相同输出：
 
 ```py
-    print(euler(0,0,1,0.001))
-    ```
+print(euler(0,0,1,0.001))
+```
 
 以下是输出：
 
 ```py
-    0.34960542576393877
-    ```
+0.34960542576393877
+```
 
 这只是对用于解方程的*数值方法*的简要介绍，不是通过代数来解决，而是通过将起始点输入计算机程序并按微分方程指示的方向迈出小步来解决。这是微积分的一个庞大领域，特别是现在免费软件和编程语言，再加上快速的计算机处理器，使以前费力的计算变得轻松。
 
@@ -1381,16 +1381,16 @@ print(bin_search(pert,0,2,52.5/42))
 1.  首先，我们需要从`math`模块中获取一些函数来测量距离和角度：
 
 ```py
-    from math import sqrt, atan2,sin,cos
-    ```
+from math import sqrt, atan2,sin,cos
+```
 
 1.  我们将编写一个函数，使用毕达哥拉斯定理来测量捕食者位置和猎物位置之间的距离：
 
 ```py
-    def dist(x1,y1,x2,y2):
-        """Returns distance from (x1,y1) to (x2,y2)"""
-        return sqrt((x1-x2)**2 + (y1-y2)**2)
-    ```
+def dist(x1,y1,x2,y2):
+    """Returns distance from (x1,y1) to (x2,y2)"""
+    return sqrt((x1-x2)**2 + (y1-y2)**2)
+```
 
 1.  关键在于猎物和捕食者位置之间*y*的变化与*x*的变化代表我们想要的角度的正切。我们知道它们的位置，因此我们使用反正切函数`atan2`来计算角度，使得捕食者直接指向猎物。我们真正想知道的是如何改变捕食者的*x*和*y*坐标，使其朝着猎物移动 1 单位。为了使捕食者朝着猎物转向，我们需要找到两点之间的角度，如下图所示：![图 12.31：捕食者和猎物之间的角度](img/B15968_12_31.jpg)
 
@@ -1399,50 +1399,50 @@ print(bin_search(pert,0,2,52.5/42))
 1.  一旦我们知道变化，我们就可以将向量乘以我们想要的任何速度：
 
 ```py
-    def towards(x1,y1,x2,y2):
-        """Returns unit vector in [x,y] format from point
-        1 to point 2"""
-        dx,dy = x2-x1,y2-y1
-        angle = atan2(dy,dx)
-        return [cos(angle),sin(angle)]
-    ```
+def towards(x1,y1,x2,y2):
+    """Returns unit vector in [x,y] format from point
+    1 to point 2"""
+    dx,dy = x2-x1,y2-y1
+    angle = atan2(dy,dx)
+    return [cos(angle),sin(angle)]
+```
 
 我们计算`x`和`y`的变化，使用`arctangent`函数计算角度，然后我们使用余弦和正弦来找到捕食者*x*和*y*坐标的相应变化，使其朝着猎物走一步。
 
 1.  现在，追逐可以开始了。我们将捕食者和猎物放在它们所在的位置。然后，我们开始一个循环，其中我们将猎物移动一单位（或更准确的增量）：
 
 ```py
-    def chase():
-        predator_x,predator_y = 20,0
-        predator_v = 1.5 #prey is 1
-        prey_x,prey_y = 0,0
-        inc = 0.001
-        while dist(predator_x,predator_y,prey_x,prey_y) > 0.001:
-            prey_y += 1*inc
-            p_vec = towards(predator_x,predator_y,\
-                            prey_x,prey_y)
-            predator_x += predator_v*p_vec[0]*inc
-            predator_y += predator_v*p_vec[1]*inc
-            #print(dist(predator_x,predator_y,prey_x,prey_y))
-        return predator_y
-    ```
+def chase():
+    predator_x,predator_y = 20,0
+    predator_v = 1.5 #prey is 1
+    prey_x,prey_y = 0,0
+    inc = 0.001
+    while dist(predator_x,predator_y,prey_x,prey_y) > 0.001:
+        prey_y += 1*inc
+        p_vec = towards(predator_x,predator_y,\
+                        prey_x,prey_y)
+        predator_x += predator_v*p_vec[0]*inc
+        predator_y += predator_v*p_vec[1]*inc
+        #print(dist(predator_x,predator_y,prey_x,prey_y))
+    return predator_y
+```
 
 1.  现在，我们运行追逐并打印出捕食者捕捉猎物的*y*值：
 
 ```py
-    y = chase()
-    print("Y:",y)
-    print("dist:",dist(1,1,4,5))
-    print("towards:",towards(1,1,2,2.732))
-    ```
+y = chase()
+print("Y:",y)
+print("dist:",dist(1,1,4,5))
+print("towards:",towards(1,1,2,2.732))
+```
 
 输出如下：
 
 ```py
-    Y: 23.997299988652507
-    dist: 5.0
-    towards: [0.5000110003630132, 0.8660190526287391]
-    ```
+Y: 23.997299988652507
+dist: 5.0
+towards: [0.5000110003630132, 0.8660190526287391]
+```
 
 这非常接近理论值 24。
 
@@ -1459,56 +1459,56 @@ print(bin_search(pert,0,2,52.5/42))
 1.  首先，我们从`turtle`模块导入函数：
 
 ```py
-    from turtle import *
-    ```
+from turtle import *
+```
 
 1.  我们根据所需的左下点设置屏幕的大小，我们将其设置为(-30，-30)，并设置右上点，我们将其设置为(40,40)：
 
 ```py
-    setworldcoordinates(-30,-30,40,40)
-    ```
+setworldcoordinates(-30,-30,40,40)
+```
 
 1.  设置捕食者和猎物意味着创建一个`Turtle`对象并设置其颜色、位置和速度。乌龟在行走时会留下路径，所以我们告诉它`penup`，以防止它在到达起始位置之前绘制。然后，我们告诉它`pendown`，这样它就会开始绘制：
 
 ```py
-    #set up predator
-    predator = Turtle()
-    predator.color("red")
-    predator.penup()
-    predator.setpos(20,0)
-    predator.pendown()
-    predator.speed(0)
-    ```
+#set up predator
+predator = Turtle()
+predator.color("red")
+predator.penup()
+predator.setpos(20,0)
+predator.pendown()
+predator.speed(0)
+```
 
 1.  我们通过使乌龟变成绿色并赋予它乌龟的形状来设置猎物：
 
 ```py
-    #set up prey
-    prey = Turtle()
-    prey.color("green")
-    prey.shape("turtle")
-    prey.setheading(90)
-    prey.speed(0)
-    ```
+#set up prey
+prey = Turtle()
+prey.color("green")
+prey.shape("turtle")
+prey.setheading(90)
+prey.speed(0)
+```
 
 1.  `pursue`函数应该看起来很熟悉，但它有内置函数来计算距离，甚至指向另一个乌龟：
 
 ```py
-    def pursue():
-        inc = 0.05
-        while predator.distance(prey)>0.05:
-            predator.setheading(predator.towards(prey))
-            prey.forward(inc)
-            predator.forward (1.5*inc)
-        print("y:",predator.ycor())
-    ```
+def pursue():
+    inc = 0.05
+    while predator.distance(prey)>0.05:
+        predator.setheading(predator.towards(prey))
+        prey.forward(inc)
+        predator.forward (1.5*inc)
+    print("y:",predator.ycor())
+```
 
 1.  我们将执行`pursue`函数，然后一旦它打印输出，我们会告诉程序完成，这样图形窗口就不会冻结：
 
 ```py
-    pursue()
-    done()
-    ```
+pursue()
+done()
+```
 
 1.  如果你运行这个，你可以观看追逐。这是最终输出应该看起来像的：![图 12.32：捕食者的路径是一个对数曲线](img/B15968_12_32.jpg)
 
@@ -1517,8 +1517,8 @@ print(bin_search(pert,0,2,52.5/42))
 1.  **扩展**：将猎物的路径改为圆形。在使猎物向前移动的行后，添加这行：
 
 ```py
-    prey.left(.3)
-    ```
+prey.left(.3)
+```
 
 这将使猎物每一步左转一小部分度数。但是如果每次转弯都是一样的，最终会形成一个圆。结果路径看起来像这样：
 
@@ -1549,48 +1549,48 @@ print(bin_search(pert,0,2,52.5/42))
 1.  让我们模拟一下：
 
 ```py
-    v = 29
-    g = 9.8
-    h = 0
-    t = 0
-    ```
+v = 29
+g = 9.8
+h = 0
+t = 0
+```
 
 因此，对于第一秒，球将以 29 米/秒的速度向上抛出，但会受到每秒 9.8 米的重力减速，这意味着一秒后，它只有*29 - 9.8 = 19.2*米/秒。因此，一秒后，球应该在空中 19.2 米高。我们每秒重复一次，直到它的高度为 0。
 
 1.  `height`函数应该是这样的：
 
 ```py
-    def height(v0,h0,t):
-        """Calculates the height a projectile given the
-        initial height and velocity and the elapsed time."""
-        v,h = v0,h0
-        for i in range(1,t+1):
-            v -= g
-            h += v
-        return h
-    ```
+def height(v0,h0,t):
+    """Calculates the height a projectile given the
+    initial height and velocity and the elapsed time."""
+    v,h = v0,h0
+    for i in range(1,t+1):
+        v -= g
+        h += v
+    return h
+```
 
 1.  速度和高度被分配它们的起始值，*v*0 和*h*0，然后速度通过*g*和加速度（由于重力）进行更新，然后高度*h*通过速度进行更新。我们每秒重复计算并检查球的高度何时返回到零：
 
 ```py
-    for j in range(1,10):
-        print(j,round(height(v,h,j),1))
-    ```
+for j in range(1,10):
+    print(j,round(height(v,h,j),1))
+```
 
 以下是输出：
 
 ```py
-     –
-    1 19.2
-    2 28.6
-    3 28.2
-    4 18.0
-    5 -2.0
-    6 -31.8
-    7 -71.4
-    8 -120.8
-    9 -180.0
-    ```
+ –
+1 19.2
+2 28.6
+3 28.2
+4 18.0
+5 -2.0
+6 -31.8
+7 -71.4
+8 -120.8
+9 -180.0
+```
 
 看起来球在 4 到 5 秒之间击中地面。但是当我们将*t = 5*放入前面的公式中时，我们得到以下结果：
 
@@ -1601,75 +1601,75 @@ print(bin_search(pert,0,2,52.5/42))
 1.  5 秒后，球应该仍然在空中 22.5 米。我们的代码有什么问题？正如您现在应该知道的那样，球不仅每秒改变一次速度。它的速度不断变化。就像复利一样，我们需要每秒计算新的速度。对于 Python 来说很容易。我们只需引入一个`inc`变量来增加时间。请记住，这会增加我们循环计算的次数，因此`for i in range`行也会改变。然后，*g*和*v*乘以增量。我们将每半秒重新计算一次：
 
 ```py
-    def height(v0,h0,t):
-        """Calculates the height a projectile given the
-        initial height and velocity and the elapsed time."""
-        inc = 0.5
-        v,h = v0,h0
-        for i in range(int(t/inc)):
-            v -= g*inc
-            h += v*inc
-        return h
-    ```
+def height(v0,h0,t):
+    """Calculates the height a projectile given the
+    initial height and velocity and the elapsed time."""
+    inc = 0.5
+    v,h = v0,h0
+    for i in range(int(t/inc)):
+        v -= g*inc
+        h += v*inc
+    return h
+```
 
 1.  使用相同的代码运行此代码：
 
 ```py
-    for j in range(1,7):
-        print(j,round(height(v,h,j),1))
-    ```
+for j in range(1,7):
+    print(j,round(height(v,h,j),1))
+```
 
 输出现在如下：
 
 ```py
-    1 21.7
-    2 33.5
-    3 35.6
-    4 27.8
-    5 10.3
-    6 -17.1
-    ```
+1 21.7
+2 33.5
+3 35.6
+4 27.8
+5 10.3
+6 -17.1
+```
 
 1.  球在空中停留的时间更长，在 5 秒时，它在空中的高度为 10.3 米。如果我们使增量非常小，它应该在 5 秒时更接近 22.5 米。将`inc`更改为 0.001，再次运行，您将获得以下输出：
 
 ```py
-    1 24.1
-    2 38.4
-    3 42.9
-    4 37.6
-    5 22.5
-    6 -2.4
-    ```
+1 24.1
+2 38.4
+3 42.9
+4 37.6
+5 22.5
+6 -2.4
+```
 
 1.  要回答球何时触地的问题，我们将不得不在 5 秒和 6 秒之间进行二分搜索。与以前的搜索一样，我们使用我们的`bin_search`函数，并更改`guess =`行以反映我们*猜测*的数字：
 
 ```py
-    def bin_search(f,lower,upper,target):
-        def average(a,b):
-            return (a+b)/2
-        for i in range(40):
-            avg = average(lower,upper)
-            guess = f(29,0,avg)
-            if guess == target:
-                return avg
-            if guess < target:
-                upper = avg
-            else:
-                lower = avg
-        return avg
-    ```
+def bin_search(f,lower,upper,target):
+    def average(a,b):
+        return (a+b)/2
+    for i in range(40):
+        avg = average(lower,upper)
+        guess = f(29,0,avg)
+        if guess == target:
+            return avg
+        if guess < target:
+            upper = avg
+        else:
+            lower = avg
+    return avg
+```
 
 1.  我们只需要更改`height`函数的参数的`guess =`行。最后一个参数*t*是我们正在搜索的内容，因此我们正在平均。二分搜索函数将在 5 和 6 之间插入值，并返回返回 0 的*t*值：
 
 ```py
-    print(bin_search(height,5,6,0))
-    ```
+print(bin_search(height,5,6,0))
+```
 
 以下是输出：
 
 ```py
-    5.918000000000575
-    ```
+5.918000000000575
+```
 
 现在，我们解决二次方程：
 
@@ -1777,45 +1777,45 @@ print(height(29,0))
 1.  修改您的`height`函数，使其看起来像这样：
 
 ```py
-    def height(v0,h0): 
-        """Calculates the velocity of a projectile given the  
-        initial height and velocity and the elapsed time.""" 
-        inc = 0.001
-        v,h = v0,h0 
-        t = 0
-        for i in range(500): 
-    ```
+def height(v0,h0): 
+    """Calculates the velocity of a projectile given the  
+    initial height and velocity and the elapsed time.""" 
+    inc = 0.001
+    v,h = v0,h0 
+    t = 0
+    for i in range(500): 
+```
 
 1.  这是一个重要的行，我们在其中告诉`force`函数质量、*k*的值等等：
 
 ```py
-            v -= force(v,80,9.8,0.27,inc)
-            h += v*inc
-            if i % 50 == 0:
-                print("v:",round(v,1))
-            t += inc
-    ```
+        v -= force(v,80,9.8,0.27,inc)
+        h += v*inc
+        if i % 50 == 0:
+            print("v:",round(v,1))
+        t += inc
+```
 
 1.  我们进行了 500 次循环，但只在每 50 次循环时打印出速度。让我们用这行来运行它：
 
 ```py
-    height(0,3000)
-    ```
+height(0,3000)
+```
 
 这是我们收到的输出：
 
 ```py
-    v: -0.8
-    v: -34.1
-    v: -48.6
-    v: -52.6
-    v: -53.6
-    v: -53.8
-    v: -53.9
-    v: -53.9
-    v: -53.9
-    v: -53.9
-    ```
+v: -0.8
+v: -34.1
+v: -48.6
+v: -52.6
+v: -53.6
+v: -53.8
+v: -53.9
+v: -53.9
+v: -53.9
+v: -53.9
+```
 
 速度从 0 开始，变得越来越负，直到停止减少。它在大约 54 米/秒左右稳定下来（为负，因为它向下），这大约是每小时 120 英里，人体在自由落体中的终端速度。这是随时间变化的速度图：
 

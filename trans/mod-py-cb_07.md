@@ -111,25 +111,25 @@ Card(rank=2, suit='♣')**
 1.  定义独立的集合。它可能是一个内置的集合，例如`set`，`list`或`dict`。在这个例子中，它将是一个包含卡片的列表：
 
 ```py
-            domain = [Card(r+1,s) for r in range(13) for s in SUITS] 
+        domain = [Card(r+1,s) for r in range(13) for s in SUITS] 
 
-    ```
+```
 
 1.  定义聚合类。在这个例子中，名称带有`_W`后缀。这不是一个推荐的做法；这里只是为了更清楚地区分类定义之间的区别。稍后，我们将看到对这种设计的稍微不同的变化：
 
 ```py
-            class Deck_W: 
+        class Deck_W: 
 
-    ```
+```
 
 1.  使用这个类的`__init__()`方法作为提供底层集合对象的一种方式。这也将初始化任何有状态的变量。我们可能会创建一个用于发牌的迭代器：
 
 ```py
-            def __init__(self, cards:List[Card]): 
-                self.cards = cards.copy() 
-                self.deal_iter = iter(cards) 
+        def __init__(self, cards:List[Card]): 
+            self.cards = cards.copy() 
+            self.deal_iter = iter(cards) 
 
-    ```
+```
 
 这使用了一个类型提示，`List[Card]`。`typing`模块提供了`List`的必要定义。
 
@@ -138,13 +138,13 @@ Card(rank=2, suit='♣')**
 1.  提供适用于聚合对象的方法：
 
 ```py
-            def shuffle(self): 
-                random.shuffle(self.cards) 
-                self.deal_iter = iter(self.cards) 
-            def deal(self) -> Card: 
-                return next(self.deal_iter) 
+        def shuffle(self): 
+            random.shuffle(self.cards) 
+            self.deal_iter = iter(self.cards) 
+        def deal(self) -> Card: 
+            return next(self.deal_iter) 
 
-    ```
+```
 
 `shuffle()`方法随机化内部列表对象`self.cards`。`deal()`对象创建一个迭代器，可以用来遍历`self.cards`列表。我们在`deal()`上提供了一个类型提示，以澄清它返回一个`Card`实例。
 
@@ -191,9 +191,9 @@ Card(rank=1, suit='♢')]**
 1.  将扩展类定义为内置集合的子类。在这个例子中，名称带有`_X`后缀。这不是一个推荐的做法；这里只是为了更清楚地区分这个配方中两个类定义之间的区别：
 
 ```py
-            class Deck_X(list): 
+        class Deck_X(list): 
 
-    ```
+```
 
 这是一个清晰而正式的陈述——`Deck`是一个列表。
 
@@ -204,13 +204,13 @@ Card(rank=1, suit='♢')]**
 1.  为扩展对象提供适当的方法：
 
 ```py
-            def shuffle(self): 
-                random.shuffle(self) 
-                self.deal_iter = iter(self) 
-            def deal(self) -> Card: 
-                return next(self.deal_iter) 
+        def shuffle(self): 
+            random.shuffle(self) 
+            self.deal_iter = iter(self) 
+        def deal(self) -> Card: 
+            return next(self.deal_iter) 
 
-    ```
+```
 
 `shuffle()`方法将对象作为一个整体进行随机化，因为它是列表的扩展。`deal()`对象创建一个迭代器，可以用来遍历`self.cards`列表。我们在`deal()`上提供了一个类型提示，以澄清它返回一个`Card`实例。
 
@@ -344,101 +344,101 @@ Python 允许我们定义一个具有多个父类的类。一个类可以同时�
 1.  定义基本类：
 
 ```py
-            class Card: 
-                __slots__ = ('rank', 'suit') 
-                def __init__(self, rank, suit): 
-                    super().__init__() 
-                    self.rank = rank 
-                    self.suit = suit 
-                def __repr__(self): 
-                    return "{rank:2d} {suit}".format( 
-                        rank=self.rank, suit=self.suit 
-                    ) 
+        class Card: 
+            __slots__ = ('rank', 'suit') 
+            def __init__(self, rank, suit): 
+                super().__init__() 
+                self.rank = rank 
+                self.suit = suit 
+            def __repr__(self): 
+                return "{rank:2d} {suit}".format( 
+                    rank=self.rank, suit=self.suit 
+                ) 
 
-    ```
+```
 
 我们已经定义了一个通用的`Card`类，适用于等级为 2 到 10。我们通过`super().__init__()`显式调用任何超类初始化。
 
 1.  定义任何子类来处理特殊化：
 
 ```py
-            class AceCard(Card): 
-                def __repr__(self): 
-                    return " A {suit}".format( 
-                        rank=self.rank, suit=self.suit 
-                    ) 
-            class FaceCard(Card): 
-                def __repr__(self): 
-                    names = {11: 'J', 12: 'Q', 13: 'K'} 
-                    return " {name} {suit}".format( 
-                        rank=self.rank, suit=self.suit, 
-                        name=names[self.rank] 
-                    ) 
+        class AceCard(Card): 
+            def __repr__(self): 
+                return " A {suit}".format( 
+                    rank=self.rank, suit=self.suit 
+                ) 
+        class FaceCard(Card): 
+            def __repr__(self): 
+                names = {11: 'J', 12: 'Q', 13: 'K'} 
+                return " {name} {suit}".format( 
+                    rank=self.rank, suit=self.suit, 
+                    name=names[self.rank] 
+                ) 
 
-    ```
+```
 
 我们已经定义了`Card`类的两个子类。`AceCard`类处理 Ace 的特殊格式规则。`FaceCard`类处理 Jack、Queen 和 King 的其他格式规则。
 
 1.  定义一个标识将要添加的附加特征的 mixin 超类。在某些情况下，mixin 将全部继承自一个共同的抽象类。在这个例子中，我们将使用一个处理 Ace 到 10 的规则的具体类：
 
 ```py
-            class CribbagePoints: 
-                def points(self): 
-                    return self.rank 
+        class CribbagePoints: 
+            def points(self): 
+                return self.rank 
 
-    ```
+```
 
 对于*Cribbage*游戏，大多数卡片的点数等于卡片的等级。
 
 1.  为各种特征定义具体的 mixin 子类：
 
 ```py
-            class CribbageFacePoints(CribbagePoints): 
-                def points(self): 
-                    return 10 
+        class CribbageFacePoints(CribbagePoints): 
+            def points(self): 
+                return 10 
 
-    ```
+```
 
 对于三个花色的牌，点数总是 10。
 
 1.  创建结合基本类和混合类的类定义。虽然在这里技术上可以添加独特的方法定义，但这经常会导致混乱。目标是有两组简单合并以创建结果类定义的特性。
 
 ```py
-            class CribbageAce(AceCard, CribbagePoints): 
-                pass 
+        class CribbageAce(AceCard, CribbagePoints): 
+            pass 
 
-            class CribbageCard(Card, CribbagePoints): 
-                pass 
+        class CribbageCard(Card, CribbagePoints): 
+            pass 
 
-            class CribbageFace(FaceCard, CribbageFacePoints): 
-                pass 
+        class CribbageFace(FaceCard, CribbageFacePoints): 
+            pass 
 
-    ```
+```
 
 1.  创建一个工厂函数（或工厂类）来根据输入参数创建适当的对象：
 
 ```py
-            def make_card(rank, suit): 
-                if rank == 1: return CribbageAce(rank, suit) 
-                if 2 <= rank < 11: return CribbageCard(rank, suit) 
-                if 11 <= rank: return CribbageFace(rank, suit) 
+        def make_card(rank, suit): 
+            if rank == 1: return CribbageAce(rank, suit) 
+            if 2 <= rank < 11: return CribbageCard(rank, suit) 
+            if 11 <= rank: return CribbageFace(rank, suit) 
 
-    ```
+```
 
 1.  我们可以使用这个函数来创建一副牌：
 
 ```py
-     **>>> from ch07_r02 import make_card, SUITS 
-          >>> import random 
-          >>> random.seed(1) 
-          >>> deck = [make_card(rank+1, suit) for rank in range(13) for suit in SUITS] 
-          >>> random.shuffle(deck) 
-          >>> len(deck) 
-          52 
-          >>> deck[:5] 
-          [ K ♡,  3 ♡, 10 ♡,  6 ♢,  A ♢]** 
+ **>>> from ch07_r02 import make_card, SUITS 
+      >>> import random 
+      >>> random.seed(1) 
+      >>> deck = [make_card(rank+1, suit) for rank in range(13) for suit in SUITS] 
+      >>> random.shuffle(deck) 
+      >>> len(deck) 
+      52 
+      >>> deck[:5] 
+      [ K ♡,  3 ♡, 10 ♡,  6 ♢,  A ♢]** 
 
-    ```
+```
 
 我们已经种子化了随机数生成器，以确保每次评估`shuffle()`函数时结果都是相同的。这使得单元测试成为可能。
 
@@ -447,10 +447,10 @@ Python 允许我们定义一个具有多个父类的类。一个类可以同时�
 例如，我们可以评估每个`Card`对象的`points()`方法：
 
 ```py
-     **>>> sum(c.points() for c in deck[:5]) 
-          30** 
+ **>>> sum(c.points() for c in deck[:5]) 
+      30** 
 
-    ```
+```
 
 手中有两张花色牌，加上三、六和 A，所以总点数是`30`。
 
@@ -604,35 +604,35 @@ Python 没有正式的抽象超类机制。然而，标准库有一个`abc`模�
 1.  定义一个具有所需方法和属性的类。在这个例子中，我们将有一个属性`dice`，它保留了上次掷骰子的结果，以及一个方法`roll()`，它改变了骰子的状态：
 
 ```py
-            class Dice1: 
-                def __init__(self, seed=None): 
-                    self._rng = random.Random(seed) 
-                    self.roll() 
-                def roll(self): 
-                    self.dice = (self._rng.randint(1,6), 
-                        self._rng.randint(1,6)) 
-                    return self.dice 
+        class Dice1: 
+            def __init__(self, seed=None): 
+                self._rng = random.Random(seed) 
+                self.roll() 
+            def roll(self): 
+                self.dice = (self._rng.randint(1,6), 
+                    self._rng.randint(1,6)) 
+                return self.dice 
 
-    ```
+```
 
 1.  定义其他具有相同方法和属性的类。以下是一个稍微复杂的定义，它创建了一个与`Dice1`类具有相同签名的类：
 
 ```py
-            class Die: 
-                def __init__(self, rng): 
-                    self._rng= rng 
-                def roll(self): 
-                    return self._rng.randint(1, 6) 
-            class Dice2: 
-                def __init__(self, seed=None): 
-                    self._rng = random.Random(seed) 
-                    self._dice = [Die(self._rng) for _ in range(2)] 
-                    self.roll() 
-                def roll(self): 
-                    self.dice = tuple(d.roll() for d in self._dice) 
-                    return self.dice 
+        class Die: 
+            def __init__(self, rng): 
+                self._rng= rng 
+            def roll(self): 
+                return self._rng.randint(1, 6) 
+        class Dice2: 
+            def __init__(self, seed=None): 
+                self._rng = random.Random(seed) 
+                self._dice = [Die(self._rng) for _ in range(2)] 
+                self.roll() 
+            def roll(self): 
+                self.dice = tuple(d.roll() for d in self._dice) 
+                return self.dice 
 
-    ```
+```
 
 这个类引入了一个额外的属性，`_dice`。这种实现上的改变并不会改变单个属性`dice`和方法`roll()`的公开接口。
 
@@ -752,30 +752,30 @@ Python 环境包含许多隐式全局对象。这些对象提供了一种方便�
 1.  如果有必要，为全局单例定义一个类。在我们的例子中，我们可以使用这个定义：
 
 ```py
-            from collections import Counter 
+        from collections import Counter 
 
-    ```
+```
 
 在某些情况下，可能会使用`types.SimpleNamespace`。在其他情况下，可能需要一个更复杂的类，其中包括方法和属性。
 
 1.  定义全局单例对象的唯一实例：
 
 ```py
-            _global_counter = Counter() 
+        _global_counter = Counter() 
 
-    ```
+```
 
 我们在名称中使用了一个前导`_`，使其稍微不太可见。它不是——技术上——私有的。然而，它被许多 Python 工具和实用程序优雅地忽略了。
 
 1.  定义任何包装函数：
 
 ```py
-            def count(key, increment=1): 
-                _global_counter[key] += increment 
-            def counts(): 
-                return _global_counter.most_common() 
+        def count(key, increment=1): 
+            _global_counter[key] += increment 
+        def counts(): 
+            return _global_counter.most_common() 
 
-    ```
+```
 
 我们定义了两个使用全局对象`_global_counter`的函数。这些函数封装了计数器的实现细节。
 
@@ -808,23 +808,23 @@ Python 环境包含许多隐式全局对象。这些对象提供了一种方便�
 1.  定义一个类并在`__init__`方法之外提供一个变量。这个变量是类的一部分，而不是每个单独实例的一部分。它被所有类的实例共享：
 
 ```py
-            from collections import Counter 
-            class EventCounter: 
-                _counts = Counter() 
+        from collections import Counter 
+        class EventCounter: 
+            _counts = Counter() 
 
-    ```
+```
 
 我们给类级变量加了一个前导下划线，使其不太公开。这是对使用类的任何人的一个提示，该属性是一个可能会改变的实现细节。它不是类的可见接口的一部分。
 
 1.  添加方法来更新和提取这个变量的数据：
 
 ```py
-            def count(self, key, increment=1): 
-                EventCounter._counts[key] += increment 
-            def counts(self): 
-                return EventCounter._counts.most_common() 
+        def count(self, key, increment=1): 
+            EventCounter._counts[key] += increment 
+        def counts(self): 
+            return EventCounter._counts.most_common() 
 
-    ```
+```
 
 我们在这个例子中没有使用`self`，是为了说明变量赋值和实例变量。当我们在赋值语句的右侧使用`self.name`时，名称可以由对象、类或任何超类解析。这是搜索类的普通规则。
 
@@ -917,24 +917,24 @@ Python 导入机制使用`sys.modules`来跟踪加载了哪些模块。一旦模
 1.  从`collections`导入`defaultdict`：
 
 ```py
-            from collections import defaultdict 
+        from collections import defaultdict 
 
-    ```
+```
 
 1.  使用`list`函数作为`defaultdict`的默认值：
 
 ```py
-            module_details = defaultdict(list) 
+        module_details = defaultdict(list) 
 
-    ```
+```
 
 1.  通过数据进行迭代，将其附加到与每个键关联的列表中。`defaultdict`对象将使用`list()`函数为每个新键构建一个空列表：
 
 ```py
-            for row in data: 
-                module_details[row[2]].append(row) 
+        for row in data: 
+            module_details[row[2]].append(row) 
 
-    ```
+```
 
 这将产生一个从模块到该模块名称的所有日志行的列表的字典。数据看起来像这样：
 
@@ -1050,65 +1050,65 @@ Pinochle 游戏通常涉及一副有 48 张牌的牌组。有六个等级——9
 1.  我们正在使用混合设计。因此，我们将创建一个新的类来保存比较特征：
 
 ```py
-            class SortedCard: 
+        class SortedCard: 
 
-    ```
+```
 
 这个类将加入`Card`层次结构的成员加上`PinochlePoints`，以创建最终的复合类定义。
 
 1.  定义六个比较方法：
 
 ```py
-            def __lt__(self, other): 
-                return (self.rank, self.suit) < (other.rank, other.suit) 
+        def __lt__(self, other): 
+            return (self.rank, self.suit) < (other.rank, other.suit) 
 
-            def __le__(self, other): 
-                return (self.rank, self.suit) <= (other.rank, other.suit) 
+        def __le__(self, other): 
+            return (self.rank, self.suit) <= (other.rank, other.suit) 
 
-            def __gt__(self, other): 
-                return (self.rank, self.suit) > (other.rank, other.suit) 
+        def __gt__(self, other): 
+            return (self.rank, self.suit) > (other.rank, other.suit) 
 
-            def __ge__(self, other): 
-                return (self.rank, self.suit) >= (other.rank, other.suit) 
+        def __ge__(self, other): 
+            return (self.rank, self.suit) >= (other.rank, other.suit) 
 
-            def __eq__(self, other): 
-                return (self.rank, self.suit) == (other.rank, other.suit) 
+        def __eq__(self, other): 
+            return (self.rank, self.suit) == (other.rank, other.suit) 
 
-            def __ne__(self, other): 
-                return (self.rank, self.suit) != (other.rank, other.suit) 
+        def __ne__(self, other): 
+            return (self.rank, self.suit) != (other.rank, other.suit) 
 
-    ```
+```
 
 我们已经完整地写出了所有六个比较。我们将`Card`的相关属性转换为元组，并依赖于 Python 的内置元组比较来处理细节。
 
 1.  编写复合类定义，由一个基本类和两个混合类构建以提供额外特征：
 
 ```py
-            class PinochleAce(AceCard, SortedCard, PinochlePoints): 
-                pass 
+        class PinochleAce(AceCard, SortedCard, PinochlePoints): 
+            pass 
 
-            class PinochleFace(FaceCard, SortedCard, PinochlePoints): 
-                pass 
+        class PinochleFace(FaceCard, SortedCard, PinochlePoints): 
+            pass 
 
-            class PinochleNumber(Card, SortedCard, PinochlePoints): 
-                pass 
+        class PinochleNumber(Card, SortedCard, PinochlePoints): 
+            pass 
 
-    ```
+```
 
 最终的类包含具有三个独立且大部分独立的特征集的元素：基本的`Card`特征，混合比较特征和混合 Pinochle 特定特征。
 
 1.  创建一个函数，从先前定义的类中创建单独的卡片对象：
 
 ```py
-            def make_card(rank, suit): 
-                if rank in (9, 10): 
-                    return PinochleNumber(rank, suit) 
-                elif rank in (11, 12, 13): 
-                    return PinochleFace(rank, suit) 
-                else: 
-                    return PinochleAce(rank, suit) 
+        def make_card(rank, suit): 
+            if rank in (9, 10): 
+                return PinochleNumber(rank, suit) 
+            elif rank in (11, 12, 13): 
+                return PinochleFace(rank, suit) 
+            else: 
+                return PinochleAce(rank, suit) 
 
-    ```
+```
 
 尽管点数规则非常复杂，但复杂性隐藏在`PinochlePoints`类中。构建复合类作为`Card`和`PinochlePoints`的基类子类会导致对牌的准确建模，而不会有太多明显的复杂性。
 
@@ -1328,12 +1328,12 @@ Python 明确不会为我们执行任何这种高级代数。我们需要仔细�
 1.  定义一个类，其中初始化可以从任何可迭代的数据源加载集合：
 
 ```py
-            class Hand: 
-                def __init__(self, card_iter): 
-                    self.cards = list(card_iter) 
-                    self.cards.sort() 
+        class Hand: 
+            def __init__(self, card_iter): 
+                self.cards = list(card_iter) 
+                self.cards.sort() 
 
-    ```
+```
 
 我们可以使用这个从列表或可能是生成器表达式构建一个`Hand`。如果列表不为空，我们需要将项目排序。`self.cards`列表的`sort()`方法将依赖于`Card`对象实现的各种比较运算符。
 
@@ -1342,60 +1342,60 @@ Python 明确不会为我们执行任何这种高级代数。我们需要仔细�
 1.  定义一个将卡片添加到手牌的方法：
 
 ```py
-            def add(self, aCard: Card): 
-                bisect.insort(self.cards, aCard) 
+        def add(self, aCard: Card): 
+            bisect.insort(self.cards, aCard) 
 
-    ```
+```
 
 我们使用`bisect`算法来确保卡片被正确插入到`self.cards`列表中。
 
 1.  定义一个查找给定卡片在手牌中位置的方法：
 
 ```py
-            def index(self, aCard: Card): 
-                i = bisect.bisect_left(self.cards, aCard) 
-                if i != len(self.cards) and self.cards[i] == aCard: 
-                    return i 
-                raise ValueError 
+        def index(self, aCard: Card): 
+            i = bisect.bisect_left(self.cards, aCard) 
+            if i != len(self.cards) and self.cards[i] == aCard: 
+                return i 
+            raise ValueError 
 
-    ```
+```
 
 我们使用`bisect`算法来定位给定的卡片。建议在`bisect.bisect_left()`的文档中使用额外的`if`测试来正确处理处理中的边缘情况。
 
 1.  定义实现`in`运算符的特殊方法：
 
 ```py
-            def __contains__(self, aCard: Card): 
-                try: 
-                    self.index(aCard) 
-                    return True 
-                except ValueError: 
-                    return False 
+        def __contains__(self, aCard: Card): 
+            try: 
+                self.index(aCard) 
+                return True 
+            except ValueError: 
+                return False 
 
-    ```
+```
 
 当我们在 Python 中编写`card in some_hand`时，它会被计算为如果我们编写了`some_hand.__contains__(card)`。我们使用`index()`方法来查找卡片或引发异常。异常被转换为`False`的返回值。
 
 1.  定义手牌上的迭代器。这只是对`self.cards`集合的简单委托：
 
 ```py
-            def __iter__(self): 
-                return iter(self.cards) 
+        def __iter__(self): 
+            return iter(self.cards) 
 
-    ```
+```
 
 当我们在 Python 中编写`iter(some_hand)`时，它会被计算为如果我们编写了`some_hand.__iter__()`。
 
 1.  在两个手实例之间定义一个子集操作：
 
 ```py
-            def __le__(self, other): 
-                for card in self: 
-                    if card not in other: 
-                        return False 
-                return True 
+        def __le__(self, other): 
+            for card in self: 
+                if card not in other: 
+                    return False 
+            return True 
 
-    ```
+```
 
 Python 没有*a*⊂*b*或*a*⊆*b*符号，因此<和<=被用来比较集合。当我们写`pinochle <= some_hand`来查看手中是否包含特定的卡片组合时，它被评估为如果我们写了`pinochle.__le__(some_hand)`。子集是 self 实例变量，目标 Hand 是另一个参数值。
 
@@ -1653,47 +1653,47 @@ IndexError: list index out of range**
 1.  将索引值初始化为零。这建立了一个将遍历数据集合的变量：
 
 ```py
-            i = 0 
+        i = 0 
 
-    ```
+```
 
 1.  终止条件必须表明列表中的每个项目都已经被检查过了。此外，循环体需要删除所有符合目标条件的项目。这导致了一个不变条件，即`item[i]`尚未被检查。项目被检查后，它可能被保留，这意味着索引`i`必须被递增以重置尚未被检查的不变条件。如果项目被移除，那么项目将向前移动，`item[i]`将自动满足尚未被检查的不变条件：
 
 ```py
-            if 'Lake' in data[i]['writer']: 
-                del data[i] # Remove 
-            else: 
-                i += 1 # Preserve 
+        if 'Lake' in data[i]['writer']: 
+            del data[i] # Remove 
+        else: 
+            i += 1 # Preserve 
 
-    ```
+```
 
 删除一个项目时，列表变短了一个，索引值`i`将指向一个新的未检查的项目。保留一个项目时，索引值`i`将被提前到下一个未检查的项目。
 
 1.  终止条件用于包装处理体：
 
 ```py
-            while i != len(data): 
+        while i != len(data): 
 
-    ```
+```
 
 在`while`语句结束时，`i`的值将表明所有项目都已经被检查过了。
 
 这导致了以下结果：
 
 ```py
-     **>>> i = 0 
-          >>> while i != len(data): 
-          ...    if 'Lake' in data[i]['writer']: 
-          ...        del data[i] 
-          ...    else: 
-          ...        i += 1 
-          >>> pprint(data) 
-          [{'time': '2:43', 'title': 'Eruption', 'writer': ['Emerson']}, 
-           {'time': '1:16', 'title': 'Iconoclast', 'writer': ['Emerson']}, 
-           {'time': '1:49', 'title': 'Manticore', 'writer': ['Emerson']}, 
-           {'time': '3:54', 'title': 'Aquatarkus', 'writer': ['Emerson']}]** 
+ **>>> i = 0 
+      >>> while i != len(data): 
+      ...    if 'Lake' in data[i]['writer']: 
+      ...        del data[i] 
+      ...    else: 
+      ...        i += 1 
+      >>> pprint(data) 
+      [{'time': '2:43', 'title': 'Eruption', 'writer': ['Emerson']}, 
+       {'time': '1:16', 'title': 'Iconoclast', 'writer': ['Emerson']}, 
+       {'time': '1:49', 'title': 'Manticore', 'writer': ['Emerson']}, 
+       {'time': '3:54', 'title': 'Aquatarkus', 'writer': ['Emerson']}]** 
 
-    ```
+```
 
 这使得数据只经过一次，并且在不引发索引错误或跳过应该被删除的项目的情况下删除了请求的项目。
 

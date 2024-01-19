@@ -283,9 +283,9 @@ date=10/28/13, on=13:21:00, off=06:25:00, change=8.0**
 1.  检查输入是否为密码或同样受到保密的内容。 如果是，则使用`getpass.getpass()`函数。 这意味着我们需要导入以下函数：
 
 ```py
-            from getpass import getpass 
+        from getpass import getpass 
 
-    ```
+```
 
 否则，如果不需要输入，则使用`input()`函数。
 
@@ -294,29 +294,29 @@ date=10/28/13, on=13:21:00, off=06:25:00, change=8.0**
 在我们的示例中，我们提供了一个字段名称和关于预期数据类型的提示作为提示字符串。提示字符串是`input()`或`getpass()`函数的参数：
 
 ```py
-            year = int(input("year: ")) 
+        year = int(input("year: ")) 
 
-    ```
+```
 
 1.  确定如何验证每个单独的项目。最简单的情况是一个单一值和一个涵盖所有内容的规则。在更复杂的情况下——比如这个——每个单独的元素都是一个带有范围约束的数字。在后续步骤中，我们将看看如何验证复合项目。
 
 1.  我们可能希望重新构造我们的输入，使其看起来像这样：
 
 ```py
-            month = None 
-            while month is None: 
-                month_text = input("month [1-12]: ") 
-                try: 
-                    month = int(month_text) 
-                    if 1 <= month <= 12: 
-                        pass 
-                    else: 
-                        raise ValueError("Month of range 1-12") 
-                except ValueError as ex: 
-                    print(ex) 
-                    month = None 
+        month = None 
+        while month is None: 
+            month_text = input("month [1-12]: ") 
+            try: 
+                month = int(month_text) 
+                if 1 <= month <= 12: 
+                    pass 
+                else: 
+                    raise ValueError("Month of range 1-12") 
+            except ValueError as ex: 
+                print(ex) 
+                month = None 
 
-    ```
+```
 
 它将两个验证规则应用于输入：
 
@@ -331,19 +331,19 @@ date=10/28/13, on=13:21:00, off=06:25:00, change=8.0**
 1.  验证复合对象。在这种情况下，这也意味着我们的整体输入需要重新构造，以便在出现错误输入时进行重试：
 
 ```py
-            input_date = None 
-            while input_date is None: 
-                year = get_integer("year: ", 1900, 2100) 
-                month = get_integer("month [1-12]: ", 1, 12) 
-                day = get_integer("day [1-31]: ", 1, 31) 
-                try: 
-                    result = date(year, month, day) 
-                except ValueError as ex: 
-                    print(ex) 
-                    input_date = None 
-            # assert input_date is the valid date entered by the user 
+        input_date = None 
+        while input_date is None: 
+            year = get_integer("year: ", 1900, 2100) 
+            month = get_integer("month [1-12]: ", 1, 12) 
+            day = get_integer("day [1-31]: ", 1, 31) 
+            try: 
+                result = date(year, month, day) 
+            except ValueError as ex: 
+                print(ex) 
+                input_date = None 
+        # assert input_date is the valid date entered by the user 
 
-    ```
+```
 
 这个整体循环实现了复合日期对象的高级验证。
 
@@ -352,14 +352,14 @@ date=10/28/13, on=13:21:00, off=06:25:00, change=8.0**
 1.  与其模仿规则，不如使用`datetime`模块来计算两个相邻月份的第一天，如下所示：
 
 ```py
-            day_1_date = date(year, month, 1) 
-            if month == 12: 
-                next_year, next_month = year+1, 1 
-            else: 
-                next_year, next_month = year, month+1 
-            day_end_date = date(next_year, next_month, 1) 
+        day_1_date = date(year, month, 1) 
+        if month == 12: 
+            next_year, next_month = year+1, 1 
+        else: 
+            next_year, next_month = year, month+1 
+        day_end_date = date(next_year, next_month, 1) 
 
-    ```
+```
 
 这将正确计算给定月份的最后一天。该算法通过计算给定年份和月份的第一天，然后计算下个月的第一天。它正确地更改年份，以便`year`的一月跟随`year`的十二月。
 
@@ -500,13 +500,13 @@ input_date = datetime.strptime(raw_date_str, '%Y-%m-%d').date()
 1.  使用映射允许我们将变量的名称插入格式模板中。它看起来像这样：
 
 ```py
-     **>>> print( 
-          ...     "mean={mean_size:.2f}, std={std_size:.2f}" 
-          ...     .format_map(vars()) 
-          ... ) 
-          mean=1414.77, std=901.10** 
+ **>>> print( 
+      ...     "mean={mean_size:.2f}, std={std_size:.2f}" 
+      ...     .format_map(vars()) 
+      ... ) 
+      mean=1414.77, std=901.10** 
 
-    ```
+```
 
 我们可以将任何局部变量放入格式字符串中。使用`format_map(vars())`，我们不需要更复杂的方式来选择要显示的变量。
 
@@ -630,16 +630,16 @@ From 36.12,-86.67 to 33.94,-118.4 in NM = 1558.53**
 1.  定义整体参数解析函数：
 
 ```py
-            def get_options(): 
+        def get_options(): 
 
-    ```
+```
 
 1.  创建“解析器”对象：
 
 ```py
-            parser = argparse.ArgumentParser() 
+        parser = argparse.ArgumentParser() 
 
-    ```
+```
 
 1.  向“解析器”对象添加各种类型的参数。有时这很困难，因为我们仍在完善用户体验。很难想象人们会如何使用程序以及他们可能会有的所有问题。
 
@@ -654,18 +654,18 @@ From 36.12,-86.67 to 33.94,-118.4 in NM = 1558.53**
 我们可以使用海里作为一个方便的默认值，这样水手们就可以得到他们需要的答案：
 
 ```py
-            parser.add_argument('-r', action='store', 
-                    choices=('NM', 'MI', 'KM'), default='NM') 
-            parser.add_argument('p1', action='store', type=point_type) 
-            parser.add_argument('p2', action='store', type=point_type) 
+        parser.add_argument('-r', action='store', 
+                choices=('NM', 'MI', 'KM'), default='NM') 
+        parser.add_argument('p1', action='store', type=point_type) 
+        parser.add_argument('p2', action='store', type=point_type) 
 
-    ```
+```
 
 我们添加了两种类型的参数。第一个是`-r`参数，以`-`开头标记为可选。有时，一个长名称会用`--`表示。在某些情况下，我们将提供这两种选择，如下所示：
 
 ```py
-            add_argument('--radius', '-r'....)
-    ```
+        add_argument('--radius', '-r'....)
+```
 
 动作是存储在命令行上跟在`-r`后面的值。我们列出了三种可能的选择并提供了默认值。解析器将验证输入，如果输入不是这三个值之一，将写入适当的错误。
 
@@ -674,9 +674,9 @@ From 36.12,-86.67 to 33.94,-118.4 in NM = 1558.53**
 1.  评估步骤 2 中创建的解析器对象的`parse_args()`方法：
 
 ```py
-            options = parser.parse_args() 
+        options = parser.parse_args() 
 
-    ```
+```
 
 默认情况下，这使用来自`sys.argv`的值，这些值是用户输入的命令行参数值。如果需要以某种方式修改用户提供的命令行，我们可以提供一个显式参数。
 
@@ -934,26 +934,26 @@ help bet
 1.  导入 cmd 模块：
 
 ```py
-            import cmd 
+        import cmd 
 
-    ```
+```
 
 1.  定义对`cmd.Cmd`的扩展：
 
 ```py
-            class Roulette(cmd.Cmd): 
+        class Roulette(cmd.Cmd): 
 
-    ```
+```
 
 1.  在`preloop()`方法中定义所需的任何初始化：
 
 ```py
-                def preloop(self): 
-                    self.bets = {} 
-                    self.stake = 100 
-                    self.wheel = wheel() 
+            def preloop(self): 
+                self.bets = {} 
+                self.stake = 100 
+                self.wheel = wheel() 
 
-    ```
+```
 
 当处理开始时，`preloop()`方法只被评估一次。我们用它来初始化赌注和玩家的赌注的字典。我们还创建了一个轮盘集合的实例。self 参数是类内方法的要求。现在，它只是一个简单的必需语法。在第六章中，*类和对象的基础*，我们将更仔细地研究这个问题。
 
@@ -964,12 +964,12 @@ help bet
 1.  对于每个命令，创建一个`do_command()`方法。方法的名称将是命令，前缀为`do_`。命令后用户输入的文本将作为参数值提供给方法。以下是`bet`命令和`spin`命令的两个示例：
 
 ```py
-                def do_bet(self, arg_string): 
-                    pass 
-                def do_spin(self, arg_string): 
-                    pass 
+            def do_bet(self, arg_string): 
+                pass 
+            def do_spin(self, arg_string): 
+                pass 
 
-    ```
+```
 
 1.  解析和验证每个命令的参数。命令后用户输入的内容将作为方法的第一个位置参数的值提供。
 
@@ -982,47 +982,47 @@ help bet
 作为扩展，赌注也可以有一个金额。我们在第一章中的*使用正则表达式解析字符串*一节中研究了解析字符串的方法。在这个例子中，我们将简单处理赌注的名称：
 
 ```py
-                def do_spin(self, arg_string): 
-                    if len(self.bets) == 0: 
-                        print("No bets have been placed") 
-                        return 
-                    # Happy path: more goes here. 
+            def do_spin(self, arg_string): 
+                if len(self.bets) == 0: 
+                    print("No bets have been placed") 
+                    return 
+                # Happy path: more goes here. 
 
-                BET_NAMES = set(['even', 'odd', 'high', 'low', 'red', 'black']) 
+            BET_NAMES = set(['even', 'odd', 'high', 'low', 'red', 'black']) 
 
-                def do_bet(self, arg_string): 
-                    if arg_string not in BET_NAMES: 
-                        print("{0} is not a valid bet".format(arg_string)) 
-                        return 
-                    # Happy path: more goes here. 
+            def do_bet(self, arg_string): 
+                if arg_string not in BET_NAMES: 
+                    print("{0} is not a valid bet".format(arg_string)) 
+                    return 
+                # Happy path: more goes here. 
 
-    ```
+```
 
 1.  为每个命令编写顺利路径处理。对于我们的例子，`spin`命令将解决赌注。`bet`命令将累积另一个赌注。这是`do_bet()`的顺利路径：
 
 ```py
-            self.bets[arg_string] = 1 
+        self.bets[arg_string] = 1 
 
-    ```
+```
 
 我们已经将用户的赌注添加到`self.bets`映射中，并标明了金额。在这个例子中，我们将所有的赌注都视为具有相同的最小金额。
 
 1.  这是`do_spin()`的顺利路径，解决了所有的赌注：
 
 ```py
-            self.spin = random.choice(self.wheel) 
-            print("Spin", self.spin) 
-            label, winners = self.spin 
-            for b in self.bets: 
-                if b in winners: 
-                    self.stake += self.bets[b] 
-                    print("Win", b) 
-                else: 
-                    self.stake -= self.bets[b] 
-                    print("Lose", b) 
-            self.bets= {} 
+        self.spin = random.choice(self.wheel) 
+        print("Spin", self.spin) 
+        label, winners = self.spin 
+        for b in self.bets: 
+            if b in winners: 
+                self.stake += self.bets[b] 
+                print("Win", b) 
+            else: 
+                self.stake -= self.bets[b] 
+                print("Lose", b) 
+        self.bets= {} 
 
-    ```
+```
 
 首先，我们旋转轮盘以获得一个获胜的赌注。然后，我们检查玩家的每个赌注，看看哪些与获胜的赌注匹配。如果玩家的赌注`b`在获胜的赌注集合中，我们将增加他们的赌注。否则，我们将减少他们的赌注。
 
@@ -1031,11 +1031,11 @@ help bet
 1.  编写主脚本。这将创建该类的一个实例并执行`cmdloop()`方法：
 
 ```py
-            if __name__ == "__main__": 
-                r = Roulette() 
-                r.cmdloop() 
+        if __name__ == "__main__": 
+            r = Roulette() 
+            r.cmdloop() 
 
-    ```
+```
 
 我们创建了`Cmd`子类`Roulette`的一个实例。当我们执行`cmdloop()`方法时，该类将写入任何提供的介绍性消息，写入提示符，并读取命令。
 
@@ -1072,10 +1072,10 @@ help bet
 +   `prompt` 属性是要写的提示字符串。对于我们的示例，我们可以这样做：
 
 ```py
-            class Roulette(cmd.Cmd): 
-                prompt="Roulette> " 
+        class Roulette(cmd.Cmd): 
+            prompt="Roulette> " 
 
-    ```
+```
 
 +   `intro` 属性是介绍性消息。
 
@@ -1150,63 +1150,63 @@ help bet
 1.  导入`os`模块。操作系统环境可通过此模块获得：
 
 ```py
-            import os 
+        import os 
 
-    ```
+```
 
 1.  导入应用程序所需的任何其他类或对象：
 
 ```py
-            from ch03_r05 import haversine, MI, NM, KM 
+        from ch03_r05 import haversine, MI, NM, KM 
 
-    ```
+```
 
 1.  定义一个函数，该函数将使用环境值作为可选命令行参数的默认值。要解析的默认参数集来自`sys.argv`，因此还重要的是要导入`sys`模块：
 
 ```py
-            def get_options(argv=sys.argv): 
+        def get_options(argv=sys.argv): 
 
-    ```
+```
 
 1.  从操作系统环境设置中收集默认值。这包括任何所需的验证：
 
 ```py
-            default_units = os.environ.get('UNITS', 'KM') 
-            if default_units not in ('KM', 'NM', 'MI'): 
-                sys.exit("Invalid value for UNITS, not KM, NM, or MI") 
-            default_home_port = os.environ.get('HOME_PORT') 
+        default_units = os.environ.get('UNITS', 'KM') 
+        if default_units not in ('KM', 'NM', 'MI'): 
+            sys.exit("Invalid value for UNITS, not KM, NM, or MI") 
+        default_home_port = os.environ.get('HOME_PORT') 
 
-    ```
+```
 
 `sys.exit()`函数很好地处理了错误处理。它将打印消息并以非零状态代码退出。
 
 1.  创建`parser`属性。为相关参数提供任何默认值。这取决于`argparse`模块，也必须导入：
 
 ```py
-                      parser = argparse.ArgumentParser() 
-            parser.add_argument('-r', action='store', 
-                choices=('NM', 'MI', 'KM'), default=default_units) 
-            parser.add_argument('p1', action='store', type=point_type) 
-            parser.add_argument('p2', nargs='?', action='store', type=point_type, 
-                default=default_home_port) 
-            options = parser.parse_args(argv[1:]) 
+                  parser = argparse.ArgumentParser() 
+        parser.add_argument('-r', action='store', 
+            choices=('NM', 'MI', 'KM'), default=default_units) 
+        parser.add_argument('p1', action='store', type=point_type) 
+        parser.add_argument('p2', nargs='?', action='store', type=point_type, 
+            default=default_home_port) 
+        options = parser.parse_args(argv[1:]) 
 
-    ```
+```
 
 1.  进行任何额外的验证以确保参数正确设置。在这个例子中，可能没有为`HOME_PORT`设置值，也没有为第二个命令行参数提供值。这需要一个`if`语句和对`sys.exit()`的调用：
 
 ```py
-                    if options.p2 is None: 
-                    sys.exit("Neither HOME_PORT nor p2 argument provided.") 
+                if options.p2 is None: 
+                sys.exit("Neither HOME_PORT nor p2 argument provided.") 
 
-    ```
+```
 
 1.  返回具有一组有效参数的`options`对象：
 
 ```py
-            return options 
+        return options 
 
-    ```
+```
 
 这将允许`-r`参数和第二个点完全是可选的。如果这些参数从命令行中省略，参数解析器将使用配置信息提供默认值。
 

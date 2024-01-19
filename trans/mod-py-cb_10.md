@@ -103,81 +103,81 @@
 +   一个`for...if...return`语句序列：
 
 ```py
-     **>>> def get_series(data, series_name): 
-          for s in data: 
-              if s['series'] == series_name: 
-                  return s** 
+ **>>> def get_series(data, series_name): 
+      for s in data: 
+          if s['series'] == series_name: 
+              return s** 
 
-    ```
+```
 
 这个`for`语句检查数值序列中的每个系列。系列是一个带有系列名称的键为`'series'`的字典。`if`语句将系列名称与目标名称进行比较，并返回第一个匹配项。对于未知的系列名称，这将返回`None`。
 
 +   我们可以这样访问数据：
 
 ```py
-     **>>> series_1 = get_series(data, 'I') 
-          >>> series_1['series'] 
-          'I' 
-          >>> len(series_1['data']) 
-          11** 
+ **>>> series_1 = get_series(data, 'I') 
+      >>> series_1['series'] 
+      'I' 
+      >>> len(series_1['data']) 
+      11** 
 
-    ```
+```
 
 +   我们可以使用一个过滤器来找到所有匹配项，然后选择第一个：
 
 ```py
-     **>>> def get_series(data, series_name): 
-          ...     name_match = lambda series: series['series'] == series_name 
-          ...     series = list(filter(name_match, data))[0] 
-          ...     return series** 
+ **>>> def get_series(data, series_name): 
+      ...     name_match = lambda series: series['series'] == series_name 
+      ...     series = list(filter(name_match, data))[0] 
+      ...     return series** 
 
-    ```
+```
 
 这个`filter（）`函数检查值序列中的每个系列。该系列是一个带有`'series'`键的字典，其中包含系列名称。`name_match` lambda 对象将比较系列的名称键与目标名称，并返回所有匹配项。这用于构建一个`list`对象。如果每个键都是唯一的，第一个项目就是唯一的项目。这将为未知的系列名称引发`IndexError`异常。
 
 现在我们可以这样访问数据：
 
 ```py
-     **>>> series_2 = get_series(data, 'II') 
-          >>> series_2['series'] 
-          'II' 
-          >>> len(series_2['data']) 
-          11** 
+ **>>> series_2 = get_series(data, 'II') 
+      >>> series_2['series'] 
+      'II' 
+      >>> len(series_2['data']) 
+      11** 
 
-    ```
+```
 
 +   我们可以使用生成器表达式，类似于过滤器，找到所有匹配项。我们从结果序列中选择第一个：
 
 ```py
-     **>>> def get_series(data, series_name): 
-          ...     series = list( 
-          ...         s for s in data 
-          ...            if s['series'] == series_name 
-          ...         )[0] 
-          ...     return series** 
+ **>>> def get_series(data, series_name): 
+      ...     series = list( 
+      ...         s for s in data 
+      ...            if s['series'] == series_name 
+      ...         )[0] 
+      ...     return series** 
 
-    ```
+```
 
 这个生成器表达式检查值序列中的每个系列。该系列是一个带有`'series'`键的字典，其中包含系列名称。表达式`s['series'] == series_name`将比较系列的名称键与目标名称，并传递所有匹配项。这用于构建一个`list`对象，并返回列表中的第一个项目。这将为未知的系列名称引发`IndexError`异常。
 
 现在我们可以这样访问数据：
 
 ```py
-     **>>> series_3 = get_series(data, 'III') 
-          >>> series_3['series'] 
-          'III' 
-          >>> len(series_3['data']) 
-          11** 
+ **>>> series_3 = get_series(data, 'III') 
+      >>> series_3['series'] 
+      'III' 
+      >>> len(series_3['data']) 
+      11** 
 
-    ```
+```
 
 +   在第八章的*实现“存在”处理*配方中有一些这种处理的示例，*功能和响应式编程特性*。一旦我们从数据中选择了一个系列，我们还需要从系列中选择一个变量。这可以通过生成器函数或生成器表达式来完成：
 
 ```py
-     **>>> def data_iter(series, variable_name): 
-          ...     return (item[variable_name] for item in series['data'])** 
+ **>>> def data_iter(series, variable_name): 
+      ...     return (item[variable_name] for item in series['data'])** 
 
-    ```
+```
 
 系列字典具有带有数据值序列的`data`键。每个数据值都是一个具有两个键`x`和`y`的字典。这个“data_iter（）”函数将从数据中的每个字典中选择其中一个变量。这个函数将生成一系列值，可以用于详细分析：
 
@@ -196,47 +196,47 @@
 1.  要计算均值和中位数，使用`statistics`模块：
 
 ```py
-     **>>> import statistics 
-          >>> for series_name in 'I', 'II', 'III', 'IV': 
-          ...     series = get_series(data, series_name) 
-          ...     for variable_name in 'x', 'y': 
-          ...         samples = list(data_iter(series, variable_name)) 
-          ...         mean = statistics.mean(samples) 
-          ...         median = statistics.median(samples) 
-          ...         print(series_name, variable_name, round(mean,2), median) 
-          I x 9.0 9.0 
-          I y 7.5 7.58 
-          II x 9.0 9.0 
-          II y 7.5 8.14 
-          III x 9.0 9.0 
-          III y 7.5 7.11 
-          IV x 9.0 8.0 
-          IV y 7.5 7.04** 
+ **>>> import statistics 
+      >>> for series_name in 'I', 'II', 'III', 'IV': 
+      ...     series = get_series(data, series_name) 
+      ...     for variable_name in 'x', 'y': 
+      ...         samples = list(data_iter(series, variable_name)) 
+      ...         mean = statistics.mean(samples) 
+      ...         median = statistics.median(samples) 
+      ...         print(series_name, variable_name, round(mean,2), median) 
+      I x 9.0 9.0 
+      I y 7.5 7.58 
+      II x 9.0 9.0 
+      II y 7.5 8.14 
+      III x 9.0 9.0 
+      III y 7.5 7.11 
+      IV x 9.0 8.0 
+      IV y 7.5 7.04** 
 
-    ```
+```
 
 这使用`get_series（）`和`data_iter（）`从给定系列的一个变量中选择样本值。`mean（）`和`median（）`函数很好地处理了这个任务。有几种可用的中位数计算变体。
 
 1.  要计算`mode`，使用`collections`模块：
 
 ```py
-     **>>> import collections 
-          >>> for series_name in 'I', 'II', 'III', 'IV': 
-          ...     series = get_series(data, series_name) 
-          ...     for variable_name in 'x', 'y': 
-          ...         samples = data_iter(series, variable_name) 
-          ...         mode = collections.Counter(samples).most_common(1) 
-          ...         print(series_name, variable_name, mode) 
-          I x [(4.0, 1)] 
-          I y [(8.81, 1)] 
-          II x [(4.0, 1)] 
-          II y [(8.74, 1)] 
-          III x [(4.0, 1)] 
-          III y [(8.84, 1)] 
-          IV x [(8.0, 10)] 
-          IV y [(7.91, 1)]** 
+ **>>> import collections 
+      >>> for series_name in 'I', 'II', 'III', 'IV': 
+      ...     series = get_series(data, series_name) 
+      ...     for variable_name in 'x', 'y': 
+      ...         samples = data_iter(series, variable_name) 
+      ...         mode = collections.Counter(samples).most_common(1) 
+      ...         print(series_name, variable_name, mode) 
+      I x [(4.0, 1)] 
+      I y [(8.81, 1)] 
+      II x [(4.0, 1)] 
+      II y [(8.74, 1)] 
+      III x [(4.0, 1)] 
+      III y [(8.84, 1)] 
+      IV x [(8.0, 10)] 
+      IV y [(7.91, 1)]** 
 
-    ```
+```
 
 这使用`get_series（）`和`data_iter（）`从给定系列的一个变量中选择样本值。`Counter`对象非常优雅地完成了这项工作。实际上，我们从这个操作中得到了一个完整的频率直方图。`most_common（）`方法的结果显示了值和它出现的次数。
 
@@ -245,49 +245,49 @@
 1.  极值是用内置的`min（）`和`max（）`函数计算的：
 
 ```py
-     **>>> for series_name in 'I', 'II', 'III', 'IV': 
-          ...     series = get_series(data, series_name) 
-          ...     for variable_name in 'x', 'y': 
-          ...         samples = list(data_iter(series, variable_name)) 
-          ...         least = min(samples) 
-          ...         most = max(samples) 
-          ...         print(series_name, variable_name, least, most) 
-          I x 4.0 14.0 
-          I y 4.26 10.84 
-          II x 4.0 14.0 
-          II y 3.1 9.26 
-          III x 4.0 14.0 
-          III y 5.39 12.74 
-          IV x 8.0 19.0 
-          IV y 5.25 12.5** 
+ **>>> for series_name in 'I', 'II', 'III', 'IV': 
+      ...     series = get_series(data, series_name) 
+      ...     for variable_name in 'x', 'y': 
+      ...         samples = list(data_iter(series, variable_name)) 
+      ...         least = min(samples) 
+      ...         most = max(samples) 
+      ...         print(series_name, variable_name, least, most) 
+      I x 4.0 14.0 
+      I y 4.26 10.84 
+      II x 4.0 14.0 
+      II y 3.1 9.26 
+      III x 4.0 14.0 
+      III y 5.39 12.74 
+      IV x 8.0 19.0 
+      IV y 5.25 12.5** 
 
-    ```
+```
 
 这使用`get_series（）`和`data_iter（）`从给定系列的一个变量中选择样本值。内置的`max（）`和`min（）`函数提供了极值。
 
 1.  要计算方差（和标准差），我们也可以使用`statistics`模块：
 
 ```py
-     **>>> import statistics 
-          >>> for series_name in 'I', 'II', 'III', 'IV': 
-          ...     series = get_series(data, series_name) 
-          ...     for variable_name in 'x', 'y': 
-          ...         samples = list(data_iter(series, variable_name)) 
-          ...         mean = statistics.mean(samples) 
-          ...         variance = statistics.variance(samples, mean) 
-          ...         stdev = statistics.stdev(samples, mean) 
-          ...         print(series_name, variable_name, 
-          ...            round(variance,2), round(stdev,2)) 
-          I x 11.0 3.32 
-          I y 4.13 2.03 
-          II x 11.0 3.32 
-          II y 4.13 2.03 
-          III x 11.0 3.32 
-          III y 4.12 2.03 
-          IV x 11.0 3.32 
-          IV y 4.12 2.03** 
+ **>>> import statistics 
+      >>> for series_name in 'I', 'II', 'III', 'IV': 
+      ...     series = get_series(data, series_name) 
+      ...     for variable_name in 'x', 'y': 
+      ...         samples = list(data_iter(series, variable_name)) 
+      ...         mean = statistics.mean(samples) 
+      ...         variance = statistics.variance(samples, mean) 
+      ...         stdev = statistics.stdev(samples, mean) 
+      ...         print(series_name, variable_name, 
+      ...            round(variance,2), round(stdev,2)) 
+      I x 11.0 3.32 
+      I y 4.13 2.03 
+      II x 11.0 3.32 
+      II y 4.13 2.03 
+      III x 11.0 3.32 
+      III y 4.12 2.03 
+      IV x 11.0 3.32 
+      IV y 4.12 2.03** 
 
-    ```
+```
 
 这使用`get_series（）`和`data_iter（）`从给定系列的一个变量中选择样本值。统计模块提供了计算感兴趣的统计量的`variance（）`和`stdev（）`函数。
 
@@ -460,45 +460,45 @@ Counter({8: 10, 19: 1})**
 1.  定义`Counter`的总和：
 
 ```py
-     **>>> def counter_sum(counter): 
-          ...     return sum(f*c for c,f in counter.items())** 
+ **>>> def counter_sum(counter): 
+      ...     return sum(f*c for c,f in counter.items())** 
 
-    ```
+```
 
 我们可以这样使用：
 
 ```py
-     **>>> counter_sum(series_4_x) 
-          99** 
+ **>>> counter_sum(series_4_x) 
+      99** 
 
-    ```
+```
 
 1.  定义`Counter`中值的总数：
 
 ```py
-     **>>> def counter_len(counter):** 
+ **>>> def counter_len(counter):** 
 
-     **...     return sum(f for c,f in counter.items())** 
+ **...     return sum(f for c,f in counter.items())** 
 
-    ```
+```
 
 我们可以这样使用：
 
 ```py
-     **>>> counter_len(series_4_x) 
-          11** 
+ **>>> counter_len(series_4_x) 
+      11** 
 
-    ```
+```
 
 1.  我们现在可以将这些组合起来计算已经放入箱中的数据的均值：
 
 ```py
-     **>>> def counter_mean(counter): 
-          ...    return counter_sum(counter)/counter_len(counter) 
-          >>> counter_mean(series_4_x) 
-          9.0** 
+ **>>> def counter_mean(counter): 
+      ...    return counter_sum(counter)/counter_len(counter) 
+      >>> counter_mean(series_4_x) 
+      9.0** 
 
-    ```
+```
 
 ## 它是如何工作的...
 
@@ -679,39 +679,39 @@ Counter({8: 10, 19: 1})**
 1.  从`math`模块导入`sqrt()`函数：
 
 ```py
-            from math import sqrt 
+        from math import sqrt 
 
-    ```
+```
 
 1.  定义一个包装计算的函数：
 
 ```py
-            def correlation(data): 
+        def correlation(data): 
 
-    ```
+```
 
 1.  使用内置的`sum()`函数编写各种总和。这是在函数定义内缩进的。我们将使用`data`参数的值：给定系列的一系列值。输入数据必须有两个键，`x`和`y`：
 
 ```py
-            sumxy = sum(i['x']*i['y'] for i in data) 
-            sumx = sum(i['x'] for i in data) 
-            sumy = sum(i['y'] for i in data) 
-            sumx2 = sum(i['x']**2 for i in data) 
-            sumy2 = sum(i['y']**2 for i in data) 
-            n = sum(1 for i in data) 
+        sumxy = sum(i['x']*i['y'] for i in data) 
+        sumx = sum(i['x'] for i in data) 
+        sumy = sum(i['y'] for i in data) 
+        sumx2 = sum(i['x']**2 for i in data) 
+        sumy2 = sum(i['y']**2 for i in data) 
+        n = sum(1 for i in data) 
 
-    ```
+```
 
 1.  根据各种总和的最终计算*r*。确保缩进正确匹配。有关更多帮助，请参阅第三章，*函数定义*：
 
 ```py
-            r = ( 
-                (n*sumxy - sumx*sumy) 
-                / (sqrt(n*sumx2-sumx**2)*sqrt(n*sumy2-sumy**2)) 
-                ) 
-            return r 
+        r = ( 
+            (n*sumxy - sumx*sumy) 
+            / (sqrt(n*sumx2-sumx**2)*sqrt(n*sumy2-sumy**2)) 
+            ) 
+        return r 
 
-    ```
+```
 
 我们现在可以使用这个来确定各个系列之间的相关程度：
 
@@ -880,29 +880,29 @@ Counter({8: 10, 19: 1})**
 1.  定义一个将产生回归模型的函数，`regression()`：
 
 ```py
-            def regression(data): 
+        def regression(data): 
 
-    ```
+```
 
 1.  计算所需的各种值：
 
 ```py
-            m_x = statistics.mean(i['x'] for i in data) 
-            m_y = statistics.mean(i['y'] for i in data) 
-            s_x = statistics.stdev(i['x'] for i in data) 
-            s_y = statistics.stdev(i['y'] for i in data) 
-            r_xy = correlation(data) 
+        m_x = statistics.mean(i['x'] for i in data) 
+        m_y = statistics.mean(i['y'] for i in data) 
+        s_x = statistics.stdev(i['x'] for i in data) 
+        s_y = statistics.stdev(i['y'] for i in data) 
+        r_xy = correlation(data) 
 
-    ```
+```
 
 1.  计算β和α的值：
 
 ```py
-            b = r_xy * s_y/s_x 
-            a = m_y - b * m_x 
-            return a, b 
+        b = r_xy * s_y/s_x 
+        a = m_y - b * m_x 
+        return a, b 
 
-    ```
+```
 
 我们可以使用这个`regression()`函数来计算回归参数，如下所示：
 
@@ -1109,17 +1109,17 @@ Counter({8: 10, 19: 1})**
 1.  从`ch10_r03`模块导入`correlation()`函数：
 
 ```py
-            from ch10_r03 import correlation 
+        from ch10_r03 import correlation 
 
-    ```
+```
 
 1.  从源数据中获取相关的时间序列数据项：
 
 ```py
-            co2_ppm = list(row.interpolated 
-                for row in get_data(source_file)) 
+        co2_ppm = list(row.interpolated 
+            for row in get_data(source_file)) 
 
-    ```
+```
 
 在这种情况下，我们将使用插值数据。如果我们尝试使用平均数据，将会有报告间隙，这将迫使我们找到没有间隙的时期。插值数据有值来填补这些间隙。
 
@@ -1128,13 +1128,13 @@ Counter({8: 10, 19: 1})**
 1.  对于多个时间偏移 T，计算相关性。我们将使用从`1`到`20`期的时间偏移。由于数据是每月收集的，我们怀疑 T = 12 将具有最高的相关性：
 
 ```py
-            for tau in range(1,20): 
-                data = [{'x':x, 'y':y} 
-                    for x,y in zip(co2_ppm[:-tau], co2_ppm[tau:])] 
-                r_tau_0 = correlation(data[:60]) 
-                print(tau, r_tau_0) 
+        for tau in range(1,20): 
+            data = [{'x':x, 'y':y} 
+                for x,y in zip(co2_ppm[:-tau], co2_ppm[tau:])] 
+            r_tau_0 = correlation(data[:60]) 
+            print(tau, r_tau_0) 
 
-    ```
+```
 
 *计算相关系数*配方中的`correlation()`函数需要一个具有两个键的小字典：`x`和`y`。第一步是构建这些字典的数组。我们使用`zip()`函数来组合两个数据序列：
 
@@ -1334,95 +1334,95 @@ Python 的一个优雅特性是数组切片概念。在第四章的*切片和切
 1.  我们将使用`random`和`statistics`模块。`shuffle()`函数是随机化样本的核心。我们还将使用`mean()`函数：
 
 ```py
-            import random 
-            from statistics import mean 
+        import random 
+        from statistics import mean 
 
-    ```
+```
 
 我们可以简单地计算样本之间观察到的差异以上和以下的值。相反，我们将创建一个`Counter`并在-0.001 到+0.001 的 2,000 个步骤中收集差异。这将提供一些信心，表明差异是正态分布的：
 
 ```py
-            from collections import Counter 
+        from collections import Counter 
 
-    ```
+```
 
 1.  定义一个接受两组独立样本的函数。这些将被合并，并从集合中随机抽取子集：
 
 ```py
-            def randomized(s1, s2, limit=270415): 
+        def randomized(s1, s2, limit=270415): 
 
-    ```
+```
 
 1.  计算平均值之间的观察到的差异，*T[obs]*：
 
 ```py
-            T_obs = mean(s2)-mean(s1) 
-            print( "T_obs = m_2-m_1 = {:.2f}-{:.2f} = {:.2f}".format( 
-                mean(s2), mean(s1), T_obs) 
-            ) 
+        T_obs = mean(s2)-mean(s1) 
+        print( "T_obs = m_2-m_1 = {:.2f}-{:.2f} = {:.2f}".format( 
+            mean(s2), mean(s1), T_obs) 
+        ) 
 
-    ```
+```
 
 1.  初始化一个`Counter`来收集详细信息：
 
 ```py
-            counts = Counter() 
+        counts = Counter() 
 
-    ```
+```
 
 1.  创建样本的组合宇宙。我们可以连接这两个列表：
 
 ```py
-            universe = s1+s2 
+        universe = s1+s2 
 
-    ```
+```
 
 1.  使用`for`语句进行大量的重新采样；270,415 个样本可能需要 35 秒。很容易扩展或收缩子集以平衡精度和计算速度的需求。大部分处理将嵌套在这个循环内：
 
 ```py
-            for resample in range(limit): 
+        for resample in range(limit): 
 
-    ```
+```
 
 1.  洗牌数据：
 
 ```py
-                random.shuffle(universe) 
+            random.shuffle(universe) 
 
-    ```
+```
 
 1.  选择两个与原始数据大小匹配的子集：
 
 ```py
-                a = universe[:len(s2)] 
-                b = universe[len(s2):] 
+            a = universe[:len(s2)] 
+            b = universe[len(s2):] 
 
-    ```
+```
 
 由于 Python 列表索引的工作方式，我们可以确保两个列表完全分开宇宙中的值。由于第一个列表中不包括结束索引值`len(s2)`，这种切片清楚地分隔了所有项目。
 
 1.  计算平均值之间的差异。在这种情况下，我们将通过`1000`进行缩放并转换为整数，以便我们可以累积频率分布：
 
 ```py
-                delta = int(1000*(mean(a) - mean(b))) 
-                counts[delta] += 1 
+            delta = int(1000*(mean(a) - mean(b))) 
+            counts[delta] += 1 
 
-    ```
+```
 
 创建 delta 值的直方图的替代方法是计算大于*T[obs]*和小于*T[obs]*的值。使用完整的直方图提供了数据在统计上是正常的信心。
 
 1.  在`for`循环之后，我们可以总结`counts`，显示有多少个差异大于观察到的差异，有多少个差异小于观察到的差异。如果任一值小于 5%，这是一个统计学上显著的差异：
 
 ```py
-            T = int(1000*T_obs) 
-            below = sum(v for k,v in counts.items() if k < T) 
-            above = sum(v for k,v in counts.items() if k >= T) 
+        T = int(1000*T_obs) 
+        below = sum(v for k,v in counts.items() if k < T) 
+        above = sum(v for k,v in counts.items() if k >= T) 
 
-            print( "below {:,} {:.1%}, above {:,} {:.1%}".format( 
-                below, below/(below+above), 
-                above, above/(below+above))) 
+        print( "below {:,} {:.1%}, above {:,} {:.1%}".format( 
+            below, below/(below+above), 
+            above, above/(below+above))) 
 
-    ```
+```
 
 当我们对来自 1959 年和 1960 年的数据运行`randomized()`函数时，我们看到以下内容：
 
@@ -1599,44 +1599,44 @@ Python 的一个优雅特性是数组切片概念。在第四章的*切片和切
 1.  导入`statistics`模块。我们将进行许多中位数计算。此外，我们可以使用`itertools`的一些功能，如`compress()`和`filterfalse()`。
 
 ```py
-            import statistics 
-            import itertools 
+        import statistics 
+        import itertools 
 
-    ```
+```
 
 1.  定义`absdev()`映射。这将使用给定的中位数或计算样本的实际中位数。然后返回一个生成器，提供所有相对于中位数的绝对偏差：
 
 ```py
-            def absdev(data, median=None): 
-                if median is None: 
-                    median = statistics.median(data) 
-                return ( 
-                    abs(x-median) for x in data 
-                ) 
+        def absdev(data, median=None): 
+            if median is None: 
+                median = statistics.median(data) 
+            return ( 
+                abs(x-median) for x in data 
+            ) 
 
-    ```
+```
 
 1.  定义`median_absdev()`缩减。这将定位绝对偏差值序列的中位数。这计算用于检测异常值的 MAD 值。这可以计算中位数，也可以给定已计算的中位数：
 
 ```py
-            def median_absdev(data, median=None): 
-                if median is None: 
-                    median = statistics.median(data) 
-                return statistics.median(absdev(data, median=median)) 
+        def median_absdev(data, median=None): 
+            if median is None: 
+                median = statistics.median(data) 
+            return statistics.median(absdev(data, median=median)) 
 
-    ```
+```
 
 1.  定义修改后的 Z 分数映射，`z_mod()`。这将计算数据集的中位数，并使用它来计算 MAD。然后使用偏差值来计算基于该偏差值的修改后的 Z 分数。返回的值是修改后的 Z 分数的迭代器。由于数据需要多次通过，输入不能是可迭代集合，因此必须是序列对象：
 
 ```py
-            def z_mod(data): 
-                median = statistics.median(data) 
-                mad = median_absdev(data, median) 
-                return ( 
-                    0.6745*(x - median)/mad for x in data 
-                ) 
+        def z_mod(data): 
+            median = statistics.median(data) 
+            mad = median_absdev(data, median) 
+            return ( 
+                0.6745*(x - median)/mad for x in data 
+            ) 
 
-    ```
+```
 
 在这个实现中，我们使用了一个常数`0.6745`。在某些情况下，我们可能希望将其作为参数。我们可以使用`def z_mod(data, threshold=0.6745)`来允许更改这个值。
 
@@ -1645,13 +1645,13 @@ Python 的一个优雅特性是数组切片概念。在第四章的*切片和切
 1.  基于修改后的 Z 映射`z_mod()`定义异常值过滤器。任何值超过 3.5 都可以被标记为异常值。然后可以计算包括和不包括异常值的统计摘要。`itertools`模块有一个`compress()`函数，可以使用布尔选择器值的序列根据`z_mod()`计算的结果从原始数据序列中选择项目：
 
 ```py
-            def pass_outliers(data): 
-                return itertools.compress(data, (z >= 3.5 for z in z_mod(data))) 
+        def pass_outliers(data): 
+            return itertools.compress(data, (z >= 3.5 for z in z_mod(data))) 
 
-            def reject_outliers(data): 
-                return itertools.compress(data, (z < 3.5 for z in z_mod(data))) 
+        def reject_outliers(data): 
+            return itertools.compress(data, (z < 3.5 for z in z_mod(data))) 
 
-    ```
+```
 
 `pass_outliers()`函数仅传递异常值。`reject_outliers()`函数传递非异常值。通常，我们会显示两个结果——整个数据集和拒绝异常值的整个数据集。
 
@@ -1860,80 +1860,80 @@ Python 的一个优雅特性是数组切片概念。在第四章的*切片和切
 1.  定义一个类来处理变量的分析。这应该处理所有的转换和清洗。我们将使用混合处理方法：我们将在每个数据元素到达时更新总和和计数。直到请求这些属性时，我们才会计算最终的均值或标准差：
 
 ```py
-            import math 
-            class SimpleStats: 
-                def __init__(self, name): 
-                    self.name = name 
-                    self.count = 0 
-                    self.sum = 0 
-                    self.sum_2 = 0 
-                def cleanse(self, value): 
-                    return float(value) 
-                def add(self, value): 
-                    value = self.cleanse(value) 
-                    self.count += 1 
-                    self.sum += value 
-                    self.sum_2 += value*value 
-                @property 
-                def mean(self): 
-                    return self.sum / self.count 
-                @property 
-                def stdev(self): 
-                    return math.sqrt( 
-                        (self.count*self.sum_2-self.sum**2)/(self.count*(self.count-1)) 
-                        ) 
+        import math 
+        class SimpleStats: 
+            def __init__(self, name): 
+                self.name = name 
+                self.count = 0 
+                self.sum = 0 
+                self.sum_2 = 0 
+            def cleanse(self, value): 
+                return float(value) 
+            def add(self, value): 
+                value = self.cleanse(value) 
+                self.count += 1 
+                self.sum += value 
+                self.sum_2 += value*value 
+            @property 
+            def mean(self): 
+                return self.sum / self.count 
+            @property 
+            def stdev(self): 
+                return math.sqrt( 
+                    (self.count*self.sum_2-self.sum**2)/(self.count*(self.count-1)) 
+                    ) 
 
-    ```
+```
 
 在这个例子中，我们已经为`count`、`sum`和平方和定义了摘要。我们可以扩展这个类以添加更多的计算。对于中位数或模式，我们将不得不积累个体值，并改变设计以完全懒惰。
 
 1.  定义实例来处理输入列。我们将创建我们的`SimpleStats`类的两个实例。在这个示例中，我们选择了两个非常相似的变量，一个类就可以涵盖这两种情况：
 
 ```py
-            x_stats = SimpleStats('x') 
-            y_stats = SimpleStats('y') 
+        x_stats = SimpleStats('x') 
+        y_stats = SimpleStats('y') 
 
-    ```
+```
 
 1.  定义实际列标题到统计计算对象的映射。在某些情况下，列可能不是通过名称标识的：我们可能使用列索引。在这种情况下，对象序列将与每行中的列序列匹配：
 
 ```py
-            column_stats = { 
-                'x': x_stats, 
-                'y': y_stats 
-            } 
+        column_stats = { 
+            'x': x_stats, 
+            'y': y_stats 
+        } 
 
-    ```
+```
 
 1.  定义一个函数来处理所有行，使用每列的统计计算对象在每行内：
 
 ```py
-            def analyze(series_data): 
-                x_stats = SimpleStats('x') 
-                y_stats = SimpleStats('y') 
-                column_stats = { 
-                    'x': x_stats, 
-                    'y': y_stats 
-                } 
-                for item in series_data: 
-                    for column_name in column_stats: 
-                        column_stats[column_name].add(item[column_name]) 
-                return column_stats 
+        def analyze(series_data): 
+            x_stats = SimpleStats('x') 
+            y_stats = SimpleStats('y') 
+            column_stats = { 
+                'x': x_stats, 
+                'y': y_stats 
+            } 
+            for item in series_data: 
+                for column_name in column_stats: 
+                    column_stats[column_name].add(item[column_name]) 
+            return column_stats 
 
-    ```
+```
 
 外部`for`语句处理每一行数据。内部`for`语句处理每一行的每一列。处理显然是按行主要顺序进行的。
 
 1.  显示来自各个对象的结果或摘要：
 
 ```py
-            column_stats = analyze(series_data) 
-            for column_key in column_stats: 
-                print(' ', column_key, 
-                      column_stats[column_key].mean, 
-                      column_stats[column_key].stdev) 
+        column_stats = analyze(series_data) 
+        for column_key in column_stats: 
+            print(' ', column_key, 
+                  column_stats[column_key].mean, 
+                  column_stats[column_key].stdev) 
 
-    ```
+```
 
 我们可以将分析函数应用于一系列数据值。这将返回具有统计摘要的字典。
 

@@ -313,14 +313,14 @@ games.isnull().sum()
 1.  创建一个我们迄今为止一直在使用的 DataFrame 的副本，并将其命名为`games2`，这样我们就有了另一个要处理的对象：
 
 ```py
-    games2 = games.copy()
-    ```
+games2 = games.copy()
+```
 
 1.  使用`head`方法查看`languages`列的前五个值：
 
 ```py
-    games2['languages'].head()
-    ```
+games2['languages'].head()
+```
 
 结果如下：
 
@@ -331,37 +331,37 @@ games.isnull().sum()
 1.  如您所见，它由逗号分隔的语言缩写字符串组成。使用`fillna()`方法将该列中的缺失值替换为`EN`，这是最常见的值：
 
 ```py
-    games2['languages'] = games2['languages'].fillna('EN')
-    ```
+games2['languages'] = games2['languages'].fillna('EN')
+```
 
 1.  使用`str`访问器方法中的`split`（其工作方式与字符串的`split`方法相同）方法获取不同语言的列表，并将结果系列保存在名为`list_of_languages`的对象中：
 
 ```py
-    list_of_languages = games2['languages'].str.split(',')
-    ```
+list_of_languages = games2['languages'].str.split(',')
+```
 
 1.  最后，让我们在 DataFrame 中创建一个名为`n_languages`的列，该列包含每个结果列表中的元素数量。为此，使用一个`lambda`函数和返回列表长度的`apply`方法：
 
 ```py
-    games2['n_languages'] = list_of_languages.apply(lambda x: len(x))
-    ```
+games2['n_languages'] = list_of_languages.apply(lambda x: len(x))
+```
 
 1.  新列的前 10 个元素应该是这样的：
 
 ```py
-    id
-    284921427    17
-    284926400     1
-    284946595     1
-    285755462    17
-    286210009     1
-    286313771     1
-    286363959     1
-    286566987     1
-    286682679     1
-    288096268     1
-    Name: n_languages, dtype: int64
-    ```
+id
+284921427    17
+284926400     1
+284946595     1
+285755462    17
+286210009     1
+286313771     1
+286363959     1
+286566987     1
+286682679     1
+288096268     1
+Name: n_languages, dtype: int64
+```
 
 在这个练习中，我们使用了一个文本列，并通过使用 pandas 的`str.split`方法和 lambda 函数，从基于文本的列生成了一个数值列。
 
@@ -693,47 +693,47 @@ games['user_rating_count'].sort_values(ascending=False).head(10)
 1.  计算`average_user_rating`列的描述性统计：
 
 ```py
-    games['average_user_rating'].describe()
-    ```
+games['average_user_rating'].describe()
+```
 
 结果如下：
 
 ```py
-    count    4311.000000
-    mean        4.163535
-    std         0.596239
-    min         1.500000
-    25%         4.000000
-    50%         4.500000
-    75%         4.500000
-    max         5.000000
-    Name: average_user_rating, dtype: float64
-    ```
+count    4311.000000
+mean        4.163535
+std         0.596239
+min         1.500000
+25%         4.000000
+50%         4.500000
+75%         4.500000
+max         5.000000
+Name: average_user_rating, dtype: float64
+```
 
 如你所见，中位数和第三四分位数的值相同，为`4.5`，这意味着至少有 25%的游戏的平均评分为`4.5`。
 
 1.  计算评分恰好为`4.5`的游戏的数量和比例。可以使用`mean`方法来实现这个目标：
 
 ```py
-    ratings_of_4_5 = (games['average_user_rating'] == 4.5).sum()
-    proportion_of_ratings_4_5 = (games['average_user_rating'] == 4.5)\
-                                .mean()
-    print(f'''The number of games with an average rating of 4.5 is \{ratings_of_4_5}, \
-    which represents a proportion of {proportion_of_ratings_4_5:.3f} or \
-    {100*proportion_of_ratings_4_5:.1f}%''')
-    ```
+ratings_of_4_5 = (games['average_user_rating'] == 4.5).sum()
+proportion_of_ratings_4_5 = (games['average_user_rating'] == 4.5)\
+                            .mean()
+print(f'''The number of games with an average rating of 4.5 is \{ratings_of_4_5}, \
+which represents a proportion of {proportion_of_ratings_4_5:.3f} or \
+{100*proportion_of_ratings_4_5:.1f}%''')
+```
 
 我们得到的输出如下：
 
 ```py
-    The number of games with an average rating of 4.5 is 2062, which represents a proportion of 0.478 or 47.8%
-    ```
+The number of games with an average rating of 4.5 is 2062, which represents a proportion of 0.478 or 47.8%
+```
 
 1.  使用`unique`方法查看该变量的唯一值。你注意到了什么？
 
 ```py
-    games['average_user_rating'].unique()
-    ```
+games['average_user_rating'].unique()
+```
 
 在这个练习中，我们使用描述性统计来理解我们商业问题的另一个关键变量。
 
@@ -1155,28 +1155,28 @@ pd.crosstab(games['age_rating'], games['cat_rating'])
 1.  首先，让我们看看数据集中有哪些不同的价格。为此，查看价格的唯一值：
 
 ```py
-    games['price'].unique()
-    ```
+games['price'].unique()
+```
 
 输出如下：
 
 ```py
-    array([  2.99,   1.99,   0\.  ,   0.99,   5.99,   7.99,   4.99,
-             3.99, 9.99,  19.99,   6.99,  11.99,   8.99, 139.99,
-             14.99,  59.99])
-    ```
+array([  2.99,   1.99,   0\.  ,   0.99,   5.99,   7.99,   4.99,
+         3.99, 9.99,  19.99,   6.99,  11.99,   8.99, 139.99,
+         14.99,  59.99])
+```
 
 1.  看起来所有的游戏都是以一定数量的美元加 99 美分出售的。我们知道在实际中 2.99 意味着 3 美元。使用内置的 round 方法将这个变量转换为整数值，这样值就是漂亮的整数：
 
 ```py
-    games['price'] = games['price'].round()
-    ```
+games['price'] = games['price'].round()
+```
 
 1.  由于这是一个离散数值变量，请使用条形图来可视化每个价格的游戏分布：
 
 ```py
-    games['price'].value_counts().sort_index().plot(kind='bar');
-    ```
+games['price'].value_counts().sort_index().plot(kind='bar');
+```
 
 输出如下：
 
@@ -1187,16 +1187,16 @@ pd.crosstab(games['age_rating'], games['cat_rating'])
 1.  看起来大多数游戏都是免费的。为了简化分析，创建一个名为`cat_price`的分类变量，指示游戏是免费还是付费：
 
 ```py
-    games['cat_price'] = (games['price'] == 0).astype(int)\
-                          .map({0:'paid', 1:'free'})
-    ```
+games['cat_price'] = (games['price'] == 0).astype(int)\
+                      .map({0:'paid', 1:'free'})
+```
 
 1.  使用箱线图来可视化前一点中创建的变量之间的关系：
 
 ```py
-    sns.boxplot(x='cat_price', y='average_user_rating', \
-                data=games);
-    ```
+sns.boxplot(x='cat_price', y='average_user_rating', \
+            data=games);
+```
 
 输出如下：
 
