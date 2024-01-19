@@ -1,14 +1,14 @@
-# 使用Fabric运行系统管理任务
+# 使用 Fabric 运行系统管理任务
 
-在上一章中，我们使用了`subprocess`模块在托管我们的Python脚本的机器内运行和生成系统进程，并将输出返回到终端。然而，许多自动化任务需要访问远程服务器以执行命令，这不容易使用子进程来实现。使用另一个Python模块`Fabric`就变得轻而易举。该库连接到远程主机并执行不同的任务，例如上传和下载文件，使用特定用户ID运行命令，并提示用户输入。`Fabric` Python模块是从一个中心点管理数十台Linux机器的强大工具。
+在上一章中，我们使用了`subprocess`模块在托管我们的 Python 脚本的机器内运行和生成系统进程，并将输出返回到终端。然而，许多自动化任务需要访问远程服务器以执行命令，这不容易使用子进程来实现。使用另一个 Python 模块`Fabric`就变得轻而易举。该库连接到远程主机并执行不同的任务，例如上传和下载文件，使用特定用户 ID 运行命令，并提示用户输入。`Fabric` Python 模块是从一个中心点管理数十台 Linux 机器的强大工具。
 
 本章将涵盖以下主题：
 
-+   什么是Fabric？
++   什么是 Fabric？
 
-+   执行您的第一个Fabric文件
++   执行您的第一个 Fabric 文件
 
-+   其他有用的Fabric功能
++   其他有用的 Fabric 功能
 
 # 技术要求
 
@@ -16,21 +16,21 @@
 
 +   Python 2.7.1x。
 
-+   PyCharm社区版或专业版。
++   PyCharm 社区版或专业版。
 
-+   EVE-NG拓扑。有关如何安装和配置系统服务器，请参阅第8章“准备实验环境”。
++   EVE-NG 拓扑。有关如何安装和配置系统服务器，请参阅第八章“准备实验环境”。
 
-您可以在以下GitHub URL找到本章中开发的完整脚本：[https://github.com/TheNetworker/EnterpriseAutomation.git](https://github.com/TheNetworker/EnterpriseAutomation.git)。
+您可以在以下 GitHub URL 找到本章中开发的完整脚本：[`github.com/TheNetworker/EnterpriseAutomation.git`](https://github.com/TheNetworker/EnterpriseAutomation.git)。
 
-# 什么是Fabric？
+# 什么是 Fabric？
 
-Fabric ([http://www.fabfile.org/](http://www.fabfile.org/))是一个高级Python库，用于连接到远程服务器（通过paramiko库）并在其上执行预定义的任务。它在托管fabric模块的机器上运行一个名为**fab**的工具。此工具将查找位于您运行工具的相同目录中的`fabfile.py`文件。`fabfile.py`文件包含您的任务，定义为从命令行调用的Python函数，以在服务器上启动执行。Fabric任务本身只是普通的Python函数，但它们包含用于在远程服务器上执行命令的特殊方法。此外，在`fabfile.py`的开头，您需要定义一些环境变量，例如远程主机、用户名、密码以及执行期间所需的任何其他变量：
+Fabric ([`www.fabfile.org/`](http://www.fabfile.org/))是一个高级 Python 库，用于连接到远程服务器（通过 paramiko 库）并在其上执行预定义的任务。它在托管 fabric 模块的机器上运行一个名为**fab**的工具。此工具将查找位于您运行工具的相同目录中的`fabfile.py`文件。`fabfile.py`文件包含您的任务，定义为从命令行调用的 Python 函数，以在服务器上启动执行。Fabric 任务本身只是普通的 Python 函数，但它们包含用于在远程服务器上执行命令的特殊方法。此外，在`fabfile.py`的开头，您需要定义一些环境变量，例如远程主机、用户名、密码以及执行期间所需的任何其他变量：
 
-![](../images/00154.jpeg)
+![](img/00154.jpeg)
 
 # 安装
 
-Fabric需要Python 2.5到2.7。您可以使用`pip`安装Fabric及其所有依赖项，也可以使用系统包管理器，如`yum`或`apt`。在这两种情况下，您都将在操作系统中准备好并可执行`fab`实用程序。
+Fabric 需要 Python 2.5 到 2.7。您可以使用`pip`安装 Fabric 及其所有依赖项，也可以使用系统包管理器，如`yum`或`apt`。在这两种情况下，您都将在操作系统中准备好并可执行`fab`实用程序。
 
 要使用`pip`安装`fabric`，请在自动化服务器上运行以下命令：
 
@@ -38,18 +38,18 @@ Fabric需要Python 2.5到2.7。您可以使用`pip`安装Fabric及其所有依�
 pip install fabric
 ```
 
-![](../images/00155.gif)
+![](img/00155.gif)
 
-请注意，Fabric需要`paramiko`，这是一个常用的Python库，用于建立SSH连接。
+请注意，Fabric 需要`paramiko`，这是一个常用的 Python 库，用于建立 SSH 连接。
 
-您可以通过两个步骤验证Fabric安装。首先，确保您的系统中有`fab`命令可用：
+您可以通过两个步骤验证 Fabric 安装。首先，确保您的系统中有`fab`命令可用：
 
 ```py
 [root@AutomationServer ~]# which fab
 /usr/bin/fab
 ```
 
-验证的第二步是打开Python并尝试导入`fabric`库。如果没有抛出错误，则Fabric已成功安装：
+验证的第二步是打开 Python 并尝试导入`fabric`库。如果没有抛出错误，则 Fabric 已成功安装：
 
 ```py
 [root@AutomationServer ~]# python
@@ -61,21 +61,21 @@ Type "help", "copyright", "credits" or "license" for more information.
 
 ```
 
-# Fabric操作
+# Fabric 操作
 
-`fabric`工具中有许多可用的操作。这些操作在fabfile中作为任务内的函数，但以下是`fabric`库中最重要操作的摘要。
+`fabric`工具中有许多可用的操作。这些操作在 fabfile 中作为任务内的函数，但以下是`fabric`库中最重要操作的摘要。
 
 # 使用运行操作
 
-Fabric中`run`操作的语法如下：
+Fabric 中`run`操作的语法如下：
 
 ```py
 run(command, shell=True, pty=True, combine_stderr=True, quiet=False, warn_only=False, stdout=None, stderr=None)
 ```
 
-这将在远程主机上执行命令，而`shell`参数控制是否在执行之前创建一个shell（例如`/bin/sh`）（相同的参数也存在于子进程中）。
+这将在远程主机上执行命令，而`shell`参数控制是否在执行之前创建一个 shell（例如`/bin/sh`）（相同的参数也存在于子进程中）。
 
-命令执行后，Fabric将填充`.succeeded`或`.failed`，取决于命令输出。您可以通过调用以下内容来检查命令是否成功或失败：
+命令执行后，Fabric 将填充`.succeeded`或`.failed`，取决于命令输出。您可以通过调用以下内容来检查命令是否成功或失败：
 
 ```py
 def run_ops():
@@ -163,9 +163,9 @@ def reboot_ops():
   reboot(wait=60, use_sudo=True) 
 ```
 
-有关其他支持的操作的完整列表，请查看 [http://docs.fabfile.org/en/1.14/api/core/operations.html](http://docs.fabfile.org/en/1.14/api/core/operations.html)。您还可以直接从 PyCharm 查看它们，方法是查看在键入 *Ctrl + 空格* 时弹出的所有自动完成函数。从 `fabric.operations` 导入 <*ctrl*+*space*> 在 `fabric.operations` 下：
+有关其他支持的操作的完整列表，请查看 [`docs.fabfile.org/en/1.14/api/core/operations.html`](http://docs.fabfile.org/en/1.14/api/core/operations.html)。您还可以直接从 PyCharm 查看它们，方法是查看在键入 *Ctrl + 空格* 时弹出的所有自动完成函数。从 `fabric.operations` 导入 <*ctrl*+*space*> 在 `fabric.operations` 下：
 
-![](../images/00156.jpeg)
+![](img/00156.jpeg)
 
 # 执行您的第一个 Fabric 文件
 
@@ -261,7 +261,7 @@ please enter full path to the directory to list [/root] /var/log/
 command executed successfully
 ```
 
-如果您需要列出CentOS机器上`network-scripts`目录下的配置文件，也是一样的：
+如果您需要列出 CentOS 机器上`network-scripts`目录下的配置文件，也是一样的：
 
 ```py
  please enter full path to the directory to list [/root] /etc/sysconfig/network-scripts/ 
@@ -284,7 +284,7 @@ command executed successfully
 <***output omitted for brevity>***
 ```
 
-最后，Fabric将断开与两台机器的连接：
+最后，Fabric 将断开与两台机器的连接：
 
 ```py
 [10.10.10.193] out: 
@@ -294,7 +294,7 @@ Disconnecting from 10.10.10.140... done.
 Disconnecting from 10.10.10.193... done.
 ```
 
-# 有关fab工具的更多信息
+# 有关 fab 工具的更多信息
 
 `fab`工具本身支持许多操作。它可以用来列出`fabfile`中的不同任务。它还可以在执行期间设置`fab`环境。例如，您可以使用`-H`或`--hosts`开关定义将在其上运行命令的主机，而无需在`fabfile`中指定。这实际上是在执行期间在`fabfile`中设置`env.hosts`变量：
 
@@ -302,19 +302,19 @@ Disconnecting from 10.10.10.193... done.
 fab -H srv1,srv2
 ```
 
-另一方面，您可以使用`fab`工具定义要运行的命令。这有点像Ansible的临时模式（我们将在[第13章](part0168.html#506UG0-9cfcdc5beecd470bbeda046372f0337f)中详细讨论这个问题，*系统管理的Ansible*）：
+另一方面，您可以使用`fab`工具定义要运行的命令。这有点像 Ansible 的临时模式（我们将在第十三章中详细讨论这个问题，*系统管理的 Ansible*）：
 
 ```py
 fab -H srv1,srv2 -- ifconfig -a
 ```
 
-如果您不想在`fabfile`脚本中以明文存储密码，那么您有两个选项。第一个是使用`-i`选项使用SSH身份文件（私钥），它在连接期间加载文件。
+如果您不想在`fabfile`脚本中以明文存储密码，那么您有两个选项。第一个是使用`-i`选项使用 SSH 身份文件（私钥），它在连接期间加载文件。
 
-另一个选项是使用`-I`选项强制Fabric在连接到远程机器之前提示您输入会话密码。
+另一个选项是使用`-I`选项强制 Fabric 在连接到远程机器之前提示您输入会话密码。
 
 请注意，如果在`fabfile`中指定了`env.password`参数，此选项将覆盖该参数。
 
-`-D`开关将禁用已知主机，并强制Fabric不从`.ssh`目录加载`known_hosts`文件。您可以使用`-r`或`--reject-unknown-hosts`选项使Fabric拒绝连接到`known_hosts`文件中未定义的主机。
+`-D`开关将禁用已知主机，并强制 Fabric 不从`.ssh`目录加载`known_hosts`文件。您可以使用`-r`或`--reject-unknown-hosts`选项使 Fabric 拒绝连接到`known_hosts`文件中未定义的主机。
 
 此外，您还可以使用`-l`或`--list`在`fabfile`中列出所有支持的任务，向`fab`工具提供`fabfile`名称。例如，将其应用到前面的脚本将生成以下输出：
 
@@ -327,11 +327,11 @@ Available commands:
     main_tasks
 ```
 
-您可以使用`-h`开关在命令行中查看`fab`命令的所有可用选项和参数，或者在[http://docs.fabfile.org/en/1.14/usage/fab.html](http://docs.fabfile.org/en/1.14/usage/fab.html)上查看。
+您可以使用`-h`开关在命令行中查看`fab`命令的所有可用选项和参数，或者在[`docs.fabfile.org/en/1.14/usage/fab.html`](http://docs.fabfile.org/en/1.14/usage/fab.html)上查看。
 
-# 使用Fabric发现系统健康
+# 使用 Fabric 发现系统健康
 
-在这种用例中，我们将利用Fabric开发一个脚本，在远程机器上执行多个命令。脚本的目标是收集两种类型的输出：`discovery`命令和`health`命令。`discovery`命令收集正常运行时间、主机名、内核版本以及私有和公共IP地址，而`health`命令收集已使用的内存、CPU利用率、生成的进程数量和磁盘使用情况。我们将设计`fabfile`，以便我们可以扩展我们的脚本并向其中添加更多命令：
+在这种用例中，我们将利用 Fabric 开发一个脚本，在远程机器上执行多个命令。脚本的目标是收集两种类型的输出：`discovery`命令和`health`命令。`discovery`命令收集正常运行时间、主机名、内核版本以及私有和公共 IP 地址，而`health`命令收集已使用的内存、CPU 利用率、生成的进程数量和磁盘使用情况。我们将设计`fabfile`，以便我们可以扩展我们的脚本并向其中添加更多命令：
 
 ```py
 #!/usr/bin/python __author__ = "Bassim Aly" __EMAIL__ = "basim.alyy@gmail.com"   from fabric.api import * from fabric.context_managers import * from pprint import pprint
@@ -358,9 +358,9 @@ env.hosts = [
   output = run(command)
 ```
 
-请注意，我们创建了两个字典：`discover_commands`和`health_commands`。每个字典都包含Linux命令作为键值对。键表示操作，而值表示实际的Linux命令。然后，我们创建了一个`tasks`列表来组合这两个字典。
+请注意，我们创建了两个字典：`discover_commands`和`health_commands`。每个字典都包含 Linux 命令作为键值对。键表示操作，而值表示实际的 Linux 命令。然后，我们创建了一个`tasks`列表来组合这两个字典。
 
-最后，我们创建了一个嵌套的`for`循环。外部循环用于遍历列表项。内部`for`循环用于遍历键值对。使用Fabric的`run()`操作将命令发送到远程主机：
+最后，我们创建了一个嵌套的`for`循环。外部循环用于遍历列表项。内部`for`循环用于遍历键值对。使用 Fabric 的`run()`操作将命令发送到远程主机：
 
 ```py
 # fab -f fabfile_discoveryAndHealth.py get_system_health
@@ -506,14 +506,14 @@ env.hosts = [
 [10.10.10.193] out: 
 ```
 
-最后，`fabric`模块将在执行所有任务后终止已建立的SSH会话并断开与两台机器的连接：
+最后，`fabric`模块将在执行所有任务后终止已建立的 SSH 会话并断开与两台机器的连接：
 
 ```py
 Disconnecting from 10.10.10.140... done.
 Disconnecting from 10.10.10.193... done.
 ```
 
-请注意，我们可以重新设计之前的脚本，并将`discovery_commands`和`health_commands`作为Fabric任务，然后将它们包含在`get_system_health()`中。当我们执行`fab`命令时，我们将调用`get_system_health()`，它将执行另外两个函数；我们将得到与之前相同的输出。以下是修改后的示例脚本：
+请注意，我们可以重新设计之前的脚本，并将`discovery_commands`和`health_commands`作为 Fabric 任务，然后将它们包含在`get_system_health()`中。当我们执行`fab`命令时，我们将调用`get_system_health()`，它将执行另外两个函数；我们将得到与之前相同的输出。以下是修改后的示例脚本：
 
 ```py
 #!/usr/bin/python __author__ = "Bassim Aly" __EMAIL__ = "basim.alyy@gmail.com"   from fabric.api import * from fabric.context_managers import * from pprint import pprint
@@ -546,13 +546,13 @@ env.hosts = [
   health_commands()
 ```
 
-# Fabric的其他有用功能
+# Fabric 的其他有用功能
 
-Fabric还有其他有用的功能，如角色和上下文管理器。
+Fabric 还有其他有用的功能，如角色和上下文管理器。
 
-# Fabric角色
+# Fabric 角色
 
-Fabric可以为主机定义角色，并仅对角色成员运行任务。例如，我们可能有一堆数据库服务器，需要验证MySql服务是否正常运行，以及其他需要验证Apache服务是否正常运行的Web服务器。我们可以将这些主机分组到角色中，并根据这些角色执行函数：
+Fabric 可以为主机定义角色，并仅对角色成员运行任务。例如，我们可能有一堆数据库服务器，需要验证 MySql 服务是否正常运行，以及其他需要验证 Apache 服务是否正常运行的 Web 服务器。我们可以将这些主机分组到角色中，并根据这些角色执行函数：
 
 ```py
 #!/usr/bin/python __author__ = "Bassim Aly" __EMAIL__ = "basim.alyy@gmail.com"   from fabric.api import *   env.hosts = [
@@ -565,7 +565,7 @@ Fabric可以为主机定义角色，并仅对角色成员运行任务。例如�
   output = run("systemctl status httpd") 
 ```
 
-在前面的示例中，我们在设置`env.roledef`时使用了Fabric装饰器`roles`（从`fabric.api`导入）。然后，我们将webapp或数据库角色分配给每个服务器（将角色分配视为对服务器进行标记）。这将使我们能够仅在具有数据库角色的服务器上执行`validate_mysql`函数：
+在前面的示例中，我们在设置`env.roledef`时使用了 Fabric 装饰器`roles`（从`fabric.api`导入）。然后，我们将 webapp 或数据库角色分配给每个服务器（将角色分配视为对服务器进行标记）。这将使我们能够仅在具有数据库角色的服务器上执行`validate_mysql`函数：
 
 ```py
 # fab -f fabfile_roles.py validate_mysql:roles=databases
@@ -577,11 +577,11 @@ Fabric可以为主机定义角色，并仅对角色成员运行任务。例如�
 <output omitted>
 ```
 
-# Fabric上下文管理器
+# Fabric 上下文管理器
 
-在我们的第一个Fabric脚本`fabfile_first.py`中，我们有一个任务提示用户输入目录，然后切换到该目录并打印其内容。这是通过使用`;`来实现的，它将两个Linux命令连接在一起。但是，在其他操作系统上运行相同的命令并不总是有效。这就是Fabric上下文管理器发挥作用的地方。
+在我们的第一个 Fabric 脚本`fabfile_first.py`中，我们有一个任务提示用户输入目录，然后切换到该目录并打印其内容。这是通过使用`;`来实现的，它将两个 Linux 命令连接在一起。但是，在其他操作系统上运行相同的命令并不总是有效。这就是 Fabric 上下文管理器发挥作用的地方。
 
-上下文管理器在执行命令时维护目录状态。它通常通过`with`语句在Python中运行，并且在块内，您可以编写任何以前的Fabric操作。让我们通过一个示例来解释这个想法：
+上下文管理器在执行命令时维护目录状态。它通常通过`with`语句在 Python 中运行，并且在块内，您可以编写任何以前的 Fabric 操作。让我们通过一个示例来解释这个想法：
 
 ```py
 from fabric.api import *
@@ -592,7 +592,7 @@ from fabric.context_managers import *   env.hosts = [
   run("ls")
 ```
 
-在前面的示例中，首先我们在`fabric.context_managers`中全局导入了所有内容；然后，我们使用`cd`上下文管理器切换到特定目录。我们使用Fabric的`run()`操作在该目录上执行`ls`。这与在SSH会话中编写`cd /var/log ; ls`相同，但它提供了一种更Pythonic的方式来开发您的代码。
+在前面的示例中，首先我们在`fabric.context_managers`中全局导入了所有内容；然后，我们使用`cd`上下文管理器切换到特定目录。我们使用 Fabric 的`run()`操作在该目录上执行`ls`。这与在 SSH 会话中编写`cd /var/log ; ls`相同，但它提供了一种更 Pythonic 的方式来开发您的代码。
 
 `with`语句可以嵌套。例如，我们可以用以下方式重写前面的代码：
 
@@ -611,7 +611,7 @@ def uploading_file():
   put("VeryImportantFile.txt")
 ```
 
-`prefix`上下文管理器将接受一个命令作为输入，并在`with`块内的任何其他命令之前执行它。例如，您可以在运行每个命令之前执行源文件或Python虚拟`env`包装器脚本来设置您的虚拟环境：
+`prefix`上下文管理器将接受一个命令作为输入，并在`with`块内的任何其他命令之前执行它。例如，您可以在运行每个命令之前执行源文件或 Python 虚拟`env`包装器脚本来设置您的虚拟环境：
 
 ```py
 def prefixing_commands():
@@ -621,7 +621,7 @@ def prefixing_commands():
   sudo("python manage.py migrate")
 ```
 
-实际上，这相当于在Linux shell中编写以下命令：
+实际上，这相当于在 Linux shell 中编写以下命令：
 
 ```py
 source ~/env/bin/activate && pip install wheel
@@ -629,7 +629,7 @@ source ~/env/bin/activate && pip install -r requirements.txt
 source ~/env/bin/activate && python manage.py migrate
 ```
 
-最后一个上下文管理器是`shell_env(new_path, behavior='append')`，它可以修改包装命令的shell环境变量；因此，在该块内的任何调用都将考虑到修改后的路径：
+最后一个上下文管理器是`shell_env(new_path, behavior='append')`，它可以修改包装命令的 shell 环境变量；因此，在该块内的任何调用都将考虑到修改后的路径：
 
 ```py
 def change_shell_env():
@@ -640,10 +640,10 @@ def change_shell_env():
         local("echo $test1") #This command run on local host
 ```
 
-请注意，在操作完成后，Fabric将将旧的环境恢复到原始状态。
+请注意，在操作完成后，Fabric 将将旧的环境恢复到原始状态。
 
 # 摘要
 
-Fabric是一个出色且强大的工具，可以自动化任务，通常在远程机器上执行。它与Python脚本很好地集成，可以轻松访问SSH套件。您可以为不同的任务开发许多fab文件，并将它们集成在一起，以创建包括部署、重启和停止服务器或进程在内的自动化工作流程。
+Fabric 是一个出色且强大的工具，可以自动化任务，通常在远程机器上执行。它与 Python 脚本很好地集成，可以轻松访问 SSH 套件。您可以为不同的任务开发许多 fab 文件，并将它们集成在一起，以创建包括部署、重启和停止服务器或进程在内的自动化工作流程。
 
 在下一章中，我们将学习收集数据并为系统监控生成定期报告。

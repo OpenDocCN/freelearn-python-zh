@@ -1,22 +1,22 @@
-# 文件I/O和Python工具
+# 文件 I/O 和 Python 工具
 
-在本章中，我们将详细讨论文件I/O，即读取、写入和追加文件。我们还将讨论Python工具，这些工具使得操作文件和与操作系统交互成为可能。每个主题都有不同的复杂程度，我们将通过一个例子来讨论。让我们开始吧！
+在本章中，我们将详细讨论文件 I/O，即读取、写入和追加文件。我们还将讨论 Python 工具，这些工具使得操作文件和与操作系统交互成为可能。每个主题都有不同的复杂程度，我们将通过一个例子来讨论。让我们开始吧！
 
-# 文件I/O
+# 文件 I/O
 
-我们讨论文件I/O有两个原因：
+我们讨论文件 I/O 有两个原因：
 
-+   在Linux操作系统的世界中，一切都是文件。与树莓派上的外围设备交互类似于读取/写入文件。例如：在[第12章](80544a34-7914-4217-9baa-1d0b0b450061.xhtml)中，*通信接口*，我们讨论了串口通信。您应该能够观察到串口通信类似于文件读写操作。
++   在 Linux 操作系统的世界中，一切都是文件。与树莓派上的外围设备交互类似于读取/写入文件。例如：在第十二章中，*通信接口*，我们讨论了串口通信。您应该能够观察到串口通信类似于文件读写操作。
 
-+   我们在每个项目中以某种形式使用文件I/O。例如：将传感器数据写入CSV文件，或者读取Web服务器的预配置选项等。
++   我们在每个项目中以某种形式使用文件 I/O。例如：将传感器数据写入 CSV 文件，或者读取 Web 服务器的预配置选项等。
 
-因此，我们认为讨论Python中的文件I/O作为一个单独的章节会很有用（详细文档请参阅：[https://docs.python.org/3/tutorial/inputoutput.html#reading-and-writing-files](https://docs.python.org/3/tutorial/inputoutput.html#reading-and-writing-files)），并讨论它在开发树莓派Zero应用程序时可能发挥作用的示例。
+因此，我们认为讨论 Python 中的文件 I/O 作为一个单独的章节会很有用（详细文档请参阅：[`docs.python.org/3/tutorial/inputoutput.html#reading-and-writing-files`](https://docs.python.org/3/tutorial/inputoutput.html#reading-and-writing-files)），并讨论它在开发树莓派 Zero 应用程序时可能发挥作用的示例。
 
 # 从文件中读取
 
-让我们创建一个简单的文本文件`read_file.txt`，其中包含以下文本：`我正在使用树莓派Zero学习Python编程`，并将其保存到代码示例目录（或您选择的任何位置）。
+让我们创建一个简单的文本文件`read_file.txt`，其中包含以下文本：`我正在使用树莓派 Zero 学习 Python 编程`，并将其保存到代码示例目录（或您选择的任何位置）。
 
-要从文件中读取，我们需要使用Python的内置函数：`open`来打开文件。让我们快速看一下一个代码片段，演示如何打开一个文本文件以读取其内容并将其打印到屏幕上：
+要从文件中读取，我们需要使用 Python 的内置函数：`open`来打开文件。让我们快速看一下一个代码片段，演示如何打开一个文本文件以读取其内容并将其打印到屏幕上：
 
 ```py
 if __name__ == "__main__":
@@ -47,7 +47,7 @@ if __name__ == "__main__":
 
 1.  读取文件的内容后，通过调用`close()`函数关闭文件。
 
-运行前面的代码片段（可与本章一起下载的`read_from_file.py`）使用IDLE3或命令行终端。文本文件的内容将如下打印到屏幕上：
+运行前面的代码片段（可与本章一起下载的`read_from_file.py`）使用 IDLE3 或命令行终端。文本文件的内容将如下打印到屏幕上：
 
 ```py
     I am learning Python Programming using the Raspberry Pi Zero
@@ -55,7 +55,7 @@ if __name__ == "__main__":
 
 # 读取行
 
-有时，有必要逐行读取文件的内容。在Python中，有两种选项可以做到这一点：`readline()`和`readlines()`：
+有时，有必要逐行读取文件的内容。在 Python 中，有两种选项可以做到这一点：`readline()`和`readlines()`：
 
 +   `readline()`: 正如其名称所示，这个内置函数使得逐行读取成为可能。让我们通过一个例子来复习一下：
 
@@ -75,7 +75,7 @@ if __name__ == "__main__":
           file.close()
 ```
 
-当执行前面的代码片段（可与本章一起下载，文件名为`read_line_from_file.py`）时，`read_line.txt`文件被打开，并且`readline()`函数返回一行。这一行被存储在变量data中。由于该函数在程序中被调用两次，输出如下：
+当执行前面的代码片段（可与本章一起下载，文件名为`read_line_from_file.py`）时，`read_line.txt`文件被打开，并且`readline()`函数返回一行。这一行被存储在变量 data 中。由于该函数在程序中被调用两次，输出如下：
 
 ```py
  I am learning Python Programming using the Raspberry Pi Zero. 
@@ -179,7 +179,7 @@ if __name__ == "__main__":
 
 # 寻找
 
-一旦文件被打开，文件I/O中使用的文件指针会从文件的开头移动到文件的末尾。可以将指针移动到特定位置并从该位置读取数据。当我们对文件的特定行感兴趣时，这是非常有用的。让我们考虑上一个例子中的文本文件`write_file.txt`。文件的内容包括：
+一旦文件被打开，文件 I/O 中使用的文件指针会从文件的开头移动到文件的末尾。可以将指针移动到特定位置并从该位置读取数据。当我们对文件的特定行感兴趣时，这是非常有用的。让我们考虑上一个例子中的文本文件`write_file.txt`。文件的内容包括：
 
 ```py
     I am excited to learn Python using Raspberry Pi Zero
@@ -208,9 +208,9 @@ if __name__ == "__main__":
     This is a line appended to the file
 ```
 
-因此，seek使得移动文件指针到特定位置成为可能。
+因此，seek 使得移动文件指针到特定位置成为可能。
 
-# 读取n个字节
+# 读取 n 个字节
 
 `seek`函数使得将指针移动到特定位置并从该位置读取一个字节或`n`个字节成为可能。让我们重新阅读`write_file.txt`，并尝试读取句子`I am excited to learn Python using Raspberry Pi Zero`中的单词`excited`。
 
@@ -286,7 +286,7 @@ if __name__ == "__main__":
 
 1.  这个例子的第一步是使用`r+`标志打开文件。这使得可以对文件进行读取和写入。
 
-1.  接下来是移动到文件的第68个字节
+1.  接下来是移动到文件的第 68 个字节
 
 1.  在这个位置将`that was modified`字符串写入文件。字符串末尾的空格用于覆盖第二句原始内容。
 
@@ -301,7 +301,7 @@ if __name__ == "__main__":
 
 还有另一个`a+`标志，它可以使数据追加到文件末尾并同时进行读取。我们将留给读者使用到目前为止讨论的示例来弄清楚这一点。
 
-我们已经讨论了Python中读取和写入文件的不同示例。如果没有足够的编程经验，可能会感到不知所措。我们强烈建议通过本章提供的不同代码示例进行实际操作。
+我们已经讨论了 Python 中读取和写入文件的不同示例。如果没有足够的编程经验，可能会感到不知所措。我们强烈建议通过本章提供的不同代码示例进行实际操作。
 
 # 读者的挑战
 
@@ -327,19 +327,19 @@ if __name__ == "__main__":
    print("Exited the with keyword code block")
 ```
 
-在前面的示例（`with_keyword_example`）中，我们跳过了关闭文件，因为`with`关键字在缩进的代码块执行完毕后会自动关闭文件。`with`关键字还会在由于错误离开代码块时关闭文件。这确保了资源在任何情况下都能得到适当的清理。接下来，我们将使用`with`关键字进行文件I/O。
+在前面的示例（`with_keyword_example`）中，我们跳过了关闭文件，因为`with`关键字在缩进的代码块执行完毕后会自动关闭文件。`with`关键字还会在由于错误离开代码块时关闭文件。这确保了资源在任何情况下都能得到适当的清理。接下来，我们将使用`with`关键字进行文件 I/O。
 
 # configparser
 
-让我们讨论一些在使用树莓派开发应用程序时特别有用的Python编程方面。其中一个工具是Python中提供的`configparser`。`configparser`模块（[https://docs.python.org/3.4/library/configparser.html](https://docs.python.org/3.4/library/configparser.html)）用于读取/写入应用程序的配置文件。
+让我们讨论一些在使用树莓派开发应用程序时特别有用的 Python 编程方面。其中一个工具是 Python 中提供的`configparser`。`configparser`模块（[`docs.python.org/3.4/library/configparser.html`](https://docs.python.org/3.4/library/configparser.html)）用于读取/写入应用程序的配置文件。
 
-在软件开发中，配置文件通常用于存储常量，如访问凭据、设备ID等。在树莓派的上下文中，`configparser`可以用于存储所有使用的GPIO引脚列表，通过I²C接口接口的传感器地址等。让我们讨论三个示例，学习如何使用`configparser`模块。在第一个示例中，我们将使用`configparser`创建一个`config`文件。
+在软件开发中，配置文件通常用于存储常量，如访问凭据、设备 ID 等。在树莓派的上下文中，`configparser`可以用于存储所有使用的 GPIO 引脚列表，通过 I²C 接口接口的传感器地址等。让我们讨论三个示例，学习如何使用`configparser`模块。在第一个示例中，我们将使用`configparser`创建一个`config`文件。
 
 在第二个示例中，我们将使用`configparser`来读取配置值，在第三个示例中，我们将讨论修改配置文件的最终示例。
 
-**示例1**：
+**示例 1**：
 
-在第一个示例中，让我们创建一个配置文件，其中包括设备ID、使用的GPIO引脚、传感器接口地址、调试开关和访问凭据等信息：
+在第一个示例中，让我们创建一个配置文件，其中包括设备 ID、使用的 GPIO 引脚、传感器接口地址、调试开关和访问凭据等信息：
 
 ```py
 import configparser 
@@ -412,7 +412,7 @@ sensor_address = 0x62
 token = abcxyz123
 ```
 
-**示例2**：
+**示例 2**：
 
 让我们讨论一个示例，我们从先前示例中创建的配置文件中读取配置参数：
 
@@ -437,7 +437,7 @@ if __name__ == "__main__":
          print("The sensor_address is " + sensor_address)
 ```
 
-如果配置文件以所示格式创建，`ConfigParser`类应该能够解析它。实际上并不一定要使用Python程序创建配置文件。我们只是想展示以编程方式同时为多个设备创建配置文件更容易。
+如果配置文件以所示格式创建，`ConfigParser`类应该能够解析它。实际上并不一定要使用 Python 程序创建配置文件。我们只是想展示以编程方式同时为多个设备创建配置文件更容易。
 
 上述示例可与本章一起下载（`config_parser_read.py`）。让我们讨论一下这个代码示例是如何工作的：
 
@@ -459,7 +459,7 @@ if __name__ == "__main__":
            print("The sensor_address is " + sensor_address)
 ```
 
-**示例3**：
+**示例 3**：
 
 让我们讨论一个示例，我们想要修改现有的配置文件。这在需要在执行固件更新后更新配置文件中的固件版本号时特别有用。
 
@@ -511,23 +511,23 @@ if __name__ == "__main__":
 
 # 读者的挑战
 
-使用示例3作为参考，将配置参数`debug_switch`更新为值`False`。重复示例2，看看会发生什么。
+使用示例 3 作为参考，将配置参数`debug_switch`更新为值`False`。重复示例 2，看看会发生什么。
 
-# 读取/写入CSV文件
+# 读取/写入 CSV 文件
 
-在本节中，我们将讨论读取/写入CSV文件。这个模块（[https://docs.python.org/3.4/library/csv.html](https://docs.python.org/3.4/library/csv.html)）在数据记录应用程序中非常有用。由于我们将在下一章讨论数据记录，让我们回顾一下读取/写入CSV文件。
+在本节中，我们将讨论读取/写入 CSV 文件。这个模块（[`docs.python.org/3.4/library/csv.html`](https://docs.python.org/3.4/library/csv.html)）在数据记录应用程序中非常有用。由于我们将在下一章讨论数据记录，让我们回顾一下读取/写入 CSV 文件。
 
-# 写入CSV文件
+# 写入 CSV 文件
 
-让我们考虑一个场景，我们正在从不同的传感器读取数据。这些数据需要记录到一个CSV文件中，其中每一列对应于来自特定传感器的读数。我们将讨论一个例子，其中我们在CSV文件的第一行记录值`123`、`456`和`789`，第二行将包括值`Red`、`Green`和`Blue`：
+让我们考虑一个场景，我们正在从不同的传感器读取数据。这些数据需要记录到一个 CSV 文件中，其中每一列对应于来自特定传感器的读数。我们将讨论一个例子，其中我们在 CSV 文件的第一行记录值`123`、`456`和`789`，第二行将包括值`Red`、`Green`和`Blue`：
 
-1.  写入CSV文件的第一步是使用`with`关键字打开CSV文件：
+1.  写入 CSV 文件的第一步是使用`with`关键字打开 CSV 文件：
 
 ```py
        with open("csv_example.csv", 'w') as csv_file:
 ```
 
-1.  下一步是初始化CSV模块的`writer`类的实例：
+1.  下一步是初始化 CSV 模块的`writer`类的实例：
 
 ```py
        csv_writer = csv.writer(csv_file)
@@ -551,30 +551,30 @@ if __name__ == "__main__":
                 csv_writer.writerow(["Red", "Green", "Blue"])
 ```
 
-1.  当执行上述代码片段（与本章一起提供的`csv_write.py`可下载）时，在本地目录中创建了一个CSV文件，其中包含以下内容：
+1.  当执行上述代码片段（与本章一起提供的`csv_write.py`可下载）时，在本地目录中创建了一个 CSV 文件，其中包含以下内容：
 
 ```py
  123,456,789
  Red,Green,Blue
 ```
 
-# 从CSV文件中读取
+# 从 CSV 文件中读取
 
-让我们讨论一个例子，我们读取上一节中创建的CSV文件的内容：
+让我们讨论一个例子，我们读取上一节中创建的 CSV 文件的内容：
 
-1.  读取CSV文件的第一步是以读模式打开它：
+1.  读取 CSV 文件的第一步是以读模式打开它：
 
 ```py
        with open("csv_example.csv", 'r') as csv_file:
 ```
 
-1.  接下来，我们初始化CSV模块的`reader`类的实例。CSV文件的内容被加载到对象`csv_reader`中：
+1.  接下来，我们初始化 CSV 模块的`reader`类的实例。CSV 文件的内容被加载到对象`csv_reader`中：
 
 ```py
        csv_reader = csv.reader(csv_file)
 ```
 
-1.  现在CSV文件的内容已加载，可以按如下方式检索CSV文件的每一行：
+1.  现在 CSV 文件的内容已加载，可以按如下方式检索 CSV 文件的每一行：
 
 ```py
        for row in csv_reader: 
@@ -602,13 +602,13 @@ if __name__ == "__main__":
  ['Red', 'Green', 'Blue']
 ```
 
-# Python实用程序
+# Python 实用程序
 
-Python带有几个实用程序，可以与其他文件和操作系统本身进行交互。我们已经确定了我们在过去项目中使用过的所有这些Python实用程序。让我们讨论不同的模块及其用途，因为我们可能会在本书的最终项目中使用它们。
+Python 带有几个实用程序，可以与其他文件和操作系统本身进行交互。我们已经确定了我们在过去项目中使用过的所有这些 Python 实用程序。让我们讨论不同的模块及其用途，因为我们可能会在本书的最终项目中使用它们。
 
-# os模块
+# os 模块
 
-正如其名称所示，这个模块（[https://docs.python.org/3.1/library/os.html](https://docs.python.org/3.1/library/os.html)）可以与操作系统进行交互。让我们通过示例讨论一些应用。
+正如其名称所示，这个模块（[`docs.python.org/3.1/library/os.html`](https://docs.python.org/3.1/library/os.html)）可以与操作系统进行交互。让我们通过示例讨论一些应用。
 
 # 检查文件是否存在
 
@@ -647,7 +647,7 @@ else:
 
 # 删除文件
 
-`os`模块还可以使用`remove()`函数删除文件。将任何文件作为函数的参数传递即可删除该文件。在*文件I/O*部分，我们讨论了使用文本文件`read_file.txt`从文件中读取。让我们通过将其作为`remove()`函数的参数来删除该文件：
+`os`模块还可以使用`remove()`函数删除文件。将任何文件作为函数的参数传递即可删除该文件。在*文件 I/O*部分，我们讨论了使用文本文件`read_file.txt`从文件中读取。让我们通过将其作为`remove()`函数的参数来删除该文件：
 
 ```py
 os.remove('/home/pi/Desktop/code_samples/read_file.txt')
@@ -661,9 +661,9 @@ os.remove('/home/pi/Desktop/code_samples/read_file.txt')
  ps aux
 ```
 
-它会显示当前在树莓派上运行的进程（如下图所示）。`light_scheduler`应用程序的进程`pid`为1815：
+它会显示当前在树莓派上运行的进程（如下图所示）。`light_scheduler`应用程序的进程`pid`为 1815：
 
-![](Images/d74763d0-d5d1-4183-bfba-b820bf9e0784.png)light_scheduler守护程序的PID
+![](img/d74763d0-d5d1-4183-bfba-b820bf9e0784.png)light_scheduler 守护程序的 PID
 
 假设我们知道需要终止的应用程序的进程`pid`，让我们回顾使用`kill()`函数终止该函数。终止函数所需的参数包括进程`pid`和需要发送到进程以终止应用程序的信号（`signal.SIGKILL`）：
 
@@ -678,7 +678,7 @@ if __name__ == "__main__":
         print("OS Error " + str(error))
 ```
 
-`signal`模块（[https://docs.python.org/3/library/signal.html)](https://docs.python.org/2/library/signal.html)）包含表示可用于停止应用程序的信号的常量。在此代码片段中，我们使用了`SIGKILL`信号。尝试运行`ps`命令（`ps aux`），您会注意到`light_scheduler`应用程序已被终止。
+`signal`模块（[`docs.python.org/3/library/signal.html)`](https://docs.python.org/2/library/signal.html)）包含表示可用于停止应用程序的信号的常量。在此代码片段中，我们使用了`SIGKILL`信号。尝试运行`ps`命令（`ps aux`），您会注意到`light_scheduler`应用程序已被终止。
 
 # 监控一个进程
 
@@ -688,9 +688,9 @@ if __name__ == "__main__":
 
 `os`模块中讨论的所有示例都可以与本章一起下载，文件名为`os_utils.py`。
 
-# glob模块
+# glob 模块
 
-`glob`模块（[https://docs.python.org/3/library/glob.html](https://docs.python.org/3/library/glob.html)）使得能够识别具有特定扩展名或特定模式的文件。例如，可以列出文件夹中的所有Python文件如下：
+`glob`模块（[`docs.python.org/3/library/glob.html`](https://docs.python.org/3/library/glob.html)）使得能够识别具有特定扩展名或特定模式的文件。例如，可以列出文件夹中的所有 Python 文件如下：
 
 ```py
 # List all files
@@ -731,15 +731,15 @@ txt_files/file123.txt
 txt_files/file127.txt
 ```
 
-我们找到了一篇解释使用表达式对文件进行排序的文章：[http://www.linuxjournal.com/content/bash-extended-globbing](http://www.linuxjournal.com/content/bash-extended-globbing)。相同的概念可以扩展到使用`glob`模块搜索文件。
+我们找到了一篇解释使用表达式对文件进行排序的文章：[`www.linuxjournal.com/content/bash-extended-globbing`](http://www.linuxjournal.com/content/bash-extended-globbing)。相同的概念可以扩展到使用`glob`模块搜索文件。
 
 # 读者的挑战
 
 使用`glob`模块讨论的例子可以与本章一起下载，文件名为`glob_example.py`。在其中一个例子中，我们讨论了列出特定格式的文件。你将如何列出以下格式的文件：`filexxxx.*`？（这里的`x`代表`0`到`9`之间的任意数字。`*`代表任何文件扩展名。）
 
-# shutil模块
+# shutil 模块
 
-`shutil`模块（[https://docs.python.org/3/library/shutil.html](https://docs.python.org/3/library/shutil.html)）使得可以使用`move()`和`copy()`方法在文件夹之间移动和复制文件。在上一节中，我们列出了文件夹`txt_files`中的所有文本文件。让我们使用`move()`将这些文件移动到当前目录（代码执行的位置），再次在`txt_files`中复制这些文件，最后从当前目录中删除这些文本文件：
+`shutil`模块（[`docs.python.org/3/library/shutil.html`](https://docs.python.org/3/library/shutil.html)）使得可以使用`move()`和`copy()`方法在文件夹之间移动和复制文件。在上一节中，我们列出了文件夹`txt_files`中的所有文本文件。让我们使用`move()`将这些文件移动到当前目录（代码执行的位置），再次在`txt_files`中复制这些文件，最后从当前目录中删除这些文本文件：
 
 ```py
 import glob
@@ -759,9 +759,9 @@ if __name__ == "__main__":
 
 使用`glob`模块识别要移动（或复制）的文件，然后使用它们对应的方法移动或复制每个文件。
 
-# subprocess模块
+# subprocess 模块
 
-我们在上一章简要讨论了这个模块。`subprocess`模块（[https://docs.python.org/3.2/library/subprocess.html](https://docs.python.org/3.2/library/subprocess.html)）使得可以在Python程序内部启动另一个程序。`subprocess`模块中常用的函数之一是`Popen`。需要在程序内部启动的任何进程都需要作为列表参数传递给`Popen`函数：
+我们在上一章简要讨论了这个模块。`subprocess`模块（[`docs.python.org/3.2/library/subprocess.html`](https://docs.python.org/3.2/library/subprocess.html)）使得可以在 Python 程序内部启动另一个程序。`subprocess`模块中常用的函数之一是`Popen`。需要在程序内部启动的任何进程都需要作为列表参数传递给`Popen`函数：
 
 ```py
 import subprocess
@@ -769,11 +769,11 @@ if __name__ == "__main__":
     subprocess.Popen(['aplay', 'tone.wav'])
 ```
 
-在前面的例子中，`tone.wav`（需要播放的WAVE文件）和需要运行的命令作为列表参数传递给函数。`subprocess`模块中还有其他几个类似用途的命令。我们留给你去探索。
+在前面的例子中，`tone.wav`（需要播放的 WAVE 文件）和需要运行的命令作为列表参数传递给函数。`subprocess`模块中还有其他几个类似用途的命令。我们留给你去探索。
 
-# sys模块
+# sys 模块
 
-`sys`模块（[https://docs.python.org/3/library/sys.html](https://docs.python.org/3/library/sys.html)）允许与Python运行时解释器进行交互。`sys`模块的一个功能是解析作为程序输入提供的命令行参数。让我们编写一个程序，读取并打印作为程序参数传递的文件的内容：
+`sys`模块（[`docs.python.org/3/library/sys.html`](https://docs.python.org/3/library/sys.html)）允许与 Python 运行时解释器进行交互。`sys`模块的一个功能是解析作为程序输入提供的命令行参数。让我们编写一个程序，读取并打印作为程序参数传递的文件的内容：
 
 ```py
 import sys
@@ -788,7 +788,7 @@ if __name__ == "__main__":
 python3 sys_example.py read_lines.txt
 ```
 
-前面的例子可以与本章一起下载，文件名为`sys_example.py`。在运行程序时传递的命令行参数列表可以在`sys`模块的`argv`列表中找到。`argv[0]`通常是Python程序的名称，`argv[1]`通常是传递给函数的第一个参数。
+前面的例子可以与本章一起下载，文件名为`sys_example.py`。在运行程序时传递的命令行参数列表可以在`sys`模块的`argv`列表中找到。`argv[0]`通常是 Python 程序的名称，`argv[1]`通常是传递给函数的第一个参数。
 
 当以`read_lines.txt`作为参数执行`sys_example.py`时，程序应该打印文本文件的内容：
 
@@ -804,8 +804,8 @@ Line 7.
 
 # 总结
 
-在本章中，我们讨论了文件I/O - 读取和写入文件，以及用于读取、写入和追加文件的不同标志。我们谈到了将文件指针移动到文件的不同位置以检索特定内容或在特定位置覆盖文件内容。我们讨论了Python中的`ConfigParser`模块及其在存储/检索应用程序配置参数以及读写CSV文件中的应用。
+在本章中，我们讨论了文件 I/O - 读取和写入文件，以及用于读取、写入和追加文件的不同标志。我们谈到了将文件指针移动到文件的不同位置以检索特定内容或在特定位置覆盖文件内容。我们讨论了 Python 中的`ConfigParser`模块及其在存储/检索应用程序配置参数以及读写 CSV 文件中的应用。
 
-最后，我们讨论了在我们的项目中潜在使用的不同Python工具。我们将广泛使用文件I/O和在本书中讨论的Python工具。我们强烈建议在进入本书中讨论的最终项目之前，熟悉本章讨论的概念。
+最后，我们讨论了在我们的项目中潜在使用的不同 Python 工具。我们将广泛使用文件 I/O 和在本书中讨论的 Python 工具。我们强烈建议在进入本书中讨论的最终项目之前，熟悉本章讨论的概念。
 
-在接下来的章节中，我们将讨论将存储在CSV文件中的传感器数据上传到云端，以及记录应用程序执行过程中遇到的错误。下一章见！
+在接下来的章节中，我们将讨论将存储在 CSV 文件中的传感器数据上传到云端，以及记录应用程序执行过程中遇到的错误。下一章见！

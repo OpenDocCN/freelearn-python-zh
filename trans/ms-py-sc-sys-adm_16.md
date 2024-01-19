@@ -1,6 +1,6 @@
 # 网络爬虫-从网站提取有用的数据
 
-在本章中，您将学习有关网络爬虫的知识。您还将学习Python中的`beautifulsoup`库，该库用于从网站提取信息。
+在本章中，您将学习有关网络爬虫的知识。您还将学习 Python 中的`beautifulsoup`库，该库用于从网站提取信息。
 
 在本章中，我们将涵盖以下主题：
 
@@ -14,13 +14,13 @@
 
 网络爬虫是从网站提取信息的技术。这种技术用于将非结构化数据转换为结构化数据。
 
-网络爬虫的用途是从网站提取数据。提取的信息以本地文件的形式保存在您的系统上，您也可以以表格格式将其存储到数据库中。网络爬虫软件直接使用HTTP或Web浏览器访问**万维网**（**WWW**）。这是使用网络爬虫或机器人实施的自动化过程。
+网络爬虫的用途是从网站提取数据。提取的信息以本地文件的形式保存在您的系统上，您也可以以表格格式将其存储到数据库中。网络爬虫软件直接使用 HTTP 或 Web 浏览器访问**万维网**（**WWW**）。这是使用网络爬虫或机器人实施的自动化过程。
 
 爬取网页涉及获取页面，然后提取数据。网络爬虫获取网页。网络爬虫是网络爬取中的一个必不可少的组件。获取后，进行提取。您可以搜索、解析、将数据保存到表中，并重新格式化页面。
 
 # 数据提取
 
-在本节中，我们将看到实际的数据提取过程。Python具有`beautifulsoup`库来执行数据提取任务。我们还将使用Python的requests库。
+在本节中，我们将看到实际的数据提取过程。Python 具有`beautifulsoup`库来执行数据提取任务。我们还将使用 Python 的 requests 库。
 
 首先，我们必须安装这两个库。运行以下命令以安装`requests`和`beautifulsoup`库：
 
@@ -28,9 +28,9 @@
 $ pip3 install requests $ pip3 install beautifulsoup4
 ```
 
-# requests库
+# requests 库
 
-使用`requests`库是在我们的Python脚本中以人类可读的格式使用HTTP。我们可以使用Python中的`requests`库下载页面。`requests`库有不同类型的请求。在这里，我们将学习`GET`请求。`GET`请求用于从Web服务器检索信息。`GET`请求下载指定网页的HTML内容。每个请求都有一个状态代码。状态代码与我们向服务器发出的每个请求一起返回。这些状态代码为我们提供了关于请求发生了什么的信息。状态代码的类型在此列出：
+使用`requests`库是在我们的 Python 脚本中以人类可读的格式使用 HTTP。我们可以使用 Python 中的`requests`库下载页面。`requests`库有不同类型的请求。在这里，我们将学习`GET`请求。`GET`请求用于从 Web 服务器检索信息。`GET`请求下载指定网页的 HTML 内容。每个请求都有一个状态代码。状态代码与我们向服务器发出的每个请求一起返回。这些状态代码为我们提供了关于请求发生了什么的信息。状态代码的类型在此列出：
 
 +   `200`：表示一切正常，并返回结果（如果有的话）
 
@@ -44,11 +44,11 @@ $ pip3 install requests $ pip3 install beautifulsoup4
 
 +   `404`：表示您正在尝试访问的资源在服务器上不可用
 
-# beautifulsoup库
+# beautifulsoup 库
 
-`beautifulsoup`是Python中用于网络爬虫的库。它具有用于搜索、导航和修改的简单方法。它只是一个工具包，用于从网页中提取所需的数据。
+`beautifulsoup`是 Python 中用于网络爬虫的库。它具有用于搜索、导航和修改的简单方法。它只是一个工具包，用于从网页中提取所需的数据。
 
-现在，要在脚本中使用`requests`和`beautifulsoup`功能，您必须使用`import`语句导入这两个库。现在，我们将看一个解析网页的例子。在这里，我们将解析一个网页，这是来自IMDb网站的头条新闻页面。为此，请创建一个`parse_web_page.py`脚本，并在其中编写以下内容：
+现在，要在脚本中使用`requests`和`beautifulsoup`功能，您必须使用`import`语句导入这两个库。现在，我们将看一个解析网页的例子。在这里，我们将解析一个网页，这是来自 IMDb 网站的头条新闻页面。为此，请创建一个`parse_web_page.py`脚本，并在其中编写以下内容：
 
 ```py
 import requests from bs4 import BeautifulSoup page_result = requests.get('https://www.imdb.com/news/top?ref_=nv_nw_tp') parse_obj = BeautifulSoup(page_result.content, 'html.parser') print(parse_obj)
@@ -64,7 +64,7 @@ student@ubuntu:~/work$ python3 parse_web_page.py Output: <!DOCTYPE html> <html  
  if (typeof uet == 'function') { uet("bb", "LoadIcons", {wb: 1}); }
 ```
 
-在前面的示例中，我们收集了一个页面并使用`beautifulsoup`解析了它。首先，我们导入了`requests`和`beautifulsoup`模块。然后，我们使用`GET`请求收集了URL，并将该URL分配给`page_result`变量。接下来，我们创建了一个`beautifulsoup`对象`parse_obj`。这个对象将使用来自requests的`page_result`.content作为参数，然后使用`html.parser`解析页面。
+在前面的示例中，我们收集了一个页面并使用`beautifulsoup`解析了它。首先，我们导入了`requests`和`beautifulsoup`模块。然后，我们使用`GET`请求收集了 URL，并将该 URL 分配给`page_result`变量。接下来，我们创建了一个`beautifulsoup`对象`parse_obj`。这个对象将使用来自 requests 的`page_result`.content 作为参数，然后使用`html.parser`解析页面。
 
 现在，我们将从一个类和一个标签中提取内容。要执行此操作，请转到您的网络浏览器，右键单击要提取的内容，然后向下滚动，直到您看到**检查**选项。单击它，您将获得类名。在程序中提到它并运行您的脚本。为此，请创建一个`extract_from_class.py`脚本，并在其中编写以下内容：
 
@@ -79,7 +79,7 @@ student@ubuntu:~/work$ python3 extract_from_class.py Output : <div class="news-a
  </div>
 ```
 
-在上面的例子中，我们首先导入了requests和`beautifulsoup`模块。然后，我们创建了一个请求对象并为其分配了一个URL。接下来，我们创建了一个`beautifulsoup`对象`parse_obj`。这个对象以requests的`page_result.content`作为参数，然后使用`html.parser`解析页面。接下来，我们使用beautifulsoup的`find()`方法从`'news-article__content'`类中获取内容。
+在上面的例子中，我们首先导入了 requests 和`beautifulsoup`模块。然后，我们创建了一个请求对象并为其分配了一个 URL。接下来，我们创建了一个`beautifulsoup`对象`parse_obj`。这个对象以 requests 的`page_result.content`作为参数，然后使用`html.parser`解析页面。接下来，我们使用 beautifulsoup 的`find()`方法从`'news-article__content'`类中获取内容。
 
 现在，我们将看到从特定标签中提取内容的示例。在这个例子中，我们将从`<a>`标签中提取内容。创建一个`extract_from_tag.py`脚本，并在其中编写以下内容：
 
@@ -127,7 +127,7 @@ In the preceding example, we extracted the content from Wikipedia. In this examp
 
 在本章中，您了解了网络爬取的内容。我们了解了用于从网页中提取数据的两个库。我们还从维基百科中提取了信息。
 
-在下一章中，您将学习有关统计数据收集和报告的内容。您将学习有关NumPy模块、数据可视化以及使用图表、图形和图表显示数据的内容。
+在下一章中，您将学习有关统计数据收集和报告的内容。您将学习有关 NumPy 模块、数据可视化以及使用图表、图形和图表显示数据的内容。
 
 # 问题
 
@@ -137,16 +137,16 @@ In the preceding example, we extracted the content from Wikipedia. In this examp
 
 1.  您能够在登录页面后面抓取数据吗？
 
-1.  你能爬Twitter吗？
+1.  你能爬 Twitter 吗？
 
-1.  是否可能抓取JavaScript页面？如果是，如何？
+1.  是否可能抓取 JavaScript 页面？如果是，如何？
 
 # 进一步阅读
 
-+   Urllib文档：[https://docs.python.org/3/library/urllib.html](https://docs.python.org/3/library/urllib.html)
++   Urllib 文档：[`docs.python.org/3/library/urllib.html`](https://docs.python.org/3/library/urllib.html)
 
-+   Mechanize：[https://mechanize.readthedocs.io/en/latest/](https://mechanize.readthedocs.io/en/latest/)
++   Mechanize：[`mechanize.readthedocs.io/en/latest/`](https://mechanize.readthedocs.io/en/latest/)
 
-+   Scrapemark：[https://pypi.org/project/scrape/](https://pypi.org/project/scrape/)
++   Scrapemark：[`pypi.org/project/scrape/`](https://pypi.org/project/scrape/)
 
-+   Scrapy：[https://doc.scrapy.org/en/latest/index.html](https://doc.scrapy.org/en/latest/index.html)
++   Scrapy：[`doc.scrapy.org/en/latest/index.html`](https://doc.scrapy.org/en/latest/index.html)

@@ -1,6 +1,6 @@
 # 从文档、图像和浏览器中提取地理位置和元数据
 
-本章涵盖了Python中用于提取IP地址地理位置信息、从图像和文档中提取元数据以及识别网站前端和后端使用的Web技术的主要模块。此外，我们还介绍了如何从Chrome和Firefox浏览器中提取元数据以及与存储在sqlite数据库中的下载、cookie和历史数据相关的信息。
+本章涵盖了 Python 中用于提取 IP 地址地理位置信息、从图像和文档中提取元数据以及识别网站前端和后端使用的 Web 技术的主要模块。此外，我们还介绍了如何从 Chrome 和 Firefox 浏览器中提取元数据以及与存储在 sqlite 数据库中的下载、cookie 和历史数据相关的信息。
 
 本章将涵盖以下主题：
 
@@ -8,37 +8,37 @@
 
 +   如何使用`Python Image`库从图像中提取元数据
 
-+   如何使用`pypdf`模块从PDF文档中提取元数据
++   如何使用`pypdf`模块从 PDF 文档中提取元数据
 
 +   如何识别网站使用的技术
 
-+   如何从Chrome和Firefox等网络浏览器中提取元数据
++   如何从 Chrome 和 Firefox 等网络浏览器中提取元数据
 
 # 技术要求
 
-本章的示例和源代码可在GitHub存储库的`chapter 12`文件夹中找到：[https://github.com/PacktPublishing/Mastering-Python-for-Networking-and-Security](https://github.com/PacktPublishing/Mastering-Python-for-Networking-and-Security)。
+本章的示例和源代码可在 GitHub 存储库的`chapter 12`文件夹中找到：[`github.com/PacktPublishing/Mastering-Python-for-Networking-and-Security`](https://github.com/PacktPublishing/Mastering-Python-for-Networking-and-Security)。
 
-您需要在本地计算机上安装至少4GB内存的Python发行版。
+您需要在本地计算机上安装至少 4GB 内存的 Python 发行版。
 
 # 提取地理位置信息
 
-在本节中，我们将回顾如何从IP地址或域名中提取地理位置信息。
+在本节中，我们将回顾如何从 IP 地址或域名中提取地理位置信息。
 
 # 地理位置介绍
 
-从IP地址或域名获取地理位置的一种方法是使用提供此类信息的服务。在提供此信息的服务中，我们可以强调hackertarget.com ([https://hackertarget.com/geoip-ip-location-lookup/](https://hackertarget.com/geoip-ip-location-lookup/))。
+从 IP 地址或域名获取地理位置的一种方法是使用提供此类信息的服务。在提供此信息的服务中，我们可以强调 hackertarget.com ([`hackertarget.com/geoip-ip-location-lookup/`](https://hackertarget.com/geoip-ip-location-lookup/))。
 
-通过[hackertarget.com](http://hackertarget.com)，我们可以从IP地址获取地理位置：
+通过[hackertarget.com](http://hackertarget.com)，我们可以从 IP 地址获取地理位置：
 
-![](assets/04da526f-00a3-4154-b344-e4ec7d7f5970.png)
+![](img/04da526f-00a3-4154-b344-e4ec7d7f5970.png)
 
-该服务还提供了一个用于从IP地址获取地理位置的REST API：[https://api.hackertarget.com/geoip/?q=8.8.8.8](https://api.hackertarget.com/geoip/?q=8.8.8.8)。
+该服务还提供了一个用于从 IP 地址获取地理位置的 REST API：[`api.hackertarget.com/geoip/?q=8.8.8.8`](https://api.hackertarget.com/geoip/?q=8.8.8.8)。
 
-另一个服务是`api.hostip.info`，它提供了按IP地址查询的服务：
+另一个服务是`api.hostip.info`，它提供了按 IP 地址查询的服务：
 
-![](assets/3ca09e55-c965-4e81-b66c-4f4bdd84e344.png)
+![](img/3ca09e55-c965-4e81-b66c-4f4bdd84e344.png)
 
-在下一个脚本中，我们使用此服务和`requests`模块来获取包含地理位置信息的json响应。
+在下一个脚本中，我们使用此服务和`requests`模块来获取包含地理位置信息的 json 响应。
 
 您可以在`ip_to_geo.py`文件中找到以下代码：
 
@@ -77,21 +77,21 @@ if __name__ == '__main__':
 {'latitude': '37.402', 'longitude': '-122.078', 'country': 'UNITED STATES', 'city': 'Mountain View, CA', 'ip_address': '8.8.8.8', 'country_code': 'US'}
 ```
 
-# Pygeoip介绍
+# Pygeoip 介绍
 
-`Pygeoip`是Python中可用的模块之一，允许您从IP地址检索地理信息。它基于GeoIP数据库，这些数据库根据其类型（城市、地区、国家、ISP）分布在几个文件中。该模块包含几个函数来检索数据，例如国家代码、时区或包含与特定地址相关的所有信息的完整注册。
+`Pygeoip`是 Python 中可用的模块之一，允许您从 IP 地址检索地理信息。它基于 GeoIP 数据库，这些数据库根据其类型（城市、地区、国家、ISP）分布在几个文件中。该模块包含几个函数来检索数据，例如国家代码、时区或包含与特定地址相关的所有信息的完整注册。
 
-`Pygeoip`可以从官方GitHub存储库下载：[http://github.com/appliedsec/pygeoip](http://github.com/appliedsec/pygeoip)。
+`Pygeoip`可以从官方 GitHub 存储库下载：[`github.com/appliedsec/pygeoip`](http://github.com/appliedsec/pygeoip)。
 
 如果我们查询模块的帮助，我们会看到必须使用的主要类来实例化允许我们进行查询的对象：
 
-![](assets/0ee0956f-9aa4-4942-a081-23a5431e4c64.png)
+![](img/0ee0956f-9aa4-4942-a081-23a5431e4c64.png)
 
-要构建对象，我们使用一个接受文件作为参数的数据库的构造函数。此文件的示例可以从以下网址下载：[http://dev.maxmind.com/geoip/legacy/geolite](http://dev.maxmind.com/geoip/legacy/geolite)。
+要构建对象，我们使用一个接受文件作为参数的数据库的构造函数。此文件的示例可以从以下网址下载：[`dev.maxmind.com/geoip/legacy/geolite`](http://dev.maxmind.com/geoip/legacy/geolite)。
 
-![](assets/1062cdc6-46f3-4ce5-b7d2-713f98345e54.png)
+![](img/1062cdc6-46f3-4ce5-b7d2-713f98345e54.png)
 
-此类中可用的以下方法允许您从IP地址或域名获取国家名称。
+此类中可用的以下方法允许您从 IP 地址或域名获取国家名称。
 
 您可以在`**geoip.py**`文件中找到以下代码，该文件位于`pygeopip`文件夹中：
 
@@ -105,11 +105,11 @@ pprint.pprint("Country name: %s " %(str(gi.country_name_by_addr('173.194.34.192'
 pprint.pprint("Country code: %s " %(str(gi.country_name_by_name('google.com'))))
 ```
 
-还有一些方法可以从IP和主机地址中获取组织和服务提供商：
+还有一些方法可以从 IP 和主机地址中获取组织和服务提供商：
 
-![](assets/8926cf88-04bd-4d61-91aa-f29823539be8.png)
+![](img/8926cf88-04bd-4d61-91aa-f29823539be8.png)
 
-这是从IP地址和域名获取特定组织信息的示例：
+这是从 IP 地址和域名获取特定组织信息的示例：
 
 ```py
 gi2 = pygeoip.GeoIP('GeoIPASNum.dat')
@@ -119,9 +119,9 @@ pprint.pprint("Organization by name: %s " %(str(gi2.org_by_name('google.com'))))
 
 还有一些方法可以让我们以字典形式获取有关国家、城市、纬度或经度的数据结构：
 
-![](assets/b1cca883-a48c-4887-93eb-6da123e990bd.png)
+![](img/b1cca883-a48c-4887-93eb-6da123e990bd.png)
 
-这是一个从IP地址获取地理位置信息的示例：
+这是一个从 IP 地址获取地理位置信息的示例：
 
 ```py
 for record,value in gi.record_by_addr('173.194.34.192').items():
@@ -130,11 +130,11 @@ for record,value in gi.record_by_addr('173.194.34.192').items():
 
 我们可以看到上一个脚本返回的所有地理位置信息：
 
-![](assets/971e5d90-8cd3-4b50-9499-d2a27403a429.png)
+![](img/971e5d90-8cd3-4b50-9499-d2a27403a429.png)
 
-在下一个脚本中，我们有两种方法，`geoip_city()`用于获取有关位置的信息，`geoip_country()`用于获取国家，两者都是从IP地址获取的。
+在下一个脚本中，我们有两种方法，`geoip_city()`用于获取有关位置的信息，`geoip_country()`用于获取国家，两者都是从 IP 地址获取的。
 
-在这两种方法中，首先实例化一个带有包含数据库的文件路径的`GeoIP`类。接下来，我们将查询特定记录的数据库，指定IP地址或域。这将返回一个包含城市、`region_name`、`postal_code`、`country_name`、`latitude`和`longitude`字段的记录。
+在这两种方法中，首先实例化一个带有包含数据库的文件路径的`GeoIP`类。接下来，我们将查询特定记录的数据库，指定 IP 地址或域。这将返回一个包含城市、`region_name`、`postal_code`、`country_name`、`latitude`和`longitude`字段的记录。
 
 您可以在`pygeopip`文件夹中的`pygeoip_test.py`文件中找到以下代码：
 
@@ -167,23 +167,23 @@ if __name__ == '__main__':
 
 我们可以看到返回的信息对于两种情况是相同的：
 
-![](assets/4c071006-cd8a-48ea-8b8b-06e00dfdf1ec.png)
+![](img/4c071006-cd8a-48ea-8b8b-06e00dfdf1ec.png)
 
-# pygeocoder简介
+# pygeocoder 简介
 
-`pygeocoder`是一个简化使用Google地理位置功能的Python模块。使用此模块，您可以轻松找到与坐标对应的地址，反之亦然。我们还可以使用它来验证和格式化地址。
+`pygeocoder`是一个简化使用 Google 地理位置功能的 Python 模块。使用此模块，您可以轻松找到与坐标对应的地址，反之亦然。我们还可以使用它来验证和格式化地址。
 
-该模块位于官方Python存储库中，因此您可以使用`pip`来安装它。在[https://pypi.python.org/pypi/pygeocoder](https://pypi.python.org/pypi/pygeocoder)URL中，我们可以看到此模块的最新版本：`$ pip install pygeocoder`。
+该模块位于官方 Python 存储库中，因此您可以使用`pip`来安装它。在[`pypi.python.org/pypi/pygeocoder`](https://pypi.python.org/pypi/pygeocoder)URL 中，我们可以看到此模块的最新版本：`$ pip install pygeocoder`。
 
-该模块使用Google Geocoding API v3服务从特定地址检索坐标：
+该模块使用 Google Geocoding API v3 服务从特定地址检索坐标：
 
-![](assets/7360aef5-9517-48e7-a26e-29c8c7a9d535.png)
+![](img/7360aef5-9517-48e7-a26e-29c8c7a9d535.png)
 
 该模块的主要类是`Geocoder`类，它允许从地点描述和特定位置进行查询。
 
 在这个截图中，我们可以看到`GeoCoder`类的`help`命令的返回：
 
-![](assets/874c59b5-88f5-49f3-a0bf-a8b1b9f20865.png)
+![](img/874c59b5-88f5-49f3-a0bf-a8b1b9f20865.png)
 
 从地点描述中获取地点、坐标、纬度、经度、国家和邮政编码的示例。您还可以执行反向过程，即从对应于地理点的纬度和经度的坐标开始，可以恢复该站点的地址。
 
@@ -205,19 +205,19 @@ print(results.formatted_address)
 
 我们可以看到上一个脚本返回的所有地理位置信息：
 
-![](assets/7c2b63cf-17e6-4c0b-8fd1-3fe517203204.png)
+![](img/7c2b63cf-17e6-4c0b-8fd1-3fe517203204.png)
 
-# Python中的MaxMind数据库
+# Python 中的 MaxMind 数据库
 
-还有其他使用MaxMind数据库的Python模块：
+还有其他使用 MaxMind 数据库的 Python 模块：
 
-+   **geoip2:** 提供对GeoIP2网络服务和数据库的访问
++   **geoip2:** 提供对 GeoIP2 网络服务和数据库的访问
 
-+   [https://github.com/maxmind/GeoIP2-python](https://github.com/maxmind/GeoIP2-python)
++   [`github.com/maxmind/GeoIP2-python`](https://github.com/maxmind/GeoIP2-python)
 
-+   **maxminddb-geolite2:** 提供一个简单的MaxMindDB阅读器扩展
++   **maxminddb-geolite2:** 提供一个简单的 MaxMindDB 阅读器扩展
 
-+   [https://github.com/rr2do2/maxminddb-geolite2](https://github.com/rr2do2/maxminddb-geolite2)
++   [`github.com/rr2do2/maxminddb-geolite2`](https://github.com/rr2do2/maxminddb-geolite2)
 
 在下一个脚本中，我们可以看到如何使用`maxminddb-geolite2`包的示例。
 
@@ -250,39 +250,39 @@ if __name__ == '__main__':
  print (json.dumps(response['location']['time_zone'],indent=4))
 ```
 
-在这个截图中，我们可以看到使用google.com作为主机名执行上一个脚本：
+在这个截图中，我们可以看到使用 google.com 作为主机名执行上一个脚本：
 
 `python geolite2_example.py --hostname google.com`
 
 此脚本将显示类似于以下内容的输出：
 
-![](assets/39c1d15f-fd21-4639-b49c-70fc88b615cc.png)
+![](img/39c1d15f-fd21-4639-b49c-70fc88b615cc.png)
 
 # 从图像中提取元数据
 
-在这一部分，我们将回顾如何使用PIL模块从图像中提取EXIF元数据。
+在这一部分，我们将回顾如何使用 PIL 模块从图像中提取 EXIF 元数据。
 
-# Exif和PIL模块简介
+# Exif 和 PIL 模块简介
 
-我们在Python中找到的用于处理和操作图像的主要模块之一是`PIL`。`PIL`模块允许我们提取图像的`EXIF`元数据。
+我们在 Python 中找到的用于处理和操作图像的主要模块之一是`PIL`。`PIL`模块允许我们提取图像的`EXIF`元数据。
 
 **Exif（Exchange Image File Format）**是一个规范，指示在保存图像时必须遵循的规则，并定义了如何在图像和音频文件中存储元数据。这个规范今天在大多数移动设备和数码相机中应用。
 
 `PIL.ExifTags`模块允许我们从这些标签中提取信息：
 
-![](assets/f92bcdd3-de77-40ae-b712-31142fd3c023.png)
+![](img/f92bcdd3-de77-40ae-b712-31142fd3c023.png)
 
 我们可以在`pillow`模块内的`exiftags`包的官方文档中查看官方文档：
 
-ExifTags包含一个带有许多众所周知的`EXIF标签`的常量和名称的字典结构。
+ExifTags 包含一个带有许多众所周知的`EXIF 标签`的常量和名称的字典结构。
 
 在这张图片中，我们可以看到`TAGS.values()`方法返回的所有标签：
 
-![](assets/5d180f44-29e7-424e-b1c4-523fcc817f78.png)
+![](img/5d180f44-29e7-424e-b1c4-523fcc817f78.png)
 
-# 从图像获取EXIF数据
+# 从图像获取 EXIF 数据
 
-首先，我们导入了`PIL`图像和`PIL TAGS`模块。`PIL`是Python中的图像处理模块。它支持许多文件格式，并具有强大的图像处理能力。然后我们遍历结果并打印值。还有许多其他模块支持EXIF数据提取，例如`ExifRead`。在这个例子中，为了获取`EXIF`数据，我们可以使用`_getexif()`方法。
+首先，我们导入了`PIL`图像和`PIL TAGS`模块。`PIL`是 Python 中的图像处理模块。它支持许多文件格式，并具有强大的图像处理能力。然后我们遍历结果并打印值。还有许多其他模块支持 EXIF 数据提取，例如`ExifRead`。在这个例子中，为了获取`EXIF`数据，我们可以使用`_getexif()`方法。
 
 您可以在`exiftags`文件夹中的`get_exif_tags.py`文件中找到以下代码：
 
@@ -294,7 +294,7 @@ for (i,j) in Image.open('images/image.jpg')._getexif().items():
     print('%s = %s' % (TAGS.get(i), j))
 ```
 
-# 了解Exif元数据
+# 了解 Exif 元数据
 
 要获取图像的`EXIF`标签信息，可以使用图像对象的`_getexif()`方法。例如，我们可以编写一个函数，在图像路径中，可以返回`EXIF`标签的信息。
 
@@ -348,25 +348,25 @@ def decode_gps_info(exif):
          exif['GPSInfo'] = {"Lat" : Lat, "Lng" : Lng}
 ```
 
-在上一个脚本中，我们将Exif数据解析为一个由元数据类型索引的数组。有了完整的数组，我们可以搜索数组，看它是否包含`GPSInfo`的`Exif`标签。如果它包含`GPSInfo`标签，那么我们将知道该对象包含GPS元数据，我们可以在屏幕上打印一条消息。
+在上一个脚本中，我们将 Exif 数据解析为一个由元数据类型索引的数组。有了完整的数组，我们可以搜索数组，看它是否包含`GPSInfo`的`Exif`标签。如果它包含`GPSInfo`标签，那么我们将知道该对象包含 GPS 元数据，我们可以在屏幕上打印一条消息。
 
 在下面的图像中，我们可以看到我们还在`GPSInfo`对象中获取了有关图像位置的信息：
 
-![](assets/e0157494-f454-414c-a0bc-088c111e5445.png)
+![](img/e0157494-f454-414c-a0bc-088c111e5445.png)
 
 # 从网络图像中提取元数据
 
 在本节中，我们将构建一个脚本，连接到一个网站，下载网站上的所有图像，然后检查它们的`Exif`元数据。
 
-对于这个任务，我们使用了Python3的`urllib`模块，提供了`parse`和`request`包：
+对于这个任务，我们使用了 Python3 的`urllib`模块，提供了`parse`和`request`包：
 
-[https://docs.python.org/3.0/library/urllib.parse.html](https://docs.python.org/3.0/library/urllib.parse.html)
+[`docs.python.org/3.0/library/urllib.parse.html`](https://docs.python.org/3.0/library/urllib.parse.html)
 
-[https://docs.python.org/3.0/library/urllib.request.html](https://docs.python.org/3.0/library/urllib.request.html)
+[`docs.python.org/3.0/library/urllib.request.html`](https://docs.python.org/3.0/library/urllib.request.html)
 
 您可以在`exiftags`文件夹中的`exif_images_web_page.py`文件中找到以下代码。
 
-此脚本包含使用`BeautifulSoup`和`lxml解析器`在网站中查找图像以及在图像文件夹中下载图像的方法：
+此脚本包含使用`BeautifulSoup`和`lxml 解析器`在网站中查找图像以及在图像文件夹中下载图像的方法：
 
 ```py
 def findImages(url):
@@ -409,7 +409,7 @@ def printMetadata():
                 traceback.print_exc(file=sys.stdout)
 ```
 
-这是我们的主要方法，它从参数中获取一个url，并调用`findImages(url)`，`downloadImage(imgTags)`和`printMetadata()`方法：
+这是我们的主要方法，它从参数中获取一个 url，并调用`findImages(url)`，`downloadImage(imgTags)`和`printMetadata()`方法：
 
 ```py
 def main():
@@ -424,23 +424,23 @@ def main():
        imgTags = findImages(url) print(imgTags) for imgTag in imgTags: imgFileName = downloadImage(imgTag) printMetadata()
 ```
 
-# 从pdf文档中提取元数据
+# 从 pdf 文档中提取元数据
 
-在本节中，我们将回顾如何使用`pyPDF2`模块从pdf文档中提取元数据。
+在本节中，我们将回顾如何使用`pyPDF2`模块从 pdf 文档中提取元数据。
 
-# PyPDF2简介
+# PyPDF2 简介
 
-Python中用于从PDF文档中提取数据的模块之一是`PyPDF2`。该模块可以直接使用pip install实用程序下载，因为它位于官方Python存储库中。
+Python 中用于从 PDF 文档中提取数据的模块之一是`PyPDF2`。该模块可以直接使用 pip install 实用程序下载，因为它位于官方 Python 存储库中。
 
-在[https://pypi.org/project/PyPDF2/](https://pypi.org/project/PyPDF2/) URL中，我们可以看到这个模块的最新版本：
+在[`pypi.org/project/PyPDF2/`](https://pypi.org/project/PyPDF2/) URL 中，我们可以看到这个模块的最新版本：
 
-![](assets/96634174-b564-4c43-a5db-ad1ba4d42650.png)
+![](img/96634174-b564-4c43-a5db-ad1ba4d42650.png)
 
 该模块为我们提供了提取文档信息、加密和解密文档的能力。要提取元数据，我们可以使用`PdfFileReader`类和`getDocumentInfo()`方法，它返回一个包含文档数据的字典：
 
-![](assets/084b4e2a-7946-45d5-b287-cacaee766c70.png)
+![](img/084b4e2a-7946-45d5-b287-cacaee766c70.png)
 
-以下函数将允许我们获取`pdf`文件夹中所有PDF文档的信息。
+以下函数将允许我们获取`pdf`文件夹中所有 PDF 文档的信息。
 
 你可以在`pypdf`文件夹中的`extractDataFromPDF.py`文件中找到以下代码：
 
@@ -481,7 +481,7 @@ def get_metadata():
 
 ```
 
-在这部分代码中，我们使用`getXmpMetadata()`方法获取与文档相关的其他信息，如贡献者、发布者和PDF版本：
+在这部分代码中，我们使用`getXmpMetadata()`方法获取与文档相关的其他信息，如贡献者、发布者和 PDF 版本：
 
 ```py
         xmpinfo = pdf.getXmpMetadata()
@@ -511,29 +511,29 @@ get_metadata()
 
 os（操作系统）模块中的`walk`函数对于浏览特定目录中包含的所有文件和目录非常有用。
 
-在这个截图中，我们可以看到先前的脚本正在读取pdf文件夹中的文件的输出：
+在这个截图中，我们可以看到先前的脚本正在读取 pdf 文件夹中的文件的输出：
 
-![](assets/72fb6e0e-abf0-49bf-bbbb-9e77bd3b737d.png)
+![](img/72fb6e0e-abf0-49bf-bbbb-9e77bd3b737d.png)
 
 它提供的另一个功能是解密使用密码加密的文档：
 
-![](assets/9e6c1da5-031c-45fe-8ef0-8206d186fcf1.png)
+![](img/9e6c1da5-031c-45fe-8ef0-8206d186fcf1.png)
 
 # Peepdf
 
-`Peepdf`是一个分析PDF文件的Python工具，允许我们可视化文档中的所有对象。它还具有分析PDF文件的不同版本、对象序列和加密文件的能力，以及修改和混淆PDF文件的能力：[http://eternal-todo.com/tools/peepdf-pdf-analysis-tool](http://eternal-todo.com/tools/peepdf-pdf-analysis-tool)。
+`Peepdf`是一个分析 PDF 文件的 Python 工具，允许我们可视化文档中的所有对象。它还具有分析 PDF 文件的不同版本、对象序列和加密文件的能力，以及修改和混淆 PDF 文件的能力：[`eternal-todo.com/tools/peepdf-pdf-analysis-tool`](http://eternal-todo.com/tools/peepdf-pdf-analysis-tool)。
 
 # 识别网站使用的技术
 
-在这一部分中，我们将回顾如何使用builtwith和Wappalyzer来识别网站使用的技术。
+在这一部分中，我们将回顾如何使用 builtwith 和 Wappalyzer 来识别网站使用的技术。
 
-# 介绍builtwith模块
+# 介绍 builtwith 模块
 
-构建网站所使用的技术类型将影响您跟踪它的方式。要识别这些信息，您可以利用Wappalyzer和Builtwith等工具（[https://builtwith.com](https://builtwith.com)）。验证网站所使用的技术类型的有用工具是builtWith模块，可以通过以下方式安装：
+构建网站所使用的技术类型将影响您跟踪它的方式。要识别这些信息，您可以利用 Wappalyzer 和 Builtwith 等工具（[`builtwith.com`](https://builtwith.com)）。验证网站所使用的技术类型的有用工具是 builtWith 模块，可以通过以下方式安装：
 
 `pip install builtwith`
 
-该模块有一个名为`parse`的方法，通过URL参数传递，并返回网站使用的技术作为响应。以下是一个示例：
+该模块有一个名为`parse`的方法，通过 URL 参数传递，并返回网站使用的技术作为响应。以下是一个示例：
 
 ```py
 >>> import builtwith
@@ -544,99 +544,99 @@ u'web-frameworks': [u'Web2py', u'Twitter Bootstrap'],
 u'web-servers': [u'Nginx']}
 ```
 
-文档可在[https://bitbucket.org/richardpenman/builtwith](https://bitbucket.org/richardpenman/builtwith)上找到，模块可在pypi存储库的[https://pypi.org/project/builtwith/](https://pypi.org/project/builtwith/)上找到。
+文档可在[`bitbucket.org/richardpenman/builtwith`](https://bitbucket.org/richardpenman/builtwith)上找到，模块可在 pypi 存储库的[`pypi.org/project/builtwith/`](https://pypi.org/project/builtwith/)上找到。
 
 # Wappalyzer
 
-另一个用于恢复此类信息的工具是Wappalyzer。Wappalyzer具有Web应用程序签名数据库，允许您从50多个类别中识别900多种Web技术。
+另一个用于恢复此类信息的工具是 Wappalyzer。Wappalyzer 具有 Web 应用程序签名数据库，允许您从 50 多个类别中识别 900 多种 Web 技术。
 
-该工具分析网站的多个元素以确定其技术，它分析以下HTML元素：
+该工具分析网站的多个元素以确定其技术，它分析以下 HTML 元素：
 
-+   服务器上的HTTP响应头
++   服务器上的 HTTP 响应头
 
-+   Meta HTML标签
++   Meta HTML 标签
 
-+   JavaScript文件，包括单独的文件和嵌入在HTML中的文件
++   JavaScript 文件，包括单独的文件和嵌入在 HTML 中的文件
 
-+   特定的HTML内容
++   特定的 HTML 内容
 
-+   HTML特定注释
++   HTML 特定注释
 
-`python-Wappalyzer`是一个用于从Python脚本获取此信息的Python接口（[https://github.com/chorsley/python-Wappalyzer](https://github.com/chorsley/python-Wappalyzer)）：
+`python-Wappalyzer`是一个用于从 Python 脚本获取此信息的 Python 接口（[`github.com/chorsley/python-Wappalyzer`](https://github.com/chorsley/python-Wappalyzer)）：
 
 `pip install python-Wappalyzer`
 
-我们可以轻松地使用wappalyzer模块获取网站前端和后端层中使用的技术的信息：
+我们可以轻松地使用 wappalyzer 模块获取网站前端和后端层中使用的技术的信息：
 
-![](assets/8e3d7549-09c9-4ca7-97d8-7249430b6263.png)
+![](img/8e3d7549-09c9-4ca7-97d8-7249430b6263.png)
 
-# wig - webapp信息收集器
+# wig - webapp 信息收集器
 
-wig是一个用Python3开发的Web应用信息收集工具，可以识别多个内容管理系统和其他管理应用。每个检测到的CMS都会显示其最可能的版本。在内部，它从'server'和'x powered-by'头部获取服务器上的操作系统（[https://github.com/jekyc/wig](https://github.com/jekyc/wig)）。
+wig 是一个用 Python3 开发的 Web 应用信息收集工具，可以识别多个内容管理系统和其他管理应用。每个检测到的 CMS 都会显示其最可能的版本。在内部，它从'server'和'x powered-by'头部获取服务器上的操作系统（[`github.com/jekyc/wig`](https://github.com/jekyc/wig)）。
 
-这些是wig脚本在Python3环境中提供的选项：
+这些是 wig 脚本在 Python3 环境中提供的选项：
 
-![](assets/dab0ef28-bbd1-447e-83d9-c69820d648cc.png)
+![](img/dab0ef28-bbd1-447e-83d9-c69820d648cc.png)
 
 在这张图片中，我们可以看到[testphp.vulneb.com](http://testphp.vulneb.com)网站使用的技术：
 
-![](assets/da6a018b-c973-400c-ba94-be4bd3af290b.png)
+![](img/da6a018b-c973-400c-ba94-be4bd3af290b.png)
 
-在这张图片中，我们可以看到它是如何检测到[drupal.com](http://drupal.com)网站使用的CMS版本和其他有趣的文件：
+在这张图片中，我们可以看到它是如何检测到[drupal.com](http://drupal.com)网站使用的 CMS 版本和其他有趣的文件：
 
-![](assets/9305f9f7-6133-4d00-8e5c-b4f1643a74f3.png)
+![](img/9305f9f7-6133-4d00-8e5c-b4f1643a74f3.png)
 
-# 从Web浏览器中提取元数据
+# 从 Web 浏览器中提取元数据
 
-在本节中，我们将审查如何从浏览器中提取元数据，例如chrome和firefox。
+在本节中，我们将审查如何从浏览器中提取元数据，例如 chrome 和 firefox。
 
-# 使用dumpzilla进行Python中的Firefox取证
+# 使用 dumpzilla 进行 Python 中的 Firefox 取证
 
-Dumpzilla是一个非常有用，多功能和直观的工具，专门用于Mozilla浏览器的取证分析。Dumpzilla能够从Firefox，Iceweasel和Seamonkey浏览器中提取所有相关信息，以便进一步分析，以提供有关遭受攻击，密码和电子邮件的线索。它在Unix系统和Windows 32/64位下运行。
+Dumpzilla 是一个非常有用，多功能和直观的工具，专门用于 Mozilla 浏览器的取证分析。Dumpzilla 能够从 Firefox，Iceweasel 和 Seamonkey 浏览器中提取所有相关信息，以便进一步分析，以提供有关遭受攻击，密码和电子邮件的线索。它在 Unix 系统和 Windows 32/64 位下运行。
 
 该应用程序在命令行下运行，我们可以访问大量有价值的信息，其中包括：
 
-+   Cookies + DOM存储（HTML 5）
++   Cookies + DOM 存储（HTML 5）
 
 +   用户偏好（域权限，代理设置）
 
 +   查看下载历史记录
 
-+   Web表单数据（搜索，电子邮件，评论等）
++   Web 表单数据（搜索，电子邮件，评论等）
 
 +   标记
 
 +   浏览器中保存的密码
 
-+   提取HTML5缓存（离线缓存）
++   提取 HTML5 缓存（离线缓存）
 
-+   插件和扩展以及它们使用的路由或URL
++   插件和扩展以及它们使用的路由或 URL
 
-+   添加为例外的SSL证书
++   添加为例外的 SSL 证书
 
-为了完成对浏览器的取证分析，建议使用缓存中的数据提取应用程序，例如MozCache ([http://mozcache.sourceforge.net](http://mozcache.sourceforge.net))。
+为了完成对浏览器的取证分析，建议使用缓存中的数据提取应用程序，例如 MozCache ([`mozcache.sourceforge.net`](http://mozcache.sourceforge.net))。
 
 要求：
 
-+   Python 3.x版本
++   Python 3.x 版本
 
-+   Unix系统（Linux或Mac）或Windows系统
++   Unix 系统（Linux 或 Mac）或 Windows 系统
 
-+   可选的`Python Magic`模块：[https://github.com/ahupp/python-magic](https://github.com/ahupp/python-magic)
++   可选的`Python Magic`模块：[`github.com/ahupp/python-magic`](https://github.com/ahupp/python-magic)
 
-# Dumpzilla命令行
+# Dumpzilla 命令行
 
 找到要进行审计的浏览器配置文件目录。这些配置文件位于不同的目录中，具体取决于您的操作系统。第一步是了解存储浏览器用户配置文件信息的目录。
 
 每个操作系统的位置如下：
 
-+   Win7和10配置文件：`'C:\Users\%USERNAME%\AppData\Roaming\Mozilla\Firefox\Profiles\xxxx.default'`
++   Win7 和 10 配置文件：`'C:\Users\%USERNAME%\AppData\Roaming\Mozilla\Firefox\Profiles\xxxx.default'`
 
-+   MacOS配置文件：`'/Users/$USER/Library/Application Support/Firefox/Profiles/xxxx.default'`
++   MacOS 配置文件：`'/Users/$USER/Library/Application Support/Firefox/Profiles/xxxx.default'`
 
-+   Unix配置文件：`'/home/$USER/.mozilla/firefox/xxxx.default'`
++   Unix 配置文件：`'/home/$USER/.mozilla/firefox/xxxx.default'`
 
-您可以从git存储库下载`dumpzilla` Python脚本，并使用Python3运行该脚本，指向您的浏览器配置文件目录的位置：[https://github.com/Busindre/dumpzilla](https://github.com/Busindre/dumpzilla)。
+您可以从 git 存储库下载`dumpzilla` Python 脚本，并使用 Python3 运行该脚本，指向您的浏览器配置文件目录的位置：[`github.com/Busindre/dumpzilla`](https://github.com/Busindre/dumpzilla)。
 
 这些是脚本提供的选项：
 
@@ -644,43 +644,43 @@ Dumpzilla是一个非常有用，多功能和直观的工具，专门用于Mozil
 python3 dumpzilla.py "/root/.mozilla/firefox/[Your Profile.default]"
 ```
 
-![](assets/e2a8fff8-a533-46c2-b5cb-2d367f649f00.png)
+![](img/e2a8fff8-a533-46c2-b5cb-2d367f649f00.png)
 
 这将返回有关互联网浏览信息的报告，然后显示所收集信息的摘要图表：
 
-![](assets/f56fbaef-b459-4144-9333-b27ca3cc2bbd.png)
+![](img/f56fbaef-b459-4144-9333-b27ca3cc2bbd.png)
 
-# 使用firefeed进行Python中的Firefox取证
+# 使用 firefeed 进行 Python 中的 Firefox 取证
 
-Firefed是一个工具，以命令行模式运行，允许您检查Firefox配置文件。可以提取存储的密码，偏好设置，插件和历史记录（[https://github.com/numirias/firefed](https://github.com/numirias/firefed)）。
+Firefed 是一个工具，以命令行模式运行，允许您检查 Firefox 配置文件。可以提取存储的密码，偏好设置，插件和历史记录（[`github.com/numirias/firefed`](https://github.com/numirias/firefed)）。
 
 这些是`firefed`脚本提供的选项：
 
-![](assets/316eecbb-179b-4dff-be66-172f3b61937d.png)
+![](img/316eecbb-179b-4dff-be66-172f3b61937d.png)
 
 该工具读取位于您的用户名火狐配置文件中的`profiles.ini`文件。
 
-在Windows操作系统中，此文件位于`C:\Users\username\AppData\Roaming\Mozilla\Firefox`。
+在 Windows 操作系统中，此文件位于`C:\Users\username\AppData\Roaming\Mozilla\Firefox`。
 
 您还可以使用`%APPDATA%\Mozilla\Firefox\Profiles`命令检测此文件夹。
 
-有关更多信息，请参阅mozilla网站的官方文档：[https://support.mozilla.org/en-US/kb/profiles-where-firefox-stores-user-data#w_how-do-i-find-my-profile](https://support.mozilla.org/en-US/kb/profiles-where-firefox-stores-user-data#w_how-do-i-find-my-profile)。
+有关更多信息，请参阅 mozilla 网站的官方文档：[`support.mozilla.org/en-US/kb/profiles-where-firefox-stores-user-data#w_how-do-i-find-my-profile`](https://support.mozilla.org/en-US/kb/profiles-where-firefox-stores-user-data#w_how-do-i-find-my-profile)。
 
-# 使用Python进行Chrome取证
+# 使用 Python 进行 Chrome 取证
 
-Google Chrome将浏览历史记录存储在以下位置的SQLite数据库中：
+Google Chrome 将浏览历史记录存储在以下位置的 SQLite 数据库中：
 
-+   Windows 7和10：`C:\Users\[USERNAME]\AppData\Local\Google\Chrome\`
++   Windows 7 和 10：`C:\Users\[USERNAME]\AppData\Local\Google\Chrome\`
 
 +   Linux：`/home/$USER/.config/google-chrome/`
 
-包含浏览历史记录的数据库文件存储在名为“History”的Default文件夹下，可以使用任何SQlite浏览器（[https://sqlitebrowser.org/](https://sqlitebrowser.org/)）进行检查。
+包含浏览历史记录的数据库文件存储在名为“History”的 Default 文件夹下，可以使用任何 SQlite 浏览器（[`sqlitebrowser.org/`](https://sqlitebrowser.org/)）进行检查。
 
-在Windows计算机上，该数据库通常可以在以下路径下找到：
+在 Windows 计算机上，该数据库通常可以在以下路径下找到：
 
 `C:\Users\<YOURUSERNAME>\AppData\Local\Google\Chrome\User Data\Default`
 
-例如，在Windows操作系统中，路径为`C:\Users\<username>\AppData\Local\Google\Chrome\User Data\Default\History`，我们可以找到存储Chrome浏览历史记录的SQLite数据库。
+例如，在 Windows 操作系统中，路径为`C:\Users\<username>\AppData\Local\Google\Chrome\User Data\Default\History`，我们可以找到存储 Chrome 浏览历史记录的 SQLite 数据库。
 
 这是历史数据库和相关字段的表：
 
@@ -698,15 +698,15 @@ Google Chrome将浏览历史记录存储在以下位置的SQLite数据库中：
 
 +   **urls:** `id`, `url`, `title`, `visit_count`, `typed_count`, `last_visit_time`, `hidden`, `favicon_id`
 
-在这张图片中，我们可以看到一个SQlite浏览器的截图，显示了历史数据库中可用的表：
+在这张图片中，我们可以看到一个 SQlite 浏览器的截图，显示了历史数据库中可用的表：
 
-![](assets/adc00515-d4fc-4183-aa0e-2c22b59573a4.png)
+![](img/adc00515-d4fc-4183-aa0e-2c22b59573a4.png)
 
-Chrome将其数据本地存储在一个`SQLite数据库`中。因此，我们只需要编写一个Python脚本，该脚本将连接到数据库，查询必要的字段，并从表中提取数据。
+Chrome 将其数据本地存储在一个`SQLite 数据库`中。因此，我们只需要编写一个 Python 脚本，该脚本将连接到数据库，查询必要的字段，并从表中提取数据。
 
-我们可以编写一个Python脚本，从下载表中提取信息。您只需要**`导入sqlite3`**模块，该模块随Python安装而来。
+我们可以编写一个 Python 脚本，从下载表中提取信息。您只需要**`导入 sqlite3`**模块，该模块随 Python 安装而来。
 
-您可以在与Python3.x兼容的`ChromeDownloads.py`文件中找到以下代码：
+您可以在与 Python3.x 兼容的`ChromeDownloads.py`文件中找到以下代码：
 
 ```py
 import sqlite3
@@ -755,96 +755,96 @@ if __name__ == '__main__':
 
 要执行前面的脚本，我们需要传递一个参数，即您的历史文件数据库的位置：
 
-![](assets/26627db3-b833-4216-814a-422676282c04.png)
+![](img/26627db3-b833-4216-814a-422676282c04.png)
 
-# 使用Hindsight进行Chrome取证
+# 使用 Hindsight 进行 Chrome 取证
 
-Hindsight是一个用于解析用户Chrome浏览器数据的开源工具，允许您分析多种不同类型的Web工件，包括URL、下载历史、缓存记录、书签、偏好设置、浏览器扩展、HTTP cookie和以cookie形式的本地存储日志。
+Hindsight 是一个用于解析用户 Chrome 浏览器数据的开源工具，允许您分析多种不同类型的 Web 工件，包括 URL、下载历史、缓存记录、书签、偏好设置、浏览器扩展、HTTP cookie 和以 cookie 形式的本地存储日志。
 
-该工具可以在GitHub和pip存储库中找到：
+该工具可以在 GitHub 和 pip 存储库中找到：
 
-[https://github.com/obsidianforensics/hindsight](https://github.com/obsidianforensics/hindsight)
+[`github.com/obsidianforensics/hindsight`](https://github.com/obsidianforensics/hindsight)
 
-[https://pypi.org/project/pyhindsight/](https://pypi.org/project/pyhindsight/)
+[`pypi.org/project/pyhindsight/`](https://pypi.org/project/pyhindsight/)
 
 在这个截图中，我们可以看到这个模块的最新版本：
 
-![](assets/d756ebc5-251d-4a2f-814c-fd736f30110a.png)
+![](img/d756ebc5-251d-4a2f-814c-fd736f30110a.png)
 
 我们可以使用`pip install pyhindsight`命令进行安装。
 
-安装了模块后，我们可以从GitHub存储库下载源代码：
+安装了模块后，我们可以从 GitHub 存储库下载源代码：
 
-[https://github.com/obsidianforensics/hindsight](https://github.com/obsidianforensics/hindsight)
+[`github.com/obsidianforensics/hindsight`](https://github.com/obsidianforensics/hindsight)
 
-![](assets/a5bb0376-8c43-4192-a408-20ec966dec2b.png)
+![](img/a5bb0376-8c43-4192-a408-20ec966dec2b.png)
 
-我们可以以两种方式执行它。第一种是使用`hindsight.py`脚本，第二种是通过启动`hindsight_gui.py`脚本，它提供了一个用于输入Chrome配置文件位置的Web界面。
+我们可以以两种方式执行它。第一种是使用`hindsight.py`脚本，第二种是通过启动`hindsight_gui.py`脚本，它提供了一个用于输入 Chrome 配置文件位置的 Web 界面。
 
-对于使用`hindsight.py`执行，我们只需要传递一个强制参数(**`-i`,**`--input`)，即您的Chrome配置文件的位置，具体取决于您的操作系统：
+对于使用`hindsight.py`执行，我们只需要传递一个强制参数(**`-i`,**`--input`)，即您的 Chrome 配置文件的位置，具体取决于您的操作系统：
 
-![](assets/99747764-86a9-46c2-a70e-e9069eefbfe9.png)
+![](img/99747764-86a9-46c2-a70e-e9069eefbfe9.png)
 
-这些是我们需要了解的Chrome配置文件的默认位置，以设置输入参数：
+这些是我们需要了解的 Chrome 配置文件的默认位置，以设置输入参数：
 
-![](assets/a369573f-47a5-45f5-89dc-8279e084dd7f.png)
+![](img/a369573f-47a5-45f5-89dc-8279e084dd7f.png)
 
-第二种方法是运行“`hindsight_gui.py`”并在浏览器中访问[http://localhost:8080](http://localhost:8080)：
+第二种方法是运行“`hindsight_gui.py`”并在浏览器中访问[`localhost:8080`](http://localhost:8080)：
 
-![](assets/34b8947b-9ba6-4b35-bc92-289def323701.png)
+![](img/34b8947b-9ba6-4b35-bc92-289def323701.png)
 
 唯一强制性的字段是配置文件路径：
 
-![](assets/de7e2530-62f9-4383-be72-4ad4c5e50beb.png)
+![](img/de7e2530-62f9-4383-be72-4ad4c5e50beb.png)
 
-如果我们尝试在打开Chrome浏览器进程的情况下运行脚本，它将阻止该进程，因为我们需要在运行之前关闭Chrome浏览器。
+如果我们尝试在打开 Chrome 浏览器进程的情况下运行脚本，它将阻止该进程，因为我们需要在运行之前关闭 Chrome 浏览器。
 
-这是当您尝试执行脚本时，chrome进程正在运行时的错误消息：
+这是当您尝试执行脚本时，chrome 进程正在运行时的错误消息：
 
-![](assets/b10ab9d9-ab8e-43d6-a1d4-80bdf11bd1bb.png)
+![](img/b10ab9d9-ab8e-43d6-a1d4-80bdf11bd1bb.png)
 
 # 总结
 
-本章的目标之一是了解允许我们从文档和图像中提取元数据的模块，以及从IP地址和域名中提取地理位置信息的模块。我们讨论了如何获取域名信息，例如特定网页中使用的技术和CMS。最后，我们回顾了如何从Chrome和Firefox等网络浏览器中提取元数据。本章中审查的所有工具都允许我们获取可能对我们的渗透测试或审计过程的后续阶段有用的信息。
+本章的目标之一是了解允许我们从文档和图像中提取元数据的模块，以及从 IP 地址和域名中提取地理位置信息的模块。我们讨论了如何获取域名信息，例如特定网页中使用的技术和 CMS。最后，我们回顾了如何从 Chrome 和 Firefox 等网络浏览器中提取元数据。本章中审查的所有工具都允许我们获取可能对我们的渗透测试或审计过程的后续阶段有用的信息。
 
-在下一[章节](7ae7e7c7-4cfb-48fc-9e38-d52ff21d9c9d.xhtml)中，我们将探讨用于实现加密和隐写术的编程包和Python模块。
+在下一章节中，我们将探讨用于实现加密和隐写术的编程包和 Python 模块。
 
 # 问题
 
-1.  Python中哪个模块允许我们从IP地址检索地理信息？
+1.  Python 中哪个模块允许我们从 IP 地址检索地理信息？
 
-1.  哪个模块使用Google Geocoding API v3服务来检索特定地址的坐标？
+1.  哪个模块使用 Google Geocoding API v3 服务来检索特定地址的坐标？
 
 1.  `Pygeocoder`模块的主要类是什么，它允许从地点描述和特定位置进行查询？
 
 1.  哪种方法允许反向过程从对应于纬度和经度的坐标中恢复所述站点的地址？
 
-1.  `pygeoip`模块中的哪个方法允许我们从传递的IP地址获取国家名称的值？
+1.  `pygeoip`模块中的哪个方法允许我们从传递的 IP 地址获取国家名称的值？
 
-1.  `pygeoip`模块中的哪个方法允许我们从IP地址获取地理数据（国家、城市、地区、纬度、经度）的字典形式的结构？
+1.  `pygeoip`模块中的哪个方法允许我们从 IP 地址获取地理数据（国家、城市、地区、纬度、经度）的字典形式的结构？
 
 1.  `pygeoip`模块中的哪个方法允许我们从域名获取组织的名称？
 
-1.  哪个Python模块允许我们从PDF文档中提取元数据？
+1.  哪个 Python 模块允许我们从 PDF 文档中提取元数据？
 
-1.  我们可以使用哪个类和方法来获取PDF文档的信息？
+1.  我们可以使用哪个类和方法来获取 PDF 文档的信息？
 
-1.  哪个模块允许我们从EXIF标签中提取图像信息？
+1.  哪个模块允许我们从 EXIF 标签中提取图像信息？
 
 # 进一步阅读
 
 在这些链接中，您将找到有关本章中提到的工具及其官方文档的更多信息：
 
-+   [https://bitbucket.org/xster/pygeocoder/wiki/Home](https://bitbucket.org/xster/pygeocoder/wiki/Home)
++   [`bitbucket.org/xster/pygeocoder/wiki/Home`](https://bitbucket.org/xster/pygeocoder/wiki/Home)
 
-+   [https://chrisalbon.com/python/data_wrangling/geocoding_and_reverse_geocoding/](https://chrisalbon.com/python/data_wrangling/geocoding_and_reverse_geocoding/)
++   [`chrisalbon.com/python/data_wrangling/geocoding_and_reverse_geocoding/`](https://chrisalbon.com/python/data_wrangling/geocoding_and_reverse_geocoding/)
 
-+   [https://pythonhosted.org/PyPDF2](https://pythonhosted.org/PyPDF2)
++   [`pythonhosted.org/PyPDF2`](https://pythonhosted.org/PyPDF2)
 
-+   [http://www.dumpzilla.org](http://www.dumpzilla.org)
++   [`www.dumpzilla.org`](http://www.dumpzilla.org)
 
-+   [https://tools.kali.org/forensics/dumpzilla](https://tools.kali.org/forensics/dumpzilla)
++   [`tools.kali.org/forensics/dumpzilla`](https://tools.kali.org/forensics/dumpzilla)
 
-+   [http://forensicswiki.org/wiki/Google_Chrome](http://forensicswiki.org/wiki/Google_Chrome)
++   [`forensicswiki.org/wiki/Google_Chrome`](http://forensicswiki.org/wiki/Google_Chrome)
 
-+   [https://sourceforge.net/projects/chromensics](https://sourceforge.net/projects/chromensics)
++   [`sourceforge.net/projects/chromensics`](https://sourceforge.net/projects/chromensics)

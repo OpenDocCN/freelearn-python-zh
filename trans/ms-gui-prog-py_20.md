@@ -10,27 +10,27 @@
 
 +   使用`setuptools`进行分发
 
-+   使用PyInstaller编译
++   使用 PyInstaller 编译
 
 # 技术要求
 
-在本章中，您将需要我们在整本书中使用的基本Python和PyQt设置。您还需要使用以下命令从PyPI获取`setuptools`、`wheel`和`pyinstaller`库：
+在本章中，您将需要我们在整本书中使用的基本 Python 和 PyQt 设置。您还需要使用以下命令从 PyPI 获取`setuptools`、`wheel`和`pyinstaller`库：
 
 ```py
 $ pip install --user setuptools wheel pyinstaller
 ```
 
-Windows用户将需要从[https://www.7-zip.org/](https://www.7-zip.org/)安装7-Zip程序，以便他们可以使用`tar.gz`文件，所有平台的用户都应该从[https://upx.github.io/](https://upx.github.io/)安装UPX实用程序。
+Windows 用户将需要从[`www.7-zip.org/`](https://www.7-zip.org/)安装 7-Zip 程序，以便他们可以使用`tar.gz`文件，所有平台的用户都应该从[`upx.github.io/`](https://upx.github.io/)安装 UPX 实用程序。
 
-最后，您将希望从存储库中获取示例代码[https://github.com/PacktPublishing/Mastering-GUI-Programming-with-Python/tree/master/Chapter17](https://github.com/PacktPublishing/Mastering-GUI-Programming-with-Python/tree/master/Chapter17)。
+最后，您将希望从存储库中获取示例代码[`github.com/PacktPublishing/Mastering-GUI-Programming-with-Python/tree/master/Chapter17`](https://github.com/PacktPublishing/Mastering-GUI-Programming-with-Python/tree/master/Chapter17)。
 
-查看以下视频，看看代码是如何运行的：[http://bit.ly/2M5xH4J](http://bit.ly/2M5xH4J)
+查看以下视频，看看代码是如何运行的：[`bit.ly/2M5xH4J`](http://bit.ly/2M5xH4J)
 
 # 项目结构
 
-到目前为止，在这本书中，我们一直将每个示例项目中的所有Python代码放入单个文件中。然而，现实世界的Python项目受益于更好的组织。虽然没有关于如何构建Python项目的官方标准，但我们可以应用一些约定和一般概念来构建我们的项目结构，这不仅可以保持组织，还可以鼓励其他人贡献我们的代码。
+到目前为止，在这本书中，我们一直将每个示例项目中的所有 Python 代码放入单个文件中。然而，现实世界的 Python 项目受益于更好的组织。虽然没有关于如何构建 Python 项目的官方标准，但我们可以应用一些约定和一般概念来构建我们的项目结构，这不仅可以保持组织，还可以鼓励其他人贡献我们的代码。
 
-为了看到这是如何工作的，我们将在PyQt中创建一个简单的井字棋游戏，然后花费本章的其余部分来准备分发。
+为了看到这是如何工作的，我们将在 PyQt 中创建一个简单的井字棋游戏，然后花费本章的其余部分来准备分发。
 
 # 井字棋
 
@@ -40,9 +40,9 @@ Windows用户将需要从[https://www.7-zip.org/](https://www.7-zip.org/)安装7
 
 +   提供游戏状态视图和进行游戏的方法的棋盘类
 
-+   将其他两个类合并到GUI中的主窗口类
++   将其他两个类合并到 GUI 中的主窗口类
 
-打开[第4章](9281bd2a-64a1-4128-92b0-e4871b79c040.xhtml)中的应用程序模板的新副本，*使用QMainWindow构建应用程序*，并将其命名为`ttt-qt.py`。现在让我们创建这些类。
+打开第四章中的应用程序模板的新副本，*使用 QMainWindow 构建应用程序*，并将其命名为`ttt-qt.py`。现在让我们创建这些类。
 
 # 引擎类
 
@@ -117,7 +117,7 @@ class TicTacToeEngine(qtc.QObject):
 
 # 棋盘类
 
-对于棋盘GUI，我们将使用一个`QGraphicsScene`对象，就像我们在[第12章](1a25e80a-2680-47f4-b309-782cf9b8580f.xhtml)中为坦克游戏所做的那样，*使用QPainter创建2D图形*。
+对于棋盘 GUI，我们将使用一个`QGraphicsScene`对象，就像我们在第十二章中为坦克游戏所做的那样，*使用 QPainter 创建 2D 图形*。
 
 我们将从一些类变量开始：
 
@@ -259,13 +259,13 @@ class TTTBoard(qtw.QGraphicsScene):
 
 这完成了我们的游戏。花点时间运行游戏，并确保您了解它在正常工作时的响应（也许找个朋友和您一起玩几局；如果您的朋友很年轻或者不太聪明，这会有所帮助）。
 
-现在我们有了一个可用的游戏，是时候准备将其分发了。我们首先要做的是以一种使我们更容易维护和扩展的方式构建我们的项目，以及让其他Python程序员合作。
+现在我们有了一个可用的游戏，是时候准备将其分发了。我们首先要做的是以一种使我们更容易维护和扩展的方式构建我们的项目，以及让其他 Python 程序员合作。
 
 # 模块式结构
 
-作为程序员，我们倾向于将应用程序和库视为两个非常不同的东西，但实际上，结构良好的应用程序与库并没有太大的不同。库只是一组现成的类和函数。我们的应用程序主要也只是类定义；它只是碰巧在最后有几行代码，使其能够作为应用程序运行。当我们以这种方式看待事物时，将我们的应用程序结构化为Python库模块是很有道理的。为了做到这一点，我们将把我们的单个Python文件转换为一个包含多个文件的目录，每个文件包含一个单独的代码单元。
+作为程序员，我们倾向于将应用程序和库视为两个非常不同的东西，但实际上，结构良好的应用程序与库并没有太大的不同。库只是一组现成的类和函数。我们的应用程序主要也只是类定义；它只是碰巧在最后有几行代码，使其能够作为应用程序运行。当我们以这种方式看待事物时，将我们的应用程序结构化为 Python 库模块是很有道理的。为了做到这一点，我们将把我们的单个 Python 文件转换为一个包含多个文件的目录，每个文件包含一个单独的代码单元。
 
-第一步是考虑我们项目的名称；现在，那个名称是`ttt-qt.py`。当你开始着手一个项目时，想出一个快速简短的名称是很常见的，但这不一定是你要坚持的名称。在这种情况下，我们的名称相当神秘，由于连字符而不能作为Python模块名称。相反，让我们称之为`qtictactoe`，这是一个更明确的名称，避免了连字符。
+第一步是考虑我们项目的名称；现在，那个名称是`ttt-qt.py`。当你开始着手一个项目时，想出一个快速简短的名称是很常见的，但这不一定是你要坚持的名称。在这种情况下，我们的名称相当神秘，由于连字符而不能作为 Python 模块名称。相反，让我们称之为`qtictactoe`，这是一个更明确的名称，避免了连字符。
 
 首先，创建一个名为`QTicTacToe`的新目录；这将是我们的**项目根目录**。项目根目录是所有项目文件都将放置在其中的目录。
 
@@ -292,7 +292,7 @@ from .engine import TicTacToeEngine
 from .board import TTTBoard
 ```
 
-在导入中的点表示这是一个相对导入，并且特指当前容器模块（在本例中是`qtictactoe`）。通过使用这样的相对导入，我们可以确保我们从自己的项目中导入这些模块，而不是从用户系统上的其他Python库中导入。
+在导入中的点表示这是一个相对导入，并且特指当前容器模块（在本例中是`qtictactoe`）。通过使用这样的相对导入，我们可以确保我们从自己的项目中导入这些模块，而不是从用户系统上的其他 Python 库中导入。
 
 我们需要添加到我们模块的下一个代码是使其实际运行的代码。这通常是我们放在`if __name__ == '__main__'`块下的代码。
 
@@ -312,17 +312,17 @@ if __name__ == '__main__':
     main()
 ```
 
-`__main__.py`文件在Python模块中有着特殊的用途。每当我们使用`-m`开关运行我们的模块时，它就会被执行，就像这样：
+`__main__.py`文件在 Python 模块中有着特殊的用途。每当我们使用`-m`开关运行我们的模块时，它就会被执行，就像这样：
 
 ```py
 $ python3 -m qtictactoe
 ```
 
-实质上，`__main__.py`是Python脚本中`if __name__ == '__main__':`块的模块等价物。
+实质上，`__main__.py`是 Python 脚本中`if __name__ == '__main__':`块的模块等价物。
 
 请注意，我们已经将我们的三行主要代码放在一个名为`main()`的函数中。当我们讨论`setuptools`的使用时，这样做的原因将变得明显。
 
-我们需要在模块内创建的最后一个文件是一个名为`__init__.py`的空文件。Python模块的`__init__.py`文件类似于Python类的`__init__()`方法。每当导入模块时，它都会被执行，并且其命名空间中的任何内容都被视为模块的根命名空间。但在这种情况下，我们将它留空。这可能看起来毫无意义，但如果没有这个文件，我们将要使用的许多工具将不会将这个Python文件夹识别为一个实际的模块。
+我们需要在模块内创建的最后一个文件是一个名为`__init__.py`的空文件。Python 模块的`__init__.py`文件类似于 Python 类的`__init__()`方法。每当导入模块时，它都会被执行，并且其命名空间中的任何内容都被视为模块的根命名空间。但在这种情况下，我们将它留空。这可能看起来毫无意义，但如果没有这个文件，我们将要使用的许多工具将不会将这个 Python 文件夹识别为一个实际的模块。
 
 此时，您的目录结构应该是这样的：
 
@@ -347,9 +347,9 @@ main()
 
 这个文件的唯一目的是从我们的模块中加载`main()`函数并执行它。现在，您可以执行`python run.py`，您会发现它可以正常启动。但是，有一个问题——当您点击一个方块时，什么也不会发生。那是因为我们的图像文件丢失了。我们需要处理这些问题。
 
-# 非Python文件
+# 非 Python 文件
 
-在PyQt程序中，处理诸如我们的`X`和`O`图像之类的文件的最佳方法是使用`pyrcc5`工具生成一个资源文件，然后像任何其他Python文件一样将其添加到您的模块中（我们在[第6章](c3eb2567-0e73-4c37-9a9e-a0e2311e106c.xhtml)中学习了这个）。然而，在这种情况下，我们将保留我们的图像作为PNG文件，以便我们可以探索处理非Python文件的选项。
+在 PyQt 程序中，处理诸如我们的`X`和`O`图像之类的文件的最佳方法是使用`pyrcc5`工具生成一个资源文件，然后像任何其他 Python 文件一样将其添加到您的模块中（我们在第六章中学习了这个）。然而，在这种情况下，我们将保留我们的图像作为 PNG 文件，以便我们可以探索处理非 Python 文件的选项。
 
 关于这些文件应该放在项目目录的何处，目前还没有达成一致的意见，但是由于这些图像是`TTTBoard`类的一个必需组件，将它们放在我们的模块内是有意义的。为了组织起见，将它们放在一个名为`images`的目录中。
 
@@ -369,11 +369,11 @@ QTicTacToe/
 └── run.py
 ```
 
-我们编写`TTTBoard`的方式是，您可以看到每个图像都是使用相对文件路径加载的。在Python中，相对路径始终相对于当前工作目录，也就是用户启动脚本的目录。不幸的是，这是一个相当脆弱的设计，因为我们无法控制这个目录。我们也不能硬编码绝对文件路径，因为我们不知道我们的应用程序可能存储在用户系统的何处（请参阅我们在[第6章](c3eb2567-0e73-4c37-9a9e-a0e2311e106c.xhtml)中对这个问题的讨论，*Styling Qt Applications*，*Using Qt Resource files*部分）。
+我们编写`TTTBoard`的方式是，您可以看到每个图像都是使用相对文件路径加载的。在 Python 中，相对路径始终相对于当前工作目录，也就是用户启动脚本的目录。不幸的是，这是一个相当脆弱的设计，因为我们无法控制这个目录。我们也不能硬编码绝对文件路径，因为我们不知道我们的应用程序可能存储在用户系统的何处（请参阅我们在第六章中对这个问题的讨论，*Styling Qt Applications*，*Using Qt Resource files*部分）。
 
-在PyQt应用程序中解决这个问题的理想方式是使用Qt资源文件；然而，我们将尝试一种不同的方法，只是为了说明在这种情况下如何解决这个问题。
+在 PyQt 应用程序中解决这个问题的理想方式是使用 Qt 资源文件；然而，我们将尝试一种不同的方法，只是为了说明在这种情况下如何解决这个问题。
 
-为了解决这个问题，我们需要修改`TTTBoard`加载图像的方式，使其相对于我们模块的位置，而不是用户的当前工作目录。这将需要我们使用Python标准库中的`os.path`模块，因此在`board.py`的顶部添加这个：
+为了解决这个问题，我们需要修改`TTTBoard`加载图像的方式，使其相对于我们模块的位置，而不是用户的当前工作目录。这将需要我们使用 Python 标准库中的`os.path`模块，因此在`board.py`的顶部添加这个：
 
 ```py
 from os import path
@@ -403,17 +403,17 @@ from os import path
 
 当您分享代码时，非常重要的是明确说明其他人可以或不可以对该代码做什么。在大多数国家，创建作品的人自动成为该作品的版权持有人；这意味着您对您的作品的复制行为行使控制。如果您希望其他人为您创建的作品做出贡献或使用它们，您需要授予他们一个**许可证**。
 
-管理您项目的许可证通常以项目根目录中的一个名为`LICENSE`的纯文本文件提供。在我们的示例代码中，我们已经包含了这样一个文件，其中包含了**MIT许可证**的副本。MIT许可证是一种宽松的开源许可证，基本上允许任何人对代码做任何事情，只要他们保留我们的版权声明。它还声明我们对因某人使用我们的代码而发生的任何可怕事件不负责。
+管理您项目的许可证通常以项目根目录中的一个名为`LICENSE`的纯文本文件提供。在我们的示例代码中，我们已经包含了这样一个文件，其中包含了**MIT 许可证**的副本。MIT 许可证是一种宽松的开源许可证，基本上允许任何人对代码做任何事情，只要他们保留我们的版权声明。它还声明我们对因某人使用我们的代码而发生的任何可怕事件不负责。
 
 这个文件有时被称为`COPYING`，也可能有一个名为`txt`的文件扩展名。
 
-您当然可以在许可证中加入任何条件；但是，对于PyQt应用程序，您需要确保您的许可证与PyQt的**通用公共许可证**（**GPL**）GNU和Qt的**较宽松的通用公共许可证**（**LGPL**）GNU的条款兼容。如果您打算发布商业或限制性许可的PyQt软件，请记住来自[第1章](bce5f3b1-2979-4f78-817b-3986e7974725.xhtml)，*PyQt入门*，您需要从Qt公司和Riverbank Computing购买商业许可证。
+您当然可以在许可证中加入任何条件；但是，对于 PyQt 应用程序，您需要确保您的许可证与 PyQt 的**通用公共许可证**（**GPL**）GNU 和 Qt 的**较宽松的通用公共许可证**（**LGPL**）GNU 的条款兼容。如果您打算发布商业或限制性许可的 PyQt 软件，请记住来自第一章，*PyQt 入门*，您需要从 Qt 公司和 Riverbank Computing 购买商业许可证。
 
-对于开源项目，Python社区强烈建议您坚持使用MIT、BSD、GPL或LGPL等知名许可证。可以在开放源代码倡议组织的网站[https://opensource.org/licenses](https://opensource.org/licenses)上找到已知的开源许可证列表。您还可以参考[https://choosealicense.com](https://choosealicense.com)，这是一个提供有关选择最符合您意图的许可证的指导的网站。
+对于开源项目，Python 社区强烈建议您坚持使用 MIT、BSD、GPL 或 LGPL 等知名许可证。可以在开放源代码倡议组织的网站[`opensource.org/licenses`](https://opensource.org/licenses)上找到已知的开源许可证列表。您还可以参考[`choosealicense.com`](https://choosealicense.com)，这是一个提供有关选择最符合您意图的许可证的指导的网站。
 
-# README文件
+# README 文件
 
-`README`文件是软件分发中最古老的传统之一。追溯到20世纪70年代中期，这个纯文本文件通常旨在在用户安装或运行软件之前向程序的用户传达最基本的一组指令和信息。
+`README`文件是软件分发中最古老的传统之一。追溯到 20 世纪 70 年代中期，这个纯文本文件通常旨在在用户安装或运行软件之前向程序的用户传达最基本的一组指令和信息。
 
 虽然没有关于`README`文件应包含什么的标准，但用户希望找到某些内容；其中一些包括以下内容：
 
@@ -433,9 +433,9 @@ from os import path
 
 无论您在文件中包含什么，您都应该力求简洁和有组织。为了方便一些组织，许多现代软件项目在编写`README`文件时使用标记语言；这使我们可以使用诸如标题、项目列表甚至表格等元素。
 
-在Python项目中，首选的标记语言是**重新结构化文本**（**RST**）。这种语言是`docutils`项目的一部分，为Python提供文档实用程序。
+在 Python 项目中，首选的标记语言是**重新结构化文本**（**RST**）。这种语言是`docutils`项目的一部分，为 Python 提供文档实用程序。
 
-当我们创建`qtictactoe`的`README.rst`文件时，我们将简要介绍RST。从一个标题开始：
+当我们创建`qtictactoe`的`README.rst`文件时，我们将简要介绍 RST。从一个标题开始：
 
 ```py
 ============
@@ -464,9 +464,9 @@ This is the classic game of **tic-tac-toe**, also known as noughts and crosses. 
 = - ` : ' " ~ ^ _ * + # < >
 ```
 
-我们使用它们的顺序并不重要，因为RST解释器会假定第一个使用的符号作为表示顶级标题的下划线，下一个类型的符号是第二级标题，依此类推。在这种情况下，我们首先使用等号，所以无论我们在整个文档中使用它，它都会指示一个一级标题。
+我们使用它们的顺序并不重要，因为 RST 解释器会假定第一个使用的符号作为表示顶级标题的下划线，下一个类型的符号是第二级标题，依此类推。在这种情况下，我们首先使用等号，所以无论我们在整个文档中使用它，它都会指示一个一级标题。
 
-注意单词`tac-tac-toe`周围的双星号，这表示粗体文本。RST还可以表示下划线、斜体和类似的排版样式。
+注意单词`tac-tac-toe`周围的双星号，这表示粗体文本。RST 还可以表示下划线、斜体和类似的排版样式。
 
 例如，我们可以使用反引号来指示等宽代码文本：
 
@@ -500,15 +500,15 @@ Notes
     *—Joshua the AI, WarGames*
 ```
 
-`Contributing`部分显示如何创建超链接：将超链接文本放在反引号内，URL放在尖括号内，并在关闭反引号后添加下划线。`Notes`部分演示了块引用，只需将该行缩进四个空格即可。
+`Contributing`部分显示如何创建超链接：将超链接文本放在反引号内，URL 放在尖括号内，并在关闭反引号后添加下划线。`Notes`部分演示了块引用，只需将该行缩进四个空格即可。
 
-虽然我们的文件作为文本是完全可读的，但是许多流行的代码共享网站会将RST和其他标记语言转换为HTML。例如，在GitHub上，这个文件将在浏览器中显示如下：
+虽然我们的文件作为文本是完全可读的，但是许多流行的代码共享网站会将 RST 和其他标记语言转换为 HTML。例如，在 GitHub 上，这个文件将在浏览器中显示如下：
 
-![](assets/74f798bd-47d8-4941-8a14-63b614ce31d7.png)
+![](img/74f798bd-47d8-4941-8a14-63b614ce31d7.png)
 
-这个简单的`README.rst`文件对于我们的小应用已经足够了；随着应用的增长，它将需要进一步扩展以记录添加的功能、贡献者、社区政策等。这就是为什么我们更喜欢使用RST这样的纯文本格式，也是为什么我们将其作为项目仓库的一部分；它应该随着代码一起更新。
+这个简单的`README.rst`文件对于我们的小应用已经足够了；随着应用的增长，它将需要进一步扩展以记录添加的功能、贡献者、社区政策等。这就是为什么我们更喜欢使用 RST 这样的纯文本格式，也是为什么我们将其作为项目仓库的一部分；它应该随着代码一起更新。
 
-RST语法的快速参考可以在[docutils.sourceforge.net/docs/user/rst/quickref.html](http://docutils.sourceforge.net/docs/user/rst/quickref.html)找到。
+RST 语法的快速参考可以在[docutils.sourceforge.net/docs/user/rst/quickref.html](http://docutils.sourceforge.net/docs/user/rst/quickref.html)找到。
 
 # 文档目录
 
@@ -518,7 +518,7 @@ RST语法的快速参考可以在[docutils.sourceforge.net/docs/user/rst/quickre
 
 +   用户手册
 
-+   API文档
++   API 文档
 
 +   数据库图表
 
@@ -526,7 +526,7 @@ RST语法的快速参考可以在[docutils.sourceforge.net/docs/user/rst/quickre
 
 # `requirements.txt`文件
 
-Python程序通常需要标准库之外的包才能运行，用户需要知道安装什么才能让你的项目运行。你可以（而且可能应该）将这些信息放在`README`文件中，但你也应该将它放在`requirements.txt`中。
+Python 程序通常需要标准库之外的包才能运行，用户需要知道安装什么才能让你的项目运行。你可以（而且可能应该）将这些信息放在`README`文件中，但你也应该将它放在`requirements.txt`中。
 
 `requirements.txt`的格式是每行一个库，如下所示：
 
@@ -535,7 +535,7 @@ PyQt5
 PyQt5-sip
 ```
 
-这个文件中的库名称应该与PyPI中使用的名称相匹配，因为这个文件可以被`pip`用来安装项目所需的所有库，如下所示：
+这个文件中的库名称应该与 PyPI 中使用的名称相匹配，因为这个文件可以被`pip`用来安装项目所需的所有库，如下所示：
 
 ```py
 $ pip  install --user -r requirements.txt
@@ -552,7 +552,7 @@ PyQt5-sip == 4.19.4
 
 在这种情况下，我们指定了`PyQt5`版本`5.12`或更高，并且只有`PyQt5-sip`的`4.19.4`版本。
 
-关于`requirements.txt`文件的更多信息可以在[https://pip.readthedocs.io/en/1.1/requirements.html](https://pip.readthedocs.io/en/1.1/requirements.html)找到。
+关于`requirements.txt`文件的更多信息可以在[`pip.readthedocs.io/en/1.1/requirements.html`](https://pip.readthedocs.io/en/1.1/requirements.html)找到。
 
 # 其他文件
 
@@ -564,21 +564,21 @@ PyQt5-sip == 4.19.4
 
 +   `tests`：包含模块单元测试的目录
 
-+   `scripts`：包含对你的模块有用但不是其一部分的Python或shell脚本的目录
++   `scripts`：包含对你的模块有用但不是其一部分的 Python 或 shell 脚本的目录
 
-+   `Makefile`：一些项目受益于脚本化的构建过程，对此，像`make`这样的实用工具可能会有所帮助；其他选择包括CMake、SCons或Waf
++   `Makefile`：一些项目受益于脚本化的构建过程，对此，像`make`这样的实用工具可能会有所帮助；其他选择包括 CMake、SCons 或 Waf
 
-不过，此时你的项目已经准备好上传到你喜欢的源代码共享站点。在下一节中，我们将看看如何为PyPI做好准备。
+不过，此时你的项目已经准备好上传到你喜欢的源代码共享站点。在下一节中，我们将看看如何为 PyPI 做好准备。
 
-# 使用setuptools进行分发
+# 使用 setuptools 进行分发
 
-在本书的许多部分，你已经使用`pip`安装了Python包。你可能知道`pip`会从PyPI下载这些包，并将它们安装到你的系统、Python虚拟环境或用户环境中。你可能不知道的是，用于创建和安装这些包的工具称为`setuptools`，如果我们想要为PyPI或个人使用制作自己的包，它就可以随时为我们提供。
+在本书的许多部分，你已经使用`pip`安装了 Python 包。你可能知道`pip`会从 PyPI 下载这些包，并将它们安装到你的系统、Python 虚拟环境或用户环境中。你可能不知道的是，用于创建和安装这些包的工具称为`setuptools`，如果我们想要为 PyPI 或个人使用制作自己的包，它就可以随时为我们提供。
 
-尽管`setuptools`是官方推荐的用于创建Python包的工具，但它并不是标准库的一部分。但是，如果你在安装过程中选择包括`pip`，它通常会包含在大多数操作系统的默认发行版中。如果由于某种原因你没有安装`setuptools`，请参阅[https://setuptools.readthedocs.io/en/latest/](https://setuptools.readthedocs.io/en/latest/)上的文档，了解如何在你的平台上安装它。
+尽管`setuptools`是官方推荐的用于创建 Python 包的工具，但它并不是标准库的一部分。但是，如果你在安装过程中选择包括`pip`，它通常会包含在大多数操作系统的默认发行版中。如果由于某种原因你没有安装`setuptools`，请参阅[`setuptools.readthedocs.io/en/latest/`](https://setuptools.readthedocs.io/en/latest/)上的文档，了解如何在你的平台上安装它。
 
 使用`setuptools`的主要任务是编写一个`setup.py`脚本。在本节中，我们将学习如何编写和使用我们的`setup.py`脚本来生成可分发的包。
 
-# 编写setuptools配置
+# 编写 setuptools 配置
 
 `setup.py`的主要目的是使用关键字参数调用`setuptools.setup()`函数，这将定义我们项目的元数据以及我们的项目应该如何打包和安装。
 
@@ -608,23 +608,23 @@ setup(
     license='MIT',
 ```
 
-在这里，我们已经描述了包名称、版本、简短描述、项目URL和许可证，以及作者的姓名和电子邮件。这些信息将被写入包元数据，并被PyPI等网站使用，以构建项目的个人资料页面。
+在这里，我们已经描述了包名称、版本、简短描述、项目 URL 和许可证，以及作者的姓名和电子邮件。这些信息将被写入包元数据，并被 PyPI 等网站使用，以构建项目的个人资料页面。
 
-例如，看一下PyQt5的PyPI页面：
+例如，看一下 PyQt5 的 PyPI 页面：
 
-![](assets/816fd19d-7d1a-4e06-88c6-53ff5541c532.png)
+![](img/816fd19d-7d1a-4e06-88c6-53ff5541c532.png)
 
 在页面的左侧，你会看到一个指向项目主页的链接，作者（带有超链接的电子邮件地址）和许可证。在顶部，你会看到项目名称和版本，以及项目的简短描述。所有这些数据都可以从项目的`setup.py`脚本中提取出来。
 
-如果你计划向PyPI提交一个包，请参阅[https://www.python.org/dev/peps/pep-0440/](https://www.python.org/dev/peps/pep-0440/)上的PEP 440，了解你的版本号应该如何指定。
+如果你计划向 PyPI 提交一个包，请参阅[`www.python.org/dev/peps/pep-0440/`](https://www.python.org/dev/peps/pep-0440/)上的 PEP 440，了解你的版本号应该如何指定。
 
-你在这个页面的主体中看到的长文本来自`long_description`参数。我们可以直接将一个长字符串放入这个参数，但既然我们已经有了一个很好的`README.rst`文件，为什么不在这里使用呢？由于`setup.py`是一个Python脚本，我们可以直接读取文件的内容，就像这样：
+你在这个页面的主体中看到的长文本来自`long_description`参数。我们可以直接将一个长字符串放入这个参数，但既然我们已经有了一个很好的`README.rst`文件，为什么不在这里使用呢？由于`setup.py`是一个 Python 脚本，我们可以直接读取文件的内容，就像这样：
 
 ```py
     long_description=open('README.rst', 'r').read(),
 ```
 
-在这里使用RST的一个优点是，PyPI（以及许多其他代码共享站点）将自动将你的标记渲染成格式良好的HTML。
+在这里使用 RST 的一个优点是，PyPI（以及许多其他代码共享站点）将自动将你的标记渲染成格式良好的 HTML。
 
 如果我们希望使我们的项目更容易搜索，我们可以包含一串空格分隔的关键字：
 
@@ -632,9 +632,9 @@ setup(
     keywords='game multiplayer example pyqt5',
 ```
 
-在这种情况下，搜索PyPI中的“multiplayer pyqt5”的人应该能找到我们的项目。
+在这种情况下，搜索 PyPI 中的“multiplayer pyqt5”的人应该能找到我们的项目。
 
-最后，你可以包含一个与项目相关的URL字典：
+最后，你可以包含一个与项目相关的 URL 字典：
 
 ```py
     project_urls={
@@ -644,7 +644,7 @@ setup(
     },
 ```
 
-格式为`{'label': 'URL'}`；你可能会在这里包括项目的bug跟踪器、文档站点、Wiki页面或源代码库，特别是如果其中任何一个与主页URL不同的话。
+格式为`{'label': 'URL'}`；你可能会在这里包括项目的 bug 跟踪器、文档站点、Wiki 页面或源代码库，特别是如果其中任何一个与主页 URL 不同的话。
 
 # 包和依赖关系
 
@@ -687,9 +687,9 @@ setup(
     install_requires=['PyQt5 >= 5.12'],
 ```
 
-在这种情况下，`pip`将确保安装大于或等于5.12的PyQt5版本。如果未指定版本，`pip`将安装PyPI提供的最新版本。
+在这种情况下，`pip`将确保安装大于或等于 5.12 的 PyQt5 版本。如果未指定版本，`pip`将安装 PyPI 提供的最新版本。
 
-在某些情况下，我们可能还需要指定特定版本的Python；例如，我们的项目使用f-strings，这是Python 3.6或更高版本才有的功能。我们可以使用`python_requires`关键字来指定：
+在某些情况下，我们可能还需要指定特定版本的 Python；例如，我们的项目使用 f-strings，这是 Python 3.6 或更高版本才有的功能。我们可以使用`python_requires`关键字来指定：
 
 ```py
     python_requires='>=3.6',
@@ -711,11 +711,11 @@ setup(
 
 这将触发一系列依赖关系，导致安装`requests`库。
 
-# 非Python文件
+# 非 Python 文件
 
-默认情况下，`setuptools`将打包在我们项目中找到的Python文件，其他文件类型将被忽略。然而，在几乎任何项目中，都会有一些非Python文件需要包含在我们的分发包中。这些文件通常分为两类：一类是Python模块的一部分，比如我们的PNG文件，另一类是不是，比如`README`文件。
+默认情况下，`setuptools`将打包在我们项目中找到的 Python 文件，其他文件类型将被忽略。然而，在几乎任何项目中，都会有一些非 Python 文件需要包含在我们的分发包中。这些文件通常分为两类：一类是 Python 模块的一部分，比如我们的 PNG 文件，另一类是不是，比如`README`文件。
 
-要包含*不*是Python包的文件，我们需要创建一个名为`MANIFEST.in`的文件。此文件包含项目根目录下文件路径的`include`指令。例如，如果我们想要包含我们的文档文件，我们的文件应该如下所示：
+要包含*不*是 Python 包的文件，我们需要创建一个名为`MANIFEST.in`的文件。此文件包含项目根目录下文件路径的`include`指令。例如，如果我们想要包含我们的文档文件，我们的文件应该如下所示：
 
 ```py
 include README.rst
@@ -726,7 +726,7 @@ include docs/*
 
 格式很简单：单词`include`后跟文件名、路径或匹配一组文件的模式。所有路径都是相对于项目根目录的。
 
-要包含Python包的文件，我们有两种选择。
+要包含 Python 包的文件，我们有两种选择。
 
 一种方法是将它们包含在`MANIFEST.in`文件中，然后在`setup.py`中将`include_package_data`设置为`True`：
 
@@ -734,7 +734,7 @@ include docs/*
     include_package_data=True,
 ```
 
-包含非Python文件的另一种方法是在`setup.py`中使用`package_data`关键字参数：
+包含非 Python 文件的另一种方法是在`setup.py`中使用`package_data`关键字参数：
 
 ```py
     package_data={
@@ -743,13 +743,13 @@ include docs/*
     },
 ```
 
-这个参数接受一个`dict`对象，其中每个条目都是一个模块路径和一个匹配包含的文件的模式列表。在这种情况下，我们希望包括在`qtictactoe.images`模块中找到的所有PNG文件，以及包中任何位置的TXT或RST文件。请记住，这个参数只适用于*模块目录中*的文件（即`qtictactoe`下的文件）。如果我们想要包括诸如`README.rst`或`run.py`之类的文件，那些应该放在`MANIFEST.in`文件中。
+这个参数接受一个`dict`对象，其中每个条目都是一个模块路径和一个匹配包含的文件的模式列表。在这种情况下，我们希望包括在`qtictactoe.images`模块中找到的所有 PNG 文件，以及包中任何位置的 TXT 或 RST 文件。请记住，这个参数只适用于*模块目录中*的文件（即`qtictactoe`下的文件）。如果我们想要包括诸如`README.rst`或`run.py`之类的文件，那些应该放在`MANIFEST.in`文件中。
 
 您可以使用任一方法来包含文件，但您不能在同一个项目中同时使用*两种*方法；如果启用了`include_package_data`，则将忽略`package_data`指令。
 
 # 可执行文件
 
-我们倾向于将PyPI视为安装Python库的工具；事实上，它也很适合安装应用程序，并且许多Python应用程序都可以从中获取。即使你正在创建一个库，你的库很可能会随附可执行的实用程序，比如PyQt5附带的`pyrcc5`和`pyuic5`实用程序。
+我们倾向于将 PyPI 视为安装 Python 库的工具；事实上，它也很适合安装应用程序，并且许多 Python 应用程序都可以从中获取。即使你正在创建一个库，你的库很可能会随附可执行的实用程序，比如 PyQt5 附带的`pyrcc5`和`pyuic5`实用程序。
 
 为了满足这些需求，`setuputils` 为我们提供了一种指定特定函数或方法作为控制台脚本的方法；当安装包时，它将创建一个简单的可执行文件，在从命令行执行时将调用该函数或方法。
 
@@ -769,9 +769,9 @@ include docs/*
 'command_name = module.submodule:function'
 ```
 
-您可以添加尽可能多的控制台脚本；它们只需要指向包中可以直接运行的函数或方法。请注意，您*必须*在这里指定一个实际的可调用对象；您不能只是指向一个要运行的Python文件。这就是为什么我们将所有执行代码放在`__main__.py`中的`main()`函数下的原因。
+您可以添加尽可能多的控制台脚本；它们只需要指向包中可以直接运行的函数或方法。请注意，您*必须*在这里指定一个实际的可调用对象；您不能只是指向一个要运行的 Python 文件。这就是为什么我们将所有执行代码放在`__main__.py`中的`main()`函数下的原因。
 
-`setuptools`包含许多其他指令，用于处理不太常见的情况；有关完整列表，请参阅[https://setuptools.readthedocs.io/en/latest/setuptools.html](https://setuptools.readthedocs.io/en/latest/setuptools.html)。
+`setuptools`包含许多其他指令，用于处理不太常见的情况；有关完整列表，请参阅[`setuptools.readthedocs.io/en/latest/setuptools.html`](https://setuptools.readthedocs.io/en/latest/setuptools.html)。
 
 # 源码分发
 
@@ -797,11 +797,11 @@ $ python3 setup.py sdist
 
 此外，花点时间打开`tar.gz`文件，看看它包含了什么；你会看到我们在`MANIFEST.in`中指定的所有文件，以及`qtictactoe`模块和来自`QTicTacToe.egg-info`的所有文件。基本上，这是我们项目目录的完整副本。
 
-Linux和macOS原生支持`tar.gz`存档；在Windows上，您可以使用免费的7-Zip实用程序。有关7-Zip的信息，请参阅*技术要求*部分。
+Linux 和 macOS 原生支持`tar.gz`存档；在 Windows 上，您可以使用免费的 7-Zip 实用程序。有关 7-Zip 的信息，请参阅*技术要求*部分。
 
 # 安装源码分发
 
-源分发可以使用`pip`进行安装；为了在一个干净的环境中看到这是如何工作的，我们将在Python的**虚拟环境**中安装我们的库。虚拟环境是创建一个隔离的Python堆栈的一种方式，您可以在其中独立于系统Python安装添加或删除库。
+源分发可以使用`pip`进行安装；为了在一个干净的环境中看到这是如何工作的，我们将在 Python 的**虚拟环境**中安装我们的库。虚拟环境是创建一个隔离的 Python 堆栈的一种方式，您可以在其中独立于系统 Python 安装添加或删除库。
 
 在控制台窗口中，创建一个新目录，然后将其设置为虚拟环境：
 
@@ -810,7 +810,7 @@ $ mkdir test_env
 $ virtualenv -p python3 test_env
 ```
 
-`virtualenv`命令将必要的文件复制到给定目录，以便可以运行Python，以及一些激活和停用环境的脚本。
+`virtualenv`命令将必要的文件复制到给定目录，以便可以运行 Python，以及一些激活和停用环境的脚本。
 
 要开始使用您的新环境，请运行此命令：
 
@@ -821,7 +821,7 @@ $ source test_env/bin/activate
 $ test_env\Scripts\activate
 ```
 
-根据您的平台，您的命令行提示可能会更改以指示您处于虚拟环境中。现在当您运行`python`或Python相关工具，如`pip`时，它们将在虚拟环境中执行所有操作，而不是在您的系统Python中执行。
+根据您的平台，您的命令行提示可能会更改以指示您处于虚拟环境中。现在当您运行`python`或 Python 相关工具，如`pip`时，它们将在虚拟环境中执行所有操作，而不是在您的系统 Python 中执行。
 
 让我们安装我们的源分发包：
 
@@ -829,7 +829,7 @@ $ test_env\Scripts\activate
 $ pip install QTicTacToe/dist/QTicTacToe-1.0.tar.gz
 ```
 
-此命令将导致`pip`提取我们的源分发并在项目根目录内执行`python setup.py install`。`install`指令将下载任何依赖项，构建一个入口点可执行文件，并将代码复制到存储Python库的目录中（在我们的虚拟环境的情况下，那将是`test_env/lib/python3.7/site-packages/`）。请注意，`PyQt5`的一个新副本被下载；您的虚拟环境中除了Python和标准库之外没有安装任何依赖项，因此我们在`install_requires`中列出的任何依赖项都必须重新安装。
+此命令将导致`pip`提取我们的源分发并在项目根目录内执行`python setup.py install`。`install`指令将下载任何依赖项，构建一个入口点可执行文件，并将代码复制到存储 Python 库的目录中（在我们的虚拟环境的情况下，那将是`test_env/lib/python3.7/site-packages/`）。请注意，`PyQt5`的一个新副本被下载；您的虚拟环境中除了 Python 和标准库之外没有安装任何依赖项，因此我们在`install_requires`中列出的任何依赖项都必须重新安装。
 
 在`pip`完成后，您应该能够运行`qtictactoe`命令并成功启动应用程序。该命令存储在`test_env/bin`中，以防您的操作系统不会自动将虚拟环境目录附加到您的`PATH`。
 
@@ -843,7 +843,7 @@ $ pip uninstall QTicTacToe
 
 # 构建分发
 
-源分发对开发人员至关重要，但它们通常包含许多对最终用户不必要的元素，例如单元测试或示例代码。除此之外，如果项目包含编译代码（例如用C编写的Python扩展），那么该代码在目标上使用之前将需要编译。为了解决这个问题，`setuptools`提供了各种**构建分发**类型。构建分发提供了一组准备好的文件，只需要将其复制到适当的目录中即可使用。
+源分发对开发人员至关重要，但它们通常包含许多对最终用户不必要的元素，例如单元测试或示例代码。除此之外，如果项目包含编译代码（例如用 C 编写的 Python 扩展），那么该代码在目标上使用之前将需要编译。为了解决这个问题，`setuptools`提供了各种**构建分发**类型。构建分发提供了一组准备好的文件，只需要将其复制到适当的目录中即可使用。
 
 在本节中，我们将讨论如何使用构建分发。
 
@@ -855,17 +855,17 @@ $ pip uninstall QTicTacToe
 
 +   **二进制分发**：这是一个`tar.gz`文件，就像源分发一样，但与源分发不同，它包含预编译的代码（例如`qtictactoe`可执行文件），并省略了某些类型的文件（例如测试）。构建分发的内容需要被提取和复制到适当的位置才能运行。
 
-+   **Windows安装程序**：这与二进制分发类似，只是它是一个在Windows上启动安装向导的可执行文件。向导仅用于将文件复制到适当的位置以供执行或库使用。
++   **Windows 安装程序**：这与二进制分发类似，只是它是一个在 Windows 上启动安装向导的可执行文件。向导仅用于将文件复制到适当的位置以供执行或库使用。
 
-+   **RPM软件包管理器**（**RPM**）**安装程序**：再次，这与二进制分发类似，只是它将代码打包在一个RPM文件中。RPM文件被用于几个Linux发行版的软件包管理工具（如Red Hat、CentOS、Suse、Fedora等）。
++   **RPM 软件包管理器**（**RPM**）**安装程序**：再次，这与二进制分发类似，只是它将代码打包在一个 RPM 文件中。RPM 文件被用于几个 Linux 发行版的软件包管理工具（如 Red Hat、CentOS、Suse、Fedora 等）。
 
-虽然您可能会发现这些分发类型在某些情况下很有用，但它们在2019年都有点过时；今天分发Python的标准方式是使用**wheel分发**。这些是您在PyPI上找到的二进制分发包。
+虽然您可能会发现这些分发类型在某些情况下很有用，但它们在 2019 年都有点过时；今天分发 Python 的标准方式是使用**wheel 分发**。这些是您在 PyPI 上找到的二进制分发包。
 
-让我们来看看如何创建和安装wheel包。
+让我们来看看如何创建和安装 wheel 包。
 
-# 创建wheel分发
+# 创建 wheel 分发
 
-要创建一个wheel分发，您首先需要确保从PyPI安装了`wheel`库（请参阅*技术要求*部分）。之后，`setuptools`将有一个额外的`bdist_wheel`选项。
+要创建一个 wheel 分发，您首先需要确保从 PyPI 安装了`wheel`库（请参阅*技术要求*部分）。之后，`setuptools`将有一个额外的`bdist_wheel`选项。
 
 您可以使用以下方法创建您的`wheel`文件：
 
@@ -881,59 +881,59 @@ $ python3 setup.py bdist_wheel
 
 +   版本（1.0）。
 
-+   支持的Python版本，无论是2、3还是`universal`（`py3`）。
++   支持的 Python 版本，无论是 2、3 还是`universal`（`py3`）。
 
-+   `ABI`标签，它表示我们的项目依赖的Python二进制接口的特定版本（`none`）。如果我们已经编译了代码，这将被使用。
++   `ABI`标签，它表示我们的项目依赖的 Python 二进制接口的特定版本（`none`）。如果我们已经编译了代码，这将被使用。
 
-+   平台（操作系统和CPU架构）。我们的是`any`，因为我们没有包含任何特定平台的二进制文件。
++   平台（操作系统和 CPU 架构）。我们的是`any`，因为我们没有包含任何特定平台的二进制文件。
 
 二进制分发有三种类型：
 
-+   **通用**类型只有Python，并且与Python 2或3兼容
++   **通用**类型只有 Python，并且与 Python 2 或 3 兼容
 
-+   **纯Python**类型只有Python，但与Python 2或Python 3兼容
++   **纯 Python**类型只有 Python，但与 Python 2 或 Python 3 兼容
 
 +   **平台**类型包括只在特定平台上运行的已编译代码
 
-正如分发名称所反映的那样，我们的包是纯Python类型，因为它不包含已编译的代码，只支持Python 3。PyQt5是一个平台包类型的例子，因为它包含为特定平台编译的Qt库。
+正如分发名称所反映的那样，我们的包是纯 Python 类型，因为它不包含已编译的代码，只支持 Python 3。PyQt5 是一个平台包类型的例子，因为它包含为特定平台编译的 Qt 库。
 
-回想一下[第15章](77583d1b-8a70-4118-8210-b0a5f09c9603.xhtml)，*树莓派上的PyQt*，我们无法在树莓派上从PyPI安装PyQt，因为Linux ARM平台上没有`wheel`文件。由于PyQt5是一个平台包类型，它只能安装在已生成此`wheel`文件的平台上。
+回想一下第十五章，*树莓派上的 PyQt*，我们无法在树莓派上从 PyPI 安装 PyQt，因为 Linux ARM 平台上没有`wheel`文件。由于 PyQt5 是一个平台包类型，它只能安装在已生成此`wheel`文件的平台上。
 
 # 安装构建的分发
 
-与源分发一样，我们可以使用`pip`安装我们的wheel文件：
+与源分发一样，我们可以使用`pip`安装我们的 wheel 文件：
 
 ```py
 $ pip install qtictactoe/dist/QTicTacToe-1.0-py3-none-any.whl
 ```
 
-如果您在一个新的虚拟环境中尝试这个，您应该会发现，PyQt5再次从PyPI下载并安装，并且您之后可以使用`qtictactoe`命令。对于像`QTicTacToe`这样的程序，对最终用户来说并没有太大的区别，但对于一个包含需要编译的二进制文件的库（如PyQt5）来说，这使得设置变得相当不那么麻烦。
+如果您在一个新的虚拟环境中尝试这个，您应该会发现，PyQt5 再次从 PyPI 下载并安装，并且您之后可以使用`qtictactoe`命令。对于像`QTicTacToe`这样的程序，对最终用户来说并没有太大的区别，但对于一个包含需要编译的二进制文件的库（如 PyQt5）来说，这使得设置变得相当不那么麻烦。
 
-当然，即使`wheel`文件也需要目标系统安装了Python和`pip`，并且可以访问互联网和PyPI。这对许多用户或计算环境来说仍然是一个很大的要求。在下一节中，我们将探讨一个工具，它将允许我们从我们的Python项目创建一个独立的可执行文件，而无需任何先决条件。
+当然，即使`wheel`文件也需要目标系统安装了 Python 和`pip`，并且可以访问互联网和 PyPI。这对许多用户或计算环境来说仍然是一个很大的要求。在下一节中，我们将探讨一个工具，它将允许我们从我们的 Python 项目创建一个独立的可执行文件，而无需任何先决条件。
 
-# 使用PyInstaller编译
+# 使用 PyInstaller 编译
 
-成功编写他们的第一个应用程序后，许多Python程序员最常见的问题是*如何将这段代码制作成可执行文件？*不幸的是，对于这个问题并没有一个单一的官方答案。多年来，许多项目已经启动来解决这个任务（例如Py2Exe、cx_Freeze、Nuitka和PyInstaller等），它们在支持程度、使用简单性和结果一致性方面各有不同。在这些特性方面，目前最好的选择是**PyInstaller**。
+成功编写他们的第一个应用程序后，许多 Python 程序员最常见的问题是*如何将这段代码制作成可执行文件？*不幸的是，对于这个问题并没有一个单一的官方答案。多年来，许多项目已经启动来解决这个任务（例如 Py2Exe、cx_Freeze、Nuitka 和 PyInstaller 等），它们在支持程度、使用简单性和结果一致性方面各有不同。在这些特性方面，目前最好的选择是**PyInstaller**。
 
-# PyInstaller概述
+# PyInstaller 概述
 
-Python是一种解释语言；与C或C++编译成机器代码不同，您的Python代码（或称为**字节码**的优化版本）每次运行时都会被Python解释器读取和执行。这使得Python具有一些使其非常易于使用的特性，但也使得它难以编译成机器代码以提供传统的独立可执行文件。
+Python 是一种解释语言；与 C 或 C++编译成机器代码不同，您的 Python 代码（或称为**字节码**的优化版本）每次运行时都会被 Python 解释器读取和执行。这使得 Python 具有一些使其非常易于使用的特性，但也使得它难以编译成机器代码以提供传统的独立可执行文件。
 
-PyInstaller通过将您的脚本与Python解释器以及运行所需的任何库或二进制文件打包在一起来解决这个问题。这些东西被捆绑在一起，形成一个目录或一个单一文件，以提供一个可分发的应用程序，可以复制到任何系统并执行，即使该系统没有Python。
+PyInstaller 通过将您的脚本与 Python 解释器以及运行所需的任何库或二进制文件打包在一起来解决这个问题。这些东西被捆绑在一起，形成一个目录或一个单一文件，以提供一个可分发的应用程序，可以复制到任何系统并执行，即使该系统没有 Python。
 
-要查看这是如何工作的，请确保您已经从PyPI安装了PyInstaller（请参阅*技术要求*部分），然后让我们为`QTicTacToe`创建一个可执行文件。
+要查看这是如何工作的，请确保您已经从 PyPI 安装了 PyInstaller（请参阅*技术要求*部分），然后让我们为`QTicTacToe`创建一个可执行文件。
 
-请注意，PyInstaller创建的应用程序包是特定于平台的，只能在与编译平台兼容的操作系统和CPU架构上运行。例如，如果您在64位Linux上构建PyInstaller可执行文件，则它将无法在32位Linux或64位Windows上运行。
+请注意，PyInstaller 创建的应用程序包是特定于平台的，只能在与编译平台兼容的操作系统和 CPU 架构上运行。例如，如果您在 64 位 Linux 上构建 PyInstaller 可执行文件，则它将无法在 32 位 Linux 或 64 位 Windows 上运行。
 
 # 基本的命令行用法
 
-理论上，使用PyInstaller就像打开命令提示符并输入这个命令一样简单：
+理论上，使用 PyInstaller 就像打开命令提示符并输入这个命令一样简单：
 
 ```py
 $ pyinstaller my_python_script.py
 ```
 
-实际上，让我们尝试一下，使用[第4章](9281bd2a-64a1-4128-92b0-e4871b79c040.xhtml)中的`qt_template.py`文件，*使用QMainWindow构建应用程序*；将其复制到一个空目录，并在该目录中运行`pyinstaller qt_template.py`。
+实际上，让我们尝试一下，使用第四章中的`qt_template.py`文件，*使用 QMainWindow 构建应用程序*；将其复制到一个空目录，并在该目录中运行`pyinstaller qt_template.py`。
 
 您将在控制台上获得大量输出，并发现生成了几个目录和文件：
 
@@ -941,13 +941,13 @@ $ pyinstaller my_python_script.py
 
 +   `dist`目录包含我们的可分发输出。
 
-+   `qt_template.spec`文件保存了PyInstaller生成的配置数据。
++   `qt_template.spec`文件保存了 PyInstaller 生成的配置数据。
 
-默认情况下，PyInstaller会生成一个包含可执行文件以及运行所需的所有库和数据文件的目录。如果要运行可执行文件，整个目录必须复制到另一台计算机上。
+默认情况下，PyInstaller 会生成一个包含可执行文件以及运行所需的所有库和数据文件的目录。如果要运行可执行文件，整个目录必须复制到另一台计算机上。
 
 进入这个目录，寻找一个名为`qt_template`的可执行文件。如果运行它，您应该会看到一个空白的`QMainWindow`对象弹出。
 
-如果您更喜欢只有一个文件，PyInstaller可以将这个目录压缩成一个单独的可执行文件，当运行时，它会将自身提取到临时位置并运行主可执行文件。
+如果您更喜欢只有一个文件，PyInstaller 可以将这个目录压缩成一个单独的可执行文件，当运行时，它会将自身提取到临时位置并运行主可执行文件。
 
 这可以通过`--onefile`参数来实现；删除`dist`和`build`的内容，然后运行这个命令：
 
@@ -961,9 +961,9 @@ $ pyinstaller --onefile qt_template.py
 
 在我们尝试打包`QTicTacToe`之前，让我们深入了解一下`.spec`文件。
 
-# .spec文件
+# .spec 文件
 
-`.spec`文件是一个Python语法的`config`文件，包含了关于我们构建的所有元数据。您可以将其视为PyInstaller对`setup.py`文件的回答。然而，与`setup.py`不同，`.spec`文件是自动生成的。这是在我们运行`pyinstaller`时发生的，使用了从我们的脚本和通过命令行开关传递的数据的组合。我们也可以只生成`.spec`文件（而不开始构建）使用`pyi-makespec`命令。
+`.spec`文件是一个 Python 语法的`config`文件，包含了关于我们构建的所有元数据。您可以将其视为 PyInstaller 对`setup.py`文件的回答。然而，与`setup.py`不同，`.spec`文件是自动生成的。这是在我们运行`pyinstaller`时发生的，使用了从我们的脚本和通过命令行开关传递的数据的组合。我们也可以只生成`.spec`文件（而不开始构建）使用`pyi-makespec`命令。
 
 生成后，可以编辑`.spec`文件，然后将其传递回`pyinstaller`，以重新构建分发，而无需每次都指定命令行开关：
 
@@ -975,15 +975,15 @@ $ pyinstaller qt_template.spec
 
 `Analysis`构造函数接收有关我们的脚本、数据文件和库的信息。它使用这些信息来分析项目的依赖关系，并生成五个指向应包含在分发中的文件的路径表。这五个表是：
 
-+   `scripts`：作为入口点的Python文件，将被转换为可执行文件
++   `scripts`：作为入口点的 Python 文件，将被转换为可执行文件
 
-+   `pure`：脚本所需的纯Python模块
++   `pure`：脚本所需的纯 Python 模块
 
 +   `binaries`：脚本所需的二进制库
 
-+   `datas`：非Python数据文件，如文本文件或图像
++   `datas`：非 Python 数据文件，如文本文件或图像
 
-+   `zipfiles`：任何压缩的Python`.egg`文件
++   `zipfiles`：任何压缩的 Python`.egg`文件
 
 在我们的文件中，`Analysis`部分看起来像这样：
 
@@ -1002,7 +1002,7 @@ a = Analysis(['qt_template.py'],
              noarchive=False)
 ```
 
-您会看到Python脚本的名称、路径和许多空关键字参数。这些参数大多对应于输出表，并用于手动补充分析结果，以弥补PyInstaller未能检测到的内容，包括以下内容：
+您会看到 Python 脚本的名称、路径和许多空关键字参数。这些参数大多对应于输出表，并用于手动补充分析结果，以弥补 PyInstaller 未能检测到的内容，包括以下内容：
 
 +   `binaries` 对应于`binaries`表。
 
@@ -1012,7 +1012,7 @@ a = Analysis(['qt_template.py'],
 
 +   `excludes` 允许我们排除可能已自动包含但实际上并不需要的模块。
 
-+   `hookspath` 和 `runtime_hooks` 允许您手动指定PyInstaller **hooks**；hooks允许您覆盖分析的某些方面。它们通常用于处理棘手的依赖关系。
++   `hookspath` 和 `runtime_hooks` 允许您手动指定 PyInstaller **hooks**；hooks 允许您覆盖分析的某些方面。它们通常用于处理棘手的依赖关系。
 
 接下来创建的对象是`PYZ`对象：
 
@@ -1021,9 +1021,9 @@ pyz = PYZ(a.pure, a.zipped_data,
              cipher=block_cipher)
 ```
 
-`PYZ` 对象表示在分析阶段检测到的所有纯Python脚本的压缩存档。我们项目中的所有纯Python脚本将被编译为字节码（.pyc）文件并打包到这个存档中。
+`PYZ` 对象表示在分析阶段检测到的所有纯 Python 脚本的压缩存档。我们项目中的所有纯 Python 脚本将被编译为字节码（.pyc）文件并打包到这个存档中。
 
-注意`Analysis`和`PYZ`中都有`cipher`参数；这个参数可以使用AES256加密进一步混淆我们的Python字节码。虽然它不能完全阻止代码的解密和反编译，但如果您计划商业分发，它可以成为好奇心的有用威慑。要使用此选项，请在创建文件时使用`--key`参数指定一个加密字符串，如下所示：
+注意`Analysis`和`PYZ`中都有`cipher`参数；这个参数可以使用 AES256 加密进一步混淆我们的 Python 字节码。虽然它不能完全阻止代码的解密和反编译，但如果您计划商业分发，它可以成为好奇心的有用威慑。要使用此选项，请在创建文件时使用`--key`参数指定一个加密字符串，如下所示：
 
 ```py
 $ pyi-makespec --key=n0H4CK1ngPLZ qt_template.py
@@ -1044,7 +1044,7 @@ exe = EXE(pyz,
           console=True )
 ```
 
-`EXE` 对象表示可执行文件。这里的位置参数表示我们要捆绑到可执行文件中的所有文件表。目前，这只是压缩的Python库和主要脚本；如果我们指定了`--onefile`选项，其他表（`binaries`、`zipfiles`和`datas`）也会包含在这里。
+`EXE` 对象表示可执行文件。这里的位置参数表示我们要捆绑到可执行文件中的所有文件表。目前，这只是压缩的 Python 库和主要脚本；如果我们指定了`--onefile`选项，其他表（`binaries`、`zipfiles`和`datas`）也会包含在这里。
 
 `EXE`的关键字参数允许我们控制可执行文件的各个方面：
 
@@ -1054,9 +1054,9 @@ exe = EXE(pyz,
 
 +   `upx` 切换是否使用**UPX**压缩可执行文件
 
-+   `console` 切换在Windows和macOS中以控制台或GUI模式运行程序；在Linux中，它没有效果
++   `console` 切换在 Windows 和 macOS 中以控制台或 GUI 模式运行程序；在 Linux 中，它没有效果
 
-UPX是一个可用于多个平台的免费可执行文件打包工具，网址为[https://upx.github.io/](https://upx.github.io/)。如果您已安装它，启用此参数可以使您的可执行文件更小。
+UPX 是一个可用于多个平台的免费可执行文件打包工具，网址为[`upx.github.io/`](https://upx.github.io/)。如果您已安装它，启用此参数可以使您的可执行文件更小。
 
 该过程的最后阶段是生成一个`COLLECT`对象：
 
@@ -1070,13 +1070,13 @@ coll = COLLECT(exe,
                name='qt_template')
 ```
 
-这个对象将所有必要的文件收集到最终的分发目录中。它只在单目录模式下运行，其位置参数包括要包含在目录中的组件。我们还可以覆盖文件夹的其他一些方面，比如是否在二进制文件上使用UPX以及输出目录的名称。
+这个对象将所有必要的文件收集到最终的分发目录中。它只在单目录模式下运行，其位置参数包括要包含在目录中的组件。我们还可以覆盖文件夹的其他一些方面，比如是否在二进制文件上使用 UPX 以及输出目录的名称。
 
-现在我们对PyInstaller的工作原理有了更多的了解，让我们来打包QTicTacToe。
+现在我们对 PyInstaller 的工作原理有了更多的了解，让我们来打包 QTicTacToe。
 
-# 为PyInstaller准备QTicTacToe
+# 为 PyInstaller 准备 QTicTacToe
 
-PyInstaller在处理单个脚本时非常简单，但是在处理我们的模块式项目安排时该如何工作呢？我们不能将PyInstaller指向我们的模块，因为它会返回一个错误；它需要指向一个作为入口点的Python脚本，比如我们的`run.py`文件。
+PyInstaller 在处理单个脚本时非常简单，但是在处理我们的模块式项目安排时该如何工作呢？我们不能将 PyInstaller 指向我们的模块，因为它会返回一个错误；它需要指向一个作为入口点的 Python 脚本，比如我们的`run.py`文件。
 
 这似乎有效：
 
@@ -1084,7 +1084,7 @@ PyInstaller在处理单个脚本时非常简单，但是在处理我们的模块
 $ pyinstaller run.py
 ```
 
-然而，生成的分发和可执行文件现在被称为`run`，这并不太好。您可能会想要将`run.py`更改为`qtictactoe.py`；事实上，一些关于Python打包的教程建议这种安排（即，将`run`脚本与主模块具有相同的名称）。
+然而，生成的分发和可执行文件现在被称为`run`，这并不太好。您可能会想要将`run.py`更改为`qtictactoe.py`；事实上，一些关于 Python 打包的教程建议这种安排（即，将`run`脚本与主模块具有相同的名称）。
 
 然而，如果您尝试这样做，您可能会发现出现以下错误：
 
@@ -1096,7 +1096,7 @@ ModuleNotFoundError: No module named '__main__.mainwindow'; '__main__' is not a 
 [3516] Failed to execute script qtictactoe
 ```
 
-因为Python模块可以是`.py`文件或目录，PyInstaller无法确定哪一个构成了`qtictactoe`模块，因此两者具有相同的名称将失败。
+因为 Python 模块可以是`.py`文件或目录，PyInstaller 无法确定哪一个构成了`qtictactoe`模块，因此两者具有相同的名称将失败。
 
 正确的方法是在创建我们的`.spec`文件或运行`pyinstaller`时使用`--name`开关：
 
@@ -1120,11 +1120,11 @@ coll = COLLECT(exe,
 
 当然，这也可以通过手动编辑`.spec`文件来完成。
 
-# 处理非Python文件
+# 处理非 Python 文件
 
-我们的程序运行了，但我们又回到了`'X'`和`'O'`图像不显示的旧问题。这里有两个问题：首先，我们的PNG文件没有包含在分发中，其次，即使它们包含在分发中，程序也无法找到它们。
+我们的程序运行了，但我们又回到了`'X'`和`'O'`图像不显示的旧问题。这里有两个问题：首先，我们的 PNG 文件没有包含在分发中，其次，即使它们包含在分发中，程序也无法找到它们。
 
-要解决第一个问题，我们必须告诉PyInstaller在构建的`Analysis`阶段将我们的文件包含在`datas`表中。我们可以在命令行中这样做：
+要解决第一个问题，我们必须告诉 PyInstaller 在构建的`Analysis`阶段将我们的文件包含在`datas`表中。我们可以在命令行中这样做：
 
 ```py
 # On Linux and macOS:
@@ -1133,7 +1133,7 @@ $ pyinstaller --name qtictactoe --add-data qtictactoe/images:images run.py
 $ pyinstaller --name qtictactoe --add-data qtictactoe\images;images run.py
 ```
 
-`--add-data`参数接受一个源路径和一个目标路径，两者之间用冒号（在macOS和Linux上）或分号（在Windows上）分隔。源路径是相对于我们正在运行`pyinstaller`的项目根目录（在本例中为`QTicTacToe`）的，目标路径是相对于分发根文件夹的。
+`--add-data`参数接受一个源路径和一个目标路径，两者之间用冒号（在 macOS 和 Linux 上）或分号（在 Windows 上）分隔。源路径是相对于我们正在运行`pyinstaller`的项目根目录（在本例中为`QTicTacToe`）的，目标路径是相对于分发根文件夹的。
 
 如果我们不想使用长而复杂的命令行，我们还可以更新`qtictactoe.spec`文件的`Analysis`部分：
 
@@ -1143,11 +1143,11 @@ a = Analysis(['run.py'],
              datas=[('qtictactoe/images', 'images')],
 ```
 
-在这里，源路径和目标路径只是`datas`列表中的一个元组。源值也可以是一个模式，例如`qtictactoe/images/*.png`。如果您使用这些更改运行`pyinstaller qtictactoe.spec`，您应该会在`dist/qtictactoe`中找到一个`images`目录，其中包含我们的PNG文件。
+在这里，源路径和目标路径只是`datas`列表中的一个元组。源值也可以是一个模式，例如`qtictactoe/images/*.png`。如果您使用这些更改运行`pyinstaller qtictactoe.spec`，您应该会在`dist/qtictactoe`中找到一个`images`目录，其中包含我们的 PNG 文件。
 
-这解决了图像的第一个问题，但我们仍然需要解决第二个问题。在*使用setuptools进行分发*部分，我们通过使用`__file__`内置变量解决了定位PNG文件的问题。但是，当您从PyInstaller可执行文件运行时，`__file__`的值*不是*可执行文件的路径；它实际上是一个临时目录的路径，可执行文件在其中解压缩字节码。此目录的位置也会根据我们是处于单文件模式还是单目录模式而改变。为了解决这个问题，我们需要更新我们的代码以检测程序是否已制作成可执行文件，并且如果是，则使用不同的方法来定位文件。
+这解决了图像的第一个问题，但我们仍然需要解决第二个问题。在*使用 setuptools 进行分发*部分，我们通过使用`__file__`内置变量解决了定位 PNG 文件的问题。但是，当您从 PyInstaller 可执行文件运行时，`__file__`的值*不是*可执行文件的路径；它实际上是一个临时目录的路径，可执行文件在其中解压缩字节码。此目录的位置也会根据我们是处于单文件模式还是单目录模式而改变。为了解决这个问题，我们需要更新我们的代码以检测程序是否已制作成可执行文件，并且如果是，则使用不同的方法来定位文件。
 
-当我们运行PyInstaller可执行文件时，PyInstaller会向`sys`模块添加两个属性来帮助我们：
+当我们运行 PyInstaller 可执行文件时，PyInstaller 会向`sys`模块添加两个属性来帮助我们：
 
 +   `sys.frozen`属性，其值为`True`
 
@@ -1166,23 +1166,23 @@ a = Analysis(['run.py'],
         }
 ```
 
-现在，在从冻结的PyInstaller环境中执行时，我们的代码将能够正确地定位文件。重新运行`pyinstaller qtictactoe.spec`，您应该会发现`X`和`O`图形正确显示。万岁！
+现在，在从冻结的 PyInstaller 环境中执行时，我们的代码将能够正确地定位文件。重新运行`pyinstaller qtictactoe.spec`，您应该会发现`X`和`O`图形正确显示。万岁！
 
-如前所述，在PyQt5应用程序中更好的解决方案是使用[第6章](c3eb2567-0e73-4c37-9a9e-a0e2311e106c.xhtml)中讨论的Qt资源文件，*Styling Qt Applications*。对于非PyQt程序，`setuptools`库有一个名为`pkg_resources`的工具可能会有所帮助。
+如前所述，在 PyQt5 应用程序中更好的解决方案是使用第六章中讨论的 Qt 资源文件，*Styling Qt Applications*。对于非 PyQt 程序，`setuptools`库有一个名为`pkg_resources`的工具可能会有所帮助。
 
 # 进一步调试
 
 如果您的构建继续出现问题，有几种方法可以获取更多关于正在进行的情况的信息。
 
-首先，确保您的代码作为Python脚本正确运行。如果在任何模块文件中存在语法错误或其他代码问题，分发将在没有它们的情况下构建。这些遗漏既不会中止构建，也不会在命令行输出中提到。
+首先，确保您的代码作为 Python 脚本正确运行。如果在任何模块文件中存在语法错误或其他代码问题，分发将在没有它们的情况下构建。这些遗漏既不会中止构建，也不会在命令行输出中提到。
 
-确认后，检查构建目录以获取PyInstaller正在执行的详细信息。在`build/projectname/`下，您应该看到一些文件，可以帮助您进行调试，包括这些：
+确认后，检查构建目录以获取 PyInstaller 正在执行的详细信息。在`build/projectname/`下，您应该看到一些文件，可以帮助您进行调试，包括这些：
 
 +   `warn-projectname.txt`：这个文件包含`Analysis`过程输出的警告。其中一些是无意义的（通常只是无法在您的平台上找到特定于平台的库），但如果库有错误或无法找到，这些问题将在这里记录。
 
 +   `.toc`文件：这些文件包含构建过程各阶段创建的目录表；例如，`Analysis-00.toc`显示了`Analysis()`中找到的目录。您可以检查这些文件，看看项目的依赖项是否被错误地识别或从错误的位置提取。
 
-+   `base_library.zip`：此存档应包含您的应用程序使用的所有纯Python模块的Python字节码文件。您可以检查这个文件，看看是否有任何遗漏。
++   `base_library.zip`：此存档应包含您的应用程序使用的所有纯 Python 模块的 Python 字节码文件。您可以检查这个文件，看看是否有任何遗漏。
 
 如果您需要更详细的输出，可以使用`--log-level`开关来增加输出的详细程度到`warn-projectname.txt`。设置为`DEBUG`将提供更多细节：
 
@@ -1190,42 +1190,42 @@ a = Analysis(['run.py'],
 $ pyinstaller --log-level DEBUG my_project.py
 ```
 
-更多调试提示可以在[https://pyinstaller.readthedocs.io/en/latest/when-things-go-wrong.html](https://pyinstaller.readthedocs.io/en/latest/when-things-go-wrong.html)找到。
+更多调试提示可以在[`pyinstaller.readthedocs.io/en/latest/when-things-go-wrong.html`](https://pyinstaller.readthedocs.io/en/latest/when-things-go-wrong.html)找到。
 
 # 总结
 
-在本章中，您学会了如何与他人分享您的项目。您学会了使您的项目目录具有最佳布局，以便您可以与其他Python编码人员和Python工具进行协作。您学会了如何使用`setuptools`为诸如PyPI之类的站点制作可分发的Python软件包。最后，您学会了如何使用PyInstaller将您的代码转换为可执行文件。
+在本章中，您学会了如何与他人分享您的项目。您学会了使您的项目目录具有最佳布局，以便您可以与其他 Python 编码人员和 Python 工具进行协作。您学会了如何使用`setuptools`为诸如 PyPI 之类的站点制作可分发的 Python 软件包。最后，您学会了如何使用 PyInstaller 将您的代码转换为可执行文件。
 
-恭喜！您已经完成了这本书。到目前为止，您应该对使用Python和PyQt5从头开始开发引人入胜的GUI应用程序的能力感到自信。从基本的输入表单到高级的网络、数据库和多媒体应用程序，您现在有了创建和分发惊人程序的工具。即使我们涵盖了所有的主题，PyQt中仍有更多的发现。继续学习，创造伟大的事物！
+恭喜！您已经完成了这本书。到目前为止，您应该对使用 Python 和 PyQt5 从头开始开发引人入胜的 GUI 应用程序的能力感到自信。从基本的输入表单到高级的网络、数据库和多媒体应用程序，您现在有了创建和分发惊人程序的工具。即使我们涵盖了所有的主题，PyQt 中仍有更多的发现。继续学习，创造伟大的事物！
 
 # 问题
 
 尝试回答这些问题，以测试您从本章中学到的知识：
 
-1.  您已经在一个名为`Scan & Print Tool-box.py`的文件中编写了一个PyQt应用程序。您想将其转换为模块化组织形式；您应该做出什么改变？
+1.  您已经在一个名为`Scan & Print Tool-box.py`的文件中编写了一个 PyQt 应用程序。您想将其转换为模块化组织形式；您应该做出什么改变？
 
-1.  您的PyQt5数据库应用程序有一组包含应用程序使用的查询的`.sql`文件。当您的应用程序是与`.sql`文件在同一目录中的单个脚本时，它可以正常工作，但是现在您已将其转换为模块化组织形式后，无法找到查询。您应该怎么做？
+1.  您的 PyQt5 数据库应用程序有一组包含应用程序使用的查询的`.sql`文件。当您的应用程序是与`.sql`文件在同一目录中的单个脚本时，它可以正常工作，但是现在您已将其转换为模块化组织形式后，无法找到查询。您应该怎么做？
 
 1.  在将新应用程序上传到代码共享站点之前，您正在编写一个详细的`README.rst`文件来记录您的新应用程序。分别应使用哪些字符来下划线标记您的一级、二级和三级标题？
 
-1.  您正在为您的项目创建一个`setup.py`脚本，以便您可以将其上传到PyPI。您想要包括项目的常见问题解答页面的URL。您该如何实现这一点？
+1.  您正在为您的项目创建一个`setup.py`脚本，以便您可以将其上传到 PyPI。您想要包括项目的常见问题解答页面的 URL。您该如何实现这一点？
 
 1.  您在`setup.py`文件中指定了`include_package_data=True`，但由于某种原因，`docs`文件夹没有包含在您的分发包中。出了什么问题？
 
 1.  您运行了`pyinstaller fight_fighter3.py`来将您的新游戏打包为可执行文件。然而出了些问题；您在哪里可以找到构建过程的日志？
 
-1.  尽管名称如此，PyInstaller实际上不能生成安装程序或包来安装您的应用程序。请为您选择的平台研究一些选项。
+1.  尽管名称如此，PyInstaller 实际上不能生成安装程序或包来安装您的应用程序。请为您选择的平台研究一些选项。
 
 # 进一步阅读
 
 有关更多信息，请参阅以下内容：
 
-+   有关`ReStructuredText`标记的教程可以在[http://docutils.sourceforge.net/docs/user/rst/quickstart.html](http://docutils.sourceforge.net/docs/user/rst/quickstart.html)找到。
++   有关`ReStructuredText`标记的教程可以在[`docutils.sourceforge.net/docs/user/rst/quickstart.html`](http://docutils.sourceforge.net/docs/user/rst/quickstart.html)找到。
 
-+   关于设计、构建、文档化和打包Python GUI应用程序的更多信息可以在作者的第一本书《Python GUI编程与Tkinter》中找到，该书可在Packt Publications上获得。
++   关于设计、构建、文档化和打包 Python GUI 应用程序的更多信息可以在作者的第一本书《Python GUI 编程与 Tkinter》中找到，该书可在 Packt Publications 上获得。
 
-+   如果您有兴趣将软件包发布到PyPI，请参阅[https://blog.jetbrains.com/pycharm/2017/05/how-to-publish-your-package-on-pypi/](https://blog.jetbrains.com/pycharm/2017/05/how-to-publish-your-package-on-pypi/)了解发布过程的教程。
++   如果您有兴趣将软件包发布到 PyPI，请参阅[`blog.jetbrains.com/pycharm/2017/05/how-to-publish-your-package-on-pypi/`](https://blog.jetbrains.com/pycharm/2017/05/how-to-publish-your-package-on-pypi/)了解发布过程的教程。
 
-+   解决在非PyQt代码中包含图像的问题的更好方法是`setuptools`提供的`pkg_resources`工具。您可以在[https://setuptools.readthedocs.io/en/latest/pkg_resources.html](https://setuptools.readthedocs.io/en/latest/pkg_resources.html)上了解更多信息。
++   解决在非 PyQt 代码中包含图像的问题的更好方法是`setuptools`提供的`pkg_resources`工具。您可以在[`setuptools.readthedocs.io/en/latest/pkg_resources.html`](https://setuptools.readthedocs.io/en/latest/pkg_resources.html)上了解更多信息。
 
-+   PyInstaller的高级用法在PyInstaller手册中有详细说明，可在[https://pyinstaller.readthedocs.io/en/stable/](https://pyinstaller.readthedocs.io/en/stable/)找到。
++   PyInstaller 的高级用法在 PyInstaller 手册中有详细说明，可在[`pyinstaller.readthedocs.io/en/stable/`](https://pyinstaller.readthedocs.io/en/stable/)找到。

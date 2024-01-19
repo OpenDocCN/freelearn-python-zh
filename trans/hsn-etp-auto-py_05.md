@@ -1,8 +1,8 @@
 # 从网络设备中提取有用数据
 
-在上一章中，我们已经看到了如何使用不同的方法和协议访问网络设备，然后在远程设备上执行命令，将输出返回到Python。现在，是时候从这个输出中提取一些有用的数据了。
+在上一章中，我们已经看到了如何使用不同的方法和协议访问网络设备，然后在远程设备上执行命令，将输出返回到 Python。现在，是时候从这个输出中提取一些有用的数据了。
 
-在本章中，您将学习如何使用Python中的不同工具和库从返回的输出中提取有用的数据，并使用正则表达式对其进行操作。此外，我们将使用一个名为`CiscoConfParse`的特殊库来审计配置，然后学习如何使用`matplotlib`库可视化数据，生成视觉上吸引人的图形和报告。
+在本章中，您将学习如何使用 Python 中的不同工具和库从返回的输出中提取有用的数据，并使用正则表达式对其进行操作。此外，我们将使用一个名为`CiscoConfParse`的特殊库来审计配置，然后学习如何使用`matplotlib`库可视化数据，生成视觉上吸引人的图形和报告。
 
 在本章中，我们将涵盖以下主题：
 
@@ -20,25 +20,25 @@
 
 +   Python 2.7.1x
 
-+   PyCharm社区版或专业版
++   PyCharm 社区版或专业版
 
-+   EVE-NG实验室
++   EVE-NG 实验室
 
-您可以在以下GitHub URL找到本章开发的完整脚本：
+您可以在以下 GitHub URL 找到本章开发的完整脚本：
 
-[https://github.com/TheNetworker/EnterpriseAutomation.git](https://github.com/TheNetworker/EnterpriseAutomation.git)
+[`github.com/TheNetworker/EnterpriseAutomation.git`](https://github.com/TheNetworker/EnterpriseAutomation.git)
 
 # 理解解析器
 
-在上一章中，我们探讨了访问网络设备、执行命令并将输出返回到终端的不同方式。现在我们需要处理返回的输出，并从中提取一些有用的信息。请注意，从Python的角度来看，输出只是一个多行字符串，Python不区分IP地址、接口名称或节点主机名，因为它们都是字符串。因此，第一步是设计和开发我们自己的解析器，使用Python根据返回的输出中的重要信息对项目进行分类和区分。
+在上一章中，我们探讨了访问网络设备、执行命令并将输出返回到终端的不同方式。现在我们需要处理返回的输出，并从中提取一些有用的信息。请注意，从 Python 的角度来看，输出只是一个多行字符串，Python 不区分 IP 地址、接口名称或节点主机名，因为它们都是字符串。因此，第一步是设计和开发我们自己的解析器，使用 Python 根据返回的输出中的重要信息对项目进行分类和区分。
 
 之后，您可以处理解析后的数据，并生成有助于可视化的图形，甚至将它们存储到持久的外部存储或数据库中。
 
 # 正则表达式简介
 
-正则表达式是一种语言，用于通过跟随整个字符串的模式来匹配特定的字符串出现。当找到匹配时，将返回匹配的字符串，并将其保存在Python格式的结构中，如`tuple`、`list`或`dictionary`。以下表总结了正则表达式中最常见的模式：
+正则表达式是一种语言，用于通过跟随整个字符串的模式来匹配特定的字符串出现。当找到匹配时，将返回匹配的字符串，并将其保存在 Python 格式的结构中，如`tuple`、`list`或`dictionary`。以下表总结了正则表达式中最常见的模式：
 
-![](../images/00090.jpeg)
+![](img/00090.jpeg)
 
 此外，正则表达式中的一个重要规则是您可以编写自己的正则表达式，并用括号`()`括起来，这称为捕获组，它可以帮助您保存重要数据，以便稍后使用捕获组编号引用它：
 
@@ -49,11 +49,11 @@ print match.group(1)
 print match.group(2)
 ```
 
-PyCharm将自动对写成正则表达式的字符串进行着色，并可以帮助您在将其应用于数据之前检查正则表达式的有效性。请确保在设置中启用了Check RegExp意图，如下所示：![](../images/00091.jpeg)
+PyCharm 将自动对写成正则表达式的字符串进行着色，并可以帮助您在将其应用于数据之前检查正则表达式的有效性。请确保在设置中启用了 Check RegExp 意图，如下所示：![](img/00091.jpeg)
 
-# 在Python中创建正则表达式
+# 在 Python 中创建正则表达式
 
-您可以使用Python中的`re`模块构建正则表达式，该模块已经与Python安装一起原生地提供。该模块内部有几种方法，如`search()`、`sub()`、`split()`、`compile()`和`findall()`，它们将以正则表达式对象的形式返回结果。以下是每个函数的用法总结：
+您可以使用 Python 中的`re`模块构建正则表达式，该模块已经与 Python 安装一起原生地提供。该模块内部有几种方法，如`search()`、`sub()`、`split()`、`compile()`和`findall()`，它们将以正则表达式对象的形式返回结果。以下是每个函数的用法总结：
 
 | **函数名称** | **用法** |
 | --- | --- |
@@ -66,7 +66,7 @@ PyCharm将自动对写成正则表达式的字符串进行着色，并可以帮�
 
 正则表达式很难阅读；因此，让我们从简单的开始，看一些最基本级别的简单正则表达式。
 
-使用`re`模块的第一步是在Python代码中导入它
+使用`re`模块的第一步是在 Python 代码中导入它
 
 ```py
 import re
@@ -80,9 +80,9 @@ import re
 match = re.search('regex pattern', 'string')
 ```
 
-第一个参数`'regex pattern'`是为了匹配`'string'`中的特定出现而开发的正则表达式。当找到匹配项时，`search()`函数将返回一个特殊的匹配对象，否则将返回`None`。请注意，`search()`将仅返回模式的第一个匹配项，并将忽略其余的匹配项。让我们看一些在Python中使用`re`模块的例子：
+第一个参数`'regex pattern'`是为了匹配`'string'`中的特定出现而开发的正则表达式。当找到匹配项时，`search()`函数将返回一个特殊的匹配对象，否则将返回`None`。请注意，`search()`将仅返回模式的第一个匹配项，并将忽略其余的匹配项。让我们看一些在 Python 中使用`re`模块的例子：
 
-**示例1：搜索特定IP地址**
+**示例 1：搜索特定 IP 地址**
 
 ```py
 import re
@@ -92,23 +92,23 @@ intf_ip = 'Gi0/0/0.911            10.200.101.242   YES NVRAM  up                
 
 在这个例子中，我们可以看到以下内容：
 
-+   `re`模块被导入到我们的Python脚本中。
++   `re`模块被导入到我们的 Python 脚本中。
 
-+   我们有一个字符串，对应于接口详细信息，并包含名称、IP地址和状态。这个字符串可以在脚本中硬编码，也可以使用Netmiko库从网络设备中生成。
++   我们有一个字符串，对应于接口详细信息，并包含名称、IP 地址和状态。这个字符串可以在脚本中硬编码，也可以使用 Netmiko 库从网络设备中生成。
 
-+   我们将这个字符串传递给`search()`函数，以及我们的正则表达式，即IP地址。
++   我们将这个字符串传递给`search()`函数，以及我们的正则表达式，即 IP 地址。
 
 +   然后，脚本检查前一个操作是否返回了`match`对象；如果是，则会打印出来。
 
 测试匹配的最基本方法是通过`re.match`函数，就像我们在前面的例子中所做的那样。`match`函数接受一个正则表达式模式和一个字符串值。
 
-请注意，我们只在`intf_ip`参数内搜索特定的字符串，而不是每个IP地址模式。
+请注意，我们只在`intf_ip`参数内搜索特定的字符串，而不是每个 IP 地址模式。
 
-**示例1输出**
+**示例 1 输出**
 
-![](../images/00092.jpeg)
+![](img/00092.jpeg)
 
-**示例2：匹配IP地址模式**
+**示例 2：匹配 IP 地址模式**
 
 ```py
 import re
@@ -118,21 +118,21 @@ intf_ip = '''Gi0/0/0.705            10.103.17.5      YES NVRAM  up              
 
 在这个例子中，我们可以看到以下内容：
 
-+   `re`模块被导入到我们的Python脚本中。
++   `re`模块被导入到我们的 Python 脚本中。
 
-+   我们有一个多行字符串，对应于接口详细信息，并包含名称、IP地址和状态。
++   我们有一个多行字符串，对应于接口详细信息，并包含名称、IP 地址和状态。
 
 +   我们将这个字符串传递给`search()`函数，以及我们的正则表达式，即使用`\d+`匹配一个或多个数字，以及`\.`匹配点的出现。
 
 +   然后，脚本检查前一个操作是否返回了`match`对象；如果是，则会打印出来。否则，将返回`None`对象。
 
-**示例2输出**
+**示例 2 输出**
 
-![](../images/00093.jpeg)
+![](img/00093.jpeg)
 
 请注意，`search()`函数只返回模式的第一个匹配项，而不是所有匹配项。
 
-**示例3：使用** **groups()正则表达式**
+**示例 3：使用** **groups()正则表达式**
 
 如果您有一个长输出，并且需要从中提取多个字符串，那么您可以用`()`括起提取的值，并在其中编写您的正则表达式。这称为**捕获组**，用于捕获长字符串中的特定模式，如下面的代码片段所示：
 
@@ -144,7 +144,7 @@ log_msg = 'Dec 20 12:11:47.417: %LINK-3-UPDOWN: Interface GigabitEthernet0/0/4, 
 
 在这个例子中，我们可以看到以下内容：
 
-+   `re`模块被导入到我们的Python脚本中。
++   `re`模块被导入到我们的 Python 脚本中。
 
 +   我们有一个字符串，对应于路由器中发生的事件，并存储在日志中。
 
@@ -152,15 +152,15 @@ log_msg = 'Dec 20 12:11:47.417: %LINK-3-UPDOWN: Interface GigabitEthernet0/0/4, 
 
 +   然后，脚本检查前一个操作是否返回了匹配对象；如果是，则会打印出来，但这次我们使用了`groups()`而不是`group()`，因为我们正在捕获多个字符串。
 
-**示例3输出**
+**示例 3 输出**
 
-![](../images/00094.jpeg)
+![](img/00094.jpeg)
 
 请注意，返回的数据是一个名为**tuple**的结构化格式。我们可以稍后使用此输出来触发事件，并且例如在冗余接口上启动恢复过程。
 
-我们可以增强我们之前的代码，并使用`Named`组来为每个捕获组命名，以便稍后引用或用于创建字典。在这种情况下，我们在正则表达式前面加上了`?P<"NAME">`，就像下一个示例（GitHub存储库中的**示例4**）中一样：**示例4：命名组**![](../images/00095.jpeg)
+我们可以增强我们之前的代码，并使用`Named`组来为每个捕获组命名，以便稍后引用或用于创建字典。在这种情况下，我们在正则表达式前面加上了`?P<"NAME">`，就像下一个示例（GitHub 存储库中的**示例 4**）中一样：**示例 4：命名组**![](img/00095.jpeg)
 
-**示例5-1：使用re.search()搜索多行**
+**示例 5-1：使用 re.search()搜索多行**
 
 假设我们的输出中有多行，并且我们需要针对正则表达式模式检查所有这些行。请记住，`search()`函数在找到第一个模式匹配时退出。在这种情况下，我们有两种解决方案。第一种是通过在`"\n"`上拆分整个字符串将每行输入到搜索函数中，第二种解决方案是使用`findall()`函数。让我们探讨这两种解决方案：
 
@@ -176,15 +176,15 @@ show_ip_int_br_full = """ GigabitEthernet0/0/0        110.110.110.1   YES NVRAM 
   print "Subnet is configured on " + intf_ip["interface"] + " and ip is " + intf_ip["ip"]
 ```
 
-上面的脚本将拆分`show ip interface brief`输出并搜索特定模式，即接口名称和配置在其上的IP地址。根据匹配的数据，脚本将继续检查每个IP地址并使用`start with 57`进行验证，然后脚本将打印相应的接口和完整的IP地址。
+上面的脚本将拆分`show ip interface brief`输出并搜索特定模式，即接口名称和配置在其上的 IP 地址。根据匹配的数据，脚本将继续检查每个 IP 地址并使用`start with 57`进行验证，然后脚本将打印相应的接口和完整的 IP 地址。
 
-**示例5-1输出**
+**示例 5-1 输出**
 
-![](../images/00096.jpeg)如果您只搜索第一次出现，可以优化脚本，并且只需在找到第一个匹配项时中断外部`for`循环，但请注意，第二个匹配项将无法找到或打印。
+![](img/00096.jpeg)如果您只搜索第一次出现，可以优化脚本，并且只需在找到第一个匹配项时中断外部`for`循环，但请注意，第二个匹配项将无法找到或打印。
 
-**示例5-2：使用re.findall()搜索多行**
+**示例 5-2：使用 re.findall()搜索多行**
 
-`findall()`函数在提供的字符串中搜索所有不重叠的匹配项，并返回与正则表达式模式匹配的字符串列表（与`search`函数不同，后者返回`match`对象），如果没有捕获组，则返回。如果您用捕获组括起您的正则表达式，那么`findall()`将返回一个元组列表。在下面的脚本中，我们有相同的多行输出，并且我们将使用`findall()`方法来获取所有配置了以57开头的IP地址的接口：
+`findall()`函数在提供的字符串中搜索所有不重叠的匹配项，并返回与正则表达式模式匹配的字符串列表（与`search`函数不同，后者返回`match`对象），如果没有捕获组，则返回。如果您用捕获组括起您的正则表达式，那么`findall()`将返回一个元组列表。在下面的脚本中，我们有相同的多行输出，并且我们将使用`findall()`方法来获取所有配置了以 57 开头的 IP 地址的接口：
 
 ```py
 import re
@@ -192,21 +192,21 @@ from pprint import pprint
 show_ip_int_br_full = """ GigabitEthernet0/0/0        110.110.110.1   YES NVRAM  up                    up GigabitEthernet0/0/1        107.107.107.1   YES NVRAM  up                    up GigabitEthernet0/0/2        108.108.108.1   YES NVRAM  up                    up GigabitEthernet0/0/3        109.109.109.1   YES NVRAM  up                    up GigabitEthernet0/0/4   unassigned      YES NVRAM  up                    up GigabitEthernet0/0/5             10.131.71.1     YES NVRAM  up                    up GigabitEthernet0/0/6          10.37.102.225   YES NVRAM  up                    up GigabitEthernet0/1/0            unassigned      YES unset  up                    up GigabitEthernet0/1/1           57.234.66.28   YES manual up                    up GigabitEthernet0/1/2           10.10.99.70   YES manual up                    up GigabitEthernet0/1/3           unassigned      YES manual deleted               down GigabitEthernet0/1/4           192.168.200.1   YES manual up                    up GigabitEthernet0/1/5   unassigned      YES manual down                  down GigabitEthernet0/1/6         10.20.20.1      YES manual down                  down GigabitEthernet0/2/0         10.30.40.1      YES manual down                  down GigabitEthernet0/2/1         57.20.20.1      YES manual down                  down """    intf_ip = re.findall(r"(?P<interface>\w+\d\/\d\/\d)\s+(?P<ip>57.\d+.\d+.\d+)", show_ip_int_br_full) pprint(intf_ip) 
 ```
 
-**示例5-2输出**：
+**示例 5-2 输出**：
 
-![](../images/00097.jpeg)
+![](img/00097.jpeg)
 
 请注意，这一次我们不必编写`for`循环来检查每行是否符合正则表达式模式。这将在`findall()`方法中自动完成。
 
-# 使用CiscoConfParse进行配置审计
+# 使用 CiscoConfParse 进行配置审计
 
-在网络配置上应用正则表达式以从输出中获取特定信息需要我们编写一些复杂的表达式来解决一些复杂的用例。在某些情况下，您只需要检索一些配置或修改现有配置而不深入编写正则表达式，这就是`CiscoConfParse`库诞生的原因（[https://github.com/mpenning/ciscoconfparse](https://github.com/mpenning/ciscoconfparse)）。
+在网络配置上应用正则表达式以从输出中获取特定信息需要我们编写一些复杂的表达式来解决一些复杂的用例。在某些情况下，您只需要检索一些配置或修改现有配置而不深入编写正则表达式，这就是`CiscoConfParse`库诞生的原因（[`github.com/mpenning/ciscoconfparse`](https://github.com/mpenning/ciscoconfparse)）。
 
-# CiscoConfParse库
+# CiscoConfParse 库
 
-正如官方GitHub页面所说，该库检查了一个类似iOS风格的配置，并将其分解成一组链接的父/子关系。您可以对这些关系执行复杂的查询：
+正如官方 GitHub 页面所说，该库检查了一个类似 iOS 风格的配置，并将其分解成一组链接的父/子关系。您可以对这些关系执行复杂的查询：
 
-![](../images/00098.jpeg)来源：[https://github.com/mpenning/ciscoconfparse](https://github.com/mpenning/ciscoconfparse)
+![](img/00098.jpeg)来源：[`github.com/mpenning/ciscoconfparse`](https://github.com/mpenning/ciscoconfparse)
 
 因此，配置的第一行被视为父级，而后续行被视为父级的子级。`CiscoConfparse`库将父级和子级之间的关系构建成一个对象，因此最终用户可以轻松地检索特定父级的配置，而无需编写复杂的表达式。
 
@@ -226,11 +226,11 @@ show_ip_int_br_full = """ GigabitEthernet0/0/0        110.110.110.1   YES NVRAM 
 
 +   Brocade
 
-+   HP交换机
++   HP 交换机
 
-+   Force10交换机
++   Force10 交换机
 
-+   Dell PowerConnect交换机
++   Dell PowerConnect 交换机
 
 +   Extreme Networks
 
@@ -238,35 +238,35 @@ show_ip_int_br_full = """ GigabitEthernet0/0/0        110.110.110.1   YES NVRAM 
 
 +   ScreenOS
 
-另外，从1.2.4版本开始，`CiscoConfParse`可以处理花括号分隔的配置，这意味着它可以处理以下供应商：
+另外，从 1.2.4 版本开始，`CiscoConfParse`可以处理花括号分隔的配置，这意味着它可以处理以下供应商：
 
-+   Juniper Network的Junos OS
++   Juniper Network 的 Junos OS
 
-+   Palo Alto Networks防火墙配置
++   Palo Alto Networks 防火墙配置
 
-+   F5 Networks配置
++   F5 Networks 配置
 
-# CiscoConfParse安装
+# CiscoConfParse 安装
 
-`CiscoConfParse`可以通过在Windows命令行或Linux shell上使用`pip`来安装：
+`CiscoConfParse`可以通过在 Windows 命令行或 Linux shell 上使用`pip`来安装：
 
 ```py
 pip install ciscoconfparse
 ```
 
-![](../images/00099.jpeg)
+![](img/00099.jpeg)
 
 请注意，还安装了一些其他依赖项，例如`ipaddr`，`dnsPython`和`colorama`，这些依赖项被`CiscoConfParse`使用。
 
-# 使用CiscoConfParse
+# 使用 CiscoConfParse
 
-我们将要处理的第一个示例是从名为`Cisco_Config.txt`的文件中提取关闭接口的示例Cisco配置。
+我们将要处理的第一个示例是从名为`Cisco_Config.txt`的文件中提取关闭接口的示例 Cisco 配置。
 
-![](../images/00100.jpeg)
+![](img/00100.jpeg)
 
 在这个例子中，我们可以看到以下内容：
 
-+   从`CiscoConfParse`模块中，我们导入了`CiscoConfParse`类。同时，我们导入了`pprint`模块，以便以可读格式打印输出以适应Python控制台输出。
++   从`CiscoConfParse`模块中，我们导入了`CiscoConfParse`类。同时，我们导入了`pprint`模块，以便以可读格式打印输出以适应 Python 控制台输出。
 
 +   然后，我们将`config`文件的完整路径提供给`CiscoConfParse`类。
 
@@ -274,29 +274,29 @@ pip install ciscoconfparse
 
 正如您所看到的，在三个简单的步骤中，我们能够获取所有具有关闭关键字的接口，并以结构化列表输出。
 
-**示例1输出**
+**示例 1 输出**
 
-![](../images/00101.jpeg)
+![](img/00101.jpeg)
 
-**示例2：检查特定功能的存在**
+**示例 2：检查特定功能的存在**
 
 第二个示例将检查配置文件中是否存在路由器关键字，以指示路由协议（例如`ospf`或`bgp`）是否已启用。如果模块找到它，则结果将为`True`。否则，将为`False`。这可以通过模块内的内置函数`has_line_with()`来实现：
 
-![](../images/00102.jpeg)
+![](img/00102.jpeg)
 
 这种方法可以用于设计`if`语句内的条件，我们将在下一个和最后一个示例中看到。
 
-**示例2输出**
+**示例 2 输出**
 
-![](../images/00103.jpeg)
+![](img/00103.jpeg)
 
-**示例3：从父级打印特定子项**：
+**示例 3：从父级打印特定子项**：
 
-![](../images/00104.jpeg)
+![](img/00104.jpeg)
 
 在这个例子中，我们可以看到以下内容：
 
-+   从`CiscoConfParse`模块中，我们导入了`CiscoConfParse`类。同时，我们导入了`pprint`模块，以便以可读格式打印输出以适应Python控制台输出。
++   从`CiscoConfParse`模块中，我们导入了`CiscoConfParse`类。同时，我们导入了`pprint`模块，以便以可读格式打印输出以适应 Python 控制台输出。
 
 +   然后，我们将`config`文件的完整路径提供给`CiscoConfParse`类。
 
@@ -304,9 +304,9 @@ pip install ciscoconfparse
 
 +   最后，我们遍历返回的输出（记住，它是一个列表），并检查字符串中是否存在网络关键字。如果是，则将其附加到网络列表中，并在最后打印出来。
 
-**示例3输出：**
+**示例 3 输出：**
 
-![](../images/00105.jpeg)
+![](img/00105.jpeg)
 
 `CiscoConfParse`模块中还有许多其他可用的函数，可用于轻松从配置文件中提取数据并以结构化格式返回输出。以下是其他函数的列表：
 
@@ -326,29 +326,29 @@ pip install ciscoconfparse
 
 +   查找没有父级的子级()
 
-# 使用matplotLib可视化返回的数据
+# 使用 matplotLib 可视化返回的数据
 
-俗话说，“一图胜千言”。可以从网络中提取大量信息，如接口状态、接口计数器、路由器更新、丢包、流量量等。将这些数据可视化并放入图表中将帮助您看到网络的整体情况。Python有一个名为**matplotlib**的优秀库（[https://matplotlib.org/](https://matplotlib.org/)），用于生成图表并对其进行自定义。
+俗话说，“一图胜千言”。可以从网络中提取大量信息，如接口状态、接口计数器、路由器更新、丢包、流量量等。将这些数据可视化并放入图表中将帮助您看到网络的整体情况。Python 有一个名为**matplotlib**的优秀库（[`matplotlib.org/`](https://matplotlib.org/)），用于生成图表并对其进行自定义。
 
-Matplotlib能够创建大多数类型的图表，如折线图、散点图、条形图、饼图、堆叠图、3D图和地理地图图表。
+Matplotlib 能够创建大多数类型的图表，如折线图、散点图、条形图、饼图、堆叠图、3D 图和地理地图图表。
 
-# Matplotlib安装
+# Matplotlib 安装
 
-我们将首先使用`pip`从PYpI安装库。请注意，除了matplotlib之外，还将安装一些其他包，如`numpy`和`six`：
+我们将首先使用`pip`从 PYpI 安装库。请注意，除了 matplotlib 之外，还将安装一些其他包，如`numpy`和`six`：
 
 ```py
 pip install matplotlib
 ```
 
-![](../images/00106.jpeg)
+![](img/00106.jpeg)
 
 现在，尝试导入`matplotlib`，如果没有打印错误，则成功导入模块：
 
-![](../images/00107.jpeg)
+![](img/00107.jpeg)
 
-# Matplotlib实践
+# Matplotlib 实践
 
-我们将从简单的示例开始，以探索matplotlib的功能。我们通常做的第一件事是将`matplotlib`导入到我们的Python脚本中：
+我们将从简单的示例开始，以探索 matplotlib 的功能。我们通常做的第一件事是将`matplotlib`导入到我们的 Python 脚本中：
 
 ```py
 import matplotlib.pyplot as plt
@@ -368,9 +368,9 @@ plt.plot([0, 1, 2, 3, 4], [0, 10, 20, 30, 40])
 plt.show()
 ```
 
-![](../images/00108.jpeg)在Ubuntu中，您可能需要安装`Python-tk`才能查看图表。使用`apt install Python-tk`。
+![](img/00108.jpeg)在 Ubuntu 中，您可能需要安装`Python-tk`才能查看图表。使用`apt install Python-tk`。
 
-生成的图表将显示代表x轴和y轴输入值的线。在窗口中，您可以执行以下操作：
+生成的图表将显示代表 x 轴和 y 轴输入值的线。在窗口中，您可以执行以下操作：
 
 +   使用十字图标移动图表
 
@@ -389,7 +389,7 @@ import matplotlib.pyplot as plt
 plt.plot([0, 1, 2, 3, 4], [0, 10, 20, 30, 40]) plt.xlabel("numbers") plt.ylabel("numbers multiplied by ten") plt.title("Generated Graph\nCheck it out") plt.show()
 ```
 
-![](../images/00109.jpeg)请注意，我们通常不会在Python脚本中硬编码绘制的值，而是会从网络外部获取这些值，这将在下一个示例中看到。
+![](img/00109.jpeg)请注意，我们通常不会在 Python 脚本中硬编码绘制的值，而是会从网络外部获取这些值，这将在下一个示例中看到。
 
 此外，您可以在同一图表上绘制多个数据集。您可以添加另一个代表先前图表数据的列表，`matplotlib`将绘制它。此外，您可以添加标签以区分图表上的数据集。这些标签的图例将使用`legend()`函数打印在图表上：
 
@@ -399,11 +399,11 @@ plt.plot([0, 1, 2, 3, 4], [0, 10, 20, 30, 40], label="First Line")
 plt.plot([5, 6, 7, 8, 9], [50, 60, 70, 80, 90], label="Second Line") plt.xlabel("numbers") plt.ylabel("numbers multiplied by ten") plt.title("Generated Graph\nCheck it out") plt.legend() plt.show()
 ```
 
-![](../images/00110.jpeg)
+![](img/00110.jpeg)
 
-# 使用matplotlib可视化SNMP
+# 使用 matplotlib 可视化 SNMP
 
-在这个用例中，我们将利用`pysnmp`模块向路由器发送SNMP `GET`请求，检索特定接口的输入和输出流量速率，并使用`matplotlib`库对输出进行可视化。使用的OID是`.1.3.6.1.4.1.9.2.2.1.1.6`和`.1.3.6.1.4.1.9.2.2.1.1.8`，分别表示输入和输出速率：
+在这个用例中，我们将利用`pysnmp`模块向路由器发送 SNMP `GET`请求，检索特定接口的输入和输出流量速率，并使用`matplotlib`库对输出进行可视化。使用的 OID 是`.1.3.6.1.4.1.9.2.2.1.1.6`和`.1.3.6.1.4.1.9.2.2.1.1.8`，分别表示输入和输出速率：
 
 ```py
 from pysnmp.entity.rfc3413.oneliner import cmdgen
@@ -426,24 +426,24 @@ plt.legend() plt.show()
 
 在这个例子中，我们可以看到以下内容：
 
-+   我们从`pysnmp`模块导入了`cmdgen`，用于为路由器创建SNMP `GET`命令。我们还导入了`matplotlib`模块。
++   我们从`pysnmp`模块导入了`cmdgen`，用于为路由器创建 SNMP `GET`命令。我们还导入了`matplotlib`模块。
 
-+   然后，我们使用`cmdgen`来定义Python和路由器之间的传输通道属性，并提供SNMP社区。
++   然后，我们使用`cmdgen`来定义 Python 和路由器之间的传输通道属性，并提供 SNMP 社区。
 
-+   `pysnmp`将开始使用提供的OID发送SNMP GET请求，并将输出和错误（如果有）返回到`errorIndication`、`errorStatus`、`errorIndex`和`varBinds`。我们对`varBinds`感兴趣，因为它包含输入和输出流量速率的实际值。
++   `pysnmp`将开始使用提供的 OID 发送 SNMP GET 请求，并将输出和错误（如果有）返回到`errorIndication`、`errorStatus`、`errorIndex`和`varBinds`。我们对`varBinds`感兴趣，因为它包含输入和输出流量速率的实际值。
 
 +   注意，`varBinds` 的形式将是 `<oid> = <value>`，因此我们只提取了值，并将其添加到之前创建的相应列表中。
 
-+   这个操作将在6秒的间隔内重复100次，以收集有用的数据。
++   这个操作将在 6 秒的间隔内重复 100 次，以收集有用的数据。
 
 +   最后，我们将收集到的数据提供给从 `matplotlib` 导入的 `plt`，并通过提供 `xlabel`、`ylabel`、标题和 `legends` 来自定义图表：
 
 **脚本输出**：
 
-![](../images/00111.jpeg)
+![](img/00111.jpeg)
 
 # 总结
 
-在本章中，我们学习了如何在Python中使用不同的工具和技术从返回的输出中提取有用的数据并对其进行操作。此外，我们使用了一个名为 `CiscoConfParse` 的特殊库来审计配置，并学习了如何可视化数据以生成吸引人的图表和报告。
+在本章中，我们学习了如何在 Python 中使用不同的工具和技术从返回的输出中提取有用的数据并对其进行操作。此外，我们使用了一个名为 `CiscoConfParse` 的特殊库来审计配置，并学习了如何可视化数据以生成吸引人的图表和报告。
 
 在下一章中，我们将学习如何编写模板并使用它来使用 Jinja2 模板语言生成配置。

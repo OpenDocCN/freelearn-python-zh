@@ -1,12 +1,12 @@
 # 基于进程的并行处理
 
-在上一章中，我们学习了如何使用线程来实现并发应用程序。本章将讨论我们在[第1章](64fc65f9-fe29-4c34-9da7-13f272eaab9e.xhtml)中介绍的基于进程的方法，*使用并行计算和Python入门*。特别是，本章的重点是Python的`multiprocessing`模块。
+在上一章中，我们学习了如何使用线程来实现并发应用程序。本章将讨论我们在第一章中介绍的基于进程的方法，*使用并行计算和 Python 入门*。特别是，本章的重点是 Python 的`multiprocessing`模块。
 
-Python的`multiprocessing`模块是语言标准库的一部分，实现了共享内存编程范式，即一个或多个处理器可以访问共享内存的系统的编程。
+Python 的`multiprocessing`模块是语言标准库的一部分，实现了共享内存编程范式，即一个或多个处理器可以访问共享内存的系统的编程。
 
 在本章中，我们将涵盖以下内容：
 
-+   理解Python的`multiprocessing`模块
++   理解 Python 的`multiprocessing`模块
 
 +   生成一个进程
 
@@ -28,11 +28,11 @@ Python的`multiprocessing`模块是语言标准库的一部分，实现了共享
 
 +   使用进程池
 
-# 理解Python的多进程模块
+# 理解 Python 的多进程模块
 
-Python的`multiprocessing`文档（[https://docs.python.org/2.7/library/multiprocessing.html#introduction](https://docs.python.org/2.7/library/multiprocessing.html#introduction)）清楚地提到，这个包中的所有功能都需要`main`模块对子模块可导入（[https://docs.python.org/3.3/library/multiprocessing.html](https://docs.python.org/3.3/library/multiprocessing.html)）。
+Python 的`multiprocessing`文档（[`docs.python.org/2.7/library/multiprocessing.html#introduction`](https://docs.python.org/2.7/library/multiprocessing.html#introduction)）清楚地提到，这个包中的所有功能都需要`main`模块对子模块可导入（[`docs.python.org/3.3/library/multiprocessing.html`](https://docs.python.org/3.3/library/multiprocessing.html)）。
 
-`__main__`模块在IDLE中对子模块不可导入，即使你在IDLE中以文件形式运行脚本。为了得到正确的结果，我们将从命令提示符中运行所有的例子：
+`__main__`模块在 IDLE 中对子模块不可导入，即使你在 IDLE 中以文件形式运行脚本。为了得到正确的结果，我们将从命令提示符中运行所有的例子：
 
 ```py
 > python multiprocessing_example.py
@@ -64,7 +64,7 @@ Python的`multiprocessing`文档（[https://docs.python.org/2.7/library/multipro
 import multiprocessing
 ```
 
-1.  每个进程都与`myFunc(i)`函数相关联。这个函数输出从`0`到`i`的数字，其中`i`是与进程编号相关联的ID： 
+1.  每个进程都与`myFunc(i)`函数相关联。这个函数输出从`0`到`i`的数字，其中`i`是与进程编号相关联的 ID： 
 
 ```py
 def myFunc(i):
@@ -95,7 +95,7 @@ if __name__ == '__main__':
 
 在本节中，我们看到了如何从父进程开始创建进程。这个特性被称为*生成进程*。
 
-Python的`multiprocessing`库通过以下三个简单步骤轻松管理进程。第一步是通过`multiprocessing`类方法`Process`定义进程：
+Python 的`multiprocessing`库通过以下三个简单步骤轻松管理进程。第一步是通过`multiprocessing`类方法`Process`定义进程：
 
 ```py
 process = multiprocessing.Process(target=myFunc, args=(i,))
@@ -116,7 +116,7 @@ process = multiprocessing.Process(target=myFunc, args=(i,))
 > python spawning_processes.py
 ```
 
-对于每个创建的进程（总共有六个），显示目标函数的输出。记住这只是一个从`0`到进程ID的索引的简单计数器：
+对于每个创建的进程（总共有六个），显示目标函数的输出。记住这只是一个从`0`到进程 ID 的索引的简单计数器：
 
 ```py
 calling myFunc from process n°: 0
@@ -179,7 +179,7 @@ if __name__ == '__main__':
 
 # 另请参阅
 
-`multiprocessing`库的官方指南可以在[https://docs.python.org/3/](https://docs.python.org/3/)找到。
+`multiprocessing`库的官方指南可以在[`docs.python.org/3/`](https://docs.python.org/3/)找到。
 
 # 给进程命名
 
@@ -249,7 +249,7 @@ Exiting process name = myFunc process
 
 # 还有更多...
 
-主Python进程是`multiprocessing.process._MainProcess`，而子进程是`multiprocessing.process.Process`。可以通过简单地输入以下内容进行测试：
+主 Python 进程是`multiprocessing.process._MainProcess`，而子进程是`multiprocessing.process.Process`。可以通过简单地输入以下内容进行测试：
 
 ```py
 >>> import multiprocessing
@@ -259,13 +259,13 @@ Exiting process name = myFunc process
 
 # 另请参阅
 
-有关此主题的更多信息，请访问[https://doughellmann.com/blog/2012/04/30/determining-the-name-of-a-process-from-python/](https://doughellmann.com/blog/2012/04/30/determining-the-name-of-a-process-from-python/)。
+有关此主题的更多信息，请访问[`doughellmann.com/blog/2012/04/30/determining-the-name-of-a-process-from-python/`](https://doughellmann.com/blog/2012/04/30/determining-the-name-of-a-process-from-python/)。
 
 # 在后台运行进程
 
 在后台运行是一种典型的执行模式，适用于一些不需要用户存在或干预的程序，并且可能与其他程序的执行同时进行（因此，只有在多任务系统中才可能），导致用户对此毫不知情。后台程序通常执行长时间或耗时的任务，如点对点文件共享程序或文件系统的碎片整理。许多操作系统进程也在后台运行。
 
-在Windows中，以这种模式运行的程序（如扫描防病毒软件或操作系统更新）通常会在系统托盘（桌面旁边的系统时钟区域）放置一个图标，以便通知它们的活动，并采取减少资源使用的行为，以免干扰用户的交互活动，如减慢或引起中断。在Unix和类Unix系统中，运行在后台的进程称为**守护进程**。使用任务管理器可以突出显示所有运行的程序，包括后台程序。
+在 Windows 中，以这种模式运行的程序（如扫描防病毒软件或操作系统更新）通常会在系统托盘（桌面旁边的系统时钟区域）放置一个图标，以便通知它们的活动，并采取减少资源使用的行为，以免干扰用户的交互活动，如减慢或引起中断。在 Unix 和类 Unix 系统中，运行在后台的进程称为**守护进程**。使用任务管理器可以突出显示所有运行的程序，包括后台程序。
 
 # 准备就绪
 
@@ -385,7 +385,7 @@ Exiting background_process
 
 # 另请参阅
 
-可以在[https://janakiev.com/til/python-background/](https://janakiev.com/til/python-background/)找到有关如何在Linux中后台运行Python脚本的代码片段。
+可以在[`janakiev.com/til/python-background/`](https://janakiev.com/til/python-background/)找到有关如何在 Linux 中后台运行 Python 脚本的代码片段。
 
 # 终止进程
 
@@ -469,7 +469,7 @@ Process exit code: -15
 
 # 另请参阅
 
-在Linux机器上，可以通过以下教程简单地识别并终止Python进程：[http://www.cagrimmett.com/til/2016/05/06/killing-rogue-python-processes.html](http://www.cagrimmett.com/til/2016/05/06/killing-rogue-python-processes.html)。
+在 Linux 机器上，可以通过以下教程简单地识别并终止 Python 进程：[`www.cagrimmett.com/til/2016/05/06/killing-rogue-python-processes.html`](http://www.cagrimmett.com/til/2016/05/06/killing-rogue-python-processes.html)。
 
 # 在子类中定义进程
 
@@ -564,11 +564,11 @@ called run method by MyProcess-10
 
 # 另请参阅
 
-有关类定义技术的更多信息可以在[http://buildingskills.itmaybeahack.com/book/python-2.6/html/p03/p03c02_adv_class.html](http://buildingskills.itmaybeahack.com/book/python-2.6/html/p03/p03c02_adv_class.html)找到。
+有关类定义技术的更多信息可以在[`buildingskills.itmaybeahack.com/book/python-2.6/html/p03/p03c02_adv_class.html`](http://buildingskills.itmaybeahack.com/book/python-2.6/html/p03/p03c02_adv_class.html)找到。
 
 # 使用队列交换数据
 
-*队列*是一种**先进先出**（**FIFO**）类型的数据结构（第一个输入是第一个退出）。一个实际的例子是排队等待服务，如在超市付款，或者在理发店理发。理想情况下，你会按照你的出现顺序被服务。这正是FIFO队列的工作原理。
+*队列*是一种**先进先出**（**FIFO**）类型的数据结构（第一个输入是第一个退出）。一个实际的例子是排队等待服务，如在超市付款，或者在理发店理发。理想情况下，你会按照你的出现顺序被服务。这正是 FIFO 队列的工作原理。
 
 # 准备就绪
 
@@ -721,7 +721,7 @@ the queue is empty
 
 # 另请参阅
 
-有一个关于如何使用队列的好教程，可以在[https://www.pythoncentral.io/use-queue-beginners-guide/](https://www.pythoncentral.io/use-queue-beginners-guide/)找到。
+有一个关于如何使用队列的好教程，可以在[`www.pythoncentral.io/use-queue-beginners-guide/`](https://www.pythoncentral.io/use-queue-beginners-guide/)找到。
 
 # 使用管道交换对象
 
@@ -879,7 +879,7 @@ print (pipe_2[1].recv())
 
 # 另请参阅
 
-有关Python和管道的更多信息，请访问[https://www.python-course.eu/pipes.php](https://www.python-course.eu/pipes.php%0d)。
+有关 Python 和管道的更多信息，请访问[`www.python-course.eu/pipes.php`](https://www.python-course.eu/pipes.php%0d)。
 
 # 同步进程
 
@@ -895,13 +895,13 @@ print (pipe_2[1].recv())
 
 +   **信号量**：用于共享公共资源，例如支持固定数量的同时连接。
 
-+   **RLock**：这定义了*递归锁*对象。RLock的方法和功能与`threading`模块相同。
++   **RLock**：这定义了*递归锁*对象。RLock 的方法和功能与`threading`模块相同。
 
 +   **Barrier**：这将程序分为阶段，因为它要求所有进程在继续之前都要到达屏障。在屏障之后执行的代码不能与屏障之前执行的代码并发。
 
 # 准备就绪
 
-Python中的*Barrier*对象用于等待固定数量的线程执行完毕，然后给定线程才能继续执行程序。
+Python 中的*Barrier*对象用于等待固定数量的线程执行完毕，然后给定线程才能继续执行程序。
 
 以下示例显示了如何使用`barrier()`对象同步同时进行的任务。
 
@@ -963,7 +963,7 @@ if __name__ == '__main__':
 
 # 工作原理...
 
-`Barrier`对象提供了Python同步技术之一，单个或多个线程在一组活动中等待，然后一起取得进展。
+`Barrier`对象提供了 Python 同步技术之一，单个或多个线程在一组活动中等待，然后一起取得进展。
 
 在`main`程序中，通过以下语句定义了`Barrier`对象（即`synchronizer`）：
 
@@ -1004,13 +1004,13 @@ process p2 - test_with_barrier ----> 2019-03-03 08:58:06.175505
 
 以下图表显示了屏障如何与两个进程一起工作：
 
-![](assets/f9077bdf-036b-4f0e-90ea-0ddfd80fc58f.png)
+![](img/f9077bdf-036b-4f0e-90ea-0ddfd80fc58f.png)
 
 使用屏障进行进程管理
 
 # 另请参阅
 
-请阅读[https://pymotw.com/2/multiprocessing/communication.html](https://pymotw.com/2/multiprocessing/communication.html)以获取更多进程同步示例。
+请阅读[`pymotw.com/2/multiprocessing/communication.html`](https://pymotw.com/2/multiprocessing/communication.html)以获取更多进程同步示例。
 
 # 使用进程池
 
@@ -1026,9 +1026,9 @@ process p2 - test_with_barrier ----> 2019-03-03 08:58:06.175505
 
 +   `apply_async()`: 这是`apply()`方法的变体，返回一个结果对象。这是一个异步操作，直到所有子类都执行完毕才会锁定主线程。
 
-+   `map()`: 这是内置`map()`的并行等价物（[https://docs.python.org/2/library/functions.html#map](https://docs.python.org/2/library/functions.html#map)）。这会阻塞，直到结果准备好，并且它会将可迭代数据分成多个块，作为单独的任务提交给进程池。
++   `map()`: 这是内置`map()`的并行等价物（[`docs.python.org/2/library/functions.html#map`](https://docs.python.org/2/library/functions.html#map)）。这会阻塞，直到结果准备好，并且它会将可迭代数据分成多个块，作为单独的任务提交给进程池。
 
-+   `map_async()`: 这是`map()`的一个变体（[https://docs.python.org/2/library/multiprocessing.html?highlight=pool%20class#multiprocessing.pool.multiprocessing.Pool.map](https://docs.python.org/2/library/multiprocessing.html?highlight=pool%20class#multiprocessing.pool.multiprocessing.Pool.map)），它返回一个`result`对象。如果指定了回调函数，则应该是可调用的，接受一个参数。当结果准备好时，将应用回调函数（除非调用失败）。回调函数应立即完成；否则，处理结果的线程将被阻塞。
++   `map_async()`: 这是`map()`的一个变体（[`docs.python.org/2/library/multiprocessing.html?highlight=pool%20class#multiprocessing.pool.multiprocessing.Pool.map`](https://docs.python.org/2/library/multiprocessing.html?highlight=pool%20class#multiprocessing.pool.multiprocessing.Pool.map)），它返回一个`result`对象。如果指定了回调函数，则应该是可调用的，接受一个参数。当结果准备好时，将应用回调函数（除非调用失败）。回调函数应立即完成；否则，处理结果的线程将被阻塞。
 
 # 如何做…
 
@@ -1076,7 +1076,7 @@ if __name__ == '__main__':
  print ('Pool    :', pool_outputs)
 ```
 
-重要的是要注意，`pool.map()`方法的结果等同于Python内置的`map()`函数，只是进程是并行运行的。
+重要的是要注意，`pool.map()`方法的结果等同于 Python 内置的`map()`函数，只是进程是并行运行的。
 
 # 工作原理…
 
@@ -1086,7 +1086,7 @@ if __name__ == '__main__':
  pool = multiprocessing.Pool(processes=4)
 ```
 
-每个进程都有一个整数列表作为输入。在这里，`pool.map`的工作方式与map相同，但使用了多个进程，其数量为四，在创建pool时事先定义好了：
+每个进程都有一个整数列表作为输入。在这里，`pool.map`的工作方式与 map 相同，但使用了多个进程，其数量为四，在创建 pool 时事先定义好了：
 
 ```py
  pool_outputs = pool.map(function_square, inputs)
@@ -1136,4 +1136,4 @@ if __name__ == '__main__':
 
 # 另请参阅
 
-要了解更多关于进程池的信息，请使用以下链接：[https://www.tutorialspoint.com/concurrency_in_python/concurrency_in_python_pool_of_processes.htm](https://www.tutorialspoint.com/concurrency_in_python/concurrency_in_python_pool_of_processes.htm)。
+要了解更多关于进程池的信息，请使用以下链接：[`www.tutorialspoint.com/concurrency_in_python/concurrency_in_python_pool_of_processes.htm`](https://www.tutorialspoint.com/concurrency_in_python/concurrency_in_python_pool_of_processes.htm)。

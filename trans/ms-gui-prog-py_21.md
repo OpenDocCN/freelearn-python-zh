@@ -1,18 +1,18 @@
 # 问题的答案
 
-# 第1章
+# 第一章
 
-1.  **Qt是用C++编写的，这种语言与Python非常不同。这两种语言之间有哪些主要区别？在我们使用Python中的Qt时，这些区别可能会如何体现？**
+1.  **Qt 是用 C++编写的，这种语言与 Python 非常不同。这两种语言之间有哪些主要区别？在我们使用 Python 中的 Qt 时，这些区别可能会如何体现？**
 
-C++语言的差异以多种方式影响PyQt，例如：
+C++语言的差异以多种方式影响 PyQt，例如：
 
-+   +   它的静态类型和类型安全的函数意味着在某些情况下，PyQt对可以调用的函数和可以传递的变量相当严格。
++   +   它的静态类型和类型安全的函数意味着在某些情况下，PyQt 对可以调用的函数和可以传递的变量相当严格。
 
-+   C++中缺乏内置数据类型意味着Qt提供了丰富的数据类型选择，其中许多我们必须在Python中使用，因为类型安全。
++   C++中缺乏内置数据类型意味着 Qt 提供了丰富的数据类型选择，其中许多我们必须在 Python 中使用，因为类型安全。
 
-+   在C++中常见但在Python中很少见的`enum`类型在Qt中普遍存在。
++   在 C++中常见但在 Python 中很少见的`enum`类型在 Qt 中普遍存在。
 
-1.  GUI由小部件组成。在计算机上打开一些GUI应用程序，尝试识别尽可能多的小部件。
+1.  GUI 由小部件组成。在计算机上打开一些 GUI 应用程序，尝试识别尽可能多的小部件。
 
 一些例子可能包括以下内容：
 
@@ -64,19 +64,19 @@ C++语言的差异以多种方式影响PyQt，例如：
 
 答案**b**是正确的。在大多数情况下，`property`的访问器是`property()`和`setProperty()`。
 
-1.  `QDate`是用于包装日历日期的类。你期望在三个主要的Qt模块中的哪一个找到它？
+1.  `QDate`是用于包装日历日期的类。你期望在三个主要的 Qt 模块中的哪一个找到它？
 
-`QDate`在`QtCore`中。`QtCore`保存了与GUI不一定相关的数据类型类。
+`QDate`在`QtCore`中。`QtCore`保存了与 GUI 不一定相关的数据类型类。
 
-1.  `QFont`是定义屏幕字体的类。你期望在三个主要的Qt模块中的哪一个找到它？
+1.  `QFont`是定义屏幕字体的类。你期望在三个主要的 Qt 模块中的哪一个找到它？
 
-`QFont`在`QtGui`中。字体与GUI相关，但不是小部件或布局，所以你期望它在`QtGui`中。
+`QFont`在`QtGui`中。字体与 GUI 相关，但不是小部件或布局，所以你期望它在`QtGui`中。
 
-1.  **你能使用Qt Designer重新创建`hello_world.py`吗？确保设置`windowTitle`。**
+1.  **你能使用 Qt Designer 重新创建`hello_world.py`吗？确保设置`windowTitle`。**
 
 基于`QWidget`创建一个新项目。然后选择主窗口小部件，并在属性窗格中设置`windowTitle`。
 
-# 第2章
+# 第二章
 
 1.  **你如何创建一个全屏的`QWidget`，没有窗口框架，并使用沙漏光标？**
 
@@ -92,15 +92,15 @@ C++语言的差异以多种方式影响PyQt，例如：
 
 +   +   **计算机制造**：公司购买的八个品牌之一
 
-+   **处理器速度**：CPU速度（GHz）
++   **处理器速度**：CPU 速度（GHz）
 
-+   **内存量**：RAM的数量，以MB为单位
++   **内存量**：RAM 的数量，以 MB 为单位
 
 +   **主机名**：计算机的主机名
 
-+   **视频制造**：视频硬件是Nvidia、AMD还是Intel
++   **视频制造**：视频硬件是 Nvidia、AMD 还是 Intel
 
-+   **OEM许可**：计算机是否使用OEM许可
++   **OEM 许可**：计算机是否使用 OEM 许可
 
 这个表格列出了一些可能的答案：
 
@@ -111,7 +111,7 @@ C++语言的差异以多种方式影响PyQt，例如：
 | 内存量 | `QSpinBox` | 整数值的最佳选择 |
 | 主机名 | `QLineEdit` | 主机名只是一个单行文本字符串 |
 | 视频制造 | `QComboBox`，`QRadioButton` | 组合框可以工作，但只有三个选择，单选按钮也是一个选项 |
-| OEM许可 | `QCheckBox` | `QCheckBox`是布尔值的一个很好的选择 |
+| OEM 许可 | `QCheckBox` | `QCheckBox`是布尔值的一个很好的选择 |
 
 1.  **数据输入表单包括一个需要`XX-999-9999X`格式的`库存编号`字段，其中`X`是从`A`到`Z`的大写字母，不包括`O`和`I`，`9`是从`0`到`9`的数字。你能创建一个验证器类来验证这个输入吗？**
 
@@ -119,7 +119,7 @@ C++语言的差异以多种方式影响PyQt，例如：
 
 1.  查看以下计算器表单：
 
-![](assets/1ecc9365-5e6d-40b1-9764-b07adf8f0aff.png)
+![](img/1ecc9365-5e6d-40b1-9764-b07adf8f0aff.png)
 
 **可能使用了哪些布局来创建它？**
 
@@ -129,15 +129,15 @@ C++语言的差异以多种方式影响PyQt，例如：
 
 在每个小部件上设置`sizePolicy`属性为`QtWidgets.QSizePolicy.Expanding`，垂直和水平都是。
 
-1.  **计算器表单中最顶部的小部件是一个`QLCDNumber`小部件。你能找到关于这个小部件的Qt文档吗？它有哪些独特的属性？什么时候会用到它？**
+1.  **计算器表单中最顶部的小部件是一个`QLCDNumber`小部件。你能找到关于这个小部件的 Qt 文档吗？它有哪些独特的属性？什么时候会用到它？**
 
-`QLCDNumber`的文档在[https://doc.qt.io/qt-5/qlcdnumber.html](https://doc.qt.io/qt-5/qlcdnumber.html)。它的独特属性是`digitCount`、`intValue`、`mode`、`segmentStyle`、`smallDecimalPoint`和`value`。它适用于显示任何类型的数字，包括八进制、十六进制和二进制。
+`QLCDNumber`的文档在[`doc.qt.io/qt-5/qlcdnumber.html`](https://doc.qt.io/qt-5/qlcdnumber.html)。它的独特属性是`digitCount`、`intValue`、`mode`、`segmentStyle`、`smallDecimalPoint`和`value`。它适用于显示任何类型的数字，包括八进制、十六进制和二进制。
 
 1.  **从你的模板代码开始，在代码中构建计算器表单。**
 
 在示例代码中查看`calculator_form.py`。
 
-1.  **在Qt Designer中构建计算器表单。**
+1.  **在 Qt Designer 中构建计算器表单。**
 
 在示例代码中查看`calculator_form.ui`。
 
@@ -176,11 +176,11 @@ C++语言的差异以多种方式影响PyQt，例如：
             self.close()
 ```
 
-1.  **你在Qt文档中找到一个对象，它的槽需要`QString`作为参数。你能连接你自定义的信号，发送一个Python `str`对象吗？**
+1.  **你在 Qt 文档中找到一个对象，它的槽需要`QString`作为参数。你能连接你自定义的信号，发送一个 Python `str`对象吗？**
 
-可以，因为PyQt会自动在`QString`和Python `str`对象之间转换。
+可以，因为 PyQt 会自动在`QString`和 Python `str`对象之间转换。
 
-1.  **你在Qt文档中找到一个对象，它的槽需要`QVariant`作为参数。你可以发送哪些内置的Python类型到这个槽？**
+1.  **你在 Qt 文档中找到一个对象，它的槽需要`QVariant`作为参数。你可以发送哪些内置的 Python 类型到这个槽？**
 
 任何一个都可以发送。`QVariant`是一个通用对象容器，可以容纳任何其他类型的对象。
 
@@ -222,7 +222,7 @@ C++语言的差异以多种方式影响PyQt，例如：
             self.destroy()
 ```
 
-1.  **你在Qt Designer中为一个计算器应用程序创建了一个`.ui`文件，并尝试在代码中让它工作，但是没有成功。你做错了什么？查看以下源代码：**
+1.  **你在 Qt Designer 中为一个计算器应用程序创建了一个`.ui`文件，并尝试在代码中让它工作，但是没有成功。你做错了什么？查看以下源代码：**
 
 ```py
     from calculator_form import Ui_Calculator
@@ -267,9 +267,9 @@ C++语言的差异以多种方式影响PyQt，例如：
 
 因为我们用自己的信号覆盖了内置的`clicked`属性，`self.clicked`不再指向按钮被点击时发出的信号。我们必须调用`super().clicked`来获得对父类`clicked`信号的引用。
 
-# 第4章
+# 第四章
 
-1.  **你想要使用`calendar_app.py`脚本中的`QMainWindow`，来自[第3章](dbb86a9b-0050-490e-94da-1f4661d8bc66.xhtml)，*使用信号和槽处理事件*。你会如何进行转换？**
+1.  **你想要使用`calendar_app.py`脚本中的`QMainWindow`，来自第三章，*使用信号和槽处理事件*。你会如何进行转换？**
 
 最简单的方法是以下：
 
@@ -281,7 +281,7 @@ C++语言的差异以多种方式影响PyQt，例如：
 
 1.  **你正在开发一个应用程序，并已将子菜单名称添加到菜单栏，但尚未填充任何子菜单。你的同事说在他测试时他的桌面上没有出现任何菜单名称。你的代码看起来是正确的；这里可能出了什么问题？**
 
-你的同事正在使用一个默认不显示空菜单文件夹的平台（如macOS）。
+你的同事正在使用一个默认不显示空菜单文件夹的平台（如 macOS）。
 
 1.  **你正在开发一个代码编辑器，并希望创建一个侧边栏面板与调试器进行交互。哪个`QMainWindow`特性对这个任务最合适？**
 
@@ -296,7 +296,7 @@ C++语言的差异以多种方式影响PyQt，例如：
         sys.exit()
 ```
 
-`QMessageBox.question()`不返回布尔值；它返回与点击的按钮类型匹配的常量。匹配`No`按钮的常量的实际整数值是`65536`，在Python中评估为`True`。代码应该如下所示：
+`QMessageBox.question()`不返回布尔值；它返回与点击的按钮类型匹配的常量。匹配`No`按钮的常量的实际整数值是`65536`，在 Python 中评估为`True`。代码应该如下所示：
 
 ```py
     answer = qtw.QMessageBox.question(
@@ -315,7 +315,7 @@ C++语言的差异以多种方式影响PyQt，例如：
 
 答案**a**和**c**都可以。答案**b**不行，因为`accept`的返回值在调用`exec()`时对话框没有返回。`exec()`只返回一个布尔值，指示对话框是被接受还是被拒绝。
 
-1.  **你正在Linux上开发一个名为SuperPhoto的照片编辑器。你已经编写了代码并保存了用户设置，但是在`~/.config/`中找不到`SuperPhoto.conf`。查看代码并确定出了什么问题：**
+1.  **你正在 Linux 上开发一个名为 SuperPhoto 的照片编辑器。你已经编写了代码并保存了用户设置，但是在`~/.config/`中找不到`SuperPhoto.conf`。查看代码并确定出了什么问题：**
 
 ```py
     settings = qtc.QSettings()
@@ -324,14 +324,14 @@ C++语言的差异以多种方式影响PyQt，例如：
     settings.sync()
 ```
 
-`QSettings`使用的配置文件（或在Windows上的注册表键）由传递给构造函数的公司名称和应用程序名称确定。代码应该如下所示：
+`QSettings`使用的配置文件（或在 Windows 上的注册表键）由传递给构造函数的公司名称和应用程序名称确定。代码应该如下所示：
 
 ```py
  settings = qtc.QSettings('My Company', 'SuperPhoto')
  settings.setValue('default_color', QColor('black'))
 ```
 
-另外，注意`sync()`不需要显式调用。它会被Qt事件循环自动调用。
+另外，注意`sync()`不需要显式调用。它会被 Qt 事件循环自动调用。
 
 1.  **你正在从设置对话框保存偏好设置，但出于某种原因，保存的设置返回的结果非常奇怪。这里有什么问题？看看以下代码：**
 
@@ -344,7 +344,7 @@ C++语言的差异以多种方式影响PyQt，例如：
 
 问题在于你实际上没有调用小部件的访问函数。因此，`settings`存储了访问函数的引用。在下一次程序启动时，这些引用是无意义的，因为新的对象被创建在新的内存位置。请注意，如果你保存函数引用，`settings`不会抱怨。
 
-# 第5章
+# 第五章
 
 1.  **假设我们有一个设计良好的模型-视图应用程序，以下代码是模型还是视图的一部分？**
 
@@ -354,21 +354,21 @@ C++语言的差异以多种方式影响PyQt，例如：
     self.data.save_file(filename)
 ```
 
-这是视图代码，因为它创建了一个GUI元素（文件对话框），并似乎回调到可能是一个模型的东西（`self.data`）。
+这是视图代码，因为它创建了一个 GUI 元素（文件对话框），并似乎回调到可能是一个模型的东西（`self.data`）。
 
 1.  **您能否至少列举两件模型绝对不应该做的事情，以及视图绝对不应该做的两件事情？**
 
-模型绝对不应该做的事情的例子包括创建或直接更改GUI元素，为演示格式化数据，或关闭应用程序。视图绝对不应该做的事情的例子包括将数据保存到磁盘，对存储的数据执行转换（如排序或算术），或从模型以外的任何地方读取数据。
+模型绝对不应该做的事情的例子包括创建或直接更改 GUI 元素，为演示格式化数据，或关闭应用程序。视图绝对不应该做的事情的例子包括将数据保存到磁盘，对存储的数据执行转换（如排序或算术），或从模型以外的任何地方读取数据。
 
-1.  `QAbstractTableModel`和`QAbstractTreeModel`都在名称中带有`abstract`。在这种情况下，`abstract`是什么意思？在C++中，它的含义与Python中的含义不同吗？
+1.  `QAbstractTableModel`和`QAbstractTreeModel`都在名称中带有`abstract`。在这种情况下，`abstract`是什么意思？在 C++中，它的含义与 Python 中的含义不同吗？
 
-在任何编程语言中，抽象类是指不打算实例化为对象的类；它们只应该被子类化，并覆盖所需的方法。在Python中，这是暗示的，但不是强制的；在C++中，标记为`abstract`的类将无法实例化。
+在任何编程语言中，抽象类是指不打算实例化为对象的类；它们只应该被子类化，并覆盖所需的方法。在 Python 中，这是暗示的，但不是强制的；在 C++中，标记为`abstract`的类将无法实例化。
 
 1.  **以下哪种模型类型——列表、表格或树——最适合以下数据集？**
 
 +   1.  **用户的最近文件**
 
-1.  **Windows注册表**
+1.  **Windows 注册表**
 
 1.  **Linux `syslog`记录**
 
@@ -430,15 +430,15 @@ C++语言的差异以多种方式影响PyQt，例如：
                 return self._data[index.row()][index.column()]
 ```
 
-# 第6章
+# 第六章
 
 1.  **您正在准备分发您的文本编辑器应用程序，并希望确保用户无论使用什么平台，都会默认获得等宽字体。您可以使用哪两种方法来实现这一点？**
 
-第一种方法是将默认字体的`styleHint`设置为`QtGui.QFont.Monospace`。第二种方法是找到一个适当许可的等宽字体，将其捆绑到Qt资源文件中，并将字体设置为您捆绑的字体。
+第一种方法是将默认字体的`styleHint`设置为`QtGui.QFont.Monospace`。第二种方法是找到一个适当许可的等宽字体，将其捆绑到 Qt 资源文件中，并将字体设置为您捆绑的字体。
 
 1.  **尽可能地，尝试使用`QFont`模仿以下文本：**
 
-![](assets/7bcc4ce2-2313-4c4a-81c0-6897c8e32149.png)
+![](img/7bcc4ce2-2313-4c4a-81c0-6897c8e32149.png)
 
 代码如下：
 
@@ -484,7 +484,7 @@ C++语言的差异以多种方式影响PyQt，例如：
    widget.setPalette(palette)
 ```
 
-1.  **您试图使用QSS使删除按钮变成粉色，但没有成功。您的代码有什么问题？**
+1.  **您试图使用 QSS 使删除按钮变成粉色，但没有成功。您的代码有什么问题？**
 
 ```py
    deleteButton = qtw.QPushButton('Delete')
@@ -494,7 +494,7 @@ C++语言的差异以多种方式影响PyQt，例如：
    )
 ```
 
-您的代码有两个问题。首先，您的`deleteButton`没有分配`objectName`。QSS对您的Python变量名称一无所知；它只知道Qt对象名称。其次，您的样式表没有使用`#`符号前缀对象名称。更正后的代码应该如下所示：
+您的代码有两个问题。首先，您的`deleteButton`没有分配`objectName`。QSS 对您的 Python 变量名称一无所知；它只知道 Qt 对象名称。其次，您的样式表没有使用`#`符号前缀对象名称。更正后的代码应该如下所示：
 
 ```py
    deleteButton = qtw.QPushButton('Delete')
@@ -515,11 +515,11 @@ C++语言的差异以多种方式影响PyQt，例如：
 
 `stylesheet1`将把任何`QWidget`子类的背景变成黑色，包括`QLineEdit`。`stylesheet2`只会把实际`QWidget`对象的背景变成黑色；子类将保持不受影响。
 
-1.  **使用下拉框构建一个简单的应用程序，允许您将Qt样式更改为系统上安装的任何样式。包括一些其他小部件，以便您可以看到它们在不同样式下的外观。**
+1.  **使用下拉框构建一个简单的应用程序，允许您将 Qt 样式更改为系统上安装的任何样式。包括一些其他小部件，以便您可以看到它们在不同样式下的外观。**
 
 在本章的示例代码中查看`question_8_answer.py`。
 
-1.  **您对学习如何为PyQt应用程序设置样式感到非常高兴，并希望创建一个`QProxyStyle`类，该类将强制GUI中的所有像素图像为`smile.gif`。您会如何做？提示：您需要研究一些`QStyle`的绘图方法，而不是本章讨论的方法。**
+1.  **您对学习如何为 PyQt 应用程序设置样式感到非常高兴，并希望创建一个`QProxyStyle`类，该类将强制 GUI 中的所有像素图像为`smile.gif`。您会如何做？提示：您需要研究一些`QStyle`的绘图方法，而不是本章讨论的方法。**
 
 该类如下所示：
 
@@ -549,13 +549,13 @@ C++语言的差异以多种方式影响PyQt，例如：
 
 简短的答案是`animation`应该是`self.animation`。动画没有父对象，当它们被添加到布局时，它们不会像小部件一样被**重新父化**。因此，当构造函数退出时，`animation`就会超出范围并被销毁。故事的寓意是，保存您的动画作为实例变量。
 
-# 第7章
+# 第七章
 
-1.  **使用`QSoundEffect`，您为呼叫中心编写了一个实用程序，允许他们回顾录制的电话呼叫。他们正在转移到一个新的电话系统，该系统将电话呼叫存储为MP3文件。您需要对您的实用程序进行任何更改吗？**
+1.  **使用`QSoundEffect`，您为呼叫中心编写了一个实用程序，允许他们回顾录制的电话呼叫。他们正在转移到一个新的电话系统，该系统将电话呼叫存储为 MP3 文件。您需要对您的实用程序进行任何更改吗？**
 
-是的。您需要使用`QMediaPlayer`而不是`QSoundEffect`，或者编写一个解码MP3到WAV的层，因为`QSoundEffect`无法播放压缩音频。
+是的。您需要使用`QMediaPlayer`而不是`QSoundEffect`，或者编写一个解码 MP3 到 WAV 的层，因为`QSoundEffect`无法播放压缩音频。
 
-1.  `cool_songs`是一个Python列表，其中包含您最喜欢的歌曲的路径字符串。要以随机顺序播放这些歌曲，您需要做什么？
+1.  `cool_songs`是一个 Python 列表，其中包含您最喜欢的歌曲的路径字符串。要以随机顺序播放这些歌曲，您需要做什么？
 
 您需要将路径转换为`QUrl`对象，将它们添加到`QMediaPlaylist`，将`playbackMode`设置为`Random`，然后将其传递给`QMediaPlayer`。代码如下：
 
@@ -589,11 +589,11 @@ C++语言的差异以多种方式影响PyQt，例如：
    recorder.record()
 ```
 
-1.  在几个不同的Windows、macOS和Linux系统上运行`audio_test.py`和`video_test.py`。输出有什么不同？有哪些项目在所有系统上都受支持？
+1.  在几个不同的 Windows、macOS 和 Linux 系统上运行`audio_test.py`和`video_test.py`。输出有什么不同？有哪些项目在所有系统上都受支持？
 
 答案将取决于您选择的系统。
 
-1.  `QCamera`类的属性包括几个控制对象，允许您管理相机的不同方面。其中之一是`QCameraFocus`。在Qt文档中查看`QCameraFocus`，并编写一个简单的脚本，显示取景器并让您调整数字变焦。
+1.  `QCamera`类的属性包括几个控制对象，允许您管理相机的不同方面。其中之一是`QCameraFocus`。在 Qt 文档中查看`QCameraFocus`，并编写一个简单的脚本，显示取景器并让您调整数字变焦。
 
 在包含的代码示例中查看`question_5_example_code.py`。
 
@@ -605,13 +605,13 @@ C++语言的差异以多种方式影响PyQt，例如：
 
 这里就靠你自己了！
 
-# 第8章
+# 第八章
 
 1.  **您正在设计一个应用程序，该应用程序将向本地网络发出状态消息，您将使用管理员工具进行监控。哪种类型的套接字对象是一个不错的选择？**
 
-在这里最好使用`QUdpSocket`，因为它允许广播数据包，并且状态数据包不需要TCP的开销。
+在这里最好使用`QUdpSocket`，因为它允许广播数据包，并且状态数据包不需要 TCP 的开销。
 
-1.  您的GUI类有一个名为`self.socket`的`QTcpSocket`对象。您已经将其`readyRead`信号连接到以下方法，但它没有起作用。发生了什么，您该如何修复它？
+1.  您的 GUI 类有一个名为`self.socket`的`QTcpSocket`对象。您已经将其`readyRead`信号连接到以下方法，但它没有起作用。发生了什么，您该如何修复它？
 
 ```py
        def on_ready_read(self):
@@ -619,11 +619,11 @@ C++语言的差异以多种方式影响PyQt，例如：
                self.process_data(self.socket.readDatagram())
 ```
 
-`QTcpSocket`没有`hasPendingDatagrams()`或`readDatagram()`方法。TCP套接字使用数据流而不是数据包。这个方法需要重写以使用`QDataStream`对象提取数据。
+`QTcpSocket`没有`hasPendingDatagrams()`或`readDatagram()`方法。TCP 套接字使用数据流而不是数据包。这个方法需要重写以使用`QDataStream`对象提取数据。
 
 1.  使用`QTcpServer`实现一个简单的服务，监听端口`8080`并打印接收到的任何请求。让它用您选择的字节字符串回复客户端。
 
-在示例代码中查看`question_3_tcp_server.py`。通过运行脚本并将Web浏览器指向[http://localhost:8080](http://localhost:8080)来进行测试。
+在示例代码中查看`question_3_tcp_server.py`。通过运行脚本并将 Web 浏览器指向[`localhost:8080`](http://localhost:8080)来进行测试。
 
 1.  您正在为应用程序创建一个下载函数，以便检索一个大型数据文件以导入到您的应用程序中。代码不起作用。阅读代码并决定您做错了什么：
 
@@ -639,13 +639,13 @@ C++语言的差异以多种方式影响PyQt，例如：
 
 您试图同步使用`QNetworkAccessManager.get()`，但它是设计用于异步使用的。您需要连接一个回调到网络访问管理器的`finished`信号，而不是从`get()`中检索回复对象，它携带完成的回复。
 
-1.  修改您的`poster.py`脚本，以便将键值数据发送为JSON，而不是HTTP表单数据。
+1.  修改您的`poster.py`脚本，以便将键值数据发送为 JSON，而不是 HTTP 表单数据。
 
 在示例代码中查看`question_5_json_poster.py`文件。
 
-# 第9章
+# 第九章
 
-1.  编写一个SQL `CREATE`语句，用于构建一个表来保存电视节目表。确保它具有日期、时间、频道和节目名称的字段。还要确保它具有主键和约束，以防止无意义的数据（例如在同一频道上同时播放两个节目，或者一个节目没有时间或日期）。
+1.  编写一个 SQL `CREATE`语句，用于构建一个表来保存电视节目表。确保它具有日期、时间、频道和节目名称的字段。还要确保它具有主键和约束，以防止无意义的数据（例如在同一频道上同时播放两个节目，或者一个节目没有时间或日期）。
 
 一个示例可能如下所示：
 
@@ -660,7 +660,7 @@ C++语言的差异以多种方式影响PyQt，例如：
    )
 ```
 
-1.  以下SQL查询返回语法错误；您能修复它吗？
+1.  以下 SQL 查询返回语法错误；您能修复它吗？
 
 ```py
 DELETE * FROM my_table IF category_id == 12;
@@ -672,15 +672,15 @@ DELETE * FROM my_table IF category_id == 12;
 
 +   `IF`是错误的关键字。它应该使用`WHERE`。
 
-+   `==`不是SQL运算符。与Python不同，SQL使用单个`=`进行赋值和比较操作。
++   `==`不是 SQL 运算符。与 Python 不同，SQL 使用单个`=`进行赋值和比较操作。
 
-生成的SQL应该如下所示：
+生成的 SQL 应该如下所示：
 
 ```py
    DELETE FROM my_table WHERE category_id = 12;
 ```
 
-1.  以下SQL查询不正确；您能修复它吗？
+1.  以下 SQL 查询不正确；您能修复它吗？
 
 ```py
 INSERT INTO flavors(name) VALUES ('hazelnut', 'vanilla', 'caramel', 'onion');
@@ -692,7 +692,7 @@ INSERT INTO flavors(name) VALUES ('hazelnut', 'vanilla', 'caramel', 'onion');
    INSERT INTO flavors(name) VALUES ('hazelnut'), ('vanilla'), ('caramel'), ('onion');
 ```
 
-1.  `QSqlDatabase`的文档可以在[https://doc.qt.io/qt-5/qsqldatabase.html](https://doc.qt.io/qt-5/qsqldatabase.html)找到。详细了解如何使用多个数据库连接，例如对同一数据库进行只读和读写连接。您将如何创建两个连接并对每个连接进行特定的查询？
+1.  `QSqlDatabase`的文档可以在[`doc.qt.io/qt-5/qsqldatabase.html`](https://doc.qt.io/qt-5/qsqldatabase.html)找到。详细了解如何使用多个数据库连接，例如对同一数据库进行只读和读写连接。您将如何创建两个连接并对每个连接进行特定的查询？
 
 关键是多次使用唯一连接名称调用`addDatabase()`；一个示例如下：
 
@@ -759,13 +759,13 @@ def do_search(self, text):
     self.sql_table_model.select()
 ```
 
-问题在于您正在接受任意用户输入并将其传递给表模型的`filter()`字符串。这个字符串被直接附加到表模型的内部SQL查询中，从而使您的数据库容易受到SQL注入。为了使其安全，您需要采取措施来清理`text`或切换SQL表模型以使用`prepare()`来创建一个准备好的语句。
+问题在于您正在接受任意用户输入并将其传递给表模型的`filter()`字符串。这个字符串被直接附加到表模型的内部 SQL 查询中，从而使您的数据库容易受到 SQL 注入。为了使其安全，您需要采取措施来清理`text`或切换 SQL 表模型以使用`prepare()`来创建一个准备好的语句。
 
 1.  您决定在您的咖啡列表的烘焙组合框中使用颜色而不是名称。为了实现这一点，您需要做出哪些改变？
 
-您需要更改`roast_id`上设置的`QSqlRelation`所使用的显示字段为`color`。然后，您需要为`coffee_list`创建一个自定义委托，用于创建颜色图标（参见[第6章](c3eb2567-0e73-4c37-9a9e-a0e2311e106c.xhtml)，*Qt应用程序的样式*）并在组合框中使用它们而不是文本标签。
+您需要更改`roast_id`上设置的`QSqlRelation`所使用的显示字段为`color`。然后，您需要为`coffee_list`创建一个自定义委托，用于创建颜色图标（参见第六章，*Qt 应用程序的样式*）并在组合框中使用它们而不是文本标签。
 
-# 第10章
+# 第十章
 
 1.  创建代码以每十秒调用`self.every_ten_seconds()`方法。
 
@@ -795,7 +795,7 @@ def do_search(self, text):
    qtc.QTimer.singleShot(1000, run_delayed_command)
 ```
 
-1.  您创建了以下计算单词数的工作类，并希望将其移动到另一个线程以防止大型文档减慢GUI。但是，它没有工作；您需要对这个类做出哪些改变？
+1.  您创建了以下计算单词数的工作类，并希望将其移动到另一个线程以防止大型文档减慢 GUI。但是，它没有工作；您需要对这个类做出哪些改变？
 
 ```py
    class Worker(qtc.QObject):
@@ -811,7 +811,7 @@ def do_search(self, text):
         self.counted.emit(len(content.split()))
 ```
 
-该类依赖于通过共同的父级访问小部件，因为`Worker`类必须由包含小部件的GUI类作为父级。您需要更改此类，使以下内容适用：
+该类依赖于通过共同的父级访问小部件，因为`Worker`类必须由包含小部件的 GUI 类作为父级。您需要更改此类，使以下内容适用：
 
 +   +   它没有父小部件。
 
@@ -860,7 +860,7 @@ def do_search(self, text):
 
 不，`QRunnable`对象不能发出信号，因为它们不是从`QObject`继承的，也没有事件循环。在这种情况下，最好使用`QThread`。
 
-1.  以下代码是一个`QRunnable`类的`run()`方法，用于处理来自科学设备的大型数据文件输出。文件由数百万行空格分隔的数字组成。这段代码可能会被Python GIL减慢吗？您能使GIL干扰的可能性更小吗？
+1.  以下代码是一个`QRunnable`类的`run()`方法，用于处理来自科学设备的大型数据文件输出。文件由数百万行空格分隔的数字组成。这段代码可能会被 Python GIL 减慢吗？您能使 GIL 干扰的可能性更小吗？
 
 ```py
        def run(self):
@@ -873,9 +873,9 @@ def do_search(self, text):
                    self.queue.put(numbers)
 ```
 
-读取文件是一个I/O绑定的操作，不需要获取GIL。但是，进行数学计算和类型转换是一个CPU绑定的任务，需要获取GIL。这可以通过在非Python数学库（如NumPy）中进行计算来减轻。
+读取文件是一个 I/O 绑定的操作，不需要获取 GIL。但是，进行数学计算和类型转换是一个 CPU 绑定的任务，需要获取 GIL。这可以通过在非 Python 数学库（如 NumPy）中进行计算来减轻。
 
-1.  以下是你正在编写的多线程TCP服务器应用程序中`QRunnable`中的`run()`方法。所有线程共享通过`self.datastream`访问的服务器套接字实例。但是，这段代码不是线程安全的。你需要做什么来修复它？
+1.  以下是你正在编写的多线程 TCP 服务器应用程序中`QRunnable`中的`run()`方法。所有线程共享通过`self.datastream`访问的服务器套接字实例。但是，这段代码不是线程安全的。你需要做什么来修复它？
 
 ```py
        def run(self):
@@ -896,9 +896,9 @@ def do_search(self, text):
                self.datastream.writeQString(message)
 ```
 
-# 第11章
+# 第十一章
 
-1.  以下HTML显示不像您想要的那样。找出尽可能多的错误：
+1.  以下 HTML 显示不像您想要的那样。找出尽可能多的错误：
 
 ```py
 <table>
@@ -920,7 +920,7 @@ def do_search(self, text):
 
 +   还有没有`text-style`属性。文本应该只是用`<b>`标签包装起来。
 
-1.  以下Qt HTML片段有什么问题？
+1.  以下 Qt HTML 片段有什么问题？
 
 ```py
 <p>There is nothing <i>wrong</i> with your television <b>set</p></b>
@@ -939,7 +939,7 @@ def do_search(self, text):
 
 1.  有两个问题——`<font>`没有`family`属性，应该是`face`；另外，没有`<strikethrough>`标签，应该是`<s>`。
 
-1.  Qt不支持`<label>`或`<input>`标签。此外，`<input>`不使用闭合标签。
+1.  Qt 不支持`<label>`或`<input>`标签。此外，`<input>`不使用闭合标签。
 
 1.  `<img>`没有`source`属性；它应该是`src`。它也没有使用闭合标签，也不能包含文本内容。
 
@@ -1058,7 +1058,7 @@ def do_search(self, text):
            printer.defaultPageSize())
 ```
 
-# 第12章
+# 第十二章
 
 1.  **在这个方法中添加代码，以在图片底部用蓝色写下您的名字：**
 
@@ -1089,7 +1089,7 @@ def do_search(self, text):
            return image
 ```
 
-1.  **给定一个名为`painter`的`QPainter`对象，写一行代码在绘图设备的左上角绘制一个80×80像素的八边形。参考[https://doc.qt.io/qt-5/qpainter.html#drawPolygon](https://doc.qt.io/qt-5/qpainter.html#drawPolygon)中的文档。**
+1.  **给定一个名为`painter`的`QPainter`对象，写一行代码在绘图设备的左上角绘制一个 80×80 像素的八边形。参考[`doc.qt.io/qt-5/qpainter.html#drawPolygon`](https://doc.qt.io/qt-5/qpainter.html#drawPolygon)中的文档。**
 
 有几种方法可以创建和绘制多边形，但最简单的方法是将一系列`QPoint`对象传递给`drawPolygon()`：
 
@@ -1162,7 +1162,7 @@ def do_search(self, text):
 
 +   击中坦克时爆炸
 
-+   声音（参见[第7章](0234c71b-292c-4423-89d7-e9d9906d730e.xhtml)，*使用QtMultimedia处理音频-视觉*，在这里寻求帮助）
++   声音（参见第七章，*使用 QtMultimedia 处理音频-视觉*，在这里寻求帮助）
 
 +   背景动画
 
@@ -1170,13 +1170,13 @@ def do_search(self, text):
 
 你自己来吧。玩得开心！
 
-# 第13章
+# 第十三章
 
-1.  OpenGL渲染管线的哪些步骤是可用户定义的？为了渲染任何东西，必须定义哪些步骤？你可能需要参考[https://www.khronos.org/opengl/wiki/Rendering_Pipeline_Overview](https://www.khronos.org/opengl/wiki/Rendering_Pipeline_Overview)上的文档。
+1.  OpenGL 渲染管线的哪些步骤是可用户定义的？为了渲染任何东西，必须定义哪些步骤？你可能需要参考[`www.khronos.org/opengl/wiki/Rendering_Pipeline_Overview`](https://www.khronos.org/opengl/wiki/Rendering_Pipeline_Overview)上的文档。
 
 顶点处理和片段着色器步骤是可用户定义的。至少，你必须创建一个顶点着色器和一个片段着色器。可选步骤包括几何着色器和镶嵌步骤，这些步骤是顶点处理的一部分。
 
-1.  你正在为一个OpenGL 2.1程序编写着色器。以下看起来正确吗？
+1.  你正在为一个 OpenGL 2.1 程序编写着色器。以下看起来正确吗？
 
 ```py
    #version 2.1
@@ -1189,7 +1189,7 @@ def do_search(self, text):
    }
 ```
 
-你的版本字符串是错误的。它应该是`#version 120`，因为它指定了GLSL的版本，而不是OpenGL的版本。版本也被指定为一个没有句号的三位数。
+你的版本字符串是错误的。它应该是`#version 120`，因为它指定了 GLSL 的版本，而不是 OpenGL 的版本。版本也被指定为一个没有句号的三位数。
 
 1.  以下是顶点着色器还是片段着色器？你如何判断？
 
@@ -1235,7 +1235,7 @@ def do_search(self, text):
 
 顶点被以错误的顺序绘制。记住，逆时针绘制一个基元会导致远处的面被剔除；顺时针绘制会导致近处的面被剔除。
 
-1.  以下代码对我们的OpenGL图像做了什么？
+1.  以下代码对我们的 OpenGL 图像做了什么？
 
 ```py
    matrix = qtg.QMatrix4x4()
@@ -1244,7 +1244,7 @@ def do_search(self, text):
    matrix.rotate(45, 1, 0, 0)
 ```
 
-单独来看，什么也没有。这段代码只是创建一个4x4矩阵，并对其进行一些变换操作。然而，如果我们将其传递到一个应用其值到顶点的着色器中，它将创建一个透视投影，将我们的对象移动到空间中，并旋转图像。实际的`matrix`对象只不过是一组数字的矩阵。
+单独来看，什么也没有。这段代码只是创建一个 4x4 矩阵，并对其进行一些变换操作。然而，如果我们将其传递到一个应用其值到顶点的着色器中，它将创建一个透视投影，将我们的对象移动到空间中，并旋转图像。实际的`matrix`对象只不过是一组数字的矩阵。
 
 1.  尝试演示，并看看你是否可以添加以下功能中的任何一个：
 
@@ -1258,11 +1258,11 @@ def do_search(self, text):
 
 你自己来吧！
 
-# 第14章
+# 第十四章
 
 1.  考虑以下数据集的描述。你会为每个建议哪种图表样式？
 
-+   1.  按日期的Web服务器点击次数
++   1.  按日期的 Web 服务器点击次数
 
 1.  每个销售人员每月的销售数据
 
@@ -1276,7 +1276,7 @@ def do_search(self, text):
 
 1.  条形图或堆叠图，因为这样可以让你比较销售人员的销售情况
 
-1.  饼图，因为它代表一组百分比加起来等于100
+1.  饼图，因为它代表一组百分比加起来等于 100
 
 1.  散点图，因为你想展示大量数据的一般趋势
 
@@ -1311,7 +1311,7 @@ def do_search(self, text):
 
 `QChart`不是一个小部件，不能添加到布局或设置为中央小部件。它必须附加到`QChartView`。
 
-1.  **你想创建一个比较Bob和Alice季度销售额的柱状图。需要添加什么代码？（注意这里不需要轴。）**
+1.  **你想创建一个比较 Bob 和 Alice 季度销售额的柱状图。需要添加什么代码？（注意这里不需要轴。）**
 
 ```py
    bob_sales = [2500, 1300, 800]
@@ -1329,7 +1329,7 @@ def do_search(self, text):
    view.show()
 ```
 
-我们需要为Bob和Alice创建柱状图，并将它们附加到系列中：
+我们需要为 Bob 和 Alice 创建柱状图，并将它们附加到系列中：
 
 ```py
    bob_set = qtch.QBarSet('Bob')
@@ -1354,35 +1354,35 @@ def do_search(self, text):
 
 你现在是自己一个人了！
 
-1.  **`QPolarChart`是`QChart`的一个子类，允许你构建极坐标图。查阅Qt文档中关于极坐标图的使用，并看看你是否可以创建一个适当数据集的极坐标图。**
+1.  **`QPolarChart`是`QChart`的一个子类，允许你构建极坐标图。查阅 Qt 文档中关于极坐标图的使用，并看看你是否可以创建一个适当数据集的极坐标图。**
 
 你现在是自己一个人了！
 
-1.  **`psutil.cpu_percent()`接受一个可选参数`percpu`，它将创建一个显示每个CPU核心使用信息的值列表。更新你的应用程序以使用这个选项，并分别在一个图表上显示每个CPU核心的活动。**
+1.  **`psutil.cpu_percent()`接受一个可选参数`percpu`，它将创建一个显示每个 CPU 核心使用信息的值列表。更新你的应用程序以使用这个选项，并分别在一个图表上显示每个 CPU 核心的活动。**
 
 你现在还是自己一个人；不过别担心，你可以做到的！
 
-# 第15章
+# 第十五章
 
-1.  **你刚刚购买了一个预装了Raspbian的树莓派来运行你的PyQt5应用程序。当你尝试运行你的应用程序时，你会遇到一个错误，试图导入`QtNetworkAuth`，而你的应用程序依赖于它。可能的问题是什么？**
+1.  **你刚刚购买了一个预装了 Raspbian 的树莓派来运行你的 PyQt5 应用程序。当你尝试运行你的应用程序时，你会遇到一个错误，试图导入`QtNetworkAuth`，而你的应用程序依赖于它。可能的问题是什么？**
 
-可能你的Raspbian安装版本是9。版本9具有Qt 5.7，其中没有`QtNetworkAuth`模块。你需要升级到更新的Raspbian版本。
+可能你的 Raspbian 安装版本是 9。版本 9 具有 Qt 5.7，其中没有`QtNetworkAuth`模块。你需要升级到更新的 Raspbian 版本。
 
-1.  **你为一个传统扫描仪设备编写了一个PyQt前端。你的代码通过一个名为`scanutil.exe`的专有驱动程序实用程序与扫描仪通信。它目前在Windows 10 PC上运行，但你的雇主希望通过将其移植到树莓派来节省成本。这是一个好主意吗？**
+1.  **你为一个传统扫描仪设备编写了一个 PyQt 前端。你的代码通过一个名为`scanutil.exe`的专有驱动程序实用程序与扫描仪通信。它目前在 Windows 10 PC 上运行，但你的雇主希望通过将其移植到树莓派来节省成本。这是一个好主意吗？**
 
-不幸的是，不是这样。如果你的应用程序依赖于专有的Windows x86二进制文件，那么该程序将无法在树莓派上运行。要切换到树莓派，你需要一个为ARM平台编译的二进制文件，可以在树莓派支持的操作系统之一上运行（此外，该操作系统需要能够运行Python和Qt）。
+不幸的是，不是这样。如果你的应用程序依赖于专有的 Windows x86 二进制文件，那么该程序将无法在树莓派上运行。要切换到树莓派，你需要一个为 ARM 平台编译的二进制文件，可以在树莓派支持的操作系统之一上运行（此外，该操作系统需要能够运行 Python 和 Qt）。
 
-1.  **你已经获得了一个新的传感器，并想要用树莓派试验它。它有三个连接，标有Vcc、GND和Data。你将如何将其连接到树莓派？你还需要更多的信息吗？**
+1.  **你已经获得了一个新的传感器，并想要用树莓派试验它。它有三个连接，标有 Vcc、GND 和 Data。你将如何将其连接到树莓派？你还需要更多的信息吗？**
 
 你真的需要更多的信息，但这里有足够的信息让你开始：
 
-+   +   **Vcc**是输入电压的缩写。你将不得不将其连接到树莓派上的5V或3V3引脚。你需要查阅制造商的文档，以确定哪种连接方式可行。
++   +   **Vcc**是输入电压的缩写。你将不得不将其连接到树莓派上的 5V 或 3V3 引脚。你需要查阅制造商的文档，以确定哪种连接方式可行。
 
 +   **GND**意味着地线，你可以将其连接到树莓派上的任何地线引脚。
 
-+   **Data**可能是你想要连接到可编程GPIO引脚之一的连接。很可能你需要某种库来使其工作，所以你应该向制造商咨询。
++   **Data**可能是你想要连接到可编程 GPIO 引脚之一的连接。很可能你需要某种库来使其工作，所以你应该向制造商咨询。
 
-1.  **你试图点亮连接到树莓派左侧第四个GPIO引脚的LED。这段代码有什么问题？**
+1.  **你试图点亮连接到树莓派左侧第四个 GPIO 引脚的 LED。这段代码有什么问题？**
 
 ```py
    GPIO.setmode(GPIO.BCM)
@@ -1390,9 +1390,9 @@ def do_search(self, text):
    GPIO.output(8, 1)
 ```
 
-GPIO引脚模式设置为`BCM`，这意味着你使用的引脚号错误。将模式设置为`BOARD`，或者使用正确的BCM引脚号（`14`）。
+GPIO 引脚模式设置为`BCM`，这意味着你使用的引脚号错误。将模式设置为`BOARD`，或者使用正确的 BCM 引脚号（`14`）。
 
-1.  **你试图调暗连接到GPIO引脚`12`的LED。这段代码有效吗？**
+1.  **你试图调暗连接到 GPIO 引脚`12`的 LED。这段代码有效吗？**
 
 ```py
    GPIO.setmode(GPIO.BOARD)
@@ -1438,7 +1438,7 @@ GPIO引脚模式设置为`BCM`，这意味着你使用的引脚号错误。将�
 
 这里就靠你自己了！
 
-# 第16章
+# 第十六章
 
 1.  **以下代码给出了一个属性错误；怎么了？**
 
@@ -1447,9 +1447,9 @@ GPIO引脚模式设置为`BCM`，这意味着你使用的引脚号错误。将�
    w = qtwe.QWebEngineView()
 ```
 
-您想要导入`QtWebEngineWidgets`，而不是`QtWebEngine`。后者用于与Qt的QML前端一起使用。
+您想要导入`QtWebEngineWidgets`，而不是`QtWebEngine`。后者用于与 Qt 的 QML 前端一起使用。
 
-1.  **以下代码应该将`UrlBar`类与`QWebEngineView`连接起来，以便在按下*返回*/*Enter*键时加载输入的URL。但是它不起作用；怎么了？**
+1.  **以下代码应该将`UrlBar`类与`QWebEngineView`连接起来，以便在按下*返回*/*Enter*键时加载输入的 URL。但是它不起作用；怎么了？**
 
 ```py
    class UrlBar(qtw.QLineEdit):
@@ -1482,9 +1482,9 @@ GPIO引脚模式设置为`BCM`，这意味着你使用的引脚号错误。将�
 
 每当浏览器操作请求创建新的选项卡或窗口时，都会调用`QWebEngineView.createWindow()`，并且预计返回一个`QWebEngineView`对象，该对象将用于新窗口或选项卡。通过返回`self`，这个子类强制任何尝试创建新窗口的链接或调用只是在同一个窗口中导航。
 
-1.  **查看[https://doc.qt.io/qt-5/qwebengineview.html](https://doc.qt.io/qt-5/qwebengineview.html)上的`QWebEngineView`文档。您将如何在浏览器中实现缩放功能？**
+1.  **查看[`doc.qt.io/qt-5/qwebengineview.html`](https://doc.qt.io/qt-5/qwebengineview.html)上的`QWebEngineView`文档。您将如何在浏览器中实现缩放功能？**
 
-首先，您需要在`MainWindow`上实现回调函数，以设置当前Web视图的`zoomFactor`属性：
+首先，您需要在`MainWindow`上实现回调函数，以设置当前 Web 视图的`zoomFactor`属性：
 
 ```py
    def zoom_in(self):
@@ -1505,9 +1505,9 @@ GPIO引脚模式设置为`BCM`，这意味着你使用的引脚号错误。将�
 
 1.  **顾名思义，`QWebEngineView`表示模型-视图架构中的视图部分。在这个设计中，哪个类代表模型？**
 
-`QWebEnginePage`似乎是这里最清晰的候选者，因为它存储和控制Web内容的呈现。
+`QWebEnginePage`似乎是这里最清晰的候选者，因为它存储和控制 Web 内容的呈现。
 
-1.  **给定名为`webview`的`QWebEngineView`，编写代码来确定`webview`上是否启用了JavaScript。**
+1.  **给定名为`webview`的`QWebEngineView`，编写代码来确定`webview`上是否启用了 JavaScript。**
 
 代码必须查询视图的`QWebEngineSettings`对象，就像这样：
 
@@ -1516,19 +1516,19 @@ GPIO引脚模式设置为`BCM`，这意味着你使用的引脚号错误。将�
        qtwe.QWebEngineSettings.JavascriptEnabled)
 ```
 
-1.  **您在我们的浏览器示例中看到`runJavaScript()`可以将整数值传递给回调函数。编写一个简单的演示脚本来测试可以返回哪些其他类型的JavaScript对象，以及它们在Python代码中的显示方式。**
+1.  **您在我们的浏览器示例中看到`runJavaScript()`可以将整数值传递给回调函数。编写一个简单的演示脚本来测试可以返回哪些其他类型的 JavaScript 对象，以及它们在 Python 代码中的显示方式。**
 
 在示例代码中查看`chapter_7_return_value_test.py`。
 
-# 第17章
+# 第十七章
 
-1.  **您已经在名为`Scan & Print Tool-box.py`的文件中编写了一个PyQt应用程序。您想将其转换为模块样式的组织；您应该做出什么改变？**
+1.  **您已经在名为`Scan & Print Tool-box.py`的文件中编写了一个 PyQt 应用程序。您想将其转换为模块样式的组织；您应该做出什么改变？**
 
-脚本的名称应该更改，因为空格、和符号和破折号不是Python模块名称中使用的有效字符。例如，您可以将模块名称更改为`scan_and_print_toolbox`。
+脚本的名称应该更改，因为空格、和符号和破折号不是 Python 模块名称中使用的有效字符。例如，您可以将模块名称更改为`scan_and_print_toolbox`。
 
-1.  **您的PyQt5数据库应用程序有一组包含应用程序使用的查询的`.sql`文件。当您的应用程序是与`.sql`文件在同一个目录中的单个脚本时，它可以工作，但是现在您已经将其转换为模块样式的组织，就无法找到查询。你应该怎么办？**
+1.  **您的 PyQt5 数据库应用程序有一组包含应用程序使用的查询的`.sql`文件。当您的应用程序是与`.sql`文件在同一个目录中的单个脚本时，它可以工作，但是现在您已经将其转换为模块样式的组织，就无法找到查询。你应该怎么办？**
 
-最好的做法是将您的`.sql`文件放入Qt资源文件中，并将其作为Python模块的一部分。如果无法使用Qt资源文件，您将需要使用`path`模块和内置的`file`变量将相对路径转换为绝对路径
+最好的做法是将您的`.sql`文件放入 Qt 资源文件中，并将其作为 Python 模块的一部分。如果无法使用 Qt 资源文件，您将需要使用`path`模块和内置的`file`变量将相对路径转换为绝对路径
 
 1.  **在将新应用程序上传到代码共享站点之前，您正在编写一个详细的`README.rst`文件来记录您的新应用程序。分别应该使用哪些字符来标记您的一级、二级和三级标题？**
 
@@ -1538,9 +1538,9 @@ GPIO引脚模式设置为`BCM`，这意味着你使用的引脚号错误。将�
    = - ` : ' " ~ ^ _ * + # < >
 ```
 
-RST解释器应该考虑遇到的第一个标题字符表示一级；第二个表示二级；第三个表示三级。
+RST 解释器应该考虑遇到的第一个标题字符表示一级；第二个表示二级；第三个表示三级。
 
-1.  您正在为您的项目创建一个`setup.py`脚本，以便您可以将其上传到PyPI。您想要包括项目的FAQ页面的URL。您该如何实现这一点？
+1.  您正在为您的项目创建一个`setup.py`脚本，以便您可以将其上传到 PyPI。您想要包括项目的 FAQ 页面的 URL。您该如何实现这一点？
 
 您需要向`project_urls`字典中添加一个`key: value`对，就像这样：
 
@@ -1558,8 +1558,8 @@ RST解释器应该考虑遇到的第一个标题字符表示一级；第二个�
 
 1.  您运行了`pyinstaller fight_fighter3.py`来将您的新游戏打包为可执行文件。不过出了些问题；您可以在哪里找到构建过程的日志？
 
-首先，您需要查看`build/fight_fighter3/warn-fight_fighter3.txt`。您可能需要通过使用`--log-level DEBUG`参数调用PyInstaller来增加调试输出。
+首先，您需要查看`build/fight_fighter3/warn-fight_fighter3.txt`。您可能需要通过使用`--log-level DEBUG`参数调用 PyInstaller 来增加调试输出。
 
-1.  尽管名字是这样，但PyInstaller实际上不能生成安装程序或包来安装您的应用程序。研究一些适合您平台的选项。
+1.  尽管名字是这样，但 PyInstaller 实际上不能生成安装程序或包来安装您的应用程序。研究一些适合您平台的选项。
 
 您需要自己解决这个问题，尽管一个流行的选项是**Nullsoft Scriptable Install System**（**NSIS**）。

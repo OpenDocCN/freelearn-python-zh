@@ -1,6 +1,6 @@
-# 使用QtMultimedia处理音频-视频
+# 使用 QtMultimedia 处理音频-视频
 
-无论是在游戏、通信还是媒体制作应用中，音频和视频内容通常是现代应用的重要组成部分。当使用本机API时，即使是最简单的音频-视频（AV）应用程序在支持多个平台时也可能非常复杂。然而，幸运的是，Qt为我们提供了一个简单的跨平台多媒体API，即`QtMultimedia`。使用`QtMultimedia`，我们可以轻松地处理音频内容、视频内容或摄像头和收音机等设备。
+无论是在游戏、通信还是媒体制作应用中，音频和视频内容通常是现代应用的重要组成部分。当使用本机 API 时，即使是最简单的音频-视频（AV）应用程序在支持多个平台时也可能非常复杂。然而，幸运的是，Qt 为我们提供了一个简单的跨平台多媒体 API，即`QtMultimedia`。使用`QtMultimedia`，我们可以轻松地处理音频内容、视频内容或摄像头和收音机等设备。
 
 在这一章中，我们将使用`QtMultimedia`来探讨以下主题：
 
@@ -12,21 +12,21 @@
 
 # 技术要求
 
-除了[第1章](bce5f3b1-2979-4f78-817b-3986e7974725.xhtml)中描述的基本PyQt设置外，您还需要确保已安装`QtMultimedia`和`PyQt.QtMultimedia`库。如果您使用`pip`安装了PyQt5，则应该已经安装了。使用发行版软件包管理器的Linux用户应检查这些软件包是否已安装。
+除了第一章中描述的基本 PyQt 设置外，您还需要确保已安装`QtMultimedia`和`PyQt.QtMultimedia`库。如果您使用`pip`安装了 PyQt5，则应该已经安装了。使用发行版软件包管理器的 Linux 用户应检查这些软件包是否已安装。
 
-您可能还想从我们的GitHub存储库[https://github.com/PacktPublishing/Mastering-GUI-Programming-with-Python/tree/master/Chapter07](https://github.com/PacktPublishing/Mastering-GUI-Programming-with-Python/tree/master/Chapter07)下载代码，其中包含示例代码和用于这些示例的音频数据。
+您可能还想从我们的 GitHub 存储库[`github.com/PacktPublishing/Mastering-GUI-Programming-with-Python/tree/master/Chapter07`](https://github.com/PacktPublishing/Mastering-GUI-Programming-with-Python/tree/master/Chapter07)下载代码，其中包含示例代码和用于这些示例的音频数据。
 
-如果您想创建自己的音频文件进行处理，您可能需要安装免费的Audacity音频编辑器，网址为[https://www.audacityteam.org/](https://www.audacityteam.org/)。
+如果您想创建自己的音频文件进行处理，您可能需要安装免费的 Audacity 音频编辑器，网址为[`www.audacityteam.org/`](https://www.audacityteam.org/)。
 
 最后，如果您的计算机没有工作的音频系统、麦克风和网络摄像头，您将无法充分利用本章。如果没有，那么其中一些示例将无法为您工作。
 
-查看以下视频以查看代码的实际操作：[http://bit.ly/2Mjr8vx](http://bit.ly/2Mjr8vx)
+查看以下视频以查看代码的实际操作：[`bit.ly/2Mjr8vx`](http://bit.ly/2Mjr8vx)
 
 # 简单的音频播放
 
-很多时候，应用程序需要对GUI事件做出声音回应，就像在游戏中一样，或者只是为用户操作提供音频反馈。对于这种应用程序，`QtMultimedia`提供了`QSoundEffect`类。`QSoundEffect`仅限于播放未压缩音频，因此它可以使用**脉冲编码调制**（**PCM**）、**波形数据**（**WAV**）文件，但不能使用MP3或OGG文件。这样做的好处是它的延迟低，资源利用率非常高，因此虽然它不适用于通用音频播放器，但非常适合快速播放音效。
+很多时候，应用程序需要对 GUI 事件做出声音回应，就像在游戏中一样，或者只是为用户操作提供音频反馈。对于这种应用程序，`QtMultimedia`提供了`QSoundEffect`类。`QSoundEffect`仅限于播放未压缩音频，因此它可以使用**脉冲编码调制**（**PCM**）、**波形数据**（**WAV**）文件，但不能使用 MP3 或 OGG 文件。这样做的好处是它的延迟低，资源利用率非常高，因此虽然它不适用于通用音频播放器，但非常适合快速播放音效。
 
-为了演示`QSoundEffect`，让我们构建一个电话拨号器。将[第4章](9281bd2a-64a1-4128-92b0-e4871b79c040.xhtml)中的应用程序模板*使用QMainWindow构建应用程序*复制到一个名为`phone_dialer.py`的新文件中，并在编辑器中打开它。
+为了演示`QSoundEffect`，让我们构建一个电话拨号器。将第四章中的应用程序模板*使用 QMainWindow 构建应用程序*复制到一个名为`phone_dialer.py`的新文件中，并在编辑器中打开它。
 
 让我们首先导入`QtMultimedia`库，如下所示：
 
@@ -36,15 +36,15 @@ from PyQt5 import QtMultimedia as qtmm
 
 导入`QtMultimedia`将是本章所有示例的必要第一步，我们将一贯使用`qtmm`作为其别名。
 
-我们还将导入一个包含必要的WAV数据的`resources`库：
+我们还将导入一个包含必要的 WAV 数据的`resources`库：
 
 ```py
 import resources
 ```
 
-这个`resources`文件包含一系列**双音多频**（**DTMF**）音调。这些是电话拨号时电话生成的音调，我们包括了`0`到`9`、`*`和`#`。我们已经在示例代码中包含了这个文件；或者，您可以从自己的音频样本创建自己的`resources`文件（您可以参考[第6章](c3eb2567-0e73-4c37-9a9e-a0e2311e106c.xhtml)中关于如何做到这一点的信息）。
+这个`resources`文件包含一系列**双音多频**（**DTMF**）音调。这些是电话拨号时电话生成的音调，我们包括了`0`到`9`、`*`和`#`。我们已经在示例代码中包含了这个文件；或者，您可以从自己的音频样本创建自己的`resources`文件（您可以参考第六章中关于如何做到这一点的信息）。
 
-您可以使用免费的Audacity音频编辑器生成DTMF音调。要这样做，请从Audacity的主菜单中选择生成|DTMF。
+您可以使用免费的 Audacity 音频编辑器生成 DTMF 音调。要这样做，请从 Audacity 的主菜单中选择生成|DTMF。
 
 一旦完成这些，我们将创建一个`QPushButton`子类，当单击时会播放声音效果，如下所示：
 
@@ -61,7 +61,7 @@ class SoundButton(qtw.QPushButton):
 
 如您所见，我们修改了构造函数以接受声音文件路径作为参数。这个值被转换为`QUrl`并通过`setSource()`方法传递到我们的`QSoundEffect`对象中。最后，`QSoundEffect.play()`方法触发声音的播放，因此我们将其连接到按钮的`clicked`信号。这就是创建我们的`SoundButton`对象所需的全部内容。
 
-回到`MainWindow.__init__()`方法，让我们创建一些`SoundButton`对象并将它们排列在GUI中：
+回到`MainWindow.__init__()`方法，让我们创建一些`SoundButton`对象并将它们排列在 GUI 中：
 
 ```py
         dialpad = qtw.QWidget()
@@ -75,7 +75,7 @@ class SoundButton(qtw.QPushButton):
             dialpad.layout().addWidget(button, row, column)
 ```
 
-我们已经设置了资源文件，以便可以通过`dtmf`前缀下的符号访问每个DTMF音调；例如，`':/dtmf/1.wav'`指的是1的DTMF音调。通过这种方式，我们可以遍历一串符号并为每个创建一个`SoundButton`对象，然后将其添加到三列网格中。
+我们已经设置了资源文件，以便可以通过`dtmf`前缀下的符号访问每个 DTMF 音调；例如，`':/dtmf/1.wav'`指的是 1 的 DTMF 音调。通过这种方式，我们可以遍历一串符号并为每个创建一个`SoundButton`对象，然后将其添加到三列网格中。
 
 就是这样；运行这个程序并按下按钮。它应该听起来就像拨打电话！
 
@@ -159,7 +159,7 @@ class PlayButton(qtw.QPushButton):
         self.player = qtmm.QMediaPlayer()
 ```
 
-您可以将`QMediaPlayer`视为硬件媒体播放器（如CD或蓝光播放器）的软件等效物。就像硬件媒体播放器有播放、暂停和停止按钮一样，`QMediaPlayer`对象有`play()`、`stop()`和`pause()`槽来控制媒体的播放。
+您可以将`QMediaPlayer`视为硬件媒体播放器（如 CD 或蓝光播放器）的软件等效物。就像硬件媒体播放器有播放、暂停和停止按钮一样，`QMediaPlayer`对象有`play()`、`stop()`和`pause()`槽来控制媒体的播放。
 
 让我们将我们的双功能`PlayButton`对象连接到播放器。我们将通过一个名为`on_playbutton()`的实例方法来实现这一点：
 
@@ -201,7 +201,7 @@ class PlayButton(qtw.QPushButton):
 
 # 加载媒体
 
-就像硬件媒体播放器需要加载CD、DVD或蓝光光盘才能实际播放任何内容一样，我们的`QMediaPlayer`在播放任何音频之前也需要加载某种内容。让我们探讨如何从文件中加载声音。
+就像硬件媒体播放器需要加载 CD、DVD 或蓝光光盘才能实际播放任何内容一样，我们的`QMediaPlayer`在播放任何音频之前也需要加载某种内容。让我们探讨如何从文件中加载声音。
 
 首先在`SoundWidget`布局中添加一个按钮，如下所示：
 
@@ -225,7 +225,7 @@ class PlayButton(qtw.QPushButton):
             self.set_file(fn)
 ```
 
-这个方法简单地调用`QFileDialog`来检索文件URL，然后将其传递给另一个方法`set_file()`，我们将在下面编写。我们已经设置了过滤器来查找五种常见的音频文件类型，但如果你有不同格式的音频，可以随意添加更多——`QMediaPlayer`在加载方面非常灵活。
+这个方法简单地调用`QFileDialog`来检索文件 URL，然后将其传递给另一个方法`set_file()`，我们将在下面编写。我们已经设置了过滤器来查找五种常见的音频文件类型，但如果你有不同格式的音频，可以随意添加更多——`QMediaPlayer`在加载方面非常灵活。
 
 请注意，我们正在调用`getOpenFileUrl()`，它返回一个`QUrl`对象，而不是文件路径字符串。`QMediaPlayer`更喜欢使用`QUrl`对象，因此这将节省我们一个转换步骤。
 
@@ -238,13 +238,13 @@ class PlayButton(qtw.QPushButton):
         self.label.setText(url.fileName())
 ```
 
-在我们可以将URL传递给媒体播放器之前，我们必须将其包装在`QMediaContent`类中。这为播放器提供了播放内容所需的API。一旦包装好，我们就可以使用`QMediaPlayer.setMedia()`来加载它，然后它就准备好播放了。你可以将这个过程想象成将音频数据放入CD（`QMediaContent`对象），然后将CD加载到CD播放器中（使用`setMedia()`）。
+在我们可以将 URL 传递给媒体播放器之前，我们必须将其包装在`QMediaContent`类中。这为播放器提供了播放内容所需的 API。一旦包装好，我们就可以使用`QMediaPlayer.setMedia()`来加载它，然后它就准备好播放了。你可以将这个过程想象成将音频数据放入 CD（`QMediaContent`对象），然后将 CD 加载到 CD 播放器中（使用`setMedia()`）。
 
 作为最后的修饰，我们已经检索了加载文件的文件名，并将其放在标签中。
 
 # 跟踪播放位置
 
-此时，我们的声音板可以加载和播放样本，但是看到并控制播放位置会很好，特别是对于长样本。`QMediaPlayer`允许我们通过信号和槽来检索和控制播放位置，所以让我们从我们的GUI中来看一下。
+此时，我们的声音板可以加载和播放样本，但是看到并控制播放位置会很好，特别是对于长样本。`QMediaPlayer`允许我们通过信号和槽来检索和控制播放位置，所以让我们从我们的 GUI 中来看一下。
 
 首先创建一个`QSlider`小部件，如下所示：
 
@@ -313,7 +313,7 @@ class PlayButton(qtw.QPushButton):
                 qtmm.QMediaPlaylist.CurrentItemOnce)
 ```
 
-`QMediaPlaylist`类的`playbackMode`属性与CD播放器上的曲目模式按钮非常相似，可以用于在重复、随机或顺序播放之间切换。如下表所示，有五种播放模式：
+`QMediaPlaylist`类的`playbackMode`属性与 CD 播放器上的曲目模式按钮非常相似，可以用于在重复、随机或顺序播放之间切换。如下表所示，有五种播放模式：
 
 | 模式 | 描述 |
 | --- | --- |
@@ -352,11 +352,11 @@ class PlayButton(qtw.QPushButton):
 
 在设置最小和最大值后，我们只需要将`sliderMoved`连接到媒体播放器的`setVolume（）`槽。就是这样！
 
-为了更平滑地控制音量，Qt文档建议将滑块的线性刻度转换为对数刻度。我们建议您阅读[https://doc.qt.io/qt-5/qaudio.html#convertVolume](https://doc.qt.io/qt-5/qaudio.html#convertVolume)，看看您是否可以自己做到这一点。
+为了更平滑地控制音量，Qt 文档建议将滑块的线性刻度转换为对数刻度。我们建议您阅读[`doc.qt.io/qt-5/qaudio.html#convertVolume`](https://doc.qt.io/qt-5/qaudio.html#convertVolume)，看看您是否可以自己做到这一点。
 
 # 实现录音
 
-Qt中的音频录制是通过`QAudioRecorder`类实现的。就像`QMediaPlayer`类类似于媒体播放设备一样，`QAudioRecorder`类类似于媒体录制设备，例如数字音频录音机（或者如果您是作者的一代人，磁带录音机）。录音机使用`record（）`、`stop（）`和`pause（）`方法进行控制，就像媒体播放器对象一样。
+Qt 中的音频录制是通过`QAudioRecorder`类实现的。就像`QMediaPlayer`类类似于媒体播放设备一样，`QAudioRecorder`类类似于媒体录制设备，例如数字音频录音机（或者如果您是作者的一代人，磁带录音机）。录音机使用`record（）`、`stop（）`和`pause（）`方法进行控制，就像媒体播放器对象一样。
 
 让我们向我们的`SoundWidget`添加一个录音机对象，如下所示：
 
@@ -410,7 +410,7 @@ class RecordButton(qtw.QPushButton):
 
 我们将首先检查录音机的状态。如果它当前正在录制，那么我们将通过调用`recorder.stop()`来停止它，这不仅会停止录制，还会将录制的数据写入磁盘上的音频文件。然后，我们可以通过调用录音机的`actualLocation()`方法来获取该文件的位置。此方法返回一个`QUrl`对象，我们可以直接将其传递给`self.set_file()`以将我们的播放设置为新录制的文件。
 
-确保使用`actualLocation()`获取文件的位置。可以使用`setLocation()`配置录制位置，并且此值可以从`location()`访问器中获取。但是，如果配置的位置无效或不可写，Qt可能会回退到默认设置。`actualLocation()`返回文件实际保存的URL。
+确保使用`actualLocation()`获取文件的位置。可以使用`setLocation()`配置录制位置，并且此值可以从`location()`访问器中获取。但是，如果配置的位置无效或不可写，Qt 可能会回退到默认设置。`actualLocation()`返回文件实际保存的 URL。
 
 如果我们当前没有录制，我们将通过调用`recorder.record()`来告诉录音机开始录制：
 
@@ -421,7 +421,7 @@ class RecordButton(qtw.QPushButton):
 
 当调用`record()`时，音频录制器将在后台开始录制音频，并将一直保持录制，直到调用`stop()`。
 
-在我们可以播放录制的文件之前，我们需要对`set_file()`进行一次修复。在撰写本文时，`QAudioRecorder.actualLocation()`方法忽略了向URL添加方案值，因此我们需要手动指定这个值：
+在我们可以播放录制的文件之前，我们需要对`set_file()`进行一次修复。在撰写本文时，`QAudioRecorder.actualLocation()`方法忽略了向 URL 添加方案值，因此我们需要手动指定这个值：
 
 ```py
     def set_file(self, url):
@@ -431,7 +431,7 @@ class RecordButton(qtw.QPushButton):
         #...
 ```
 
-在`QUrl`术语中，`scheme`对象指示URL的协议，例如HTTP、HTTPS或FTP。由于我们正在访问本地文件，因此方案应为`'file'`。
+在`QUrl`术语中，`scheme`对象指示 URL 的协议，例如 HTTP、HTTPS 或 FTP。由于我们正在访问本地文件，因此方案应为`'file'`。
 
 如果`QAudioRecorder`的默认设置在您的系统上正常工作，则应该能够录制和播放音频。但是，这是一个很大的*如果*；很可能您需要对音频录制器对象进行一些配置才能使其正常工作。让我们看看如何做到这一点。
 
@@ -455,7 +455,7 @@ print('Sample Rates: ', r.supportedAudioSampleRates())
 print('Containers: ', r.supportedContainers())
 ```
 
-您可以在您的系统上运行此脚本并获取受支持的`Inputs`、`Codecs`、`Sample Rates`和`container`格式的列表。例如，在典型的Microsoft Windows系统上，您的结果可能如下所示：
+您可以在您的系统上运行此脚本并获取受支持的`Inputs`、`Codecs`、`Sample Rates`和`container`格式的列表。例如，在典型的 Microsoft Windows 系统上，您的结果可能如下所示：
 
 ```py
 Inputs:  ['Microhpone (High Defnition Aud']
@@ -481,9 +481,9 @@ Containers:  ['audio/x-wav', 'audio/x-raw']
             qtc.QUrl.fromLocalFile(sample_path))
 ```
 
-请注意，`setOutputLocation()`需要一个`QUrl`对象，而不是文件路径。一旦设置，Qt将尝试使用此位置来录制音频。但是，如前所述，如果此位置不可用，它将恢复到特定于平台的默认值。
+请注意，`setOutputLocation()`需要一个`QUrl`对象，而不是文件路径。一旦设置，Qt 将尝试使用此位置来录制音频。但是，如前所述，如果此位置不可用，它将恢复到特定于平台的默认值。
 
-容器格式是保存音频数据的文件类型。例如，`audio/x-wav`是用于WAV文件的容器。我们可以使用`setContainerFormat()`方法在记录对象中设置此值，如下所示：
+容器格式是保存音频数据的文件类型。例如，`audio/x-wav`是用于 WAV 文件的容器。我们可以使用`setContainerFormat()`方法在记录对象中设置此值，如下所示：
 
 ```py
         self.recorder.setContainerFormat('audio/x-wav')
@@ -501,25 +501,25 @@ Containers:  ['audio/x-wav', 'audio/x-raw']
         self.recorder.setEncodingSettings(settings)
 ```
 
-在这种情况下，我们已经将我们的音频配置为使用PCM编解码器以`44100` Hz进行高质量编码。
+在这种情况下，我们已经将我们的音频配置为使用 PCM 编解码器以`44100` Hz 进行高质量编码。
 
-请注意，并非所有编解码器都与所有容器类型兼容。如果选择了两种不兼容的类型，Qt将在控制台上打印错误并且录制将失败，但不会崩溃或抛出异常。您需要进行适当的研究和测试，以确保您选择了兼容的设置。
+请注意，并非所有编解码器都与所有容器类型兼容。如果选择了两种不兼容的类型，Qt 将在控制台上打印错误并且录制将失败，但不会崩溃或抛出异常。您需要进行适当的研究和测试，以确保您选择了兼容的设置。
 
-根据所选择的编解码器，您可以在`QAudioEncoderSettings`对象上设置其他设置。您可以在[https://doc.qt.io/qt-5/qaudioencodersettings.html](https://doc.qt.io/qt-5/qaudioencodersettings.html)的Qt文档中查阅更多信息。
+根据所选择的编解码器，您可以在`QAudioEncoderSettings`对象上设置其他设置。您可以在[`doc.qt.io/qt-5/qaudioencodersettings.html`](https://doc.qt.io/qt-5/qaudioencodersettings.html)的 Qt 文档中查阅更多信息。
 
-配置音频设置可能非常棘手，特别是因为支持在各个系统之间差异很大。最好在可以的时候让Qt使用其默认设置，或者让用户使用从`QAudioRecorder`的支持检测方法获得的值来配置这些设置。无论您做什么，如果您不能保证运行您的软件的系统将支持它们，请不要硬编码设置或选项。
+配置音频设置可能非常棘手，特别是因为支持在各个系统之间差异很大。最好在可以的时候让 Qt 使用其默认设置，或者让用户使用从`QAudioRecorder`的支持检测方法获得的值来配置这些设置。无论您做什么，如果您不能保证运行您的软件的系统将支持它们，请不要硬编码设置或选项。
 
 # 录制和播放视频
 
-一旦您了解了如何在Qt中处理音频，处理视频只是在复杂性方面迈出了一小步。就像处理音频一样，我们将使用一个播放器对象来加载和播放内容，以及一个记录器对象来记录它。但是，对于视频，我们需要添加一些额外的组件来处理内容的可视化并初始化源设备。
+一旦您了解了如何在 Qt 中处理音频，处理视频只是在复杂性方面迈出了一小步。就像处理音频一样，我们将使用一个播放器对象来加载和播放内容，以及一个记录器对象来记录它。但是，对于视频，我们需要添加一些额外的组件来处理内容的可视化并初始化源设备。
 
-为了理解它是如何工作的，我们将构建一个视频日志应用程序。将应用程序模板从[第4章](9281bd2a-64a1-4128-92b0-e4871b79c040.xhtml) *使用QMainWindow构建应用程序*复制到一个名为`captains_log.py`的新文件中，然后我们将开始编码。
+为了理解它是如何工作的，我们将构建一个视频日志应用程序。将应用程序模板从第四章 *使用 QMainWindow 构建应用程序*复制到一个名为`captains_log.py`的新文件中，然后我们将开始编码。
 
-# 构建基本GUI
+# 构建基本 GUI
 
 **船长的日志**应用程序将允许我们从网络摄像头录制视频到一个预设目录中的时间戳文件，并进行回放。我们的界面将在右侧显示过去日志的列表，在左侧显示预览/回放区域。我们将有一个分页式界面，以便用户可以在回放和录制模式之间切换。
 
-在`MainWindow.__init__()`中，按照以下方式开始布局基本GUI：
+在`MainWindow.__init__()`中，按照以下方式开始布局基本 GUI：
 
 ```py
         base_widget = qtw.QWidget()
@@ -595,7 +595,7 @@ from PyQt5 import QtMultimediaWidgets as qtmmw
 
 这比连接蓝光播放器要容易，对吧？
 
-现在我们可以将视频小部件添加到我们的GUI，并将传输连接到我们的播放器：
+现在我们可以将视频小部件添加到我们的 GUI，并将传输连接到我们的播放器：
 
 ```py
         notebook.addTab(self.video_widget, "Play")
@@ -621,7 +621,7 @@ from PyQt5 import QtMultimediaWidgets as qtmmw
         self.player.play()
 ```
 
-回调函数从`file_list`接收`QListWidgetItem`并提取`text`参数，这应该是文件的名称。我们将其传递给我们的`QDir`对象的`filePath()`方法，以获得文件的完整路径，并从中构建一个`QUrl`对象（请记住，`QMediaPlayer`使用URL而不是文件路径）。最后，我们将内容包装在`QMediaContent`对象中，将其加载到播放器中，并点击`play()`。
+回调函数从`file_list`接收`QListWidgetItem`并提取`text`参数，这应该是文件的名称。我们将其传递给我们的`QDir`对象的`filePath()`方法，以获得文件的完整路径，并从中构建一个`QUrl`对象（请记住，`QMediaPlayer`使用 URL 而不是文件路径）。最后，我们将内容包装在`QMediaContent`对象中，将其加载到播放器中，并点击`play()`。
 
 回到`__init__()`，让我们将此回调连接到我们的列表小部件：
 
@@ -638,11 +638,11 @@ from PyQt5 import QtMultimediaWidgets as qtmmw
 
 # 视频录制
 
-要录制视频，我们首先需要一个来源。在Qt中，此来源必须是`QMediaObject`的子类，其中可以包括音频来源、媒体播放器、收音机，或者在本程序中将使用的相机。
+要录制视频，我们首先需要一个来源。在 Qt 中，此来源必须是`QMediaObject`的子类，其中可以包括音频来源、媒体播放器、收音机，或者在本程序中将使用的相机。
 
-Qt 5.12目前不支持Windows上的视频录制，只支持macOS和Linux。有关Windows上多媒体支持当前状态的更多信息，请参阅[https://doc.qt.io/qt-5/qtmultimedia-windows.html](https://doc.qt.io/qt-5/qtmultimedia-windows.html)。
+Qt 5.12 目前不支持 Windows 上的视频录制，只支持 macOS 和 Linux。有关 Windows 上多媒体支持当前状态的更多信息，请参阅[`doc.qt.io/qt-5/qtmultimedia-windows.html`](https://doc.qt.io/qt-5/qtmultimedia-windows.html)。
 
-在Qt中，相机本身表示为`QCamera`对象。要创建一个可工作的`QCamera`对象，我们首先需要获取一个`QCameraInfo`对象。`QCameraInfo`对象包含有关连接到计算机的物理相机的信息。可以从`QtMultimedia.QCameraInfo.availableCameras()`方法获取这些对象的列表。
+在 Qt 中，相机本身表示为`QCamera`对象。要创建一个可工作的`QCamera`对象，我们首先需要获取一个`QCameraInfo`对象。`QCameraInfo`对象包含有关连接到计算机的物理相机的信息。可以从`QtMultimedia.QCameraInfo.availableCameras()`方法获取这些对象的列表。
 
 让我们将这些放在一起，形成一个方法，该方法将在您的系统上查找相机并返回一个`QCamera`对象：
 
@@ -778,7 +778,7 @@ for camera_info in QCameraInfo.availableCameras():
         stop_act.triggered.connect(self.refresh_video_list)
 ```
 
-我们将记录操作连接到我们的回调和一个lambda函数，该函数切换到录制选项卡。然后，我们直接将暂停和停止操作连接到录制器的`pause()`和`stop()`插槽。最后，当视频停止录制时，我们将希望刷新文件列表以显示新文件，因此我们将`stop_act`连接到`refresh_video_list()`回调。
+我们将记录操作连接到我们的回调和一个 lambda 函数，该函数切换到录制选项卡。然后，我们直接将暂停和停止操作连接到录制器的`pause()`和`stop()`插槽。最后，当视频停止录制时，我们将希望刷新文件列表以显示新文件，因此我们将`stop_act`连接到`refresh_video_list()`回调。
 
 这就是我们需要的一切；擦拭一下你的网络摄像头镜头，启动这个脚本，开始跟踪你的星际日期！
 
@@ -786,15 +786,15 @@ for camera_info in QCameraInfo.availableCameras():
 
 在本章中，我们探索了`QtMultimedia`和`QMultimediaWidgets`模块的功能。您学会了如何使用`QSoundEffect`播放低延迟音效，以及如何使用`QMediaPlayer`和`QAudioRecorder`播放和记录各种媒体格式。最后，我们使用`QCamera`、`QMediaPlayer`和`QMediaRecorder`创建了一个视频录制和播放应用程序。
 
-在下一章中，我们将通过探索Qt的网络功能来连接到更广泛的世界。我们将使用套接字进行低级网络和使用`QNetworkAccessManager`进行高级网络。
+在下一章中，我们将通过探索 Qt 的网络功能来连接到更广泛的世界。我们将使用套接字进行低级网络和使用`QNetworkAccessManager`进行高级网络。
 
 # 问题
 
 尝试这些问题来测试你从本章学到的知识：
 
-1.  使用`QSoundEffect`，你为呼叫中心编写了一个实用程序，允许他们回顾录制的电话呼叫。他们正在转移到一个将音频呼叫存储为MP3文件的新电话系统。你需要对你的实用程序进行任何更改吗？
+1.  使用`QSoundEffect`，你为呼叫中心编写了一个实用程序，允许他们回顾录制的电话呼叫。他们正在转移到一个将音频呼叫存储为 MP3 文件的新电话系统。你需要对你的实用程序进行任何更改吗？
 
-1.  `cool_songs`是一个包含你最喜欢的歌曲路径字符串的Python列表。要以随机顺序播放这些歌曲，你需要做什么？
+1.  `cool_songs`是一个包含你最喜欢的歌曲路径字符串的 Python 列表。要以随机顺序播放这些歌曲，你需要做什么？
 
 1.  你已经在你的系统上安装了`audio/mpeg`编解码器，但以下代码不起作用。找出问题所在：
 
@@ -804,9 +804,9 @@ for camera_info in QCameraInfo.availableCameras():
    recorder.record()
 ```
 
-1.  在几个不同的Windows、macOS和Linux系统上运行`audio_test.py`和`video_test.py`。输出有什么不同？有哪些项目在所有系统上都受支持？
+1.  在几个不同的 Windows、macOS 和 Linux 系统上运行`audio_test.py`和`video_test.py`。输出有什么不同？有哪些项目在所有系统上都受支持？
 
-1.  `QCamera`类的属性包括几个控制对象，允许您管理相机的不同方面。其中之一是`QCameraFocus`。在Qt文档中调查`QCameraFocus`，网址为[https://doc.qt.io/qt-5/qcamerafocus.html](https://doc.qt.io/qt-5/qcamerafocus.html)，并编写一个简单的脚本，显示取景器并让您调整数字变焦。
+1.  `QCamera`类的属性包括几个控制对象，允许您管理相机的不同方面。其中之一是`QCameraFocus`。在 Qt 文档中调查`QCameraFocus`，网址为[`doc.qt.io/qt-5/qcamerafocus.html`](https://doc.qt.io/qt-5/qcamerafocus.html)，并编写一个简单的脚本，显示取景器并让您调整数字变焦。
 
 1.  您注意到录制到您的**船长日志**视频日志中的音频相当响亮。您想添加一个控件来调整它；您会如何做？
 
@@ -816,6 +816,6 @@ for camera_info in QCameraInfo.availableCameras():
 
 您可以查阅以下参考资料以获取更多信息：
 
-+   您可以在[https://doc.qt.io/qt-5/multimediaoverview.html](https://doc.qt.io/qt-5/multimediaoverview.html)上了解Qt多媒体系统及其功能。
++   您可以在[`doc.qt.io/qt-5/multimediaoverview.html`](https://doc.qt.io/qt-5/multimediaoverview.html)上了解 Qt 多媒体系统及其功能。
 
-+   PyQt的官方`QtMultimedia`和`QtMultimediaWidgets`示例可以在[https://github.com/pyqt/examples/tree/master/multimedia](https://github.com/pyqt/examples/tree/master/multimedia)和[https://github.com/pyqt/examples/tree/master/multimediawidgets](https://github.com/pyqt/examples/tree/master/multimediawidgets)找到。它们提供了更多使用PyQt进行媒体捕获和播放的示例代码。
++   PyQt 的官方`QtMultimedia`和`QtMultimediaWidgets`示例可以在[`github.com/pyqt/examples/tree/master/multimedia`](https://github.com/pyqt/examples/tree/master/multimedia)和[`github.com/pyqt/examples/tree/master/multimediawidgets`](https://github.com/pyqt/examples/tree/master/multimediawidgets)找到。它们提供了更多使用 PyQt 进行媒体捕获和播放的示例代码。

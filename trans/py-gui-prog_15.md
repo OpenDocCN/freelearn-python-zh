@@ -1,10 +1,10 @@
-# 理解OOP概念
+# 理解 OOP 概念
 
 在本章中，我们将涵盖以下主题：
 
 +   面向对象编程
 
-+   在GUI中使用类
++   在 GUI 中使用类
 
 +   使用单一继承
 
@@ -14,7 +14,7 @@
 
 # 面向对象编程
 
-Python支持**面向对象编程**（**OOP**）。OOP支持可重用性；也就是说，之前编写的代码可以被重用来制作大型应用程序，而不是从头开始。OOP中的对象指的是类的变量或实例，其中类是一个结构的模板或蓝图，包括方法和变量。类中的变量称为**数据成员**，方法称为**成员函数**。当类的实例或对象被创建时，对象会自动获得对数据成员和方法的访问。
+Python 支持**面向对象编程**（**OOP**）。OOP 支持可重用性；也就是说，之前编写的代码可以被重用来制作大型应用程序，而不是从头开始。OOP 中的对象指的是类的变量或实例，其中类是一个结构的模板或蓝图，包括方法和变量。类中的变量称为**数据成员**，方法称为**成员函数**。当类的实例或对象被创建时，对象会自动获得对数据成员和方法的访问。
 
 # 创建一个类
 
@@ -38,7 +38,7 @@ class Student:
         return self.name
 ```
 
-在此示例中，`Student`是一个包含名为`name`的属性的类，该属性初始化为null。
+在此示例中，`Student`是一个包含名为`name`的属性的类，该属性初始化为 null。
 
 # 使用内置类属性
 
@@ -98,7 +98,7 @@ courseStudent=Student()
 
 现在，实例可以访问类的属性和方法。
 
-在定义方法时需要明确指定`self`。在调用方法时，`self`不是必需的，因为Python会自动添加它。
+在定义方法时需要明确指定`self`。在调用方法时，`self`不是必需的，因为 Python 会自动添加它。
 
 要定义类的变量，我们需要使用`__init__()`方法的帮助。`__init__()`方法类似于传统面向对象编程语言中的构造函数，并且是在创建实例后首先执行的方法。它用于初始化类的变量。根据类中如何定义`__init__()`方法，即是否带有参数，参数可能会传递给`__init__()`方法，也可能不会。
 
@@ -132,11 +132,11 @@ class Student:
 studentObj.printName()
 ```
 
-# 在GUI中使用类
+# 在 GUI 中使用类
 
-通过GUI从用户接收的数据可以直接通过简单变量进行处理，并且处理后的数据只能通过变量显示。但是，为了保持数据的结构化格式并获得面向对象编程的好处，我们将学习将数据保存在类的形式中。也就是说，用户通过GUI访问的数据可以分配给类变量，通过类方法进行处理和显示。
+通过 GUI 从用户接收的数据可以直接通过简单变量进行处理，并且处理后的数据只能通过变量显示。但是，为了保持数据的结构化格式并获得面向对象编程的好处，我们将学习将数据保存在类的形式中。也就是说，用户通过 GUI 访问的数据可以分配给类变量，通过类方法进行处理和显示。
 
-让我们创建一个应用程序，提示用户输入姓名，并在输入姓名后点击推送按钮时，应用程序将显示一个hello消息以及输入的姓名。用户输入的姓名将被分配给一个类变量，并且hello消息也将通过调用类的类方法生成。
+让我们创建一个应用程序，提示用户输入姓名，并在输入姓名后点击推送按钮时，应用程序将显示一个 hello 消息以及输入的姓名。用户输入的姓名将被分配给一个类变量，并且 hello 消息也将通过调用类的类方法生成。
 
 # 如何做...
 
@@ -146,21 +146,21 @@ studentObj.printName()
 
 1.  将第一个标签小部件的文本属性设置为`输入您的姓名`。
 
-让我们不要更改第二个标签小部件的文本属性，并将其文本属性保持为默认值`TextLabel`。这是因为它的文本属性将通过代码设置以显示hello消息。
+让我们不要更改第二个标签小部件的文本属性，并将其文本属性保持为默认值`TextLabel`。这是因为它的文本属性将通过代码设置以显示 hello 消息。
 
 1.  将推送按钮小部件的文本属性设置为`Click`。
 
-1.  将LineEdit小部件的objectName属性设置为`lineEditName`。
+1.  将 LineEdit 小部件的 objectName 属性设置为`lineEditName`。
 
-1.  将Label小部件的objectName属性设置为`labelResponse`。
+1.  将 Label 小部件的 objectName 属性设置为`labelResponse`。
 
-1.  将Push Button小部件的objectName属性设置为`ButtonClickMe`。
+1.  将 Push Button 小部件的 objectName 属性设置为`ButtonClickMe`。
 
 1.  将应用程序保存为名称为`LineEditClass.ui`的应用程序。应用程序将显示如下屏幕截图所示：
 
-![](assets/8899b4c1-7dfa-4483-8ceb-5e17f7e60834.png)
+![](img/8899b4c1-7dfa-4483-8ceb-5e17f7e60834.png)
 
-使用Qt Designer创建的用户界面存储在`.ui`文件中，这是一个XML文件，需要转换为Python代码。
+使用 Qt Designer 创建的用户界面存储在`.ui`文件中，这是一个 XML 文件，需要转换为 Python 代码。
 
 1.  要进行转换，您需要打开命令提示符窗口，导航到保存文件的文件夹，并发出以下命令行：
 
@@ -168,11 +168,11 @@ studentObj.printName()
 C:\Pythonbook\PyQt5>pyuic5 LineEdit.uiClass -o LineEditClass.py
 ```
 
-可以在本书的源代码包中看到生成的Python脚本`LineEditClass.py`。
+可以在本书的源代码包中看到生成的 Python 脚本`LineEditClass.py`。
 
 1.  将上述代码视为头文件，并将其导入到将调用其用户界面设计的文件中。
 
-1.  创建另一个名为`callLineEditClass.pyw`的Python文件，并将`LineEditClass.py`代码导入其中：
+1.  创建另一个名为`callLineEditClass.pyw`的 Python 文件，并将`LineEditClass.py`代码导入其中：
 
 ```py
 import sys
@@ -204,7 +204,7 @@ if __name__=="__main__":
 
 # 它是如何工作的...
 
-在`LineEditClass.py`文件中，创建了一个名为顶级对象的类，其名称为`Ui_ prepended`。也就是说，对于顶级对象`Dialog`，创建了`Ui_Dialog`类，并存储了小部件的接口元素。该类有两个方法，`setupUi()`和`retranslateUi()`。`setupUi()`方法创建了在Qt Designer中定义用户界面时使用的小部件。此方法还设置了小部件的属性。`setupUi()`方法接受一个参数，即应用程序的顶级小部件，即`QDialog`的实例。`retranslateUi()`方法翻译了界面。
+在`LineEditClass.py`文件中，创建了一个名为顶级对象的类，其名称为`Ui_ prepended`。也就是说，对于顶级对象`Dialog`，创建了`Ui_Dialog`类，并存储了小部件的接口元素。该类有两个方法，`setupUi()`和`retranslateUi()`。`setupUi()`方法创建了在 Qt Designer 中定义用户界面时使用的小部件。此方法还设置了小部件的属性。`setupUi()`方法接受一个参数，即应用程序的顶级小部件，即`QDialog`的实例。`retranslateUi()`方法翻译了界面。
 
 在`callLineEditClass.py`文件中，可以看到定义了一个名为`Student`的类。`Student`类包括一个名为`name`的类变量和以下两个方法：
 
@@ -212,25 +212,25 @@ if __name__=="__main__":
 
 +   `printName`: 此方法简单地返回名称类变量中的值
 
-将Push Button小部件的`clicked()`事件连接到`dispmessage()`方法；在LineEdit小部件中输入名称后，当用户单击按钮时，将调用`dispmessage()`方法。`dispmessage()`方法通过名称定义了`Student`类的对象，`studentObj`，并将用户在LineEdit小部件中输入的名称作为参数传递。因此，将调用`Student`类的构造函数，并将用户输入的名称传递给构造函数。在LineEdit小部件中输入的名称将被分配给类变量`name`。之后，名为`labelResponse`的Label小部件将设置为显示字符串`Hello`，并调用`Student`类的`printName`方法，该方法返回分配给名称变量的字符串。
+将 Push Button 小部件的`clicked()`事件连接到`dispmessage()`方法；在 LineEdit 小部件中输入名称后，当用户单击按钮时，将调用`dispmessage()`方法。`dispmessage()`方法通过名称定义了`Student`类的对象，`studentObj`，并将用户在 LineEdit 小部件中输入的名称作为参数传递。因此，将调用`Student`类的构造函数，并将用户输入的名称传递给构造函数。在 LineEdit 小部件中输入的名称将被分配给类变量`name`。之后，名为`labelResponse`的 Label 小部件将设置为显示字符串`Hello`，并调用`Student`类的`printName`方法，该方法返回分配给名称变量的字符串。
 
-因此，单击按钮后，Label小部件将设置为显示字符串`Hello`，然后是用户在LineEdit框中输入的名称，如下面的屏幕截图所示：
+因此，单击按钮后，Label 小部件将设置为显示字符串`Hello`，然后是用户在 LineEdit 框中输入的名称，如下面的屏幕截图所示：
 
-![](assets/4087bf43-9f4a-438f-9afc-3896bed1d43a.png)
+![](img/4087bf43-9f4a-438f-9afc-3896bed1d43a.png)
 
 # 使应用程序更加详细
 
 我们还可以在类中使用两个或更多类属性。
 
-假设除了类名`Student`之外，我们还想将学生的代码添加到类中。在这种情况下，我们需要向类中添加一个名为`code`的属性，还需要一个`getCode()`方法，该方法将访问分配的学生代码。除了类之外，GUI也将发生变化。
+假设除了类名`Student`之外，我们还想将学生的代码添加到类中。在这种情况下，我们需要向类中添加一个名为`code`的属性，还需要一个`getCode()`方法，该方法将访问分配的学生代码。除了类之外，GUI 也将发生变化。
 
-我们需要向应用程序添加一个以上的Label小部件和一个LineEdit小部件，并将其保存为另一个名称`demoStudentClass`。添加Label和LineEdit小部件后，用户界面将显示如下屏幕截图所示：
+我们需要向应用程序添加一个以上的 Label 小部件和一个 LineEdit 小部件，并将其保存为另一个名称`demoStudentClass`。添加 Label 和 LineEdit 小部件后，用户界面将显示如下屏幕截图所示：
 
-![](assets/a7049b4f-3d2b-444c-9acd-db786bb48423.png)
+![](img/a7049b4f-3d2b-444c-9acd-db786bb48423.png)
 
-用户界面文件`demoStudentClass.ui`需要转换为Python代码。可以在本书的源代码包中看到生成的Python脚本`demoStudentClass.py`。
+用户界面文件`demoStudentClass.ui`需要转换为 Python 代码。可以在本书的源代码包中看到生成的 Python 脚本`demoStudentClass.py`。
 
-让我们创建另一个名为`callStudentClass.pyw`的Python文件，并将`demoStudentClass.py`代码导入其中。`callStudentClass.pyw`中的代码如下：
+让我们创建另一个名为`callStudentClass.pyw`的 Python 文件，并将`demoStudentClass.py`代码导入其中。`callStudentClass.pyw`中的代码如下：
 
 ```py
 import sys
@@ -273,11 +273,11 @@ if __name__=="__main__":
 
 +   `getName()`: 该方法简单地返回`name`类变量中的值
 
-推按钮小部件的`clicked()`事件连接到`dispmessage()`方法；在行编辑小部件中输入代码和名称后，用户单击推按钮，将调用`dispmessage()`方法。`dispmessage()`方法通过名称定义`Student`类的对象，`studentObj`，并将用户在行编辑小部件中输入的代码和名称作为参数传递。`Student`类的构造函数`__init__()`将被调用，并将用户输入的代码和名称传递给它。输入的代码和名称将分别分配给类变量code和name。之后，标签小部件称为`labelResponse`被设置为通过`Student`类的`studentObj`对象调用两个方法`getCode`和`getName`显示输入的代码和名称。
+推按钮小部件的`clicked()`事件连接到`dispmessage()`方法；在行编辑小部件中输入代码和名称后，用户单击推按钮，将调用`dispmessage()`方法。`dispmessage()`方法通过名称定义`Student`类的对象，`studentObj`，并将用户在行编辑小部件中输入的代码和名称作为参数传递。`Student`类的构造函数`__init__()`将被调用，并将用户输入的代码和名称传递给它。输入的代码和名称将分别分配给类变量 code 和 name。之后，标签小部件称为`labelResponse`被设置为通过`Student`类的`studentObj`对象调用两个方法`getCode`和`getName`显示输入的代码和名称。
 
 因此，单击推按钮后，标签小部件将显示用户在两个行编辑小部件中输入的代码和名称，如下截图所示：
 
-![](assets/e9877017-e033-432c-a3c9-fd5b0d47c65f.png)
+![](img/e9877017-e033-432c-a3c9-fd5b0d47c65f.png)
 
 # 继承
 
@@ -297,7 +297,7 @@ if __name__=="__main__":
 
 单一继承是最简单的继承类型，其中一个类从另一个单一类派生，如下图所示：
 
-![](assets/a30a06b6-5b72-4811-863e-2597433190bf.png)
+![](img/a30a06b6-5b72-4811-863e-2597433190bf.png)
 
 类**B**继承类**A**。在这里，类**A**将被称为超类或基类，类**B**将被称为派生类或子类。
 
@@ -319,7 +319,7 @@ class Marks(Student):
 
 # 如何做...
 
-启动Qt Designer，并根据以下步骤创建一个基于无按钮对话框模板的新应用程序：
+启动 Qt Designer，并根据以下步骤创建一个基于无按钮对话框模板的新应用程序：
 
 1.  在应用程序中，将五个标签小部件、四个行编辑小部件和一个按钮小部件拖放到表单上。
 
@@ -329,17 +329,17 @@ class Marks(Student):
 
 1.  将按钮小部件的文本属性设置为`点击`。
 
-1.  将四个行编辑小部件的objectName属性设置为`lineEditCode`，`lineEditName`，`lineEditHistoryMarks`和`lineEditGeographyMarks`。
+1.  将四个行编辑小部件的 objectName 属性设置为`lineEditCode`，`lineEditName`，`lineEditHistoryMarks`和`lineEditGeographyMarks`。
 
-1.  将标签小部件的objectName属性设置为`labelResponse`，将按钮小部件的objectName属性设置为`ButtonClickMe`。
+1.  将标签小部件的 objectName 属性设置为`labelResponse`，将按钮小部件的 objectName 属性设置为`ButtonClickMe`。
 
 1.  使用名称`demoSimpleInheritance.ui`保存应用程序。应用程序将显示如下截图所示：
 
-![](assets/ae5f11dc-7444-41b8-bbb6-8ee75483b7ac.png)
+![](img/ae5f11dc-7444-41b8-bbb6-8ee75483b7ac.png)
 
-用户界面文件`demoSimpleInheritance.ui`是一个XML文件，并使用`pyuic5`实用程序转换为Python代码。您可以在本书的源代码包中找到生成的Python脚本`demoSimpleInheritance.py`。上述代码将被用作头文件，并将被导入到另一个Python脚本文件中，该文件将调用在`demoSimpleInheritance.py`文件中定义的用户界面设计。
+用户界面文件`demoSimpleInheritance.ui`是一个 XML 文件，并使用`pyuic5`实用程序转换为 Python 代码。您可以在本书的源代码包中找到生成的 Python 脚本`demoSimpleInheritance.py`。上述代码将被用作头文件，并将被导入到另一个 Python 脚本文件中，该文件将调用在`demoSimpleInheritance.py`文件中定义的用户界面设计。
 
-1.  创建另一个名为`callSimpleInheritance.pyw`的Python文件，并将`demoSimpleInheritance.py`代码导入其中。Python脚本`callSimpleInheritance.pyw`中的代码如下所示：
+1.  创建另一个名为`callSimpleInheritance.pyw`的 Python 文件，并将`demoSimpleInheritance.py`代码导入其中。Python 脚本`callSimpleInheritance.pyw`中的代码如下所示：
 
 ```py
 import sys
@@ -410,19 +410,19 @@ if __name__=="__main__":
 
 +   `getGeographyMarks()`: 这个方法简单地返回`geographyMarks`类变量中的值。
 
-按钮的`clicked()`事件连接到`dispmessage()`方法。在Line Edit小部件中输入代码、姓名、历史和地理成绩后，用户单击按钮时，将调用`dispmessage()`方法。`dispmessage()`方法通过名称定义了`Marks`类的对象`marksObj`，并将用户在Line Edit小部件中输入的代码、姓名、历史和地理成绩作为参数传递。`Marks`类的构造函数`__init__()`将被调用，并将用户输入的代码、姓名、历史和地理成绩传递给它。从`Marks`类的构造函数中，将调用`Student`类的构造函数，并将`code`和`name`传递给该构造函数。`code`和`name`参数将分别分配给`Student`类的`code`和`name`类变量。
+按钮的`clicked()`事件连接到`dispmessage()`方法。在 Line Edit 小部件中输入代码、姓名、历史和地理成绩后，用户单击按钮时，将调用`dispmessage()`方法。`dispmessage()`方法通过名称定义了`Marks`类的对象`marksObj`，并将用户在 Line Edit 小部件中输入的代码、姓名、历史和地理成绩作为参数传递。`Marks`类的构造函数`__init__()`将被调用，并将用户输入的代码、姓名、历史和地理成绩传递给它。从`Marks`类的构造函数中，将调用`Student`类的构造函数，并将`code`和`name`传递给该构造函数。`code`和`name`参数将分别分配给`Student`类的`code`和`name`类变量。
 
-类似地，历史和地理成绩将分配给`Marks`类的`historyMarks`和`geographyMarks`类变量。之后，将设置名为`labelResponse`的Label小部件，以通过调用四个方法`getCode`、`getName`、`getHistoryMarks`和`getGeographyMarks`来显示用户输入的代码、姓名、历史和地理成绩。通过`marksObj`对象，`Marks`类的`marksObj`对象获得了访问`Student`类的`getCode`和`getName`方法的权限，因为使用了继承。
+类似地，历史和地理成绩将分配给`Marks`类的`historyMarks`和`geographyMarks`类变量。之后，将设置名为`labelResponse`的 Label 小部件，以通过调用四个方法`getCode`、`getName`、`getHistoryMarks`和`getGeographyMarks`来显示用户输入的代码、姓名、历史和地理成绩。通过`marksObj`对象，`Marks`类的`marksObj`对象获得了访问`Student`类的`getCode`和`getName`方法的权限，因为使用了继承。
 
-因此，单击按钮后，Label小部件将通过名为`labelResponse`的Label小部件显示用户输入的代码、姓名、历史成绩和地理成绩，如下图所示：
+因此，单击按钮后，Label 小部件将通过名为`labelResponse`的 Label 小部件显示用户输入的代码、姓名、历史成绩和地理成绩，如下图所示：
 
-![](assets/85fd758c-d18c-4054-82f6-e71290dc9ff3.png)
+![](img/85fd758c-d18c-4054-82f6-e71290dc9ff3.png)
 
 # 使用多级继承
 
 多级继承是指一个类继承另一个单一类。转而继承第三个类，如下图所示：
 
-![](assets/60be84f7-6eaa-49f2-b0bb-7f9adc6f8627.png)
+![](img/60be84f7-6eaa-49f2-b0bb-7f9adc6f8627.png)
 
 在上图中，您可以看到类**B**继承了类**A**，而类**C**又继承了类**B**。
 
@@ -438,7 +438,7 @@ class Student:
 
 # 准备就绪
 
-为了理解多级继承的概念，让我们创建一个应用程序，提示用户输入学生的代码、姓名、历史成绩和地理成绩，并在单击按钮时显示总分和百分比。总分将是历史成绩和地理成绩的总和。假设最高分为100，计算百分比的公式为：总分/200 * 100。
+为了理解多级继承的概念，让我们创建一个应用程序，提示用户输入学生的代码、姓名、历史成绩和地理成绩，并在单击按钮时显示总分和百分比。总分将是历史成绩和地理成绩的总和。假设最高分为 100，计算百分比的公式为：总分/200 * 100。
 
 用户输入的代码和姓名将分配给名为`Student`的类的类成员。历史和地理成绩将分配给名为`Marks`的另一个类的类成员。
 
@@ -450,27 +450,27 @@ class Student:
 
 总之，有三个类，名为`Student`，`Marks`和`Result`，其中`Result`类将继承`Marks`类，而`Marks`类将继承`Student`类。因此，`Result`类的成员可以访问`Marks`类的类成员以及`Student`类的成员。以下是创建此应用程序的逐步过程：
 
-1.  启动Qt Designer并基于无按钮模板创建一个新应用程序。
+1.  启动 Qt Designer 并基于无按钮模板创建一个新应用程序。
 
-1.  将六个Label小部件、六个Line Edit小部件和一个Push Button小部件拖放到表单上。
+1.  将六个 Label 小部件、六个 Line Edit 小部件和一个 Push Button 小部件拖放到表单上。
 
-1.  将六个Label小部件的文本属性设置为`Student Code`、`Student Name`、`History Marks`、`Geography Marks`、`Total`和`Percentage`。
+1.  将六个 Label 小部件的文本属性设置为`Student Code`、`Student Name`、`History Marks`、`Geography Marks`、`Total`和`Percentage`。
 
-1.  将Push Button小部件的文本属性设置为`Click`。
+1.  将 Push Button 小部件的文本属性设置为`Click`。
 
-1.  将六个Line Edit小部件的对象名称属性设置为`lineEditCode`、`lineEditName`、`lineEditHistoryMarks`、`lineEditGeographyMarks`、`lineEditTotal`和`lineEditPercentage`。
+1.  将六个 Line Edit 小部件的对象名称属性设置为`lineEditCode`、`lineEditName`、`lineEditHistoryMarks`、`lineEditGeographyMarks`、`lineEditTotal`和`lineEditPercentage`。
 
-1.  将Push Button小部件的对象名称属性设置为`ButtonClickMe`。
+1.  将 Push Button 小部件的对象名称属性设置为`ButtonClickMe`。
 
 1.  通过取消选中属性编辑器窗口中的启用属性，禁用`lineEditTotal`和`lineEditPercentage`框。`lineEditTotal`和`lineEditPercentage`小部件被禁用，因为这些框中的值将通过代码分配，我们不希望用户更改它们的值。
 
 1.  使用名称`demoMultilevelInheritance.ui`保存应用程序。应用程序将显示如下截图所示：
 
-![](assets/6e59be73-0f7c-455e-a947-bfb9c7883a3a.png)
+![](img/6e59be73-0f7c-455e-a947-bfb9c7883a3a.png)
 
-用户界面文件`demoMultilevelInheritance.ui`是一个XML文件，并通过使用`pyuic5`实用程序将其转换为Python代码。您可以在本书的源代码包中看到生成的Python脚本`demoMultilevelInheritance.py`。`demoMultilevelInheritance.py`文件将用作头文件，并将在另一个Python脚本文件中导入，该文件将使用在`demoMultilevelInheritance.py`中创建的GUI。
+用户界面文件`demoMultilevelInheritance.ui`是一个 XML 文件，并通过使用`pyuic5`实用程序将其转换为 Python 代码。您可以在本书的源代码包中看到生成的 Python 脚本`demoMultilevelInheritance.py`。`demoMultilevelInheritance.py`文件将用作头文件，并将在另一个 Python 脚本文件中导入，该文件将使用在`demoMultilevelInheritance.py`中创建的 GUI。
 
-1.  创建另一个名为`callMultilevelInheritance.pyw`的Python文件，并将`demoMultilevelInheritance.py`代码导入其中。Python脚本`callMultilevelInheritance.pyw`中的代码如下所示：
+1.  创建另一个名为`callMultilevelInheritance.pyw`的 Python 文件，并将`demoMultilevelInheritance.py`代码导入其中。Python 脚本`callMultilevelInheritance.pyw`中的代码如下所示：
 
 ```py
 import sys
@@ -559,7 +559,7 @@ if __name__=="__main__":
 
 `Result`类包括两个类变量，称为`totalMarks`和`percentage`，以及以下三个方法：
 
-+   `__init__()`: 这是一个构造函数，它接受强制的`self`参数和四个参数，`code`、`name`、`historyMarks`和`geographyMarks`。从这个构造函数中，将调用`Marks`类的构造函数，并将`code`、`name`、`historyMarks`和`geographyMarks`参数传递给该构造函数。`historyMarks`和`geographyMarks`的总和将被赋给`totalMarks`类变量。假设每个的最高分为100，将计算历史和地理成绩的百分比，并将其分配给百分比类变量。
++   `__init__()`: 这是一个构造函数，它接受强制的`self`参数和四个参数，`code`、`name`、`historyMarks`和`geographyMarks`。从这个构造函数中，将调用`Marks`类的构造函数，并将`code`、`name`、`historyMarks`和`geographyMarks`参数传递给该构造函数。`historyMarks`和`geographyMarks`的总和将被赋给`totalMarks`类变量。假设每个的最高分为 100，将计算历史和地理成绩的百分比，并将其分配给百分比类变量。
 
 +   `getTotalMarks()`: 此方法简单地返回`historyMarks`和`geographyMarks`类变量的总和。
 
@@ -573,13 +573,13 @@ if __name__=="__main__":
 
 因此，单击按钮后，称为`lineEditTotal`和`lineEditPercentage`的行编辑小部件将显示用户输入的历史和地理成绩的总分和百分比，如下截图所示：
 
-![](assets/d449d2e5-b4df-4d4b-83de-7453ccab8863.png)
+![](img/d449d2e5-b4df-4d4b-83de-7453ccab8863.png)
 
 # 使用多重继承
 
 多重继承是指一个类继承了两个或更多个类，如下图所示：
 
-![](assets/18fd865e-1ed7-4668-8579-ecb61a333042.png)
+![](img/18fd865e-1ed7-4668-8579-ecb61a333042.png)
 
 类**C**同时继承类**A**和类**B**。
 
@@ -595,7 +595,7 @@ class Student:
 
 # 准备就绪
 
-为了实际理解多级继承的概念，让我们创建一个应用程序，提示用户输入学生的代码、姓名、历史成绩和地理成绩，并在单击按钮时显示总分和百分比。总分将是历史成绩和地理成绩的总和。假设每个的最高分为100，计算百分比的公式为：总分/200 * 100。
+为了实际理解多级继承的概念，让我们创建一个应用程序，提示用户输入学生的代码、姓名、历史成绩和地理成绩，并在单击按钮时显示总分和百分比。总分将是历史成绩和地理成绩的总和。假设每个的最高分为 100，计算百分比的公式为：总分/200 * 100。
 
 用户输入的代码和姓名将分配给一个名为`Student`的类的类成员。历史和地理成绩将分配给另一个名为`Marks`的类的类成员。
 
@@ -605,7 +605,7 @@ class Student:
 
 让我们通过逐步过程来了解多级继承如何应用于三个类，`Student`，`Marks`和`Result`。`Result`类将同时继承`Student`和`Marks`两个类。这些步骤解释了`Result`类的成员如何通过多级继承访问`Student`和`Marks`类的类成员：
 
-1.  启动Qt Designer，并基于无按钮的对话框模板创建一个新应用程序。
+1.  启动 Qt Designer，并基于无按钮的对话框模板创建一个新应用程序。
 
 1.  在应用程序中，将六个标签小部件、六个行编辑小部件和一个按钮小部件拖放到表单上。
 
@@ -613,19 +613,19 @@ class Student:
 
 1.  将按钮小部件的文本属性设置为`点击`。
 
-1.  将六个行编辑小部件的objectName属性设置为`lineEditCode`，`lineEditName`，`lineEditHistoryMarks`，`lineEditGeographyMarks`，`lineEditTotal`和`lineEditPercentage`。
+1.  将六个行编辑小部件的 objectName 属性设置为`lineEditCode`，`lineEditName`，`lineEditHistoryMarks`，`lineEditGeographyMarks`，`lineEditTotal`和`lineEditPercentage`。
 
-1.  将按钮小部件的objectName属性设置为`ButtonClickMe`。
+1.  将按钮小部件的 objectName 属性设置为`ButtonClickMe`。
 
 1.  通过取消选中属性编辑器窗口中的启用属性，禁用`lineEditTotal`和`lineEditPercentage`框。`lineEditTotal`和`lineEditPercentage`框被禁用，因为这些框中的值将通过代码分配，并且我们不希望用户更改它们的值。
 
 1.  使用名称`demoMultipleInheritance.ui`保存应用程序。应用程序将显示如下截图所示：
 
-![](assets/a27d6894-3d5e-4a3d-a2af-f12757b4dc3e.png)
+![](img/a27d6894-3d5e-4a3d-a2af-f12757b4dc3e.png)
 
-用户界面文件`demoMultipleInheritance .ui`是一个XML文件，并使用`pyuic5`实用程序转换为Python代码。您可以在本书的源代码包中找到生成的Python代码`demoMultipleInheritance.py`。`demoMultipleInheritance.py`文件将被用作头文件，并将在另一个Python脚本文件中导入，该文件将调用在`demoMultipleInheritance.py`文件中创建的GUI。
+用户界面文件`demoMultipleInheritance .ui`是一个 XML 文件，并使用`pyuic5`实用程序转换为 Python 代码。您可以在本书的源代码包中找到生成的 Python 代码`demoMultipleInheritance.py`。`demoMultipleInheritance.py`文件将被用作头文件，并将在另一个 Python 脚本文件中导入，该文件将调用在`demoMultipleInheritance.py`文件中创建的 GUI。
 
-1.  创建另一个名为`callMultipleInheritance.pyw`的Python文件，并将`demoMultipleInheritance.py`代码导入其中：
+1.  创建另一个名为`callMultipleInheritance.pyw`的 Python 文件，并将`demoMultipleInheritance.py`代码导入其中：
 
 ```py
 import sys
@@ -710,20 +710,20 @@ if __name__=="__main__":
 
 `Result`类包括两个名为`totalMarks`和`percentage`的类变量，以及以下三种方法：
 
-+   `__init__()`: 这是一个构造函数，它接受强制的`self`参数和四个参数，`code`、`name`、`historyMarks`和`geographyMarks`。从这个构造函数中，将调用`Student`类的构造函数，并将`code`和`name`参数传递给该构造函数。同样，从这个构造函数中，将调用`Marks`类的构造函数，并将`historyMarks`和`geographyMarks`参数传递给该构造函数。`historyMarks`和`geographyMarks`的总和将被分配给`totalMarks`类变量。假设每个的最高分数为100，将计算历史和地理成绩的百分比，并将其分配给`percentage`类变量。
++   `__init__()`: 这是一个构造函数，它接受强制的`self`参数和四个参数，`code`、`name`、`historyMarks`和`geographyMarks`。从这个构造函数中，将调用`Student`类的构造函数，并将`code`和`name`参数传递给该构造函数。同样，从这个构造函数中，将调用`Marks`类的构造函数，并将`historyMarks`和`geographyMarks`参数传递给该构造函数。`historyMarks`和`geographyMarks`的总和将被分配给`totalMarks`类变量。假设每个的最高分数为 100，将计算历史和地理成绩的百分比，并将其分配给`percentage`类变量。
 
 +   `getTotalMarks()`: 此方法简单地返回`historyMarks`和`geography`类变量的总和。
 
 +   `getPercentage()`: 此方法简单地返回历史和地理成绩的百分比。
 
-按钮小部件的`clicked()`事件连接到`dispmessage()`方法。在LineEdit小部件中输入代码、名称、历史成绩和地理成绩后，当用户单击按钮时，将调用`dispmessage()`方法。`dispmessage()`方法通过名称定义了`Result`类的对象，`resultObj`，并将用户在LineEdit小部件中输入的代码、名称、历史成绩和地理成绩作为参数传递。将调用`Result`类的构造函数`__init__()`，并将用户输入的代码、名称、历史成绩和地理成绩传递给它。从`Result`类的构造函数中，将调用`Student`类的构造函数和`Marks`类的构造函数。代码和名称将传递给`Student`类的构造函数，历史和地理成绩将传递给`Marks`类的构造函数。
+按钮小部件的`clicked()`事件连接到`dispmessage()`方法。在 LineEdit 小部件中输入代码、名称、历史成绩和地理成绩后，当用户单击按钮时，将调用`dispmessage()`方法。`dispmessage()`方法通过名称定义了`Result`类的对象，`resultObj`，并将用户在 LineEdit 小部件中输入的代码、名称、历史成绩和地理成绩作为参数传递。将调用`Result`类的构造函数`__init__()`，并将用户输入的代码、名称、历史成绩和地理成绩传递给它。从`Result`类的构造函数中，将调用`Student`类的构造函数和`Marks`类的构造函数。代码和名称将传递给`Student`类的构造函数，历史和地理成绩将传递给`Marks`类的构造函数。
 
 在`Student`类构造函数中，代码和名称将分配给`code`和`name`类变量。同样，在`Marks`类构造函数中，历史和地理成绩将分配给`Marks`类的`historyMarks`和`geographyMarks`类变量。
 
 `historyMarks`和`geographyMarks`的总和将分配给`totalMarks`类变量。此外，历史和地理成绩的百分比将计算并分配给`percentage`类变量。
 
-之后，LineEdit小部件称为`lineEditTotal`被设置为通过`resultObj`调用`getTotalMarks`方法来显示总分，即历史和地理成绩的总和。同样，LineEdit小部件称为`lineEditPercentage`被设置为通过`resultObj`调用`getPercentage`方法来显示百分比。
+之后，LineEdit 小部件称为`lineEditTotal`被设置为通过`resultObj`调用`getTotalMarks`方法来显示总分，即历史和地理成绩的总和。同样，LineEdit 小部件称为`lineEditPercentage`被设置为通过`resultObj`调用`getPercentage`方法来显示百分比。
 
-因此，单击按钮后，LineEdit小部件称为`lineEditTotal`和`lineEditPercentage`将显示用户输入的历史和地理成绩的总分和百分比，如下面的屏幕截图所示：
+因此，单击按钮后，LineEdit 小部件称为`lineEditTotal`和`lineEditPercentage`将显示用户输入的历史和地理成绩的总分和百分比，如下面的屏幕截图所示：
 
-![](assets/e3d7ca1c-8089-43bc-b7ee-b4391dce7d38.png)
+![](img/e3d7ca1c-8089-43bc-b7ee-b4391dce7d38.png)

@@ -1,24 +1,24 @@
-# MySQL和SQLite数据库管理
+# MySQL 和 SQLite 数据库管理
 
-在本章中，您将学习有关MySQL和SQLite数据库管理的知识。您将学习如何安装MySQL和SQLite。您还将学习如何创建用户，授予权限，创建数据库，创建表，将数据插入表中，并查看表中的所有记录，特定记录，并更新和删除数据。
+在本章中，您将学习有关 MySQL 和 SQLite 数据库管理的知识。您将学习如何安装 MySQL 和 SQLite。您还将学习如何创建用户，授予权限，创建数据库，创建表，将数据插入表中，并查看表中的所有记录，特定记录，并更新和删除数据。
 
 在本章中，您将学习以下内容：
 
-+   MySQL数据库管理
++   MySQL 数据库管理
 
-+   SQLite数据库管理
++   SQLite 数据库管理
 
-# MySQL数据库管理
+# MySQL 数据库管理
 
-本节将介绍使用Python进行MySQL数据库管理。您已经知道Python有各种模块用于`mysql`数据库管理。因此，我们将在这里学习有关MySQLdb模块的知识。`mysqldb`模块是MySQL数据库服务器的接口，用于提供Python数据库API。
+本节将介绍使用 Python 进行 MySQL 数据库管理。您已经知道 Python 有各种模块用于`mysql`数据库管理。因此，我们将在这里学习有关 MySQLdb 模块的知识。`mysqldb`模块是 MySQL 数据库服务器的接口，用于提供 Python 数据库 API。
 
-让我们学习如何安装MySQL和Python的`mysqldb`包。为此，请在终端中运行以下命令：
+让我们学习如何安装 MySQL 和 Python 的`mysqldb`包。为此，请在终端中运行以下命令：
 
 ```py
 $ sudo apt install mysql-server
 ```
 
-此命令安装MySQL服务器和各种其他软件包。在安装软件包时，我们被提示为MySQL root帐户输入密码：
+此命令安装 MySQL 服务器和各种其他软件包。在安装软件包时，我们被提示为 MySQL root 帐户输入密码：
 
 +   以下代码用于检查是否安装了`mysqldb`包：
 
@@ -26,7 +26,7 @@ $ sudo apt install mysql-server
 $ apt-cache search MySQLdb
 ```
 
-+   以下是用于安装MySQL的Python接口：
++   以下是用于安装 MySQL 的 Python 接口：
 
 ```py
 $ sudo apt-get install python3-mysqldb
@@ -61,7 +61,7 @@ show databases;
 use database_name;
 ```
 
-每当我们退出MySQL控制台并在一段时间后再次登录时，我们必须使用`use database_name;`语句。使用此命令的目的是我们的工作将保存在我们的数据库中。我们可以通过以下示例详细了解这一点：
+每当我们退出 MySQL 控制台并在一段时间后再次登录时，我们必须使用`use database_name;`语句。使用此命令的目的是我们的工作将保存在我们的数据库中。我们可以通过以下示例详细了解这一点：
 
 +   以下代码用于列出所有表：
 
@@ -71,7 +71,7 @@ show tables;
 
 这些是我们用于列出数据库，使用数据库和列出表的命令。
 
-现在，我们将使用`mysql`控制台中的create database语句创建数据库。现在，使用`mysql -u root -p`打开`mysql`控制台，然后输入您在安装时输入的密码，然后按*Enter*。接下来，创建您的数据库。在本节中，我们将创建一个名为`test`的数据库，并在本节中将使用该数据库：
+现在，我们将使用`mysql`控制台中的 create database 语句创建数据库。现在，使用`mysql -u root -p`打开`mysql`控制台，然后输入您在安装时输入的密码，然后按*Enter*。接下来，创建您的数据库。在本节中，我们将创建一个名为`test`的数据库，并在本节中将使用该数据库：
 
 ```py
 student@ubuntu:~/work/mysql_testing$ sudo mysql -u root -p  Output: Enter password: Welcome to the MySQL monitor.  Commands end with ; or \g. Your MySQL connection id is 16 Server version: 5.7.24-0ubuntu0.18.04.1 (Ubuntu)
@@ -82,7 +82,7 @@ mysql> show databases; +--------------------+ | Database           | +----------
 mysql> use test; Database changed mysql>
 ```
 
-首先，我们使用show databases列出了所有数据库。接下来，我们使用create `database`语句创建了我们的数据库test。然后，我们再次执行show databases以查找我们的数据库是否已创建。我们的数据库现在已创建。接下来，我们使用该数据库来存储我们正在进行的工作。
+首先，我们使用 show databases 列出了所有数据库。接下来，我们使用 create `database`语句创建了我们的数据库 test。然后，我们再次执行 show databases 以查找我们的数据库是否已创建。我们的数据库现在已创建。接下来，我们使用该数据库来存储我们正在进行的工作。
 
 现在，我们将创建一个用户并授予该用户权限。运行以下命令：
 
@@ -111,7 +111,7 @@ import MySQLdb as mdb import sys  con_obj = mdb.connect('localhost', 'test_user'
 student@ubuntu:~/work/mysql_testing$ python3 get_database_version.py Output: Database version: 5.7.24-0ubuntu0.18.04.1
 ```
 
-在上面的示例中，我们得到了数据库版本。首先，我们导入了MySQLdb模块。然后我们编写了连接字符串。在连接字符串中，我们提到了我们的用户名、密码和数据库名称。接下来，我们创建了一个游标对象，用于执行SQL查询。在`execute()`中，我们传递了一个SQL查询。`fetchone()`检索查询结果的下一行。接下来，我们打印了结果。`close()`方法关闭了数据库连接。
+在上面的示例中，我们得到了数据库版本。首先，我们导入了 MySQLdb 模块。然后我们编写了连接字符串。在连接字符串中，我们提到了我们的用户名、密码和数据库名称。接下来，我们创建了一个游标对象，用于执行 SQL 查询。在`execute()`中，我们传递了一个 SQL 查询。`fetchone()`检索查询结果的下一行。接下来，我们打印了结果。`close()`方法关闭了数据库连接。
 
 # 创建表和插入数据
 
@@ -137,11 +137,11 @@ Oracle is a registered trademark of Oracle Corporation and/or its affiliates. Ot
 Type 'help;' or '\h' for help. Type '\c' to clear the current input statement. mysql> mysql> mysql> use test; Reading table information for completion of table and column names You can turn off this feature to get a quicker startup with -A Database changed mysql> show tables; +----------------+ | Tables_in_test | +----------------+ | books          | +----------------+ 1 row in set (0.00 sec)
 ```
 
-您可以看到您的books表已创建。
+您可以看到您的 books 表已创建。
 
 # 检索数据
 
-要从表中检索数据，我们使用`select`语句。现在，我们将从我们的books表中检索数据。为此，创建一个`retrieve_data.py`脚本，并在其中写入以下内容：
+要从表中检索数据，我们使用`select`语句。现在，我们将从我们的 books 表中检索数据。为此，创建一个`retrieve_data.py`脚本，并在其中写入以下内容：
 
 ```py
 import MySQLdb as mdb con_obj = mdb.connect('localhost', 'test_user', 'test123', 'test') with con_obj:
@@ -154,11 +154,11 @@ import MySQLdb as mdb con_obj = mdb.connect('localhost', 'test_user', 'test123',
 student@ubuntu:~/work/mysql_testing$ python3 retrieve_data.py Output: (1, 'Harry Potter') (2, 'Lord of the rings') (3, 'Murder on the Orient Express') (4, 'The adventures of Sherlock Holmes') (5, 'Death on the Nile')
 ```
 
-在上面的示例中，我们从表中检索了数据。我们使用了MySQLdb模块。我们编写了一个连接字符串并创建了一个游标对象来执行SQL查询。在`execute()`中，我们编写了一个SQL`select`语句。最后，我们打印了记录。
+在上面的示例中，我们从表中检索了数据。我们使用了 MySQLdb 模块。我们编写了一个连接字符串并创建了一个游标对象来执行 SQL 查询。在`execute()`中，我们编写了一个 SQL`select`语句。最后，我们打印了记录。
 
 # 更新数据
 
-现在，如果我们想对记录进行一些更改，我们可以使用SQL`update`语句。我们将看一个`update`语句的示例。为此，创建一个`update_data.py`脚本，并在其中写入以下内容：
+现在，如果我们想对记录进行一些更改，我们可以使用 SQL`update`语句。我们将看一个`update`语句的示例。为此，创建一个`update_data.py`脚本，并在其中写入以下内容：
 
 ```py
 import MySQLdb as mdb con_obj = mdb.connect('localhost', 'test_user', 'test123', 'test') cur_obj = con_obj.cursor() cur_obj.execute("UPDATE books SET Name = 'Fantastic Beasts' WHERE Id = 1")try:
@@ -178,7 +178,7 @@ student@ubuntu:~/work/mysql_testing$ python3 update_data.py
 student@ubuntu:~/work/mysql_testing$ python3 retrieve_data.py Output: (1, 'Fantastic Beasts') (2, 'Lord of the rings') (3, 'Murder on the Orient Express') (4, 'The adventures of Sherlock Holmes') (5, 'Death on the Nile')
 ```
 
-您可以看到ID为`1`的数据已更新。在上面的示例中，在`execute()`中，我们编写了一个`update`语句，将更新ID为`1`的数据。
+您可以看到 ID 为`1`的数据已更新。在上面的示例中，在`execute()`中，我们编写了一个`update`语句，将更新 ID 为`1`的数据。
 
 # 删除数据
 
@@ -202,13 +202,13 @@ student@ubuntu:~/work/mysql_testing$ python3 delete_data.py
 student@ubuntu:~/work/mysql_testing$ python3 retrieve_data.py Output: (1, 'Fantastic Beasts') (2, 'Lord of the rings') (3, 'Murder on the Orient Express') (4, 'The adventures of Sherlock Holmes')
 ```
 
-您可以看到，您的ID为`5`的记录已被删除。在上面的示例中，我们使用了`delete`语句来删除特定记录。在这里，我们删除了ID为`5`的记录。您还可以根据自己选择的任何字段名删除记录。
+您可以看到，您的 ID 为`5`的记录已被删除。在上面的示例中，我们使用了`delete`语句来删除特定记录。在这里，我们删除了 ID 为`5`的记录。您还可以根据自己选择的任何字段名删除记录。
 
-# SQLite数据库管理
+# SQLite 数据库管理
 
-在本节中，我们将学习如何安装和使用SQLite。Python有`sqlite3`模块来执行SQLite数据库任务。SQLite是一个无服务器、零配置、事务性SQL数据库引擎。SQLite非常快速和轻量级。整个数据库存储在单个磁盘文件中。
+在本节中，我们将学习如何安装和使用 SQLite。Python 有`sqlite3`模块来执行 SQLite 数据库任务。SQLite 是一个无服务器、零配置、事务性 SQL 数据库引擎。SQLite 非常快速和轻量级。整个数据库存储在单个磁盘文件中。
 
-现在，我们将首先安装SQLite。在终端中运行以下命令：
+现在，我们将首先安装 SQLite。在终端中运行以下命令：
 
 ```py
 $ sudo apt install sqlite3
@@ -216,7 +216,7 @@ $ sudo apt install sqlite3
 
 在本节中，我们将学习以下操作：创建数据库、创建表、向表中插入数据、检索数据，以及从表中更新和删除数据。我们将逐个查看每个操作。
 
-现在，首先，我们将看如何在SQLite中创建数据库。要创建数据库，您只需在终端中输入以下命令：
+现在，首先，我们将看如何在 SQLite 中创建数据库。要创建数据库，您只需在终端中输入以下命令：
 
 ```py
 $ sqlite3 test.db
@@ -232,7 +232,7 @@ student@ubuntu:~$ sqlite3 test.db SQLite version 3.22.0 2018-01-22 18:45:57 Ente
 
 # 连接到数据库
 
-现在，我们将看到如何连接到数据库。为此，我们将创建一个脚本。Python已经在标准库中包含了一个`sqlite3`模块。我们只需要在使用SQLite时导入它。创建一个`connect_database.py`脚本，并在其中写入以下内容：
+现在，我们将看到如何连接到数据库。为此，我们将创建一个脚本。Python 已经在标准库中包含了一个`sqlite3`模块。我们只需要在使用 SQLite 时导入它。创建一个`connect_database.py`脚本，并在其中写入以下内容：
 
 ```py
 import sqlite3 con_obj = sqlite3.connect('test.db') print ("Database connected successfully !!")
@@ -261,7 +261,7 @@ import sqlite3 con_obj = sqlite3.connect("test.db") with con_obj:
 student@ubuntu:~/work $ python3 create_table.py Output: Table created
 ```
 
-在前面的例子中，我们使用`CREATE TABLE`语句创建了一个名为books的表。首先，我们使用`test.db`建立了与数据库的连接。接下来，我们创建了一个游标对象，用于在数据库上执行SQL查询。
+在前面的例子中，我们使用`CREATE TABLE`语句创建了一个名为 books 的表。首先，我们使用`test.db`建立了与数据库的连接。接下来，我们创建了一个游标对象，用于在数据库上执行 SQL 查询。
 
 # 插入数据
 
@@ -278,7 +278,7 @@ import sqlite3 con_obj = sqlite3.connect("test.db") with con_obj:
 student@ubuntu:~/work$ python3 insert_data.py Output: Data inserted Successfully !!
 ```
 
-在前面的例子中，我们向我们的表中插入了一些数据。为此，我们在SQL语句中使用了`insert`。通过使用`commit()`，我们告诉数据库保存所有当前的事务。
+在前面的例子中，我们向我们的表中插入了一些数据。为此，我们在 SQL 语句中使用了`insert`。通过使用`commit()`，我们告诉数据库保存所有当前的事务。
 
 # 检索数据
 
@@ -302,7 +302,7 @@ Title =  A Study in Scarlet Author =  Arthur Conan Doyle
 
 在前面的例子中，我们导入了`sqlite3`模块。接下来，我们连接到了我们的`test.db`数据库。为了检索数据，我们使用了`select`语句。最后，我们打印了检索到的数据。
 
-您还可以在`sqlite3`控制台中检索数据。为此，首先启动SQLite控制台，然后按照以下方式检索数据：
+您还可以在`sqlite3`控制台中检索数据。为此，首先启动 SQLite 控制台，然后按照以下方式检索数据：
 
 ```py
 student@ubuntu:~/work/sqlite3_testing$ sqlite3 test.db Output: SQLite version 3.22.0 2018-01-22 18:45:57 Enter ".help" for usage hints. sqlite> sqlite> select * from books; Pride and Prejudice|Jane Austen Harry Potter|J.K Rowling The Lord of the Rings|J. R. R. Tolkien Murder on the Orient Express|Agatha Christie A Study in Scarlet|Arthur Conan Doyle sqlite>
@@ -324,7 +324,7 @@ import sqlite3 con_obj = sqlite3.connect("test.db") with con_obj:
 student@ubuntu:~/work $ python3 update_data.py Output: Data updated Successfully !!
 ```
 
-现在，要检查数据是否实际上已更新，请运行`retrieve_data.py`，或者您可以转到SQLite控制台并运行`select * from books;`。您将得到更新后的输出如下：
+现在，要检查数据是否实际上已更新，请运行`retrieve_data.py`，或者您可以转到 SQLite 控制台并运行`select * from books;`。您将得到更新后的输出如下：
 
 ```py
 By running retrieve_data.py: Output: student@ubuntu:~/work$ python3 retrieve_data.py Title =  Pride and Prejudice Author =  Jane Austen
@@ -351,7 +351,7 @@ import sqlite3 con_obj = sqlite3.connect("test.db") with con_obj:
 student@ubuntu:~/work $ python3 delete_data.py Output: Data deleted successfully !!
 ```
 
-在前面的例子中，我们从表中删除了一条记录。我们使用了`delete` SQL语句。现在，要检查数据是否成功删除，请运行`retrieve_data.py`或启动SQLite控制台，如下所示：
+在前面的例子中，我们从表中删除了一条记录。我们使用了`delete` SQL 语句。现在，要检查数据是否成功删除，请运行`retrieve_data.py`或启动 SQLite 控制台，如下所示：
 
 ```py
 By running retrieve_data.py Output: student@ubuntu:~/work$ python3 retrieve_data.py Title =  Pride and Prejudice Author =  Jane Austen
@@ -368,24 +368,24 @@ Checking on SQLite console: Output: student@ubuntu:~/work$ sqlite3 test.db SQLit
 
 # 总结
 
-在本章中，我们学习了MySQL以及SQLite数据库管理。我们创建了数据库和表。然后我们在表中插入了一些记录。使用`select`语句，我们检索了记录。我们还学习了更新和删除数据。
+在本章中，我们学习了 MySQL 以及 SQLite 数据库管理。我们创建了数据库和表。然后我们在表中插入了一些记录。使用`select`语句，我们检索了记录。我们还学习了更新和删除数据。
 
 # 问题
 
 1.  数据库用于什么？
 
-1.  数据库中的CRUD是什么？
+1.  数据库中的 CRUD 是什么？
 
 1.  我们可以连接远程数据库吗？如果可以，请举例说明。
 
-1.  我们可以在Python代码中编写触发器和存储过程吗？
+1.  我们可以在 Python 代码中编写触发器和存储过程吗？
 
-1.  什么是DML和DDL语句？
+1.  什么是 DML 和 DDL 语句？
 
 # 进一步阅读
 
-+   使用PyMySQL库：[http://zetcode.com/python/pymysql/](http://zetcode.com/python/pymysql/)
++   使用 PyMySQL 库：[`zetcode.com/python/pymysql/`](http://zetcode.com/python/pymysql/)
 
-+   MySQLdb，Python连接指南：[https://mysqlclient.readthedocs.io/](https://mysqlclient.readthedocs.io/)
++   MySQLdb，Python 连接指南：[`mysqlclient.readthedocs.io/`](https://mysqlclient.readthedocs.io/)
 
-+   SQLite数据库的DB-API 2.0接口：[https://docs.python.org/3/library/sqlite3.html](https://docs.python.org/3/library/sqlite3.html)
++   SQLite 数据库的 DB-API 2.0 接口：[`docs.python.org/3/library/sqlite3.html`](https://docs.python.org/3/library/sqlite3.html)

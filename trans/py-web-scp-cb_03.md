@@ -2,35 +2,35 @@
 
 在本章中，我们将涵盖：
 
-+   使用CSV和JSON数据
++   使用 CSV 和 JSON 数据
 
-+   使用AWS S3存储数据
++   使用 AWS S3 存储数据
 
-+   使用MySQL存储数据
++   使用 MySQL 存储数据
 
-+   使用PostgreSQL存储数据
++   使用 PostgreSQL 存储数据
 
-+   使用Elasticsearch存储数据
++   使用 Elasticsearch 存储数据
 
-+   如何使用AWS SQS构建健壮的ETL管道
++   如何使用 AWS SQS 构建健壮的 ETL 管道
 
 # 介绍
 
-在本章中，我们将介绍JSON、CSV和XML格式的数据使用。这将包括解析和将这些数据转换为其他格式的方法，包括将数据存储在关系数据库、Elasticsearch等搜索引擎以及包括AWS S3在内的云存储中。我们还将讨论通过使用AWS Simple Queue Service（SQS）等消息系统创建分布式和大规模的抓取任务。目标是既了解您可能检索和需要解析的各种数据形式，又了解可以存储您已抓取的数据的各种后端。最后，我们首次介绍了Amazon Web Service（AWS）的一项服务。在本书结束时，我们将深入研究AWS，并进行初步介绍。
+在本章中，我们将介绍 JSON、CSV 和 XML 格式的数据使用。这将包括解析和将这些数据转换为其他格式的方法，包括将数据存储在关系数据库、Elasticsearch 等搜索引擎以及包括 AWS S3 在内的云存储中。我们还将讨论通过使用 AWS Simple Queue Service（SQS）等消息系统创建分布式和大规模的抓取任务。目标是既了解您可能检索和需要解析的各种数据形式，又了解可以存储您已抓取的数据的各种后端。最后，我们首次介绍了 Amazon Web Service（AWS）的一项服务。在本书结束时，我们将深入研究 AWS，并进行初步介绍。
 
-# 使用CSV和JSON数据
+# 使用 CSV 和 JSON 数据
 
-从HTML页面中提取数据是使用上一章节中的技术完成的，主要是使用XPath通过各种工具和Beautiful Soup。虽然我们主要关注HTML，但HTML是XML（可扩展标记语言）的一种变体。XML曾经是在Web上表达数据的最流行形式之一，但其他形式已经变得流行，甚至超过了XML。
+从 HTML 页面中提取数据是使用上一章节中的技术完成的，主要是使用 XPath 通过各种工具和 Beautiful Soup。虽然我们主要关注 HTML，但 HTML 是 XML（可扩展标记语言）的一种变体。XML 曾经是在 Web 上表达数据的最流行形式之一，但其他形式已经变得流行，甚至超过了 XML。
 
-您将看到的两种常见格式是JSON（JavaScript对象表示）和CSV（逗号分隔值）。CSV易于创建，是许多电子表格应用程序的常见形式，因此许多网站提供该格式的数据，或者您需要将抓取的数据转换为该格式以进行进一步存储或协作。由于JSON易于在JavaScript（和Python）等编程语言中使用，并且许多数据库现在支持它作为本机数据格式，因此JSON确实已成为首选格式。
+您将看到的两种常见格式是 JSON（JavaScript 对象表示）和 CSV（逗号分隔值）。CSV 易于创建，是许多电子表格应用程序的常见形式，因此许多网站提供该格式的数据，或者您需要将抓取的数据转换为该格式以进行进一步存储或协作。由于 JSON 易于在 JavaScript（和 Python）等编程语言中使用，并且许多数据库现在支持它作为本机数据格式，因此 JSON 确实已成为首选格式。
 
-在这个示例中，让我们来看看将抓取的数据转换为CSV和JSON，以及将数据写入文件，以及从远程服务器读取这些数据文件。我们将研究Python CSV和JSON库。我们还将研究使用`pandas`进行这些技术。
+在这个示例中，让我们来看看将抓取的数据转换为 CSV 和 JSON，以及将数据写入文件，以及从远程服务器读取这些数据文件。我们将研究 Python CSV 和 JSON 库。我们还将研究使用`pandas`进行这些技术。
 
-这些示例中还隐含了将XML数据转换为CSV和JSON的过程，因此我们不会为这些示例专门设置一个部分。
+这些示例中还隐含了将 XML 数据转换为 CSV 和 JSON 的过程，因此我们不会为这些示例专门设置一个部分。
 
 # 准备工作
 
-我们将使用行星数据页面，并将该数据转换为CSV和JSON文件。让我们从将行星数据从页面加载到Python字典对象列表中开始。以下代码（在（`03/get_planet_data.py`）中找到）提供了执行此任务的函数，该函数将在整个章节中重复使用：
+我们将使用行星数据页面，并将该数据转换为 CSV 和 JSON 文件。让我们从将行星数据从页面加载到 Python 字典对象列表中开始。以下代码（在（`03/get_planet_data.py`）中找到）提供了执行此任务的函数，该函数将在整个章节中重复使用：
 
 ```py
 import requests
@@ -68,7 +68,7 @@ if __name__ == "__main__":
 ...
 ```
 
-可能需要安装csv、json和pandas。您可以使用以下三个命令来完成：
+可能需要安装 csv、json 和 pandas。您可以使用以下三个命令来完成：
 
 ```py
 pip install csv
@@ -78,9 +78,9 @@ pip install pandas
 
 # 如何做
 
-我们将首先将行星数据转换为CSV文件。
+我们将首先将行星数据转换为 CSV 文件。
 
-1.  这将使用`csv`执行。以下代码将行星数据写入CSV文件（代码在`03/create_csv.py`中）：
+1.  这将使用`csv`执行。以下代码将行星数据写入 CSV 文件（代码在`03/create_csv.py`中）：
 
 ```py
 import csv
@@ -96,7 +96,7 @@ for planet in planets:
 
 ```
 
-1.  输出文件放入我们项目的www文件夹中。检查它，我们看到以下内容：
+1.  输出文件放入我们项目的 www 文件夹中。检查它，我们看到以下内容：
 
 ```py
 Name,Mass,Radius,Description,MoreInfo
@@ -111,13 +111,13 @@ Neptune,102,49528,"Neptune was ""predicted"" by John Couch Adams and Urbain Le V
 Pluto,0.0146,2370,"Pluto was discovered at Lowell Observatory in Flagstaff, AZ during a systematic search for a trans-Neptune planet predicted by Percival Lowell and William H. Pickering. Named after the Roman god of the underworld who was able to render himself invisible.",https://en.wikipedia.org/wiki/Pluto
 ```
 
-我们将这个文件写入www目录，以便我们可以通过我们的Web服务器下载它。
+我们将这个文件写入 www 目录，以便我们可以通过我们的 Web 服务器下载它。
 
-1.  现在可以在支持CSV内容的应用程序中使用这些数据，例如Excel：
+1.  现在可以在支持 CSV 内容的应用程序中使用这些数据，例如 Excel：
 
-![](assets/a00f3815-56b8-4bfb-bcd7-e9dbd035caa9.png)在Excel中打开的文件
+![](img/a00f3815-56b8-4bfb-bcd7-e9dbd035caa9.png)在 Excel 中打开的文件
 
-1.  还可以使用`csv`库从Web服务器读取CSV数据，并首先使用`requests`检索内容。以下代码在`03/read_csv_from_web.py`中：
+1.  还可以使用`csv`库从 Web 服务器读取 CSV 数据，并首先使用`requests`检索内容。以下代码在`03/read_csv_from_web.py`中：
 
 ```py
 import requests
@@ -139,11 +139,11 @@ for line in lines: print(line)
 ['Earth', '5.97', '12756', "The name Earth comes from the Indo-European base 'er,'which produced the Germanic noun 'ertho,' and ultimately German 'erde,' Dutch 'aarde,' Scandinavian 'jord,' and English 'earth.' Related forms include Greek 'eraze,' meaning 'on the ground,' and Welsh 'erw,' meaning 'a piece of land.'", 'https://en.wikipedia.org/wiki/Earth']
 ```
 
-有一点要指出的是，CSV写入器留下了一个尾随空白，如果不处理，就会添加一个空列表项。这是通过切片行来处理的：以下语句返回除最后一行之外的所有行：
+有一点要指出的是，CSV 写入器留下了一个尾随空白，如果不处理，就会添加一个空列表项。这是通过切片行来处理的：以下语句返回除最后一行之外的所有行：
 
 `lines = [line for line in reader][:-1]`
 
-1.  这也可以很容易地使用pandas完成。以下从抓取的数据构造一个DataFrame。代码在`03/create_df_planets.py`中：
+1.  这也可以很容易地使用 pandas 完成。以下从抓取的数据构造一个 DataFrame。代码在`03/create_df_planets.py`中：
 
 ```py
 import pandas as pd
@@ -167,7 +167,7 @@ Neptune Neptune was "predicted" by John Couch Adams an...    102 49528
 Pluto   Pluto was discovered at Lowell Observatory in ... 0.0146 2370
 ```
 
-1.  `DataFrame`也可以通过简单调用`.to_csv()`保存到CSV文件中（代码在`03/save_csv_pandas.py`中）：
+1.  `DataFrame`也可以通过简单调用`.to_csv()`保存到 CSV 文件中（代码在`03/save_csv_pandas.py`中）：
 
 ```py
 import pandas as pd
@@ -178,7 +178,7 @@ planets_df = pd.DataFrame(planets).set_index('Name')
 planets_df.to_csv("../../www/planets_pandas.csv")
 ```
 
-1.  可以使用`pd.read_csv()`非常轻松地从`URL`中读取CSV文件，无需其他库。您可以使用`03/read_csv_via_pandas.py`中的代码：
+1.  可以使用`pd.read_csv()`非常轻松地从`URL`中读取 CSV 文件，无需其他库。您可以使用`03/read_csv_via_pandas.py`中的代码：
 
 ```py
 import pandas as pd
@@ -186,7 +186,7 @@ planets_df = pd.read_csv("http://localhost:8080/planets_pandas.csv", index_col='
 print(planets_df)
 ```
 
-1.  将数据转换为JSON也非常容易。使用Python可以使用Python的`json`库对JSON进行操作。该库可用于将Python对象转换为JSON，也可以从JSON转换为Python对象。以下将行星列表转换为JSON并将其打印到控制台：将行星数据打印为JSON（代码在`03/convert_to_json.py`中）：
+1.  将数据转换为 JSON 也非常容易。使用 Python 可以使用 Python 的`json`库对 JSON 进行操作。该库可用于将 Python 对象转换为 JSON，也可以从 JSON 转换为 Python 对象。以下将行星列表转换为 JSON 并将其打印到控制台：将行星数据打印为 JSON（代码在`03/convert_to_json.py`中）：
 
 ```py
 import json
@@ -215,7 +215,7 @@ print(json.dumps(planets, indent=4))
     },
 ```
 
-1.  这也可以用于轻松地将JSON保存到文件（`03/save_as_json.py`）：
+1.  这也可以用于轻松地将 JSON 保存到文件（`03/save_as_json.py`）：
 
 ```py
 import json
@@ -243,7 +243,7 @@ with open('../../www/planets.json', 'w+') as jsonFile:
         "Description": "Roman name for the goddess of love. This planet was considered to be the brightest and most beautiful planet or star in the heavens. Other civilizations have named it for their god or goddess of love/war.",
 ```
 
-1.  可以使用`requests`从Web服务器读取JSON并将其转换为Python对象（`03/read_http_json_requests.py`）：
+1.  可以使用`requests`从 Web 服务器读取 JSON 并将其转换为 Python 对象（`03/read_http_json_requests.py`）：
 
 ```py
 import requests
@@ -253,7 +253,7 @@ planets_request = requests.get("http://localhost:8080/planets.json")
 print(json.loads(planets_request.text))
 ```
 
-1.  pandas还提供了将JSON保存为CSV的功能（`03/save_json_pandas.py`）：
+1.  pandas 还提供了将 JSON 保存为 CSV 的功能（`03/save_json_pandas.py`）：
 
 ```py
 import pandas as pd
@@ -264,9 +264,9 @@ planets_df = pd.DataFrame(planets).set_index('Name')
 planets_df.reset_index().to_json("../../www/planets_pandas.json", orient='records')
 ```
 
-不幸的是，目前还没有一种方法可以漂亮地打印从`.to_json()`输出的JSON。还要注意使用`orient='records'`和使用`rest_index()`。这对于复制与使用JSON库示例写入的相同JSON结构是必要的。
+不幸的是，目前还没有一种方法可以漂亮地打印从`.to_json()`输出的 JSON。还要注意使用`orient='records'`和使用`rest_index()`。这对于复制与使用 JSON 库示例写入的相同 JSON 结构是必要的。
 
-1.  可以使用`.read_json()`将JSON读入DataFrame，也可以从HTTP和文件中读取（`03/read_json_http_pandas.py`）：
+1.  可以使用`.read_json()`将 JSON 读入 DataFrame，也可以从 HTTP 和文件中读取（`03/read_json_http_pandas.py`）：
 
 ```py
 import pandas as pd
@@ -276,45 +276,45 @@ print(planets_df)
 
 # 工作原理
 
-`csv`和`json`库是Python的标准部分，提供了一种简单的方法来读取和写入这两种格式的数据。
+`csv`和`json`库是 Python 的标准部分，提供了一种简单的方法来读取和写入这两种格式的数据。
 
-在某些Python发行版中，pandas并不是标准配置，您可能需要安装它。pandas对CSV和JSON的功能也更高级，提供了许多强大的数据操作，还支持从远程服务器访问数据。
+在某些 Python 发行版中，pandas 并不是标准配置，您可能需要安装它。pandas 对 CSV 和 JSON 的功能也更高级，提供了许多强大的数据操作，还支持从远程服务器访问数据。
 
 # 还有更多...
 
-选择csv、json或pandas库由您决定，但我倾向于喜欢pandas，并且我们将在整本书中更多地研究其在抓取中的使用，尽管我们不会深入研究其用法。
+选择 csv、json 或 pandas 库由您决定，但我倾向于喜欢 pandas，并且我们将在整本书中更多地研究其在抓取中的使用，尽管我们不会深入研究其用法。
 
-要深入了解pandas，请查看`pandas.pydata.org`，或者阅读我在Packt出版的另一本书《Learning pandas, 2ed》。
+要深入了解 pandas，请查看`pandas.pydata.org`，或者阅读我在 Packt 出版的另一本书《Learning pandas, 2ed》。
 
-有关csv库的更多信息，请参阅[https://docs.python.org/3/library/csv.html](https://docs.python.org/3/library/csv.html)
+有关 csv 库的更多信息，请参阅[`docs.python.org/3/library/csv.html`](https://docs.python.org/3/library/csv.html)
 
-有关json库的更多信息，请参阅[https://docs.python.org/3/library/json.html](https://docs.python.org/3/library/json.html)
+有关 json 库的更多信息，请参阅[`docs.python.org/3/library/json.html`](https://docs.python.org/3/library/json.html)
 
-# 使用AWS S3存储数据
+# 使用 AWS S3 存储数据
 
 有许多情况下，我们只想将我们抓取的内容保存到本地副本以进行存档、备份或以后进行批量分析。我们还可能希望保存这些网站的媒体以供以后使用。我为广告合规公司构建了爬虫，我们会跟踪并下载网站上基于广告的媒体，以确保正确使用，并且以供以后分析、合规和转码。
 
-这些类型系统所需的存储空间可能是巨大的，但随着云存储服务（如AWS S3（简单存储服务））的出现，这比在您自己的IT部门中管理大型SAN（存储区域网络）要容易得多，成本也更低。此外，S3还可以自动将数据从热存储移动到冷存储，然后再移动到长期存储，例如冰川，这可以为您节省更多的钱。
+这些类型系统所需的存储空间可能是巨大的，但随着云存储服务（如 AWS S3（简单存储服务））的出现，这比在您自己的 IT 部门中管理大型 SAN（存储区域网络）要容易得多，成本也更低。此外，S3 还可以自动将数据从热存储移动到冷存储，然后再移动到长期存储，例如冰川，这可以为您节省更多的钱。
 
-我们不会深入研究所有这些细节，而只是看看如何将我们的`planets.html`文件存储到S3存储桶中。一旦您能做到这一点，您就可以保存任何您想要的内容。
+我们不会深入研究所有这些细节，而只是看看如何将我们的`planets.html`文件存储到 S3 存储桶中。一旦您能做到这一点，您就可以保存任何您想要的内容。
 
 # 准备就绪
 
-要执行以下示例，您需要一个AWS账户，并且可以访问用于Python代码的密钥。它们将是您账户的唯一密钥。我们将使用`boto3`库来访问S3。您可以使用`pip install boto3`来安装它。此外，您需要设置环境变量进行身份验证。它们看起来像下面这样：
+要执行以下示例，您需要一个 AWS 账户，并且可以访问用于 Python 代码的密钥。它们将是您账户的唯一密钥。我们将使用`boto3`库来访问 S3。您可以使用`pip install boto3`来安装它。此外，您需要设置环境变量进行身份验证。它们看起来像下面这样：
 
 `AWS_ACCESS_KEY_ID=AKIAIDCQ5PH3UMWKZEWA`
 
 `AWS_SECRET_ACCESS_KEY=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`
 
-这些可以在AWS门户的IAM（身份访问管理）部分找到。
+这些可以在 AWS 门户的 IAM（身份访问管理）部分找到。
 
-将这些密钥放在环境变量中是一个好习惯。在代码中使用它们可能会导致它们被盗。在编写本书时，我将它们硬编码并意外地将它们检入GitHub。第二天早上，我醒来收到了来自AWS的关键消息，说我有成千上万台服务器在运行！GitHub有爬虫在寻找这些密钥，它们会被找到并用于不正当目的。等我把它们全部关闭的时候，我的账单已经涨到了6000美元，全部是在一夜之间产生的。幸运的是，AWS免除了这些费用！
+将这些密钥放在环境变量中是一个好习惯。在代码中使用它们可能会导致它们被盗。在编写本书时，我将它们硬编码并意外地将它们检入 GitHub。第二天早上，我醒来收到了来自 AWS 的关键消息，说我有成千上万台服务器在运行！GitHub 有爬虫在寻找这些密钥，它们会被找到并用于不正当目的。等我把它们全部关闭的时候，我的账单已经涨到了 6000 美元，全部是在一夜之间产生的。幸运的是，AWS 免除了这些费用！
 
 # 如何做到这一点
 
-我们不会解析`planets.html`文件中的数据，而只是使用requests从本地web服务器检索它：
+我们不会解析`planets.html`文件中的数据，而只是使用 requests 从本地 web 服务器检索它：
 
-1.  以下代码（在`03/S3.py`中找到）读取行星网页并将其存储在S3中：
+1.  以下代码（在`03/S3.py`中找到）读取行星网页并将其存储在 S3 中：
 
 ```py
 import requests
@@ -329,7 +329,7 @@ s3.put_object(Bucket=bucket_name, Key='planet.html',
               Body=data, ACL="public-read")
 ```
 
-1.  这个应用程序将给出类似以下的输出，这是S3信息，告诉您关于新项目的各种事实。
+1.  这个应用程序将给出类似以下的输出，这是 S3 信息，告诉您关于新项目的各种事实。
 
 ```py
 
@@ -346,37 +346,37 @@ s3.put_object(Bucket=bucket_name, Key='planet.html',
   'RetryAttempts': 0}}
 ```
 
-1.  这个输出告诉我们对象已成功创建在存储桶中。此时，您可以转到S3控制台并查看您的存储桶：
+1.  这个输出告诉我们对象已成功创建在存储桶中。此时，您可以转到 S3 控制台并查看您的存储桶：
 
-![](assets/29fbd119-7ee5-43eb-8b2f-9bc34998ff53.png)S3中的存储桶
+![](img/29fbd119-7ee5-43eb-8b2f-9bc34998ff53.png)S3 中的存储桶
 
 1.  在存储桶中，您将看到`planet.html`文件：
 
-![](assets/49cc32c4-5ac3-4177-a397-35385afbcf4e.png)存储桶中的文件
+![](img/49cc32c4-5ac3-4177-a397-35385afbcf4e.png)存储桶中的文件
 
-1.  通过点击文件，您可以看到S3中文件的属性和URL：
+1.  通过点击文件，您可以看到 S3 中文件的属性和 URL：
 
-![](assets/6c5b035d-009f-4878-9806-034b4db8e500.png)S3中文件的属性
+![](img/6c5b035d-009f-4878-9806-034b4db8e500.png)S3 中文件的属性
 
 # 它是如何工作的
 
-boto3库以Pythonic语法封装了AWS S3 API。`.client()`调用与AWS进行身份验证，并为我们提供了一个用于与S3通信的对象。确保您的密钥在环境变量中，否则这将无法工作。
+boto3 库以 Pythonic 语法封装了 AWS S3 API。`.client()`调用与 AWS 进行身份验证，并为我们提供了一个用于与 S3 通信的对象。确保您的密钥在环境变量中，否则这将无法工作。
 
-存储桶名称必须是全局唯一的。在撰写本文时，这个存储桶是可用的，但您可能需要更改名称。`.create_bucket()`调用创建存储桶并设置其ACL。`put_object()`使用`boto3`上传管理器将抓取的数据上传到存储桶中的对象。
+存储桶名称必须是全局唯一的。在撰写本文时，这个存储桶是可用的，但您可能需要更改名称。`.create_bucket()`调用创建存储桶并设置其 ACL。`put_object()`使用`boto3`上传管理器将抓取的数据上传到存储桶中的对象。
 
 # 还有更多...
 
-有很多细节需要学习来使用S3。您可以在以下网址找到API文档：[http://docs.aws.amazon.com/AmazonS3/latest/API/Welcome.html](http://docs.aws.amazon.com/AmazonS3/latest/API/Welcome.html)。Boto3文档可以在以下网址找到：[https://boto3.readthedocs.io/en/latest/](https://boto3.readthedocs.io/en/latest/)。
+有很多细节需要学习来使用 S3。您可以在以下网址找到 API 文档：[`docs.aws.amazon.com/AmazonS3/latest/API/Welcome.html`](http://docs.aws.amazon.com/AmazonS3/latest/API/Welcome.html)。Boto3 文档可以在以下网址找到：[`boto3.readthedocs.io/en/latest/`](https://boto3.readthedocs.io/en/latest/)。
 
-虽然我们只保存了一个网页，但这个模型可以用来在S3中存储任何类型的基于文件的数据。
+虽然我们只保存了一个网页，但这个模型可以用来在 S3 中存储任何类型的基于文件的数据。
 
-# 使用MySQL存储数据
+# 使用 MySQL 存储数据
 
-MySQL是一个免费的、开源的关系数据库管理系统（RDBMS）。在这个例子中，我们将从网站读取行星数据并将其存储到MySQL数据库中。
+MySQL 是一个免费的、开源的关系数据库管理系统（RDBMS）。在这个例子中，我们将从网站读取行星数据并将其存储到 MySQL 数据库中。
 
 # 准备工作
 
-您需要访问一个MySQL数据库。您可以在本地安装一个，也可以在云中安装，也可以在容器中安装。我正在使用本地安装的MySQL服务器，并且将`root`密码设置为`mypassword`。您还需要安装MySQL python库。您可以使用`pip install mysql-connector-python`来安装它。
+您需要访问一个 MySQL 数据库。您可以在本地安装一个，也可以在云中安装，也可以在容器中安装。我正在使用本地安装的 MySQL 服务器，并且将`root`密码设置为`mypassword`。您还需要安装 MySQL python 库。您可以使用`pip install mysql-connector-python`来安装它。
 
 1.  首先要做的是使用终端上的`mysql`命令连接到数据库：
 
@@ -427,11 +427,11 @@ Query OK, 0 rows affected (0.02 sec)
 
 ```
 
-现在我们准备好抓取数据并将其放入MySQL数据库中。
+现在我们准备好抓取数据并将其放入 MySQL 数据库中。
 
 # 如何做到这一点
 
-1.  以下代码（在`03/store_in_mysql.py`中找到）将读取行星数据并将其写入MySQL：
+1.  以下代码（在`03/store_in_mysql.py`中找到）将读取行星数据并将其写入 MySQL：
 
 ```py
 import mysql.connector
@@ -488,9 +488,9 @@ Storing data for Neptune
 Storing data for Pluto
 ```
 
-1.  使用MySQL Workbench，我们可以看到记录已写入数据库（您也可以使用mysql命令行）：
+1.  使用 MySQL Workbench，我们可以看到记录已写入数据库（您也可以使用 mysql 命令行）：
 
-![](assets/c8a2c090-dce7-40f2-b0b3-0c6d72ff3885.png)使用MySQL Workbench显示的记录
+![](img/c8a2c090-dce7-40f2-b0b3-0c6d72ff3885.png)使用 MySQL Workbench 显示的记录
 
 1.  以下代码可用于检索数据（`03/read_from_mysql.py`）：
 
@@ -539,27 +539,27 @@ finally:
 
 # 工作原理
 
-使用`mysql.connector`访问MySQL数据库涉及使用库中的两个类：`connect`和`cursor`。`connect`类打开并管理与数据库服务器的连接。从该连接对象，我们可以创建一个光标对象。该光标用于使用SQL语句读取和写入数据。
+使用`mysql.connector`访问 MySQL 数据库涉及使用库中的两个类：`connect`和`cursor`。`connect`类打开并管理与数据库服务器的连接。从该连接对象，我们可以创建一个光标对象。该光标用于使用 SQL 语句读取和写入数据。
 
 在第一个例子中，我们使用光标将九条记录插入数据库。直到调用连接的`commit()`方法，这些记录才会被写入数据库。这将执行将所有行写入数据库的操作。
 
-读取数据使用类似的模型，只是我们使用光标执行SQL查询（`SELECT`），并遍历检索到的行。由于我们是在读取而不是写入，因此无需在连接上调用`commit()`。
+读取数据使用类似的模型，只是我们使用光标执行 SQL 查询（`SELECT`），并遍历检索到的行。由于我们是在读取而不是写入，因此无需在连接上调用`commit()`。
 
 # 还有更多...
 
-您可以从以下网址了解更多关于MySQL并安装它：`https://dev.mysql.com/doc/refman/5.7/en/installing.html`。有关MySQL Workbench的信息，请访问：`https://dev.mysql.com/doc/workbench/en/`。
+您可以从以下网址了解更多关于 MySQL 并安装它：`https://dev.mysql.com/doc/refman/5.7/en/installing.html`。有关 MySQL Workbench 的信息，请访问：`https://dev.mysql.com/doc/workbench/en/`。
 
-# 使用PostgreSQL存储数据
+# 使用 PostgreSQL 存储数据
 
-在这个示例中，我们将我们的行星数据存储在PostgreSQL中。PostgreSQL是一个开源的关系数据库管理系统（RDBMS）。它由一个全球志愿者团队开发，不受任何公司或其他私人实体控制，源代码可以免费获得。它具有许多独特的功能，如分层数据模型。
+在这个示例中，我们将我们的行星数据存储在 PostgreSQL 中。PostgreSQL 是一个开源的关系数据库管理系统（RDBMS）。它由一个全球志愿者团队开发，不受任何公司或其他私人实体控制，源代码可以免费获得。它具有许多独特的功能，如分层数据模型。
 
 # 准备工作
 
-首先确保您可以访问PostgreSQL数据实例。同样，您可以在本地安装一个，运行一个容器，或者在云中获取一个实例。
+首先确保您可以访问 PostgreSQL 数据实例。同样，您可以在本地安装一个，运行一个容器，或者在云中获取一个实例。
 
-与MySQL一样，我们需要首先创建一个数据库。该过程与MySQL几乎相同，但命令和参数略有不同。
+与 MySQL 一样，我们需要首先创建一个数据库。该过程与 MySQL 几乎相同，但命令和参数略有不同。
 
-1.  从终端执行终端上的psql命令。这将带您进入psql命令处理器：
+1.  从终端执行终端上的 psql 命令。这将带您进入 psql 命令处理器：
 
 ```py
 # psql -U postgres psql (9.6.4) Type "help" for help. postgres=# 
@@ -579,7 +579,7 @@ postgres=#
 postgres=# \connect scraping You are now connected to database "scraping" as user "postgres". scraping=# 
 ```
 
-1.  现在我们可以创建Planets表。我们首先需要创建一个序列表：
+1.  现在我们可以创建 Planets 表。我们首先需要创建一个序列表：
 
 ```py
 scraping=# CREATE SEQUENCE public."Planets_id_seq" scraping-#  INCREMENT 1 scraping-#  START 1 scraping-#  MINVALUE 1 scraping-#  MAXVALUE 9223372036854775807 scraping-#  CACHE 1; CREATE SEQUENCE scraping=# ALTER SEQUENCE public."Planets_id_seq" scraping-#  OWNER TO postgres; ALTER SEQUENCE scraping=# 
@@ -592,9 +592,9 @@ scraping=# CREATE TABLE public."Planets" scraping-# ( scraping(# id integer NOT 
 </span>scraping-# TABLESPACE pg_default; CREATE TABLE scraping=# scraping=# ALTER TABLE public."Planets" scraping-# OWNER to postgres; ALTER TABLE scraping=# \q
 ```
 
-要从Python访问PostgreSQL，我们将使用`psycopg2`库，因此请确保在Python环境中安装了它，使用`pip install psycopg2`。
+要从 Python 访问 PostgreSQL，我们将使用`psycopg2`库，因此请确保在 Python 环境中安装了它，使用`pip install psycopg2`。
 
-我们现在准备好编写Python将行星数据存储在PostgreSQL中。
+我们现在准备好编写 Python 将行星数据存储在 PostgreSQL 中。
 
 # 如何操作
 
@@ -641,11 +641,11 @@ except Exception as ex:
 Successfully wrote data to the database
 ```
 
-1.  使用诸如pgAdmin之类的GUI工具，您可以检查数据库中的数据：
+1.  使用诸如 pgAdmin 之类的 GUI 工具，您可以检查数据库中的数据：
 
-![](assets/e1060188-c3d3-4a2d-aaf4-4f9124294d9e.png)在pgAdmin中显示的记录
+![](img/e1060188-c3d3-4a2d-aaf4-4f9124294d9e.png)在 pgAdmin 中显示的记录
 
-1.  可以使用以下Python代码查询数据（在`03/read_from_postgresql.py`中找到）：
+1.  可以使用以下 Python 代码查询数据（在`03/read_from_postgresql.py`中找到）：
 
 ```py
 import psycopg2
@@ -669,36 +669,36 @@ except Exception as ex:
 1.  并导致以下输出（略有截断：
 
 ```py
-[(1, 'Mercury', 0.33, 4879.0, 'Named Mercurius by the Romans because it appears to move so swiftly.', 'https://en.wikipedia.org/wiki/Mercury_(planet)'), (2, 'Venus', 4.87, 12104.0, 'Roman name for the goddess of love. This planet was considered to be the brightest and most beautiful planet or star in the heavens. Other civilizations have named it for their god or goddess of love/war.', 'https://en.wikipedia.org/wiki/Venus'), (3, 'Earth', 5.97, 12756.0, "The name Earth comes from the Indo-European base 'er,'which produced the Germanic noun 'ertho,' and ultimately German 'erde,' Dutch 'aarde,' Scandinavian 'jord,' and English 'earth.' Related forms include Greek 'eraze,' meaning 'on the ground,' and Welsh 'erw,' meaning 'a piece of land.'", 'https://en.wikipedia.org/wiki/Earth'), (4, 'Mars', 0.642, 6792.0, 'Named by the Romans for their god of war because of its red, bloodlike color. Other civilizations also named this planet from this attribute; for example, the Egyptians named it 
+(1, 'Mercury', 0.33, 4879.0, 'Named Mercurius by the Romans because it appears to move so swiftly.', 'https://en.wikipedia.org/wiki/Mercury_(planet)'), (2, 'Venus', 4.87, 12104.0, 'Roman name for the goddess of love. This planet was considered to be the brightest and most beautiful planet or star in the heavens. Other civilizations have named it for their god or goddess of love/war.', 'https://en.wikipedia.org/wiki/Venus'), (3, 'Earth', 5.97, 12756.0, "The name Earth comes from the Indo-European base 'er,'which produced the Germanic noun 'ertho,' and ultimately German 'erde,' Dutch 'aarde,' Scandinavian 'jord,' and English 'earth.' Related forms include Greek 'eraze,' meaning 'on the ground,' and Welsh 'erw,' meaning 'a piece of land.'", 'https://en.wikipedia.org/wiki/Earth'), (4, 'Mars', 0.642, 6792.0, 'Named by the Romans for their god of war because of its red, bloodlike color. Other civilizations also named this planet from this attribute; for example, the Egyptians named it 
 ```
 
 # 工作原理
 
-使用`psycopg2`库访问PostgreSQL数据库涉及使用库中的两个类：`connect`和`cursor`。`connect`类打开并管理与数据库服务器的连接。从该连接对象，我们可以创建一个`cursor`对象。该光标用于使用SQL语句读取和写入数据。
+使用`psycopg2`库访问 PostgreSQL 数据库涉及使用库中的两个类：`connect`和`cursor`。`connect`类打开并管理与数据库服务器的连接。从该连接对象，我们可以创建一个`cursor`对象。该光标用于使用 SQL 语句读取和写入数据。
 
 在第一个例子中，我们使用光标将九条记录插入数据库。直到调用连接的`commit()`方法，这些记录才会被写入数据库。这将执行将所有行写入数据库的操作。
 
-读取数据使用类似的模型，只是我们使用游标执行SQL查询（`SELECT`），并遍历检索到的行。由于我们是在读取而不是写入，所以不需要在连接上调用`commit()`。
+读取数据使用类似的模型，只是我们使用游标执行 SQL 查询（`SELECT`），并遍历检索到的行。由于我们是在读取而不是写入，所以不需要在连接上调用`commit()`。
 
 # 还有更多...
 
-有关PostgreSQL的信息可在`https://www.postgresql.org/`找到。pgAdmin可以在`https://www.pgadmin.org/`获得。`psycopg`的参考资料位于`http://initd.org/psycopg/docs/usage.html`
+有关 PostgreSQL 的信息可在`https://www.postgresql.org/`找到。pgAdmin 可以在`https://www.pgadmin.org/`获得。`psycopg`的参考资料位于`http://initd.org/psycopg/docs/usage.html`
 
-# 在Elasticsearch中存储数据
+# 在 Elasticsearch 中存储数据
 
-Elasticsearch是基于Lucene的搜索引擎。它提供了一个分布式、多租户能力的全文搜索引擎，具有HTTP Web界面和无模式的JSON文档。它是一个非关系型数据库（通常称为NoSQL），专注于存储文档而不是记录。这些文档可以是许多格式之一，其中之一对我们有用：JSON。这使得使用Elasticsearch非常简单，因为我们不需要将我们的数据转换为/从JSON。我们将在本书的后面更多地使用Elasticsearch
+Elasticsearch 是基于 Lucene 的搜索引擎。它提供了一个分布式、多租户能力的全文搜索引擎，具有 HTTP Web 界面和无模式的 JSON 文档。它是一个非关系型数据库（通常称为 NoSQL），专注于存储文档而不是记录。这些文档可以是许多格式之一，其中之一对我们有用：JSON。这使得使用 Elasticsearch 非常简单，因为我们不需要将我们的数据转换为/从 JSON。我们将在本书的后面更多地使用 Elasticsearch
 
-现在，让我们去将我们的行星数据存储在Elasticsearch中。
+现在，让我们去将我们的行星数据存储在 Elasticsearch 中。
 
 # 准备就绪
 
-我们将访问一个本地安装的Elasticsearch服务器。为此，我们将使用`Elasticsearch-py`库从Python中进行操作。您很可能需要使用pip来安装它：`pip install elasticsearch`。
+我们将访问一个本地安装的 Elasticsearch 服务器。为此，我们将使用`Elasticsearch-py`库从 Python 中进行操作。您很可能需要使用 pip 来安装它：`pip install elasticsearch`。
 
-与PostgreSQL和MySQL不同，我们不需要提前在Elasticsearch中创建表。Elasticsearch不关心结构化数据模式（尽管它确实有索引），因此我们不必经历这个过程。
+与 PostgreSQL 和 MySQL 不同，我们不需要提前在 Elasticsearch 中创建表。Elasticsearch 不关心结构化数据模式（尽管它确实有索引），因此我们不必经历这个过程。
 
 # 如何做到
 
-将数据写入Elasticsearch非常简单。以下Python代码使用我们的行星数据执行此任务（`03/write_to_elasticsearch.py`）：
+将数据写入 Elasticsearch 非常简单。以下 Python 代码使用我们的行星数据执行此任务（`03/write_to_elasticsearch.py`）：
 
 ```py
 from elasticsearch import Elasticsearch
@@ -729,13 +729,13 @@ for planet in planet_data:
 {'_index': 'planets', '_type': 'planets_info', '_id': 'AV4qIF6AT0Z2t9T850rC', '_version': 1, 'result': 'created', '_shards': {'total': 2, 'successful': 1, 'failed': 0}, 'created': True}
 ```
 
-输出显示了每次插入的结果，为我们提供了elasticsearch分配给文档的`_id`等信息。
+输出显示了每次插入的结果，为我们提供了 elasticsearch 分配给文档的`_id`等信息。
 
-如果您也安装了logstash和kibana，您可以在Kibana内部看到数据：
+如果您也安装了 logstash 和 kibana，您可以在 Kibana 内部看到数据：
 
-![](assets/d9054e7d-acb5-4324-8bcd-33c00accd7c8.png)Kibana显示和索引
+![Kibana 显示和索引
 
-我们可以使用以下Python代码查询数据。此代码检索“planets”索引中的所有文档，并打印每个行星的名称、质量和半径（`03/read_from_elasticsearch.py`）：
+我们可以使用以下 Python 代码查询数据。此代码检索“planets”索引中的所有文档，并打印每个行星的名称、质量和半径（`03/read_from_elasticsearch.py`）：
 
 ```py
 from elasticsearch import Elasticsearch
@@ -769,19 +769,19 @@ Neptune 102: 49528
 
 # 它是如何工作的
 
-Elasticsearch既是NoSQL数据库又是搜索引擎。您将文档提供给Elasticsearch，它会解析文档中的数据并自动为该数据创建搜索索引。
+Elasticsearch 既是 NoSQL 数据库又是搜索引擎。您将文档提供给 Elasticsearch，它会解析文档中的数据并自动为该数据创建搜索索引。
 
-在插入过程中，我们使用了`elasticsearch`库的`.index()`方法，并指定了一个名为“planets”的索引，一个文档类型`planets_info`，最后是文档的主体，即我们的行星Python对象。`elasticsearch`库将该对象转换为JSON并将其发送到Elasticsearch进行存储和索引。
+在插入过程中，我们使用了`elasticsearch`库的`.index()`方法，并指定了一个名为“planets”的索引，一个文档类型`planets_info`，最后是文档的主体，即我们的行星 Python 对象。`elasticsearch`库将该对象转换为 JSON 并将其发送到 Elasticsearch 进行存储和索引。
 
-索引参数用于通知Elasticsearch如何创建索引，它将用于索引和我们在查询时可以用来指定要搜索的一组文档。当我们执行查询时，我们指定了相同的索引“planets”并执行了一个匹配所有文档的查询。
+索引参数用于通知 Elasticsearch 如何创建索引，它将用于索引和我们在查询时可以用来指定要搜索的一组文档。当我们执行查询时，我们指定了相同的索引“planets”并执行了一个匹配所有文档的查询。
 
 # 还有更多...
 
-您可以在`https://www.elastic.co/products/elasticsearch`找到有关elasticsearch的更多信息。有关python API的信息可以在`http://pyelasticsearch.readthedocs.io/en/latest/api/`找到
+您可以在`https://www.elastic.co/products/elasticsearch`找到有关 elasticsearch 的更多信息。有关 python API 的信息可以在`http://pyelasticsearch.readthedocs.io/en/latest/api/`找到
 
-我们还将在本书的后面章节回到Elasticsearch。
+我们还将在本书的后面章节回到 Elasticsearch。
 
-# 如何使用AWS SQS构建强大的ETL管道
+# 如何使用 AWS SQS 构建强大的 ETL 管道
 
 爬取大量站点和数据可能是一个复杂和缓慢的过程。但它可以充分利用并行处理，无论是在本地使用多个处理器线程，还是使用消息队列系统将爬取请求分发给报告爬虫。在类似于提取、转换和加载流水线（ETL）的过程中，可能还需要多个步骤。这些流水线也可以很容易地使用消息队列架构与爬取相结合来构建。
 
@@ -795,17 +795,17 @@ Elasticsearch既是NoSQL数据库又是搜索引擎。您将文档提供给Elast
 
 它提供了可伸缩性，因为在同一系统或不同系统上可以监听队列上的多个爬虫。然后，可以在不同的核心或更重要的是不同的系统上同时处理多个消息。在基于云的爬虫中，您可以根据需要扩展爬虫实例的数量以处理更大的负载。
 
-可以使用的常见消息队列系统包括：Kafka、RabbitMQ和Amazon SQS。我们的示例将利用Amazon SQS，尽管Kafka和RabbitMQ都非常适合使用（我们将在本书的后面看到RabbitMQ的使用）。我们使用SQS来保持使用AWS基于云的服务的模式，就像我们在本章早些时候使用S3一样。
+可以使用的常见消息队列系统包括：Kafka、RabbitMQ 和 Amazon SQS。我们的示例将利用 Amazon SQS，尽管 Kafka 和 RabbitMQ 都非常适合使用（我们将在本书的后面看到 RabbitMQ 的使用）。我们使用 SQS 来保持使用 AWS 基于云的服务的模式，就像我们在本章早些时候使用 S3 一样。
 
 # 准备就绪
 
-例如，我们将构建一个非常简单的ETL过程，该过程将读取主行星页面并将行星数据存储在MySQL中。它还将针对页面中的每个*更多信息*链接传递单个消息到队列中，其中0个或多个进程可以接收这些请求，并对这些链接执行进一步处理。
+例如，我们将构建一个非常简单的 ETL 过程，该过程将读取主行星页面并将行星数据存储在 MySQL 中。它还将针对页面中的每个*更多信息*链接传递单个消息到队列中，其中 0 个或多个进程可以接收这些请求，并对这些链接执行进一步处理。
 
-要从Python访问SQS，我们将重新使用`boto3`库。
+要从 Python 访问 SQS，我们将重新使用`boto3`库。
 
-# 如何操作-将消息发布到AWS队列
+# 如何操作-将消息发布到 AWS 队列
 
-`03/create_messages.py`文件包含了读取行星数据并将URL发布到SQS队列的代码：
+`03/create_messages.py`文件包含了读取行星数据并将 URL 发布到 SQS 队列的代码：
 
 ```py
 from urllib.request import urlopen
@@ -852,15 +852,15 @@ for i in planet_rows:
 {'QueueUrl': 'https://us-west-2.queue.amazonaws.com/414704166289/PlanetMoreInfo', 'ResponseMetadata': {'RequestId': '2aad7964-292a-5bf6-b838-2b7a5007af22', 'HTTPStatusCode': 200, 'HTTPHeaders': {'server': 'Server', 'date': 'Mon, 28 Aug 2017 20:02:53 GMT', 'content-type': 'text/xml', 'content-length': '336', 'connection': 'keep-alive', 'x-amzn-requestid': '2aad7964-292a-5bf6-b838-2b7a5007af22'}, 'RetryAttempts': 0}} Sent https://en.wikipedia.org/wiki/Mercury_(planet) to https://us-west-2.queue.amazonaws.com/414704166289/PlanetMoreInfo Sent https://en.wikipedia.org/wiki/Venus to https://us-west-2.queue.amazonaws.com/414704166289/PlanetMoreInfo Sent https://en.wikipedia.org/wiki/Earth to https://us-west-2.queue.amazonaws.com/414704166289/PlanetMoreInfo Sent https://en.wikipedia.org/wiki/Mars to https://us-west-2.queue.amazonaws.com/414704166289/PlanetMoreInfo Sent https://en.wikipedia.org/wiki/Jupiter to https://us-west-2.queue.amazonaws.com/414704166289/PlanetMoreInfo Sent https://en.wikipedia.org/wiki/Saturn to https://us-west-2.queue.amazonaws.com/414704166289/PlanetMoreInfo Sent https://en.wikipedia.org/wiki/Uranus to https://us-west-2.queue.amazonaws.com/414704166289/PlanetMoreInfo Sent https://en.wikipedia.org/wiki/Neptune to https://us-west-2.queue.amazonaws.com/414704166289/PlanetMoreInfo Sent https://en.wikipedia.org/wiki/Pluto to https://us-west-2.queue.amazonaws.com/414704166289/PlanetMoreInfo
 ```
 
-现在进入AWS SQS控制台。您应该看到队列已经被创建，并且它包含9条消息：
+现在进入 AWS SQS 控制台。您应该看到队列已经被创建，并且它包含 9 条消息：
 
-![](assets/2ad3b7c1-9f39-4d02-ac61-d23619a9c409.png)SQS中的队列
+![](img/2ad3b7c1-9f39-4d02-ac61-d23619a9c409.png)SQS 中的队列
 
 # 工作原理
 
-该代码连接到给定帐户和AWS的us-west-2地区。然后，如果队列不存在，则创建队列。然后，对于源内容中的每个行星，程序发送一个消息，该消息包含该行星的*更多信息* URL。
+该代码连接到给定帐户和 AWS 的 us-west-2 地区。然后，如果队列不存在，则创建队列。然后，对于源内容中的每个行星，程序发送一个消息，该消息包含该行星的*更多信息* URL。
 
-此时，没有人在监听队列，因此消息将一直保留在那里，直到最终被读取或它们过期。每条消息的默认生存期为4天。
+此时，没有人在监听队列，因此消息将一直保留在那里，直到最终被读取或它们过期。每条消息的默认生存期为 4 天。
 
 # 如何操作-读取和处理消息
 
@@ -931,14 +931,14 @@ Starting Created client Opened queue: https://us-west-2.queue.amazonaws.com/4147
 
 # 工作原理
 
-程序连接到SQS并打开队列。打开队列以进行读取也是使用`sqs.create_queue`完成的，如果队列已经存在，它将简单地返回队列。
+程序连接到 SQS 并打开队列。打开队列以进行读取也是使用`sqs.create_queue`完成的，如果队列已经存在，它将简单地返回队列。
 
-然后，它进入一个循环调用`sqs.receive_message`，指定队列的URL，每次读取消息的数量，以及如果没有消息可用时等待的最长时间（以秒为单位）。
+然后，它进入一个循环调用`sqs.receive_message`，指定队列的 URL，每次读取消息的数量，以及如果没有消息可用时等待的最长时间（以秒为单位）。
 
-如果读取了一条消息，将检索消息中的URL，并使用爬取技术读取URL的页面并提取行星的名称和有关其反照率的信息。
+如果读取了一条消息，将检索消息中的 URL，并使用爬取技术读取 URL 的页面并提取行星的名称和有关其反照率的信息。
 
-请注意，我们会检索消息的接收处理。这是删除队列中的消息所必需的。如果我们不删除消息，它将在一段时间后重新出现在队列中。因此，如果我们的爬虫崩溃并且没有执行此确认，消息将由SQS再次提供给另一个爬虫进行处理（或者在其恢复正常时由相同的爬虫处理）。
+请注意，我们会检索消息的接收处理。这是删除队列中的消息所必需的。如果我们不删除消息，它将在一段时间后重新出现在队列中。因此，如果我们的爬虫崩溃并且没有执行此确认，消息将由 SQS 再次提供给另一个爬虫进行处理（或者在其恢复正常时由相同的爬虫处理）。
 
 # 还有更多...
 
-您可以在以下网址找到有关S3的更多信息：`https://aws.amazon.com/s3/`。有关API详细信息的具体内容，请访问：`https://aws.amazon.com/documentation/s3/`。
+您可以在以下网址找到有关 S3 的更多信息：`https://aws.amazon.com/s3/`。有关 API 详细信息的具体内容，请访问：`https://aws.amazon.com/documentation/s3/`。

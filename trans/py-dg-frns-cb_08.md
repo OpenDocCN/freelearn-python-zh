@@ -14,11 +14,11 @@
 
 # 介绍
 
-Sleuth Kit及其Python绑定`pytsk3`可能是最知名的Python数字取证库。该库提供了丰富的支持，用于访问和操作文件系统。借助支持库（如`pyewf`），它们可以用于处理EnCase流行的`E01`格式等常见数字取证容器。如果没有这些库（以及许多其他库），我们在数字取证中所能完成的工作将受到更多限制。由于其作为一体化文件系统分析工具的宏伟目标，`pytsk3`可能是我们在本书中使用的最复杂的库。
+Sleuth Kit 及其 Python 绑定`pytsk3`可能是最知名的 Python 数字取证库。该库提供了丰富的支持，用于访问和操作文件系统。借助支持库（如`pyewf`），它们可以用于处理 EnCase 流行的`E01`格式等常见数字取证容器。如果没有这些库（以及许多其他库），我们在数字取证中所能完成的工作将受到更多限制。由于其作为一体化文件系统分析工具的宏伟目标，`pytsk3`可能是我们在本书中使用的最复杂的库。
 
-出于这个原因，我们专门制定了一些配方，探索了这个库的基本原理。到目前为止，配方主要集中在松散文件支持上。这种惯例到此为止。我们将会经常使用这个库来与数字取证证据进行交互。了解如何与数字取证容器进行交互将使您的Python数字取证能力提升到一个新的水平。
+出于这个原因，我们专门制定了一些配方，探索了这个库的基本原理。到目前为止，配方主要集中在松散文件支持上。这种惯例到此为止。我们将会经常使用这个库来与数字取证证据进行交互。了解如何与数字取证容器进行交互将使您的 Python 数字取证能力提升到一个新的水平。
 
-在本章中，我们将学习如何安装`pytsk3`和`pyewf`，这两个库将允许我们利用Sleuth Kit和`E01`镜像支持。此外，我们还将学习如何执行基本任务，如访问和打印分区表，遍历文件系统，按扩展名导出文件，以及在数字取证容器中搜索已知的不良哈希。您将学习以下内容：
+在本章中，我们将学习如何安装`pytsk3`和`pyewf`，这两个库将允许我们利用 Sleuth Kit 和`E01`镜像支持。此外，我们还将学习如何执行基本任务，如访问和打印分区表，遍历文件系统，按扩展名导出文件，以及在数字取证容器中搜索已知的不良哈希。您将学习以下内容：
 
 +   安装和设置`pytsk3`和`pyewf`
 
@@ -38,15 +38,15 @@ Sleuth Kit及其Python绑定`pytsk3`可能是最知名的Python数字取证库�
 
 配方难度：中等
 
-Python版本：2.7
+Python 版本：2.7
 
 操作系统：Linux
 
-使用`pyewf`和`pytsk3`将带来一整套新的工具和操作，我们必须首先学习。在这个配方中，我们将从基础知识开始：打开数字取证容器。这个配方支持`raw`和`E01`镜像。请注意，与我们之前的脚本不同，由于在使用这些库的Python 3.X版本时发现了一些错误，这些配方将使用Python 2.X。也就是说，主要逻辑在两个版本之间并没有区别，可以很容易地移植。在学习如何打开容器之前，我们需要设置我们的环境。我们将在下一节中探讨这个问题。
+使用`pyewf`和`pytsk3`将带来一整套新的工具和操作，我们必须首先学习。在这个配方中，我们将从基础知识开始：打开数字取证容器。这个配方支持`raw`和`E01`镜像。请注意，与我们之前的脚本不同，由于在使用这些库的 Python 3.X 版本时发现了一些错误，这些配方将使用 Python 2.X。也就是说，主要逻辑在两个版本之间并没有区别，可以很容易地移植。在学习如何打开容器之前，我们需要设置我们的环境。我们将在下一节中探讨这个问题。
 
 # 入门
 
-除了一些脚本之外，我们在本书的大部分内容中都是与操作系统无关的。然而，在这里，我们将专门提供在Ubuntu 16.04.2上构建的说明。在Ubuntu的新安装中，执行以下命令以安装必要的依赖项：
+除了一些脚本之外，我们在本书的大部分内容中都是与操作系统无关的。然而，在这里，我们将专门提供在 Ubuntu 16.04.2 上构建的说明。在 Ubuntu 的新安装中，执行以下命令以安装必要的依赖项：
 
 ```py
 sudo apt-get update && sudo apt-get -y upgrade 
@@ -59,7 +59,7 @@ sudo apt-get install python-pip git autoconf automake autopoint libtool pkg-conf
 pip install tabulate==0.7.7
 ```
 
-要了解更多关于tabulate库的信息，请访问[https://pypi.python.org/pypi/tabulate](https://pypi.python.org/pypi/tabulate)。
+要了解更多关于 tabulate 库的信息，请访问[`pypi.python.org/pypi/tabulate`](https://pypi.python.org/pypi/tabulate)。
 
 信不信由你，我们也可以使用`pip`安装`pytsk3`：
 
@@ -67,9 +67,9 @@ pip install tabulate==0.7.7
 pip install pytsk3==20170802
 ```
 
-要了解更多关于`pytsk3`库的信息，请访问[https://github.com/py4n6/pytsk.](https://github.com/py4n6/pytsk)
+要了解更多关于`pytsk3`库的信息，请访问[`github.com/py4n6/pytsk.`](https://github.com/py4n6/pytsk)
 
-最后，对于`pyewf`，我们必须采取稍微绕弯的方法，从其GitHub存储库中安装，[https://github.com/libyal/libewf/releases](https://github.com/libyal/libewf/releases)。这些配方是使用`libewf-experimental-20170605`版本编写的，我们建议您在这里安装该版本。一旦包被下载并解压，打开提取目录中的命令提示符，并执行以下操作：
+最后，对于`pyewf`，我们必须采取稍微绕弯的方法，从其 GitHub 存储库中安装，[`github.com/libyal/libewf/releases`](https://github.com/libyal/libewf/releases)。这些配方是使用`libewf-experimental-20170605`版本编写的，我们建议您在这里安装该版本。一旦包被下载并解压，打开提取目录中的命令提示符，并执行以下操作：
 
 ```py
 ./synclibs.sh 
@@ -78,9 +78,9 @@ sudo python setup.py build
 sudo python setup.py install 
 ```
 
-要了解更多关于`pyewf`库的信息，请访问：[https://github.com/libyal/libewf.](https://github.com/libyal/libewf)
+要了解更多关于`pyewf`库的信息，请访问：[`github.com/libyal/libewf.`](https://github.com/libyal/libewf)
 
-毋庸置疑，对于这个脚本，您需要一个`raw`或`E01`证据文件来运行这些配方。对于第一个脚本，我们建议使用逻辑图像，比如来自[http://dftt.sourceforge.net/test2/index.html](http://dftt.sourceforge.net/test2/index.html)的`fat-img-kw.dd`。原因是这个第一个脚本将缺少一些处理物理磁盘图像及其分区所需的必要逻辑。我们将在*收集获取和媒体信息*配方中介绍这个功能。
+毋庸置疑，对于这个脚本，您需要一个`raw`或`E01`证据文件来运行这些配方。对于第一个脚本，我们建议使用逻辑图像，比如来自[`dftt.sourceforge.net/test2/index.html`](http://dftt.sourceforge.net/test2/index.html)的`fat-img-kw.dd`。原因是这个第一个脚本将缺少一些处理物理磁盘图像及其分区所需的必要逻辑。我们将在*收集获取和媒体信息*配方中介绍这个功能。
 
 # 操作步骤...
 
@@ -150,7 +150,7 @@ def main(image, img_type, offset):
         ewf_handle.open(filenames)
 ```
 
-接下来，我们必须将`ewf_handle`传递给`EWFImgInfo`类，该类将创建`pytsk3`对象。这里的else语句是为了`raw`图像，可以使用`pytsk3.Img_Info`函数来实现相同的任务。现在让我们看看`EWFImgInfo`类，了解EWF文件是如何稍有不同地处理的。
+接下来，我们必须将`ewf_handle`传递给`EWFImgInfo`类，该类将创建`pytsk3`对象。这里的 else 语句是为了`raw`图像，可以使用`pytsk3.Img_Info`函数来实现相同的任务。现在让我们看看`EWFImgInfo`类，了解 EWF 文件是如何稍有不同地处理的。
 
 ```py
         # Open PYTSK3 handle on EWF Image
@@ -159,9 +159,9 @@ def main(image, img_type, offset):
         img_info = pytsk3.Img_Info(image)
 ```
 
-这个脚本组件的代码来自`pyewf`的Python开发页面的*将pyewf与pytsk3结合使用*部分。
+这个脚本组件的代码来自`pyewf`的 Python 开发页面的*将 pyewf 与 pytsk3 结合使用*部分。
 
-了解更多关于`pyewf`函数的信息，请访问[https://github.com/libyal/libewf/wiki/Development](https://github.com/libyal/libewf/wiki/Development)。
+了解更多关于`pyewf`函数的信息，请访问[`github.com/libyal/libewf/wiki/Development`](https://github.com/libyal/libewf/wiki/Development)。
 
 这个`EWFImgInfo`类继承自`pytsk3.Img_Info`基类，属于`TSK_IMG_TYPE_EXTERNAL`类型。重要的是要注意，接下来定义的三个函数，`close()`、`read()`和`get_size()`，都是`pytsk3`要求的，以便与证据容器进行适当的交互。有了这个简单的类，我们现在可以使用`pytsk3`来处理任何提供的`E01`文件。
 
@@ -197,7 +197,7 @@ class EWFImgInfo(pytsk3.Img_Info):
 
 有了对文件系统的访问权限，我们可以遍历根目录中的文件夹和文件。首先，我们使用文件系统上的`open_dir()`方法，并指定根目录`**/**`作为输入来访问根目录。接下来，我们创建一个嵌套的列表结构，用于保存表格内容，稍后我们将使用`tabulate`将其打印到控制台。这个列表的第一个元素是表格的标题。
 
-之后，我们将开始遍历图像，就像处理任何Python可迭代对象一样。每个对象都有各种属性和函数，我们从这里开始使用它们。首先，我们使用`f.info.name.name`属性提取对象的名称。然后，我们使用`f.info.meta.type`属性检查我们处理的是目录还是文件。如果这等于内置的`TSK_FS_META_TYPE_DIR`对象，则将`f_type`变量设置为`DIR`；否则，设置为`FILE`。
+之后，我们将开始遍历图像，就像处理任何 Python 可迭代对象一样。每个对象都有各种属性和函数，我们从这里开始使用它们。首先，我们使用`f.info.name.name`属性提取对象的名称。然后，我们使用`f.info.meta.type`属性检查我们处理的是目录还是文件。如果这等于内置的`TSK_FS_META_TYPE_DIR`对象，则将`f_type`变量设置为`DIR`；否则，设置为`FILE`。
 
 最后，我们使用更多的属性来提取目录或文件的大小，并创建和修改时间戳。请注意，对象时间戳存储在`Unix`时间中，如果您想以人类可读的格式显示它们，必须进行转换。提取了这些属性后，我们将数据附加到`table`列表中，并继续处理下一个对象。一旦我们完成了对根文件夹中所有对象的处理，我们就使用`tabulate`将数据打印到控制台。通过向`tabulate()`方法提供列表并将`headers`关键字参数设置为`firstrow`，以指示应使用列表中的第一个元素作为表头，可以在一行中完成此操作。
 
@@ -219,21 +219,21 @@ class EWFImgInfo(pytsk3.Img_Info):
 
 当我们运行脚本时，我们可以了解到在证据容器的根目录中看到的文件和文件夹，如下截图所示：
 
-![](../images/00090.jpeg)
+![](img/00090.jpeg)
 
 # 收集获取和媒体信息
 
 食谱难度：中等
 
-Python版本：2.7
+Python 版本：2.7
 
 操作系统：Linux
 
-在这个食谱中，我们学习如何使用`tabulate`查看和打印分区表。此外，对于`E01`容器，我们将打印存储在证据文件中的`E01`获取和容器元数据。通常，我们将使用给定机器的物理磁盘镜像。在接下来的任何过程中，我们都需要遍历不同的分区（或用户选择的分区）来获取文件系统及其文件的处理。因此，这个食谱对于我们建立对Sleuth Kit及其众多功能的理解至关重要。
+在这个食谱中，我们学习如何使用`tabulate`查看和打印分区表。此外，对于`E01`容器，我们将打印存储在证据文件中的`E01`获取和容器元数据。通常，我们将使用给定机器的物理磁盘镜像。在接下来的任何过程中，我们都需要遍历不同的分区（或用户选择的分区）来获取文件系统及其文件的处理。因此，这个食谱对于我们建立对 Sleuth Kit 及其众多功能的理解至关重要。
 
 # 入门
 
-有关`pytsk3`、`pyewf`和`tabulate`的构建环境和设置详细信息，请参阅*打开获取*食谱中的*入门*部分。此脚本中使用的所有其他库都包含在Python的标准库中。
+有关`pytsk3`、`pyewf`和`tabulate`的构建环境和设置详细信息，请参阅*打开获取*食谱中的*入门*部分。此脚本中使用的所有其他库都包含在 Python 的标准库中。
 
 # 如何操作...
 
@@ -362,21 +362,21 @@ def part_metadata(vol):
 
 运行此代码时，如果存在，我们可以在控制台中查看有关获取和分区信息的信息：
 
-![](../images/00091.jpeg)
+![](img/00091.jpeg)
 
 # 遍历文件
 
 配方难度：中等
 
-Python版本：2.7
+Python 版本：2.7
 
 操作系统：Linux
 
-在这个配方中，我们学习如何递归遍历文件系统并创建一个活动文件列表。作为法庭鉴定人，我们经常被问到的第一个问题之一是“设备上有什么数据？”。在这里，活动文件列表非常有用。在Python中，创建松散文件的文件列表是一个非常简单的任务。然而，这将会稍微复杂一些，因为我们处理的是法庭图像而不是松散文件。这个配方将成为未来脚本的基石，因为它将允许我们递归访问和处理图像中的每个文件。正如您可能已经注意到的，本章的配方是相互建立的，因为我们开发的每个函数都需要进一步探索图像。类似地，这个配方将成为未来配方中的一个重要部分，用于迭代目录并处理文件。
+在这个配方中，我们学习如何递归遍历文件系统并创建一个活动文件列表。作为法庭鉴定人，我们经常被问到的第一个问题之一是“设备上有什么数据？”。在这里，活动文件列表非常有用。在 Python 中，创建松散文件的文件列表是一个非常简单的任务。然而，这将会稍微复杂一些，因为我们处理的是法庭图像而不是松散文件。这个配方将成为未来脚本的基石，因为它将允许我们递归访问和处理图像中的每个文件。正如您可能已经注意到的，本章的配方是相互建立的，因为我们开发的每个函数都需要进一步探索图像。类似地，这个配方将成为未来配方中的一个重要部分，用于迭代目录并处理文件。
 
 # 入门
 
-有关`pytsk3`和`pyewf`的构建环境和设置详细信息，请参考*开始*部分中的*打开获取*配方。此脚本中使用的所有其他库都包含在Python的标准库中。
+有关`pytsk3`和`pyewf`的构建环境和设置详细信息，请参考*开始*部分中的*打开获取*配方。此脚本中使用的所有其他库都包含在 Python 的标准库中。
 
 # 如何做...
 
@@ -390,11 +390,11 @@ Python版本：2.7
 
 1.  将文件元数据存储在列表中。
 
-1.  将`active`文件列表写入CSV。
+1.  将`active`文件列表写入 CSV。
 
 # 工作原理...
 
-我们导入了许多库来帮助解析参数、解析日期、创建CSV电子表格，以及处理证据容器和文件系统。
+我们导入了许多库来帮助解析参数、解析日期、创建 CSV 电子表格，以及处理证据容器和文件系统。
 
 ```py
 from __future__ import print_function
@@ -407,7 +407,7 @@ import pyewf
 import sys
 ```
 
-这个配方的命令行处理程序接受三个位置参数，`EVIDENCE_FILE`、`TYPE`和`OUTPUT_CSV`，分别代表证据文件的路径、证据文件的类型和输出CSV文件。与上一个配方类似，可以提供可选的`p`开关来指定分区类型。我们使用`os.path.dirname()`方法来提取CSV文件的所需输出目录路径，并使用`os.makedirs()`函数，如果不存在，则创建必要的输出目录。
+这个配方的命令行处理程序接受三个位置参数，`EVIDENCE_FILE`、`TYPE`和`OUTPUT_CSV`，分别代表证据文件的路径、证据文件的类型和输出 CSV 文件。与上一个配方类似，可以提供可选的`p`开关来指定分区类型。我们使用`os.path.dirname()`方法来提取 CSV 文件的所需输出目录路径，并使用`os.makedirs()`函数，如果不存在，则创建必要的输出目录。
 
 ```py
 if __name__ == '__main__':
@@ -465,7 +465,7 @@ def main(image, img_type, output, part_type):
         img_info = pytsk3.Img_Info(image)
 ```
 
-接下来，我们尝试使用`pytsk3.Volume_Info()`方法访问图像的卷，通过提供图像句柄作为参数。如果提供了分区类型参数，我们将其属性ID添加为第二个参数。如果在尝试访问卷时收到`IOError`，我们将捕获异常作为`e`并将其打印到控制台。然而，请注意，当我们收到错误时，我们不会退出脚本。我们将在下一个函数中解释原因。最终，我们将`volume`、`img_info`和`output`变量传递给`open_fs()`方法。
+接下来，我们尝试使用`pytsk3.Volume_Info()`方法访问图像的卷，通过提供图像句柄作为参数。如果提供了分区类型参数，我们将其属性 ID 添加为第二个参数。如果在尝试访问卷时收到`IOError`，我们将捕获异常作为`e`并将其打印到控制台。然而，请注意，当我们收到错误时，我们不会退出脚本。我们将在下一个函数中解释原因。最终，我们将`volume`、`img_info`和`output`变量传递给`open_fs()`方法。
 
 ```py
     try:
@@ -485,7 +485,7 @@ def main(image, img_type, output, part_type):
 
 无论使用哪种方法，我们都创建一个`recursed_data`列表来保存我们的活动文件元数据。在第一种情况下，我们有一个物理图像，我们遍历每个分区，并检查它是否大于`2,048`扇区，并且在其描述中不包含`Unallocated`、`Extended`或`Primary Table`这些词。对于符合这些条件的分区，我们尝试使用`FS_Info()`函数访问它们的文件系统，方法是提供`pytsk3 img`对象和分区的偏移量（以字节为单位）。
 
-如果我们能够访问文件系统，我们将使用`open_dir()`方法获取根目录，并将其与分区地址ID、文件系统对象、两个空列表和一个空字符串一起传递给`recurse_files()`方法。这些空列表和字符串将在对此函数进行递归调用时发挥作用，我们很快就会看到。一旦`recurse_files()`方法返回，我们将活动文件的元数据附加到`recursed_data`列表中。我们对每个分区重复这个过程。
+如果我们能够访问文件系统，我们将使用`open_dir()`方法获取根目录，并将其与分区地址 ID、文件系统对象、两个空列表和一个空字符串一起传递给`recurse_files()`方法。这些空列表和字符串将在对此函数进行递归调用时发挥作用，我们很快就会看到。一旦`recurse_files()`方法返回，我们将活动文件的元数据附加到`recursed_data`列表中。我们对每个分区重复这个过程。
 
 ```py
 def open_fs(vol, img, output):
@@ -523,7 +523,7 @@ def open_fs(vol, img, output):
     write_csv(recursed_data, output)
 ```
 
-`recurse_files()`函数基于*FLS*工具的一个示例（[https://github.com/py4n6/pytsk/blob/master/examples/fls.py](https://github.com/py4n6/pytsk/blob/master/examples/fls.py)）和David Cowen的工具DFIR Wizard（[https://github.com/dlcowen/dfirwizard/blob/master/dfirwizard-v9.py](https://github.com/dlcowen/dfirwizard/blob/master/dfirwizard-v9.py)）。为了启动这个函数，我们将根目录`inode`附加到`dirs`列表中。稍后将使用此列表以避免无休止的循环。接下来，我们开始循环遍历根目录中的每个对象，并检查它是否具有我们期望的某些属性，以及它的名称既不是`"**.**"`也不是`"**..**"`。
+`recurse_files()`函数基于*FLS*工具的一个示例（[`github.com/py4n6/pytsk/blob/master/examples/fls.py`](https://github.com/py4n6/pytsk/blob/master/examples/fls.py)）和 David Cowen 的工具 DFIR Wizard（[`github.com/dlcowen/dfirwizard/blob/master/dfirwizard-v9.py`](https://github.com/dlcowen/dfirwizard/blob/master/dfirwizard-v9.py)）。为了启动这个函数，我们将根目录`inode`附加到`dirs`列表中。稍后将使用此列表以避免无休止的循环。接下来，我们开始循环遍历根目录中的每个对象，并检查它是否具有我们期望的某些属性，以及它的名称既不是`"**.**"`也不是`"**..**"`。
 
 ```py
 def recurse_files(part, fs, root_dir, dirs, data, parent):
@@ -560,7 +560,7 @@ def recurse_files(part, fs, root_dir, dirs, data, parent):
                 continue
 ```
 
-与本章第一个示例类似，我们为对象大小和时间戳创建变量。但是，请注意，我们将日期传递给`convert_time()`方法。此函数用于将`Unix`时间戳转换为人类可读的格式。提取了这些属性后，我们使用分区地址ID将它们附加到数据列表中，以确保我们跟踪对象来自哪个分区。
+与本章第一个示例类似，我们为对象大小和时间戳创建变量。但是，请注意，我们将日期传递给`convert_time()`方法。此函数用于将`Unix`时间戳转换为人类可读的格式。提取了这些属性后，我们使用分区地址 ID 将它们附加到数据列表中，以确保我们跟踪对象来自哪个分区。
 
 ```py
             size = fs_object.info.meta.size
@@ -605,7 +605,7 @@ def convert_time(ts):
     return datetime.utcfromtimestamp(ts)
 ```
 
-有了手头的活动文件列表数据，我们现在准备使用`write_csv()`方法将其写入CSV文件。如果我们找到了数据（即列表不为空），我们打开输出CSV文件，写入标题，并循环遍历`data`变量中的每个列表。我们使用`csvwriterows()`方法将每个嵌套列表结构写入CSV文件。
+有了手头的活动文件列表数据，我们现在准备使用`write_csv()`方法将其写入 CSV 文件。如果我们找到了数据（即列表不为空），我们打开输出 CSV 文件，写入标题，并循环遍历`data`变量中的每个列表。我们使用`csvwriterows()`方法将每个嵌套列表结构写入 CSV 文件。
 
 ```py
 def write_csv(data, output):
@@ -626,7 +626,7 @@ def write_csv(data, output):
 
 以下截图演示了这个示例从取证图像中提取的数据类型：
 
-![](../images/00092.jpeg)
+![](img/00092.jpeg)
 
 # 还有更多...
 
@@ -634,13 +634,13 @@ def write_csv(data, output):
 
 +   使用`tqdm`或其他库创建进度条，以通知用户当前执行的进度
 
-+   了解可以使用`pytsk3`从文件系统对象中提取的附加元数据值，并将它们添加到输出CSV文件中
++   了解可以使用`pytsk3`从文件系统对象中提取的附加元数据值，并将它们添加到输出 CSV 文件中
 
 # 处理容器内的文件
 
 食谱难度：中等
 
-Python版本：2.7
+Python 版本：2.7
 
 操作系统：Linux
 
@@ -648,7 +648,7 @@ Python版本：2.7
 
 # 入门
 
-有关构建环境和`pytsk3`和`pyewf`的设置详细信息，请参考*入门*部分中的*打开收购*食谱。此脚本中使用的所有其他库都包含在Python的标准库中。
+有关构建环境和`pytsk3`和`pyewf`的设置详细信息，请参考*入门*部分中的*打开收购*食谱。此脚本中使用的所有其他库都包含在 Python 的标准库中。
 
 # 如何做...
 
@@ -666,7 +666,7 @@ Python版本：2.7
 
 # 它是如何工作的...
 
-我们导入了许多库来帮助解析参数、创建CSV电子表格，并处理证据容器和文件系统。
+我们导入了许多库来帮助解析参数、创建 CSV 电子表格，并处理证据容器和文件系统。
 
 ```py
 from __future__ import print_function
@@ -781,7 +781,7 @@ def open_fs(vol, img, ext, output):
         recurse_files(1, fs, root, [], [""], ext, output)
 ```
 
-不要浏览了！这个配方的新逻辑包含在`recurse_files()`方法中。这有点像眨眼就错过的配方。我们已经在之前的配方中做了大部分工作，现在我们基本上可以像处理任何其他Python文件一样处理这些文件。让我们看看这是如何工作的。
+不要浏览了！这个配方的新逻辑包含在`recurse_files()`方法中。这有点像眨眼就错过的配方。我们已经在之前的配方中做了大部分工作，现在我们基本上可以像处理任何其他 Python 文件一样处理这些文件。让我们看看这是如何工作的。
 
 诚然，这个函数的第一部分仍然与以前相同，只有一个例外。在函数的第一行，我们使用列表推导来分割用户提供的每个逗号分隔的扩展名，并删除任何空格并将字符串规范化为小写。当我们迭代每个对象时，我们检查对象是目录还是文件。如果是文件，我们将文件的扩展名分离并规范化为小写，并将其存储在`file_ext`变量中。
 
@@ -850,17 +850,17 @@ def file_writer(fs_object, name, ext, path, output):
 
 当我们运行这个脚本时，我们会看到基于提供的扩展名的响应文件：
 
-![](../images/00093.jpeg)
+![](img/00093.jpeg)
 
 此外，我们可以在以下截图中查看这些文件的定义结构：
 
-![](../images/00094.jpeg)
+![](img/00094.jpeg)
 
 # 搜索哈希
 
 配方难度：困难
 
-Python版本：2.7
+Python 版本：2.7
 
 操作系统：Linux
 
@@ -868,7 +868,7 @@ Python版本：2.7
 
 # 入门
 
-参考*打开获取*配方中的*入门*部分，了解有关`build`环境和`pytsk3`和`pyewf`的设置详细信息。此脚本中使用的所有其他库都包含在Python的标准库中。
+参考*打开获取*配方中的*入门*部分，了解有关`build`环境和`pytsk3`和`pyewf`的设置详细信息。此脚本中使用的所有其他库都包含在 Python 的标准库中。
 
 # 如何做...
 
@@ -886,7 +886,7 @@ Python版本：2.7
 
 # 工作原理...
 
-我们导入了许多库来帮助解析参数、创建CSV电子表格、对文件进行哈希处理、处理证据容器和文件系统，并创建进度条。
+我们导入了许多库来帮助解析参数、创建 CSV 电子表格、对文件进行哈希处理、处理证据容器和文件系统，并创建进度条。
 
 ```py
 from __future__ import print_function
@@ -1095,12 +1095,12 @@ def hash_file(fs_object, path, hashes, hash_type, pbar):
 
 通过运行脚本，我们可以看到一个漂亮的进度条，显示哈希状态和与提供的哈希列表匹配的文件列表，如下面的屏幕截图所示：
 
-![](../images/00095.jpeg)
+![](img/00095.jpeg)
 
 # 还有更多...
 
 这个脚本可以进一步改进。我们提供了一个或多个建议，如下所示：
 
-+   而不是打印匹配项，创建一个包含匹配文件的元数据的CSV文件以供审查。
++   而不是打印匹配项，创建一个包含匹配文件的元数据的 CSV 文件以供审查。
 
 +   添加一个可选开关，将匹配的文件转储到输出目录（保留文件夹路径）

@@ -16,7 +16,7 @@
 
 # 构建人脸检测器应用程序
 
-在本节中，我们讨论了如何从网络摄像头图像中检测人脸。需要将USB网络摄像头连接到树莓派3上，以实现实时人脸检测。
+在本节中，我们讨论了如何从网络摄像头图像中检测人脸。需要将 USB 网络摄像头连接到树莓派 3 上，以实现实时人脸检测。
 
 # 如何做...
 
@@ -109,7 +109,7 @@ cv2.destroyAllWindows()
 
 人脸检测系统中获得的结果如下所示：
 
-![](Images/5cb83a55-bccc-4135-b2ec-90bc2564dc2d.png)
+![](img/5cb83a55-bccc-4135-b2ec-90bc2564dc2d.png)
 
 # 构建人脸识别应用程序
 
@@ -272,23 +272,23 @@ predicting_img[y:y+h, x:x+w])
 
 这里显示了人脸识别的输出结果：
 
-![](Images/7526565a-5ec3-4065-a9df-d18c86f90bf5.png)
+![](img/7526565a-5ec3-4065-a9df-d18c86f90bf5.png)
 
 # 工作原理...
 
-人脸识别系统广泛用于实现个人安全系统。读者可以参考文章*基于OpenCV的人脸检测系统*，网址为[http://ieeexplore.ieee.org/document/6242980/](http://ieeexplore.ieee.org/document/6242980/)。
+人脸识别系统广泛用于实现个人安全系统。读者可以参考文章*基于 OpenCV 的人脸检测系统*，网址为[`ieeexplore.ieee.org/document/6242980/`](http://ieeexplore.ieee.org/document/6242980/)。
 
-另请参阅*用于实时人脸检测系统的人脸检测算法研究*，网址为[http://ieeexplore.ieee.org/document/5209668](http://ieeexplore.ieee.org/document/5209668)。
+另请参阅*用于实时人脸检测系统的人脸检测算法研究*，网址为[`ieeexplore.ieee.org/document/5209668`](http://ieeexplore.ieee.org/document/5209668)。
 
 # 另请参阅
 
 请参考以下文章：
 
-+   [http://www.ex-sight.com/technology.htm](http://www.ex-sight.com/technology.htm)
++   [`www.ex-sight.com/technology.htm`](http://www.ex-sight.com/technology.htm)
 
-+   [https://www.eurotech.com/en/products/devices/face+recognition+systems](https://www.eurotech.com/en/products/devices/face+recognition+systems)
++   [`www.eurotech.com/en/products/devices/face+recognition+systems`](https://www.eurotech.com/en/products/devices/face+recognition+systems)
 
-+   [https://arxiv.org/ftp/arxiv/papers/1403/1403.0485.pdf](https://arxiv.org/ftp/arxiv/papers/1403/1403.0485.pdf)
++   [`arxiv.org/ftp/arxiv/papers/1403/1403.0485.pdf`](https://arxiv.org/ftp/arxiv/papers/1403/1403.0485.pdf)
 
 # 人脸识别系统的应用
 

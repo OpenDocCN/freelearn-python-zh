@@ -1,6 +1,6 @@
 # 与漏洞扫描器交互
 
-本章涵盖了`nessus`和`nexpose`作为漏洞扫描器，并为在服务器和Web应用程序中发现的主要漏洞提供报告工具。此外，我们还介绍了如何使用Python中的`nessrest`和`Pynexpose`模块进行编程。
+本章涵盖了`nessus`和`nexpose`作为漏洞扫描器，并为在服务器和 Web 应用程序中发现的主要漏洞提供报告工具。此外，我们还介绍了如何使用 Python 中的`nessrest`和`Pynexpose`模块进行编程。
 
 本章将涵盖以下主题：
 
@@ -16,9 +16,9 @@
 
 # 技术要求
 
-本章的示例和源代码可在GitHub存储库的`chapter 10`文件夹中找到：[https://github.com/PacktPublishing/Mastering-Python-for-Networking-and-Security](https://github.com/PacktPublishing/Mastering-Python-for-Networking-and-Security)。
+本章的示例和源代码可在 GitHub 存储库的`chapter 10`文件夹中找到：[`github.com/PacktPublishing/Mastering-Python-for-Networking-and-Security`](https://github.com/PacktPublishing/Mastering-Python-for-Networking-and-Security)。
 
-您需要在本地机器上安装一个至少有4GB内存的Python发行版。在本章中，我们将使用一个**虚拟机**，进行与端口分析和漏洞检测相关的一些测试。可以从sourceforge页面下载：[https://sourceforge.net/projects/metasploitable/files/Metasploitable2](https://sourceforge.net/projects/metasploitable/files/Metasploitable2)。
+您需要在本地机器上安装一个至少有 4GB 内存的 Python 发行版。在本章中，我们将使用一个**虚拟机**，进行与端口分析和漏洞检测相关的一些测试。可以从 sourceforge 页面下载：[`sourceforge.net/projects/metasploitable/files/Metasploitable2`](https://sourceforge.net/projects/metasploitable/files/Metasploitable2)。
 
 要登录，您必须使用**msfadmin**作为用户名和**msfadmin**作为密码。
 
@@ -44,65 +44,65 @@
 
 # 漏洞格式
 
-漏洞是通过CVE（通用漏洞和暴露）代码唯一标识的，该代码由MITRE公司创建。这个代码允许用户以更客观的方式理解程序或系统中的漏洞。
+漏洞是通过 CVE（通用漏洞和暴露）代码唯一标识的，该代码由 MITRE 公司创建。这个代码允许用户以更客观的方式理解程序或系统中的漏洞。
 
-标识符代码的格式为CVE - 年份 - 编号模式；例如CVE-2018-7889标识了2018年发现的漏洞，标识符为7889。有几个数据库可以找到有关不同现有漏洞的信息，例如：
+标识符代码的格式为 CVE - 年份 - 编号模式；例如 CVE-2018-7889 标识了 2018 年发现的漏洞，标识符为 7889。有几个数据库可以找到有关不同现有漏洞的信息，例如：
 
-+   通用漏洞和暴露 - 信息安全漏洞名称的标准：[https://cve.mitre.org/cve/](https://cve.mitre.org/cve/)
++   通用漏洞和暴露 - 信息安全漏洞名称的标准：[`cve.mitre.org/cve/`](https://cve.mitre.org/cve/)
 
-+   国家漏洞数据库（NVD）：[http://nvd.nist.gov](http://nvd.nist.gov)
++   国家漏洞数据库（NVD）：[`nvd.nist.gov`](http://nvd.nist.gov)
 
-通常，发布的漏洞都会分配其相应的利用，以验证潜在漏洞的真实存在并衡量其影响。有一个名为Exploit Database（[http://www.exploit-db.com](http://www.exploit-db.com)）的存储库，您可以在其中找到为不同漏洞开发的许多利用程序。
+通常，发布的漏洞都会分配其相应的利用，以验证潜在漏洞的真实存在并衡量其影响。有一个名为 Exploit Database（[`www.exploit-db.com`](http://www.exploit-db.com)）的存储库，您可以在其中找到为不同漏洞开发的许多利用程序。
 
-CVE提供了一个非常有用的漏洞数据库，因为除了分析问题漏洞外，它还提供了大量参考资料，其中我们经常找到直接链接到攻击此漏洞的利用程序。
+CVE 提供了一个非常有用的漏洞数据库，因为除了分析问题漏洞外，它还提供了大量参考资料，其中我们经常找到直接链接到攻击此漏洞的利用程序。
 
-例如，如果我们搜索“心脏出血”（在Open SSL版本1.0.1中发现的漏洞，允许攻击者从服务器和客户端读取内存），在CVE中为我们提供以下信息：
+例如，如果我们搜索“心脏出血”（在 Open SSL 版本 1.0.1 中发现的漏洞，允许攻击者从服务器和客户端读取内存），在 CVE 中为我们提供以下信息：
 
-![](assets/3d089e98-a3fb-45a0-a10e-699afb5c8cfd.png)
+![](img/3d089e98-a3fb-45a0-a10e-699afb5c8cfd.png)
 
-在此屏幕截图中，我们可以看到CVE-2014-0160漏洞的详细信息：
+在此屏幕截图中，我们可以看到 CVE-2014-0160 漏洞的详细信息：
 
-![](assets/fc1ff3d2-e952-4011-b747-b481e9b89649.png)
+![](img/fc1ff3d2-e952-4011-b747-b481e9b89649.png)
 
-**CVSS**（通用漏洞评分系统）代码也可用，这是由**FIRST**（国际响应团队论坛 - [http://www.first.org](http://www.first.org)）赞助的公共倡议，使我们能够解决缺乏标准标准的问题，这些标准标准使我们能够确定哪些漏洞更有可能被成功利用。CVSS代码引入了一个评分漏洞的系统，考虑了一组标准化和易于测量的标准。
+**CVSS**（通用漏洞评分系统）代码也可用，这是由**FIRST**（国际响应团队论坛 - [`www.first.org`](http://www.first.org)）赞助的公共倡议，使我们能够解决缺乏标准标准的问题，这些标准标准使我们能够确定哪些漏洞更有可能被成功利用。CVSS 代码引入了一个评分漏洞的系统，考虑了一组标准化和易于测量的标准。
 
-扫描报告中的漏洞分配了高，中或低的严重性。严重性基于分配给CVE的通用漏洞评分系统（CVSS）分数。大多数漏洞扫描程序使用供应商的分数以准确捕获严重性：
+扫描报告中的漏洞分配了高，中或低的严重性。严重性基于分配给 CVE 的通用漏洞评分系统（CVSS）分数。大多数漏洞扫描程序使用供应商的分数以准确捕获严重性：
 
-+   **高：**漏洞具有CVSS基础分数，范围从8.0到10.0。
++   **高：**漏洞具有 CVSS 基础分数，范围从 8.0 到 10.0。
 
-+   **中：**漏洞具有CVSS基础分数，范围从4.0到7.9。
++   **中：**漏洞具有 CVSS 基础分数，范围从 4.0 到 7.9。
 
-+   **低：**漏洞具有CVSS基础分数，范围从0.0到3.9。
++   **低：**漏洞具有 CVSS 基础分数，范围从 0.0 到 3.9。
 
-# 介绍Nessus漏洞扫描器
+# 介绍 Nessus 漏洞扫描器
 
-在本节中，我们将审查`Nessus`漏洞扫描器，它为我们在服务器和Web应用程序中发现的主要漏洞提供了报告工具。
+在本节中，我们将审查`Nessus`漏洞扫描器，它为我们在服务器和 Web 应用程序中发现的主要漏洞提供了报告工具。
 
-# 安装Nessus漏洞扫描器
+# 安装 Nessus 漏洞扫描器
 
 `Nessus` 是一款流行的漏洞扫描工具 - 它非常强大，适用于大型企业网络。它具有客户端-服务器架构，可以使扫描更具可扩展性，可管理性和精确性。此外，它采用了几个安全元素，可以轻松适应安全基础设施，并具有非常强大的加密和身份验证机制。
 
-要安装它，请转到[https://www.tenable.com/downloads/nessus](https://www.tenable.com/downloads/nessus)并按照操作系统的说明进行操作：
+要安装它，请转到[`www.tenable.com/downloads/nessus`](https://www.tenable.com/downloads/nessus)并按照操作系统的说明进行操作：
 
-![](assets/48eebb10-53ae-4fc2-a5f5-961c36f24f7c.png)
+![](img/48eebb10-53ae-4fc2-a5f5-961c36f24f7c.png)
 
-此外，您还需要从[https://www.tenable.com/products/nessus/activation-code](https://www.tenable.com/products/nessus/activation-code)获取激活代码：
+此外，您还需要从[`www.tenable.com/products/nessus/activation-code`](https://www.tenable.com/products/nessus/activation-code)获取激活代码：
 
-![](assets/551cb6bb-66a0-4866-b832-aaed11ac6e1e.png)
+![](img/551cb6bb-66a0-4866-b832-aaed11ac6e1e.png)
 
-# 执行Nessus漏洞扫描器
+# 执行 Nessus 漏洞扫描器
 
-安装后，如果您在Linux上运行，可以执行"`/etc/init.d/nessusd start`"命令；通过浏览器访问该工具，网址为[https://127.0.0.1:8834](https://127.0.0.1:8834)，然后输入在安装过程中激活的用户帐户。
+安装后，如果您在 Linux 上运行，可以执行"`/etc/init.d/nessusd start`"命令；通过浏览器访问该工具，网址为[`127.0.0.1:8834`](https://127.0.0.1:8834)，然后输入在安装过程中激活的用户帐户。
 
 进入`Nessus`的主界面后，您必须输入用户的访问数据。然后，您必须访问**扫描选项卡**，如图中所示，并选择**基本网络扫描**选项：
 
-![](assets/8e46b41c-53a1-4572-9e15-492d447e0452.png)
+![](img/8e46b41c-53a1-4572-9e15-492d447e0452.png)
 
 当进行此选择时，将打开界面，必须确定扫描仪的目标，无论是计算机还是网络，扫描仪的策略以及一个名称以便识别它。一旦选择了这些数据，扫描仪就会启动，一旦完成，我们可以通过选择扫描选项卡中的分析来查看结果。
 
 在扫描选项卡中，添加要扫描的目标，并执行该过程。通过使用这个工具，再加上在专门数据库中的搜索，可以获得系统中存在的不同漏洞，这使我们能够进入下一个阶段：利用。
 
-# 使用Nessus识别漏洞
+# 使用 Nessus 识别漏洞
 
 这个工具补充了通过在专门的数据库中进行查询来识别漏洞的过程。这种自动扫描的缺点包括误报、未检测到一些漏洞，有时对一些允许访问系统的漏洞进行低优先级分类。
 
@@ -110,39 +110,39 @@ CVE提供了一个非常有用的漏洞数据库，因为除了分析问题漏�
 
 报告包括不同现有漏洞的执行摘要。这个摘要根据漏洞的严重程度进行了颜色编码排序。每个漏洞都附有其严重性、漏洞代码和简要描述。
 
-将`Nessus`应用于Metasploitable环境后得到的结果如下图所示。
+将`Nessus`应用于 Metasploitable 环境后得到的结果如下图所示。
 
 在这里，我们可以看到按照严重程度排序的所有发现的漏洞的摘要：
 
-![](assets/59906823-523d-439a-9e96-e27a48defbe8.png)
+![](img/59906823-523d-439a-9e96-e27a48defbe8.png)
 
 在这里，我们可以详细查看所有漏洞，以及严重程度的描述：
 
-![](assets/25969e69-0780-4154-879f-cd46b74d4236.png)
+![](img/25969e69-0780-4154-879f-cd46b74d4236.png)
 
-名为Debian OpenSSh/OpenSSL Package Random Number Generator Weakness的漏洞是metasplolitable虚拟机中最严重的之一。我们可以看到它在CVSS中得分为10：
+名为 Debian OpenSSh/OpenSSL Package Random Number Generator Weakness 的漏洞是 metasplolitable 虚拟机中最严重的之一。我们可以看到它在 CVSS 中得分为 10：
 
-![](assets/481c7fdb-83a8-4cb3-8c31-9aa236118818.png)
+![](img/481c7fdb-83a8-4cb3-8c31-9aa236118818.png)
 
-# 使用Python访问Nessus API
+# 使用 Python 访问 Nessus API
 
 在这一部分，我们审查与`Nessus`漏洞扫描器进行交互的`python`模块。
 
-# 安装nessrest Python模块
+# 安装 nessrest Python 模块
 
-`Nessus`提供了一个API，可以通过Python编程访问它。Tenable提供了一个REST API，我们可以使用任何允许HTTP请求的库。我们还可以在Python中使用特定的库，比如`nessrest`：[https://github.com/tenable/nessrest](https://github.com/tenable/nessrest)。
+`Nessus`提供了一个 API，可以通过 Python 编程访问它。Tenable 提供了一个 REST API，我们可以使用任何允许 HTTP 请求的库。我们还可以在 Python 中使用特定的库，比如`nessrest`：[`github.com/tenable/nessrest`](https://github.com/tenable/nessrest)。
 
-要在我们的Python脚本中使用这个模块，我们可以像安装其他模块一样导入它。我们可以使用pip安装`nessrest`模块：
+要在我们的 Python 脚本中使用这个模块，我们可以像安装其他模块一样导入它。我们可以使用 pip 安装`nessrest`模块：
 
 ```py
 $ pip install nessrest
 ```
 
-如果我们尝试从github源代码构建项目，依赖项可以通过满足
+如果我们尝试从 github 源代码构建项目，依赖项可以通过满足
 
 `pip install -r requirements.txt`**：**
 
-![](assets/24c12ea5-00f8-4df1-84a2-a81d43f83012.png)
+![](img/24c12ea5-00f8-4df1-84a2-a81d43f83012.png)
 
 您可以在脚本中以这种方式导入模块：
 
@@ -150,17 +150,17 @@ $ pip install nessrest
 from nessrest import ness6rest
 ```
 
-# 与nessus服务器交互
+# 与 nessus 服务器交互
 
-要从Python与`nessus`进行交互，我们必须使用`ness6rest.Scanner`类初始化扫描仪，并传递url参数、用户名和密码以访问`nessus`服务器实例：
+要从 Python 与`nessus`进行交互，我们必须使用`ness6rest.Scanner`类初始化扫描仪，并传递 url 参数、用户名和密码以访问`nessus`服务器实例：
 
-![](assets/e6383286-6e66-4763-8e98-f131e32a1598.png)我们可以使用Scanner init构造方法来初始化与服务器的连接：
+![](img/e6383286-6e66-4763-8e98-f131e32a1598.png)我们可以使用 Scanner init 构造方法来初始化与服务器的连接：
 
 ```py
 scanner = ness6rest.Scanner(url="https://server:8834", login="username", password="password")
 ```
 
-默认情况下，我们正在使用具有自签名证书的`Nessus`，但我们有能力禁用SSL证书检查。为此，我们需要向扫描程序初始化器传递另一个参数`insecure=True`：
+默认情况下，我们正在使用具有自签名证书的`Nessus`，但我们有能力禁用 SSL 证书检查。为此，我们需要向扫描程序初始化器传递另一个参数`insecure=True`：
 
 ```py
 scanner = ness6rest.Scanner(url="https://server:8834", login="username", password="password",insecure=True)
@@ -168,7 +168,7 @@ scanner = ness6rest.Scanner(url="https://server:8834", login="username", passwor
 
 在模块文档中，我们可以看到扫描特定目标的方法，并且使用`scan_results()`我们可以获取扫描结果：
 
-![](assets/c223199b-3b55-4819-a9a7-6abfff3d7261.png)
+![](img/c223199b-3b55-4819-a9a7-6abfff3d7261.png)
 
 要添加和启动扫描，请使用`scan_add`方法指定目标：
 
@@ -177,65 +177,65 @@ scan.scan_add(targets="192.168.100.2")
 scan.scan_run()
 ```
 
-# 介绍Nexpose漏洞扫描仪
+# 介绍 Nexpose 漏洞扫描仪
 
-在本节中，我们将审查`Nexpose`漏洞扫描仪，它为我们在服务器和Web应用程序中发现的主要漏洞提供报告工具。
+在本节中，我们将审查`Nexpose`漏洞扫描仪，它为我们在服务器和 Web 应用程序中发现的主要漏洞提供报告工具。
 
-# 安装Nexpose漏洞扫描仪
+# 安装 Nexpose 漏洞扫描仪
 
-`Nexpose`是一个漏洞扫描仪，其方法类似于`nessus`，因为除了允许我们对网络上的多台机器运行扫描外，它还具有插件系统和API，允许将外部代码例程与引擎集成。
+`Nexpose`是一个漏洞扫描仪，其方法类似于`nessus`，因为除了允许我们对网络上的多台机器运行扫描外，它还具有插件系统和 API，允许将外部代码例程与引擎集成。
 
 `NeXpose`是由`Rapid7`开发的用于扫描和发现漏洞的工具。有一个社区版本可用于非商业用途，尽管它有一些限制，但我们可以用它来进行一些测试。
 
 要安装软件，您必须从官方页面获取有效许可证：
 
-[https://www.rapid7.com/products/nexpose/download/](https://www.rapid7.com/products/nexpose/download/)
+[`www.rapid7.com/products/nexpose/download/`](https://www.rapid7.com/products/nexpose/download/)
 
-一旦我们通过官方页面安装了`nexpose`，我们就可以访问服务器运行的URL。
+一旦我们通过官方页面安装了`nexpose`，我们就可以访问服务器运行的 URL。
 
-运行`nscsvc.bat`脚本，我们将在localhost 3780上运行服务器：
+运行`nscsvc.bat`脚本，我们将在 localhost 3780 上运行服务器：
 
-[https://localhost:3780/login.jsp](https://localhost:3780/login.jsp)
+[`localhost:3780/login.jsp`](https://localhost:3780/login.jsp)
 
-在Windows机器上的默认安装在`C:\ProgramFiles\rapid7\nexpose\nsc`中
+在 Windows 机器上的默认安装在`C:\ProgramFiles\rapid7\nexpose\nsc`中
 
 路径。
 
-# 执行Nexpose漏洞扫描仪
+# 执行 Nexpose 漏洞扫描仪
 
-`Nexpose`允许您分析特定的IP、域名或服务器。首先，需要创建一组资源，称为资产，它定义了引擎可审计的所有元素。
+`Nexpose`允许您分析特定的 IP、域名或服务器。首先，需要创建一组资源，称为资产，它定义了引擎可审计的所有元素。
 
 为此，还有一系列资源，也称为**资产**，在资产内部，我们定义要分析的站点或域：
 
-![](assets/5c2f897a-3302-4ec2-9001-f2f2037db366.png)
+![](img/5c2f897a-3302-4ec2-9001-f2f2037db366.png)
 
-在我们的案例中，我们将分析具有IP地址192.168.56.101的**metasploitable虚拟机**：
+在我们的案例中，我们将分析具有 IP 地址 192.168.56.101 的**metasploitable 虚拟机**：
 
-![](assets/7372ea22-8e32-4e1f-95cb-f2fea3cbe6d5.png)
+![](img/7372ea22-8e32-4e1f-95cb-f2fea3cbe6d5.png)
 
 在分析结束时，我们可以看到扫描结果和检测到的漏洞：
 
-![](assets/ea956670-b26e-4344-917a-d094c841da5f.png)
+![](img/ea956670-b26e-4344-917a-d094c841da5f.png)
 
 `Nexpose`具有一个**API**，允许我们从其他应用程序访问其功能；这样，它允许用户从管理界面自动执行任务。
 
-API文档可作为PDF在以下链接找到：[http://download2.rapid7.com/download/NeXposev4/Nexpose_API_Guide.pdf](http://download2.rapid7.com/download/NeXposev4/Nexpose_API_Guide.pdf)。
+API 文档可作为 PDF 在以下链接找到：[`download2.rapid7.com/download/NeXposev4/Nexpose_API_Guide.pdf`](http://download2.rapid7.com/download/NeXposev4/Nexpose_API_Guide.pdf)。
 
-可用的功能以及其使用的详细信息可以在指南中找到。在Python中，有一些库可以以相当简单的方式与HTTP服务进行交互。为了简化事情，可以使用一个脚本，该脚本已负责查询`nexpose`实例中可用的功能，并以XML格式返回包含有关漏洞的所有信息的字符串。
+可用的功能以及其使用的详细信息可以在指南中找到。在 Python 中，有一些库可以以相当简单的方式与 HTTP 服务进行交互。为了简化事情，可以使用一个脚本，该脚本已负责查询`nexpose`实例中可用的功能，并以 XML 格式返回包含有关漏洞的所有信息的字符串。
 
-# 使用Python访问Nexpose API
+# 使用 Python 访问 Nexpose API
 
 在本节中，我们将审查与`Nexpose`漏洞扫描仪进行交互的`pynexpose`模块。
 
-# 安装`pynexpose` Python模块
+# 安装`pynexpose` Python 模块
 
-`Nexpose`有一个API，允许我们从外部应用程序访问其功能，从而使用户能够从管理界面或`nexpose`控制台执行任务的自动化。API允许任何例行代码使用HTTPS调用与`nexpose`实例交互，以返回XML格式的函数。使用HTTPS协议非常重要，不仅是出于安全原因，还因为API不支持使用HTTP进行调用。
+`Nexpose`有一个 API，允许我们从外部应用程序访问其功能，从而使用户能够从管理界面或`nexpose`控制台执行任务的自动化。API 允许任何例行代码使用 HTTPS 调用与`nexpose`实例交互，以返回 XML 格式的函数。使用 HTTPS 协议非常重要，不仅是出于安全原因，还因为 API 不支持使用 HTTP 进行调用。
 
-在Python中，我们有`Pynexpose`模块，其代码可以在[https://code.google.com/archive/p/pynexpose/](https://code.google.com/archive/p/pynexpose/)找到。
+在 Python 中，我们有`Pynexpose`模块，其代码可以在[`code.google.com/archive/p/pynexpose/`](https://code.google.com/archive/p/pynexpose/)找到。
 
-`Pynexpose`模块允许从Python对位于Web服务器上的漏洞扫描程序进行编程访问。为此，我们必须通过HTTP请求与该服务器通信。
+`Pynexpose`模块允许从 Python 对位于 Web 服务器上的漏洞扫描程序进行编程访问。为此，我们必须通过 HTTP 请求与该服务器通信。
 
-要从Python连接到`nexpose`服务器，我们使用位于**pynexposeHttps.py**文件中的`NeXposeServer`类。为此，我们调用构造函数，通过参数传递服务器的IP地址、端口以及我们登录到服务器管理网页的用户和密码：
+要从 Python 连接到`nexpose`服务器，我们使用位于**pynexposeHttps.py**文件中的`NeXposeServer`类。为此，我们调用构造函数，通过参数传递服务器的 IP 地址、端口以及我们登录到服务器管理网页的用户和密码：
 
 ```py
 serveraddr_nexpose = "192.168.56.101"
@@ -294,7 +294,7 @@ class NexposeFrameWork:
                 print("\n")
 ```
 
-在这段代码中，我们可以看到我们的主程序，我们正在初始化与IP地址、端口、用户和密码相关的参数，以连接到`nexpose`服务器：
+在这段代码中，我们可以看到我们的主程序，我们正在初始化与 IP 地址、端口、用户和密码相关的参数，以连接到`nexpose`服务器：
 
 ```py
 if __name__ == "__main__":
@@ -309,7 +309,7 @@ if __name__ == "__main__":
     nexposeFrameWork.vulnerabilityListing()
 ```
 
-一旦创建了与`nexpose`服务器的连接的对象，我们可以使用一些函数来列出服务器上创建的站点，并列出从Web界面执行的分析和生成的报告。最后，`logout`函数允许我们断开与服务器的连接并销毁已创建的会话：
+一旦创建了与`nexpose`服务器的连接的对象，我们可以使用一些函数来列出服务器上创建的站点，并列出从 Web 界面执行的分析和生成的报告。最后，`logout`函数允许我们断开与服务器的连接并销毁已创建的会话：
 
 ```py
 nexposeFrameWork = NexposeFrameWork(pynexposeHttps)
@@ -342,15 +342,15 @@ def vulnerability_details(self, vulnid):
     return etree.tostring(response)
 ```
 
-需要记住的一件事是，返回的回复是以XML格式。解析和获取信息的一种简单方法是使用`BeautifulSoup`模块以及`lxml`解析器。
+需要记住的一件事是，返回的回复是以 XML 格式。解析和获取信息的一种简单方法是使用`BeautifulSoup`模块以及`lxml`解析器。
 
 通过这种方式，我们可以解析返回的内容，并查找与站点和已注册漏洞相对应的标签。
 
-`Nexpose`用于收集新数据，发现新的漏洞，并且通过实时监控，可以快速解决可能出现在网络或应用程序级别的漏洞。通过使用这个工具，您还可以将数据转换为详细的可视化，以便您可以集中资源并轻松与组织中的其他IT部门共享每个操作。
+`Nexpose`用于收集新数据，发现新的漏洞，并且通过实时监控，可以快速解决可能出现在网络或应用程序级别的漏洞。通过使用这个工具，您还可以将数据转换为详细的可视化，以便您可以集中资源并轻松与组织中的其他 IT 部门共享每个操作。
 
-在这张图片中，我们可以看到在metasploitble虚拟机上执行**NexposeFrameWork.py**的结果：
+在这张图片中，我们可以看到在 metasploitble 虚拟机上执行**NexposeFrameWork.py**的结果：
 
-![](assets/72f93933-ef40-4ec3-8050-3e57ae59311e.png)
+![](img/72f93933-ef40-4ec3-8050-3e57ae59311e.png)
 
 此扫描的结果可以在附加的`nexpose_log.txt`文件中找到。
 
@@ -360,19 +360,19 @@ def vulnerability_details(self, vulnid):
 
 本章的一个目标是了解允许我们连接到漏洞扫描器（如`nessus`和`nexpose`）的模块。我们复习了一些关于漏洞和利用的定义。在获得了服务、端口和操作系统等元素之后，必须在互联网上的不同数据库中搜索它们的漏洞。然而，也有几种工具可以自动执行漏洞扫描，如`Nessus`和`Nexpose`。
 
-在下一章中，我们将使用诸如`w3a`和`fsqlmap`之类的工具来探索识别Web应用程序中的服务器漏洞，以及其他用于识别服务器漏洞的工具，如ssl和heartbleed。
+在下一章中，我们将使用诸如`w3a`和`fsqlmap`之类的工具来探索识别 Web 应用程序中的服务器漏洞，以及其他用于识别服务器漏洞的工具，如 ssl 和 heartbleed。
 
 # 问题
 
 1.  在考虑一组标准化和易于衡量的标准的情况下，评分漏洞的主要机制是什么？
 
-1.  我们使用哪个软件包和类来与`nessus`从python交互？
+1.  我们使用哪个软件包和类来与`nessus`从 python 交互？
 
 1.  `nessrest`模块中的哪种方法启动了指定目标的扫描？
 
 1.  `nessrest`模块中的哪种方法获取了指定目标扫描的详细信息？
 
-1.  用Python连接到`nexpose`服务器的主要类是什么？
+1.  用 Python 连接到`nexpose`服务器的主要类是什么？
 
 1.  负责列出所有检测到的漏洞并返回`nexpose`服务器中特定漏洞的详细信息的方法是什么？
 
@@ -382,22 +382,22 @@ def vulnerability_details(self, vulnid):
 
 1.  什么是允许我们连接到`Nessus`漏洞扫描器的`Python`模块的名称？
 
-1.  `Nexpose`服务器以何种格式返回响应，以便从Python中简单地处理？
+1.  `Nexpose`服务器以何种格式返回响应，以便从 Python 中简单地处理？
 
 # 进一步阅读
 
 在这些链接中，您将找到有关`nessus`和`nexpose`的更多信息和官方文档：
 
-+   [https://docs.tenable.com/nessus/Content/GettingStarted.htm](https://docs.tenable.com/nessus/Content/GettingStarted.htm)
++   [`docs.tenable.com/nessus/Content/GettingStarted.htm`](https://docs.tenable.com/nessus/Content/GettingStarted.htm)
 
-+   [https://nexpose.help.rapid7.com/docs/getting-started-with-nexpose](https://nexpose.help.rapid7.com/docs/getting-started-with-nexpose)
++   [`nexpose.help.rapid7.com/docs/getting-started-with-nexpose`](https://nexpose.help.rapid7.com/docs/getting-started-with-nexpose)
 
-+   [https://help.rapid7.com/insightvm/en-us/api/index.html](https://help.rapid7.com/insightvm/en-us/api/index.html)
++   [`help.rapid7.com/insightvm/en-us/api/index.html`](https://help.rapid7.com/insightvm/en-us/api/index.html)
 
-今天，有很多漏洞扫描工具。Nessus、Seccubus、openvas、著名的Nmap扫描器，甚至OWASP ZAP都是扫描网络和计算机系统漏洞最流行的工具之一：
+今天，有很多漏洞扫描工具。Nessus、Seccubus、openvas、著名的 Nmap 扫描器，甚至 OWASP ZAP 都是扫描网络和计算机系统漏洞最流行的工具之一：
 
-+   [https://www.seccubus.com/](https://www.seccubus.com/)
++   [`www.seccubus.com/`](https://www.seccubus.com/)
 
-+   [http://www.openvas.org/](http://www.openvas.org/)
++   [`www.openvas.org/`](http://www.openvas.org/)
 
-开放漏洞评估系统（OpenVAS）是一个免费的安全扫描平台，其大部分组件都在GNU通用公共许可证（GNU GPL）下许可。主要组件可通过几个Linux软件包或作为可下载的虚拟应用程序用于测试/评估目的。
+开放漏洞评估系统（OpenVAS）是一个免费的安全扫描平台，其大部分组件都在 GNU 通用公共许可证（GNU GPL）下许可。主要组件可通过几个 Linux 软件包或作为可下载的虚拟应用程序用于测试/评估目的。

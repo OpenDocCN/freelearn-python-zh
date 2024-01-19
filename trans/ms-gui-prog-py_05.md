@@ -1,6 +1,6 @@
-# 使用QMainWindow构建应用程序
+# 使用 QMainWindow 构建应用程序
 
-基本的Qt小部件可以在构建简单表单时带我们走很远，但完整的应用程序包括诸如菜单、工具栏、对话框等功能，这些功能可能很繁琐和棘手，从头开始构建。幸运的是，PyQt为这些标准组件提供了现成的类，使构建应用程序相对轻松。
+基本的 Qt 小部件可以在构建简单表单时带我们走很远，但完整的应用程序包括诸如菜单、工具栏、对话框等功能，这些功能可能很繁琐和棘手，从头开始构建。幸运的是，PyQt 为这些标准组件提供了现成的类，使构建应用程序相对轻松。
 
 在本章中，我们将探讨以下主题：
 
@@ -12,25 +12,25 @@
 
 # 技术要求
 
-本章将需要与[第1章](bce5f3b1-2979-4f78-817b-3986e7974725.xhtml)的设置相同。您可能还希望参考我们在GitHub存储库中找到的代码，网址为[https://github.com/PacktPublishing/Mastering-GUI-Programming-with-Python/tree/master/Chapter04](https://github.com/PacktPublishing/Mastering-GUI-Programming-with-Python/tree/master/Chapter04)。
+本章将需要与第一章的设置相同。您可能还希望参考我们在 GitHub 存储库中找到的代码，网址为[`github.com/PacktPublishing/Mastering-GUI-Programming-with-Python/tree/master/Chapter04`](https://github.com/PacktPublishing/Mastering-GUI-Programming-with-Python/tree/master/Chapter04)。
 
-查看以下视频以查看代码的实际操作：[http://bit.ly/2M5OGnq](http://bit.ly/2M5OGnq)
+查看以下视频以查看代码的实际操作：[`bit.ly/2M5OGnq`](http://bit.ly/2M5OGnq)
 
-# QMainWindow类
+# QMainWindow 类
 
-到目前为止，我们一直在使用`QWidget`作为顶级窗口的基类。这对于简单的表单效果很好，但它缺少许多我们可能期望从应用程序的主窗口中得到的功能，比如菜单栏或工具栏。Qt提供了`QMainWindow`类来满足这种需求。
+到目前为止，我们一直在使用`QWidget`作为顶级窗口的基类。这对于简单的表单效果很好，但它缺少许多我们可能期望从应用程序的主窗口中得到的功能，比如菜单栏或工具栏。Qt 提供了`QMainWindow`类来满足这种需求。
 
-从[第1章](bce5f3b1-2979-4f78-817b-3986e7974725.xhtml)的应用程序模板中复制一份，并进行一个小但至关重要的更改：
+从第一章的应用程序模板中复制一份，并进行一个小但至关重要的更改：
 
 ```py
 class MainWindow(qtw.QMainWindow):
 ```
 
-我们不再继承自`QWidget`，而是继承自`QMainWindow`。正如您将看到的，这将改变我们编写GUI的方式，但也会为我们的主窗口添加许多很好的功能。
+我们不再继承自`QWidget`，而是继承自`QMainWindow`。正如您将看到的，这将改变我们编写 GUI 的方式，但也会为我们的主窗口添加许多很好的功能。
 
 为了探索这些新功能，让我们构建一个简单的纯文本编辑器。以下屏幕截图显示了我们完成的编辑器的外观，以及显示`QMainWindow`类的主要组件的标签：
 
-![](assets/67b30b0a-e7d2-42cf-8b9d-3d2f92ee0828.png)
+![](img/67b30b0a-e7d2-42cf-8b9d-3d2f92ee0828.png)
 
 保存您更新的模板，将其复制到一个名为`text_editor.py`的新文件中，并在您的代码编辑器中打开新文件。让我们开始吧！
 
@@ -45,11 +45,11 @@ class MainWindow(qtw.QMainWindow):
         self.setCentralWidget(self.textedit)
 ```
 
-只能有一个中央小部件，因此在更复杂的应用程序（例如数据输入应用程序）中，它更可能是一个`QWidget`对象，您在其中安排了一个更复杂的GUI；对于我们的简单文本编辑器，一个单独的`QTextEdit`小部件就足够了。请注意，我们没有在`QMainWindow`上设置布局；这样做会破坏组件的预设排列。 
+只能有一个中央小部件，因此在更复杂的应用程序（例如数据输入应用程序）中，它更可能是一个`QWidget`对象，您在其中安排了一个更复杂的 GUI；对于我们的简单文本编辑器，一个单独的`QTextEdit`小部件就足够了。请注意，我们没有在`QMainWindow`上设置布局；这样做会破坏组件的预设排列。 
 
 # 添加状态栏
 
-**状态栏**是应用程序窗口底部的一条条纹，用于显示短文本消息和信息小部件。在Qt中，状态栏是一个`QStatusBar`对象，我们可以将其分配给主窗口的`statusBar`属性。
+**状态栏**是应用程序窗口底部的一条条纹，用于显示短文本消息和信息小部件。在 Qt 中，状态栏是一个`QStatusBar`对象，我们可以将其分配给主窗口的`statusBar`属性。
 
 我们可以像这样创建一个：
 
@@ -110,7 +110,7 @@ class MainWindow(qtw.QMainWindow):
 
 `addMenu()`返回一个`QMenu`对象，表示下拉子菜单。传递给该方法的字符串将用于标记主菜单栏中的菜单。
 
-某些平台，如macOS，不会显示空的子菜单。有关在macOS中构建菜单的更多信息，请参阅*macOS上的菜单*部分。
+某些平台，如 macOS，不会显示空的子菜单。有关在 macOS 中构建菜单的更多信息，请参阅*macOS 上的菜单*部分。
 
 要向这些菜单填充项目，我们需要创建一些**操作**。操作只是`QAction`类的对象，表示我们的程序可以执行的操作。要有用，`QAction`对象至少需要一个名称和一个回调；它们还可以为操作定义键盘快捷键和图标。
 
@@ -123,7 +123,7 @@ class MainWindow(qtw.QMainWindow):
 
 我们创建了两个名为`Open`和`Save`的操作。它们实际上什么都没做，因为我们还没有分配回调方法，但是如果运行应用程序脚本，您会看到文件菜单确实列出了两个项目，`Open`和`Save`。
 
-创建实际执行操作的项目，我们可以传入第二个参数，其中包含一个Python可调用对象或Qt槽：
+创建实际执行操作的项目，我们可以传入第二个参数，其中包含一个 Python 可调用对象或 Qt 槽：
 
 ```py
         quit_action = file_menu.addAction('Quit', self.destroy)
@@ -142,15 +142,15 @@ class MainWindow(qtw.QMainWindow):
 
 虽然在技术上不是必需的，但在显式创建`QAction`对象时传入父窗口小部件非常重要。如果未这样做，即使将其添加到菜单中，该项目也不会显示。
 
-# macOS上的菜单
+# macOS 上的菜单
 
-`QMenuBar`默认包装操作系统的本机菜单系统。在macOS上，本机菜单系统有一些需要注意的特殊之处：
+`QMenuBar`默认包装操作系统的本机菜单系统。在 macOS 上，本机菜单系统有一些需要注意的特殊之处：
 
-+   macOS使用**全局菜单**，这意味着菜单栏不是应用程序窗口的一部分，而是附加到桌面顶部的栏上。默认情况下，您的主窗口的菜单栏将用作全局菜单。如果您有一个具有多个主窗口的应用程序，并且希望它们都使用相同的菜单栏，请不要使用`QMainWindow.menuBar()`来创建菜单栏。而是显式创建一个`QMenuBar`对象，并使用`setMenuBar()`方法将其分配给您使用的主窗口对象。
++   macOS 使用**全局菜单**，这意味着菜单栏不是应用程序窗口的一部分，而是附加到桌面顶部的栏上。默认情况下，您的主窗口的菜单栏将用作全局菜单。如果您有一个具有多个主窗口的应用程序，并且希望它们都使用相同的菜单栏，请不要使用`QMainWindow.menuBar()`来创建菜单栏。而是显式创建一个`QMenuBar`对象，并使用`setMenuBar()`方法将其分配给您使用的主窗口对象。
 
-+   macOS还有许多默认的子菜单和菜单项。要访问这些项目，只需在添加子菜单时使用相同的方法。有关添加子菜单的更多详细信息，请参阅*进一步阅读*部分中有关macOS菜单的更多详细信息。
++   macOS 还有许多默认的子菜单和菜单项。要访问这些项目，只需在添加子菜单时使用相同的方法。有关添加子菜单的更多详细信息，请参阅*进一步阅读*部分中有关 macOS 菜单的更多详细信息。
 
-+   如前所述，macOS不会在全局菜单上显示空子菜单。
++   如前所述，macOS 不会在全局菜单上显示空子菜单。
 
 如果您发现这些问题对您的应用程序太具有问题，您可以始终指示 Qt 不使用本机菜单系统，就像这样：
 
@@ -160,7 +160,7 @@ class MainWindow(qtw.QMainWindow):
 
 这将在应用程序窗口中放置菜单栏，并消除特定于平台的问题。但是，请注意，这种方法会破坏 macOS 软件的典型工作流程，用户可能会感到不适。
 
-有关 macOS 上的 Qt 菜单的更多信息，请访问[https://doc.qt.io/qt-5/macos-issues.html#menu-bar](https://doc.qt.io/qt-5/macos-issues.html#menu-bar)。
+有关 macOS 上的 Qt 菜单的更多信息，请访问[`doc.qt.io/qt-5/macos-issues.html#menu-bar`](https://doc.qt.io/qt-5/macos-issues.html#menu-bar)。
 
 # 添加工具栏
 
@@ -185,7 +185,7 @@ class MainWindow(qtw.QMainWindow):
 
 运行应用程序；它应该看起来像这样：
 
-![](assets/f019127f-1cea-4671-84cd-3379db227da6.png)
+![](img/f019127f-1cea-4671-84cd-3379db227da6.png)
 
 请注意，工具栏的标题不会显示在工具栏上。但是，如果右键单击工具栏区域，您将看到一个弹出菜单，其中包含所有工具栏标题，带有复选框，允许您显示或隐藏应用程序的任何工具栏。
 
@@ -216,7 +216,7 @@ class MainWindow(qtw.QMainWindow):
         save_icon = self.style().standardIcon(qtw.QStyle.SP_DriveHDIcon)
 ```
 
-现在不要担心这段代码的工作原理；有关样式和图标的完整讨论将在[第6章](c3eb2567-0e73-4c37-9a9e-a0e2311e106c.xhtml) *Qt 应用程序的样式* 中进行。现在只需了解`open_icon`和`save_icon`是`QIcon`对象，这是 Qt 处理图标的方式。
+现在不要担心这段代码的工作原理；有关样式和图标的完整讨论将在第六章 *Qt 应用程序的样式* 中进行。现在只需了解`open_icon`和`save_icon`是`QIcon`对象，这是 Qt 处理图标的方式。
 
 这些可以附加到我们的`QAction`对象，然后可以将它们附加到工具栏，就像这样：
 
@@ -227,7 +227,7 @@ class MainWindow(qtw.QMainWindow):
 
 如您所见，这看起来好多了：
 
-![](assets/7b1be327-2b73-4735-a461-fc53946a9f16.png)
+![](img/7b1be327-2b73-4735-a461-fc53946a9f16.png)
 
 注意，当您运行此代码时，菜单中的文件 | 打开选项现在也有图标。因为两者都使用`open_action`对象，我们对该操作对象所做的任何更改都将传递到对象的所有使用中。
 
@@ -295,7 +295,7 @@ class MainWindow(qtw.QMainWindow):
 
 我们已将`features`设置为`DockWidgetMovable`和`DockWidgetFloatable`。由于这里缺少`DockWidgetClosable`，用户将无法关闭小部件。
 
-停靠窗口设计为容纳使用`setWidget()`方法设置的单个小部件。与我们主应用程序的`centralWidget`一样，我们通常会将其设置为包含某种表单或其他GUI的`QWidget`。
+停靠窗口设计为容纳使用`setWidget()`方法设置的单个小部件。与我们主应用程序的`centralWidget`一样，我们通常会将其设置为包含某种表单或其他 GUI 的`QWidget`。
 
 让我们构建一个表单放在停靠窗口中，如下所示：
 
@@ -335,17 +335,17 @@ class MainWindow(qtw.QMainWindow):
 
 此时运行程序，您应该在应用程序的左侧看到我们的停靠窗口，如下所示：
 
-![](assets/755c0898-64be-465f-8532-8db0e1916875.png)
+![](img/755c0898-64be-465f-8532-8db0e1916875.png)
 
 请注意停靠窗口右上角的图标。这允许用户将小部件分离并浮动到应用程序窗口之外。
 
 # 其他`QMainWindow`功能
 
-尽管我们已经涵盖了它的主要组件，但`QMainWindow`提供了许多其他功能和配置选项，您可以在其文档中探索这些选项[https://doc.qt.io/qt-5/qmainwindow.html](https://doc.qt.io/qt-5/qmainwindow.html)。我们可能会在未来的章节中涉及其中一些，因为我们将从现在开始广泛使用`QMainWindow`。
+尽管我们已经涵盖了它的主要组件，但`QMainWindow`提供了许多其他功能和配置选项，您可以在其文档中探索这些选项[`doc.qt.io/qt-5/qmainwindow.html`](https://doc.qt.io/qt-5/qmainwindow.html)。我们可能会在未来的章节中涉及其中一些，因为我们将从现在开始广泛使用`QMainWindow`。
 
 # 标准对话框
 
-**对话框**在应用程序中通常是必需的，无论是询问问题，呈现表单还是仅向用户提供一些信息。Qt提供了各种各样的现成对话框，用于常见情况，以及定义自定义对话框的能力。在本节中，我们将看一些常用的对话框类，并尝试设计自己的对话框。
+**对话框**在应用程序中通常是必需的，无论是询问问题，呈现表单还是仅向用户提供一些信息。Qt 提供了各种各样的现成对话框，用于常见情况，以及定义自定义对话框的能力。在本节中，我们将看一些常用的对话框类，并尝试设计自己的对话框。
 
 # QMessageBox
 
@@ -356,7 +356,7 @@ class MainWindow(qtw.QMainWindow):
 | 功能 | 类型 | 对话框 |
 | --- | --- | --- |
 | `about()` | 非模态 | 显示应用程序的**关于**对话框，并提供给定的文本。 |
-| `aboutQt()` | 非模态 | 显示Qt的**关于**对话框。 |
+| `aboutQt()` | 非模态 | 显示 Qt 的**关于**对话框。 |
 | `critical()` | 模态 | 显示带有提供的文本的关键错误消息。 |
 | `information()` | 模态 | 显示带有提供的文本的信息消息。 |
 | `warning()` | 模态 | 显示带有提供的文本的警告消息。 |
@@ -401,7 +401,7 @@ class MainWindow(qtw.QMainWindow):
             sys.exit()
 ```
 
-所有模态对话框都返回与用户按下的按钮相对应的Qt常量；默认情况下，`question()`创建一个带有`QMessageBox.Yes`和`QMessageBox.No`按钮值的对话框，因此我们可以测试响应并做出相应的反应。还可以通过传入第四个参数来覆盖呈现的按钮，该参数包含使用管道运算符组合的多个按钮。
+所有模态对话框都返回与用户按下的按钮相对应的 Qt 常量；默认情况下，`question()`创建一个带有`QMessageBox.Yes`和`QMessageBox.No`按钮值的对话框，因此我们可以测试响应并做出相应的反应。还可以通过传入第四个参数来覆盖呈现的按钮，该参数包含使用管道运算符组合的多个按钮。
 
 例如，我们可以将`No`更改为`Abort`，如下所示：
 
@@ -454,7 +454,7 @@ class MainWindow(qtw.QMainWindow):
 
 # QFileDialog
 
-应用程序通常需要打开或保存文件，用户需要一种简单的方法来浏览和选择这些文件。 Qt为我们提供了`QFileDialog`类来满足这种需求。
+应用程序通常需要打开或保存文件，用户需要一种简单的方法来浏览和选择这些文件。 Qt 为我们提供了`QFileDialog`类来满足这种需求。
 
 与`QMessageBox`一样，`QFileDialog`类包含几个静态方法，显示适当的模态对话框并返回用户选择的值。
 
@@ -463,14 +463,14 @@ class MainWindow(qtw.QMainWindow):
 | 方法 | 返回 | 描述 |
 | --- | --- | --- |
 | `getExistingDirectory` | String | 选择现有目录路径。 |
-| `getExistingDirectoryUrl` | `QUrl` | 选择现有目录URL。 |
+| `getExistingDirectoryUrl` | `QUrl` | 选择现有目录 URL。 |
 | `getOpenFileName` | String | 选择要打开的现有文件名路径。 |
 | `getOpenFileNames` | List | 选择多个现有文件名路径以打开。 |
-| `getOpenFileUrl` | `QUrl` | 选择现有文件名URL。 |
+| `getOpenFileUrl` | `QUrl` | 选择现有文件名 URL。 |
 | `getSaveFileName` | String | 选择要保存到的新文件名路径或现有文件名路径。 |
-| `getSaveFileUrl` | `QUrl` | 选择新的或现有的URL。 |
+| `getSaveFileUrl` | `QUrl` | 选择新的或现有的 URL。 |
 
-在支持的平台上，这些方法的URL版本允许选择远程文件和目录。
+在支持的平台上，这些方法的 URL 版本允许选择远程文件和目录。
 
 要了解文件对话框的工作原理，让我们在应用程序中创建打开文件的能力：
 
@@ -487,7 +487,7 @@ class MainWindow(qtw.QMainWindow):
 
 `getOpenFileName()`返回一个包含所选文件名和所选文件类型过滤器的元组。如果用户取消对话框，将返回一个空字符串作为文件名，并且我们的方法将退出。如果我们收到一个文件名，我们尝试打开文件并将`textedit`小部件的内容写入其中。
 
-由于我们不使用方法返回的第二个值，我们将其分配给`_`（下划线）变量。这是命名不打算使用的变量的标准Python约定。
+由于我们不使用方法返回的第二个值，我们将其分配给`_`（下划线）变量。这是命名不打算使用的变量的标准 Python 约定。
 
 `getOpenFileName()`有许多用于配置对话框的参数，所有这些参数都是可选的。按顺序，它们如下：
 
@@ -521,9 +521,9 @@ class MainWindow(qtw.QMainWindow):
 
 请注意，过滤器被指定为单个字符串；每个过滤器都是一个描述加上括号内的通配符字符串，并且过滤器之间用双分号分隔。这将导致一个看起来像这样的过滤器下拉菜单：
 
-![](assets/cf80d69c-0bbc-402c-8a6b-ec719c7d9afe.png)
+![](img/cf80d69c-0bbc-402c-8a6b-ec719c7d9afe.png)
 
-最后，我们可以使用管道运算符组合一系列选项标志。在这种情况下，我们告诉Qt不要使用本机OS文件对话框，也不要解析符号链接（这两者都是默认情况下）。有关选项标志的完整列表，请参阅`QFileDialog`文档[https://doc.qt.io/qt-5/qfiledialog.html#Option-enum](https://doc.qt.io/qt-5/qfiledialog.html#Option-enum)。
+最后，我们可以使用管道运算符组合一系列选项标志。在这种情况下，我们告诉 Qt 不要使用本机 OS 文件对话框，也不要解析符号链接（这两者都是默认情况下）。有关选项标志的完整列表，请参阅`QFileDialog`文档[`doc.qt.io/qt-5/qfiledialog.html#Option-enum`](https://doc.qt.io/qt-5/qfiledialog.html#Option-enum)。
 
 保存文件对话框的工作方式基本相同，但提供了更适合保存文件的界面。我们可以实现我们的`saveFile()`方法如下：
 
@@ -554,7 +554,7 @@ class MainWindow(qtw.QMainWindow):
 
 # QFontDialog
 
-Qt提供了许多其他方便的选择对话框，类似于`QFileDialog`；其中一个对话框是`QFontDialog`，允许用户选择和配置文本字体的各个方面。
+Qt 提供了许多其他方便的选择对话框，类似于`QFileDialog`；其中一个对话框是`QFontDialog`，允许用户选择和配置文本字体的各个方面。
 
 与其他对话框类一样，最简单的方法是调用静态方法显示对话框并返回用户的选择，这种情况下是`getFont()`方法。
 
@@ -572,7 +572,7 @@ Qt提供了许多其他方便的选择对话框，类似于`QFileDialog`；其�
 
 它返回一个包含所选字体和一个布尔值的元组，指示用户是否点击了确定。字体作为`QFont`对象返回，该对象封装了字体系列、样式、大小、效果和字体的书写系统。我们的方法可以将此对象传回到`QTextEdit`对象的`setCurrentFont()`槽中，以设置其字体。
 
-与`QFileDialog`一样，如果操作系统有原生字体对话框，Qt会尝试使用它；否则，它将使用自己的小部件。您可以通过将`DontUseNativeDialog`选项传递给`options`关键字参数来强制使用对话框的Qt版本，就像我们在这里做的那样：
+与`QFileDialog`一样，如果操作系统有原生字体对话框，Qt 会尝试使用它；否则，它将使用自己的小部件。您可以通过将`DontUseNativeDialog`选项传递给`options`关键字参数来强制使用对话框的 Qt 版本，就像我们在这里做的那样：
 
 ```py
         font, accepted = qtw.QFontDialog.getFont(
@@ -585,11 +585,11 @@ Qt提供了许多其他方便的选择对话框，类似于`QFileDialog`；其�
         )
 ```
 
-我们还在这里传入了一个选项，以限制对话框为等宽字体。有关可用选项的更多信息，请参阅`QFontDialog`的Qt文档[https://doc.qt.io/qt-5/qfontdialog.html#FontDialogOption-enum](https://doc.qt.io/qt-5/qfontdialog.html#FontDialogOption-enum)。
+我们还在这里传入了一个选项，以限制对话框为等宽字体。有关可用选项的更多信息，请参阅`QFontDialog`的 Qt 文档[`doc.qt.io/qt-5/qfontdialog.html#FontDialogOption-enum`](https://doc.qt.io/qt-5/qfontdialog.html#FontDialogOption-enum)。
 
 # 其他对话框
 
-Qt包含其他对话框类，用于选择颜色、请求输入值等。所有这些类似于文件和字体对话框，它们都是`QDialog`类的子类。我们可以自己子类化`QDialog`来创建自定义对话框。
+Qt 包含其他对话框类，用于选择颜色、请求输入值等。所有这些类似于文件和字体对话框，它们都是`QDialog`类的子类。我们可以自己子类化`QDialog`来创建自定义对话框。
 
 例如，假设我们想要一个对话框来输入我们的设置。我们可以像这样开始构建它：
 
@@ -646,11 +646,11 @@ class MainWindow(qtw.QMainWindow):
 
 使用`QDialog`类就像创建对话框类的实例并调用`exec()`一样简单。在这种情况下，由于我们直接编辑我们的`settings` dict，所以我们不需要担心连接`accepted`信号或使用`exec()`的输出。
 
-# 使用QSettings保存设置
+# 使用 QSettings 保存设置
 
-任何合理大小的应用程序都可能积累需要在会话之间存储的设置。保存这些设置通常涉及大量繁琐的文件操作和数据序列化工作，当我们希望跨平台良好地工作时，这种工作变得更加复杂。Qt的`QtCore.QSettings`类解救了我们。
+任何合理大小的应用程序都可能积累需要在会话之间存储的设置。保存这些设置通常涉及大量繁琐的文件操作和数据序列化工作，当我们希望跨平台良好地工作时，这种工作变得更加复杂。Qt 的`QtCore.QSettings`类解救了我们。
 
-`QSettings`类是一个简单的键值数据存储，会以平台适当的方式自动持久化。例如，在Windows上，设置存储在注册表数据库中，而在Linux上，它们被放置在`~/.config`下的纯文本配置文件中。
+`QSettings`类是一个简单的键值数据存储，会以平台适当的方式自动持久化。例如，在 Windows 上，设置存储在注册表数据库中，而在 Linux 上，它们被放置在`~/.config`下的纯文本配置文件中。
 
 让我们用`QSettings`对象替换我们在文本编辑器中创建的设置`dict`对象。
 
@@ -662,7 +662,7 @@ class MainWindow(qtw.QMainWindow):
     settings = qtc.QSettings('Alan D Moore', 'text editor')
 ```
 
-这些字符串将确定存储设置的注册表键或文件路径。例如，在Linux上，此设置文件将保存在`~/.config/Alan D Moore/text editor.conf`。在Windows上，它将存储在注册表中的`HKEY_CURRENT_USER\Alan D Moore\text editor\`。
+这些字符串将确定存储设置的注册表键或文件路径。例如，在 Linux 上，此设置文件将保存在`~/.config/Alan D Moore/text editor.conf`。在 Windows 上，它将存储在注册表中的`HKEY_CURRENT_USER\Alan D Moore\text editor\`。
 
 我们可以使用对象的`value()`方法查询任何设置的值；例如，我们可以根据`show_warnings`设置使我们的启动警告对话框成为有条件的：
 
@@ -671,7 +671,7 @@ class MainWindow(qtw.QMainWindow):
             # Warning dialog code follows...
 ```
 
-`value()`的参数是键字符串、如果未找到键则是默认值，以及`type`关键字参数，告诉`QSettings`如何解释保存的值。`type`参数至关重要；并非所有平台都能以明确的方式充分表示所有数据类型。例如，如果未指定数据类型，则布尔值将作为字符串`true`和`false`返回，这两者在Python中都是`True`。
+`value()`的参数是键字符串、如果未找到键则是默认值，以及`type`关键字参数，告诉`QSettings`如何解释保存的值。`type`参数至关重要；并非所有平台都能以明确的方式充分表示所有数据类型。例如，如果未指定数据类型，则布尔值将作为字符串`true`和`false`返回，这两者在 Python 中都是`True`。
 
 设置键的值使用`setValue()`方法，就像在`SettingsDialog.accept()`方法中所示的那样：
 
@@ -682,11 +682,11 @@ class MainWindow(qtw.QMainWindow):
         )
 ```
 
-请注意，我们不必做任何事情将这些值存储到磁盘上；它们会被Qt事件循环定期自动同步到磁盘上。它们也会在创建`QSettings`对象的时候自动从磁盘上读取。简单地用`QSettings`对象替换我们原来的`settings` dict就足以让我们获得持久的设置，而无需编写一行文件I/O代码！
+请注意，我们不必做任何事情将这些值存储到磁盘上；它们会被 Qt 事件循环定期自动同步到磁盘上。它们也会在创建`QSettings`对象的时候自动从磁盘上读取。简单地用`QSettings`对象替换我们原来的`settings` dict 就足以让我们获得持久的设置，而无需编写一行文件 I/O 代码！
 
-# QSettings的限制
+# QSettings 的限制
 
-尽管它们很强大，`QSettings`对象不能存储任何东西。设置对象中的所有值都存储为`QVariant`对象，因此只有可以转换为`QVariant`的对象才能存储。这包括了一个长列表的类型，包括几乎任何Python内置类型和`QtCore`中的大多数数据类。甚至函数引用也可以被存储（尽管不是函数定义）。
+尽管它们很强大，`QSettings`对象不能存储任何东西。设置对象中的所有值都存储为`QVariant`对象，因此只有可以转换为`QVariant`的对象才能存储。这包括了一个长列表的类型，包括几乎任何 Python 内置类型和`QtCore`中的大多数数据类。甚至函数引用也可以被存储（尽管不是函数定义）。
 
 不幸的是，如果你尝试存储一个无法正确存储的对象，`QSettings.setValue()`既不会抛出异常也不会返回错误。它会在控制台打印警告并存储一些可能不会有用的东西，例如：
 
@@ -703,15 +703,15 @@ s.setValue('app', app)
 
 # 总结
 
-在本章中，你学习了有助于构建完整应用程序的PyQt类。你学习了`QMainWindow`类，它的菜单、状态栏、工具栏和停靠窗口。你还学习了从`QDialog`派生的标准对话框和消息框，以及如何使用`QSettings`存储应用程序设置。
+在本章中，你学习了有助于构建完整应用程序的 PyQt 类。你学习了`QMainWindow`类，它的菜单、状态栏、工具栏和停靠窗口。你还学习了从`QDialog`派生的标准对话框和消息框，以及如何使用`QSettings`存储应用程序设置。
 
-在下一章中，我们将学习Qt中的模型-视图类，这将帮助我们分离关注点并创建更健壮的应用程序设计。
+在下一章中，我们将学习 Qt 中的模型-视图类，这将帮助我们分离关注点并创建更健壮的应用程序设计。
 
 # 问题
 
 尝试这些问题来测试你从本章中学到的知识：
 
-1.  你想要使用`QMainWindow`与[第3章](dbb86a9b-0050-490e-94da-1f4661d8bc66.xhtml)中的`calendar_app.py`脚本，*使用信号和槽处理事件*。你会如何进行转换？
+1.  你想要使用`QMainWindow`与第三章中的`calendar_app.py`脚本，*使用信号和槽处理事件*。你会如何进行转换？
 
 1.  你正在开发一个应用程序，并将子菜单名称添加到菜单栏，但没有填充任何子菜单项。你的同事说在他们测试时，他们的桌面上没有出现任何菜单名称。你的代码看起来是正确的；这里可能出了什么问题？
 
@@ -734,7 +734,7 @@ s.setValue('app', app)
 
 1.  重写对话框的`accepted`信号，使其传递输入值的字典。将此信号连接到主窗口类中的回调函数。
 
-1.  你正在Linux上编写一个名为**SuperPhoto**的照片编辑器。你已经编写了代码并保存了用户设置，但在`~/.config/`中找不到`SuperPhoto.conf`。查看代码并确定出了什么问题：
+1.  你正在 Linux 上编写一个名为**SuperPhoto**的照片编辑器。你已经编写了代码并保存了用户设置，但在`~/.config/`中找不到`SuperPhoto.conf`。查看代码并确定出了什么问题：
 
 ```py
     settings = qtc.QSettings()
@@ -756,14 +756,14 @@ s.setValue('app', app)
 
 有关更多信息，请参考以下内容：
 
-+   Qt的`QMainWindow`文档可以在[https://doc.qt.io/qt-5/qmainwindow.html](https://doc.qt.io/qt-5/qmainwindow.html)找到。
++   Qt 的`QMainWindow`文档可以在[`doc.qt.io/qt-5/qmainwindow.html`](https://doc.qt.io/qt-5/qmainwindow.html)找到。
 
-+   使用`QMainWindow`的示例可以在[https://github.com/pyqt/examples/tree/master/mainwindows](https://github.com/pyqt/examples/tree/master/mainwindows)找到。
++   使用`QMainWindow`的示例可以在[`github.com/pyqt/examples/tree/master/mainwindows`](https://github.com/pyqt/examples/tree/master/mainwindows)找到。
 
-+   苹果的macOS人机界面指南包括如何构建应用程序菜单的指导。这些可以在[https://developer.apple.com/design/human-interface-guidelines/macos/menus/menu-anatomy/](https://developer.apple.com/design/human-interface-guidelines/macos/menus/menu-anatomy/)找到。
++   苹果的 macOS 人机界面指南包括如何构建应用程序菜单的指导。这些可以在[`developer.apple.com/design/human-interface-guidelines/macos/menus/menu-anatomy/`](https://developer.apple.com/design/human-interface-guidelines/macos/menus/menu-anatomy/)找到。
 
-+   微软提供了有关为Windows应用程序设计菜单的指南，网址为[https://docs.microsoft.com/en-us/windows/desktop/uxguide/cmd-menus](https://docs.microsoft.com/en-us/windows/desktop/uxguide/cmd-menus)。
++   微软提供了有关为 Windows 应用程序设计菜单的指南，网址为[`docs.microsoft.com/en-us/windows/desktop/uxguide/cmd-menus`](https://docs.microsoft.com/en-us/windows/desktop/uxguide/cmd-menus)。
 
-+   PyQt提供了一些关于对话框使用的示例，网址为[https://github.com/pyqt/examples/tree/master/dialogs](https://github.com/pyqt/examples/tree/master/dialogs)。
++   PyQt 提供了一些关于对话框使用的示例，网址为[`github.com/pyqt/examples/tree/master/dialogs`](https://github.com/pyqt/examples/tree/master/dialogs)。
 
-+   `QMainWindow`也可以用于创建**多文档界面**（**MDIs**）。有关如何构建MDI应用程序的更多信息，请参见[https://www.pythonstudio.us/pyqt-programming/multiple-document-interface-mdi.html](https://www.pythonstudio.us/pyqt-programming/multiple-document-interface-mdi.html)，以及[https://doc.qt.io/qt-5/qtwidgets-mainwindows-mdi-example.html](https://doc.qt.io/qt-5/qtwidgets-mainwindows-mdi-example.html)上的示例代码。
++   `QMainWindow`也可以用于创建**多文档界面**（**MDIs**）。有关如何构建 MDI 应用程序的更多信息，请参见[`www.pythonstudio.us/pyqt-programming/multiple-document-interface-mdi.html`](https://www.pythonstudio.us/pyqt-programming/multiple-document-interface-mdi.html)，以及[`doc.qt.io/qt-5/qtwidgets-mainwindows-mdi-example.html`](https://doc.qt.io/qt-5/qtwidgets-mainwindows-mdi-example.html)上的示例代码。

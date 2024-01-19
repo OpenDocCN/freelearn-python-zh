@@ -4,7 +4,7 @@
 
 +   抓取的合法性和有礼貌的抓取
 
-+   尊重robots.txt
++   尊重 robots.txt
 
 +   使用站点地图进行爬行
 
@@ -46,7 +46,7 @@
 
 另一个关注点是我归为拒绝服务的概念，它涉及到收集信息的实际过程以及你收集信息的频率。在网站上手动阅读内容的过程与编写自动机器人不断骚扰网络服务器以获取内容的过程有很大的不同。如果访问频率过高，可能会拒绝其他合法用户访问内容，从而拒绝为他们提供服务。这也可能会增加内容的主机的成本，增加他们的带宽成本，甚至是运行服务器的电费。
 
-一个良好管理的网站将识别这些重复和频繁的访问，并使用诸如基于IP地址、标头和cookie的规则的Web应用程序防火墙关闭它们。在其他情况下，这些可能会被识别，并联系您的ISP要求您停止执行这些任务。请记住，您永远不是真正匿名的，聪明的主机可以找出您是谁，确切地知道您访问了什么内容以及何时访问。
+一个良好管理的网站将识别这些重复和频繁的访问，并使用诸如基于 IP 地址、标头和 cookie 的规则的 Web 应用程序防火墙关闭它们。在其他情况下，这些可能会被识别，并联系您的 ISP 要求您停止执行这些任务。请记住，您永远不是真正匿名的，聪明的主机可以找出您是谁，确切地知道您访问了什么内容以及何时访问。
 
 # 如何做到这一点
 
@@ -60,13 +60,13 @@
 
 +   让自己被网站识别
 
-# 尊重robots.txt
+# 尊重 robots.txt
 
-许多网站希望被爬取。这是兽性的本质：Web主机将内容放在其网站上供人类查看。但同样重要的是其他计算机也能看到内容。一个很好的例子是搜索引擎优化（SEO）。SEO是一个过程，您实际上设计您的网站以便被Google等搜索引擎的爬虫爬取，因此您实际上是在鼓励爬取。但与此同时，发布者可能只希望网站的特定部分被爬取，并告诉爬虫不要爬取网站的某些部分，要么是因为不适合分享，要么是因为不重要而浪费了Web服务器资源。
+许多网站希望被爬取。这是兽性的本质：Web 主机将内容放在其网站上供人类查看。但同样重要的是其他计算机也能看到内容。一个很好的例子是搜索引擎优化（SEO）。SEO 是一个过程，您实际上设计您的网站以便被 Google 等搜索引擎的爬虫爬取，因此您实际上是在鼓励爬取。但与此同时，发布者可能只希望网站的特定部分被爬取，并告诉爬虫不要爬取网站的某些部分，要么是因为不适合分享，要么是因为不重要而浪费了 Web 服务器资源。
 
 通常，您被允许和不被允许爬取的规则包含在大多数网站上的一个名为`robots.txt`的文件中。`robots.txt`是一个可读但可解析的文件，可用于识别您被允许和不被允许爬取的位置。
 
-`robots.txt`文件的格式不幸地不是标准的，任何人都可以进行自己的修改，但是对于格式有很强的共识。`robots.txt`文件通常位于站点的根URL。为了演示`robots.txt`文件，以下代码包含了亚马逊在[http://amazon.com/robots.txt](http://amazon.com/robots.txt)上提供的摘录。我编辑了它，只显示了重要的概念：
+`robots.txt`文件的格式不幸地不是标准的，任何人都可以进行自己的修改，但是对于格式有很强的共识。`robots.txt`文件通常位于站点的根 URL。为了演示`robots.txt`文件，以下代码包含了亚马逊在[`amazon.com/robots.txt`](http://amazon.com/robots.txt)上提供的摘录。我编辑了它，只显示了重要的概念：
 
 ```py
 User-agent: *
@@ -104,15 +104,15 @@ Allow: /wishlist/get-button*
 
 +   用户代理声明，以下行直到文件结束或下一个用户代理声明将被应用
 
-+   允许爬取的一组URL
++   允许爬取的一组 URL
 
-+   禁止爬取的一组URL
++   禁止爬取的一组 URL
 
-语法实际上非常简单，Python库存在以帮助我们实现`robots.txt`中包含的规则。我们将使用`reppy`库来尊重`robots.txt`。
+语法实际上非常简单，Python 库存在以帮助我们实现`robots.txt`中包含的规则。我们将使用`reppy`库来尊重`robots.txt`。
 
 # 准备工作
 
-让我们看看如何使用`reppy`库来演示`robots.txt`。有关`reppy`的更多信息，请参阅其GitHub页面[https://github.com/seomoz/reppy](https://github.com/seomoz/reppy)。
+让我们看看如何使用`reppy`库来演示`robots.txt`。有关`reppy`的更多信息，请参阅其 GitHub 页面[`github.com/seomoz/reppy`](https://github.com/seomoz/reppy)。
 
 可以这样安装`reppy`：
 
@@ -120,17 +120,17 @@ Allow: /wishlist/get-button*
 pip install reppy
 ```
 
-但是，我发现在我的Mac上安装时出现了错误，需要以下命令：
+但是，我发现在我的 Mac 上安装时出现了错误，需要以下命令：
 
 ```py
 CFLAGS=-stdlib=libc++ pip install reppy
 ```
 
-在Google上搜索`robots.txt` Python解析库的一般信息通常会引导您使用robotparser库。此库适用于Python 2.x。对于Python 3，它已移至`urllib`库。但是，我发现该库在特定情况下报告不正确的值。我将在我们的示例中指出这一点。
+在 Google 上搜索`robots.txt` Python 解析库的一般信息通常会引导您使用 robotparser 库。此库适用于 Python 2.x。对于 Python 3，它已移至`urllib`库。但是，我发现该库在特定情况下报告不正确的值。我将在我们的示例中指出这一点。
 
 # 如何做到这一点
 
-要运行该示例，请执行`05/01_sitemap.py`中的代码。脚本将检查amazon.com上是否允许爬取多个URL。运行时，您将看到以下输出：
+要运行该示例，请执行`05/01_sitemap.py`中的代码。脚本将检查 amazon.com 上是否允许爬取多个 URL。运行时，您将看到以下输出：
 
 ```py
 True: http://www.amazon.com/
@@ -147,13 +147,13 @@ False: http://www.amazon.com/gp/registry/wishlist/
 from reppy.robots import Robots
 ```
 
-1.  然后，代码使用`Robots`来获取amazon.com的`robots.txt`。
+1.  然后，代码使用`Robots`来获取 amazon.com 的`robots.txt`。
 
 ```py
 url = "http://www.amazon.com" robots = Robots.fetch(url + "/robots.txt")
 ```
 
-1.  使用获取的内容，脚本检查了几个URL的可访问性：
+1.  使用获取的内容，脚本检查了几个 URL 的可访问性：
 
 ```py
 paths = [
@@ -172,46 +172,46 @@ True: http://www.amazon.com/gp/dmusic/promotions/PrimeMusic/
 False: http://www.amazon.com/gp/registry/wishlist/
 ```
 
-对`robots.allowed`的调用给出了URL和用户代理。它根据URL是否允许爬取返回`True`或`False`。在这种情况下，指定的URL的结果为True、False、True和False。让我们看看如何。
+对`robots.allowed`的调用给出了 URL 和用户代理。它根据 URL 是否允许爬取返回`True`或`False`。在这种情况下，指定的 URL 的结果为 True、False、True 和 False。让我们看看如何。
 
-/ URL在`robots.txt`中没有条目，因此默认情况下是允许的。但是，在*用户代理组下的文件中有以下两行：
+/ URL 在`robots.txt`中没有条目，因此默认情况下是允许的。但是，在*用户代理组下的文件中有以下两行：
 
 ```py
 Disallow: /gp/dmusic/
 Allow: /gp/dmusic/promotions/PrimeMusic
 ```
 
-不允许/gp/dmusic，因此返回False。/gp/dmusic/promotions/PrimeMusic是明确允许的。如果未指定Allowed:条目，则Disallow:/gp/dmusic/行也将禁止从/gp/dmusic/进一步的任何路径。这基本上表示以/gp/dmusic/开头的任何URL都是不允许的，除了允许爬取/gp/dmusic/promotions/PrimeMusic。
+不允许/gp/dmusic，因此返回 False。/gp/dmusic/promotions/PrimeMusic 是明确允许的。如果未指定 Allowed:条目，则 Disallow:/gp/dmusic/行也将禁止从/gp/dmusic/进一步的任何路径。这基本上表示以/gp/dmusic/开头的任何 URL 都是不允许的，除了允许爬取/gp/dmusic/promotions/PrimeMusic。
 
 在使用`robotparser`库时存在差异。`robotparser`报告`/gp/dmusic/promotions/PrimeMusic`是不允许的。该库未正确处理此类情况，因为它在第一次匹配时停止扫描`robots.txt`，并且不会进一步查找文件以寻找此类覆盖。
 
 # 还有更多...
 
-首先，有关`robots.txt`的详细信息，请参阅[https://developers.google.com/search/reference/robots_txt](https://developers.google.com/search/reference/robots_txt)。
+首先，有关`robots.txt`的详细信息，请参阅[`developers.google.com/search/reference/robots_txt`](https://developers.google.com/search/reference/robots_txt)。
 
 请注意，并非所有站点都有`robots.txt`，其缺失并不意味着您有权自由爬取所有内容。
 
 此外，`robots.txt`文件可能包含有关在网站上查找站点地图的信息。我们将在下一个示例中检查这些站点地图。
 
-Scrapy还可以读取`robots.txt`并为您找到站点地图。
+Scrapy 还可以读取`robots.txt`并为您找到站点地图。
 
 # 使用站点地图进行爬行
 
-站点地图是一种允许网站管理员通知搜索引擎有关可用于爬取的网站上的URL的协议。网站管理员希望使用此功能，因为他们实际上希望他们的信息被搜索引擎爬取。网站管理员希望使该内容可通过搜索引擎找到，至少通过搜索引擎。但您也可以利用这些信息。
+站点地图是一种允许网站管理员通知搜索引擎有关可用于爬取的网站上的 URL 的协议。网站管理员希望使用此功能，因为他们实际上希望他们的信息被搜索引擎爬取。网站管理员希望使该内容可通过搜索引擎找到，至少通过搜索引擎。但您也可以利用这些信息。
 
-站点地图列出了站点上的URL，并允许网站管理员指定有关每个URL的其他信息：
+站点地图列出了站点上的 URL，并允许网站管理员指定有关每个 URL 的其他信息：
 
 +   上次更新时间
 
 +   内容更改的频率
 
-+   URL在与其他URL的关系中有多重要
++   URL 在与其他 URL 的关系中有多重要
 
 站点地图在以下情况下很有用：
 
 +   网站的某些区域无法通过可浏览的界面访问；也就是说，您无法访问这些页面
 
-+   Ajax、Silverlight或Flash内容通常不会被搜索引擎处理
++   Ajax、Silverlight 或 Flash 内容通常不会被搜索引擎处理
 
 +   网站非常庞大，网络爬虫有可能忽略一些新的或最近更新的内容
 
@@ -235,7 +235,7 @@ Scrapy还可以读取`robots.txt`并为您找到站点地图。
 </urlset>
 ```
 
-站点中的每个URL都将用`<url></url>`标签表示，所有这些标签都包裹在外部的`<urlset></urlset>`标签中。始终会有一个指定URL的`<loc></loc>`标签。其他三个标签是可选的。
+站点中的每个 URL 都将用`<url></url>`标签表示，所有这些标签都包裹在外部的`<urlset></urlset>`标签中。始终会有一个指定 URL 的`<loc></loc>`标签。其他三个标签是可选的。
 
 网站地图文件可能非常庞大，因此它们经常被分成多个文件，然后由单个网站地图索引文件引用。该文件的格式如下：
 
@@ -249,7 +249,7 @@ Scrapy还可以读取`robots.txt`并为您找到站点地图。
 </sitemapindex>
 ```
 
-在大多数情况下，`sitemap.xml` 文件位于域的根目录下。例如，对于 nasa.gov，它是[https://www.nasa.gov/sitemap.xml](https://www.nasa.gov/sitemap.xml)。但请注意，这不是一个标准，不同的网站可能在不同的位置拥有地图或地图。
+在大多数情况下，`sitemap.xml` 文件位于域的根目录下。例如，对于 nasa.gov，它是[`www.nasa.gov/sitemap.xml`](https://www.nasa.gov/sitemap.xml)。但请注意，这不是一个标准，不同的网站可能在不同的位置拥有地图或地图。
 
 特定网站的网站地图也可能位于该网站的 `robots.txt` 文件中。例如，microsoft.com 的 `robots.txt` 文件以以下内容结尾：
 
@@ -388,7 +388,7 @@ while sitemap:
 
 网站地图文件也可能是经过压缩的，并以 .gz 扩展名结尾。这是因为它可能包含许多 URL，压缩将节省大量空间。虽然我们使用的代码不处理 gzip 网站地图文件，但可以使用 gzip 库中的函数轻松添加这个功能。
 
-Scrapy还提供了使用网站地图开始爬取的功能。其中之一是Spider类的一个特化，SitemapSpider。这个类有智能来解析网站地图，然后开始跟踪URL。为了演示，脚本`05/03_sitemap_scrapy.py`将从nasa.gov的顶级网站地图索引开始爬取：
+Scrapy 还提供了使用网站地图开始爬取的功能。其中之一是 Spider 类的一个特化，SitemapSpider。这个类有智能来解析网站地图，然后开始跟踪 URL。为了演示，脚本`05/03_sitemap_scrapy.py`将从 nasa.gov 的顶级网站地图索引开始爬取：
 
 ```py
 import scrapy
@@ -406,7 +406,7 @@ class Spider(scrapy.spiders.SitemapSpider):
   process.start()
 ```
 
-运行时，会有大量输出，因为爬虫将开始爬取所有30000多个URL。在输出的早期，您将看到以下输出：
+运行时，会有大量输出，因为爬虫将开始爬取所有 30000 多个 URL。在输出的早期，您将看到以下输出：
 
 ```py
 2017-10-11 20:34:27 [scrapy.core.engine] DEBUG: Crawled (200) <GET https://www.nasa.gov/sitemap.xml> (referer: None)
@@ -417,7 +417,7 @@ class Spider(scrapy.spiders.SitemapSpider):
 2017-10-11 20:34:27 [scrapy.core.engine] DEBUG: Crawled (200) <GET https://www.nasa.gov/sitemap-4.xml> (referer: None)
 ```
 
-Scrapy已经找到了所有的网站地图并读取了它们的内容。不久之后，您将开始看到许多重定向和通知，指出正在解析某些页面：
+Scrapy 已经找到了所有的网站地图并读取了它们的内容。不久之后，您将开始看到许多重定向和通知，指出正在解析某些页面：
 
 ```py
 2017-10-11 20:34:30 [scrapy.downloadermiddlewares.redirect] DEBUG: Redirecting (302) to <GET https://www.nasa.gov/image-feature/jpl/pia21629/neptune-from-saturn/> from <GET https://www.nasa.gov/image-feature/jpl/pia21629/neptune-from-saturn>
@@ -432,19 +432,19 @@ Parsing: <200 https://www.nasa.gov/exploration/systems/sls/M17-057.html>
 
 # 带延迟的爬取
 
-快速抓取被认为是一种不良实践。持续不断地访问网站页面可能会消耗CPU和带宽，而且强大的网站会识别到您这样做并阻止您的IP。如果您运气不好，可能会因违反服务条款而收到一封恶意的信！
+快速抓取被认为是一种不良实践。持续不断地访问网站页面可能会消耗 CPU 和带宽，而且强大的网站会识别到您这样做并阻止您的 IP。如果您运气不好，可能会因违反服务条款而收到一封恶意的信！
 
-在爬虫中延迟请求的技术取决于您的爬虫是如何实现的。如果您使用Scrapy，那么您可以设置一个参数，告诉爬虫在请求之间等待多长时间。在一个简单的爬虫中，只需按顺序处理URL的列表，您可以插入一个thread.sleep语句。
+在爬虫中延迟请求的技术取决于您的爬虫是如何实现的。如果您使用 Scrapy，那么您可以设置一个参数，告诉爬虫在请求之间等待多长时间。在一个简单的爬虫中，只需按顺序处理 URL 的列表，您可以插入一个 thread.sleep 语句。
 
 如果您实施了一个分布式爬虫集群，以分散页面请求的负载，比如使用具有竞争消费者的消息队列，情况可能会变得更加复杂。这可能有许多不同的解决方案，这超出了本文档提供的范围。
 
 # 准备工作
 
-我们将使用带延迟的Scrapy。示例在`o5/04_scrape_with_delay.py`中。
+我们将使用带延迟的 Scrapy。示例在`o5/04_scrape_with_delay.py`中。
 
 # 如何做
 
-Scrapy默认在页面请求之间强加了0秒的延迟。也就是说，默认情况下不会在请求之间等待。
+Scrapy 默认在页面请求之间强加了 0 秒的延迟。也就是说，默认情况下不会在请求之间等待。
 
 1.  这可以使用`DOWNLOAD_DELAY`设置来控制。为了演示，让我们从命令行运行脚本：
 
@@ -465,7 +465,7 @@ Total run time: 0:00:07.006148
 Michaels-iMac-2:05 michaelheydt$ 
 ```
 
-这将爬取blog.scrapinghub.com上的所有页面，并报告执行爬取的总时间。`LOG_LEVEL=WARNING`会删除大部分日志输出，只会输出打印语句的输出。这使用了默认的页面等待时间为0，爬取大约需要七秒钟。
+这将爬取 blog.scrapinghub.com 上的所有页面，并报告执行爬取的总时间。`LOG_LEVEL=WARNING`会删除大部分日志输出，只会输出打印语句的输出。这使用了默认的页面等待时间为 0，爬取大约需要七秒钟。
 
 1.  页面之间的等待时间可以使用`DOWNLOAD_DELAY`设置。以下在页面请求之间延迟五秒：
 
@@ -485,11 +485,11 @@ Parsing: <200 https://blog.scrapinghub.com/page/11/>
 Total run time: 0:01:01.099267
 ```
 
-默认情况下，这实际上并不会等待5秒。它将等待`DOWNLOAD_DELAY`秒，但是在`DOWNLOAD_DELAY`的0.5到1.5倍之间有一个随机因素。为什么这样做？这会让您的爬虫看起来“不那么机械化”。您可以通过使用`RANDOMIZED_DOWNLOAD_DELAY=False`设置来关闭这个功能。
+默认情况下，这实际上并不会等待 5 秒。它将等待`DOWNLOAD_DELAY`秒，但是在`DOWNLOAD_DELAY`的 0.5 到 1.5 倍之间有一个随机因素。为什么这样做？这会让您的爬虫看起来“不那么机械化”。您可以通过使用`RANDOMIZED_DOWNLOAD_DELAY=False`设置来关闭这个功能。
 
 # 它是如何工作的
 
-这个爬虫是作为一个Scrapy爬虫实现的。类定义从声明爬虫名称和起始URL开始：
+这个爬虫是作为一个 Scrapy 爬虫实现的。类定义从声明爬虫名称和起始 URL 开始：
 
 ```py
 class Spider(scrapy.Spider):
@@ -497,9 +497,9 @@ class Spider(scrapy.Spider):
   start_urls = ['https://blog.scrapinghub.com']
 ```
 
-解析方法查找CSS 'div.prev-post > a'，并跟踪这些链接。
+解析方法查找 CSS 'div.prev-post > a'，并跟踪这些链接。
 
-爬虫还定义了一个close方法，当爬取完成时，Scrapy会调用这个方法：
+爬虫还定义了一个 close 方法，当爬取完成时，Scrapy 会调用这个方法：
 
 ```py
 def close(spider, reason):
@@ -512,7 +512,7 @@ def close(spider, reason):
 
 # 还有更多...
 
-脚本还定义了在直接使用Python执行脚本时的代码：
+脚本还定义了在直接使用 Python 执行脚本时的代码：
 
 ```py
 if __name__ == "__main__":
@@ -525,19 +525,19 @@ if __name__ == "__main__":
   process.start()
 ```
 
-这是通过创建一个CrawlerProcess对象开始的。这个对象可以传递一个表示设置和值的字典，以配置爬取。这默认为五秒的延迟，没有随机化，并且输出级别为DEBUG。
+这是通过创建一个 CrawlerProcess 对象开始的。这个对象可以传递一个表示设置和值的字典，以配置爬取。这默认为五秒的延迟，没有随机化，并且输出级别为 DEBUG。
 
 # 使用可识别的用户代理
 
 如果您违反了服务条款并被网站所有者标记了怎么办？您如何帮助网站所有者联系您，以便他们可以友好地要求您停止对他们认为合理的抓取级别？
 
-为了方便这一点，您可以在请求的User-Agent标头中添加有关自己的信息。我们已经在`robots.txt`文件中看到了这样的例子，比如来自amazon.com。在他们的`robots.txt`中明确声明了一个用于Google的用户代理：GoogleBot。
+为了方便这一点，您可以在请求的 User-Agent 标头中添加有关自己的信息。我们已经在`robots.txt`文件中看到了这样的例子，比如来自 amazon.com。在他们的`robots.txt`中明确声明了一个用于 Google 的用户代理：GoogleBot。
 
-在爬取过程中，您可以在HTTP请求的User-Agent标头中嵌入自己的信息。为了礼貌起见，您可以输入诸如'MyCompany-MyCrawler（mybot@mycompany.com）'之类的内容。如果远程服务器标记您违规，肯定会捕获这些信息，如果提供了这样的信息，他们可以方便地与您联系，而不仅仅是关闭您的访问。
+在爬取过程中，您可以在 HTTP 请求的 User-Agent 标头中嵌入自己的信息。为了礼貌起见，您可以输入诸如'MyCompany-MyCrawler（mybot@mycompany.com）'之类的内容。如果远程服务器标记您违规，肯定会捕获这些信息，如果提供了这样的信息，他们可以方便地与您联系，而不仅仅是关闭您的访问。
 
 # 如何做到
 
-根据您使用的工具，设置用户代理会有所不同。最终，它只是确保User-Agent标头设置为您指定的字符串。在使用浏览器时，这通常由浏览器设置为标识浏览器和操作系统。但您可以在此标头中放入任何您想要的内容。在使用请求时，这非常简单：
+根据您使用的工具，设置用户代理会有所不同。最终，它只是确保 User-Agent 标头设置为您指定的字符串。在使用浏览器时，这通常由浏览器设置为标识浏览器和操作系统。但您可以在此标头中放入任何您想要的内容。在使用请求时，这非常简单：
 
 ```py
 url = 'https://api.github.com/some/endpoint'
@@ -545,7 +545,7 @@ headers = {'user-agent': 'MyCompany-MyCrawler (mybot@mycompany.com)'}
 r = requests.get(url, headers=headers) 
 ```
 
-在使用Scrapy时，只需配置一个设置即可：
+在使用 Scrapy 时，只需配置一个设置即可：
 
 ```py
 process = CrawlerProcess({
@@ -554,27 +554,27 @@ process = CrawlerProcess({
 
 # 它是如何工作的
 
-传出的HTTP请求有许多不同的标头。这些确保User-Agent标头对目标网站的所有请求都设置为此值。
+传出的 HTTP 请求有许多不同的标头。这些确保 User-Agent 标头对目标网站的所有请求都设置为此值。
 
 # 还有更多...
 
-虽然可能将任何内容设置为User-Agent标头，但有些Web服务器会检查User-Agent标头并根据内容做出响应。一个常见的例子是使用标头来识别移动设备以提供移动展示。
+虽然可能将任何内容设置为 User-Agent 标头，但有些 Web 服务器会检查 User-Agent 标头并根据内容做出响应。一个常见的例子是使用标头来识别移动设备以提供移动展示。
 
-但有些网站只允许特定User-Agent值访问内容。设置自己的值可能导致Web服务器不响应或返回其他错误，比如未经授权。因此，在使用此技术时，请确保检查它是否有效。
+但有些网站只允许特定 User-Agent 值访问内容。设置自己的值可能导致 Web 服务器不响应或返回其他错误，比如未经授权。因此，在使用此技术时，请确保检查它是否有效。
 
 # 设置每个域的并发请求数量
 
-一次只爬取一个网址通常效率低下。因此，通常会同时向目标站点发出多个页面请求。通常情况下，远程Web服务器可以相当有效地处理多个同时的请求，而在您的端口，您只是在等待每个请求返回数据，因此并发通常对您的爬虫工作效果很好。
+一次只爬取一个网址通常效率低下。因此，通常会同时向目标站点发出多个页面请求。通常情况下，远程 Web 服务器可以相当有效地处理多个同时的请求，而在您的端口，您只是在等待每个请求返回数据，因此并发通常对您的爬虫工作效果很好。
 
 但这也是聪明的网站可以识别并标记为可疑活动的模式。而且，您的爬虫端和网站端都有实际限制。发出的并发请求越多，双方都需要更多的内存、CPU、网络连接和网络带宽。这都涉及成本，并且这些值也有实际限制。
 
-因此，通常最好的做法是设置您将同时向任何Web服务器发出的请求的数量限制。
+因此，通常最好的做法是设置您将同时向任何 Web 服务器发出的请求的数量限制。
 
 # 它是如何工作的
 
-有许多技术可以用来控制并发级别，这个过程通常会相当复杂，需要控制多个请求和执行线程。我们不会在这里讨论如何在线程级别进行操作，只提到了内置在Scrapy中的构造。
+有许多技术可以用来控制并发级别，这个过程通常会相当复杂，需要控制多个请求和执行线程。我们不会在这里讨论如何在线程级别进行操作，只提到了内置在 Scrapy 中的构造。
 
-Scrapy在其请求中天生是并发的。默认情况下，Scrapy将最多同时向任何给定域发送八个请求。您可以使用`CONCURRENT_REQUESTS_PER_DOMAIN`设置来更改这一点。以下将该值设置为1个并发请求：
+Scrapy 在其请求中天生是并发的。默认情况下，Scrapy 将最多同时向任何给定域发送八个请求。您可以使用`CONCURRENT_REQUESTS_PER_DOMAIN`设置来更改这一点。以下将该值设置为 1 个并发请求：
 
 ```py
 process = CrawlerProcess({
@@ -585,11 +585,11 @@ process = CrawlerProcess({
 
 与控制最大并发级别紧密相关的是节流的概念。不同的网站在不同时间对请求的处理能力不同。在响应时间较慢的时期，减少请求的数量是有意义的。这可能是一个繁琐的过程，需要手动监控和调整。
 
-幸运的是，对于我们来说，scrapy还提供了通过名为`AutoThrottle`的扩展来实现这一点的能力。
+幸运的是，对于我们来说，scrapy 还提供了通过名为`AutoThrottle`的扩展来实现这一点的能力。
 
 # 如何做到
 
-可以使用`AUTOTHROTTLE_TARGET_CONCURRENCY`设置轻松配置AutoThrottle。
+可以使用`AUTOTHROTTLE_TARGET_CONCURRENCY`设置轻松配置 AutoThrottle。
 
 ```py
 process = CrawlerProcess({
@@ -598,19 +598,19 @@ process = CrawlerProcess({
 
 # 它是如何工作的
 
-scrapy跟踪每个请求的延迟。利用这些信息，它可以调整请求之间的延迟，以便在特定域上同时活动的请求不超过`AUTOTHROTTLE_TARGET_CONCURRENCY`，并且请求在任何给定的时间跨度内均匀分布。
+scrapy 跟踪每个请求的延迟。利用这些信息，它可以调整请求之间的延迟，以便在特定域上同时活动的请求不超过`AUTOTHROTTLE_TARGET_CONCURRENCY`，并且请求在任何给定的时间跨度内均匀分布。
 
 # 还有更多...
 
-有很多控制节流的选项。您可以在以下网址上获得它们的概述：[https://doc.scrapy.org/en/latest/topics/autothrottle.html?&_ga=2.54316072.1404351387.1507758575-507079265.1505263737#settings.](https://doc.scrapy.org/en/latest/topics/autothrottle.html?&_ga=2.54316072.1404351387.1507758575-507079265.1505263737#settings)
+有很多控制节流的选项。您可以在以下网址上获得它们的概述：[`doc.scrapy.org/en/latest/topics/autothrottle.html?&_ga=2.54316072.1404351387.1507758575-507079265.1505263737#settings.`](https://doc.scrapy.org/en/latest/topics/autothrottle.html?&_ga=2.54316072.1404351387.1507758575-507079265.1505263737#settings)
 
-# 使用HTTP缓存进行开发
+# 使用 HTTP 缓存进行开发
 
-网络爬虫的开发是一个探索过程，将通过各种细化来迭代检索所需的信息。在开发过程中，您经常会反复访问远程服务器和这些服务器上的相同URL。这是不礼貌的。幸运的是，scrapy也通过提供专门设计用于帮助解决这种情况的缓存中间件来拯救您。
+网络爬虫的开发是一个探索过程，将通过各种细化来迭代检索所需的信息。在开发过程中，您经常会反复访问远程服务器和这些服务器上的相同 URL。这是不礼貌的。幸运的是，scrapy 也通过提供专门设计用于帮助解决这种情况的缓存中间件来拯救您。
 
 # 如何做到这一点
 
-Scrapy将使用名为HttpCacheMiddleware的中间件模块缓存请求。启用它就像将`HTTPCACHE_ENABLED`设置为`True`一样简单：
+Scrapy 将使用名为 HttpCacheMiddleware 的中间件模块缓存请求。启用它就像将`HTTPCACHE_ENABLED`设置为`True`一样简单：
 
 ```py
 process = CrawlerProcess({
@@ -619,8 +619,8 @@ process = CrawlerProcess({
 
 # 它是如何工作的
 
-HTTP缓存的实现既简单又复杂。Scrapy提供的`HttpCacheMiddleware`根据您的需求有大量的配置选项。最终，它归结为将每个URL及其内容存储在存储器中，并附带缓存过期的持续时间。如果在过期间隔内对URL进行第二次请求，则将检索本地副本，而不是进行远程请求。如果时间已经过期，则从Web服务器获取内容，存储在缓存中，并设置新的过期时间。
+HTTP 缓存的实现既简单又复杂。Scrapy 提供的`HttpCacheMiddleware`根据您的需求有大量的配置选项。最终，它归结为将每个 URL 及其内容存储在存储器中，并附带缓存过期的持续时间。如果在过期间隔内对 URL 进行第二次请求，则将检索本地副本，而不是进行远程请求。如果时间已经过期，则从 Web 服务器获取内容，存储在缓存中，并设置新的过期时间。
 
 # 还有更多...
 
-有许多配置scrapy缓存的选项，包括存储内容的方式（文件系统、DBM或LevelDB）、缓存策略以及如何处理来自服务器的Http缓存控制指令。要探索这些选项，请查看以下网址：[https://doc.scrapy.org/en/latest/topics/downloader-middleware.html?_ga=2.50242598.1404351387.1507758575-507079265.1505263737#dummy-policy-default.](https://doc.scrapy.org/en/latest/topics/downloader-middleware.html?_ga=2.50242598.1404351387.1507758575-507079265.1505263737#dummy-policy-default.)
+有许多配置 scrapy 缓存的选项，包括存储内容的方式（文件系统、DBM 或 LevelDB）、缓存策略以及如何处理来自服务器的 Http 缓存控制指令。要探索这些选项，请查看以下网址：[`doc.scrapy.org/en/latest/topics/downloader-middleware.html?_ga=2.50242598.1404351387.1507758575-507079265.1505263737#dummy-policy-default.`](https://doc.scrapy.org/en/latest/topics/downloader-middleware.html?_ga=2.50242598.1404351387.1507758575-507079265.1505263737#dummy-policy-default.)

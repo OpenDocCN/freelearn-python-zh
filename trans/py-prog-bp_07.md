@@ -1,32 +1,32 @@
-# 使用Django创建在线视频游戏商店
+# 使用 Django 创建在线视频游戏商店
 
-我出生在70年代末，这意味着我在视频游戏产业诞生时长大。我的第一款视频游戏主机是Atari 2600，正是因为这款特定的视频游戏主机，我决定要成为一名程序员并制作视频游戏。然而，我从未在游戏行业找到工作，但我仍然喜欢玩视频游戏，在业余时间里，我尝试开发自己的游戏。
+我出生在 70 年代末，这意味着我在视频游戏产业诞生时长大。我的第一款视频游戏主机是 Atari 2600，正是因为这款特定的视频游戏主机，我决定要成为一名程序员并制作视频游戏。然而，我从未在游戏行业找到工作，但我仍然喜欢玩视频游戏，在业余时间里，我尝试开发自己的游戏。
 
-直到今天，我仍然在互联网上四处转悠，尤其是在eBay上，购买旧的视频游戏，以重温我美好的童年回忆，当时全家，我的父母和姐姐，都喜欢一起玩Atari 2600游戏。
+直到今天，我仍然在互联网上四处转悠，尤其是在 eBay 上，购买旧的视频游戏，以重温我美好的童年回忆，当时全家，我的父母和姐姐，都喜欢一起玩 Atari 2600 游戏。
 
-由于我对复古视频游戏很感兴趣，我们将开发一个复古视频游戏在线商店；这将是一个很好的方式来开发有趣的东西，同时也学到很多关于流行的Django web框架的网页开发知识。
+由于我对复古视频游戏很感兴趣，我们将开发一个复古视频游戏在线商店；这将是一个很好的方式来开发有趣的东西，同时也学到很多关于流行的 Django web 框架的网页开发知识。
 
 在本章中，我们将涵盖以下内容：
 
 +   设置环境
 
-+   创建一个Django项目
++   创建一个 Django 项目
 
-+   创建Django应用程序
++   创建 Django 应用程序
 
-+   探索Django管理界面
++   探索 Django 管理界面
 
-+   学习如何创建应用程序模型并使用Django ORM执行查询
++   学习如何创建应用程序模型并使用 Django ORM 执行查询
 
-另外，作为额外的内容，我们将使用**npm**（**Node Package Manager**）来下载客户端依赖项。我们还将介绍如何使用任务运行器Gulp创建简单的任务。
+另外，作为额外的内容，我们将使用**npm**（**Node Package Manager**）来下载客户端依赖项。我们还将介绍如何使用任务运行器 Gulp 创建简单的任务。
 
-为了让我们的应用程序更漂亮，我们将使用Bootstrap。
+为了让我们的应用程序更漂亮，我们将使用 Bootstrap。
 
 所以，让我们开始吧！
 
 # 设置开发环境
 
-像往常一样，我们将开始为开发设置环境。在[第4章](2223dee0-d5de-417e-9ca9-6bf4a6038cb6.xhtml)中，*汇率和货币转换工具*，你已经了解了`pipenv`，所以在本章和接下来的章节中，我们将使用`pipenv`来创建我们的虚拟环境和管理我们的依赖项。
+像往常一样，我们将开始为开发设置环境。在第四章中，*汇率和货币转换工具*，你已经了解了`pipenv`，所以在本章和接下来的章节中，我们将使用`pipenv`来创建我们的虚拟环境和管理我们的依赖项。
 
 首先，我们要创建一个目录，用来存放我们的项目。在你的工作目录中，创建一个名为`django-project`的目录，如下所示：
 
@@ -40,9 +40,9 @@ mkdir django-project && cd django-project
 pipenv --three
 ```
 
-如果你已经在其他位置安装了Python 3，你可以使用参数`--python`并指定Python可执行文件的路径。如果一切顺利，你应该会看到如下输出：
+如果你已经在其他位置安装了 Python 3，你可以使用参数`--python`并指定 Python 可执行文件的路径。如果一切顺利，你应该会看到如下输出：
 
-![](assets/ade4540c-d7e8-469a-ac30-b921844e9030.png)
+![](img/ade4540c-d7e8-469a-ac30-b921844e9030.png)
 
 现在我们可以使用`pipenv`命令行激活我们的虚拟环境：
 
@@ -50,19 +50,19 @@ pipenv --three
 pipenv shell
 ```
 
-太棒了！我们现在要添加的唯一依赖项是Django。
+太棒了！我们现在要添加的唯一依赖项是 Django。
 
-在撰写本书时，Django 2.0已经发布。与之前相比，它有很多很好的功能。你可以在[https://docs.djangoproject.com/en/2.0/releases/2.0/](https://docs.djangoproject.com/en/2.0/releases/2.0/)上查看新功能列表。
+在撰写本书时，Django 2.0 已经发布。与之前相比，它有很多很好的功能。你可以在[`docs.djangoproject.com/en/2.0/releases/2.0/`](https://docs.djangoproject.com/en/2.0/releases/2.0/)上查看新功能列表。
 
-让我们在我们的虚拟环境中安装Django：
+让我们在我们的虚拟环境中安装 Django：
 
 ```py
 pipenv install django
 ```
 
-Django 2.0已经停止支持Python 2.0，所以如果你计划使用Python 2开发应用程序，你应该安装Django 1.11.x或更低版本。我强烈建议你使用Python 3开始一个新项目。Python 2将在几年后停止维护，并且新的包将为Python 3创建。Python 2的流行包将迁移到Python 3。
+Django 2.0 已经停止支持 Python 2.0，所以如果你计划使用 Python 2 开发应用程序，你应该安装 Django 1.11.x 或更低版本。我强烈建议你使用 Python 3 开始一个新项目。Python 2 将在几年后停止维护，并且新的包将为 Python 3 创建。Python 2 的流行包将迁移到 Python 3。
 
-在我看来，Django 2最好的新功能是新的路由语法，因为现在不需要编写正则表达式。像下面这样写更加清晰和可读：
+在我看来，Django 2 最好的新功能是新的路由语法，因为现在不需要编写正则表达式。像下面这样写更加清晰和可读：
 
 ```py
 path('user/<int:id>/', views.get_user_by_id)
@@ -74,21 +74,21 @@ path('user/<int:id>/', views.get_user_by_id)
 url('^user/?P<id>[0-9]/$', views.get_user_by_id)
 ```
 
-这样会简单得多。我在Django 2.0中真正喜欢的另一个功能是他们稍微改进了管理UI，并使其响应式；这是一个很棒的功能，因为我曾经在小手机屏幕上使用非响应式网站时，创建新用户（当你在外出时无法访问桌面）会很痛苦。
+这样会简单得多。我在 Django 2.0 中真正喜欢的另一个功能是他们稍微改进了管理 UI，并使其响应式；这是一个很棒的功能，因为我曾经在小手机屏幕上使用非响应式网站时，创建新用户（当你在外出时无法访问桌面）会很痛苦。
 
-# 安装Node.js
+# 安装 Node.js
 
-在Web开发方面，几乎不可能远离Node.js。 Node.js是一个于2009年发布的项目。它是一个JavaScript运行时，允许我们在服务器端运行JavaScript。如果我们使用Django和Python开发网站，为什么要关心Node.js呢？原因是Node.js生态系统有几个工具，将帮助我们以简单的方式管理客户端依赖关系。我们将使用其中一个工具，即npm。
+在 Web 开发方面，几乎不可能远离 Node.js。 Node.js 是一个于 2009 年发布的项目。它是一个 JavaScript 运行时，允许我们在服务器端运行 JavaScript。如果我们使用 Django 和 Python 开发网站，为什么要关心 Node.js 呢？原因是 Node.js 生态系统有几个工具，将帮助我们以简单的方式管理客户端依赖关系。我们将使用其中一个工具，即 npm。
 
-将npm视为JavaScript世界的`pip`。然而，npm有更多功能。我们将使用的功能之一是npm脚本。
+将 npm 视为 JavaScript 世界的`pip`。然而，npm 有更多功能。我们将使用的功能之一是 npm 脚本。
 
-所以，让我们继续安装Node.js。通常，开发人员需要转到Node.js网站并从那里下载，但我发现使用一个名为NVM的工具更简单，它允许我们轻松安装和切换不同版本的Node.js。
+所以，让我们继续安装 Node.js。通常，开发人员需要转到 Node.js 网站并从那里下载，但我发现使用一个名为 NVM 的工具更简单，它允许我们轻松安装和切换不同版本的 Node.js。
 
-要在我们的环境中安装NVM，您可以按照[https://github.com/creationix/nvm](https://github.com/creationix/nvm)上的说明进行操作。
+要在我们的环境中安装 NVM，您可以按照[`github.com/creationix/nvm`](https://github.com/creationix/nvm)上的说明进行操作。
 
-我们正在介绍在Unix/Linux和macOS系统上安装NVM。如果您使用Windows，有一个使用Go语言开发的Windows版本，可以在[https://github.com/coreybutler/nvm-windows](https://github.com/coreybutler/nvm-windows)找到。
+我们正在介绍在 Unix/Linux 和 macOS 系统上安装 NVM。如果您使用 Windows，有一个使用 Go 语言开发的 Windows 版本，可以在[`github.com/coreybutler/nvm-windows`](https://github.com/coreybutler/nvm-windows)找到。
 
-安装NVM后，您可以使用以下命令安装最新版本的Node.js：
+安装 NVM 后，您可以使用以下命令安装最新版本的 Node.js：
 
 ```py
 nvm install node
@@ -100,21 +100,21 @@ nvm install node
 node --version
 ```
 
-在编写本书时，最新的Node.js版本是v8.8.1。
+在编写本书时，最新的 Node.js 版本是 v8.8.1。
 
 您还可以在终端上输入`npm`，您应该看到类似于以下输出的输出：
 
-![](assets/36ec4dc3-0d99-4c0e-8604-c7a67979e542.png)
+![](img/36ec4dc3-0d99-4c0e-8604-c7a67979e542.png)
 
-# 创建一个新的Django项目
+# 创建一个新的 Django 项目
 
-要创建一个新的Django项目，请运行以下命令：
+要创建一个新的 Django 项目，请运行以下命令：
 
 ```py
 django-admin startproject gamestore
 ```
 
-请注意，`django-admin`创建了一个名为`gamestore`的目录，其中包含一些样板代码。我们将在稍后查看Django创建的文件，但首先，我们将创建我们的第一个Django应用程序。在Django世界中，您有项目和应用程序，根据Django文档，项目描述了Web应用程序本身，应用程序是一个提供某种功能的Python包；这些应用程序包含自己的一组路由、视图、静态文件，并且可以在不同的Django项目中重复使用。
+请注意，`django-admin`创建了一个名为`gamestore`的目录，其中包含一些样板代码。我们将在稍后查看 Django 创建的文件，但首先，我们将创建我们的第一个 Django 应用程序。在 Django 世界中，您有项目和应用程序，根据 Django 文档，项目描述了 Web 应用程序本身，应用程序是一个提供某种功能的 Python 包；这些应用程序包含自己的一组路由、视图、静态文件，并且可以在不同的 Django 项目中重复使用。
 
 如果您完全不理解，不要担心；随着我们的进展，您会学到更多。
 
@@ -124,9 +124,9 @@ django-admin startproject gamestore
 python-admin startapp main
 ```
 
-如果列出`gamestore`目录的内容，您应该会看到一个名为`main`的新目录；那是我们将要创建的Django应用程序的目录。
+如果列出`gamestore`目录的内容，您应该会看到一个名为`main`的新目录；那是我们将要创建的 Django 应用程序的目录。
 
-在不写任何代码的情况下，您已经拥有一个完全功能的Web应用程序。要运行应用程序并查看结果，请运行以下命令：
+在不写任何代码的情况下，您已经拥有一个完全功能的 Web 应用程序。要运行应用程序并查看结果，请运行以下命令：
 
 ```py
 python manage.py runserver
@@ -148,9 +148,9 @@ Starting development server at http://127.0.0.1:8000/
 Quit the server with CONTROL-C.
 ```
 
-打开您喜欢的Web浏览器，转到`http://127.0.0.1:8000`，您将看到以下页面：
+打开您喜欢的 Web 浏览器，转到`http://127.0.0.1:8000`，您将看到以下页面：
 
-![](assets/91704c14-da95-48eb-9d06-64970b558e88.png)
+![](img/91704c14-da95-48eb-9d06-64970b558e88.png)
 
 当我们第一次启动应用程序时，需要注意的一点是以下警告：
 
@@ -159,7 +159,7 @@ You have 14 unapplied migration(s). Your project may not work properly until you
 Run 'python manage.py migrate' to apply them.
 ```
 
-这意味着Django项目默认注册的应用程序`admin`、`auth`、`contenttypes`和`sessions`有尚未应用到该项目的迁移（数据库更改）。我们可以使用以下命令运行这些迁移：
+这意味着 Django 项目默认注册的应用程序`admin`、`auth`、`contenttypes`和`sessions`有尚未应用到该项目的迁移（数据库更改）。我们可以使用以下命令运行这些迁移：
 
 ```py
 ➜ python manage.py migrate
@@ -182,9 +182,9 @@ Running migrations:
  Applying sessions.0001_initial... OK
 ```
 
-在这里，Django在SQLite数据库中创建了所有表，您将在应用程序的`root`目录中找到SQLite数据库文件。
+在这里，Django 在 SQLite 数据库中创建了所有表，您将在应用程序的`root`目录中找到 SQLite 数据库文件。
 
-`db.sqlite3`文件是包含我们应用程序表的数据库文件。选择SQLite只是为了使本章的应用程序更简单。Django支持大量数据库；最受欢迎的数据库，如Postgres、Oracle，甚至MSSQL都受支持。
+`db.sqlite3`文件是包含我们应用程序表的数据库文件。选择 SQLite 只是为了使本章的应用程序更简单。Django 支持大量数据库；最受欢迎的数据库，如 Postgres、Oracle，甚至 MSSQL 都受支持。
 
 如果再次运行`runserver`命令，就不应该有任何迁移警告了：
 
@@ -199,9 +199,9 @@ Starting development server at http://127.0.0.1:8000/
 Quit the server with CONTROL-C.
 ```
 
-现在我们只需要做一件事来结束这一部分；我们需要创建一个管理员用户，这样我们就可以登录到Django管理界面并管理我们的Web应用程序。
+现在我们只需要做一件事来结束这一部分；我们需要创建一个管理员用户，这样我们就可以登录到 Django 管理界面并管理我们的 Web 应用程序。
 
-与Django中的其他一切一样，这非常简单。只需运行以下命令：
+与 Django 中的其他一切一样，这非常简单。只需运行以下命令：
 
 ```py
 python manage.py createsuperuser
@@ -209,21 +209,21 @@ python manage.py createsuperuser
 
 你将被要求输入用户名和电子邮件，并设置密码，这就是你设置管理员帐户所需要做的一切。
 
-在接下来的部分，我们将更仔细地查看Django为我们创建的文件。
+在接下来的部分，我们将更仔细地查看 Django 为我们创建的文件。
 
-# 探索Django项目的结构
+# 探索 Django 项目的结构
 
-如果你看一下Django的网站，它说*Django：完美主义者的网络框架，有截止日期*，我完全同意这个说法。到目前为止，我们还没有写任何代码，我们已经有了一个正在运行的网站。只需几个命令，我们就可以创建一个具有相同目录结构和样板代码的新项目。让我们开始开发。
+如果你看一下 Django 的网站，它说*Django：完美主义者的网络框架，有截止日期*，我完全同意这个说法。到目前为止，我们还没有写任何代码，我们已经有了一个正在运行的网站。只需几个命令，我们就可以创建一个具有相同目录结构和样板代码的新项目。让我们开始开发。
 
-我们可以设置一个新的数据库并创建一个超级用户，而且，Django还带有一个非常好用和有用的管理界面，你可以在其中查看我们的数据和用户。
+我们可以设置一个新的数据库并创建一个超级用户，而且，Django 还带有一个非常好用和有用的管理界面，你可以在其中查看我们的数据和用户。
 
-在这一部分，我们将探索Django在启动新项目时为我们创建的代码，以便我们熟悉结构。让我们继续添加项目的其他组件。
+在这一部分，我们将探索 Django 在启动新项目时为我们创建的代码，以便我们熟悉结构。让我们继续添加项目的其他组件。
 
-如果你查看项目的根目录，你会发现一个名为`db.sqlite3`的文件，另一个名为`manage.py`的文件，最后，还有一个与项目同名的目录，在我们的例子中是`gamestore`。`db.sqlite3`文件，顾名思义，是数据库文件；这个文件是在项目的根文件夹中创建的，因为我们正在使用SQLite。你可以直接从命令行探索这个文件；我们很快会演示如何做到这一点。
+如果你查看项目的根目录，你会发现一个名为`db.sqlite3`的文件，另一个名为`manage.py`的文件，最后，还有一个与项目同名的目录，在我们的例子中是`gamestore`。`db.sqlite3`文件，顾名思义，是数据库文件；这个文件是在项目的根文件夹中创建的，因为我们正在使用 SQLite。你可以直接从命令行探索这个文件；我们很快会演示如何做到这一点。
 
-第二个文件是`manage.py`。这个文件是由`django-admin`在每个Django项目中自动创建的。它基本上做的事情和`django-admin`一样，再加上两件额外的事情；它会将`DJANGO_SETTINGS_MODULE`设置为指向项目的设置文件，并将项目的包放在`sys.path`上。如果你执行`manage.py`而没有任何参数，你可以看到所有可用命令的帮助。
+第二个文件是`manage.py`。这个文件是由`django-admin`在每个 Django 项目中自动创建的。它基本上做的事情和`django-admin`一样，再加上两件额外的事情；它会将`DJANGO_SETTINGS_MODULE`设置为指向项目的设置文件，并将项目的包放在`sys.path`上。如果你执行`manage.py`而没有任何参数，你可以看到所有可用命令的帮助。
 
-如你所见，`manage.py`有许多选项，比如管理密码，创建超级用户，管理数据库，创建和执行数据库迁移，启动新应用和项目，以及一个非常重要的选项`runserver`，正如其名字所示，它将为你启动Django开发服务器。
+如你所见，`manage.py`有许多选项，比如管理密码，创建超级用户，管理数据库，创建和执行数据库迁移，启动新应用和项目，以及一个非常重要的选项`runserver`，正如其名字所示，它将为你启动 Django 开发服务器。
 
 现在我们已经了解了`manage.py`以及如何执行它的命令，我们将退一步，学习如何检查我们刚刚创建的数据库。做到这一点的命令是`dbshell`；让我们试一试：
 
@@ -231,9 +231,9 @@ python manage.py createsuperuser
 python manage.py dbshell
 ```
 
-# 深入SQLite
+# 深入 SQLite
 
-你应该进入SQLite3命令提示符：
+你应该进入 SQLite3 命令提示符：
 
 ```py
 SQLite version 3.16.2 2017-01-06 16:32:41
@@ -264,15 +264,15 @@ CREATE TABLE IF NOT EXISTS "auth_group"(
  );
 ```
 
-这些是我在使用SQLite3数据库时最常用的命令，但命令行界面提供了各种命令。你可以使用`.help`命令获取所有可用命令的列表。
+这些是我在使用 SQLite3 数据库时最常用的命令，但命令行界面提供了各种命令。你可以使用`.help`命令获取所有可用命令的列表。
 
-当创建原型、概念验证项目或者创建非常小的项目时，SQLite3数据库非常有用。如果我们的项目不属于这些类别中的任何一种，我建议使用其他SQL数据库，比如MySQL、Postgres和Oracle。还有非SQL数据库，比如MongoDB。使用Django，你可以毫无问题地使用这些数据库；如果你使用Django的ORM（对象关系模型），大部分时间你可以在不同的数据库之间切换，应用程序仍然可以完美地工作。
+当创建原型、概念验证项目或者创建非常小的项目时，SQLite3 数据库非常有用。如果我们的项目不属于这些类别中的任何一种，我建议使用其他 SQL 数据库，比如 MySQL、Postgres 和 Oracle。还有非 SQL 数据库，比如 MongoDB。使用 Django，你可以毫无问题地使用这些数据库；如果你使用 Django 的 ORM（对象关系模型），大部分时间你可以在不同的数据库之间切换，应用程序仍然可以完美地工作。
 
 # 查看项目的包目录
 
-接下来，让我们看看项目的包目录。在那里，你会找到一堆文件。你会看到的第一个文件是`settings.py`，这是一个非常重要的文件，因为你将在这里放置我们应用程序的所有设置。在这个设置文件中，你可以指定将使用哪些应用程序和数据库，你还可以告诉Django在哪里搜索静态文件和模板、中间件等。
+接下来，让我们看看项目的包目录。在那里，你会找到一堆文件。你会看到的第一个文件是`settings.py`，这是一个非常重要的文件，因为你将在这里放置我们应用程序的所有设置。在这个设置文件中，你可以指定将使用哪些应用程序和数据库，你还可以告诉 Django 在哪里搜索静态文件和模板、中间件等。
 
-然后你有`urls.py`；这个文件是你指定应用程序可用的URL的地方。你可以在项目级别设置URL，也可以为每个Django应用程序设置URL。如果你检查这个`urls.py`文件的内容，你不会找到太多细节。基本上，你会看到一些解释如何添加新的URL的文本，但Django已经定义了（开箱即用）一个URL到Django管理站点：
+然后你有`urls.py`；这个文件是你指定应用程序可用的 URL 的地方。你可以在项目级别设置 URL，也可以为每个 Django 应用程序设置 URL。如果你检查这个`urls.py`文件的内容，你不会找到太多细节。基本上，你会看到一些解释如何添加新的 URL 的文本，但 Django 已经定义了（开箱即用）一个 URL 到 Django 管理站点：
 
 ```py
   from django.contrib import admin
@@ -283,37 +283,37 @@ CREATE TABLE IF NOT EXISTS "auth_group"(
   ]
 ```
 
-我们将逐步介绍如何向项目添加新的URL，但无论如何我们都可以解释这个文件；还记得我提到过在Django中可以有不同的应用吗？所以`django.contrib.admin`也是一个应用，而一个应用有自己的一组URL、视图、模板。那么它在这里做什么？当我们导入admin应用然后定义一个名为`urlpatterns`的列表时，在这个列表中我们使用一个名为path的函数，第一个参数是URL，第二个参数可以是一个将要执行的视图。但在这种情况下，它传递了`admin.site`应用的URL，这意味着`admin/`将是基本URL，而`admin.site.urls`中定义的所有URL将在其下创建。
+我们将逐步介绍如何向项目添加新的 URL，但无论如何我们都可以解释这个文件；还记得我提到过在 Django 中可以有不同的应用吗？所以`django.contrib.admin`也是一个应用，而一个应用有自己的一组 URL、视图、模板。那么它在这里做什么？当我们导入 admin 应用然后定义一个名为`urlpatterns`的列表时，在这个列表中我们使用一个名为 path 的函数，第一个参数是 URL，第二个参数可以是一个将要执行的视图。但在这种情况下，它传递了`admin.site`应用的 URL，这意味着`admin/`将是基本 URL，而`admin.site.urls`中定义的所有 URL 将在其下创建。
 
-例如，如果在`admin.site.url`中，我定义了两个URL，`users/`和`groups/`，当我有`path('admin/', admin.site.urls)`时，我实际上将创建两个URL：
+例如，如果在`admin.site.url`中，我定义了两个 URL，`users/`和`groups/`，当我有`path('admin/', admin.site.urls)`时，我实际上将创建两个 URL：
 
 +   `admin/users/`
 
 +   `admin/groups/`
 
-最后，我们有`wsgi.py`，这是Django在创建新项目时为我们创建的一个简单的WSGI配置。
+最后，我们有`wsgi.py`，这是 Django 在创建新项目时为我们创建的一个简单的 WSGI 配置。
 
-现在我们对Django项目的结构有了一些了解，是时候创建我们项目的第一个应用了。
+现在我们对 Django 项目的结构有了一些了解，是时候创建我们项目的第一个应用了。
 
 # 创建项目的主要应用
 
-在这一部分，我们将创建我们的第一个Django应用程序。一个Django项目可以包含多个应用程序。将项目拆分为应用程序是一个很好的做法，原因有很多；最明显的是你可以在不同的项目中重用相同的应用程序。将项目拆分为多个应用程序的另一个原因是它强制实现关注点的分离。你的项目将更有组织，更容易理解，我们的同事会感谢你，因为这样维护起来会更容易。
+在这一部分，我们将创建我们的第一个 Django 应用程序。一个 Django 项目可以包含多个应用程序。将项目拆分为应用程序是一个很好的做法，原因有很多；最明显的是你可以在不同的项目中重用相同的应用程序。将项目拆分为多个应用程序的另一个原因是它强制实现关注点的分离。你的项目将更有组织，更容易理解，我们的同事会感谢你，因为这样维护起来会更容易。
 
-让我们继续运行`startapp`命令，并且，如前所示，你可以使用`django-admin`命令或者使用`manager.py`。由于我们使用`django-admin`命令创建了项目，现在是一个很好的机会来测试`manager.py`命令。要创建一个新的Django应用程序，请运行以下命令：
+让我们继续运行`startapp`命令，并且，如前所示，你可以使用`django-admin`命令或者使用`manager.py`。由于我们使用`django-admin`命令创建了项目，现在是一个很好的机会来测试`manager.py`命令。要创建一个新的 Django 应用程序，请运行以下命令：
 
 ```py
 python manager.py startapp main
 ```
 
-在这里，我们将创建一个名为`main`的应用程序。不要担心没有显示任何输出，Django会悄悄地创建项目和应用程序。如果你现在列出目录内容，你会看到一个名为`main`的目录，而在`main`目录中你会找到一些文件；我们将在添加更改时解释每个文件。
+在这里，我们将创建一个名为`main`的应用程序。不要担心没有显示任何输出，Django 会悄悄地创建项目和应用程序。如果你现在列出目录内容，你会看到一个名为`main`的目录，而在`main`目录中你会找到一些文件；我们将在添加更改时解释每个文件。
 
 所以，我们想要做的第一件事是为我们的应用程序添加一个登陆页面。为此，我们需要做三件事：
 
-+   首先，我们添加一个新的URL，告诉Django当我们网站的用户浏览到根目录时，它应该转到站点`/`并显示一些内容
++   首先，我们添加一个新的 URL，告诉 Django 当我们网站的用户浏览到根目录时，它应该转到站点`/`并显示一些内容
 
 +   第二步是添加一个视图，当用户浏览到站点的根目录``/``时将执行该视图
 
-+   最后一步是添加一个包含我们希望向用户显示的内容的HTML模板
++   最后一步是添加一个包含我们希望向用户显示的内容的 HTML 模板
 
 说到这一点，我们需要在`main`应用程序目录中包含一个名为`urls.py`的新文件。首先，我们添加一些导入：
 
@@ -322,7 +322,7 @@ from django.urls import path
 from . import views
 ```
 
-在前面的代码中，我们从`django.urls`中导入了path函数。path函数将返回一个要包含在`urlpatterns`列表中的元素，我们还在同一目录中导入了views文件；我们想要导入这个视图，因为我们将在那里定义在访问特定路由时将执行的函数：
+在前面的代码中，我们从`django.urls`中导入了 path 函数。path 函数将返回一个要包含在`urlpatterns`列表中的元素，我们还在同一目录中导入了 views 文件；我们想要导入这个视图，因为我们将在那里定义在访问特定路由时将执行的函数：
 
 ```py
   urlpatterns = [
@@ -330,7 +330,7 @@ from . import views
   ]
 ```
 
-然后我们使用path函数来定义一个新的路由。函数path的第一个参数是一个包含我们希望在应用程序中提供的URL模式的字符串。这个模式可能包含尖括号（例如`<int:user_id>`）来捕获URL上传递的参数，但是在这一点上，我们不打算使用它；我们只是想为应用程序的根添加一个URL，所以我们添加一个空字符串`''`。第二个参数是将要执行的函数，可选地，您可以添加关键字参数`name`，它设置URL的名称。我们很快就会看到为什么这很有用。
+然后我们使用 path 函数来定义一个新的路由。函数 path 的第一个参数是一个包含我们希望在应用程序中提供的 URL 模式的字符串。这个模式可能包含尖括号（例如`<int:user_id>`）来捕获 URL 上传递的参数，但是在这一点上，我们不打算使用它；我们只是想为应用程序的根添加一个 URL，所以我们添加一个空字符串`''`。第二个参数是将要执行的函数，可选地，您可以添加关键字参数`name`，它设置 URL 的名称。我们很快就会看到为什么这很有用。
 
 第二部分是在`views.py`文件中定义名为`index`的函数，如下所示：
 
@@ -341,9 +341,9 @@ from . import views
       return render(request, 'main/index.html', {})
 ```
 
-由于此时没有太多事情要做，我们首先从`django.shortcuts`中导入render函数。Django有自己的模板引擎，内置在框架中，可以将默认模板引擎更改为您喜欢的其他模板引擎（例如Jinja2，这是Python生态系统中最受欢迎的模板引擎之一），但是为了简单起见，我们将使用默认引擎。`render`函数获取请求对象、模板和上下文对象；后者是一个包含要在模板中显示的数据的对象。
+由于此时没有太多事情要做，我们首先从`django.shortcuts`中导入 render 函数。Django 有自己的模板引擎，内置在框架中，可以将默认模板引擎更改为您喜欢的其他模板引擎（例如 Jinja2，这是 Python 生态系统中最受欢迎的模板引擎之一），但是为了简单起见，我们将使用默认引擎。`render`函数获取请求对象、模板和上下文对象；后者是一个包含要在模板中显示的数据的对象。
 
-我们需要做的下一件事是添加一个模板，该模板将包含我们希望在用户浏览我们的应用程序时显示的内容。现在，大多数Web应用程序的页面包含永远不会改变的部分，例如顶部菜单栏或页面页脚，这些部分可以放入一个单独的模板中，可以被其他模板重用。幸运的是，Django模板引擎具有这个功能。事实上，我们不仅可以在模板中注入子模板，还可以有一个基本模板，其中包含将在所有页面之间共享的HTML。说到这一点，我们将在`gamestore/templates`目录中创建一个名为`base.html`的文件，其中包含以下内容：
+我们需要做的下一件事是添加一个模板，该模板将包含我们希望在用户浏览我们的应用程序时显示的内容。现在，大多数 Web 应用程序的页面包含永远不会改变的部分，例如顶部菜单栏或页面页脚，这些部分可以放入一个单独的模板中，可以被其他模板重用。幸运的是，Django 模板引擎具有这个功能。事实上，我们不仅可以在模板中注入子模板，还可以有一个基本模板，其中包含将在所有页面之间共享的 HTML。说到这一点，我们将在`gamestore/templates`目录中创建一个名为`base.html`的文件，其中包含以下内容：
 
 ```py
 <!DOCTYPE html>
@@ -422,7 +422,7 @@ from . import views
 </html>
 ```
 
-我们不打算逐个讨论所有HTML部分，只讨论Django模板引擎的特定语法部分：
+我们不打算逐个讨论所有 HTML 部分，只讨论 Django 模板引擎的特定语法部分：
 
 ```py
   {% load static %}
@@ -433,7 +433,7 @@ from . import views
          rel='stylesheet'>
 ```
 
-这里需要注意的第一件事是`{% load static %}`，它将告诉Django的模板引擎我们要加载静态模板标签。静态模板标签用于链接静态文件。这些文件可以是图像、JavaScript或样式表文件。你可能会问，Django是如何找到这些文件的呢，答案很简单：通过魔法！不，开玩笑；静态模板标签将在`settings.py`文件中的`STATIC_ROOT`变量指定的目录中查找文件；在我们的情况下，我们定义了`STATIC_ROOT = '/static/'`，所以当使用标签`{% static 'styles/site.css' %}`时，链接`/static/styles/site.css`将被返回。
+这里需要注意的第一件事是`{% load static %}`，它将告诉 Django 的模板引擎我们要加载静态模板标签。静态模板标签用于链接静态文件。这些文件可以是图像、JavaScript 或样式表文件。你可能会问，Django 是如何找到这些文件的呢，答案很简单：通过魔法！不，开玩笑；静态模板标签将在`settings.py`文件中的`STATIC_ROOT`变量指定的目录中查找文件；在我们的情况下，我们定义了`STATIC_ROOT = '/static/'`，所以当使用标签`{% static 'styles/site.css' %}`时，链接`/static/styles/site.css`将被返回。
 
 你可能会想，为什么不只写`/static/styles/site.css`而不使用标签？这样做的原因是，标签为我们提供了更多的灵活性，以便在需要更新我们提供静态文件的路径时进行更改。想象一种情况，你有一个包含数百个模板的大型应用程序，在所有这些模板中，你都硬编码了`/static/`，然后决定更改该路径（而且你没有团队）。你需要更改每个文件来执行此更改。如果你使用静态标签，你只需将文件移动到不同的位置，标签就会更改`STATIC_ROOT`变量在设置文件中的值。
 
@@ -462,21 +462,21 @@ mkdir main/templates && mkdir main/templates/main
 {% endblock %}
 ```
 
-正如你在这里看到的，我们首先扩展了基本模板，这意味着`base.html`文件的所有内容将被Django模板引擎用来构建HTML，当用户浏览到`/`时，将提供给浏览器。现在，我们还使用了`block`标签；在这种情况下，它意味着引擎将在`base.html`文件中搜索名为`'content'`的块标签，如果找到，引擎将在`'content'`块中插入`h1 html`标签。
+正如你在这里看到的，我们首先扩展了基本模板，这意味着`base.html`文件的所有内容将被 Django 模板引擎用来构建 HTML，当用户浏览到`/`时，将提供给浏览器。现在，我们还使用了`block`标签；在这种情况下，它意味着引擎将在`base.html`文件中搜索名为`'content'`的块标签，如果找到，引擎将在`'content'`块中插入`h1 html`标签。
 
-这一切都是关于代码的可重用性和可维护性，因为你不需要在我们应用程序的每个单个模板中插入菜单标记和加载JavaScript和CSS文件的标记；你只需要在基本模板中插入它们并在这里使用`block`标签。内容会改变。使用基本模板的第二个原因是，再次想象一种情况，你需要改变一些东西——比如我们在`base.html`文件中定义的顶部菜单，因为菜单只在`base.html`文件中定义。要执行更改，你只需要在`base.html`中更改标记，所有其他模板将继承更改。
+这一切都是关于代码的可重用性和可维护性，因为你不需要在我们应用程序的每个单个模板中插入菜单标记和加载 JavaScript 和 CSS 文件的标记；你只需要在基本模板中插入它们并在这里使用`block`标签。内容会改变。使用基本模板的第二个原因是，再次想象一种情况，你需要改变一些东西——比如我们在`base.html`文件中定义的顶部菜单，因为菜单只在`base.html`文件中定义。要执行更改，你只需要在`base.html`中更改标记，所有其他模板将继承更改。
 
 我们几乎准备好运行我们的代码并查看应用程序目前的外观了，但首先，我们需要安装一些客户端依赖项。
 
 # 安装客户端依赖项
 
-现在我们已经安装了NodeJS，我们可以安装项目的客户端依赖项。由于本章的重点是Django和Python，我们不想花太多时间来设计我们的应用程序并浏览庞大的CSS文件。然而，我们希望我们的应用程序看起来很棒，因此我们将安装两样东西：Bootstrap和Font Awesome。
+现在我们已经安装了 NodeJS，我们可以安装项目的客户端依赖项。由于本章的重点是 Django 和 Python，我们不想花太多时间来设计我们的应用程序并浏览庞大的 CSS 文件。然而，我们希望我们的应用程序看起来很棒，因此我们将安装两样东西：Bootstrap 和 Font Awesome。
 
-Bootstrap是一个非常著名的工具包，已经存在多年了。它有一套非常好的组件、网格系统和插件，将帮助我们使我们的应用程序在用户在桌面上浏览应用程序或者甚至移动设备上浏览应用程序时看起来很棒。
+Bootstrap 是一个非常著名的工具包，已经存在多年了。它有一套非常好的组件、网格系统和插件，将帮助我们使我们的应用程序在用户在桌面上浏览应用程序或者甚至移动设备上浏览应用程序时看起来很棒。
 
-Font Awesome是另一个存在已久的项目，它是一个字体和图标框架。
+Font Awesome 是另一个存在已久的项目，它是一个字体和图标框架。
 
-要安装这些依赖项，我们可以直接运行npm的安装命令。然而，我们要做得更好。类似于`pipenv`，它为我们的Python依赖项创建一个文件，`npm`也有类似的东西。这个文件叫做`package.json`，它不仅包含了项目的依赖项，还包含了关于包的脚本和元信息。
+要安装这些依赖项，我们可以直接运行 npm 的安装命令。然而，我们要做得更好。类似于`pipenv`，它为我们的 Python 依赖项创建一个文件，`npm`也有类似的东西。这个文件叫做`package.json`，它不仅包含了项目的依赖项，还包含了关于包的脚本和元信息。
 
 让我们继续将`package.json`文件添加到`gamestore/`目录中，内容如下：
 
@@ -486,8 +486,8 @@ Font Awesome是另一个存在已久的项目，它是一个字体和图标框�
       "version": "1.0.0",
       "description": "Retro game store website",
       "dependencies": {
-         "bootstrap": "^3.3.7",
-        "font-awesome": "^4.7.0"
+         "bootstrap": "³.3.7",
+        "font-awesome": "⁴.7.0"
       }
     }
 ```
@@ -500,23 +500,23 @@ npm install
 
 如果一切顺利，您应该会看到一条消息，说明已安装了两个软件包。
 
-如果列出`gamestore`目录的内容，您将看到`npm`创建了一个名为`node_modules`的新目录，`npm`安装了Bootstrap和Font Awesome。
+如果列出`gamestore`目录的内容，您将看到`npm`创建了一个名为`node_modules`的新目录，`npm`安装了 Bootstrap 和 Font Awesome。
 
-为简单起见，我们将只复制我们需要的CSS文件和字体到`static`文件夹。 但是，在构建应用程序时，我建议使用诸如`webpack`之类的工具，它将捆绑所有我们的客户端依赖项，并设置`webpack`开发服务器来为您的Django应用程序提供文件。 由于我们想专注于Python和Django，我们可以继续手动复制文件。
+为简单起见，我们将只复制我们需要的 CSS 文件和字体到`static`文件夹。 但是，在构建应用程序时，我建议使用诸如`webpack`之类的工具，它将捆绑所有我们的客户端依赖项，并设置`webpack`开发服务器来为您的 Django 应用程序提供文件。 由于我们想专注于 Python 和 Django，我们可以继续手动复制文件。
 
-首先，我们可以按以下方式创建CSS文件的目录：
+首先，我们可以按以下方式创建 CSS 文件的目录：
 
 ```py
 mkdir static && mkdir static/styles
 ```
 
-然后我们需要复制bootstrap文件。 首先是最小化的CSS文件：
+然后我们需要复制 bootstrap 文件。 首先是最小化的 CSS 文件：
 
 ```py
 cp node_modules/bootstrap/dist/css/bootstrap.min.css static/styles/
 ```
 
-接下来，我们需要复制Font Awesome文件，从最小化的CSS开始：
+接下来，我们需要复制 Font Awesome 文件，从最小化的 CSS 开始：
 
 ```py
 cp node_modules/font-awesome/css/font-awesome.min.css static/styles/
@@ -528,7 +528,7 @@ cp node_modules/font-awesome/css/font-awesome.min.css static/styles/
 cp -r node_modules/font-awesome/fonts/ static/
 ```
 
-我们将添加另一个CSS文件，其中将包含我们可能添加到应用程序中的一些自定义CSS，以赋予应用程序个性化的外观。 在`gamestore/static/styles`目录中添加一个名为`site.css`的文件，内容如下：
+我们将添加另一个 CSS 文件，其中将包含我们可能添加到应用程序中的一些自定义 CSS，以赋予应用程序个性化的外观。 在`gamestore/static/styles`目录中添加一个名为`site.css`的文件，内容如下：
 
 ```py
   .nav.navbar-nav .fa-home,
@@ -589,7 +589,7 @@ TEMPLATES = [
 ]
 ```
 
-这将告诉Django在`templates`目录中搜索模板。
+这将告诉 Django 在`templates`目录中搜索模板。
 
 然后，在`settings.py`文件的末尾添加以下行：
 
@@ -597,9 +597,9 @@ TEMPLATES = [
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static'), ]
 ```
 
-这将告诉Django在`gamestore/static`目录中搜索静态文件。
+这将告诉 Django 在`gamestore/static`目录中搜索静态文件。
 
-现在我们需要告诉Django注册我们在`main`应用程序中定义的URL。 因此，让我们继续打开`gamestore/gamestore`目录中的文件`urls.py`。 我们需要在`urlpatterns`列表中包含`"main.urls"`。 更改后，`urls.py`文件应如下所示：
+现在我们需要告诉 Django 注册我们在`main`应用程序中定义的 URL。 因此，让我们继续打开`gamestore/gamestore`目录中的文件`urls.py`。 我们需要在`urlpatterns`列表中包含`"main.urls"`。 更改后，`urls.py`文件应如下所示：
 
 ```py
 from django.contrib import admin
@@ -613,7 +613,7 @@ urlpatterns = [
 
 请注意，我们还需要导入`django.urls`模块的`include`函数。
 
-太好了！ 现在我们已经准备好使用我们的应用程序中的所有客户端依赖项，并且可以第一次启动应用程序以查看我们迄今为止实施的更改。 打开终端，并使用`runserver`命令启动Django的开发服务器，如下所示：
+太好了！ 现在我们已经准备好使用我们的应用程序中的所有客户端依赖项，并且可以第一次启动应用程序以查看我们迄今为止实施的更改。 打开终端，并使用`runserver`命令启动 Django 的开发服务器，如下所示：
 
 ```py
 python manage.py runserver
@@ -621,15 +621,15 @@ python manage.py runserver
 
 浏览到`http://localhost:8000`； 您应该看到一个页面，类似于以下截图所示的页面：
 
-![](assets/b2034c76-688d-456c-9e99-41b3b0429427.png)
+![](img/b2034c76-688d-456c-9e99-41b3b0429427.png)
 
 # 添加登录和注销视图
 
 每个在线商店都需要某种用户管理。 我们应用的用户应该能够创建帐户，更改其帐户详细信息，显然登录到我们的应用程序，以便他们可以下订单，还可以从应用程序注销。
 
-我们将开始添加登录和注销功能。 好消息是，在Django中实现这一点非常容易。
+我们将开始添加登录和注销功能。 好消息是，在 Django 中实现这一点非常容易。
 
-首先，我们需要在我们的登录页面上添加一个Django表单。 Django有一个内置的身份验证表单； 但是，我们想要自定义它，所以我们将创建另一个类，该类继承自Django内置的`AuthenticationForm`并添加我们的更改。
+首先，我们需要在我们的登录页面上添加一个 Django 表单。 Django 有一个内置的身份验证表单； 但是，我们想要自定义它，所以我们将创建另一个类，该类继承自 Django 内置的`AuthenticationForm`并添加我们的更改。
 
 在`gamestore/main/`中创建一个名为`forms.py`的文件，内容如下：
 
@@ -655,17 +655,17 @@ class AuthenticationForm(AuthenticationForm):
     )
 ```
 
-这个类非常简单。 首先，我们从`django`模块导入`forms`和从`django.contrib.auth.forms`导入`AuthenticationForm`，然后我们创建另一个类，也称为`AuthenticationForm`，它继承自Django的`AuthenticationForm`。 然后我们定义两个属性，用户名和密码。 我们将用户名定义为`CharField`的一个实例，并在其构造函数中传递一些关键字参数。 它们是：
+这个类非常简单。 首先，我们从`django`模块导入`forms`和从`django.contrib.auth.forms`导入`AuthenticationForm`，然后我们创建另一个类，也称为`AuthenticationForm`，它继承自 Django 的`AuthenticationForm`。 然后我们定义两个属性，用户名和密码。 我们将用户名定义为`CharField`的一个实例，并在其构造函数中传递一些关键字参数。 它们是：
 
 +   `max_length`，顾名思义，限制字符串的大小为`50`个字符。
 
-+   我们还使用了`widget`参数，指定了如何在页面上呈现此属性。在这种情况下，我们希望将其呈现为输入文本元素，因此我们传递了一个`TextInput`实例。可以向`widget`传递一些选项；在我们的情况下，这里我们传递了`'class'`，这是CSS类和占位符。
++   我们还使用了`widget`参数，指定了如何在页面上呈现此属性。在这种情况下，我们希望将其呈现为输入文本元素，因此我们传递了一个`TextInput`实例。可以向`widget`传递一些选项；在我们的情况下，这里我们传递了`'class'`，这是 CSS 类和占位符。
 
 当模板引擎在页面上呈现此属性时，所有这些选项都将被使用。
 
 我们在这里定义的第二个属性是密码。我们还将其定义为`CharField`，而不是传递`max_length`，这次我们将标签设置为`'Password'`。我们将`widget`设置为`PasswordInput`，这样模板引擎将在页面上将字段呈现为类型等于密码的输入，并且最后，我们为此字段类和占位符定义了相同的设置。
 
-现在我们可以开始注册新的登录和注销URL。打开文件`gamestore/main/urls.py`。首先，我们将添加一些`import`语句：
+现在我们可以开始注册新的登录和注销 URL。打开文件`gamestore/main/urls.py`。首先，我们将添加一些`import`语句：
 
 ```py
 from django.contrib.auth.views import login
@@ -673,7 +673,7 @@ from django.contrib.auth.views import logout
 from .forms import AuthenticationForm
 ```
 
-在`import`语句之后，我们可以开始注册身份验证URL。在`urlpattens`列表的末尾，添加以下代码：
+在`import`语句之后，我们可以开始注册身份验证 URL。在`urlpattens`列表的末尾，添加以下代码：
 
 ```py
   path(r'accounts/login/', login, {
@@ -682,9 +682,9 @@ from .forms import AuthenticationForm
   }, name='login'),
 ```
 
-因此，在这里我们创建了一个新的URL，`'accounts/login'`，当请求这个URL时，视图函数`login`将被执行。路径函数的第三个参数是一个带有一些选项的字典，`template_name`指定了浏览到底层URL时将呈现在页面上的模板。我们还使用`AuthenticationForm`值定义了`authetication_form`。最后，我们将关键字参数`name`设置为`login`；为这个URL命名在需要创建此URL的链接时非常有帮助，也提高了可维护性，因为URL本身的更改不会要求模板的更改，因为模板通过名称引用URL。
+因此，在这里我们创建了一个新的 URL，`'accounts/login'`，当请求这个 URL 时，视图函数`login`将被执行。路径函数的第三个参数是一个带有一些选项的字典，`template_name`指定了浏览到底层 URL 时将呈现在页面上的模板。我们还使用`AuthenticationForm`值定义了`authetication_form`。最后，我们将关键字参数`name`设置为`login`；为这个 URL 命名在需要创建此 URL 的链接时非常有帮助，也提高了可维护性，因为 URL 本身的更改不会要求模板的更改，因为模板通过名称引用 URL。
 
-现在登录已经就位，让我们添加注销URL：
+现在登录已经就位，让我们添加注销 URL：
 
 ```py
   path(r'accounts/logout/', logout, {
@@ -692,7 +692,7 @@ from .forms import AuthenticationForm
   }, name='logout'),
 ```
 
-与登录URL类似，在注销URL中，我们使用路径函数首先传递URL本身(`accounts/logout`)；我们传递了从Django内置认证视图中导入的函数logout，并且作为一个选项，我们将`next_page`设置为`/`。这意味着当用户注销时，我们将用户重定向到应用程序的根页面。最后，我们还将URL命名为logout。
+与登录 URL 类似，在注销 URL 中，我们使用路径函数首先传递 URL 本身(`accounts/logout`)；我们传递了从 Django 内置认证视图中导入的函数 logout，并且作为一个选项，我们将`next_page`设置为`/`。这意味着当用户注销时，我们将用户重定向到应用程序的根页面。最后，我们还将 URL 命名为 logout。
 
 很好。现在是时候添加模板了。我们要添加的第一个模板是登录模板。在`gamestore/templates/`下创建一个名为`login.html`的文件，内容如下：
 
@@ -732,7 +732,7 @@ from .forms import AuthenticationForm
 
 首先，我们创建一个`form`标签，并将方法设置为`POST`。然后，我们添加`csrf_token`标签。我们添加此标签的原因是为了防止跨站点请求攻击，其中恶意站点代表当前登录用户执行请求到我们的站点。
 
-如果您想了解更多关于这种类型的攻击，您可以访问网站[https://www.owasp.org/index.php/Cross-Site_Request_Forgery_(CSRF)](https://www.owasp.org/index.php/Cross-Site_Request_Forgery_(CSRF))。
+如果您想了解更多关于这种类型的攻击，您可以访问网站[`www.owasp.org/index.php/Cross-Site_Request_Forgery_(CSRF)`](https://www.owasp.org/index.php/Cross-Site_Request_Forgery_(CSRF))。
 
 在跨站点请求伪造标记之后，我们添加了我们需要的两个字段：用户名和密码。
 
@@ -779,13 +779,13 @@ from .forms import AuthenticationForm
   {% endif %}
 ```
 
-这个部分模板将根据用户是否经过身份验证而呈现两种不同的内容。如果用户已经过身份验证，它将呈现注销表单。请注意，表单的操作使用了命名URL；我们没有将其设置为`/accounts/logout`，而是设置为`{% url 'logout' %}`。Django的URL标记将使用URL名称替换URL。同样，我们需要添加`csrf_token`标记以防止跨站点请求伪造攻击，最后，我们定义了一个无序列表，其中有两个项目；第一项将显示文本`Logged as:`和用户的用户名，列表中的第二项将显示注销按钮。
+这个部分模板将根据用户是否经过身份验证而呈现两种不同的内容。如果用户已经过身份验证，它将呈现注销表单。请注意，表单的操作使用了命名 URL；我们没有将其设置为`/accounts/logout`，而是设置为`{% url 'logout' %}`。Django 的 URL 标记将使用 URL 名称替换 URL。同样，我们需要添加`csrf_token`标记以防止跨站点请求伪造攻击，最后，我们定义了一个无序列表，其中有两个项目；第一项将显示文本`Logged as:`和用户的用户名，列表中的第二项将显示注销按钮。
 
-请注意，我们在列表项元素中添加了一个锚标签，并且`href`属性中有一些JavaScript代码。该代码非常简单；它使用`getElementById`函数获取表单，然后调用表单的提交函数将请求提交到服务器的`/accounts/logout`。
+请注意，我们在列表项元素中添加了一个锚标签，并且`href`属性中有一些 JavaScript 代码。该代码非常简单；它使用`getElementById`函数获取表单，然后调用表单的提交函数将请求提交到服务器的`/accounts/logout`。
 
-这只是对实现的偏好；您可以轻松地跳过此JavaScript代码并添加提交按钮。它会产生相同的效果。
+这只是对实现的偏好；您可以轻松地跳过此 JavaScript 代码并添加提交按钮。它会产生相同的效果。
 
-如果用户未经过身份验证，我们只显示`登录`链接。`登录`链接还使用URL标记，该标记将使用URL替换名称`login`。
+如果用户未经过身份验证，我们只显示`登录`链接。`登录`链接还使用 URL 标记，该标记将使用 URL 替换名称`login`。
 
 太棒了！让我们将登录部分模板添加到基本模板中。打开`gamestore/templates`中的`base.html`文件，并找到无序列表，如下所示：
 
@@ -805,7 +805,7 @@ from .forms import AuthenticationForm
   {% include '_loginpartial.html' %}
 ```
 
-include标签将在标记中的此位置注入`_loginpartial.html`模板的内容。
+include 标签将在标记中的此位置注入`_loginpartial.html`模板的内容。
 
 最后一步是添加一些样式，使登录页面看起来像应用程序的其余部分一样好看。打开`gamestore/static/styles`目录中的`site.css`文件，并包含以下内容：
 
@@ -882,9 +882,9 @@ include标签将在标记中的此位置注入`_loginpartial.html`模板的内�
 LOGIN_REDIRECT_URL = '/'
 ```
 
-这将告诉Django，在登录后，用户将被重定向到`/`。
+这将告诉 Django，在登录后，用户将被重定向到`/`。
 
-现在我们准备测试登录和注销功能，尽管您可能在数据库中没有任何用户。但是，我们在设置Django项目时创建了超级用户，所以继续尝试使用该用户登录。运行命令`runserver`再次启动Django开发服务器：
+现在我们准备测试登录和注销功能，尽管您可能在数据库中没有任何用户。但是，我们在设置 Django 项目时创建了超级用户，所以继续尝试使用该用户登录。运行命令`runserver`再次启动 Django 开发服务器：
 
 ```py
 python manage.py runserver
@@ -892,21 +892,21 @@ python manage.py runserver
 
 浏览到`http://localhost:8000`，请注意您现在在页面的右上角有登录链接：
 
-![](assets/6d74e76d-f481-4eec-9dc9-d8ad6b061fa5.png)
+![](img/6d74e76d-f481-4eec-9dc9-d8ad6b061fa5.png)
 
 如果您点击，您将被重定向到`/accounts/login`，并且将呈现我们创建的登录页面模板：
 
-![](assets/3025a9a4-9ae4-4eed-b361-54290b3e87a9.png)
+![](img/3025a9a4-9ae4-4eed-b361-54290b3e87a9.png)
 
 首先，尝试输入错误的密码或用户名，以便我们可以验证错误消息是否正确显示：
 
-![](assets/ff28669a-804e-448a-9452-632421a24126.png)
+![](img/ff28669a-804e-448a-9452-632421a24126.png)
 
 太棒了！它有效！
 
-现在使用超级用户登录，如果一切正常，您应该被重定向到应用程序根URL。它说，以您的用户名登录，然后就会有一个注销链接。试一试，点击注销链接：
+现在使用超级用户登录，如果一切正常，您应该被重定向到应用程序根 URL。它说，以您的用户名登录，然后就会有一个注销链接。试一试，点击注销链接：
 
-![](assets/6490f579-a5ca-4bcb-9106-699f74da2029.png)
+![](img/6490f579-a5ca-4bcb-9106-699f74da2029.png)
 
 # 创建新用户
 
@@ -924,7 +924,7 @@ python manage.py runserver
 
 如果这些规则中有任何一个没有被遵循，我们将不会创建用户账户，并且应该向用户返回一个错误。
 
-说到这里，让我们添加一个小的辅助函数，用于验证字段是否具有数据库中已存在的值。打开`gamestore/main`目录下的`forms.py`文件。首先，我们需要导入User模型：
+说到这里，让我们添加一个小的辅助函数，用于验证字段是否具有数据库中已存在的值。打开`gamestore/main`目录下的`forms.py`文件。首先，我们需要导入 User 模型：
 
 ```py
 from django.contrib.auth.models import User
@@ -1012,11 +1012,11 @@ class SignupForm(forms.Form):
       return username
 ```
 
-这个方法的名称中的前缀`clean`将使Django在解析字段的发布数据时自动调用此方法；在这种情况下，它将在解析字段用户名时执行。
+这个方法的名称中的前缀`clean`将使 Django 在解析字段的发布数据时自动调用此方法；在这种情况下，它将在解析字段用户名时执行。
 
 所以，我们获取用户名的值，然后调用`validate_unique_user`方法，传递一个默认的错误消息和一个关键字参数用户名，这将被用作过滤条件。
 
-我们需要验证唯一性的另一个字段是电子邮件ID，因此让我们实现`clean_email`方法，如下所示：
+我们需要验证唯一性的另一个字段是电子邮件 ID，因此让我们实现`clean_email`方法，如下所示：
 
 ```py
   def clean_email(self):
@@ -1088,17 +1088,17 @@ from django.contrib.auth.models import User
  return render(request, 'main/signup.html', {'form': form})
 ```
 
-我们首先用`csrf_protect`装饰器装饰`signup`函数。函数首先检查请求的HTTP方法是否等于`POST`；在这种情况下，它将创建一个`SignupForm`的实例，将`POST`数据作为参数传递。然后我们在表单上调用`is_valid()`函数，如果表单有效，它将返回true；否则返回false。如果表单有效，我们将创建一个新用户并调用`save`函数，最后我们渲染`create_account_success.html`。
+我们首先用`csrf_protect`装饰器装饰`signup`函数。函数首先检查请求的 HTTP 方法是否等于`POST`；在这种情况下，它将创建一个`SignupForm`的实例，将`POST`数据作为参数传递。然后我们在表单上调用`is_valid()`函数，如果表单有效，它将返回 true；否则返回 false。如果表单有效，我们将创建一个新用户并调用`save`函数，最后我们渲染`create_account_success.html`。
 
 如果请求的`HTTP`方法是`GET`，我们所做的唯一事情就是创建一个没有参数的`SignupForm`实例。之后，我们调用`render`函数，将`request`对象作为第一个参数传递，然后是我们要渲染的模板，最后一个参数是`SignupForm`的实例。
 
-我们将很快创建这个函数中引用的两个模板，但首先，我们需要在`gamestore/main`的`url.py`文件中创建一个新的URL：
+我们将很快创建这个函数中引用的两个模板，但首先，我们需要在`gamestore/main`的`url.py`文件中创建一个新的 URL：
 
 ```py
 path(r'accounts/signup/', views.signup, name='signup'),
 ```
 
-这个新的URL可以直接添加到`urlpatterns`列表的末尾。
+这个新的 URL 可以直接添加到`urlpatterns`列表的末尾。
 
 我们还需要创建模板。我们从`signup`模板开始；在`gamestore/main/templates/main`中创建一个名为`signup.html`的文件，内容如下：
 
@@ -1151,7 +1151,7 @@ path(r'accounts/signup/', views.signup, name='signup'),
 {% endblock %}
 ```
 
-太棒了！为了使它看起来更好，我们将在`gamestore/static`目录中的`site.css`文件中包含一些CSS代码。在文件末尾添加如下内容：
+太棒了！为了使它看起来更好，我们将在`gamestore/static`目录中的`site.css`文件中包含一些 CSS 代码。在文件末尾添加如下内容：
 
 ```py
 /* Account created page */
@@ -1210,13 +1210,13 @@ path(r'accounts/signup/', views.signup, name='signup'),
 }
 ```
 
-这就是创建用户页面的全部内容；让我们试试吧！再次启动Django开发服务器，并浏览到`http://localhost:8000/accounts/signup`，您应该会看到创建用户表单，如下所示：
+这就是创建用户页面的全部内容；让我们试试吧！再次启动 Django 开发服务器，并浏览到`http://localhost:8000/accounts/signup`，您应该会看到创建用户表单，如下所示：
 
-![](assets/ca34bdb6-e35e-4b9b-9425-9652ba21ef52.png)
+![](img/ca34bdb6-e35e-4b9b-9425-9652ba21ef52.png)
 
 填写所有字段后，您应该被重定向到一个确认页面，如下所示：
 
-![](assets/82ffe42c-8485-4150-8cb8-ec480a29ddd4.png)
+![](img/82ffe42c-8485-4150-8cb8-ec480a29ddd4.png)
 
 自己进行一些测试！尝试添加无效的密码，以验证我们实现的验证是否正常工作。
 
@@ -1234,7 +1234,7 @@ path(r'accounts/signup/', views.signup, name='signup'),
 
 +   游戏应该可以通过不同的标准进行发现，例如开发者、发布商、发布日期等。
 
-+   商店的管理员应该能够使用Django管理界面更改产品详情。
++   商店的管理员应该能够使用 Django 管理界面更改产品详情。
 
 +   产品的图片可以更改，如果找不到，应该显示默认图片
 
@@ -1248,9 +1248,9 @@ class GamePlatform(models.Model):
         return self.name
 ```
 
-在这里，我们添加了`GamePlatform`类，它将代表商店中可用的游戏平台。这个类非常简单；我们只需创建一个从`Model`类继承的类，并且我们只定义了一个名为`name`的属性。`name`属性被定义为最大长度为100个字符的`CharField`。Django提供了各种各样的数据类型；你可以在[https://docs.djangoproject.com/en/2.0/ref/models/fields/](https://docs.djangoproject.com/en/2.0/ref/models/fields/)上看到完整的列表。
+在这里，我们添加了`GamePlatform`类，它将代表商店中可用的游戏平台。这个类非常简单；我们只需创建一个从`Model`类继承的类，并且我们只定义了一个名为`name`的属性。`name`属性被定义为最大长度为 100 个字符的`CharField`。Django 提供了各种各样的数据类型；你可以在[`docs.djangoproject.com/en/2.0/ref/models/fields/`](https://docs.djangoproject.com/en/2.0/ref/models/fields/)上看到完整的列表。
 
-然后我们重写了`__str__`方法。这个方法将决定`GamePlatform`的实例在被打印出来时如何显示。我重写这个方法的原因是我想在Django管理界面的`GamePlatform`列表中显示`GamePlatform`的名称。
+然后我们重写了`__str__`方法。这个方法将决定`GamePlatform`的实例在被打印出来时如何显示。我重写这个方法的原因是我想在 Django 管理界面的`GamePlatform`列表中显示`GamePlatform`的名称。
 
 我们要添加的第二个模型类是`Game`模型。在同一个文件中，添加以下代码：
 
@@ -1282,7 +1282,7 @@ class Game(models.Model):
 
 与我们之前创建的模型类一样，`Game`类也继承自`Model`，我们根据规格定义了所有需要的字段。这里有一些新的需要注意的地方；`release_year`属性被定义为整数字段，并且我们设置了`null=True`属性，这意味着这个字段不是必需的。
 
-另一个使用不同类型的属性是图片属性，它被定义为`ImageField`，这将允许我们为应用程序的管理员提供更改游戏图片的可能性。这种类型继承自`FileField`，在Django管理界面中，该字段将被呈现为文件选择器。`ImageFile`参数`upload_to`指定了图片将被存储的位置，默认是游戏没有图片时将呈现的默认图片。我们在这里指定的最后一个参数是`max_length`，这是图片路径的最大长度。
+另一个使用不同类型的属性是图片属性，它被定义为`ImageField`，这将允许我们为应用程序的管理员提供更改游戏图片的可能性。这种类型继承自`FileField`，在 Django 管理界面中，该字段将被呈现为文件选择器。`ImageFile`参数`upload_to`指定了图片将被存储的位置，默认是游戏没有图片时将呈现的默认图片。我们在这里指定的最后一个参数是`max_length`，这是图片路径的最大长度。
 
 然后，我们定义了一个`ForeignKey`。如果你不知道它是什么，外键基本上是一个标识另一个表中行的字段。在我们的例子中，这里我们希望游戏平台与多个游戏相关联。我们传递给主键定义的一些关键字参数；首先我们传递了外键类型，`null`参数设置为`False`，这意味着这个字段是必需的，最后我们将删除规则设置为`CASCADE`，所以如果应用程序的管理员删除了一个游戏平台，该操作将级联并删除与该特定游戏平台相关联的所有游戏。
 
@@ -1316,7 +1316,7 @@ class GameManager(models.Manager):
         return self.filter(gameplatform__name__iexact=platform)
 ```
 
-在我们深入了解这个实现的细节之前，我只想说几句关于Django中的`Manager`对象。`Manager`是Django中数据库和模型类之间的接口。默认情况下，每个模型类都有一个`Manager`，可以通过属性对象访问，那么为什么要定义自己的manager呢？我为这个`models`类实现了一个`Manager`的原因是我想把所有关于数据库操作的代码都留在模型内部，因为这样可以使代码更清晰、更易于测试。
+在我们深入了解这个实现的细节之前，我只想说几句关于 Django 中的`Manager`对象。`Manager`是 Django 中数据库和模型类之间的接口。默认情况下，每个模型类都有一个`Manager`，可以通过属性对象访问，那么为什么要定义自己的 manager 呢？我为这个`models`类实现了一个`Manager`的原因是我想把所有关于数据库操作的代码都留在模型内部，因为这样可以使代码更清晰、更易于测试。
 
 所以，在这里我定义了另一个类`GameManager`，它继承自`Manager`，到目前为止我们定义了三个方法——`get_highlighted`，它获取所有标记为`True`的游戏，`get_not_highlighted`，它获取所有标记为`False`的游戏，`get_by_platform`，它获取给定游戏平台的所有游戏。
 
@@ -1359,13 +1359,13 @@ class PriceList(models.Model):
         return self.game.name
 ```
 
-正如你在这里看到的，你有两个日期时间字段。第一个是`added_at`，它有一个属性`auto_now_add`等于`True`。它的作用是让Django在我们将这个价格添加到表中时自动添加当前日期。`last_update`字段是用另一个参数定义的，`auto_now`等于`True`；这告诉Django在每次更新发生时设置当前日期。
+正如你在这里看到的，你有两个日期时间字段。第一个是`added_at`，它有一个属性`auto_now_add`等于`True`。它的作用是让 Django 在我们将这个价格添加到表中时自动添加当前日期。`last_update`字段是用另一个参数定义的，`auto_now`等于`True`；这告诉 Django 在每次更新发生时设置当前日期。
 
 然后，我们有一个名为`price_per_unit`的价格字段，它被定义为一个最大为`9`位数和`2`位小数的`DecimalField`。这个字段不是必需的，它将始终默认为`0`。
 
 接下来，我们创建一个`OneToOneField`来创建`PriceList`和`Game`对象之间的链接。我们定义当游戏被删除时，`PriceList`表中的相关行也将被删除，并将此字段定义为主键。
 
-最后，我们重写`__str__`方法，使其返回游戏的名称。这在使用Django管理界面更新价格时会很有帮助。
+最后，我们重写`__str__`方法，使其返回游戏的名称。这在使用 Django 管理界面更新价格时会很有帮助。
 
 现在我们可以再次生成迁移文件：
 
@@ -1435,7 +1435,7 @@ python manage.py migrate
 
 这段代码将创建一个容器，其中包含游戏图片、详细信息和一个添加到购物车的按钮，类似于以下内容：
 
-![](assets/a90a8c0b-9daf-4a99-adb3-1a56365aec9d.png)
+![](img/a90a8c0b-9daf-4a99-adb3-1a56365aec9d.png)
 
 现在我们想要修改 `gamestore/main/templates/main` 下的 `index.html`。我们可以用以下代码替换 `index.html` 文件的整个内容：
 
@@ -1609,23 +1609,23 @@ python manage.py runserver
 
 浏览到`http://localhost:8000/admin`，并使用我们创建的超级用户帐户登录。您应该会在页面上看到列出的模型：
 
-![](assets/67a5e1f4-ea27-49db-baa6-d720c8b35235.png)
+![](img/67a5e1f4-ea27-49db-baa6-d720c8b35235.png)
 
-如果您首先点击“游戏”平台，您将看到一个空列表。点击页面右上方的“游戏平台”行上的ADD按钮，将显示以下表单：
+如果您首先点击“游戏”平台，您将看到一个空列表。点击页面右上方的“游戏平台”行上的 ADD 按钮，将显示以下表单：
 
-![](assets/dd1567e5-3c9c-4428-b68d-5fb26bd0bef2.png)
+![](img/dd1567e5-3c9c-4428-b68d-5fb26bd0bef2.png)
 
 只需输入您喜欢的任何名称，然后单击“保存”按钮以保存更改。
 
 在添加游戏之前，我们需要找到一个默认图像，并将其放置在`gamestore/static/images/`。图像的名称应为`placeholder.png`。
 
-我们构建的布局将更适合尺寸为130x180的图像。为了简化，当我创建原型时，我不想花太多时间寻找完美的图像，我会去网站[https://placeholder.com/](https://placeholder.com/)。在这里，您可以构建任何尺寸的占位图像。为了获得我们应用程序的正确尺寸，您可以直接转到[http://via.placeholder.com/130x180](http://via.placeholder.com/130x180)。
+我们构建的布局将更适合尺寸为 130x180 的图像。为了简化，当我创建原型时，我不想花太多时间寻找完美的图像，我会去网站[`placeholder.com/`](https://placeholder.com/)。在这里，您可以构建任何尺寸的占位图像。为了获得我们应用程序的正确尺寸，您可以直接转到[`via.placeholder.com/130x180`](http://via.placeholder.com/130x180)。
 
 当您放置默认图像后，您可以开始添加游戏，方法与添加游戏平台相同，只需重复该过程多次以添加一些设置为推广的游戏。
 
 添加游戏后，再次访问网站，您应该会在首页上看到游戏列表，如下所示：
 
-![](assets/8e40b7bf-7333-4410-926c-c4b2bc5af4a3.png)
+![](img/8e40b7bf-7333-4410-926c-c4b2bc5af4a3.png)
 
 在我的项目中，我添加了四个推广游戏。请注意，因为我们在第一页上只显示了三个推广游戏，所以我们呈现了“查看更多项目”链接。
 
@@ -1633,7 +1633,7 @@ python manage.py runserver
 
 由于我们没有在第一页上显示所有项目，因此我们需要构建页面，如果用户点击“查看更多项目”链接，将显示所有项目。这应该相当简单，因为我们已经有一个列出游戏的部分视图。
 
-让我们在`main`应用的`url.py`文件中创建另外两个URL，并将它们添加到`urlpatterns`列表中：
+让我们在`main`应用的`url.py`文件中创建另外两个 URL，并将它们添加到`urlpatterns`列表中：
 
 ```py
     path(r'games-list/highlighted/', views.show_highlighted_games),
@@ -1708,7 +1708,7 @@ def show_highlighted_games(request):
 
 让我们再次打开应用程序。由于数据库中有更多的推广项目，让我们点击页面上突出显示游戏部分的“查看更多项目”链接。您应该会进入以下页面：
 
-![](assets/28d8b456-325c-42cc-86eb-94cfb4fb8e20.png)
+![](img/28d8b456-325c-42cc-86eb-94cfb4fb8e20.png)
 
 完美！它的工作就像预期的那样。
 
@@ -1750,7 +1750,7 @@ class ShoppingCartManager(models.Manager):
         return new_cart
 ```
 
-和我们为`Game`对象创建自定义`Manager`一样，我们也将为`ShoppingCart`创建一个`Manager`。我们将添加三个方法。第一个是`get_by_id`，顾名思义，根据ID检索购物车。第二个方法是`get_by_user`，它接收`django.contrib.auth.models.User`的实例作为参数，并将返回给定用户实例的购物车。最后一个方法是`create_cart`；当用户创建账户时将调用此方法。
+和我们为`Game`对象创建自定义`Manager`一样，我们也将为`ShoppingCart`创建一个`Manager`。我们将添加三个方法。第一个是`get_by_id`，顾名思义，根据 ID 检索购物车。第二个方法是`get_by_user`，它接收`django.contrib.auth.models.User`的实例作为参数，并将返回给定用户实例的购物车。最后一个方法是`create_cart`；当用户创建账户时将调用此方法。
 
 现在我们有了需要的方法的管理器，让我们添加`ShoppingCart`类：
 
@@ -1768,7 +1768,7 @@ class ShoppingCart(models.Model):
 
 这个类非常简单。和以往一样，我们从`Model`继承，并为类型`User`定义一个外键。这个外键是必需的，如果用户被删除，购物车也会被删除。
 
-在外键之后，我们将我们自定义的`Manager`分配给对象的属性，并且我们还实现了特殊方法`__str__`，这样在Django管理界面中购物车会以更好的方式显示。
+在外键之后，我们将我们自定义的`Manager`分配给对象的属性，并且我们还实现了特殊方法`__str__`，这样在 Django 管理界面中购物车会以更好的方式显示。
 
 接下来，让我们为`ShoppingCartItem`模型添加一个管理类，如下所示：
 
@@ -1805,7 +1805,7 @@ class ShoppingCartItem(models.Model):
 
 最后，我们将`ShoppingCartItemManager`设置为对象的属性。
 
-我们还需要导入User模型：
+我们还需要导入 User 模型：
 
 ```py
 from django.contrib.auth.models import User
@@ -1904,13 +1904,13 @@ class ShoppingCartEditView(UpdateView):
         return HttpResponseRedirect(reverse_lazy('user-cart'))
 ```
 
-这与我们迄今为止创建的视图略有不同，因为这是一个从`UpdateView`继承的基于类的视图。实际上，在Django中，视图是可调用对象，当使用类而不是函数时，我们可以利用继承和混合。在我们的情况下，我们使用`UpdateView`，因为它是一个用于显示将编辑现有对象的表单的视图。
+这与我们迄今为止创建的视图略有不同，因为这是一个从`UpdateView`继承的基于类的视图。实际上，在 Django 中，视图是可调用对象，当使用类而不是函数时，我们可以利用继承和混合。在我们的情况下，我们使用`UpdateView`，因为它是一个用于显示将编辑现有对象的表单的视图。
 
 这个类视图首先定义了一些属性，比如模型，这是我们将在表单中编辑的模型。`form_class`是用于编辑数据的表单。最后，我们有将用于呈现表单的模板。
 
 我们重写了`get_context_data`，因为我们在表单上下文中包含了一些额外的数据。因此，首先我们调用基类上的`get_context_data`来构建上下文，然后我们获取当前购物车的商品列表，以便确定购物车是否为空。我们将这个值设置为上下文项`is_cart_empty`，可以从模板中访问。
 
-之后，我们想要计算当前购物车中商品的总价值。为此，我们需要首先通过（价格*数量）来计算每件商品的总价，然后对结果进行求和。在Django中，可以对`QuerySet`的值进行聚合；我们已经有了包含购物车中商品列表的`QuerySet`，所以我们只需要使用`aggregate`函数。在我们的情况下，我们向`aggregate`函数传递了两个参数。首先，我们得到字段`price_per_unit`乘以数量的总和，并将结果存储在一个名为`total_order`的属性中。`aggregate`函数的第二个参数定义了输出数据类型，我们希望它是一个十进制值。
+之后，我们想要计算当前购物车中商品的总价值。为此，我们需要首先通过（价格*数量）来计算每件商品的总价，然后对结果进行求和。在 Django 中，可以对`QuerySet`的值进行聚合；我们已经有了包含购物车中商品列表的`QuerySet`，所以我们只需要使用`aggregate`函数。在我们的情况下，我们向`aggregate`函数传递了两个参数。首先，我们得到字段`price_per_unit`乘以数量的总和，并将结果存储在一个名为`total_order`的属性中。`aggregate`函数的第二个参数定义了输出数据类型，我们希望它是一个十进制值。
 
 当我们得到聚合的结果时，我们在上下文字典中创建了一个名为`total_order`的新项，并将结果赋给它。最后，我们返回上下文。
 
@@ -1922,14 +1922,14 @@ class ShoppingCartEditView(UpdateView):
 
 现在是时候创建购物车视图了。这个视图将呈现我们刚刚创建的表单，用户应该能够更改购物车中每件商品的数量，以及移除商品。如果购物车为空，我们应该显示一条消息，说明购物车是空的。
 
-在添加视图之前，让我们继续打开`gamestore/main/`中的`urls.py`文件，并添加以下URL：
+在添加视图之前，让我们继续打开`gamestore/main/`中的`urls.py`文件，并添加以下 URL：
 
 ```py
  path(r'cart/', views.ShoppingCartEditView.as_view(), name='user-
   cart'),
 ```
 
-在这里，我们定义了一个新的URL，`'cart/'`，当访问时，它将执行基于类的视图`ShoppingCartEditView`。我们还为URL定义了一个名称，以简化操作。
+在这里，我们定义了一个新的 URL，`'cart/'`，当访问时，它将执行基于类的视图`ShoppingCartEditView`。我们还为 URL 定义了一个名称，以简化操作。
 
 我们将在`gamestore/main/templates/main`中创建一个名为`cart.html`的新文件，内容如下：
 
@@ -2015,13 +2015,13 @@ class ShoppingCartEditView(UpdateView):
 
 我们即将完成购物车。现在我们将实现一个视图，将商品包含在购物车中。
 
-我们需要做的第一件事是创建一个新的URL。打开`gamestore/main/`目录中的`url.py`文件，并将此URL添加到`urlpatterns`列表中：
+我们需要做的第一件事是创建一个新的 URL。打开`gamestore/main/`目录中的`url.py`文件，并将此 URL 添加到`urlpatterns`列表中：
 
 ```py
    path(r'cart/add/<int:game_id>/', views.add_to_cart),
 ```
 
-完美。在此URL中，我们可以传递游戏ID，并且它将执行一个名为`add_to_cart`的视图。让我们添加这个新视图。在`gamestore/main`中打开`views.py`文件。首先，我们添加导入语句，如下所示：
+完美。在此 URL 中，我们可以传递游戏 ID，并且它将执行一个名为`add_to_cart`的视图。让我们添加这个新视图。在`gamestore/main`中打开`views.py`文件。首先，我们添加导入语句，如下所示：
 
 ```py
 from decimal import Decimal
@@ -2078,7 +2078,7 @@ def get_existing_item(self, cart, game):
         return HttpResponseRedirect(reverse_lazy('user-cart'))
 ```
 
-此函数获取请求和游戏ID，然后我们开始获取游戏和当前用户的购物车。然后我们将购物车和游戏传递给我们刚刚创建的`get_existing`函数。如果我们在购物车中没有特定的商品，我们就创建一个新的`ShoppingCartItem`；否则，我们只是更新数量并保存。
+此函数获取请求和游戏 ID，然后我们开始获取游戏和当前用户的购物车。然后我们将购物车和游戏传递给我们刚刚创建的`get_existing`函数。如果我们在购物车中没有特定的商品，我们就创建一个新的`ShoppingCartItem`；否则，我们只是更新数量并保存。
 
 我们还添加了一条消息，通知用户该商品已添加到购物车中。
 
@@ -2141,16 +2141,16 @@ def get_existing_item(self, cart, game):
 
 现在我们应该准备好测试它了。转到第一页，尝试向购物车中添加一些游戏。您应该会被重定向到购物车页面：
 
-![](assets/88194946-e679-46f9-a81a-b3b782e05424.png)
+![](img/88194946-e679-46f9-a81a-b3b782e05424.png)
 
 # 总结
 
-这是一个漫长的旅程，在本章中我们涵盖了很多内容。在本章中，您已经看到使用Django构建应用是多么容易。这个框架真的很符合“完美主义者的截止日期”这句话。
+这是一个漫长的旅程，在本章中我们涵盖了很多内容。在本章中，您已经看到使用 Django 构建应用是多么容易。这个框架真的很符合“完美主义者的截止日期”这句话。
 
-您已经学会了如何创建一个新的Django项目和应用程序，并简要介绍了Django在我们启动新项目时为我们生成的样板代码。我们学会了如何创建模型并使用迁移来对数据库应用更改。
+您已经学会了如何创建一个新的 Django 项目和应用程序，并简要介绍了 Django 在我们启动新项目时为我们生成的样板代码。我们学会了如何创建模型并使用迁移来对数据库应用更改。
 
-Django表单也是本章我们涵盖的一个主题，您应该能够为您的项目创建复杂的表单。
+Django 表单也是本章我们涵盖的一个主题，您应该能够为您的项目创建复杂的表单。
 
-作为奖励，我们学会了如何安装和使用**NodeJS版本管理器**（**NVM**）来安装Node.js，以便使用npm安装项目依赖项。
+作为奖励，我们学会了如何安装和使用**NodeJS 版本管理器**（**NVM**）来安装 Node.js，以便使用 npm 安装项目依赖项。
 
-在[第5章](332eca24-e97d-470d-a00f-882dbf2092aa.xhtml)中，*使用微服务构建Web Messenger*，我们将扩展此应用程序，并创建将处理商店库存的服务。
+在第五章中，*使用微服务构建 Web Messenger*，我们将扩展此应用程序，并创建将处理商店库存的服务。

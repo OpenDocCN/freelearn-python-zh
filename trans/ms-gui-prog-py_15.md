@@ -1,20 +1,20 @@
-# 使用`QPainter`创建2D图形
+# 使用`QPainter`创建 2D 图形
 
-我们已经看到Qt提供了大量的小部件，具有广泛的样式和自定义功能。然而，有时我们需要直接控制屏幕上的绘制内容；例如，我们可能想要编辑图像，创建一个独特的小部件，或者构建一个交互式动画。在所有这些任务的核心是Qt中一个谦卑而勤奋的对象，称为`QPainter`。
+我们已经看到 Qt 提供了大量的小部件，具有广泛的样式和自定义功能。然而，有时我们需要直接控制屏幕上的绘制内容；例如，我们可能想要编辑图像，创建一个独特的小部件，或者构建一个交互式动画。在所有这些任务的核心是 Qt 中一个谦卑而勤奋的对象，称为`QPainter`。
 
-在本章中，我们将在三个部分中探索Qt的**二维**（**2D**）图形功能：
+在本章中，我们将在三个部分中探索 Qt 的**二维**（**2D**）图形功能：
 
 +   使用`QPainter`进行图像编辑
 
 +   使用`QPainter`创建自定义小部件
 
-+   使用`QGraphicsScene`动画2D图形
++   使用`QGraphicsScene`动画 2D 图形
 
 # 技术要求
 
-本章需要基本的Python和PyQt5设置，这是您在整本书中一直在使用的。您可能还希望从[https://github.com/PacktPublishing/Mastering-GUI-Programming-with-Python/tree/master/Chapter12](https://github.com/PacktPublishing/Mastering-GUI-Programming-with-Python/tree/master/Chapter12)下载示例代码。
+本章需要基本的 Python 和 PyQt5 设置，这是您在整本书中一直在使用的。您可能还希望从[`github.com/PacktPublishing/Mastering-GUI-Programming-with-Python/tree/master/Chapter12`](https://github.com/PacktPublishing/Mastering-GUI-Programming-with-Python/tree/master/Chapter12)下载示例代码。
 
-您还需要`psutil`库，可以使用以下命令从PyPI安装：
+您还需要`psutil`库，可以使用以下命令从 PyPI 安装：
 
 ```py
 $ pip install --user psutil
@@ -22,15 +22,15 @@ $ pip install --user psutil
 
 最后，有一些图像在手边会很有帮助，您可以用它们作为示例数据。
 
-查看以下视频以查看代码的运行情况：[http://bit.ly/2M5xzlL](http://bit.ly/2M5xzlL)
+查看以下视频以查看代码的运行情况：[`bit.ly/2M5xzlL`](http://bit.ly/2M5xzlL)
 
 # 使用`QPainter`进行图像编辑
 
-在Qt中，可以使用`QPainter`对象在`QImage`对象上绘制图像。在[第6章](c3eb2567-0e73-4c37-9a9e-a0e2311e106c.xhtml)中，*Qt应用程序的样式*，您了解了`QPixmap`对象，它是一个表示图形图像的显示优化对象。`QImage`对象是一个类似的对象，它针对编辑而不是显示进行了优化。为了演示如何使用`QPainter`在`QImage`对象上绘制图像，我们将构建一个经典的表情包生成器应用程序。
+在 Qt 中，可以使用`QPainter`对象在`QImage`对象上绘制图像。在第六章中，*Qt 应用程序的样式*，您了解了`QPixmap`对象，它是一个表示图形图像的显示优化对象。`QImage`对象是一个类似的对象，它针对编辑而不是显示进行了优化。为了演示如何使用`QPainter`在`QImage`对象上绘制图像，我们将构建一个经典的表情包生成器应用程序。
 
 # 生成表情包的图形用户界面
 
-从[第4章](9281bd2a-64a1-4128-92b0-e4871b79c040.xhtml)中创建Qt应用程序模板的副本，*使用QMainWindow构建应用程序*，并将其命名为`meme_gen.py`。我们将首先构建用于表情包生成器的GUI表单。
+从第四章中创建 Qt 应用程序模板的副本，*使用 QMainWindow 构建应用程序*，并将其命名为`meme_gen.py`。我们将首先构建用于表情包生成器的 GUI 表单。
 
 # 编辑表单
 
@@ -63,7 +63,7 @@ class ColorButton(qtw.QPushButton):
         self.setIcon(qtg.QIcon(pixmap))
 ```
 
-这种方法将传递的颜色值存储在实例变量中，然后生成给定颜色的`pixmap`对象，用作按钮图标（我们在[第6章](c3eb2567-0e73-4c37-9a9e-a0e2311e106c.xhtml)中看到了这种技术，*Qt应用程序的样式*）。
+这种方法将传递的颜色值存储在实例变量中，然后生成给定颜色的`pixmap`对象，用作按钮图标（我们在第六章中看到了这种技术，*Qt 应用程序的样式*）。
 
 按钮的`clicked`信号连接到`on_click()`方法：
 
@@ -137,9 +137,9 @@ class ImageFileButton(qtw.QPushButton):
             self.changed.emit()
 ```
 
-唯一的区别是对话框现在是一个`getOpenFileName`对话框，允许用户选择PNG、XPM或JPEG文件。
+唯一的区别是对话框现在是一个`getOpenFileName`对话框，允许用户选择 PNG、XPM 或 JPEG 文件。
 
-`QImage`实际上可以处理各种各样的图像文件。您可以在[https://doc.qt.io/qt-5/qimage.html#reading-and-writing-image-files](https://doc.qt.io/qt-5/qimage.html#reading-and-writing-image-files)找到这些信息，或者调用`QImageReader.supportedImageFormats()`。出于简洁起见，我们在这里缩短了列表。
+`QImage`实际上可以处理各种各样的图像文件。您可以在[`doc.qt.io/qt-5/qimage.html#reading-and-writing-image-files`](https://doc.qt.io/qt-5/qimage.html#reading-and-writing-image-files)找到这些信息，或者调用`QImageReader.supportedImageFormats()`。出于简洁起见，我们在这里缩短了列表。
 
 现在这些类已经创建，让我们为编辑表情包属性构建一个表单：
 
@@ -179,7 +179,7 @@ class MemeEditForm(qtw.QWidget):
 
 我们的表情包将在图像的顶部和底部分别绘制文本，并且我们使用了`ColorButton`和`FontButton`类来创建文本颜色和字体的输入。再次，我们将每个小部件的适当`changed`信号连接到一个`on_changed()`实例方法。
 
-让我们通过添加控件来绘制文本的背景框来完成表单GUI：
+让我们通过添加控件来绘制文本的背景框来完成表单 GUI：
 
 ```py
         self.text_bg_color = ColorButton('black', changed=self.on_change)
@@ -222,9 +222,9 @@ class MemeEditForm(qtw.QWidget):
 
 首先，我们定义了一个`get_data()`方法，该方法从表单的小部件中组装一个值的`dict`对象并返回它们。如果我们需要显式地从表单中提取数据，而不是依赖信号，这将非常有用。`on_change()`方法检索这个`dict`对象并用`changed`信号发射它。
 
-# 主GUI
+# 主 GUI
 
-创建了表单小部件后，现在让我们组装我们的主GUI。
+创建了表单小部件后，现在让我们组装我们的主 GUI。
 
 让我们从`MainView.__init__()`开始：
 
@@ -236,9 +236,9 @@ class MemeEditForm(qtw.QWidget):
         self.image.fill(qtg.QColor('black'))
 ```
 
-我们将从设置窗口标题开始，然后定义生成的表情包图像的最大尺寸。我们将使用这个尺寸来创建我们的`QImage`对象。由于在程序启动时我们没有图像文件，所以我们将生成一个最大尺寸的黑色占位图像，使用`fill()`方法来实现，就像我们用像素图一样。然而，当创建一个空白的`QImage`对象时，我们需要指定一个图像格式来用于生成的图像。在这种情况下，我们使用ARGB32格式，可以用于制作具有透明度的全彩图像。
+我们将从设置窗口标题开始，然后定义生成的表情包图像的最大尺寸。我们将使用这个尺寸来创建我们的`QImage`对象。由于在程序启动时我们没有图像文件，所以我们将生成一个最大尺寸的黑色占位图像，使用`fill()`方法来实现，就像我们用像素图一样。然而，当创建一个空白的`QImage`对象时，我们需要指定一个图像格式来用于生成的图像。在这种情况下，我们使用 ARGB32 格式，可以用于制作具有透明度的全彩图像。
 
-在创建主GUI布局时，我们将使用这个图像：
+在创建主 GUI 布局时，我们将使用这个图像：
 
 ```py
         mainwidget = qtw.QWidget()
@@ -251,11 +251,11 @@ class MemeEditForm(qtw.QWidget):
         self.form.changed.connect(self.build_image)
 ```
 
-这个GUI是一个简单的两面板布局，左边是一个`QLabel`对象，用于显示我们的表情包图像，右边是用于编辑的`MemeTextForm()`方法。我们将表单的`changed`信号连接到一个名为`build_image()`的`MainWindow`方法，其中包含我们的主要绘图逻辑。请注意，我们不能直接在`QLabel`对象中显示`QImage`对象；我们必须先将其转换为`QPixmap`对象。
+这个 GUI 是一个简单的两面板布局，左边是一个`QLabel`对象，用于显示我们的表情包图像，右边是用于编辑的`MemeTextForm()`方法。我们将表单的`changed`信号连接到一个名为`build_image()`的`MainWindow`方法，其中包含我们的主要绘图逻辑。请注意，我们不能直接在`QLabel`对象中显示`QImage`对象；我们必须先将其转换为`QPixmap`对象。
 
-# 使用QImage进行绘制
+# 使用 QImage 进行绘制
 
-既然我们的GUI已经准备好了，现在是时候创建`MainView.build_image()`了。这个方法将包含所有的图像处理和绘制方法。
+既然我们的 GUI 已经准备好了，现在是时候创建`MainView.build_image()`了。这个方法将包含所有的图像处理和绘制方法。
 
 我们将从添加以下代码开始：
 
@@ -387,19 +387,19 @@ class MemeEditForm(qtw.QWidget):
 
 如果你运行你的迷因生成器，你应该会发现它看起来像下面的截图：
 
-![](assets/ce619532-1f47-4b59-bcbf-e28f4e9401a2.png)
+![](img/ce619532-1f47-4b59-bcbf-e28f4e9401a2.png)
 
 作为额外的练习，尝试想出一些其他你想在迷因上绘制的东西，并将这个功能添加到代码中。
 
-# 使用QPainter创建自定义小部件
+# 使用 QPainter 创建自定义小部件
 
-`QPainter`不仅仅是一个专门用于在图像上绘制的工具；它实际上是为Qt中所有小部件绘制所有图形的工作马。换句话说，你在PyQt应用程序中看到的每个小部件的每个像素都是由`QPainter`对象绘制的。我们可以控制`QPainter`来创建一个纯自定义的小部件。
+`QPainter`不仅仅是一个专门用于在图像上绘制的工具；它实际上是为 Qt 中所有小部件绘制所有图形的工作马。换句话说，你在 PyQt 应用程序中看到的每个小部件的每个像素都是由`QPainter`对象绘制的。我们可以控制`QPainter`来创建一个纯自定义的小部件。
 
-为了探索这个想法，让我们创建一个CPU监视器应用程序。获取Qt应用程序模板的最新副本，将其命名为`cpu_graph.py`，然后我们将开始。
+为了探索这个想法，让我们创建一个 CPU 监视器应用程序。获取 Qt 应用程序模板的最新副本，将其命名为`cpu_graph.py`，然后我们将开始。
 
-# 构建一个GraphWidget
+# 构建一个 GraphWidget
 
-我们的CPU监视器将使用区域图显示实时CPU活动。图表将通过颜色渐变进行增强，高值将以不同颜色显示，低值将以不同颜色显示。图表一次只显示配置数量的值，随着从右侧添加新值，旧值将滚动到小部件的左侧。
+我们的 CPU 监视器将使用区域图显示实时 CPU 活动。图表将通过颜色渐变进行增强，高值将以不同颜色显示，低值将以不同颜色显示。图表一次只显示配置数量的值，随着从右侧添加新值，旧值将滚动到小部件的左侧。
 
 为了实现这一点，我们需要构建一个自定义小部件。我们将其命名为`GraphWidget`，并开始如下：
 
@@ -442,7 +442,7 @@ class GraphWidget(qtw.QWidget):
         self.crit_val = crit_val
 ```
 
-为了存储我们的值，我们需要类似Python `list`的东西，但受限于固定数量的项目。Python的`collections`模块为此提供了完美的对象：`deque`类。
+为了存储我们的值，我们需要类似 Python `list`的东西，但受限于固定数量的项目。Python 的`collections`模块为此提供了完美的对象：`deque`类。
 
 让我们在代码块的顶部导入这个类：
 
@@ -461,7 +461,7 @@ from collections import deque
 
 `deque`可以接受一个`list`作为参数，该参数将用于初始化其数据。在这种情况下，我们使用一个包含最小值的`data_width`项的`list`进行初始化，并将`deque`类的`maxlen`值设置为`data_width`。
 
-您可以通过将包含1个项目的列表乘以*N*在Python中快速创建*N*个项目的列表，就像我们在这里所做的那样；例如，`[2] * 4`将创建一个列表`[2, 2, 2, 2]`。
+您可以通过将包含 1 个项目的列表乘以*N*在 Python 中快速创建*N*个项目的列表，就像我们在这里所做的那样；例如，`[2] * 4`将创建一个列表`[2, 2, 2, 2]`。
 
 我们通过将小部件的固定宽度设置为`data_width * scale`来完成`__init__()`方法，这代表了我们想要显示的总像素数。
 
@@ -543,7 +543,7 @@ from collections import deque
 
 我们可以重用我们的`QPen`对象，但请记住，每当我们对笔或刷子进行更改时，我们都必须重新分配给绘图者。绘图者传递了笔或刷子的副本，因此我们对对象进行的更改*在*分配给绘图者之后不会隐式传递给使用的笔或刷子。
 
-在[第6章](c3eb2567-0e73-4c37-9a9e-a0e2311e106c.xhtml)中，*Qt应用程序的样式*，您学习了如何创建一个渐变对象并将其应用于`QBrush`对象。在这个应用程序中，我们希望使用渐变来绘制我们的数据值，使得高值在顶部为红色，中等值为黄色，低值为绿色。
+在第六章中，*Qt 应用程序的样式*，您学习了如何创建一个渐变对象并将其应用于`QBrush`对象。在这个应用程序中，我们希望使用渐变来绘制我们的数据值，使得高值在顶部为红色，中等值为黄色，低值为绿色。
 
 让我们定义一个`QLinearGradient`渐变对象如下：
 
@@ -639,13 +639,13 @@ from collections import deque
 
 贝塞尔曲线使用两个控制点来定义其曲线。每个控制点都会将线段拉向它自己——第一个控制点拉动线段的前半部分，第二个控制点拉动线段的后半部分：
 
-![](assets/004dbd50-bd0b-40cc-8967-020135f4a640.png)
+![](img/004dbd50-bd0b-40cc-8967-020135f4a640.png)
 
-我们将第一个控制点设置为最后的y值，将第二个控制点设置为当前的y值——这两个值都是开始和结束x值的中间值。这给我们在上升斜坡上一个S形曲线，在下降斜坡上一个反S形曲线，从而产生更柔和的峰值和谷值。
+我们将第一个控制点设置为最后的 y 值，将第二个控制点设置为当前的 y 值——这两个值都是开始和结束 x 值的中间值。这给我们在上升斜坡上一个 S 形曲线，在下降斜坡上一个反 S 形曲线，从而产生更柔和的峰值和谷值。
 
 在应用程序中设置`GraphWidget`对象后，您可以尝试在曲线和线命令之间切换以查看差异。
 
-# 使用GraphWidget
+# 使用 GraphWidget
 
 我们的图形小部件已经完成，所以让我们转到`MainWindow`并使用它。
 
@@ -656,7 +656,7 @@ from collections import deque
         self.setCentralWidget(self.graph)
 ```
 
-接下来，让我们创建一个方法，该方法将读取当前的CPU使用情况并将其发送到`GraphWidget`。为此，我们需要从`psutil`库导入`cpu_percent`函数：
+接下来，让我们创建一个方法，该方法将读取当前的 CPU 使用情况并将其发送到`GraphWidget`。为此，我们需要从`psutil`库导入`cpu_percent`函数：
 
 ```py
 from psutil import cpu_percent
@@ -670,7 +670,7 @@ from psutil import cpu_percent
         self.graph.add_value(cpu_usage)
 ```
 
-`cpu_percent()`函数返回一个从0到100的整数，反映了计算机当前的CPU利用率。这非常适合直接发送到我们的`GraphWidget`，其默认范围是0到100。
+`cpu_percent()`函数返回一个从 0 到 100 的整数，反映了计算机当前的 CPU 利用率。这非常适合直接发送到我们的`GraphWidget`，其默认范围是 0 到 100。
 
 现在我们只需要定期调用这个方法来更新图形；在`MainWindow.__init__()`中，添加以下代码：
 
@@ -681,15 +681,15 @@ from psutil import cpu_percent
         self.timer.start()
 ```
 
-这只是一个`QTimer`对象，您在[第10章](06a74416-66c5-4538-9dc5-c540a3a44da9.xhtml)中学到的，*使用QTimer和QThread进行多线程处理*，设置为每秒调用一次`update_graph()`。
+这只是一个`QTimer`对象，您在第十章中学到的，*使用 QTimer 和 QThread 进行多线程处理*，设置为每秒调用一次`update_graph()`。
 
 如果现在运行应用程序，您应该会得到类似于这样的结果：
 
-![](assets/9f215c0b-8fcb-4e0d-acbf-b344e4bf5605.png)
+![](img/9f215c0b-8fcb-4e0d-acbf-b344e4bf5605.png)
 
 注意我们的贝塞尔曲线所创建的平滑峰值。如果切换回直线代码，您将看到这些峰值变得更加尖锐。
 
-如果您的CPU太强大，无法提供有趣的活动图，请尝试对`update_graph()`进行以下更改以更好地测试小部件：
+如果您的 CPU 太强大，无法提供有趣的活动图，请尝试对`update_graph()`进行以下更改以更好地测试小部件：
 
 ```py
     def update_graph(self):
@@ -700,19 +700,19 @@ from psutil import cpu_percent
 
 这将只输出介于`1`和`100`之间的随机值，并且应该产生一些相当混乱的结果。
 
-看到这个CPU图表实时动画可能会让您对Qt的动画能力产生疑问。在下一节中，我们将学习如何使用`QPainter`和Qt图形视图框架一起创建Qt中的2D动画。
+看到这个 CPU 图表实时动画可能会让您对 Qt 的动画能力产生疑问。在下一节中，我们将学习如何使用`QPainter`和 Qt 图形视图框架一起创建 Qt 中的 2D 动画。
 
-# 使用QGraphicsScene进行2D图形动画
+# 使用 QGraphicsScene 进行 2D 图形动画
 
-在简单的小部件和图像编辑中，对`QPaintDevice`对象进行绘制效果很好，但在我们想要绘制大量的2D对象，并可能实时地对它们进行动画处理的情况下，我们需要一个更强大的对象。Qt提供了Graphics View Framework，这是一个基于项目的模型视图框架，用于组合复杂的2D图形和动画。
+在简单的小部件和图像编辑中，对`QPaintDevice`对象进行绘制效果很好，但在我们想要绘制大量的 2D 对象，并可能实时地对它们进行动画处理的情况下，我们需要一个更强大的对象。Qt 提供了 Graphics View Framework，这是一个基于项目的模型视图框架，用于组合复杂的 2D 图形和动画。
 
 为了探索这个框架的运作方式，我们将创建一个名为**Tankity Tank Tank Tank**的游戏。
 
 # 第一步
 
-这个坦克游戏将是一个两人对战游戏，模拟了你可能在经典的1980年代游戏系统上找到的简单动作游戏。一个玩家将在屏幕顶部，一个在底部，两辆坦克将不断从左到右移动，每个玩家都试图用一颗子弹射击对方。
+这个坦克游戏将是一个两人对战游戏，模拟了你可能在经典的 1980 年代游戏系统上找到的简单动作游戏。一个玩家将在屏幕顶部，一个在底部，两辆坦克将不断从左到右移动，每个玩家都试图用一颗子弹射击对方。
 
-要开始，将您的Qt应用程序模板复制到一个名为`tankity_tank_tank_tank.py`的新文件中。从文件顶部的`import`语句之后开始，我们将添加一些常量：
+要开始，将您的 Qt 应用程序模板复制到一个名为`tankity_tank_tank_tank.py`的新文件中。从文件顶部的`import`语句之后开始，我们将添加一些常量：
 
 ```py
 SCREEN_WIDTH = 800
@@ -731,7 +731,7 @@ BORDER_HEIGHT = 100
 
 这是我们将要添加到`MainWindow`中的所有代码。在将窗口调整大小为我们的宽度和高度常量之后，我们将创建两个对象，如下：
 
-+   第一个是`Scene`对象。这是一个我们将要创建的自定义类，是从`QGraphicsScene`派生的。`QGraphicsScene`是这个模型视图框架中的模型，表示包含各种图形项目的2D场景。
++   第一个是`Scene`对象。这是一个我们将要创建的自定义类，是从`QGraphicsScene`派生的。`QGraphicsScene`是这个模型视图框架中的模型，表示包含各种图形项目的 2D 场景。
 
 +   第二个是`QGraphicsView`对象，它是框架的视图组件。这个小部件的工作只是渲染场景并将其显示给用户。
 
@@ -754,7 +754,7 @@ class Scene(qtw.QGraphicsScene):
 
 我们在这里做的第一件事是通过设置`backgroundBrush`属性将我们的场景涂成黑色。这个属性自然地需要一个`QBrush`对象，它将用来填充场景的背景。我们还设置了`sceneRect`属性，它描述了场景的大小，设置为我们的宽度和高度常量的`QRect`对象。
 
-要开始在场景上放置对象，我们可以使用它的许多add方法之一：
+要开始在场景上放置对象，我们可以使用它的许多 add 方法之一：
 
 ```py
         wall_brush = qtg.QBrush(qtg.QColor('blue'), qtc.Qt.Dense5Pattern)
@@ -802,7 +802,7 @@ class Scene(qtw.QGraphicsScene):
 
 # 创建坦克
 
-我们的游戏将有两辆坦克，一辆在屏幕顶部，一辆在底部。这些将在`Scene`对象上绘制，并进行动画处理，以便玩家可以左右移动它们。在[第6章](c3eb2567-0e73-4c37-9a9e-a0e2311e106c.xhtml)中，*Qt应用程序的样式*，您学到了可以使用`QPropertyAnimation`进行动画处理，但是*只有*被动画处理的属性属于`QObject`的后代。`QGraphicsItem`不是`QObject`的后代，但`QGraphicsObject`对象将两者结合起来，为我们提供了一个可以进行动画处理的图形项。
+我们的游戏将有两辆坦克，一辆在屏幕顶部，一辆在底部。这些将在`Scene`对象上绘制，并进行动画处理，以便玩家可以左右移动它们。在第六章中，*Qt 应用程序的样式*，您学到了可以使用`QPropertyAnimation`进行动画处理，但是*只有*被动画处理的属性属于`QObject`的后代。`QGraphicsItem`不是`QObject`的后代，但`QGraphicsObject`对象将两者结合起来，为我们提供了一个可以进行动画处理的图形项。
 
 因此，我们需要将我们的`Tank`类构建为`QGraphicsObject`的子类：
 
@@ -815,7 +815,7 @@ class Tank(qtw.QGraphicsObject):
 
 这个类首先定义了两个常量，`TOP`和`BOTTOM`。这将用于表示我们是在屏幕顶部还是底部创建坦克。
 
-`TANK_BM`是一个包含坦克图形的8×8位图数据的`bytes`对象。我们很快就会看到这是如何工作的。
+`TANK_BM`是一个包含坦克图形的 8×8 位图数据的`bytes`对象。我们很快就会看到这是如何工作的。
 
 首先，让我们开始构造函数：
 
@@ -836,7 +836,7 @@ class Tank(qtw.QGraphicsObject):
 
 `QBitmap`对象是`QPixmap`的单色图像的特殊情况。通过将大小和`bytes`对象传递给`fromData()`静态方法，我们可以生成一个简单的位图对象，而无需单独的图像文件。
 
-为了理解这是如何工作的，请考虑`TANK_BM`字符串。因为我们将其解释为8×8图形，所以该字符串中的每个字节（8位）对应于图形的一行。
+为了理解这是如何工作的，请考虑`TANK_BM`字符串。因为我们将其解释为 8×8 图形，所以该字符串中的每个字节（8 位）对应于图形的一行。
 
 如果您将每一行转换为二进制数字并将它们按每行一个字节的方式排列，它将如下所示：
 
@@ -851,7 +851,7 @@ class Tank(qtw.QGraphicsObject):
 01100110
 ```
 
-由1创建的形状实质上是该位图将采用的形状。当然，8x8的图形将非常小，所以我们应该将其放大。此外，这辆坦克显然是指向上的，所以如果我们是顶部的坦克，我们需要将其翻转过来。
+由 1 创建的形状实质上是该位图将采用的形状。当然，8x8 的图形将非常小，所以我们应该将其放大。此外，这辆坦克显然是指向上的，所以如果我们是顶部的坦克，我们需要将其翻转过来。
 
 我们可以使用`QTransform`对象来完成这两件事：
 
@@ -879,7 +879,7 @@ class Tank(qtw.QGraphicsObject):
         painter.drawPixmap(0, 0, self.bitmap)
 ```
 
-`paint()`的第一个参数是`QPainter`对象，Qt已经创建并分配给绘制对象。我们只需要对该绘图程序应用命令，它将根据我们的要求绘制图像。我们将首先将`pen`属性设置为我们创建的笔，然后使用绘图程序的`drawPixmap()`方法来绘制我们的位图。
+`paint()`的第一个参数是`QPainter`对象，Qt 已经创建并分配给绘制对象。我们只需要对该绘图程序应用命令，它将根据我们的要求绘制图像。我们将首先将`pen`属性设置为我们创建的笔，然后使用绘图程序的`drawPixmap()`方法来绘制我们的位图。
 
 请注意，我们传递给`drawPixmap()`的坐标不是`QGraphicsScene`类的坐标，而是`QGraphicsObject`对象本身的边界矩形内的坐标。因此，我们需要确保我们的对象返回一个适当的边界矩形，以便我们的图像被正确绘制。
 
@@ -986,7 +986,7 @@ class Bullet(qtw.QGraphicsObject):
         painter.drawRect(0, 0, 10, 10)
 ```
 
-我们的子弹将简单地是一个10×10的黄色正方形，使用绘图器的`drawRect()`方法创建。这对于复古游戏来说是合适的，但是为了好玩，让我们把它变得更有趣。为此，我们可以将称为`QGraphicsEffect`的类应用于`QGraphicsObject`。`QGraphicsEffect`类可以实时地对对象应用视觉效果。我们通过创建`QGraphicEffect`类的子类实例并将其分配给子弹的`graphicsEffect`属性来实现这一点，如下所示：
+我们的子弹将简单地是一个 10×10 的黄色正方形，使用绘图器的`drawRect()`方法创建。这对于复古游戏来说是合适的，但是为了好玩，让我们把它变得更有趣。为此，我们可以将称为`QGraphicsEffect`的类应用于`QGraphicsObject`。`QGraphicsEffect`类可以实时地对对象应用视觉效果。我们通过创建`QGraphicEffect`类的子类实例并将其分配给子弹的`graphicsEffect`属性来实现这一点，如下所示：
 
 ```py
         blur = qtw.QGraphicsBlurEffect()
@@ -996,7 +996,7 @@ class Bullet(qtw.QGraphicsObject):
  self.setGraphicsEffect(blur)
 ```
 
-添加到`Bullet.__init__()`的这段代码创建了一个模糊效果并将其应用到我们的`QGraphicsObject`类。请注意，这是应用在对象级别上的，而不是在绘画级别上，因此它适用于我们绘制的任何像素。我们已将模糊半径调整为10像素，并添加了`AnimationHint`对象，告诉我们正在应用于动画对象的效果，并激活某些性能优化。
+添加到`Bullet.__init__()`的这段代码创建了一个模糊效果并将其应用到我们的`QGraphicsObject`类。请注意，这是应用在对象级别上的，而不是在绘画级别上，因此它适用于我们绘制的任何像素。我们已将模糊半径调整为 10 像素，并添加了`AnimationHint`对象，告诉我们正在应用于动画对象的效果，并激活某些性能优化。
 
 说到动画，让我们按照以下方式创建子弹的动画：
 
@@ -1102,7 +1102,7 @@ class Bullet(qtw.QGraphicsObject):
 
 到目前为止，我们的游戏几乎已经完成了：
 
-![](assets/492381be-ba26-4e11-91b5-de1470a9ef5a.png)
+![](img/492381be-ba26-4e11-91b5-de1470a9ef5a.png)
 
 当然，还有一个非常重要的方面还缺失了——控制！
 
@@ -1131,9 +1131,9 @@ class Bullet(qtw.QGraphicsObject):
 
 # 总结
 
-在本章中，您学习了如何在PyQt中使用2D图形。我们学习了如何使用`QPainter`对象编辑图像并创建自定义小部件。然后，您学习了如何使用`QGraphicsScene`方法与`QGraphicsObject`类结合使用，创建可以使用自动逻辑或用户输入控制的动画场景。
+在本章中，您学习了如何在 PyQt 中使用 2D 图形。我们学习了如何使用`QPainter`对象编辑图像并创建自定义小部件。然后，您学习了如何使用`QGraphicsScene`方法与`QGraphicsObject`类结合使用，创建可以使用自动逻辑或用户输入控制的动画场景。
 
-在下一章中，我们将为我们的图形添加一个额外的维度，探索在PyQt中使用OpenGL 3D图形。您将学习一些OpenGL编程的基础知识，以及如何将其集成到PyQt应用程序中。
+在下一章中，我们将为我们的图形添加一个额外的维度，探索在 PyQt 中使用 OpenGL 3D 图形。您将学习一些 OpenGL 编程的基础知识，以及如何将其集成到 PyQt 应用程序中。
 
 # 问题
 
@@ -1151,7 +1151,7 @@ class Bullet(qtw.QGraphicsObject):
            return image
 ```
 
-1.  给定一个名为`painter`的`QPainter`对象，写一行代码在绘图设备的左上角绘制一个80×80像素的八边形。您可以参考[https://doc.qt.io/qt-5/qpainter.html#drawPolygon](https://doc.qt.io/qt-5/qpainter.html#drawPolygon)中的文档进行指导。
+1.  给定一个名为`painter`的`QPainter`对象，写一行代码在绘图设备的左上角绘制一个 80×80 像素的八边形。您可以参考[`doc.qt.io/qt-5/qpainter.html#drawPolygon`](https://doc.qt.io/qt-5/qpainter.html#drawPolygon)中的文档进行指导。
 
 1.  您正在创建一个自定义小部件，但不知道为什么文本显示为黑色。以下是您的`paintEvent()`方法；看看你能否找出问题：
 
@@ -1199,7 +1199,7 @@ class Bullet(qtw.QGraphicsObject):
 
 +   坦克被击中时爆炸
 
-+   声音（参见[第7章](0234c71b-292c-4423-89d7-e9d9906d730e.xhtml)，*使用QtMultimedia处理音频-视觉*，以获取指导）
++   声音（参见第七章，*使用 QtMultimedia 处理音频-视觉*，以获取指导）
 
 +   背景动画
 
@@ -1209,8 +1209,8 @@ class Bullet(qtw.QGraphicsObject):
 
 有关更多信息，请参阅以下内容：
 
-+   有关`QPainter`和Qt绘图系统的深入讨论可以在[https://doc.qt.io/qt-5/paintsystem.html](https://doc.qt.io/qt-5/paintsystem.html)找到
++   有关`QPainter`和 Qt 绘图系统的深入讨论可以在[`doc.qt.io/qt-5/paintsystem.html`](https://doc.qt.io/qt-5/paintsystem.html)找到
 
-+   Qt图形视图框架的概述可以在[https://doc.qt.io/qt-5/graphicsview.html](https://doc.qt.io/qt-5/graphicsview.html)找到
++   Qt 图形视图框架的概述可以在[`doc.qt.io/qt-5/graphicsview.html`](https://doc.qt.io/qt-5/graphicsview.html)找到
 
-+   动画框架的概述可以在[https://doc.qt.io/qt-5/animation-overview.html](https://doc.qt.io/qt-5/animation-overview.html)找到
++   动画框架的概述可以在[`doc.qt.io/qt-5/animation-overview.html`](https://doc.qt.io/qt-5/animation-overview.html)找到
