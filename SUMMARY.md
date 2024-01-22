@@ -1,5 +1,3 @@
-+   [Think Python 中文第二版](docs/think-py-2e-zh/README.md)
-+   [笨办法学 Python · 续 中文版](docs/lmpythw-zh/README.md)
 +   [Python 分布式计算](docs/py-dist-comp/README.md)
 +   [Learning Scrapy 中文版](docs/learn-scrapy/README.md)
 +   [Python 物联网入门手册](docs/get-start-py-iot/README.md)
