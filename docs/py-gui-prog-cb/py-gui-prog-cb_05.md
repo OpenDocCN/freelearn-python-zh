@@ -1,4 +1,4 @@
-# 第五章。Matplotlib 图表
+# 第五章：Matplotlib 图表
 
 在这一章中，我们将使用 Python 3 和 Matplotlib 模块创建美丽的图表。
 

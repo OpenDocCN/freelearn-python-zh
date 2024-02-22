@@ -1,4 +1,4 @@
-# 第十章。使用 PyOpenGL 和 PyGLet 创建令人惊叹的 3D GUI
+# 第十章：使用 PyOpenGL 和 PyGLet 创建令人惊叹的 3D GUI
 
 在本章中，我们将创建令人惊叹的 Python GUI，显示真正的可以旋转的三维图像，这样我们可以从各个角度观察它们。
 

@@ -1,4 +1,4 @@
-# 第九章。使用 wxPython 库扩展我们的 GUI
+# 第九章：使用 wxPython 库扩展我们的 GUI
 
 在本章中，我们将使用 wxPython 库增强我们的 Python GUI。
 
