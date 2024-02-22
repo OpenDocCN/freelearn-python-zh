@@ -1,4 +1,4 @@
-# 第二十二章：将 Raspbian 9 升级到 Raspbian 10
+# 第十九章：将 Raspbian 9 升级到 Raspbian 10
 
 在第十五章中，*PyQt Raspberry Pi*，需要 Raspbian 10，这样您就可以拥有足够新的 Python 和 PyQt5 版本。在出版时，Raspbian 的当前版本是 9 版，预计 2019 年中至晚期将推出 10 版。但是，您可以升级到 Raspbian 10 的测试版本，这将正确地满足本书的目的。
 

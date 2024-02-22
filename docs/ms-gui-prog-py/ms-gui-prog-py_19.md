@@ -1,4 +1,4 @@
-# 第十九章：使用 QtWebEngine 进行 Web 浏览
+# 第十六章：使用 QtWebEngine 进行 Web 浏览
 
 在第八章中，*使用 QtNetwork 进行网络操作*，您学习了如何使用套接字和 HTTP 与网络系统进行交互。然而，现代网络远不止于网络协议；它是建立在 HTML、JavaScript 和 CSS 组合之上的编程平台，有效地使用它需要一个完整的 Web 浏览器。幸运的是，Qt 为我们提供了`QtWebEngineWidgets`库，为我们的应用程序提供了一个完整的 Web 浏览器小部件。
 
