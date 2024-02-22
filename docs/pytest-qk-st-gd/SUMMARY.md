@@ -1,4 +1,4 @@
-+   [PyText 快速启动指南](README.md)
++   [PyTest 快速启动指南](README.md)
 +   [前言](pytest-qk-st-gd_0.md)
 +   [第一章：编写和运行测试](pytest-qk-st-gd_1.md)
 +   [第二章：标记和参数化](pytest-qk-st-gd_2.md)
