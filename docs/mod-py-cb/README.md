@@ -1,3 +1,3 @@
-# 现代 Python 秘籍第二版
+# 现代 Python 秘籍
 
-> 原文：[`zh.annas-archive.org/md5/e277139dfb6b24bb48397559142ca3f8`](https://zh.annas-archive.org/md5/e277139dfb6b24bb48397559142ca3f8)
+> 原文：[`zh.annas-archive.org/md5/185a6e8218e2ea258a432841b73d4359`](https://zh.annas-archive.org/md5/185a6e8218e2ea258a432841b73d4359)
