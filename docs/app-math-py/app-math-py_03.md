@@ -837,7 +837,7 @@ for i in range(steps):
 
 这意味着我们矩阵的第一行应包含*1-r*，然后是*r*，然后是 0。对右手极限进行类似的计算得到矩阵的最后一行。
 
-*```py
+```py
 diag = [1-r, *(1-2*r for _ in range(N-1)), 1-r]
 abv_diag = [*(r for _ in range(N))]
 blw_diag = [*(r for _ in range(N))]

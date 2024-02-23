@@ -76,7 +76,7 @@ y = f(x)  # evaluate f on the x points
 
 1.  要绘制数据，我们只需要从`pyplot`接口调用`plot`函数，该接口被导入为`plt`别名。第一个参数是`x`数据，第二个是`y`数据。该函数返回一个用于绘制数据的轴对象的句柄：
 
-*```py
+```py
 plt.plot(x, y)
 ```
 
@@ -265,7 +265,7 @@ ax.legend(("data y1", "data y2", "data y3"))
 
 您需要将要绘制在每个子图上的数据。例如，我们将在第一个子图上绘制应用于*f*(*x*) = *x²-1*函数的牛顿法的前五个迭代，初始值为*x[0] = 2*，对于第二个子图，我们将绘制迭代的误差。我们首先定义一个生成器函数来获取迭代：
 
-*```py
+```py
 def generate_newton_iters(x0, number):
     iterates = [x0]
     errors = [abs(x0 - 1.)]
@@ -294,7 +294,7 @@ fig, (ax1, ax2) = plt.subplots(1, 2, tight_layout=True) # 1 row, 2 columns
 
 1.  一旦创建了`Figure`和`Axes`对象，我们可以通过在每个`Axes`对象上调用相关的绘图方法来填充图。对于第一个图（显示在左侧），我们在`ax1`对象上使用`plot`方法，它与标准的`plt.plot`例程具有相同的签名。然后我们可以在`ax1`上调用`set_title`、`set_xlabel`和`set_ylabel`方法来设置标题和`x`和`y`标签。我们还通过提供`usetex`关键字参数来使用 TeX 格式化轴标签；如果您的系统上没有安装 TeX，可以忽略这一点：
 
-*```py
+```py
 ax1.plot(iterates, "x")
 ax1.set_title("Iterates")
 ax1.set_xlabel("$i$", usetex=True)
