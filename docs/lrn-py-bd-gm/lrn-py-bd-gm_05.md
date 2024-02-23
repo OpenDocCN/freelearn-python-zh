@@ -137,7 +137,42 @@ curses.endwin()
 
 现在，让我们运行我们的代码来观察结果。确保你从终端或命令提示符中运行你的应用程序，使用`filename.py`：
 
-![你可以将位置从(0,0)改变为任何其他值，比如(5,5)，来观察窗口和填充格式。最后，我们用 curses 制作了我们的第一个程序。现在，是时候探索 curses 的另一个特性了，这个特性是基于处理用户输入的能力。# 使用 curses 处理用户输入在任何游戏中，用户输入是需要正确处理的最关键的信息之一。在处理这些类型的操作时，我们不能有任何延迟。在 curses 的情况下，我们有两种方法可以从用户那里获取输入。这两种方法如下：+   `getch()`: 如果你有 C 或 C++等语言的编程背景，这对你来说应该不是什么新鲜事。`getch()`函数就像在 C 中一样，用于创建一个持续监听用户按键的监听器。它返回一个从 0 到 255 的整数，代表被按下的键的 ASCII 码。例如，`a`的 ASCII 码是`097`。大于 255 的值是特殊键，例如*Page Up*和导航键，即 UP、DOWN、LEFT 和 RIGHT。我们可以将这些键的值与 curses 中存储的常量进行比较；例如，`curses.UP`、`curses.DOWN`、`curses.LEFT`和`curses.RIGHT`。+   `getkey()`: `getch`和`getkey`做的是同样的事情，但是`getkey`函数会将返回的整数转换为字符串。诸如 a-z 或 A-Z 之类的普通键将作为一个包含一个字符的字符串返回，可以与`ord()`函数进行比较。然而，特殊键或功能键将作为一个更长的字符串返回，其中包含一个键并表示动作的类型，比如`KEY_UP`。让我们写一个可以处理键盘事件的程序：```py#program3.pyimport curses as cscreen = c.initscr()win = c.newwin(20, 60, 0, 0)c.noecho()c.cbreak()screen.keypad(True)while True:  char = screen.getch() #takes input  if char == ord('q'):      break  if char == ord('p'):      win.addstr(5,10, "Hello World")      win.refresh()screen.endwin()```当我们讨论使用 True 循环时，我们讨论了这段代码。如果你对任何这些命令感到困惑，请确保复习前面的主题。你可能会观察到这段代码中的一个奇怪的地方是，我们导入了 curses 并给它起了一个别名 c。这是重命名模块的过程。现在，我们可以在每个方法调用时使用`c.method_name()`，而不是在每次调用时使用`curses.method_name`，这当然消除了每次写相同模块名的开销。在循环内，我们使用`getch()`函数从用户那里获取输入。之后，字符被存储在`char`变量中，我们将其与`ord`函数的返回值进行比较。记住，`getch`函数将返回一个 Unicode 值？`ord`函数也是如此。它接受一个字符作为参数，并返回该字符的 Unicode 值。我们使用条件语句来进行条件判断。因此，如果用户在键盘上按下*q*，我们将结束程序，如果用户在键盘上按下*p*，我们将在输出窗口的位置(y,x)打印`Hello World`。让我们运行我们的 Python 文件，`C:\User\Desktop> python program3.py`，并查看输出：![](img/935843ba-c5f4-4c19-96c2-0b28b7fe7a6e.png)
+你可以将位置从(0,0)改变为任何其他值，比如(5,5)，来观察窗口和填充格式。最后，我们用 curses 制作了我们的第一个程序。
+
+现在，是时候探索 curses 的另一个特性了，这个特性是基于处理用户输入的能力。# 使用 curses 处理用户输入在任何游戏中，用户输入是需要正确处理的最关键的信息之一。在处理这些类型的操作时，我们不能有任何延迟。
+
+在 curses 的情况下，我们有两种方法可以从用户那里获取输入。这两种方法如下：
+
++   `getch()`: 如果你有 C 或 C++等语言的编程背景，这对你来说应该不是什么新鲜事。`getch()`函数就像在 C 中一样，用于创建一个持续监听用户按键的监听器。它返回一个从 0 到 255 的整数，代表被按下的键的 ASCII 码。例如，`a`的 ASCII 码是`097`。大于 255 的值是特殊键，例如*Page Up*和导航键，即 UP、DOWN、LEFT 和 RIGHT。我们可以将这些键的值与 curses 中存储的常量进行比较；例如，`curses.UP`、`curses.DOWN`、`curses.LEFT`和`curses.RIGHT`。
++   `getkey()`: `getch`和`getkey`做的是同样的事情，但是`getkey`函数会将返回的整数转换为字符串。诸如 a-z 或 A-Z 之类的普通键将作为一个包含一个字符的字符串返回，可以与`ord()`函数进行比较。
+
+然而，特殊键或功能键将作为一个更长的字符串返回，其中包含一个键并表示动作的类型，比如`KEY_UP`。让我们写一个可以处理键盘事件的程序：
+
+```py
+#program3.py
+import curses as c
+screen = c.initscr()
+win = c.newwin(20, 60, 0, 0)
+c.noecho()
+c.cbreak()
+screen.keypad(True)
+while True:
+  char = screen.getch()
+  #takes input  
+  if char == ord('q'):
+    break  
+  if char == ord('p'):      
+    win.addstr(5,10, "Hello World")      
+    win.refresh()
+screen.endwin()
+```
+当我们讨论使用 True 循环时，我们讨论了这段代码。如果你对任何这些命令感到困惑，请确保复习前面的主题。
+
+你可能会观察到这段代码中的一个奇怪的地方是，我们导入了 curses 并给它起了一个别名 c。这是重命名模块的过程。现在，我们可以在每个方法调用时使用`c.method_name()`，而不是在每次调用时使用`curses.method_name`，这当然消除了每次写相同模块名的开销。
+
+在循环内，我们使用`getch()`函数从用户那里获取输入。之后，字符被存储在`char`变量中，我们将其与`ord`函数的返回值进行比较。记住，`getch`函数将返回一个 Unicode 值？`ord`函数也是如此。它接受一个字符作为参数，并返回该字符的 Unicode 值。我们使用条件语句来进行条件判断。因此，如果用户在键盘上按下*q*，我们将结束程序，如果用户在键盘上按下*p*，我们将在输出窗口的位置(y,x)打印`Hello World`。
+
+让我们运行我们的 Python 文件，`C:\User\Desktop> python program3.py`，并查看输出：![](img/935843ba-c5f4-4c19-96c2-0b28b7fe7a6e.png)
 
 按下键盘上的*q*键来终止循环并关闭应用程序。
 
