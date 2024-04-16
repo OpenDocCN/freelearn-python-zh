@@ -1,4 +1,4 @@
-# 龙哥盟 Python 译文集
+# FreeLearning Python 译文集
 
 > 协议：[CC BY-NC-SA 4.0](http://creativecommons.org/licenses/by-nc-sa/4.0/)
 > 
@@ -7,21 +7,22 @@
 > 软件就像性，免费的比花钱的好得多。——林纳斯·托瓦兹
 
 * [在线阅读](https://py.flygon.net)
+
 ## 下载
 
 ### Docker
 
 ```
-docker pull apachecn0/flygon-python-zh
-docker run -tid -p <port>:80 apachecn0/flygon-python-zh
+docker pull apachecn0/freelearn-python-zh
+docker run -tid -p <port>:80 apachecn0/freelearn-python-zh
 # 访问 http://localhost:{port} 查看文档
 ```
 
 ### NPM
 
 ```
-npm install -g flygon-python-zh
-flygon-python-zh <port>
+npm install -g freelearn-python-zh
+freelearn-python-zh <port>
 # 访问 http://localhost:{port} 查看文档
 ```
 
