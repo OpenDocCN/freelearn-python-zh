@@ -32,7 +32,7 @@ Python 语法设计得非常简单。有一些规则；我们将查看语言中�
 
 当我们写这样的东西时：
 
-```py
+```
  **>>> print("hello world")** 
 
  **hello world** 
@@ -43,7 +43,7 @@ Python 语法设计得非常简单。有一些规则；我们将查看语言中�
 
 我们已经看到的另一种语句是赋值语句。Python 在这个主题上有很多变化。大多数时候，我们将一个值赋给一个变量。然而，有时我们可能会同时给两个变量赋值，就像这样：
 
-```py
+```
  **quotient, remainder = divmod(355, 113)** 
 
 ```
@@ -106,7 +106,7 @@ BBEdit 非常适合 Mac OS X 开发人员。请参阅[`www.barebones.com/product
 
 1.  大多数 Python 脚本文件的第一行应该是这样的：
 
-```py
+```
             #!/usr/bin/env python3 
 
 ```
@@ -121,7 +121,7 @@ Windows 开发人员可以无论如何包含序言行。这将使 Mac OS X 和 L
 
 1.  在序言之后，应该有一个三引号的文本块。这是我们要创建的文件的文档字符串（称为**docstring**）。这在技术上不是强制性的，但对于解释文件包含的内容至关重要。
 
-```py
+```
         ''' 
         A summary of this script. 
         ''' 
@@ -132,7 +132,7 @@ Windows 开发人员可以无论如何包含序言行。这将使 Mac OS X 和 L
 
 1.  现在来到脚本的有趣部分：真正执行操作的部分。我们可以编写所有需要完成工作的语句。现在，我们将使用这个作为占位符：
 
-```py
+```
         print('hello world') 
 
 ```
@@ -143,7 +143,7 @@ Windows 开发人员可以无论如何包含序言行。这将使 Mac OS X 和 L
 
 我们的文件应该是这样的：
 
-```py
+```
     #!/usr/bin/env python3 
     ''' 
     My First Script: Calculate an important value. 
@@ -163,7 +163,7 @@ Windows 开发人员可以无论如何包含序言行。这将使 Mac OS X 和 L
 
 如果我们将文件保存为 UTF-8，这是合法的 Python：
 
-```py
+```
     π=355/113 
     print(π) 
 
@@ -187,7 +187,7 @@ Windows 开发人员可以无论如何包含序言行。这将使 Mac OS X 和 L
 
 在 Python 3.5 中，我们有时会在脚本文件中看到这样的东西：
 
-```py
+```
     color = 355/113 # type: float 
 
 ```
@@ -200,7 +200,7 @@ Windows 开发人员可以无论如何包含序言行。这将使 Mac OS X 和 L
 
 这是一个对 Python 有用的典型 modeline：
 
-```py
+```
     # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4 
 
 ```
@@ -223,7 +223,7 @@ Windows 开发人员可以无论如何包含序言行。这将使 Mac OS X 和 L
 
 通常，我们会有一个语句，它非常长且难以处理。比如说我们有这样的东西：
 
-```py
+```
  **>>> import math** 
 
  **>>> example_value = (63/25) * (17+15*math.sqrt(5)) / (7+15*math.sqrt(5))** 
@@ -262,7 +262,7 @@ Python 给了我们几种包装长语句使其更易读的方法。
 
 这个技巧的背景是：
 
-```py
+```
  **>>> import math** 
 
  **>>> example_value = (63/25) * (17+15*math.sqrt(5)) / (7+15*math.sqrt(5))** 
@@ -277,14 +277,14 @@ Python 允许我们使用`\`并换行。
 
 1.  将整个语句写在一行上，即使它很混乱：
 
-```py
+```
  **>>> message_text = 'the internal representation is {mantissa:d}/2**53*2**{exponent:d}'.format(mantissa=mantissa_whole, exponent=exponent)** 
 
 ```
 
 1.  如果有*逻辑*断点，在那里插入`\`。有时，没有真正好的断点：
 
-```py
+```
  **>>> message_text = 'the internal representation is \** 
 
  **... {mantissa:d}/2**53*2**{exponent:d}'.\** 
@@ -305,7 +305,7 @@ Python 允许我们使用`\`并换行。
 
 1.  将整个语句写在一行上，即使它很混乱：
 
-```py
+```
  **>>> import math** 
 
  **>>> example_value1 = (63/25) * (17+15*math.sqrt(5)) / (7+15*math.sqrt(5))** 
@@ -314,7 +314,7 @@ Python 允许我们使用`\`并换行。
 
 1.  添加额外的`()`字符不改变值，但允许将表达式分解为多行：
 
-```py
+```
  **>>> example_value2 = (63/25) * ( (17+15*math.sqrt(5)) / (7+15*math.sqrt(5)) )** 
 
  **>>> example_value2 == example_value1** 
@@ -325,7 +325,7 @@ Python 允许我们使用`\`并换行。
 
 1.  在`()`字符内部断开行：
 
-```py
+```
  **>>> example_value3 = (63/25) * (** 
 
  **...      (17+15*math.sqrt(5))** 
@@ -352,7 +352,7 @@ Python 允许我们使用`\`并换行。
 
 1.  将字符串分解为子字符串：
 
-```py
+```
  **>>> message_text = (** 
 
  **... 'the internal representation '** 
@@ -375,7 +375,7 @@ Python 允许我们使用`\`并换行。
 
 这个技巧的背景是：
 
-```py
+```
  **>>> import math** 
 
  **>>> example_value = (63/25) * (17+15*math.sqrt(5)) / (7+15*math.sqrt(5))** 
@@ -386,7 +386,7 @@ Python 允许我们使用`\`并换行。
 
 1.  识别整体表达式中的子表达式。将这些分配给变量：
 
-```py
+```
  **>>> a = (63/25)** 
 
  **>>> b = (17+15*math.sqrt(5))** 
@@ -399,7 +399,7 @@ Python 允许我们使用`\`并换行。
 
 1.  用创建的变量替换子表达式：
 
-```py
+```
  **>>> example_value = a * b / c** 
 
 ```
@@ -416,7 +416,7 @@ Python 语言手册对逻辑行和物理行进行了区分。逻辑行包含一�
 
 隐式行连接的使用可以在许多情况下使用。它通常在语义上与表达式的结构相吻合，因此是受鼓励的。我们可能需要`()`字符作为必需的语法。例如，我们已经将`()`字符作为`print()`函数的语法的一部分。我们可能这样做来分解一个长语句：
 
-```py
+```
  **>>> print(** 
 
  **...    'several values including',** 
@@ -437,7 +437,7 @@ Python 语言手册对逻辑行和物理行进行了区分。逻辑行包含一�
 
 然而，语言设计者允许我们使用`()`字符，以便将一长串名称分解为多个逻辑行：
 
-```py
+```
  **>>> from math import (sin, cos, tan,** 
 
  **...    sqrt, log, frexp)** 
@@ -482,7 +482,7 @@ Python 语言手册对逻辑行和物理行进行了区分。逻辑行包含一�
 
 我们可能会这样开始我们的模块文档字符串：
 
-```py
+```
     ''' 
     Downloads and decodes the current Special Marine Warning (SMW) 
     for the area 'AKQ'. 
@@ -524,7 +524,7 @@ Python 语言手册对逻辑行和物理行进行了区分。逻辑行包含一�
 
 这是一个脚本的 docstring 示例：
 
-```py
+```
     ''' 
     Downloads and decodes the current Special Marine Warning (SMW) 
     for the area 'AKQ' 
@@ -599,7 +599,7 @@ RST 有一个简单的语法规则，即段落之间用空行分隔。
 
 +   提供一个`::`前缀。我们可以将其作为自己单独的段落，或者作为引导段落末尾的特殊双冒号：
 
-```py
+```
         Here's an example:: 
 
             more_code()  
@@ -648,7 +648,7 @@ RST 有一个简单的语法规则，即段落之间用空行分隔。
 
 标题将看起来像这样。
 
-```py
+```
         Topic 
         ===== 
 
@@ -685,7 +685,7 @@ docutils 转换程序将检查文档，寻找部分和正文元素。一个部�
 
 一个正确嵌套的文档可能具有以下下划线字符序列：
 
-```py
+```
     ==== 
     ----- 
     ^^^^^^ 
@@ -751,7 +751,7 @@ RST 解析器可以识别几种不同类型的正文元素。我们展示了一�
 
 +   **指令**：指令是一个段落，通常看起来像`.. directive::`。它可能有一些内容，缩进以便包含在指令内。它可能看起来像这样：
 
-```py
+```
         ..  important:: 
 
             Do not flip the bozo bit. 
@@ -768,7 +768,7 @@ Docutils 有许多内置指令。Sphinx 添加了许多具有各种功能的指�
 
 我们可能有这样的东西来提供适当的强调：
 
-```py
+```
     ..  note:: Note Title 
 
         We need to indent the content of an admonition. 
@@ -778,7 +778,7 @@ Docutils 有许多内置指令。Sphinx 添加了许多具有各种功能的指�
 
 另一个常见的指令是`parsed-literal`指令。
 
-```py
+```
     ..  parsed-literal:: 
 
         any text 
@@ -798,10 +798,14 @@ Docutils 有许多内置指令。Sphinx 添加了许多具有各种功能的指�
 
 +   我们可以用`**`将单词或短语括起来以进行`**强调**`。
 
-+   我们用单个反引号（```py ). Links are followed by a `_` . We might use ``section title`_` to refer to a specific section within a document. We don't generally need to put anything around URL's. The Docutils tools recognize these. Sometimes we want a word or phrase to be shown and the URL concealed. We can use this: ``the Sphinx documentation <http://www.sphinx-doc.org/en/stable/>`_` .
-*   We can surround code-related words with double back-tick (````）括起引用，使其看起来像```pycode```。 
++   我们用单个反引号（`` ` ``）包围引用。链接后面带有`_`。我们可以用`` `section title`_ ``来指代文档中的特定章节。我们通常不需要在URL周围放置任何东西。Docutils 工具可以识别这些。有时我们希望显示一个单词或短语，隐藏 URL。我们可以用这个：`` `the Sphinx documentation <http://www.sphinx-doc.org/en/stable/>`_ ``。
+*   我们可以将代码相关的单词使用两个反引号括起来，使其看起来像：
 
-还有一种更一般的技术叫做文本角色。角色看起来比简单地用`*`字符包装一个单词或短语要复杂一些。我们使用`:word:`作为角色名称，后面跟着适用的单词或短语在单个```py back-ticks. A text role looks like this `:strong:`this`` .
+    ```
+    ``code``
+    ```
+
+还有一种更一般的技术叫做文本角色。角色看起来比简单地用`*`字符包装一个单词或短语要复杂一些。我们使用`:word:`作为角色名称，后面跟着适用的单词或短语在单个`` ` ``反引号中。文本角色看起来像这样`` :strong:`this` ``。
 
 There are a number of standard role names including `:emphasis:` , `:literal:` , `:code:` , `:math:` , `:pep-reference:` , `:rfc-reference:` , `:strong:` , `:subscript:` , `:superscript:` , and `:title-reference:` . Some of these are also available with simpler markup like `*emphasis*` or `**strong**` . The rest are only available as explicit roles.
 
@@ -870,33 +874,25 @@ The distinction is not always crisp. In our example, we don't have a detailed sp
 
 1.  Write the `if...elif...elif` chain that covers all of the known conditions. For our example, it will look like this:
 
-    ```中
+```
+        dice = die_1 + die_2 
+        if dice in (2, 3, 12): 
+            game.craps() 
+        elif dice in (7, 11): 
+            game.winner() 
+        elif dice in (4, 5, 6, 8, 9, 10): 
+            game.point(die) 
 
-骰子= die_1 + die_2
-
-如果骰子在（2,3,12）中：
-
-game.craps()
-
-否则如果骰子在（7,11）中：
-
-游戏.获胜者（）
-
-否则如果骰子在（4,5,6,8,9,10）中：
-
-游戏.得分（骰子）
-
-```py
+```
 
 2.  Add an `else` clause that raises an exception, like this:
 
 ```
 
-否则：
+        else: 
+            raise Exception('Design Problem Here: not all conditions accounted for') 
 
-引发异常（'设计问题：未考虑所有条件'）
-
-```py
+```
 
 This extra `else` crash condition gives us a way to positively identify when a logic problem is found. We can be sure that any error we make will lead to a conspicuous problem.
 
@@ -926,11 +922,10 @@ We can work backwards from this final condition, by writing the goal as an asser
 
 ```
 
-# 做一些事情
+    # do something 
+    assert (m = a or m = b) and m > a and m > b 
 
-断言（m = a 或 m = b）和 m> a 和 m> b
-
-```py
+```
 
 Once we have the goal stated, we can identify statements that lead to that goal. Clearly assignment statements like `m = a` and `m = b` will be appropriate, but only under certain conditions.
 
@@ -938,19 +933,13 @@ Each of these statements is part of the solution, and we can derive a preconditi
 
 ```
 
-如果 a> = b：
-
-m = a
-
-如果 b> = a：
-
-m = b
-
-否则：引发异常（'设计问题'）
-
-断言（m = a 或 m = b）和 m> a 和 m> b
-
-```py
+    if a >= b:  
+        m = a 
+    elif b >= a: 
+        m = b 
+    else:     raise Exception( 'Design Problem') 
+    assert (m = a or m = b) and m > a and m > b 
+```
 
 Note that our universe of conditions,   *U* = { *a ≥ b, b ≥ a* }, is complete; there's no other possible relationship. Also notice that in the edge case of *a = b* , we don't actually care which assignment statement we use. Python will process the decisions in order, and will execute `m = a` . The fact that this choice is consistent shouldn't have any impact on our design of `if...elif...elif` chains. We should always write the conditions without regard to order of evaluation of the clauses.
 
@@ -988,15 +977,11 @@ We can rough out the loop like this:
 
 ```
 
-# 初始化一些东西
-
-而#未终止：
-
-# 做一些事情
-
-断言密码文本==确认密码文本
-
-```py
+        # initialize something 
+        while # not terminated: 
+            # do something 
+        assert password_text == confirming_password_text 
+```
 
 We've written our definition of done as a final `assert` statement. We've included comments for the rest of the iteration that we'll fill in in subsequent steps.
 
@@ -1010,23 +995,16 @@ In our case, the invariant will use a conceptual `new-input()` condition. This c
 
 ```
 
-# 初始化一些东西
+        # initialize something 
+        # assert the invariant new-input(password_text) 
+        # and new-input(confirming_password_text) 
+        while # not terminated: 
+            # do something 
+            # assert the invariant new-input(password_text) 
+            # and new-input(confirming_password_text) 
+        assert password_text == confirming_password_text 
 
-# 断言不变的新输入（密码文本）
-
-# 和新输入（确认密码文本）
-
-而#未终止：
-
-# 做一些事情
-
-# 断言不变的新输入（密码文本）
-
-# 和新输入（确认密码文本）
-
-断言密码文本==确认密码文本
-
-```py
+```
 
 3.  Define the condition for leaving the loop. We need to be sure that this condition depends on the invariant being `true` . We also need to be sure that, when this termination condition is finally `false,` the target state will become `true` .
 
@@ -1034,73 +1012,49 @@ In most cases, the loop condition is the logical negation of the target state. H
 
 ```
 
-# 初始化一些东西
+        # initialize something 
+        # assert the invariant new-input(password_text)  
+        # and new-input(confirming_password_text) 
+        while password_text != confirming_password_text: 
+            # do something 
+            # assert the invariant new-input(password_text)  
+            # and new-input(confirming_password_text) 
+        assert password_text == confirming_password_text 
 
-# 断言不变的新输入（密码文本）
-
-# 和新输入（确认密码文本）
-
-而密码文本！=确认密码文本：
-
-# 做一些事情
-
-# 断言不变的新输入（密码文本）
-
-# 和新输入（确认密码文本）
-
-断言密码文本==确认密码文本
-
-```py
+```
 
 4.  Define the initialization that will make sure that both the invariant will be `true` and that we can actually test the terminating condition. In this case, we need to get values for the two variables. The loop now looks like this:
 
 ```
 
-password_text= getpass()
+        password_text= getpass() 
+        confirming_password_text= getpass("Confirm: ") 
+        # assert new-input(password_text) 
+        # and new-input(confirming_password_text) 
+        while password_text != confirming_password_text: 
+            # do something 
+            # assert new-input(password_text) 
+            # and new-input(confirming_password_text) 
+        assert password_text == confirming_password_text 
 
-确认密码文本= getpass（“确认：”）
-
-# 断言新输入（密码文本）
-
-# 和新输入（确认密码文本）
-
-而密码文本！=确认密码文本：
-
-# 做一些事情
-
-# 断言新输入（密码文本）
-
-# 和新输入（确认密码文本）
-
-断言密码文本==确认密码文本
-
-```py
+```
 
 5.  Write the body of the loop which will reset the invariant to `true` . We need to write the fewest statements that will do this. For this example loop, the fewest statements are pretty obvious—they match the initialization. Our updated loop looks like this:
 
 ```
 
-password_text= getpass()
+        password_text= getpass() 
+        confirming_password_text= getpass("Confirm: ") 
+        # assert new-input(password_text) 
+        # and new-input(confirming_password_text) 
+        while password_text != confirming_password_text: 
+            password_text= getpass() 
+            confirming_password_text= getpass("Confirm: ") 
+            # assert new-input(password_text) 
+            # and new-input(confirming_password_text) 
+        assert password_text == confirming_password_text 
 
-确认密码文本= getpass（“确认：”）
-
-# 断言新输入（密码文本）
-
-# 和新输入（确认密码文本）
-
-而密码文本！=确认密码文本：
-
-password_text= getpass()
-
-确认密码文本= getpass（“确认：”）
-
-# 断言新输入（密码文本）
-
-# 和新输入（确认密码文本）
-
-断言密码文本==确认密码文本
-
-```py
+```
 
 6.  Identify a clock—a monotonically decreasing function that shows that each iteration of the loop really does make progress toward the terminating condition.
 
@@ -1114,19 +1068,13 @@ Removing some comments, we have this as our final loop:
 
 ```
 
-password_text= getpass()
-
-确认密码文本= getpass（“确认：”）
-
-而密码文本！=确认密码文本：
-
-password_text= getpass()
-
-确认密码文本= getpass（“确认：”）
-
-断言密码文本==确认密码文本
-
-```py
+    password_text= getpass() 
+    confirming_password_text= getpass("Confirm: ") 
+    while password_text != confirming_password_text: 
+        password_text= getpass() 
+        confirming_password_text= getpass("Confirm: ") 
+    assert password_text == confirming_password_text 
+```
 
 We left the final post-condition in place as an `assert` statement. For complex loops it's both a built-in test, as well as a comment that explains how the loop works.
 
@@ -1142,13 +1090,10 @@ Given a post-condition, we're trying to solve for a statement and a precondition
 
 ```
 
-断言前置条件
-
-S
-
-断言后置条件
-
-```py
+    assert pre-condition 
+    S 
+    assert post-condition 
+```
 
 The post-condition is our definition of done. We need to hypothesize a statement, `S` , that leads to done, and a precondition for that statement. There are always an infinite number of alternative statements; we focus on the weakest precondition—the one that has the fewest assumptions.
 
@@ -1185,41 +1130,29 @@ Let's find the first occurrence of a `:` or `=` in a string. This is a good exam
 
 ```
 
-**>>> sample_1 = "some_name = the_value"
+>>> sample_1 = "some_name = the_value" 
+>>> for position in range(len(sample_1)): 
+...    if sample_1[position] in '=:': 
+...        break 
+>>> print('name=', sample_1[:position], 
+...     'value=', sample_1[position+1:]) 
+name= some_name  value=  the_value
 
->>>对于范围内的位置
-
-...如果 sample_1[position]在'：='中：
-
-...中断
-
->>>打印（'名称=', sample_1[:position]，
-
-... 'value=', sample_1[position+1:]）
-
-名称= some_name  value=  the_value**
-
-```py
+```
 
 What about this edge case?
 
 ```
 
-**>>> sample_2 = "name_only"
+>>> sample_2 = "name_only" 
+>>> for position in range(len(sample_2)): 
+...    if sample_2[position] in '=:': 
+...        break 
+>>> print('name=', sample_2[:position], 
+...     'value=', sample_2[position+1:])  
+name= name_onl value=
 
->>>对于范围内的位置
-
-...如果 sample_2[position]在'：='中：
-
-...中断
-
->>>打印（'名称=', sample_2[:position]，
-
-... 'value=', sample_2[position+1:]）
-
-名称= name_onl value=**
-
-```py
+```
 
 That's awkwardly wrong. What happened?
 
@@ -1233,9 +1166,8 @@ Ideally, the post-condition would be something simple like `text[position] in '=
 
 ```
 
-文本[位置]在'：='中
-
-```py
+text[position] in '=:' 
+```
 
 2.  Add post-conditions for the edge cases. In this example, we have two additional conditions:
 
@@ -1244,46 +1176,31 @@ Ideally, the post-condition would be something simple like `text[position] in '=
 
 ```
 
-（len（text）== 0
+                (len(text) == 0 
+                or not('=' in text or ':' in text) 
+                or text[position] in '=:') 
 
-或不是（'='在文本中或'：'在文本中）
-
-或文本[位置]在'：='中）
-
-```py
+```
 
 3.  If a `while` statement is being used, consider redesigning it to have completion conditions. This can eliminate the need for a `break` statement.
 4.  If a `for` statement is being used, be sure a proper initialization is done, and add the various terminating conditions to the statements after the loop. It can look redundant to have `x = 0` followed by `for x = ...` . It's necessary in the case of a loop which doesn't execute the `break` statement, though.
 
 ```
 
-**>>>位置= -1#如果长度为零
-
->>>对于范围内的位置
-
-... 如果 sample_2[position]在'：='中：
-
-... 休息
-
-...
-
->>> 如果位置== -1：
-
-... 打印（“名称=”，无，“值=”，无）
-
-... 否则不是（text[position] == ':'或 text[position] == '='）：
-
-... 打印（“名称=”，sample_2，“值=”，无）
-
-... 其他：
-
-... 打印（'name ='，sample_2[:position]，
-
-... 'value ='，sample_2[position+1:]）
-
-名称=仅名称值=无**
-
-```py
+      >>> position = -1 # If it's zero length 
+      >>> for position in range(len(sample_2)): 
+      ...    if sample_2[position] in '=:': 
+      ...        break 
+      ... 
+      >>> if position == -1:   
+      ...     print("name=", None, "value=", None) 
+      ... elif not(text[position] == ':' or text[position] == '='): 
+      ...     print("name=", sample_2, "value=", None) 
+      ... else: 
+      ...    print('name=', sample_2[:position], 
+      ...     'value=', sample_2[position+1:]) 
+      name= name_only value= None
+```
 
 In the statements after the `for` , we've enumerated all of the terminating conditions explicitly. The final output, `name= name_only value= None` , confirms that we've correctly processed the sample text.
 
@@ -1297,23 +1214,15 @@ In many cases, we can refactor the loop to push the processing into the body of 
 
 ```
 
-如果 len（sample_2）> 0：
-
-名称，值= sample_2，无
-
-其他：
-
-名称，值=无，无
-
-对于 position in range（len（sample_2））：
-
-如果 sample_2[position]在'：='中：
-
-名称，值= sample_2[:position]，sample2[position:]
-
-打印（'name ='，name，'value ='，value）
-
-```py
+    if len(sample_2) > 0: 
+        name, value = sample_2, None 
+    else: 
+        name, value = None, None 
+    for position in range(len(sample_2)): 
+        if sample_2[position] in '=:': 
+            name, value = sample_2[:position], sample2[position:] 
+    print('name=', name, 'value=', value) 
+```
 
 This version pushes some of the processing forward, based on the complete set of post-conditions evaluated previously. This kind of refactoring is common.
 
@@ -1327,25 +1236,18 @@ We can also use an `else` clause on a `for` statement to determine if the loop f
 
 ```
 
-对于 position in range（len（sample_2））：
+We can also use an else clause on a for statement to determine if the loop finished normally or a break statement was executed. We can use something like this:
 
-如果 sample_2[position]在'：='中：
-
-名称，值= sample_2[:position]，sample_2[position+1:]
-
-休息
-
-其他：
-
-如果 len（sample_2）> 0：
-
-名称，值= sample_2，无
-
-其他：
-
-名称，值=无，无
-
-```py
+    for position in range(len(sample_2)): 
+        if sample_2[position] in '=:': 
+            name, value = sample_2[:position], sample_2[position+1:] 
+            break 
+    else: 
+        if len(sample_2) > 0: 
+            name, value = sample_2, None 
+        else: 
+            name, value = None, None 
+```
 
 The `else` condition is sometimes confusing, and we don't recommend it. It's not clear that it is substantially better than any of the alternatives. It's too easy to forget the reason why the `else` is executed because it's used so rarely.
 
@@ -1378,29 +1280,18 @@ Here's a rough outline of what we'd like to do:
 
 ```
 
-从路径导入路径
-
-导入 shutil
-
-进口
-
-source_path = Path（os.path.expanduser（
-
-'〜/Documents/Writing/Python Cookbook/source'））
-
-target_path = Path（os.path.expanduser（
-
-'〜/Dropbox/B05442/demo/''）
-
-对于 source_file_path in source_path.glob（'* / * .rst'）：
-
-source_file_detail = source_file_path.relative_to（source_path）
-
-target_file_path = target_path / source_file_detail
-
-shutil.copy（str（source_file_path），str（target_file_path
-
-```py
+    from pathlib import Path 
+    import shutil 
+    import os 
+    source_path = Path(os.path.expanduser( 
+       '~/Documents/Writing/Python Cookbook/source')) 
+    target_path = Path(os.path.expanduser( 
+       '~/Dropbox/B05442/demo/')) 
+    for source_file_path in source_path.glob('*/*.rst'): 
+        source_file_detail = source_file_path.relative_to(source_path) 
+        target_file_path = target_path / source_file_detail 
+        shutil.copy( str(source_file_path), str(target_file_path 
+```
 
 We have two paths, `source_path` and `target_path` . We've located all of the directories under the `source_path` that have `*.rst` files.
 
@@ -1412,13 +1303,11 @@ The problems arise with handling exceptions raised by the `shutil.copy()` functi
 
 ```
 
-FileNotFoundError：[Errno 2]
+    FileNotFoundError: [Errno 2] 
+        No such file or directory: 
+        '/Users/slott/Dropbox/B05442/demo/ch_01_numbers_strings_and_tuples/index.rst' 
 
-没有这样的文件或目录：
-
-'/Users/slott/Dropbox/B05442/demo/ch_01_numbers_strings_and_tuples/index.rst'
-
-```py
+```
 
 How do we create a `try` statement that handles the exceptions in the proper order?
 
@@ -1428,47 +1317,35 @@ How do we create a `try` statement that handles the exceptions in the proper ord
 
 ```
 
-尝试：
+        try: 
+            shutil.copy( str(source_file_path), str(target_file_path) ) 
 
-shutil.copy（str（source_file_path），str（target_file_path））
-
-```py
+```
 
 2.  Include the most specific exception classes first. In this case, we have separate responses for the specific `FileNotFoundError` and the more general `OSError` .
 
 ```
 
-尝试：
-
-shutil.copy（str（source_file_path），str（target_file_path））
-
-除了 FileNotFoundError：
-
-os.makedir（target_file_path.parent）
-
-shutil.copy（str（source_file_path），str（target_file_path））
-
-```py
+        try: 
+            shutil.copy( str(source_file_path), str(target_file_path) ) 
+        except FileNotFoundError: 
+            os.makedir( target_file_path.parent ) 
+            shutil.copy( str(source_file_path), str(target_file_path) ) 
+```
 
 3.  Include any more general exceptions later:
 
 ```
 
-尝试：
+        try: 
+            shutil.copy( str(source_file_path), str(target_file_path) ) 
+        except FileNotFoundError: 
+            os.makedirs( str(target_file_path.parent) ) 
+            shutil.copy( str(source_file_path), str(target_file_path) ) 
+        except OSError as ex: 
+            print(ex) 
 
-shutil.copy（str（source_file_path），str（target_file_path））
-
-除了 FileNotFoundError：
-
-os.makedirs（str（target_file_path.parent））
-
-shutil.copy（str（source_file_path），str（target_file_path））
-
-除了 OSError as ex：
-
-打印（ex）
-
-```py
+```
 
     We've matched exceptions with the most specific first and the more generic after that.
 
@@ -1493,13 +1370,11 @@ Our example includes a nested context in which a second exception can be raised.
 
 ```
 
-除了 FileNotFoundError：
+    except FileNotFoundError: 
+        os.makedirs( str(target_file_path.parent) ) 
+        shutil.copy( str(source_file_path), str(target_file_path) ) 
 
-os.makedirs（str（target_file_path.parent））
-
-shutil.copy（str（source_file_path），str（target_file_path））
-
-```py
+```
 
 If the `os.makedirs()` or `shutil.copy()` functions raise another exception, it won't be handled by this `try` statement. Any exceptions raised here will crash the program as a whole. We have two ways to handle this, both of which involve nested `try` statements.
 
@@ -1507,27 +1382,17 @@ We can rewrite this to include a nested `try` during recovery:
 
 ```
 
-尝试：
-
-shutil.copy（str（source_file_path），str（target_file_path））
-
-除了 FileNotFoundError：
-
-尝试：
-
-os.makedirs（str（target_file_path.parent））
-
-shutil.copy（str（source_file_path），str（target_file_path））
-
-除了 OSError as ex：
-
-打印（ex）
-
-除了 OSError as ex：
-
-打印（ex）
-
-```py
+    try: 
+        shutil.copy( str(source_file_path), str(target_file_path) ) 
+    except FileNotFoundError: 
+        try: 
+            os.makedirs( str(target_file_path.parent) ) 
+            shutil.copy( str(source_file_path), str(target_file_path) ) 
+        except OSError as ex: 
+            print(ex) 
+    except OSError as ex: 
+        print(ex) 
+```
 
 In this example, we've repeated the `OSError` processing in two places. In our nested context, we'll log the exception and let it propagate, which will likely stop the program. In the outer context, we'll do the same thing.
 
@@ -1537,23 +1402,15 @@ We can also rewrite our overall statement to have nested `try` statements that s
 
 ```
 
-尝试：
-
-尝试：
-
-shutil.copy（str（source_file_path），str（target_file_path））
-
-除了 FileNotFoundError：
-
-os.makedirs（str（target_file_path.parent））
-
-shutil.copy（str（source_file_path），str（target_file_path））
-
-除了 OSError as ex：
-
-打印（ex）
-
-```py
+   try: 
+        try: 
+            shutil.copy( str(source_file_path), str(target_file_path) ) 
+        except FileNotFoundError: 
+            os.makedirs( str(target_file_path.parent) ) 
+            shutil.copy( str(source_file_path), str(target_file_path) ) 
+    except OSError as ex: 
+        print(ex) 
+```
 
 The copy with `makedirs` processing in the inner `try` statement handles only the `FileNotFoundError` exception. Any other exception will propagate out to the outer `try` statement. In this example, we've nested the exception handling so that the generic processing wraps the specific processing.
 
@@ -1634,11 +1491,10 @@ Assume we're writing some complex string processing. We'd like to treat a number
 
 ```
 
-类错误（异常）：
+        class Error(Exception): 
+            pass 
 
-通过
-
-```py
+```
 
 That's sufficient to define a new class of exception.
 
@@ -1646,23 +1502,16 @@ That's sufficient to define a new class of exception.
 
 ```
 
-尝试：
+        try: 
+            something 
+        except (IndexError, NameError) as exception: 
+            print("Expected", exception) 
+            raise Error("something went wrong") from exception 
+       except Exception as exception: 
+            print("Unexpected", exception) 
+            raise 
 
-某事
-
-除了（IndexError，NameError）作为异常：
-
-打印（“预期”，异常）
-
-引发错误（“出了些问题”）来自异常
-
-除了异常作为异常：
-
-打印（“意外”，异常）
-
-提高
-
-```py
+```
 
     In the first `except` clause, we matched two kinds of exception classes. No matter which kind we get, we'll raise a new exception from the module's generic `Error` exception class. The new exception will be chained to the root cause exception.
 
@@ -1676,47 +1525,32 @@ Here's how it looks when this exception is raised:
 
 ```
 
-**>>> 类错误（异常）：
+>>> class Error(Exception): 
+...     pass 
+>>> try:  
+...     'hello world'[99] 
+... except (IndexError, NameError) as exception: 
+...     raise Error("index problem") from exception 
+... 
+Traceback (most recent call last): 
+  File "<doctest default[0]>", line 2, in <module> 
+    'hello world'[99] 
+IndexError: string index out of range
 
-...     pass
-
->>> 尝试：
-
-... 'hello world'[99]
-
-... 除了（IndexError，NameError）作为异常：
-
-... 引发错误（“索引问题”）来自异常
-
-...
-
-最近一次的跟踪（最近的调用）：
-
-文件“<doctest default[0]>”，第 2 行，在<module>
-
-'hello world'[99]
-
-IndexError：字符串索引超出范围**
-
-```py
+```
 
 The exception that we just saw was the direct cause of the following exception:
 
 ```
 
-**最近一次的跟踪（最近的调用）：
+Traceback (most recent call last): 
+  File "/Library/Frameworks/Python.framework/Versions/3.4/lib/python3.4/doctest.py", line 1318, in __run 
+    compileflags, 1), test.globs) 
+  File "<doctest default[0]>", line 4, in <module> 
+    raise Error("index problem") from exception 
+Error: index problem
 
-文件“/Library/Frameworks/Python.framework/Versions/3.4/lib/python3.4/doctest.py”，第 1318 行，在 __run
-
-compileflags，1），test.globs）
-
-文件“<doctest default[0]>”，第 4 行，在<module>
-
-引发错误（“索引问题”）来自异常
-
-错误：索引问题**
-
-```py
+```
 
 This shows a chained exception. The first exception in the `Traceback` message is an `IndexError` exception. This is the direct cause. The second exception in the `Traceback` is our generic `Error` exception. This is a generic summary exception, which was chained to the original cause.
 
@@ -1724,17 +1558,12 @@ An application will see the `Error` exception in a `try:` statement. We might ha
 
 ```
 
-尝试：
-
-some_function（）
-
-除了错误作为异常：
-
-打印（异常）
-
-打印（exception .__cause__）
-
-```py
+    try: 
+        some_function() 
+    except Error as exception: 
+        print(exception) 
+        print(exception .__cause__) 
+```
 
 Here we've shown a function named `some_function()` that can raise the generic `Error` exception. If this function does raise the exception, the `except` clause will match the generic `Error` exception. We can print the exception's message, `exception` , as well as the root cause exception, `exception.__cause__` . In many applications, the `exception.__cause__` value may get written to a debugging log rather than be displayed to users.
 
@@ -1748,15 +1577,11 @@ Generally, the context is something unplanned that indicates an error in the `ex
 
 ```
 
-尝试：
-
-某事
-
-除了 ValueError 作为异常：
-
-打印（“一些消息”，exceotuib）
-
-```py
+    try: 
+        something 
+    except ValueError as exception: 
+        print("Some message", exceotuib)
+```
 
 This will raise a `NameError` exception with a context of a `ValueError` exception. The `NameError` exception stems from misspelling the exception variable as `exceotuib` .
 
@@ -1779,25 +1604,25 @@ Since we'll be working with CSV files, we can use the `csv` module to handle the
 
 ```
 
-**>>> 导入 csv**
+>>> import csv
 
-```py
+```
 
 We'll also use the `pathlib` module to locate the files we'll be working with:
 
 ```
 
-**>>> import pathlib**
+>>> import pathlib
 
-```py
+```
 
 For the purposes of having something to write, we'll use this silly data source:
 
 ```
 
-**>>> some_source = [[2,3,5]，[7,11,13]，[17,19,23]]**
+>>> some_source = [[2,3,5], [7,11,13], [17,19,23]]
 
-```py
+```
 
 This will give us a context in which to learn about the `with` statement.
 
@@ -1807,49 +1632,39 @@ This will give us a context in which to learn about the `with` statement.
 
 ```
 
-target_path = pathlib.Path（'code/test.csv'）
+        target_path = pathlib.Path('code/test.csv') 
+        with target_path.open('w', newline='') as target_file: 
 
-与 target_path.open（'w'，newline =''）作为 target_file：
-
-```py
+```
 
 2.  Include all the processing, indented within the `with` statement:
 
 ```
 
-target_path = pathlib.Path（'code/test.csv'）
+        target_path = pathlib.Path('code/test.csv') 
+        with target_path.open('w', newline='') as target_file: 
+            writer = csv.writer(target_file) 
+            writer.writerow(['column', 'data', 'headings']) 
+            for data in some_source: 
+                writer.writerow(data) 
 
-与 target_path.open（'w'，newline =''）作为 target_file：
-
-写入器= csv.writer（target_file）
-
-writer.writerow（['column'，'data'，'headings']）
-
-对于数据中的一些源：
-
-writer.writerow（data）
-
-```py
+```
 
 3.  When we use a file as a context manager, the file is automatically closed at the end of the indented context block. Even if an exception is raised, the file is still closed properly. Outdent the processing that is done after the context is finished and the resources are released:
 
 ```
 
-target_path = pathlib.Path（'code/test.csv'）
+        target_path = pathlib.Path('code/test.csv') 
+        with target_path.open('w', newline='') as target_file: 
+ 
+            writer = csv.writer(target_file) 
+            writer.writerow(['column', 'headings']) 
+            for data in some_source: 
+                writer.writerow(data) 
+ 
+        print('finished writing', target_path) 
 
-with target_path.open('w', newline='') as target_file:
-
-写入器=csv.writer(target_file)
-
-写入器.writerow(['列', '标题'])
-
-对于一些来源的数据：
-
-写入器.writerow(data)
-
-打印'完成写入'，目标路径
-
-```py
+```
 
 The statements outside the `with` context will be executed after the context is closed. The named resource—the file opened by `target_path.open()` —will be properly closed.
 
@@ -1868,41 +1683,29 @@ We can experiment with this by including a manual exception inside the `with` st
 
 ```
 
-尝试：
+    try: 
+        target_path = pathlib.Path('code/test.csv') 
+        with target_path.open('w', newline='') as target_file: 
+            writer = csv.writer(target_file) 
+            writer.writerow(['column', 'headings']) 
+            for data in some_source: 
+                writer.writerow(data) 
+                raise Exception("Just Testing") 
+    except Exception as exc: 
+        print(target_file.closed) 
+        print(exc) 
+    print('finished writing', target_path) 
 
-目标路径=pathlib.Path('code/test.csv')
 
-with target_path.open('w', newline='') as target_file:
-
-写入器=csv.writer(target_file)
-
-写入器.writerow(['列', '标题'])
-
-对于一些来源的数据：
-
-写入器.writerow(data)
-
-引发异常("只是测试")
-
-除了异常 as exc:
-
-打印目标文件是否关闭
-
-打印异常
-
-打印'完成写入'，目标路径
-
-```py
+```
 
 In this example, we've wrapped the real work in a `try` statement. This allows us to raise an exception after writing the first to the CSV file. When the exception is raised, we can print the exception. At this point, the file will also be closed. The output is simply this:
 
 ```
 
-真
-
-只是测试
-
-完成写入代码/测试.csv
+    True 
+    Just Testing 
+    finished writing code/test.csv 
 
 ```
 
