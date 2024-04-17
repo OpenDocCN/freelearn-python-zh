@@ -108,7 +108,7 @@ Python 模块的命名应始终使用全部小写的名称和下划线。这个�
 
 打开文件并输入以下代码：
 
-```py
+```
 from abq_data_entry.application import Application
 
 app = Application()
@@ -159,7 +159,7 @@ reStructuredText 标记语言是 Python `docutils`项目的一部分，完整的
 
 +   编号列表的创建方式与项目列表相似，但使用数字（不需要正确排序）或`#`符号作为项目符号。
 
-+   代码示例可以通过用双反引号字符括起来来指定内联(```py`), or in a block by ending a lead-in line with a double colon and indenting the code block.
++   代码示例可以通过用双反引号字符括起来来指定内联(`` ` ``)，或者在一个代码块中，用双冒号结束一个引入行，并缩进代码块。
 *   Tables can either be created by surrounding columns of text with `=` symbols, separated by spaces to indicate the column breaks, or by constructing ASCII-art tables from `|`, `-`, and `+`. Tables can be tedious to create in a plain text editor, but some programming tools have plugins to generate the RST tables.
 
 We've used RST already in Chapter 2, *Designing GUI Applications with Tkinter,* to create our program specification; there, you saw the use of titles, headers, bullets, and a table. Let's walk through creating our `README.rst` file:
@@ -190,7 +190,7 @@ ABQ 数据输入应用程序
 
 * 在可能的情况下自动填充表单字段
 
-```py
+```
 
 2.  Next, we'll list the authors by adding the following code:
 
@@ -202,7 +202,7 @@ ABQ 数据输入应用程序
 
 Alan D Moore, 2018
 
-```py
+```
 
 Add yourself, of course. Eventually, other people might work on your application; they should add their names here with the dates they worked on it. Now, add the requirements as follows:
 
@@ -216,7 +216,7 @@ Add yourself, of course. Eventually, other people might work on your application
 
 * Tkinter
 
-```py
+```
 
 Right now, we only need Python 3 and Tkinter, but as our application grows we may be expanding this list. Our application doesn't really need to be installed, and has no configuration options, so for now we can skip those sections. Instead, we'll skip to `Usage` as follows:
 
@@ -230,7 +230,7 @@ Right now, we only need Python 3 and Tkinter, but as our application grows we ma
 
 python3 ABQ_Data_Entry/abq_data_entry.py
 
-```py
+```
 
 There really isn't much to know about running the program other than this command; no command-line switches or arguments. We don't know of any bugs, so we'll just leave some general notes at the end as follows:
 
@@ -244,7 +244,7 @@ CSV 文件将以“abq_data_record_CURRENTDATE.csv”的格式保存在您当前
 
 此程序仅追加到 CSV 文件。您应该安装电子表格程序，以防需要编辑或检查文件。
 
-```py
+```
 
 It seems prudent to tell the user where the file will be saved and what it will be called, since that's hardcoded into the program right now. Also, we should mention the fact that the user should have some kind of spreadsheet, since the program can't edit or view the data. That finishes the `README.rst` file. Save it and let's move on to the `docs` folder.
 
@@ -289,7 +289,7 @@ Now, type the following command:
 
 from abq_data_entry import application
 
-```py
+```
 
 This should work without error. Of course, it doesn't do anything, but we'll get to that next.
 
@@ -336,7 +336,7 @@ integer = 6
 
 boolean = 7
 
-```py
+```
 
 We've created a class called `FieldTypes` that simply stores some named integer values, which will describe the different types of data we're going to store. We could just use Python types here, but it's useful to differentiate between certain types of data that are likely to be the same Python type (such as `long`, `short`, and `date` strings). Note that the integer values here are basically meaningless; they just need to be different from one another.
 
@@ -418,7 +418,7 @@ class CSVModel:
 
 }
 
-```py
+```
 
 Notice the way we import `FieldTypes`:  `from .constants import FieldTypes`. The dot in front of `constants` makes this a **relative import**. Relative imports can be used inside a Python package to locate other modules in the same package. In this case, we're in the `models` module, and we need to access the `constants` module inside the `abq_data_entry` package. The single dot represents our current parent module (`abq_data_entry`), and thus `.constants` means the `constants` module of the `abq_data_entry` package.
 
@@ -450,7 +450,7 @@ csvwriter.writeheader()
 
 csvwriter.writerow(data)
 
-```py
+```
 
 Let's go through this code and determine what goes to the model and what stays in the controller (that is, the `Application` class):
 
@@ -469,7 +469,7 @@ def __init__(self, filename):
 
 self.filename = filename
 
-```py
+```
 
 The constructor is pretty simple; it just takes a `filename` parameter and stores it as a property. Now, we'll migrate the save logic as follows:
 
@@ -493,7 +493,7 @@ csvwriter.writeheader()
 
 csvwriter.writerow(data)
 
-```py
+```
 
 This is essentially the logic we chose to copy from `Application.on_save()`, but with one difference; in the call to `csv.DictWriter()`, the `fieldnames` parameter is defined by the model's `fields` list rather than the keys of the `data` dict. This allows our model to manage the format of the CSV file itself, and not depend on what the form gives it.
 
@@ -505,7 +505,7 @@ import csv
 
 import os
 
-```py
+```
 
 With the model in place, let's start working on our view components.
 
@@ -525,7 +525,7 @@ import tkinter as tk
 
 from tkinter import ttk
 
-```py
+```
 
 Our `DateInput` class uses the `datetime` class from the `datetime` library, so import that too, as follows:
 
@@ -533,7 +533,7 @@ Our `DateInput` class uses the `datetime` class from the `datetime` library, so
 
 from datetime import datetime
 
-```py
+```
 
 Finally, our `ValidatedSpinbox` class makes use of the `Decimal` class and `InvalidOperation` exception from the `decimal` library as follows:
 
@@ -541,7 +541,7 @@ Finally, our `ValidatedSpinbox` class makes use of the `Decimal` class and `Inv
 
 from decimal import Decimal, InvalidOperation
 
-```py
+```
 
 This is all we need in `widgets.py` for now, but we'll revisit this file as we refactor our view logic.
 
@@ -561,7 +561,7 @@ from tkinter import ttk
 
 from datetime import datetime
 
-```py
+```
 
 We aren't done, though; our actual widgets aren't here and we'll need to import them. Since we're going to be doing a lot of importing of objects between our files, let's pause for a moment to consider the best way to handle these imports.
 
@@ -583,7 +583,7 @@ Add the following code to your imports:
 
 from . import widgets as w
 
-```py
+```
 
 Now, we just need to go through the code and prepend `w.` to all instances of `LabelInput`, `RequiredEntry`, `DateEntry`, `ValidatedCombobox`, and `ValidatedSpinbox`. This should be easy enough to do in IDLE or any other text editor using a series of search and replace actions.
 
@@ -631,7 +631,7 @@ input_var=tk.StringVar()
 
 self.inputs['Technician'].grid(row=0, column=2)
 
-```py
+```
 
 Before you go through and change that everywhere, though, let's stop and take a moment to refactor some of the redundancy out of this code.
 
@@ -659,7 +659,7 @@ FT.long_string: (tk.Text, lambda: None),
 
 FT.decimal: (ValidatedSpinbox, tk.DoubleVar),
 
-```py
+```
 
 ```
 
@@ -669,7 +669,7 @@ FT.boolean: (ttk.Checkbutton, tk.BooleanVar)
 
 }
 
-```py
+```
 
 This code acts as a key to translate our model's field types into a widget type and variable type appropriate for the field type.
 
@@ -739,7 +739,7 @@ input_args["textvariable"] = self.variable
 
 # ... __init__()的其余部分相同
 
-```py
+```
 
 Let's break down the changes:
 
@@ -759,7 +759,7 @@ Back in the `views.py` file, edit the method signature so that we can pass in a
 
 def __init__(self, parent, fields, *args, **kwargs):
 
-```py
+```
 
 With access to the `fields` dictionary, we can just get the field specification from it and pass that into the `LabelInput` class instead of specifying the input class, input variable, and input arguments.
 
@@ -791,7 +791,7 @@ field_spec=fields['Technician'])
 
 self.inputs['Technician'].grid(row=0, column=2)
 
-```py
+```
 
 Go ahead and update the rest of the widgets the same way, replacing `input_class`, `input_var`, and `input_args` with `field_spec`. Note that when you get to the height fields, you'll need to keep the part of `input_args` that defines `min_var`, `max_var`, and `focus_update_var`.
 
@@ -809,7 +809,7 @@ input_args={"max_var": max_height_var,
 
 "focus_update_var": min_height_var})
 
-```py
+```
 
 That does it. Now, any changes to our field specification can be made solely in the model, and the form will simply do the correct thing.
 
@@ -832,7 +832,7 @@ from . import views as v
 
 from . import models as m
 
-```py
+```
 
 We need `tkinter` and `ttk`, of course, and `datetime` to define our filename. Although we only need one class each from `views` and `models`, we're going to keep them in their own namespaces anyway. It's likely we're going to have many more views as the application expands, and possibly more models.
 
@@ -842,7 +842,7 @@ We need `tkinter` and `ttk`, of course, and `datetime` to define our filename. A
 
 self.recordform = v.DataRecordForm(self, m.CSVModel.fields)
 
-```py
+```
 
 4.  Finally, we need to update `Application.on_save()` to use the model, as follows:
 
@@ -890,7 +890,7 @@ format(self.records_saved)
 
 self.recordform.reset()
 
-```py
+```
 
 As you can see, using our model is pretty seamless; we just created a `CSVModel` class by passing in the filename, and then passed the form's data to `save_record()`.
 
@@ -902,7 +902,7 @@ The application is now completely migrated to the new data format. To test it, n
 
 python3 abq_data_entry.py
 
-```py
+```
 
 It should look and act just like the single script from Chapter 4, *Reducing User Error with Validation and Automation,* and run without errors, as shown in the following screenshot:
 
@@ -944,7 +944,7 @@ Once Git is installed, we need to initialize and configure our project directory
 
 git init
 
-```py
+```
 
 This command creates a hidden directory under our project root called `.git` and initializes it with the basic files that make up the repository. The `.git` directory will contain all the data and metadata about our saved revisions.
 
@@ -956,7 +956,7 @@ This command creates a hidden directory under our project root called `.git` an
 
 __pycache__/
 
-```py
+```
 
 # Adding and committing code
 
@@ -972,7 +972,7 @@ git add docs
 
 git add README.rst
 
-```py
+```
 
 At this point, our files are staged, but not yet committed to the repository. You can check the status of your repository and the files in it at any time by entering `git status`.
 
@@ -1014,7 +1014,7 @@ You should get the following output:
 
 .gitignore
 
-```py
+```
 
 This shows you that all the files under `abq_data_entry` and `docs`, as well as the files you specified directly, are staged to be committed to the repository.
 
@@ -1024,7 +1024,7 @@ Let's go ahead and commit the changes as follows:
 
 git commit -m "Initial commit"
 
-```py
+```
 
 The `-m` flag here passes in a commit message, which is stored with the commit. Each time you commit code to the repository, you will be required to write a message. You should always make these messages as meaningful as possible, detailing what changes you made and the rationale behind them.
 
