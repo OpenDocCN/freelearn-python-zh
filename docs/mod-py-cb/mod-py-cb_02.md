@@ -32,7 +32,7 @@ Python 语法设计得非常简单。有一些规则；我们将查看语言中�
 
 当我们写这样的东西时：
 
-```
+```py
  **>>> print("hello world")** 
 
  **hello world** 
@@ -43,7 +43,7 @@ Python 语法设计得非常简单。有一些规则；我们将查看语言中�
 
 我们已经看到的另一种语句是赋值语句。Python 在这个主题上有很多变化。大多数时候，我们将一个值赋给一个变量。然而，有时我们可能会同时给两个变量赋值，就像这样：
 
-```
+```py
  **quotient, remainder = divmod(355, 113)** 
 
 ```
@@ -106,7 +106,7 @@ BBEdit 非常适合 Mac OS X 开发人员。请参阅[`www.barebones.com/product
 
 1.  大多数 Python 脚本文件的第一行应该是这样的：
 
-```
+```py
             #!/usr/bin/env python3 
 
 ```
@@ -121,7 +121,7 @@ Windows 开发人员可以无论如何包含序言行。这将使 Mac OS X 和 L
 
 1.  在序言之后，应该有一个三引号的文本块。这是我们要创建的文件的文档字符串（称为**docstring**）。这在技术上不是强制性的，但对于解释文件包含的内容至关重要。
 
-```
+```py
         ''' 
         A summary of this script. 
         ''' 
@@ -132,7 +132,7 @@ Windows 开发人员可以无论如何包含序言行。这将使 Mac OS X 和 L
 
 1.  现在来到脚本的有趣部分：真正执行操作的部分。我们可以编写所有需要完成工作的语句。现在，我们将使用这个作为占位符：
 
-```
+```py
         print('hello world') 
 
 ```
@@ -143,7 +143,7 @@ Windows 开发人员可以无论如何包含序言行。这将使 Mac OS X 和 L
 
 我们的文件应该是这样的：
 
-```
+```py
     #!/usr/bin/env python3 
     ''' 
     My First Script: Calculate an important value. 
@@ -163,7 +163,7 @@ Windows 开发人员可以无论如何包含序言行。这将使 Mac OS X 和 L
 
 如果我们将文件保存为 UTF-8，这是合法的 Python：
 
-```
+```py
     π=355/113 
     print(π) 
 
@@ -187,7 +187,7 @@ Windows 开发人员可以无论如何包含序言行。这将使 Mac OS X 和 L
 
 在 Python 3.5 中，我们有时会在脚本文件中看到这样的东西：
 
-```
+```py
     color = 355/113 # type: float 
 
 ```
@@ -200,7 +200,7 @@ Windows 开发人员可以无论如何包含序言行。这将使 Mac OS X 和 L
 
 这是一个对 Python 有用的典型 modeline：
 
-```
+```py
     # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4 
 
 ```
@@ -223,7 +223,7 @@ Windows 开发人员可以无论如何包含序言行。这将使 Mac OS X 和 L
 
 通常，我们会有一个语句，它非常长且难以处理。比如说我们有这样的东西：
 
-```
+```py
  **>>> import math** 
 
  **>>> example_value = (63/25) * (17+15*math.sqrt(5)) / (7+15*math.sqrt(5))** 
@@ -262,7 +262,7 @@ Python 给了我们几种包装长语句使其更易读的方法。
 
 这个技巧的背景是：
 
-```
+```py
  **>>> import math** 
 
  **>>> example_value = (63/25) * (17+15*math.sqrt(5)) / (7+15*math.sqrt(5))** 
@@ -277,14 +277,14 @@ Python 允许我们使用`\`并换行。
 
 1.  将整个语句写在一行上，即使它很混乱：
 
-```
+```py
  **>>> message_text = 'the internal representation is {mantissa:d}/2**53*2**{exponent:d}'.format(mantissa=mantissa_whole, exponent=exponent)** 
 
 ```
 
 1.  如果有*逻辑*断点，在那里插入`\`。有时，没有真正好的断点：
 
-```
+```py
  **>>> message_text = 'the internal representation is \** 
 
  **... {mantissa:d}/2**53*2**{exponent:d}'.\** 
@@ -305,7 +305,7 @@ Python 允许我们使用`\`并换行。
 
 1.  将整个语句写在一行上，即使它很混乱：
 
-```
+```py
  **>>> import math** 
 
  **>>> example_value1 = (63/25) * (17+15*math.sqrt(5)) / (7+15*math.sqrt(5))** 
@@ -314,7 +314,7 @@ Python 允许我们使用`\`并换行。
 
 1.  添加额外的`()`字符不改变值，但允许将表达式分解为多行：
 
-```
+```py
  **>>> example_value2 = (63/25) * ( (17+15*math.sqrt(5)) / (7+15*math.sqrt(5)) )** 
 
  **>>> example_value2 == example_value1** 
@@ -325,7 +325,7 @@ Python 允许我们使用`\`并换行。
 
 1.  在`()`字符内部断开行：
 
-```
+```py
  **>>> example_value3 = (63/25) * (** 
 
  **...      (17+15*math.sqrt(5))** 
@@ -352,7 +352,7 @@ Python 允许我们使用`\`并换行。
 
 1.  将字符串分解为子字符串：
 
-```
+```py
  **>>> message_text = (** 
 
  **... 'the internal representation '** 
@@ -375,7 +375,7 @@ Python 允许我们使用`\`并换行。
 
 这个技巧的背景是：
 
-```
+```py
  **>>> import math** 
 
  **>>> example_value = (63/25) * (17+15*math.sqrt(5)) / (7+15*math.sqrt(5))** 
@@ -386,7 +386,7 @@ Python 允许我们使用`\`并换行。
 
 1.  识别整体表达式中的子表达式。将这些分配给变量：
 
-```
+```py
  **>>> a = (63/25)** 
 
  **>>> b = (17+15*math.sqrt(5))** 
@@ -399,7 +399,7 @@ Python 允许我们使用`\`并换行。
 
 1.  用创建的变量替换子表达式：
 
-```
+```py
  **>>> example_value = a * b / c** 
 
 ```
@@ -416,7 +416,7 @@ Python 语言手册对逻辑行和物理行进行了区分。逻辑行包含一�
 
 隐式行连接的使用可以在许多情况下使用。它通常在语义上与表达式的结构相吻合，因此是受鼓励的。我们可能需要`()`字符作为必需的语法。例如，我们已经将`()`字符作为`print()`函数的语法的一部分。我们可能这样做来分解一个长语句：
 
-```
+```py
  **>>> print(** 
 
  **...    'several values including',** 
@@ -437,7 +437,7 @@ Python 语言手册对逻辑行和物理行进行了区分。逻辑行包含一�
 
 然而，语言设计者允许我们使用`()`字符，以便将一长串名称分解为多个逻辑行：
 
-```
+```py
  **>>> from math import (sin, cos, tan,** 
 
  **...    sqrt, log, frexp)** 
@@ -482,7 +482,7 @@ Python 语言手册对逻辑行和物理行进行了区分。逻辑行包含一�
 
 我们可能会这样开始我们的模块文档字符串：
 
-```
+```py
     ''' 
     Downloads and decodes the current Special Marine Warning (SMW) 
     for the area 'AKQ'. 
@@ -524,7 +524,7 @@ Python 语言手册对逻辑行和物理行进行了区分。逻辑行包含一�
 
 这是一个脚本的 docstring 示例：
 
-```
+```py
     ''' 
     Downloads and decodes the current Special Marine Warning (SMW) 
     for the area 'AKQ' 
@@ -599,7 +599,7 @@ RST 有一个简单的语法规则，即段落之间用空行分隔。
 
 +   提供一个`::`前缀。我们可以将其作为自己单独的段落，或者作为引导段落末尾的特殊双冒号：
 
-```
+```py
         Here's an example:: 
 
             more_code()  
@@ -648,7 +648,7 @@ RST 有一个简单的语法规则，即段落之间用空行分隔。
 
 标题将看起来像这样。
 
-```
+```py
         Topic 
         ===== 
 
@@ -685,7 +685,7 @@ docutils 转换程序将检查文档，寻找部分和正文元素。一个部�
 
 一个正确嵌套的文档可能具有以下下划线字符序列：
 
-```
+```py
     ==== 
     ----- 
     ^^^^^^ 
@@ -751,7 +751,7 @@ RST 解析器可以识别几种不同类型的正文元素。我们展示了一�
 
 +   **指令**：指令是一个段落，通常看起来像`.. directive::`。它可能有一些内容，缩进以便包含在指令内。它可能看起来像这样：
 
-```
+```py
         ..  important:: 
 
             Do not flip the bozo bit. 
@@ -768,7 +768,7 @@ Docutils 有许多内置指令。Sphinx 添加了许多具有各种功能的指�
 
 我们可能有这样的东西来提供适当的强调：
 
-```
+```py
     ..  note:: Note Title 
 
         We need to indent the content of an admonition. 
@@ -778,7 +778,7 @@ Docutils 有许多内置指令。Sphinx 添加了许多具有各种功能的指�
 
 另一个常见的指令是`parsed-literal`指令。
 
-```
+```py
     ..  parsed-literal:: 
 
         any text 
@@ -801,80 +801,87 @@ Docutils 有许多内置指令。Sphinx 添加了许多具有各种功能的指�
 +   我们用单个反引号（`` ` ``）包围引用。链接后面带有`_`。我们可以用`` `section title`_ ``来指代文档中的特定章节。我们通常不需要在URL周围放置任何东西。Docutils 工具可以识别这些。有时我们希望显示一个单词或短语，隐藏 URL。我们可以用这个：`` `the Sphinx documentation <http://www.sphinx-doc.org/en/stable/>`_ ``。
 *   我们可以将代码相关的单词使用两个反引号括起来，使其看起来像：
 
-    ```
+    ```py
     ``code``
     ```
 
 还有一种更一般的技术叫做文本角色。角色看起来比简单地用`*`字符包装一个单词或短语要复杂一些。我们使用`:word:`作为角色名称，后面跟着适用的单词或短语在单个`` ` ``反引号中。文本角色看起来像这样`` :strong:`this` ``。
 
-There are a number of standard role names including `:emphasis:` , `:literal:` , `:code:` , `:math:` , `:pep-reference:` , `:rfc-reference:` , `:strong:` , `:subscript:` , `:superscript:` , and `:title-reference:` . Some of these are also available with simpler markup like `*emphasis*` or `**strong**` . The rest are only available as explicit roles.
+有许多标准角色名称，包括`:emphasis:`、`:literal:`、`:code:`、`:math:`、`:pep-reference:`、`:rfc-reference:`、`:strong:`、`:subscript:`、`:superscript:`和`:title-reference:`。其中一些也可以用更简单的标记，如`*emphasis*`或`**strong**`。其余只能作为显式角色使用。
 
-Also, we can define new roles with a simple directive. If we want to do very sophisticated processing, we can provide docutils with class definitions for handling roles, allowing us to tweak the way our document is processed. Sphinx adds a large number of roles to support detailed cross references among functions, methods, exceptions, classes, and modules.
+此外，我们可以使用一个简单的指令定义新角色。如果我们想要进行非常复杂的处理，我们可以为处理角色提供 docutils 的类定义，从而允许我们调整文档处理的方式。Sphinx 添加了大量角色以支持函数、方法、异常、类和模块之间的详细交叉引用。
 
-## See also
+## 另请参阅
 
-*   For more information on RST syntax, see [`docutils.sourceforge.net`](http://docutils.sourceforge.net) . This includes a description of the docutils tools.
-*   For information on **Sphinx Python Documentation Generator** , see [`www.sphinx-doc.org/en/stable/`](http://www.sphinx-doc.org/en/stable/) .
-*   The Sphinx tool adds many additional directives and text roles to the basic definitions.
++   有关 RST 语法的更多信息，请参阅[`docutils.sourceforge.net`](http://docutils.sourceforge.net)。其中包括对 docutils 工具的描述。
 
-# Designing complex if...elif chains
++   有关**Sphinx Python Documentation Generator**的信息，请参阅[`www.sphinx-doc.org/en/stable/`](http://www.sphinx-doc.org/en/stable/)。
 
-In most cases, our scripts will involve a number of choices. Sometimes the choices are simple, and we can judge the quality of the design with a glance at the code. In other cases, the choices are more complex, and it's not easy to determine whether or not our if statements are designed properly to handle all of the conditions.
++   Sphinx 工具添加了许多附加指令和文本角色到基本定义中。
 
-In the simplest case, we have one condition, *C* , and its inverse, *C* . These are the two conditions for an `if...else` statement. One condition, ¬ *C* , is stated in the `if` clause, the other is implied in the `else` .
+# 设计复杂的 if...elif 链
 
-We'll use *p* ∨ *q* to mean Python's **OR** operator in this explanation. We can call these two conditions *complete* because:
+大多数情况下，我们的脚本会涉及到一系列选择。有时选择很简单，我们可以通过查看代码来判断设计的质量。在其他情况下，选择更加复杂，很难确定我们的 if 语句是否正确设计以处理所有条件。
+
+在最简单的情况下，我们有一个条件，*C*，和它的反义，*C*。这是`if...else`语句的两个条件。一个条件，¬*C*，在`if`子句中说明，另一个在`else`中暗示。
+
+在本解释中，我们将使用 *p* ∨ *q* 表示 Python 的**OR**运算符。我们可以称这两个条件为*完整*，因为：
 
 *C* ∨ *C =* ¬ ***T***
 
-We call this complete because no other conditions can exist. There's no third choice. This is the **Law of the Excluded Middle** . It's also the operating principle behind the `else` clause. The `if` statement body is executed or the `else` statement is executed. There's no third choice.
+我们称之为完全，因为没有其他条件可以存在。没有第三个选择。这就是**排中律**。这也是`else`子句背后的操作原则。`if`语句体被执行或`else`语句被执行。没有第三个选择。
 
-In practical programming, we often have complex choices. We may have a set of conditions, *C* = { *C[1] , C[2] , C[3] , ..., C[n]* }.
+在实际编程中，我们经常有复杂的选择。我们可能有一组条件，*C* = {*C[1]*，*C[2]*，*C[3]*，...，*C[n]*}。
 
-We don't want to simply assume that:
+我们不希望简单地假设：
 
 *C[1]* ∨ *C[2]* ∨ *C[3]* ∨ *...* ∨ *C[n] = **T***
 
-We can use ![Designing complex if...elif chains](img/Image00003.jpg)  to have a meaning similar to `any(C)` , or perhaps `any([C_1, C_2, C_3, ..., C_n])` . We need to prove that ![Designing complex if...elif chains](img/Image00004.jpg)  ; we can't assume this is `true` .
+我们可以使用 ![设计复杂的 if...elif 链](img/Image00003.jpg) 来表示与`any(C)`类似的含义，或者`any([C_1, C_2, C_3, ..., C_n])`。我们需要证明![设计复杂的 if...elif 链](img/Image00004.jpg) ；我们不能假设这是`true`。
 
-Here's what might go wrong—we might miss some condition, *C[n+1]* , that got lost in the tangle of logic. Missing this will mean that our program will fail to work properly for this case.
+下面是可能出错的情况——我们可能错过了一些条件，*C[n+1]*，在逻辑混乱中丢失了。错过这个将意味着我们的程序将无法正确处理此案例。
 
-How can we be sure we haven't missed something?
+我们如何确定我们没有漏掉什么？
 
-## Getting ready
+## 准备就绪
 
-Let's look at a concrete example of an `if...elif` chain. In the casino game of *Craps* , there are a number of rules that apply to a roll of two dice. These rules apply on the first roll of the game, called the *come out* roll:
+让我们看一个具体的例子，一个`if...elif`链。在*Craps*赌场游戏中，有一些适用于两个骰子的投掷的规则。这些规则适用于游戏的第一次投掷，称为*come out*投掷：
 
-*   2, 3, or 12, is *Craps* , which is a loss for all bets placed on the pass line
-*   7 or 11 is a winner for all bets placed on the pass line
-*   The remaining numbers establish a *point*
++   2，3 或 12，是*Craps*，这对所有在通过线上下的所有赌注来说都是一个损失
 
-Many players place their bets on the pass line. There's also a *don't pass* line, which is less commonly used. We'll use this set of three conditions as an example for looking at this recipe because it has a potentially vague clause in it.
++   7 或 11 对所有放在通过线上的赌注都是赢家
 
-## How to do it...
++   剩余数字确定了一个*点*
 
-When we write an `if` statement, even when it appears trivial, we need to be sure that all conditions are covered.
+许多玩家把他们的赌注放在通过线上。还有一个*don't pass*线，这个线不常用。我们将使用这三个条件集作为例子来查看这个方法，因为它有一个可能模糊的子句。
 
-1.  Enumerate the alternatives we know. In our example, we have three rules: (2, 3, 12), (7, 11), and the vague remaining numbers.
-2.  Determine the universe of all possible conditions. For this example, there are 10 conditions: the numbers from 2 to 12.
-3.  Compare the known alternatives with the universe. There are three possible outcomes of this comparison between the set of conditions, *C* , and the universe of all possible conditions, *U* :
+## 如何做...
 
-The known alternatives have more conditions than the universe; *C* ⊃ *U* . This is a huge design problem. This requires rethinking the design from the foundations.
+当我们写一个`if`语句时，即使看起来微不足道，我们也需要确保所有条件都被考虑到。
 
-There's a gap between the known conditions and the universe of possible conditions; U \ C ≠ ∅. In some cases, it's clear that we haven't covered all of the possible conditions. In other cases, it takes some careful reasoning. We'll need to replace any vague or poorly defined terms with something much more precise.
+1.  枚举我们所知道的备选方案。在我们的例子中，我们有三条规则：（2，3，12），（7，11），以及模糊的剩余数字。
 
-In this example, we have a vague term, which we can replace with something more specific. The term **remaining numbers** appears to be the list of values (4, 5, 6, 8, 9, 10). Supplying this list removes any possible gaps and doubts.
+1.  确定所有可能条件的全集。对于这个例子，有 10 个条件：从 2 到 12 的数字。
 
-The known alternatives match the universe of possible alternatives; *U* ≡ *C* . There are two common cases:
+1.  将已知的备选方案与宇宙进行比较。这个条件集合*C*与所有可能条件的宇宙*U*之间有三种可能的比较结果：
 
-*   We have something as simple as *C* ∨ ¬ *C* . We can use a single `if` and `else` clause—we do not need to use this recipe because we can easily deduce ¬ *C* .
-*   We might have something more complex. Since we know the entire universe, we can show that ![How to do it...](img/Image00004.jpg)  . We need to use this recipe to write a chain of `if` and `elif` statements, one clause per condition.
+已知的备选方案比宇宙中的条件还多；*C* ⊃ *U* 。这是一个巨大的设计问题。这需要从根本上重新思考设计。
 
-The distinction is not always crisp. In our example, we don't have a detailed specification for one of the conditions, but the condition is *mostly* clear. If we think the missing condition is obvious, we can use an `else` clause instead of writing it out explicitly. If we think the missing condition might be misunderstood, we should treat it as vague and use this recipe.
+已知条件和可能条件的宇宙之间存在差距；U \ C ≠ ∅。在某些情况下，很明显我们没有涵盖所有可能的条件。在其他情况下，需要进行一些仔细的推理。我们需要用更精确的东西替换任何模糊或定义不清的术语。
 
-1.  Write the `if...elif...elif` chain that covers all of the known conditions. For our example, it will look like this:
+在这个例子中，我们有一个模糊的术语，我们可以用更具体的东西替换。术语**剩余数字**似乎是值的列表（4, 5, 6, 8, 9, 10）。提供这个列表消除了任何可能的空白和疑虑。
 
-```
+已知的备选方案与可能备选方案的宇宙相匹配；*U* ≡ *C* 。有两种常见情况：
+
++   我们有像*C* ∨ ¬ *C*这样简单的东西。我们可以使用一个单独的`if`和`else`子句——我们不需要使用这个方法，因为我们可以很容易地推断出¬ *C*。
+
++   我们可能有更复杂的东西。因为我们知道了整个宇宙，我们可以展示 ![如何做...](img/Image00004.jpg) 。我们需要使用这个方法来编写一系列的`if`和`elif`语句，每个条件一个子句。
+
+区分并不总是清晰的。在我们的例子中，我们没有详细说明其中一个条件，但这个条件*大致*是清晰的。如果我们认为缺失的条件是显而易见的，我们可以使用一个`else`子句而不是明确地写出它。如果我们认为缺失的条件可能会被误解，我们应该将其视为模糊的，并使用这个方法。
+
+1.  编写覆盖所有已知条件的`if...elif...elif`链。对于我们的例子，它会像这样：
+
+```py
         dice = die_1 + die_2 
         if dice in (2, 3, 12): 
             game.craps() 
@@ -885,53 +892,53 @@ The distinction is not always crisp. In our example, we don't have a detailed sp
 
 ```
 
-2.  Add an `else` clause that raises an exception, like this:
+1.  添加一个引发异常的`else`子句，就像这样：
 
-```
+```py
 
         else: 
             raise Exception('Design Problem Here: not all conditions accounted for') 
 
 ```
 
-This extra `else` crash condition gives us a way to positively identify when a logic problem is found. We can be sure that any error we make will lead to a conspicuous problem.
+这个额外的 `else` 崩溃条件给了我们一种积极识别逻辑问题的方法。我们可以确信，我们所犯的任何错误都将导致一个引人注目的问题。
 
-## How it works...
+## 工作原理...
 
-Our goal is to be sure that our program always works. While testing helps, we can still have wrong assumptions in both design and test cases.
+我们的目标是确保我们的程序始终正常运行。尽管测试有所帮助，但我们仍然可能在设计和测试用例中有错误的假设。
 
-While rigorous logic is essential, we can still make errors. Further, someone else could try to tweak our code and introduce an error. More embarrassingly, we could make a change in our own code that leads to breakage.
+尽管严谨的逻辑是必不可少的，我们仍然可能犯错。此外，其他人可能尝试调整我们的代码并引入错误。更尴尬的是，我们可能对自己的代码进行更改导致程序崩溃。
 
-The `else` crash option forces us to be explicit for each and every condition. Nothing is assumed. As we noted previously, any error in our logic will be uncovered when an exception gets raised.
+`else` 崩溃选项迫使我们对每个条件都要明确。不做任何假设。正如我们之前指出的，我们逻辑中的任何错误都将在引发异常时被发现。
 
-The `else` crash option doesn't have a significant performance impact. A simple `else` clause is slightly faster than an `elif` clause with a condition. If we think that our application performance depends in any way on the cost of a single expression, we've got more serious design problems to solve. The cost of evaluating a single expression is rarely the costliest part of an algorithm.
+`else` 崩溃选项对性能影响不大。一个简单的 `else` 子句比带有条件的 `elif` 子句稍快一些。如果我们认为我们的应用程序性能在任何方面取决于单个表达式的成本，那么我们有更严重的设计问题要解决。评估单个表达式的成本很少是算法中最昂贵的部分。
 
-Crashing with an exception is a sensible behavior in the presence of a design problem. It doesn't make much sense to follow the design pattern of writing a warning message to a log. If we have this kind of logic gap, the program is fatally broken and it's important to find and fix this as soon as it's known.
+在设计问题存在的情况下，遇到异常崩溃是一个明智的行为。按照写入警告消息到日志的设计模式并没有太多意义。如果存在这种逻辑漏洞，程序就已经严重出错了，发现问题后尽快找到并修复是很重要的。
 
-## There's more...
+## 还有更多...
 
-In many cases, we can derive an `if...elif...elif` chain from an examination of the desired post-condition at some point in the program's processing. For example, we may need a statement that establishes something simple like *m* the larger of *a* or *b* .
+在许多情况下，我们可以通过检查程序处理的某个点的期望后置条件来推导出一个 `if...elif...elif` 链。例如，我们可能需要一个陈述来建立像 *m* 是 *a* 或 *b* 中较大的一个这样简单的事情。
 
-(For the sake of working through the logic, we'll avoid `m = max(a, b)` .)
+（为了通过逻辑，我们将避免 `m = max(a, b)` 。）
 
-We can formalize the final condition like this:
+我们可以这样形式化最终条件：
 
 *(m = a* ∨ *m = b)* ∧ *m > a * ∧ *m > b*
 
-We can work backwards from this final condition, by writing the goal as an assert statement:
+我们可以通过将目标写成一个断言语句来从最终条件开始逆向工作：
 
-```
+```py
 
     # do something 
     assert (m = a or m = b) and m > a and m > b 
 
 ```
 
-Once we have the goal stated, we can identify statements that lead to that goal. Clearly assignment statements like `m = a` and `m = b` will be appropriate, but only under certain conditions.
+一旦我们陈述了目标，我们就可以确定导致该目标的陈述。显然，像 `m = a` 和 `m = b` 这样的赋值语句是合适的��但只在特定条件下。
 
-Each of these statements is part of the solution, and we can derive a precondition that shows when the statement should be used. The preconditions for each assignment statement are the `if` and `elif` expressions. We need to use `m = a` when `a >= b` ; we need to use `m=b` when `b >= a` . Rearranging logic into code gives us this:
+这些陈述中的每一个都是解决方案的一部分，我们可以推导出一个前提条件，显示何时应该使用该陈述。每个赋值语句的前提条件是 `if` 和 `elif` 表达式。当 `a >= b` 时，我们需要使用 `m = a` ；当 `b >= a` 时，我们需要使用 `m=b` 。将逻辑重新排列成代码给出了这样：
 
-```
+```py
 
     if a >= b:  
         m = a 
@@ -941,41 +948,43 @@ Each of these statements is part of the solution, and we can derive a preconditi
     assert (m = a or m = b) and m > a and m > b 
 ```
 
-Note that our universe of conditions,   *U* = { *a ≥ b, b ≥ a* }, is complete; there's no other possible relationship. Also notice that in the edge case of *a = b* , we don't actually care which assignment statement we use. Python will process the decisions in order, and will execute `m = a` . The fact that this choice is consistent shouldn't have any impact on our design of `if...elif...elif` chains. We should always write the conditions without regard to order of evaluation of the clauses.
+请注意我们的条件宇宙，*U* = { *a ≥ b, b ≥ a* }，是完整的；没有其他可能的关系。还要注意，在边界情况下的 *a = b* ，我们实际上并不关心使用哪个赋值语句。Python 将按顺序处理决策，并执行 `m = a` 。这个选择是一致的事实不应该对我们的 `if...elif...elif` 链的设计产生任何影响。我们应该总是写条件而不考虑子句的评估顺序。
 
-## See also
+## 另请参阅
 
-*   This is similar to the syntactic problem of a **dangling else** . See [`en.wikipedia.org/wiki/Dangling_else`](https://en.wikipedia.org/wiki/Dangling_else) .
-*   Python's indentation removes the dangling else syntax problem. It doesn't remove the semantic issue of trying to be sure that all conditions are properly accounted for in a complex `if...elif...elif` chain.
-*   Also, see [`en.wikipedia.org/wiki/Predicate_transformer_semantics`](https://en.wikipedia.org/wiki/Predicate_transformer_semantics) .
++   这类似于**悬挂 else**的语法问题。参见[`en.wikipedia.org/wiki/Dangling_else`](https://en.wikipedia.org/wiki/Dangling_else)。
 
-# Designing a while statement which terminates properly
++   Python 的缩进消除了悬挂 else 语法问题。它并没有解决在复杂的`if...elif...elif`链中确保所有条件都得到适当处理的语义问题。
 
-Much of the time, the Python `for` statement provides all of the iteration controls we need. In many cases, we can use built-in functions like `map()` , `filter()` , and `reduce()` to process collections of data.
++   还请参阅[`en.wikipedia.org/wiki/Predicate_transformer_semantics`](https://en.wikipedia.org/wiki/Predicate_transformer_semantics)。
 
-There are a few situations, however, where we need to use a `while` statement. Some of those situations involve data structures where we can't create a proper iterator to step through the items. Other items involve interactions with human users, where we don't have the data until we get input from the person.
+# 设计一个正确终止的 while 语句
 
-## Getting ready
+大多数情况下，Python 的`for`语句提供了我们需要的所有迭代控制。在许多情况下，我们可以使用内置函数如`map()`，`filter()`和`reduce()`来处理数据集合。
 
-Let's say that we're going to be prompting a user for their password. We'll use the `getpass` module so that there's no echo.
+然而，有一些情况我们需要使用`while`语句。其中一些情况涉及到我们无法创建适当的迭代器来遍历项目的数据结构。其他情况涉及与人类用户的交互，我们在从这些人那里得到输入之前没有数据。
 
-Further, to be sure they've entered it properly, we'll want to prompt them twice and compare the results. This is a situation where a simple `for` statement isn't going to work out well. It can be pressed into service, but the resulting code looks strange: `for` statements have an explicit upper bound; prompting a user for input doesn't really have an upper bound.
+## 准备工作
 
-## How to do it...
+假设我们要提示用户输入密码。我们将使用`getpass`模块，以便没有回显。
 
-We'll look at a six-step process that outlines the core of designing this kind of iterative algorithm. This is the kind of thing we need to do when a simple `for` statement doesn't solve our problem.
+此外，为了确保他们已经正确输入了密码，我们将要求他们输入两次并比较结果。这是一个简单的`for`语句不会很好地处理的情况。它可以被迫服役，但结果代码看起来很奇怪：`for`语句有一个显式的上限；提示用户输入实际上没有一个上限。
 
-1.  Define done. In our case, we'll have two copies of the password, `password_text` and `confirming_password_text` . The condition which must be `true` after the loop is that `password_text == confirming_password_text` . Ideally, reading from people (or files) is a bounded activity. Eventually, people will enter the matching pair of values. Until they enter the matching pair, we'll iterate indefinitely.
+## 如何做……
 
-There are other boundary conditions. For example, end of file. Or we allow the person to go back to a previous prompt. Generally, we handle these other conditions with exceptions in Python.
+我们将介绍一个六步流程，概述了设计这种迭代算法核心的内容。这是当一个简单的`for`语句不能解决我们的问题时需要做的事情。
 
-Of course, we can always add these additional conditions to our definition of done. We may need to have a complex terminating condition like end of file OR `password_text == confirming_password_text` .
+1.  定义完成。在我们的情况下，我们将有两份密码，`password_text`和`confirming_password_text`。循环后必须为`true`的条件是`password_text == confirming_password_text`。理想情况下，从人们（或文件）那里读取是一个有界的活动。最终，人们会输入匹配的值对。在他们输入匹配的值对之前，我们将无限迭代。
 
-In this example, we'll opt for exception handling and assume that a `try:` block will be used. It greatly simplifies the design to have only a single clause in the terminating condition.
+还有其他边界条件。例如，文件结束。或者我们允许人返回到先前的提示。一般来说，我们在 Python 中用异常处理这些其他条件。
 
-We can rough out the loop like this:
+当然，我们可以将这些额外条件添加到我们的完成定义中。我们可能需要一个复杂的终止条件，例如文件结尾或`password_text == confirming_password_text`。
 
-```
+在这个例子中，我们将选择异常处理，并假设将使用`try:`块。只在终止条件中有一个单一子句大大简化了设计。
+
+我们可以这样勾画出循环的大致情况：
+
+```py
 
         # initialize something 
         while # not terminated: 
@@ -983,17 +992,17 @@ We can rough out the loop like this:
         assert password_text == confirming_password_text 
 ```
 
-We've written our definition of done as a final `assert` statement. We've included comments for the rest of the iteration that we'll fill in in subsequent steps.
+我们将我们的“完成定义”写成了最后的`assert`语句。我们已经为之后的迭代包含了注释，我们将在后续步骤中填写。
 
-2.  Define a condition that's `true` while the loop is iterating. This is called an **invariant** because it's always `true` at the start and end of loop processing. It's often created by generalizing the post-condition or introducing another variable.
+1.  定义一个在循环迭代时为`true`的条件。这被称为**不变量**，因为在循环处理的开始和结束时它总是`true`。通常通过泛化后置条件或引入另一个变量来创建它。
 
-When reading from people (or files) we have an implied state change that is an important part of the invariant. We can call this the *get the next input* change in state. We often have to articulate clearly that our loop will be acquiring some next value from an input stream.
+当从人（或文件）那里读取时，我们有一个隐含的状态改变，这是不变量的重要部分。我们可以称之为状态改变中的*获取下一个输入*。我们经常必须清楚地表达，我们的循环将从输入流中获取下一个值。
 
-We have to be sure that our loop properly gets the next item in spite of any complex logic in the body of the `while` statement. It's a common bug to have a condition where a next input is not actually fetched. This leads to programs which *hang* —there's no state change in one logic path through the `if` statements in the body of the `while` statement. The invariant wasn't reset properly, or it wasn't articulated properly when designing the loop.
+我们必须确保我们的循环能够正确获取下一个项目，尽管`while`语句体中存在复杂的逻辑。一个常见的错误是存在一个条件，下一个输入实际上没有被获取。这会导致程序*挂起*——在`while`语句体中的`if`语句路径中没有状态改变。不变量没有被正确重置，或者在设计循环时没有被正确表达。
 
-In our case, the invariant will use a conceptual `new-input()` condition. This condition is `true` when we've read a new value using the `getpass()` function. Here's our expanded loop design:
+在我们的情况下，不变量将使用一个概念上的`new-input()`条件。当我们使用`getpass()`函数读取新值时，这个条件为`true`。这是我们扩展的循环设计：
 
-```
+```py
 
         # initialize something 
         # assert the invariant new-input(password_text) 
@@ -1006,11 +1015,11 @@ In our case, the invariant will use a conceptual `new-input()` condition. This c
 
 ```
 
-3.  Define the condition for leaving the loop. We need to be sure that this condition depends on the invariant being `true` . We also need to be sure that, when this termination condition is finally `false,` the target state will become `true` .
+1.  定义离开循环的条件。我们需要确保这个条件取决于不变量为`true`。我们还需要确保，当这个终止条件最终为`false`时，目标状态将变为`true`。
 
-In most cases, the loop condition is the logical negation of the target state. Here's the expanded design:
+在大多数情况下，循环条件是目标状态的逻辑否定。这里是扩展的设计：
 
-```
+```py
 
         # initialize something 
         # assert the invariant new-input(password_text)  
@@ -1023,9 +1032,9 @@ In most cases, the loop condition is the logical negation of the target state. H
 
 ```
 
-4.  Define the initialization that will make sure that both the invariant will be `true` and that we can actually test the terminating condition. In this case, we need to get values for the two variables. The loop now looks like this:
+1.  定义初始化，确保不变量为`true`，并且我们实际上可以测试终止条件。在这种情况下，我们需要为两个变量获取值。现在循环看起来像这样：
 
-```
+```py
 
         password_text= getpass() 
         confirming_password_text= getpass("Confirm: ") 
@@ -1039,9 +1048,9 @@ In most cases, the loop condition is the logical negation of the target state. H
 
 ```
 
-5.  Write the body of the loop which will reset the invariant to `true` . We need to write the fewest statements that will do this. For this example loop, the fewest statements are pretty obvious—they match the initialization. Our updated loop looks like this:
+1.  编写循环体，将不变量重置为`true`。我们需要编写最少的语句来实现这一点。对于这个示例循环，最少的语句是相当明显的——它们与初始化匹配。我们更新后的循环看起来像这样：
 
-```
+```py
 
         password_text= getpass() 
         confirming_password_text= getpass("Confirm: ") 
@@ -1056,17 +1065,17 @@ In most cases, the loop condition is the logical negation of the target state. H
 
 ```
 
-6.  Identify a clock—a monotonically decreasing function that shows that each iteration of the loop really does make progress toward the terminating condition.
+1.  确定一个时钟——一个单调递减的函数，显示每次循环确实朝着终止条件取得进展。
 
-    When gathering input from people, we're forced to make an assumption that—eventually—they'll enter a matching pair. Each trip through the loop brings us one step closer to that matching pair. To be properly formal, we can assume that there will be *n* inputs before they match; we have to show that each trip through the loop decreases the number which remain.
+    当从人那里收集输入时，我们被迫做一个假设——最终他们会输入匹配的对。每次循环都使我们离匹配对更近一步。为了正确形式化，我们可以假设在它们匹配之前会有*n*个输入；我们必须展示每次循环减少剩余数量。
 
-    In complex situations, we may need to treat the user's input as a list of values. For our example, we'd think of the user input as a sequence of pairs: *[(p[1] , q[1] ),(p[2] , q[2] ),(p[3] , q[3] ),...,(p[n] , q[n] )]* . With a finite list, we can more easily reason about whether or not our loop really is making progress towards completion.
+    在复杂情况下，我们可能需要将用户的输入视为值列表。对于我们的示例，我们会将用户输入视为一系列对：*[(p[1] , q[1] ),(p[2] , q[2] ),(p[3] , q[3] ),...,(p[n] , q[n] )]*。通过有限的列表，我们可以更容易地推断我们的循环是否真正朝着完成进展。
 
-Because we built the loop based on the target `final` condition, we can be absolutely sure that it does what we want it to do. If our logic is sound, the loop will terminate, and will terminate with the expected results. This is the goal of all programming—to have the machine reach a desired state given some initial state.
+因为我们基于目标`最终`条件构建了循环，所以我们可以绝对确定它做了我们想要的事情。如果我们的逻辑是合理的，循环将终止，并且将以预期的结果终止。这是所有编程的目标——让机器在给定一些初始状态的情况下达到期望的状态。
 
-Removing some comments, we have this as our final loop:
+移除一些注释后，我们得到了我们的最终循环：
 
-```
+```py
 
     password_text= getpass() 
     confirming_password_text= getpass("Confirm: ") 
@@ -1076,59 +1085,62 @@ Removing some comments, we have this as our final loop:
     assert password_text == confirming_password_text 
 ```
 
-We left the final post-condition in place as an `assert` statement. For complex loops it's both a built-in test, as well as a comment that explains how the loop works.
+我们将最终的后置条件保留为一个`assert`语句。对于复杂的循环，它既是一个内置测试，也是一个解释循环工作原理的注释。
 
-This design process often produces a loop that looks similar to one we might develop based on intuition. There's nothing wrong with having a step by step justification for an intuitive design. Once we've done this a few times, we can be much more confident in using a loop knowing that we can justify the design.
+这个设计过程通常会产生一个看起来类似于基于直觉开发的循环。有逐步证明直觉设计的没什么问题。一旦我们这样做了几次，我们就可以更有信心地使用循环，因为我们可以证明设计是合理的。
 
-In this case, the loop body and the initialization happen to be the same code. If this is a problem, we can define a tiny two-line function to avoid repeating the code. We'll look at this in Chapter 3 , *Function Definitions* .
+在这种情况下，循环体和初始化碰巧是相同的代码。如果这是一个问题，我们可以定义一个小两行的函数来避免重复代码。我们将在第三章*函数定义*中讨论这个问题。
 
-## How it works...
+## 它的工作原理...
 
-We start out by articulating the goal for the loop. Everything else that we do will assure that the code written leads to that goal condition. Indeed, this is the motivation behind all software design—we're always trying to write the fewest statements that lead to a given goal state. We're often working *backwards* from goal to initialization. Each step in the chain of reasoning is essentially stating the weakest precondition for some statement, `S` , that leads to our desired outcome condition.
+我们首先明确循环的目标。我们所做的一切都将确保编写的代码导致该目标条件。实际上，这就是所有软件设计背后的动机——我们始终试图编写导致给定目标状态的最少语句。我们通常是*反向*从目标到初始化。推理链中的每一步实质上都是陈述了某个语句`S`的最弱前置条件，该语句导致我们期望的结果条件。
 
-Given a post-condition, we're trying to solve for a statement and a precondition. We're always building this pattern:
+鉴于后置条件，我们试图解决一个语句和一个前置条件。我们总是在构建这个模式：
 
-```
+```py
 
     assert pre-condition 
     S 
     assert post-condition 
 ```
 
-The post-condition is our definition of done. We need to hypothesize a statement, `S` , that leads to done, and a precondition for that statement. There are always an infinite number of alternative statements; we focus on the weakest precondition—the one that has the fewest assumptions.
+后置条件是我们的完成定义。我们需要假设一个导致完成的语句，`S`，以及该语句的前置条件。总是存在无限数量的替代语句；我们专注于最弱的前置条件——假设最少的那个。
 
-At some point—usually when writing the initialization statements—we find that the pre-condition is merely `true` : any initial state will do as the precondition for a statement. That's how we know that our program can start from any initial state and complete as expected. This is ideal.
+在某个时刻——通常是在编写初始化语句时——我们发现前置条件仅仅是`true`：任何初始状态都可以作为语句的前置条件。这就是我们知道我们的程序可以从任何初始状态开始并按预期完成的方式。这是理想的。
 
-When designing a `while` statement, we have a nested context inside the statement's body. The body should always be in a process of resetting the invariant condition to be `true` again. In our example, this means reading more input from the user. In other examples, we might be processing another character in a string, or another number from a set of numbers.
+在设计`while`语句时，我们在语句体内有一个嵌套的上下文。语句体应始终处于将不变条件重新设置为`true`的过程中。在我们的例子中，这意味着从用户那里读取更多输入。在其他例子中，我们可能正在处理字符串中的另一个字符，或者从一组数字中取另一个数字。
 
-We need to prove that when the invariant is `true` and the loop condition is `false` then our final goal is achieved. This proof is easier when we start from the final goal and create the invariant and the loop condition based on that final goal.
+我们需要证明当不变量为`true`且循环条件为`false`时，我们的最终目标已经实现。当我们从最终目标出发并根据该最终目标创建不变量和循环条件时，这个证明会更容易。
 
-What's important is patiently doing each step so that our reasoning is solid. We need to be able to prove that the loop will work. Then we can run unit tests with confidence.
+重要的是要耐心地完成每一步，以确保我们的推理是坚实的。我们需要能够证明循环将正常工作。然后我们可以有信心地运行单元测试。
 
-## See also
+## 另请参阅
 
-*   We look at some other aspects of advanced loop design in the *Avoiding a potential problem with break statements* recipe.
-*   We also looked at this concept in the *Designing complex if...elif chains* recipe.
-*   A classic article on this topic is by David Gries, *A note on a standard strategy for developing loop invariants and loops* . See [`www.sciencedirect.com/science/article/pii/0167642383900151`](http://www.sciencedirect.com/science/article/pii/0167642383900151) .
-*   Algorithm design is a big subject. A good introduction is by Skiena, *Algorithm Design Manual* . See [`www3.cs.stonybrook.edu/~algorith/`](http://www3.cs.stonybrook.edu/~algorith/) .
++   我们在*避免使用 break 语句可能导致的问题*配方中查看了高级循环设计的其他方面。
 
-# Avoiding a potential problem with break statements
++   我们在*设计复杂的 if...elif 链*配方中也研究了这个概念。
 
-The common way to understand a `for` statement is that it creates a *for all* condition. At the end of the statement, we can assert that, for all items in a collection, some processing has been done.
++   关于这个话题的经典文章是由**大卫·格里斯**撰写的一篇论文，*关于发展循环不变量和循环的标准策略的注释*。参见[`www.sciencedirect.com/science/article/pii/0167642383900151`](http://www.sciencedirect.com/science/article/pii/0167642383900151)。
 
-This isn't the only meaning for a `for` statement. When we introduce the `break` statement inside the body of a `for` , we change the semantics to *there exists* . When the `break` statement leaves the `for` (or `while` ) statement, we can assert only that there exists at least one item that caused the statement to end.
++   算法设计是一个大的主题。一本很好的介绍是由斯基耐纳撰写的 *算法设计手册*。参见[`www3.cs.stonybrook.edu/~algorith/`](http://www3.cs.stonybrook.edu/~algorith/)。
 
-There's a side issue here. What if the loop ends without executing the `break` ? We are forced to assert that there does not exist even one item that triggered the `break` . **DeMorgan's Law** tells us that a not exists condition can be restated as a *for all* condition: ¬∃ [*x*] *B* ( *x* ) ≡ ∀ [*x*] ¬ *B* ( *x* ). In this formula, *B(x)* is the condition on the `if` statement that includes the `break` . If we never found *B(x)* , then for all items ¬ *B(x)* was `true` . This shows some of the symmetry between a typical *for all* loop and a *there exists* loop which includes a `break` .
+# 避免使用 break 语句可能导致的问题
 
-The condition that's `true` upon leaving a `for` or `while` statement can be ambiguous. Did it end normally? Did it execute the `break` ? We can't *easily* tell, so we'll provide a recipe that gives us some design guidance.
+理解`for`语句的常见方式是它创建了一个*对于所有*的条件。在语句结束时，我们可以断言，在集合中的所有项目都进行了一些处理。
 
-This can become an even bigger problem when we have multiple `break` statements, each with its own condition. How can we minimize the problems created by having complex `break` conditions?
+这并不是`for`语句的唯一含义。当我们在`for`的主体内引入`break`语句时，我们将语义更改为*存在*。当`break`语句离开`for`（或`while`）语句时，我们只能断言至少存在一个导致语句结束的项目。
 
-## Getting ready
+这里有一个次要问题。如果循环在不执行`break`的情况下结束了怎么办？我们被迫断言不存在即使一个触发了`break`的项目。**德摩根定律**告诉我们，不存在的条件可以重新陈述为*对于所有*的条件：¬∃[*x*]*B*(*x*) ≡ ∀[*x*]¬ *B*(*x*)。在这个公式中，*B(x)* 是包括`break`的`if`语句的条件。如果我们从未找到 *B(x)*，那么对于所有的项目，¬ *B(x)* 都是`true`。这显示了典型的*对于所有*循环和包括`break`的*存在*循环之间的一些对称性。
 
-Let's find the first occurrence of a `:` or `=` in a string. This is a good example of a *there exists* modification to a `for` statement. We don't want to process all characters, we want to know where there exists the left-most `:` or `=` .
+离开`for`或`while`语句时为`true`的条件可能是模糊的。它是正常结束的吗？它执行了`break`吗？我们不能*轻易*地判断，所以我们将提供一套给出一些设计指导的配方。
 
-```
+当我们有多个带有各自条件的`break`语句时，这个问题可能变得更加严重。我们如何最小化由复杂的`break`条件带来的问题？
+
+## 准备就绪
+
+让我们找到字符串中第一个出现的`:`或`=`。这是对`for`语句的*存在*修改的一个很好的例子。我们不想处理所有字符，我们想知道最左边存在`:`或`=`的地方。
+
+```py
 
 >>> sample_1 = "some_name = the_value" 
 >>> for position in range(len(sample_1)): 
@@ -1140,9 +1152,9 @@ name= some_name  value=  the_value
 
 ```
 
-What about this edge case?
+这个边缘案例怎么处理？
 
-```
+```py
 
 >>> sample_2 = "name_only" 
 >>> for position in range(len(sample_2)): 
@@ -1154,27 +1166,28 @@ name= name_onl value=
 
 ```
 
-That's awkwardly wrong. What happened?
+那太尴尬了。发生了什么？
 
-## How to do it...
+## 如何做...
 
-As we noted in the *Designing a while statement which terminates properly* recipe, every statement establishes a post-condition. When designing a loop, we need to articulate that condition. In this case, we didn't properly articulate the post-condition.
+正如我们在*设计正确终止的 while 语句*配方中指出的，每个语句都建立了一个后置条件。在设计循环时，我们需要表达这个条件。在这种情况下，我们没有正确表达后置条件。
 
-Ideally, the post-condition would be something simple like `text[position] in '=:'` . However, if there's no `=` or `:` in the given text, the simple post-condition doesn't make logical sense. When no character exists which matches the criteria, we can't make any assertion about the position of a character that's not there.
+理想情况下，后置条件应该是像`text[position] in '=:'`这样简单的东西。但是，如果给定的文本中没有`=`或`:`，简单的后置条件就没有逻辑意义。当没有任何符合条件的字符存在时，我们无法对不在那里的字符的位置做出任何断言。
 
-1.  Write the obvious post-condition. We sometimes call this the *happy-path* condition because it's the one that's `true` when nothing unusual has happened.
+1.  写出明显的后置条件。我们有时称之为*幸运路径*条件，因为当没有发生任何异常情况时，它是`true`的。
 
-```
+```py
 
 text[position] in '=:' 
 ```
 
-2.  Add post-conditions for the edge cases. In this example, we have two additional conditions:
+1.  为边界情况添加后置条件。在这个例子中，我们有两个额外的条件：
 
-    *   There's no `=` or `:` .
-    *   There are no characters at all. The `len()` is zero, and the loop never actually does anything. In this case, the position variable will never be created.
+    +   没有`=`或`:`。
 
-```
+    +   根本没有字符。`len()`为零，循环实际上什么也没做。在这种情况下，位置变量将永远不会被创建。
+
+```py
 
                 (len(text) == 0 
                 or not('=' in text or ':' in text) 
@@ -1182,10 +1195,11 @@ text[position] in '=:'
 
 ```
 
-3.  If a `while` statement is being used, consider redesigning it to have completion conditions. This can eliminate the need for a `break` statement.
-4.  If a `for` statement is being used, be sure a proper initialization is done, and add the various terminating conditions to the statements after the loop. It can look redundant to have `x = 0` followed by `for x = ...` . It's necessary in the case of a loop which doesn't execute the `break` statement, though.
+1.  如果正在使用`while`语句，请考虑重新设计为具有完成条件。这可以消除对`break`语句的需要。
 
-```
+1.  如果正在使用`for`语句，请确保进行适当的初始化，并在循环后的语句中添加各种终止条件。在`x = 0`后面跟着`for x = ...`可能看起来多余。在不执行`break`语句的循环中，这是必要的。
+
+```py
 
       >>> position = -1 # If it's zero length 
       >>> for position in range(len(sample_2)): 
@@ -1202,17 +1216,17 @@ text[position] in '=:'
       name= name_only value= None
 ```
 
-In the statements after the `for` , we've enumerated all of the terminating conditions explicitly. The final output, `name= name_only value= None` , confirms that we've correctly processed the sample text.
+在`for`后的语句中，我们已经明确列出了所有的终止条件。最终输出，`name= name_only value= None`，确认我们已经正确处理了示例文本。
 
-## How it works...
+## 运作原理...
 
-This approach forces us to work out the post-condition carefully so that we can be absolutely sure that we know all the reasons for the loop terminating.
+这种方法迫使我们仔细计算后置条件，以确保我们绝对确定知道循环终止的所有原因。
 
-In more complex loops—with multiple `break` statements—the post-condition can be difficult to work out fully. The post-condition for a loop must include all of the reasons for leaving the loop—the *normal* reasons plus all of the `break` conditions.
+在更复杂的循环中——具有多个`break`语句——后置条件可能很难完全计算出来。循环的后置条件必须包括离开循环的所有原因——*正常*原因以及所有的`break`条件。
 
-In many cases, we can refactor the loop to push the processing into the body of the loop. Rather than simply assert that `position` is the index of the `=` or `:` character, we include the next processing steps of assigning the `name` and `value` values. We might have something like this:
+在许多情况下，我们可以重构循环以将处理推入循环体中。我们不仅断言`position`是`=`或`:`字符的索引，而且包括分配`name`和`value`值的下一个处理步骤。我们可能会有这样的东西：
 
-```
+```py
 
     if len(sample_2) > 0: 
         name, value = sample_2, None 
@@ -1224,17 +1238,17 @@ In many cases, we can refactor the loop to push the processing into the body of 
     print('name=', name, 'value=', value) 
 ```
 
-This version pushes some of the processing forward, based on the complete set of post-conditions evaluated previously. This kind of refactoring is common.
+这个版本基于先前评估的完整后置条件向前推进了一些处理。这种重构很常见。
 
-The idea is to forego any assumptions or intuition. With a little bit of discipline, we can be sure of the post-conditions from any statement.
+思路是放弃任何假设或直觉。稍加纪律，我们可以确定任何语句的后置条件。
 
-Indeed, the more we think about post-conditions, the more precise our software can be. It's imperative to be explicit about the goal for our software and work backwards from the goal by choosing the simplest statements that will make the goal become `true` .
+实际上，我们思考后置条件的次数越多，我们的软件就可以越精确。关于我们软件目标的目标一定要明确，并通过选择使目标变为`true`的最简单的语句来逆向工作。
 
-## There's more...
+## 还有更多...
 
-We can also use an `else` clause on a `for` statement to determine if the loop finished normally or a `break` statement was executed. We can use something like this:
+我们也可以在`for`语句上使用`else`子句来确定循环是否正常结束或执行了`break`语句。我们可以像这样使用：
 
-```
+```py
 
 We can also use an else clause on a for statement to determine if the loop finished normally or a break statement was executed. We can use something like this:
 
@@ -1249,36 +1263,41 @@ We can also use an else clause on a for statement to determine if the loop finis
             name, value = None, None 
 ```
 
-The `else` condition is sometimes confusing, and we don't recommend it. It's not clear that it is substantially better than any of the alternatives. It's too easy to forget the reason why the `else` is executed because it's used so rarely.
+`else`条件有时会让人感到困惑，我们不建议使用。不清楚它是否比任何其他替代方案更好。很容易忘记`else`被执行的原因，因为它很少被使用。
 
-## See also
+## 另请参阅
 
-*   A classic article on this topic is by David Gries, *A note on a standard strategy for developing loop invariants and loops* . See [`www.sciencedirect.com/science/article/pii/0167642383900151`](http://www.sciencedirect.com/science/article/pii/0167642383900151) .
++   这个主题的经典文章是由 David Gries 撰写的，*关于开发循环不变量和循环的标准策略的注释*。参见[`www.sciencedirect.com/science/article/pii/0167642383900151`](http://www.sciencedirect.com/science/article/pii/0167642383900151)。
 
-# Leveraging the exception matching rules
+# 利用异常匹配规则
 
-The `try` statement lets us capture an exception. When an exception is raised, we have a number of choices for handling it:
+`try`语句让我们捕获异常。当异常被引发时，我们有多种处理方式：
 
-*   **Ignore it** : If we do nothing, the program stops. We can do this in two ways—don't use a `try` statement in the first place, or don't have a matching `except` clause in the `try` statement.
-*   **Log it** : We can write a message and let it propagate; generally this will stop the program.
-*   **Recover from it** : We can write an `except` clause to do some recovery action to undo the effects of something that was only partially completed in the `try` clause. We can take this a step further and wrap the `try` statement in a `while` statement and keep retrying until it succeeds.
-*   **Silence it** : If we do nothing (that is, `pass` ) then processing is resumed after the `try` statement. This silences the exception.
-*   **Rewrite it** : We can raise a different exception. The original exception becomes a context for the newly-raised exception.
-*   **Chain it** : We chain a different exception to the original exception. We'll look at this in the *Chaining exceptions with the raise from statement* recipe.
++   **忽略它**：如果我们什么都不做，程序会停止。我们可以通过两种方式实现这一点——首先不使用`try`语句，或者在`try`语句中没有匹配的`except`子句。
 
-What about nested contexts? In this case, an exception could be ignored by an inner `try` but handled by an outer context. The basic set of options for each `try` context are the same. The overall behavior of the software depends on the nested definitions.
++   **记录日志**：我们可以写一条消息并让其传播；通常这会导致程序停止。
 
-Our design of a `try` statement depends on the way that Python exceptions form a class hierarchy. For details, see *Section 5.4* , *Python Standard Library* . For example, `ZeroDivisionError` is also an `ArithmeticError` and an `Exception` . For another example, a `FileNotFoundError` is also an `OSError` as well as an `Exception` .
++   **从中恢复**：我们可以编写一个`except`子句来执行一些恢复操作，以撤消在`try`子句中部分完成的操作的影响。我们可以进一步将`try`语句包装在`while`语句中，并持续重试直到成功。
 
-This hierarchy can lead to confusion if we're trying to handle detailed exceptions as well as generic exceptions.
++   **忽略它**：如果我们什么都不做（即`pass`），那么在`try`语句之后会恢复处理。这会消除异常。
 
-## Getting ready
++   **重写它**：我们可以引发一个不同的异常。原始异常成为新引发异常的上下文。
 
-Let's say we're going to make simple use of the `shutil` to copy a file from one place to another. Most of the exceptions that might be raised indicate a problem too serious to work around. However, in the rare event of a `FileExistsError` , we'd like to attempt a recovery action.
++   **链式处理**：我们将一个不同的异常链接到原始异常。我们将在*使用`raise from`语句链接异常*这个示例中看到这一点。
 
-Here's a rough outline of what we'd like to do:
+嵌套上下文怎么办？在这种情况下，内部`try`可能会忽略异常，但外部上下文会处理异常。每个`try`上下文的基本选项都是相同的。软件的整体行为取决于嵌套定义。
 
-```
+我们设计`try`语句的方式取决于 Python 异常形成的类层次结构。详情请参见*第 5.4 节*，*Python 标准库*。例如，`ZeroDivisionError`也是`ArithmeticError`和`Exception`。再举一个例子，`FileNotFoundError`也是`OSError`和`Exception`。
+
+如果我们试图处理详细的异常以及通用的异常，这种层次结构可能会导致混淆。
+
+## 准备工作
+
+假设我们将简单地使用`shutil`来将文件从一个地方复制到另一个地方。可能会引发的大多数异常都表示问题太严重，无法解决。然而，在罕见的`FileExistsError`事件中，我们希望尝试恢复操作。
+
+这是我们想要做的大致概述：
+
+```py
 
     from pathlib import Path 
     import shutil 
@@ -1293,15 +1312,15 @@ Here's a rough outline of what we'd like to do:
         shutil.copy( str(source_file_path), str(target_file_path 
 ```
 
-We have two paths, `source_path` and `target_path` . We've located all of the directories under the `source_path` that have `*.rst` files.
+我们有两条路径，`source_path`和`target_path`。我们已经定位了`source_path`下所有具有`*.rst`文件的目录。
 
-The expression `source_file_path.relative_to(source_path)` gives us the tail end of the file name, the portion after the base directory. We use this to build a new path under the `target` directory.
+表达式`source_file_path.relative_to(source_path)`给出了文件名的尾部，即基本目录后的部分。我们使用这个来构建一个在`target`目录下的新路径。
 
-While we can use `pathlib.Path` objects for a lot of ordinary path processing, in Python 3.5 modules like `shutil` expect string filenames instead of `Path` objects; we need to explicitly convert the `Path` objects. We can only hope that Python 3.6 changes this.
+虽然我们可以对许多普通路径处理使用`pathlib.Path`对象，但在 Python 3.5 中，像`shutil`这样的模块期望字符串文件名而不是`Path`对象；我们需要显式转换`Path`对象。我们只能希望 Python 3.6 会改变这一点。
 
-The problems arise with handling exceptions raised by the `shutil.copy()` function. We need a `try` statement so that we can recover from certain kinds of errors. We'll see this kind of error if we try to run this:
+处理`shutil.copy()`函数引发的异常会带来问题。我们需要一个`try`语句，以便我们能够从某些类型的错误中恢复过来。如果我们尝试运行以下代码，我们会看到这种类型的错误：
 
-```
+```py
 
     FileNotFoundError: [Errno 2] 
         No such file or directory: 
@@ -1309,22 +1328,22 @@ The problems arise with handling exceptions raised by the `shutil.copy()` functi
 
 ```
 
-How do we create a `try` statement that handles the exceptions in the proper order?
+如何创建一个按正确顺序处理异常的`try`语句？
 
-## How to do it...
+## 如何做到这一点...
 
-1.  Write the code we want to use indented in the `try` block:
+1.  在`try`块中缩进写入我们想要使用的代码：
 
-```
+```py
 
         try: 
             shutil.copy( str(source_file_path), str(target_file_path) ) 
 
 ```
 
-2.  Include the most specific exception classes first. In this case, we have separate responses for the specific `FileNotFoundError` and the more general `OSError` .
+1.  先包括最具体的异常类。在这种情况下，我们针对具体的`FileNotFoundError`和更一般的`OSError`分别有不同的响应。
 
-```
+```py
 
         try: 
             shutil.copy( str(source_file_path), str(target_file_path) ) 
@@ -1333,9 +1352,9 @@ How do we create a `try` statement that handles the exceptions in the proper ord
             shutil.copy( str(source_file_path), str(target_file_path) ) 
 ```
 
-3.  Include any more general exceptions later:
+1.  包括稍后的更一般的异常：
 
-```
+```py
 
         try: 
             shutil.copy( str(source_file_path), str(target_file_path) ) 
@@ -1347,28 +1366,29 @@ How do we create a `try` statement that handles the exceptions in the proper ord
 
 ```
 
-    We've matched exceptions with the most specific first and the more generic after that.
+    我们先匹配最具体的异常，然后再匹配更通用的异常。
 
-    We handled the `FileNotFoundError` by creating the missing directories. Then we did the `copy()` again, knowing it would now work properly.
+    我们通过创建缺失的目录来处理`FileNotFoundError`，然后再次执行`copy()`，知道现在它会正常工作。
 
-    We silenced any other exceptions of the class `OSError` . For example, if there's a permission problem, that error will simply be logged. Our objective is to try and copy all of the files. Any files that cause problems will be logged, but the copying process will continue.
+    我们消除了其他任何`OSError`类的异常。例如，如果有权限问题，那么该错误将被简单地记录。我们的目标是尝试复制所有文件。任何导致问题的文件都将被记录，但复制过程将继续。
 
-## How it works...
+## 它是如何工作的...
 
-Python's matching rules for exceptions are intended to be simple:
+Python 的异常匹配规则旨在保持简单：
 
-*   Process the `except` clauses in order
-*   Match the actual exception against the exception class (or tuple of exception classes). A match means that the actual exception object (or any of the base classes of the exception object) is of the given class in the `except` clause.
++   按顺序处理`except`子句
 
-These rules show why we put the most specific exception classes first and the more general exception classes last. A generic exception class like the `Exception` will match almost every kind of exception. We don't want this first, because no other clauses will be checked. We must always put generic exceptions last.
++   将实际异常与异常类（或异常类元组）进行匹配。匹配意味着实际异常对象（或异常对象的任何基类）是`except`子句中给定类的对象。
 
-There's an even more generic class, the `BaseException` class. There's no good reason to ever handle exceptions of this class. If we do, we will be catching `SystemExit` and `KeyboardInterrupt` exceptions, which interferes with the ability to kill a misbehaving application. We only use the `BaseException` class as a superclass when defining new exception classes that exist outside the normal exception hierarchy.
+这些规则说明了我们为什么要先放置最具体的异常类，然后是更一般的异常类。像`Exception`这样的通用异常类几乎匹配每一种类型的异常。我们不希望它首先出现，因为不会检查任何其他子句。我们必须始终将通用异常放在最后。
 
-## There's more...
+还有一个更通用的类，`BaseException`类。没有好理由来处理这个类的异常。如果我们这样做，我们将捕获`SystemExit`和`KeyboardInterrupt`异常，这会干扰杀死表现不良应用程序的能力。我们仅在定义存在于正常异常层次结构之外的新异常类时才使用`BaseException`类作为超类。
 
-Our example includes a nested context in which a second exception can be raised. Consider this `except` clause:
+## 还有更多...
 
-```
+我们的示例包括一个嵌套上下文，在其中可能引发第二个异常。考虑到这个`except`子句：
+
+```py
 
     except FileNotFoundError: 
         os.makedirs( str(target_file_path.parent) ) 
@@ -1376,11 +1396,11 @@ Our example includes a nested context in which a second exception can be raised.
 
 ```
 
-If the `os.makedirs()` or `shutil.copy()` functions raise another exception, it won't be handled by this `try` statement. Any exceptions raised here will crash the program as a whole. We have two ways to handle this, both of which involve nested `try` statements.
+如果`os.makedirs()`或`shutil.copy()`函数引发其他异常，这些异常将不会被这个`try`语句处理。在此引发的任何异常都将导致整个程序崩溃。我们有两种处理方法，都涉及嵌套的`try`语句。
 
-We can rewrite this to include a nested `try` during recovery:
+我们可以重写这个以在恢复期间包含一个嵌套的`try`：
 
-```
+```py
 
     try: 
         shutil.copy( str(source_file_path), str(target_file_path) ) 
@@ -1394,13 +1414,13 @@ We can rewrite this to include a nested `try` during recovery:
         print(ex) 
 ```
 
-In this example, we've repeated the `OSError` processing in two places. In our nested context, we'll log the exception and let it propagate, which will likely stop the program. In the outer context, we'll do the same thing.
+在这个例子中，我们在两个地方重复了`OSError`处理。在我们的嵌套上下文中，我们将记录异常并让它传播，这可能会停止程序。在外部上下文中，我们将做同样的事情。
 
-We say *likely stop the program* because this code could be used inside a `try` statement, which might handle these exceptions. If there's no other `try` context, then these unhandled exceptions will stop the program.
+我们说*可能会停止程序*，因为这段代码可能在`try`语句中使用，该语句可能会处理这些异常。如果没有其他`try`上下文，那么这些未处理的异常将停止程序。
 
-We can also rewrite our overall statement to have nested `try` statements that separate the two exception handling strategies into more local and more global considerations. It would look like this:
+我们还可以重写我们的总体语句，使用嵌套的`try`语句将两种异常处理策略分成更局部和更全局的考虑。它会像这样：
 
-```
+```py
 
    try: 
         try: 
@@ -1412,95 +1432,102 @@ We can also rewrite our overall statement to have nested `try` statements that s
         print(ex) 
 ```
 
-The copy with `makedirs` processing in the inner `try` statement handles only the `FileNotFoundError` exception. Any other exception will propagate out to the outer `try` statement. In this example, we've nested the exception handling so that the generic processing wraps the specific processing.
+在内部`try`语句中处理`makedirs`的复制只处理`FileNotFoundError`异常。任何其他异常都将传播到外部`try`语句。在这个例子中，我们将异常处理嵌套，使得通用处理包装特定处理。
 
-## See also
+## 另请参阅
 
-*   In the *Avoiding a potential problem with an except: clause* recipe we look at some additional considerations when designing exceptions
-*   In the *Chaining exceptions with the raise from statement* recipe we look at how we can chain exceptions so that a single class of exception wraps different detailed exceptions
++   在*避免使用`except:`子句可能会出现的问题*的示例中，我们将看到在设计异常时的一些额外考虑因素。
 
-# Avoiding a potential problem with an except: clause
++   在*使用`raise from`语句链接异常*的示例中，我们将看到如何链接异常，以便单个异常类包装不同的详细异常。
 
-There are some common mistakes in exception handling. These can cause programs to become unresponsive.
+# 避免使用`except:`子句可能会出现的问题
 
-One of the mistakes we can make is to use the `except:` clause. There are a few other mistakes which we can make if we're not cautious about the exceptions we try to handle.
+在异常处理中有一些常见的错误。这些错误可能会导致程序无响应。
 
-This recipe will show some common exception handling errors that we can avoid.
+我们可能会犯的错误之一是使用`except:`子句。如果我们对尝试处理的异常不谨慎，还有一些其他错误可能会发生。
 
-## Getting ready
+这个示例将展示一些我们可以避免的常见异常处理错误。
 
-In the *Avoiding a potential problem with an except: clause* recipe we looked at some considerations when designing exception handling. In that recipe, we discouraged the use of `BaseException` because we can interfere with stopping a misbehaving Python program.
+## 准备就绪
 
-We'll extend the idea of *what not to do* in this recipe.
+在*避免使用`except:`子句可能会出现的问题*的示例中，我们看到了在设计异常处理时的一些考虑因素。在那个示例中，我们不建议使用`BaseException`，因为我们可能会干扰停止行为异常的 Python 程序。
 
-## How to do it...
+我们将在这个示例中扩展*不应该做什么*的想法。
 
-Use `except Exception:` as the most general kind of exception managing.
+## 如何做...
 
-Handling too many exceptions can interfere with our ability to stop a misbehaving Python program. When we hit *Ctrl* + *C* , or send a `SIGINT` signal via `kill -2` , we generally want the program to stop. We rarely want the program to write a message and keep running, or stop responding altogether.
+使用`except Exception:`作为最通用的异常管理方式。
 
-There are a few other classes of exceptions which we should be wary of attempting to handle:
+处理太多异常可能会干扰我们停止异常的 Python 程序的能力。当我们按下*Ctrl* + *C*，或通过`kill -2`发送`SIGINT`信号时，我们通常希望程序停止。我们很少希望程序写一条消息并继续运行，或者完全停止响应。
 
-*   SystemError
-*   RuntimeError
-*   MemoryError
+还有一些其他类别的异常，我们应该警惕尝试处理：
 
-Generally, these exceptions mean that things are going badly somewhere in Python's internals. Rather than silence these exceptions, or attempt some recovery, we should allow the program to fail, find the root cause, and fix it.
++   SystemError
 
-## How it works...
++   RuntimeError
 
-There are two techniques we should avoid:
++   MemoryError
 
-*   Don't capture the `BaseException` class
-*   Don't use `except:` with no exception class. This matches all exceptions; this will include exceptions we should avoid trying to handle.
+通常，这些异常意味着 Python 内部某处出现了问题。与其消除这些异常，或尝试进行一些恢复，我们应该允许程序失败，找出根本原因并修复它。
 
-Using `except BaseException` or except without a specific class can cause a program to become unresponsive at exactly the time we need to stop it.
+## 它是如何工作的...
 
-Further, if we capture any of these exceptions, we can interfere with the way these internal exceptions are handled:
+有两种技术我们应该避免：
 
-*   `SystemExit`
-*   `KeyboardInterrupt`
-*   `GeneratorExit`
++   不要捕获`BaseException`类
 
-If we silence, wrap, or rewrite any of these, we may have created a problem where none existed. We may have exacerbated a simple problem into a larger and more mysterious problem.
++   不要使用`except:`而不指定异常类。这会匹配所有异常；这将包括我们应该避免尝试处理的异常。
 
-### Note
+使用`except BaseException`或不指定具体类的`except`可能会导致程序在我们需要停止它的时候变得无响应。
 
-It's a noble aspiration to write a program which never crashes. Interfering with some of Python's internal exceptions doesn't create a more reliable program. Instead, it creates a program where a clear failure is masked and made into an obscure mystery.
+此外，如果我们捕获了其中任何异常，我们可能会干扰这些内部异常的处理方式：
 
-## See also
++   `SystemExit`
 
-*   In the *Leveraging the exception matching rules* recipe we look at some considerations when designing exceptions
-*   In the *Chaining exceptions with the raise from statement* recipe we look at how we can chain exceptions so that a single class of exception wraps different detailed exceptions.
++   `KeyboardInterrupt`
 
-# Chaining exceptions with the raise from statement
++   `GeneratorExit`
 
-In some cases, we may want to merge some seemingly unrelated exceptions into a single generic exception. It's common for a complex module to define a single generic `Error` exception which applies to many situations that can arise within the module.
+如果我们静默、包装或重写其中任何一个，我们可能已经制造了一个本不存在的问题。我们可能已经将一个简单的问题加剧成一个更大更神秘的问题。
 
-Most of the time, the generic exception is all that's required. If the module's `Error` is raised, something didn't work.
+### 注意
 
-Less frequently, we want the details for debugging or monitoring purposes. We might want to write them to a log, or include the details in an e-mail. In this case, we need to provide supporting details that amplify or extend the generic exception. We can do this by chaining from the generic exception to the root cause exception.
+编写一个从不崩溃的程序是一种高贵的愿望。干扰 Python 的一些内部异常不会创建一个更可靠的程序。相反，它会创建一个清晰的失败被掩盖并成为模糊的神秘的程序。
 
-## Getting ready
+## 另请参见
 
-Assume we're writing some complex string processing. We'd like to treat a number of different kinds of detailed exceptions as a single generic error so that users of our software are insulated from the implementation details. We can attach details to the generic error.
++   在*利用异常匹配规则*食谱中，我们将探讨设计异常时的一些考虑因素。
 
-## How to do it...
++   在*使用`raise from`语句链接异常*食谱中，我们将看看如何链接异常，使得单一异常类包装不同的详细异常。
 
-1.  To create a new exception, we can do this:
+# 使用`raise from`语句链接异常
 
-```
+在某些情况下，我们可能希望将一些看似不相关的异常合并为一个单一的通用异常。一个复杂的模块通常定义一个适用于模块内部可能出现的许多情况的单一通用`Error`异常。
+
+大多数情况下，通用异常就足够了。如果引发了模块的`Error`，则说明某些地方出了问题。
+
+较少情况下，我们希望获取详细信息以进行调试或监视目的。我们可能希望将它们写入日志，或将详细信息包含在电子邮件中。在这种情况下，我们需要提供支持详细信息，以放大或扩展通用异常。我们可以通过从通用异常链接到根本原因异常来做到这一点。
+
+## 准备就绪
+
+假设我们正在编写一些复杂的字符串处理。我们希望将许多不同类型的详细异常视为单个通用错误，以使我们软件的用户免受实现细节的影响。我们可以将详细信息附加到通用错误。
+
+## 如何做...
+
+1.  要创建一个新的异常，我们可以这样做：
+
+```py
 
         class Error(Exception): 
             pass 
 
 ```
 
-That's sufficient to define a new class of exception.
+这就足以定义一个新的异常类。
 
-2.  When handling exceptions, we can chain them using the `raise from` statement like this:
+1.  在处理异常时，我们可以使用`raise from`语句将它们链接起来，就像这样：
 
-```
+```py
 
         try: 
             something 
@@ -1513,17 +1540,17 @@ That's sufficient to define a new class of exception.
 
 ```
 
-    In the first `except` clause, we matched two kinds of exception classes. No matter which kind we get, we'll raise a new exception from the module's generic `Error` exception class. The new exception will be chained to the root cause exception.
+    在第一个`except`子句中，我们匹配了两种异常类。无论我们收到哪种类型的异常，我们都将从模块的通用`Error`异常类中引发一个新的异常。新的异常将链接到根本原因异常。
 
-    In the second `except` clause, we matched the generic `Exception` class. We wrote a log message and re-raised the exception. Here, we're not chaining, but simply continuing exception handling in another context.
+    在第二个`except`子句中，我们匹配了通用的`Exception`类。我们写了一个日志消息并重新引发了异常。在这里，我们不是在链接异常，而是在另一个上下文中简单地继续异常处理。
 
-## How it works...
+## 工作原理...
 
-The Python exception classes all have a place to record the cause of the exception. We can set this `__cause__` attribute using the `raise Exception from Exception` statement.
+Python 异常类都有一个记录异常原因的位置。我们可以使用`raise Exception from Exception`语句设置这个`__cause__`属性。
 
-Here's how it looks when this exception is raised:
+当引发此异常时，它的样子是这样的：
 
-```
+```py
 
 >>> class Error(Exception): 
 ...     pass 
@@ -1539,9 +1566,9 @@ IndexError: string index out of range
 
 ```
 
-The exception that we just saw was the direct cause of the following exception:
+刚刚我们看到的异常是以下异常的直接原因：
 
-```
+```py
 
 Traceback (most recent call last): 
   File "/Library/Frameworks/Python.framework/Versions/3.4/lib/python3.4/doctest.py", line 1318, in __run 
@@ -1552,11 +1579,11 @@ Error: index problem
 
 ```
 
-This shows a chained exception. The first exception in the `Traceback` message is an `IndexError` exception. This is the direct cause. The second exception in the `Traceback` is our generic `Error` exception. This is a generic summary exception, which was chained to the original cause.
+这显示了一个链接的异常。`Traceback`消息中的第一个异常是`IndexError`异常。这是直接原因。`Traceback`中的第二个异常是我们的通用`Error`异常。这是一个通用的摘要异常，被链接到原始原因。
 
-An application will see the `Error` exception in a `try:` statement. We might have something like this:
+应用程序将在`try:`语句中看到`Error`异常。我们可能会有这样的情况：
 
-```
+```py
 
     try: 
         some_function() 
@@ -1565,17 +1592,17 @@ An application will see the `Error` exception in a `try:` statement. We might ha
         print(exception .__cause__) 
 ```
 
-Here we've shown a function named `some_function()` that can raise the generic `Error` exception. If this function does raise the exception, the `except` clause will match the generic `Error` exception. We can print the exception's message, `exception` , as well as the root cause exception, `exception.__cause__` . In many applications, the `exception.__cause__` value may get written to a debugging log rather than be displayed to users.
+这里我们展示了一个名为`some_function()`的函数，它可以引发通用的`Error`异常。如果此函数确实引发了异常，则`except`子句将匹配通用的`Error`异常。我们可以打印异常的消息`exception`，以及根本原因异常`exception.__cause__`。在许多应用程序中，`exception.__cause__`的值可能会被写入调试日志而不是显示给用户。
 
-## There's more...
+## 还有更多...
 
-If an exception is raised inside an exception handler, this also creates a kind of chained exception relationship. This is the *context* relationship rather than the *cause* relationship.
+如果在异常处理程序内部引发异常，这也会创建一种链接的异常关系。这是*上下文*关系而不是*原因*关系。
 
-The context message looks similar. The message is slightly different. It says `During handling of the above exception, another exception occurred:` . The first `Traceback` will show the original exception. The second message is the exception raised without using an explicit from connection.
+上下文消息看起来相似。消息略有不同。它说`在处理上述异常时，发生了另一个异常:`。第一个`Traceback`将显示原始异常。第二个消息是抛出异常而不使用显式的 from 连接。
 
-Generally, the context is something unplanned that indicates an error in the `except` processing block. For example, we might have this:
+通常，上下文是一些未计划的东西，表明`except`处理块中存在错误。例如，我们可能会有这样的情况：
 
-```
+```py
 
     try: 
         something 
@@ -1583,63 +1610,64 @@ Generally, the context is something unplanned that indicates an error in the `ex
         print("Some message", exceotuib)
 ```
 
-This will raise a `NameError` exception with a context of a `ValueError` exception. The `NameError` exception stems from misspelling the exception variable as `exceotuib` .
+这将引发一个带有`ValueError`异常上下文的`NameError`异常。`NameError`异常源自将异常变量拼写为`exceotuib`。
 
-## See also
+## 另请参阅
 
-*   In the *Leveraging the exception matching rules* recipe we look at some considerations when designing exceptions
-*   In the *Avoiding a potential problem with an except: clause* recipe we look at some additional considerations when designing exceptions
++   在*利用异常匹配规则*配方中，我们考虑了一些在设计异常时的注意事项
 
-# Managing a context using the with statement
++   在*使用 except:子句避免潜在问题*配方中，我们考虑了一些在设计异常时的额外注意事项
 
-There are many instances where our scripts will be entangled with external resources. The most common examples are disk files and network connections to external hosts. A common bug is retaining these entanglements forever, tying up these resources uselessly. These are sometimes called memory **leaks** because the available memory is reduced each time a new file is opened without closing a previously used file.
+# 使用`with`语句管理上下文
 
-We'd like to isolate each entanglement so that we can be sure that the resource is acquired and released properly. The idea is to create a context in which our script uses an external resource. At the end of the context, our program is no longer bound to the resource and we want to be guaranteed that the resource is released.
+有许多情况下，我们的脚本会与外部资源纠缠在一起。最常见的例子是磁盘文件和到外部主机的网络连接。一个常见的错误是永远保留这些纠缠，无用地捆绑这些资源。这些有时被称为内存**泄漏**，因为每次打开新文件而不关闭先前使用的文件时，可用内存都会减少。
 
-## Getting ready
+我们希望隔离每个纠缠，以确保资源被正确获取和释放。想法是创建一个上下文，在其中我们的脚本使用外部资源。在上下文结束时，我们的程序不再绑定到资源，我们希望保证资源被释放。
 
-Let's say we want to write lines of data to a file in CSV format. When we're done, we want to be sure that the file is closed and the various OS resources—including buffers and file handles—are released. We can do this in a context manager, which guarantees that the file will be properly closed.
+## 准备工作
 
-Since we'll be working with CSV files, we can use the `csv` module to handle the details of the formatting:
+假设我们想要将数据行以 CSV 格式写入文件。完成后，我们希望确保文件被关闭，并且各种操作系统资源——包括缓冲区和文件句柄——被释放。我们可以在上下文管理器中实现这一点，这可以保证文件将被正确关闭。
 
-```
+由于我们将使用 CSV 文件，我们可以使用`csv`模块来处理格式的细节：
+
+```py
 
 >>> import csv
 
 ```
 
-We'll also use the `pathlib` module to locate the files we'll be working with:
+我们还将使用`pathlib`模块来定位我们将要处理的文件：
 
-```
+```py
 
 >>> import pathlib
 
 ```
 
-For the purposes of having something to write, we'll use this silly data source:
+为了有写入内容，我们将使用这个愚蠢的数据源：
 
-```
+```py
 
 >>> some_source = [[2,3,5], [7,11,13], [17,19,23]]
 
 ```
 
-This will give us a context in which to learn about the `with` statement.
+这将为我们提供一个学习`with`语句的上下文。
 
-## How to do it...
+## 如何做...
 
-1.  Create the context by opening the file, or creating the network connection with `urllib.request.urlopen()` . Other common contexts include archives like `zip` files and `tar` files:
+1.  通过打开文件或使用`urllib.request.urlopen()`创建网络连接来创建上下文。其他常见的上下文包括`zip`文件和`tar`文件：
 
-```
+```py
 
         target_path = pathlib.Path('code/test.csv') 
         with target_path.open('w', newline='') as target_file: 
 
 ```
 
-2.  Include all the processing, indented within the `with` statement:
+1.  包括所有处理，缩进在`with`语句内：
 
-```
+```py
 
         target_path = pathlib.Path('code/test.csv') 
         with target_path.open('w', newline='') as target_file: 
@@ -1650,9 +1678,9 @@ This will give us a context in which to learn about the `with` statement.
 
 ```
 
-3.  When we use a file as a context manager, the file is automatically closed at the end of the indented context block. Even if an exception is raised, the file is still closed properly. Outdent the processing that is done after the context is finished and the resources are released:
+1.  当我们将文件作为上下文管理器使用时，文件将在缩进的上下文块结束时自动关闭。即使引发异常，文件仍会被正确关闭。将在上下文完成并释放资源后执行的处理内容缩进：
 
-```
+```py
 
         target_path = pathlib.Path('code/test.csv') 
         with target_path.open('w', newline='') as target_file: 
@@ -1666,22 +1694,23 @@ This will give us a context in which to learn about the `with` statement.
 
 ```
 
-The statements outside the `with` context will be executed after the context is closed. The named resource—the file opened by `target_path.open()` —will be properly closed.
+`with`上下文之外的语句将在上下文关闭后执行。命名资源——由`target_path.open()`打开的文件——将被正确关闭。
 
-Even if an exception is raised inside the `with` statement, the file is still properly closed. The context manager is notified of the exception. It can close the file and allow the exception to propagate.
+即使`with`语句内部引发异常，文件仍会被正确关闭。上下文管理器会收到异常通知。它可以关闭文件并允许异常传播。
 
-## How it works...
+## 工作原理...
 
-A context manager is notified of two kinds of exits from the block of code:
+上下文管理器会收到代码块中两种退出的通知：
 
-*   Normal exit with no exception
-*   An exception was raised
++   正常退出，没有异常
 
-The context manager will—under all conditions—disentangle our program from external resources. Files can be closed. Network connections can be dropped. Database transactions can be committed or rolled back. Locks can be released.
++   引发了异常
 
-We can experiment with this by including a manual exception inside the `with` statement. This can show that the file was properly closed.
+上下文管理器将在所有情况下将我们的程序与外部资源解开。文件可以关闭。网络连接可以断开。数据库事务可以提交或回滚。锁可以释放。
 
-```
+我们可以通过在`with`语句内部包含手动异常来进行实验。这可以显示文件已被正确关闭。
+
+```py
 
     try: 
         target_path = pathlib.Path('code/test.csv') 
@@ -1699,9 +1728,10 @@ We can experiment with this by including a manual exception inside the `with` st
 
 ```
 
-In this example, we've wrapped the real work in a `try` statement. This allows us to raise an exception after writing the first to the CSV file. When the exception is raised, we can print the exception. At this point, the file will also be closed. The output is simply this:
+在这个例子中，我们将真正的工作包装在`try`语句中。这样我们可以在向 CSV 文件写入第一个后引发异常。当异常被引发时，我们可以打印异常。此时，文件也将被关闭。输出仅为：
 
-```
+
+```py
 
     True 
     Just Testing 
