@@ -798,7 +798,7 @@ Docutils 有许多内置指令。Sphinx 添加了许多具有各种功能的指�
 
 +   我们可以用`**`将单词或短语括起来以进行`**强调**`。
 
-+   我们用单个反引号（`` ` ``）包围引用。链接后面带有`_`。我们可以用`` `section title`_ ``来指代文档中的特定章节。我们通常不需要在URL周围放置任何东西。Docutils 工具可以识别这些。有时我们希望显示一个单词或短语，隐藏 URL。我们可以用这个：`` `the Sphinx documentation <http://www.sphinx-doc.org/en/stable/>`_ ``。
++   我们用单个反引号（`` ` ``）包围引用。链接后面带有`_`。我们可以用`` `section title`_ ``来指代文档中的特定章节。我们通常不需要在 URL 周围放置任何东西。Docutils 工具可以识别这些。有时我们希望显示一个单词或短语，隐藏 URL。我们可以用这个：`` `the Sphinx documentation <http://www.sphinx-doc.org/en/stable/>`_ ``。
 *   我们可以将代码相关的单词使用两个反引号括起来，使其看起来像：
 
     ```py

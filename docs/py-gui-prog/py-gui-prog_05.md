@@ -108,7 +108,7 @@ Python 模块的命名应始终使用全部小写的名称和下划线。这个�
 
 打开文件并输入以下代码：
 
-```
+```py
 from abq_data_entry.application import Application
 
 app = Application()
@@ -160,13 +160,13 @@ reStructuredText 标记语言是 Python `docutils`项目的一部分，完整的
 +   编号列表的创建方式与项目列表相似，但使用数字（不需要正确排序）或`#`符号作为项目符号。
 
 +   代码示例可以通过用双反引号字符括起来来指定内联(`` ` ``)，或者在一个代码块中，用双冒号结束一个引入行，并缩进代码块。
-*   Tables can either be created by surrounding columns of text with `=` symbols, separated by spaces to indicate the column breaks, or by constructing ASCII-art tables from `|`, `-`, and `+`. Tables can be tedious to create in a plain text editor, but some programming tools have plugins to generate the RST tables.
++   表格可以通过用 `=` 符号包围文本列，并用空格分隔表示列断点，或者通过使用 `|`、`-` 和 `+` 构建 ASCII 表格来创建。在纯文本编辑器中创建表格可能会很繁琐，但一些编程工具有插件可以生成 RST 表格。
 
-We've used RST already in Chapter 2, *Designing GUI Applications with Tkinter,* to create our program specification; there, you saw the use of titles, headers, bullets, and a table. Let's walk through creating our `README.rst` file:
+我们已经在第二章中使用了 RST，*用 Tkinter 设计 GUI 应用程序*，来创建我们的程序规范；在那里，您看到了标题、头部、项目符号和表格的使用。让我们逐步创建我们的 `README.rst` 文件：
 
-1.  Open the file and start with the title and description, as follows:
+1.  打开文件并以以下方式开始标题和描述：
 
-```
+```py
 ============================
  ABQ Data Entry Application
 ============================
@@ -185,9 +185,9 @@ Features
 
 ```
 
-2.  Next, we'll list the authors by adding the following code:
+1.  接下来，我们将通过添加以下代码来列出作者：
 
-```
+```py
 Authors
 =======
 
@@ -195,9 +195,9 @@ Alan D Moore, 2018
 
 ```
 
-Add yourself, of course. Eventually, other people might work on your application; they should add their names here with the dates they worked on it. Now, add the requirements as follows:
+当然要添加自己。最终，其他人可能会在您的应用程序上工作；他们应该在这里加上他们的名字以及他们工作的日期。现在，添加以下要求：
 
-```
+```py
 
 Requirements
 ============
@@ -207,9 +207,9 @@ Requirements
 
 ```
 
-Right now, we only need Python 3 and Tkinter, but as our application grows we may be expanding this list. Our application doesn't really need to be installed, and has no configuration options, so for now we can skip those sections. Instead, we'll skip to `Usage` as follows:
+目前，我们只需要 Python 3 和 Tkinter，但随着我们的应用程序的增长，我们可能会扩展这个列表。我们的应用程序实际上不需要被安装，并且没有配置选项，所以现在我们可以跳过这些部分。相反，我们将跳到 `使用方法` 如下：
 
-```
+```py
 
 Usage
 =====
@@ -220,9 +220,9 @@ To start the application, run::
 
 ```
 
-There really isn't much to know about running the program other than this command; no command-line switches or arguments. We don't know of any bugs, so we'll just leave some general notes at the end as follows:
+除了这个命令之外，关于运行程序没有太多需要了解的东西；没有命令行开关或参数。我们不知道任何错误，所以我们将在末尾留下一些一般的说明，如下所示：
 
-```
+```py
 General Notes
 =============
 
@@ -233,79 +233,89 @@ This program only appends to the CSV file.  You should have a spreadsheet progra
 
 ```
 
-It seems prudent to tell the user where the file will be saved and what it will be called, since that's hardcoded into the program right now. Also, we should mention the fact that the user should have some kind of spreadsheet, since the program can't edit or view the data. That finishes the `README.rst` file. Save it and let's move on to the `docs` folder.
+现在告诉用户文件将被保存在哪里以及它将被命名为什么，因为这是硬编码到程序中的。此外，我们应该提到用户应该有某种电子表格，因为程序无法编辑或查看数据。这就完成了 `README.rst` 文件。保存它，然后我们继续到 `docs` 文件夹。
 
-# Populating the docs folder
+# 填充文档文件夹
 
-The `docs` folder is where documentation goes. This can be any kind of documentation: user manuals, program specifications, API references, diagrams, and so on.
+`docs` 文件夹是用于存放文档的地方。这可以是任何类型的文档：用户手册、程序规范、API 参考、图表等等。
 
-For now, you copy in the program specification we wrote in previous chapters, your interface mockups, and a copy of the form used by the technicians.
+现在，您可以复制我们在前几章中编写的程序规范、您的界面模型和技术人员使用的表单的副本。
 
-At some point, you might need to write a user manual, but for now the program is simple enough not to need it.
+在某个时候，您可能需要编写一个用户手册，但是现在程序足够简单，不需要它。
 
-# Making a Python package
+# 制作一个 Python 包
 
-Creating your own Python package is surprisingly easy. A Python package consists of the following three things:
+创建自己的 Python 包其实非常简单。一个 Python 包由以下三个部分组成：
 
-*   A directory
-*   One or more Python files in that directory
-*   A file called `__init__.py` in the directory
++   一个目录
 
-Once you've done this, you can import your package in whole or in part, just like you would import standard library packages, provided your script is in the same parent directory as the package directory.
++   那个目录中的一个或多个 Python 文件
 
-Note that  `__init__.py` in a module is somewhat analogous to what `self.__init__()` is for a class. Code inside it will run whenever the package is imported. The Python community generally discourages putting much code in this file, though, and since no code is actually required, we'll leave this file empty.
++   目录中的一个名为 `__init__.py` 的文件
 
-Let's start building our application's package. Create the following six empty files under `abq_data_entry`:
+一旦完成这一步，您可以整体或部分地导入您的包，就像导入标准库包一样，只要您的脚本与包目录在同一个父目录中。
 
-*   `__init__.py`
-*   `widgets.py`
-*   `views.py`
-*   `models.py`
-*   `application.py`
-*   `constants.py`
+注意，模块中的 `__init__.py` 有点类似于类中的 `self.__init__()`。其中的代码将在包被导入时运行。Python 社区一般不鼓励在这个文件中放置太多代码，而且由于实际上不需要任何代码，我们将保持此文件为空。
 
-Each of those Python files is called a **module**. A module is nothing more than a Python file inside a package directory. Your directory structure should now look like this:
+让我们开始构建我们应用程序的包。在`abq_data_entry`下创建以下六个空文件：
+
++   `__init__.py`
+
++   `widgets.py`
+
++   `views.py`
+
++   `models.py`
+
++   `application.py`
+
++   `constants.py`
+
+这些 Python 文件中的每一个都被称为一个**模块**。模块只是一个包目录中的 Python 文件。您的目录结构现在应该是这样的：
 
 ![](img/06efc903-784c-426e-be9b-ddeb66de7849.png)
 
-At this point, you have a working package, albeit with no actual code in it. To test this, open a Terminal/command-line window, change to your `ABQ_Data_Entry` directory, and start a Python shell.
+此时，您已经有了一个工作的包，尽管里面没有实际的代码。要测试这个，请打开一个终端/命令行窗口，切换到您的`ABQ_Data_Entry`目录，并启动一个 Python shell。
 
-Now, type the following command:
+现在，输入以下命令：
 
-```
+```py
 
 from abq_data_entry import application
 
 ```
 
-This should work without error. Of course, it doesn't do anything, but we'll get to that next.
+这应该可以正常工作。当然，它什么也不做，但我们接下来会解决这个问题。
 
-Don't confuse the term package here with the actual distributable Python packages, such as those you download using `pip`. 
+不要将此处的“包”一词与实际的可分发的 Python 包混淆，比如使用`pip`下载的那些。
 
-# Splitting our application into multiple files
+# 将我们的应用程序拆分成多个文件
 
-Now that our directory structure is in order, we need to start dissecting our application script and splitting it up into our module files. We'll also need to create our model class. Open up your `abq_data_entry.py` file from Chapter 4, *Reducing User Error with Validation and Automation,* and let's begin!
+现在我们的目录结构已经就绪，我们需要开始解剖我们的应用程序脚本，并将其分割成我们的模块文件。我们还需要创建我们的模型类。打开您从第四章*减少用户错误：验证和自动化*中的`abq_data_entry.py`文件，让我们开始吧！
 
-# Creating the models module
+# 创建模型模块
 
-When your application is all about data, it's good to begin with the model. Remember that the job of a model is to manage the storage, retrieval, and processing of our application's data, usually with respect to its persistent storage format (in this case, CSV). To accomplish this, our model should contain all the knowledge about our data.
+当您的应用程序完全关注数据时，最好从模型开始。记住，模型的工作是管理我们应用程序数据的存储、检索和处理，通常是关于其持久存储格式的（在本例中是 CSV）。为了实现这一点，我们的模型应该包含关于我们数据的所有知识。
 
-Currently, our application has nothing like a model; knowledge about the application's data is scattered into the form fields, and the `Application` object simply takes whatever data the form contains and stuffs it directly into a CSV file when a save operation is requested. Since we aren't yet retrieving or updating information, our application has no actual knowledge about what's inside the CSV file.
+目前，我们的应用程序没有类似模型的东西；关于应用程序数据的知识散布在表单字段中，而`Application`对象只是在请求保存操作时获取表单包含的任何数据，并直接将其塞入 CSV 文件中。由于我们还没有检索或更新信息，所以我们的应用程序对 CSV 文件中的内容一无所知。
 
-To move our application to an MVC architecture, we'll need to create a model class that both manages data storage and retrieval, and represents the authoritative source of knowledge about our data. In other words, we have to encode the knowledge contained in our data dictionary here in our model. We don't really know what we'll *do* with this knowledge yet, but this is where it belongs.
+为了将我们的应用程序转移到 MVC 架构，我们需要创建一个模型类，它既管理数据存储和检索，又代表我们数据的权威来源。换句话说，我们必须在这里编码我们数据字典中包含的知识。我们真的不知道我们将如何使用这些知识，但它们应该在这里。
 
-There are a few ways we could store this data, such as creating a custom field class or a `namedtuple` object, but we'll keep it simple for now and just use a dictionary, mapping field names to field metadata.
+我们可以以几种方式存储这些数据，例如创建一个自定义字段类或一个`namedtuple`对象，但现在我们将保持简单，只使用一个字典，将字段名称映射到字段元数据。
 
-The field metadata will likewise be stored as a dictionary of attributes about the field, which will include: 
+字段元数据将同样被存储为关于字段的属性字典，其中将包括：
 
-*   Whether or not the field is required
-*   The type of data stored in the field
-*   The list of possible values, if applicable
-*   The minimum, maximum, and increment of values, if applicable
++   字段是否必填
 
-To store the data type for each field, let's define some data types. Open the `constants.py` file and add the following code:
++   字段中存储的数据类型
 
-```
++   可能值的列表（如果适用）
+
++   值的最小、最大和增量（如果适用）
+
+要为每个字段存储数据类型，让我们定义一些数据类型。打开`constants.py`文件并添加以下代码：
+
+```py
 
 class FieldTypes:
     string = 1
@@ -318,13 +328,13 @@ class FieldTypes:
 
 ```
 
-We've created a class called `FieldTypes` that simply stores some named integer values, which will describe the different types of data we're going to store. We could just use Python types here, but it's useful to differentiate between certain types of data that are likely to be the same Python type (such as `long`, `short`, and `date` strings). Note that the integer values here are basically meaningless; they just need to be different from one another.
+我们创建了一个名为`FieldTypes`的类，它简单地存储一些命名的整数值，这些值将描述我们将要存储的不同类型的数据。我们可以在这里只使用 Python 类型，但是区分一些可能是相同 Python 类型的数据类型是有用的（例如`long`、`short`和`date`字符串）。请注意，这里的整数值基本上是无意义的；它们只需要彼此不同。
 
-Python 3 has an `Enum` class, which we could have used here, but it adds very little that we actually need in this case. You may want to investigate this class if you're creating a lot of constants such as our `FieldTypes` class and need additional features.
+Python 3 有一个`Enum`类，我们可以在这里使用它，但在这种情况下它添加的功能非常少。如果您正在创建大量常量，比如我们的`FieldTypes`类，并且需要额外的功能，可以研究一下这个类。
 
-Now, open `models.py`, where we'll import `FieldTypes` and create our model class and field definitions as follows:
+现在打开`models.py`，我们将导入`FieldTypes`并创建我们的模型类和字段定义如下：
 
-```
+```py
 
 import csv
 import os
@@ -365,17 +375,17 @@ class CSVModel:
     }
 ```
 
-Notice the way we import `FieldTypes`:  `from .constants import FieldTypes`. The dot in front of `constants` makes this a **relative import**. Relative imports can be used inside a Python package to locate other modules in the same package. In this case, we're in the `models` module, and we need to access the `constants` module inside the `abq_data_entry` package. The single dot represents our current parent module (`abq_data_entry`), and thus `.constants` means the `constants` module of the `abq_data_entry` package.
+注意我们导入`FieldTypes`的方式：`from .constants import FieldTypes`。点号在`constants`前面使其成为**相对导入**。相对导入可在 Python 包内部用于定位同一包中的其他模块。在这种情况下，我们位于`models`模块中，需要访问`abq_data_entry`包内的`constants`模块。单个点号表示我们当前的父模块（`abq_data_entry`），因此`.constants`表示`abq_data_entry`包的`constants`模块。
 
-Relative imports also distinguish our custom modules from modules in `PYTHONPATH`. Thus, we don't have to worry about any third-party or standard library packages conflicting with our module names.
+相对导入还可以区分我们的自定义模块与`PYTHONPATH`中的模块。因此，我们不必担心任何第三方或标准库包与我们的模块名称冲突。
 
-In addition to field attributes, we're also documenting the order of fields here. In Python 3.6 and later, dictionaries retain the order they were defined by; if you're using an older version of Python 3, you'd need to use the `OrderedDict` class from the `collections` standard library module to preserve the field order.
+除了字段属性之外，我们还在这里记录字段的顺序。在 Python 3.6 及更高版本中，字典会保留它们定义的顺序；如果您使用的是较旧版本的 Python 3，则需要使用`collections`标准库模块中的`OrderedDict`类来保留字段顺序。
 
-Now that we have a class that understands which fields need to be stored, we need to migrate our save logic from the application class into the model.
+现在我们有了一个了解哪些字段需要存储的类，我们需要将保存逻辑从应用程序类迁移到模型中。
 
-The code in our current script is as follows:
+我们当前脚本中的代码如下：
 
-```
+```py
 
 datestring = datetime.today().strftime("%Y-%m-%d")
 filename = "abq_data_record_{}.csv".format(datestring)
@@ -390,25 +400,28 @@ with open(filename, 'a') as fh:
     csvwriter.writerow(data)
 ```
 
-Let's go through this code and determine what goes to the model and what stays in the controller (that is, the `Application` class):
+让我们通过这段代码确定什么属于模型，什么属于控制器（即`Application`类）：
 
-*   The first two lines define the filename we're going to use. This could go into the model, but thinking ahead, it seems that the users may want to be able to open arbitrary files or define the filename manually. This means the application will need to be able to tell the model which filename to work with, so it's better to leave the logic that determines the name in the controller.
-*   The `newfile` line determines whether the file exists or not. As an implementation detail of the data storage medium, this is clearly the model's problem, not the application's.
-*   `data = self.recordform.get()` pulls data from the form. Since our model has no knowledge of the form's existence, this needs to stay in the controller.
-*   The last block opens the file, creates a `csv.DictWriter` object, and appends the data. This is definitely the model's concern.
++   前两行定义了我们要使用的文件名。这可以放在模型中，但是提前思考，似乎用户可能希望能够打开任意文件或手动定义文件名。这意味着应用程序需要能够告诉模型要使用哪个文件名，因此最好将确定名称的逻辑留在控制器中。
 
-Now, let's begin moving code into the `CSVModel` class:
++   `newfile`行确定文件是否存在。作为数据存储介质的实现细节，这显然是模型的问题，而不是应用程序的问题。
 
-1.  To start the process, let's create a constructor for `CSVModel` that allows us to pass in a filename:
++   `data = self.recordform.get()`从表单中提取数据。由于我们的模型不知道表单的存在，这需要留在控制器中。
 
-```
++   最后一块打开文件，创建一个`csv.DictWriter`对象，并追加数据。这明显是模型的关注点。
+
+现在，让我们开始将代码移入`CSVModel`类：
+
+1.  要开始这个过程，让我们为`CSVModel`创建一个允许我们传入文件名的构造函数：
+
+```py
     def __init__(self, filename):
         self.filename = filename
 ```
 
-The constructor is pretty simple; it just takes a `filename` parameter and stores it as a property. Now, we'll migrate the save logic as follows:
+构造函数非常简单；它只接受一个`filename`参数并将其存储为一个属性。现在，我们将迁移保存逻辑如下：
 
-```
+```py
 
     def save_record(self, data):
         """Save a dict of data to the CSV file"""
@@ -423,61 +436,61 @@ The constructor is pretty simple; it just takes a `filename` parameter and store
             csvwriter.writerow(data)
 ```
 
-This is essentially the logic we chose to copy from `Application.on_save()`, but with one difference; in the call to `csv.DictWriter()`, the `fieldnames` parameter is defined by the model's `fields` list rather than the keys of the `data` dict. This allows our model to manage the format of the CSV file itself, and not depend on what the form gives it.
+这本质上是我们选择从`Application.on_save()`中复制的逻辑，但有一个区别；在对`csv.DictWriter()`的调用中，`fieldnames` 参数由模型的`fields`列表而不是`data`字典的键定义。这允许我们的模型管理 CSV 文件本身的格式，并不依赖于表单提供的内容。
 
-2.  Before we're done, we need to take care of our module imports. The `save_record()` method uses the `os` and `csv` libraries, so we need to import them. Add this to the top of the file as follows:
+1.  在我们完成之前，我们需要处理我们的模块导入。`save_record()`方法使用`os`和`csv`库，所以我们需要导入它们。将此添加到文件顶部如下：
 
-```
+```py
 
 import csv
 import os
 
 ```
 
-With the model in place, let's start working on our view components.
+模型就位后，让我们开始处理我们的视图组件。
 
-# Moving the widgets
+# 移动小部件
 
-While we could put all of our UI-related code in one `views` file, we have a lot of widget classes that should really be put in their own file to limit the complexity of the `views` file.
+虽然我们可以将所有与 UI 相关的代码放在一个`views`文件中，但我们有很多小部件类，实际上应该将它们放在自己的文件中，以限制`views`文件的复杂性。
 
-So instead, we're going to move all of the code for our widget classes into the `widgets.py` file. Widgets include all the classes that implement reusable GUI components, including compound widgets like `LabelInput`. As we develop more of these, we'll add them to this file.
+因此，我们将所有小部件类的代码移动到`widgets.py`文件中。小部件包括实现可重用 GUI 组件的所有类，包括`LabelInput`等复合小部件。随着我们开发更多的这些，我们将把它们添加到这个文件中。
 
-Open `widgets.py` and copy in all of the code for `ValidatedMixin`, `DateInput`, `RequiredEntry`, `ValidatedCombobox`, `ValidatedSpinbox`, and `LabelInput`. These are our widgets.
+打开`widgets.py`并复制`ValidatedMixin`、`DateInput`、`RequiredEntry`、`ValidatedCombobox`、`ValidatedSpinbox`和`LabelInput`的所有代码。这些是我们的小部件。
 
-The `widgets.py` file will need to import any module dependencies used by the code being copied in. We'll need to look through our code and find what libraries we use and import them. Obviously, we need `tkinter` and `ttk`, so add those at the top as follows:
+`widgets.py` 文件需要导入被复制代码使用的任何模块依赖项。我们需要查看我们的代码，并找出我们使用的库并将它们导入。显然，我们需要`tkinter`和`ttk`，所以在顶部添加它们如下：
 
-```
+```py
 import tkinter as tk
 from tkinter import ttk
 ```
 
-Our `DateInput` class uses the `datetime` class from the `datetime` library, so import that too, as follows:
+我们的`DateInput` 类使用`datetime`库中的`datetime`类，因此也要导入它，如下所示：
 
-```
+```py
 
 from datetime import datetime
 
 ```
 
-Finally, our `ValidatedSpinbox` class makes use of the `Decimal` class and `InvalidOperation` exception from the `decimal` library as follows:
+最后，我们的`ValidatedSpinbox` 类使用`decimal`库中的`Decimal`类和`InvalidOperation`异常，如下所示：
 
-```
+```py
 
 from decimal import Decimal, InvalidOperation
 
 ```
 
-This is all we need in `widgets.py` for now, but we'll revisit this file as we refactor our view logic.
+这是现在我们在`widgets.py`中需要的全部，但是当我们重构我们的视图逻辑时，我们会再次访问这个文件。
 
-# Moving the views
+# 移动视图
 
-Next, we need to create the `views.py` file. Views are larger GUI components, like our `DataRecordForm` class. Currently it's our only view, but we'll be creating more views in later chapters, and they'll be added here.
+接下来，我们需要创建`views.py`文件。视图是较大的 GUI 组件，如我们的`DataRecordForm`类。目前它是我们唯一的视图，但我们将在后面的章节中创建更多的视图，并将它们添加到这里。
 
-Open the `views.py` file and copy in the `DataRecordForm` class, then go back to the top to deal with the module imports. Again, we'll need `tkinter` and `ttk`, and our file saving logic relies on `datetime` for the filename.
+打开`views.py`文件，复制`DataRecordForm`类，然后返回顶部处理模块导入。同样，我们需要`tkinter`和`ttk`，我们的文件保存逻辑依赖于`datetime`以获得文件名。
 
-Add them to the top of the file as follows:
+将它们添加到文件顶部如下：
 
-```
+```py
 
 import tkinter as tk
 from tkinter import ttk
@@ -485,33 +498,37 @@ from datetime import datetime
 
 ```
 
-We aren't done, though; our actual widgets aren't here and we'll need to import them. Since we're going to be doing a lot of importing of objects between our files, let's pause for a moment to consider the best way to handle these imports.
+不过，我们还没有完成；我们实际的小部件还没有，我们需要导入它们。由于我们将在文件之间进行大量对象导入，让我们暂停一下，考虑一下处理这些导入的最佳方法。
 
-There are three ways we could import objects:
+我们可以导入对象的三种方式：
 
-*   Use a wildcard import to bring in all the classes from `widgets.py`
-*   Explicitly import all the needed classes from `widgets.py` using the `from ... import ...` format
-*   Import `widgets` and keep our widgets in their own namespace
++   使用通配符导入从`widgets.py`中导入所有类
 
-Let's consider the relative merits of those ways:
++   使用`from ... import ...`格式明确地从`widgets.py`中导入所有所需的类
 
-*   The first option is by far the easiest, but it can cause us headaches as the application expands. A wildcard import will bring in every name defined at the global scope within the module. That includes not just the classes we defined, but any imported modules, aliases, and defined variables or functions. This can lead to unintended consequences and subtle bugs as the application expands in complexity.
-*   The second option is cleaner, but means we'll need to maintain the list of imports as we add new classes and use them in different files, and this leads to a long and ugly imports section that is hard for humans to parse.
-*   The third option is by far the best, as it keeps all names within a namespace and keeps the code elegantly simple. The only downside is that we'll need to update our code so that all references to widget classes include the module name as well. To keep this from being unwieldy, let's alias the `widgets` module to something short, like `w`.
++   导入`widgets`并将我们的小部件保留在它们自己的命名空间中
 
-Add the following code to your imports:
+让我们考虑一下这些方法的相对优点：
 
-```
++   第一个选项是迄今为止最简单的，但随着应用程序的扩展，它可能会给我们带来麻烦。通配符导入将会导入模块内在全局范围内定义的每个名称。这不仅包括我们定义的类，还包括任何导入的模块、别名和定义的变量或函数。随着应用程序在复杂性上的扩展，这可能会导致意想不到的后果和微妙的错误。
+
++   第二个选项更清晰，但意味着我们将需要维护导入列表，因为我们添加新类并在不同文件中使用它们，这导致了一个长而丑陋的导入部分，难以让人理解。
+
++   第三种选项是目前为止最好的，因为它将所有名称保留在命名空间内，并保持代码优雅简单。唯一的缺点是我们需要更新我们的代码，以便所有对小部件类的引用都包含模块名称。为了避免这变得笨拙，让我们将`widgets`模块别名为一个简短的名字，比如`w`。
+
+将以下代码添加到你的导入中：
+
+```py
 
 from . import widgets as w
 
 ```
 
-Now, we just need to go through the code and prepend `w.` to all instances of `LabelInput`, `RequiredEntry`, `DateEntry`, `ValidatedCombobox`, and `ValidatedSpinbox`. This should be easy enough to do in IDLE or any other text editor using a series of search and replace actions.
+现在，我们只需要遍历代码，并在所有`LabelInput`、`RequiredEntry`、`DateEntry`、`ValidatedCombobox`和`ValidatedSpinbox`的实例之前添加`w.`。这应该很容易在 IDLE 或任何其他文本编辑器中使用一系列搜索和替换操作来完成。
 
-For example, `line 1` of the form is as follows:
+例如，表单的`line 1`如下所示：
 
-```
+```py
 
 # line 1
 self.inputs['Date'] = w.LabelInput(
@@ -535,19 +552,19 @@ self.inputs['Technician'] = w.LabelInput(
 self.inputs['Technician'].grid(row=0, column=2)
 ```
 
-Before you go through and change that everywhere, though, let's stop and take a moment to refactor some of the redundancy out of this code.
+在你到处更改之前，让我们停下来，花一点时间重构这段代码中的一些冗余。
 
-# Removing redundancy in our view logic
+# 在我们的视图逻辑中消除冗余
 
-Look at the field definitions in the view logic: they contain a lot of information that is also in our model. Minimums, maximums, increments, and possible values are defined both here and in our model code. Even the type of the input widget is related directly to the type of data being stored. Ideally, this should only be defined one place, and that place should be the model. If we needed to update the model for some reason, our form would be out of sync.
+查看视图逻辑中的字段定义：它们包含了很多与我们的模型中的信息相同的信息。最小值、最大值、增量和可能值在这里和我们的模型代码中都有定义。甚至输入小部件的类型直接与存储的数据类型相关。理想情况下，这应该只在一个地方定义，而且那个地方应该是模型。如果我们因为某种原因需要更新模型，我们的表单将不同步。
 
-What we need to do is to pass the field specification from our model into the view class and let the widgets' details be defined from that specification.
+我们需要做的是将字段规范从我们的模型传递到视图类，并让小部件的详细信息从该规范中定义。
 
-Since our widget instances are being defined inside the `LabelInput` class, we're going to enhance that class with the ability to automatically work out the `input` class and arguments from our model's field specification format. Open up the `widgets.py` file and import the `FieldTypes` class, just as you did in `model.py`. 
+由于我们的小部件实例是在`LabelInput`类内部定义的，我们将增强该类的功能，以自动从我们模型的字段规范格式中计算出`input`类和参数。打开`widgets.py`文件，并像在`model.py`中一样导入`FieldTypes`类。
 
-Now, locate the `LabelInput` class and add the following code before the `__init__()` method:
+现在，找到`LabelInput`类，并在`__init__()`方法之前添加以下代码：
 
-```
+```py
 
     field_types = {
         FT.string: (RequiredEntry, tk.StringVar),
@@ -561,11 +578,11 @@ Now, locate the `LabelInput` class and add the following code before the `__init
 
 ```
 
-This code acts as a key to translate our model's field types into a widget type and variable type appropriate for the field type.
+这段代码充当了将我们模型的字段类型转换为适合字段类型的小部件类型和变量类型的关键。
 
-Now, we need to update `__init__()` to take a `field_spec` parameter and, if given, use it to define the input widget as follows:
+现在，我们需要更新`__init__()`，接受一个`field_spec`参数，并在给定时使用它来定义输入小部件，如下所示：
 
-```
+```py
 
     def __init__(self, parent, label='', input_class=None,
          input_var=None, input_args=None, label_args=None,
@@ -601,31 +618,37 @@ Now, we need to update `__init__()` to take a `field_spec` parameter and, if giv
         # ... Remainder of __init__() is the same
 ```
 
-Let's break down the changes:
+让我们逐步解析这些更改：
 
-1.  First, we've added `field_spec` as a keyword argument with `None` as a default. We might want to use this class in a situation where there isn't a field specification, so we keep this parameter optional.
-2.  If there is `field_spec` given, we're going to do the following things:
-    *   We'll grab the `type` value and use that with our class's field key to get `input_class`. In case we want to override this, an explicitly passed `input_class` will override the detected one.
-    *   We'll determine the appropriate variable type in the same way. Once again, if `input_var` is explicitly passed, we'll prefer that, otherwise we'll use the one determined from the field type. We'll create an instance either way and store it in `self.variable`.
-    *   For `min`, `max`, `inc`, and `values`, if the key exists in the field specification, and the corresponding `from_`, `to`, `increment`, or `values` argument has not been passed in explicitly, we'll set up the `input_args` variable with the `field_spec` value.
-3.  If `field_spec` wasn't passed in, we need to assign `self.variable` from the `input_var` argument.
-4.  We're using `self.variable` now instead of `input_var` for assigning the input's variable, since those values might not necessarily be the same anymore and `self.variable` will contain the correct reference.
+1.  首先，我们将`field_spec`添加为一个关键字参数，并将`None`作为默认值。我们可能会在没有字段规范的情况下使用这个类，所以我们保持这个参数是可选的。
 
-Now, we can update our view code to take advantage of this new ability. Our `DataRecordForm` class will need access to the model's `fields` dictionary, which it can then use to send a field specification to the `LabelInput` class.
+1.  如果给出了`field_spec`，我们将执行以下操作：
 
-Back in the `views.py` file, edit the method signature so that we can pass in a dictionary of field specifications:
+    +   我们将获取`type`值，并将其与我们类的字段键一起使用以获取`input_class`。如果我们想要覆盖这个值，显式传递的`input_class`将覆盖检测到的值。
 
-```
+    +   我们将以相同的方式确定适当的变量类型。再次，如果显式传递了`input_var`，我们将优先使用它，否则我们将使用从字段类型确定的那个。我们将以任何方式创建一个实例，并将其存储在`self.variable`中。
+
+    +   对于`min`、`max`、`inc`和`values`，如果字段规范中存在键，并且相应的`from_`、`to`、`increment`或`values`参数没有显式传递进来，我们将使用`field_spec`值设置`input_args`变量。
+
+1.  如果没有传入`field_spec`，我们需要将`self.variable`从`input_var`参数中赋值。
+
+1.  现在我们使用`self.variable`而不是`input_var`来分配输入的变量，因为这些值可能不再是相同的，而`self.variable`将包含正确的引用。
+
+现在，我们可以更新我们的视图代码以利用这种新的能力。我们的`DataRecordForm`类将需要访问模型的`fields`字典，然后可以使用它将字段规范发送到`LabelInput`类。
+
+回到`views.py`文件，在方法签名中编辑，以便我们可以传入字段规范的字典：
+
+```py
 
 def __init__(self, parent, fields, *args, **kwargs):
 
 ```
 
-With access to the `fields` dictionary, we can just get the field specification from it and pass that into the `LabelInput` class instead of specifying the input class, input variable, and input arguments.
+有了对`fields`字典的访问权限，我们只需从中获取字段规范，并将其传递到`LabelInput`类中，而不是指定输入类、输入变量和输入参数。
 
-Now, the first line looks like this:
+现在，第一行看起来是这样的：
 
-```
+```py
 
         self.inputs['Date'] = w.LabelInput(
             recordinfo, "Date",
@@ -641,11 +664,11 @@ Now, the first line looks like this:
         self.inputs['Technician'].grid(row=0, column=2)
 ```
 
-Go ahead and update the rest of the widgets the same way, replacing `input_class`, `input_var`, and `input_args` with `field_spec`. Note that when you get to the height fields, you'll need to keep the part of `input_args` that defines `min_var`, `max_var`, and `focus_update_var`.
+继续以相同的方式更新其余的小部件，用`field_spec`替换`input_class`、`input_var`和`input_args`。请注意，当您到达高度字段时，您将需要保留定义`min_var`、`max_var`和`focus_update_var`的`input_args`部分。
 
-For example, the following is the `Min Height` input definition:
+例如，以下是`Min Height`输入的定义：
 
-```
+```py
 
         self.inputs['Min Height'] = w.LabelInput(
             plantinfo, "Min Height (cm)",
@@ -654,16 +677,17 @@ For example, the following is the `Min Height` input definition:
                         "focus_update_var": min_height_var})
 ```
 
-That does it. Now, any changes to our field specification can be made solely in the model, and the form will simply do the correct thing.
+就这样。现在，我们对字段规范的任何更改都可以仅在模型中进行，并且表单将简单地执行正确的操作。
 
-# Creating the application file
+# 创建应用程序文件
 
-Finally, let's create our controller class, `Application`, by following these steps:
+最后，让我们按照以下步骤创建我们的控制器类`Application`：
 
-1.  Open the `application.py` file and copy in the `Application` class definition from the script.
-2.  The first thing we'll fix is our imports. At the top of the file, add the following code:
+1.  打开`application.py`文件，并将脚本中的`Application`类定义复制进去。
 
-```
+1.  首先，我们要修复的是我们的导入项。在文件顶部添加以下代码：
+
+```py
 
 import tkinter as tk
 from tkinter import ttk
@@ -672,19 +696,19 @@ from . import views as v
 from . import models as m
 ```
 
-We need `tkinter` and `ttk`, of course, and `datetime` to define our filename. Although we only need one class each from `views` and `models`, we're going to keep them in their own namespaces anyway. It's likely we're going to have many more views as the application expands, and possibly more models.
+当然，我们需要`tkinter`和`ttk`，以及`datetime`来定义我们的文件名。虽然我们只需要从`views`和`models`中各自选择一个类，但我们还是要将它们保留在各自的命名空间中。随着应用程序的扩展，我们可能会有更多的视图，可能还会有更多的模型。
 
-3.  We need to update the call to `DataRecordForm` in `__init__()` for the new namespace and make sure we pass in the required field specification dictionary as follows:
+1.  我们需要更新在新命名空间中`__init__()`中对`DataRecordForm`的调用，并确保我们传递所需的字段规范字典，如下所示：
 
-```
+```py
 
 self.recordform = v.DataRecordForm(self, m.CSVModel.fields)
 
 ```
 
-4.  Finally, we need to update `Application.on_save()` to use the model, as follows:
+1.  最后，我们需要更新`Application.on_save()`以使用模型，如下所示：
 
-```
+```py
 
     def on_save(self):
         """Handles save button clicks"""
@@ -711,76 +735,80 @@ self.recordform = v.DataRecordForm(self, m.CSVModel.fields)
         self.recordform.reset()
 ```
 
-As you can see, using our model is pretty seamless; we just created a `CSVModel` class by passing in the filename, and then passed the form's data to `save_record()`.
+正如您所看到的，使用我们的模型非常简单；我们只需通过传递文件名创建了一个`CSVModel`类，然后将表单的数据传递给`save_record()`。
 
-# Running the application
+# 运行应用程序
 
-The application is now completely migrated to the new data format. To test it, navigate to the application root folder, `ABQ_Data_Entry`, and execute the following command:
+应用程序现在完全迁移到了新的数据格式。要测试它，请导航到应用程序根文件夹`ABQ_Data_Entry`，然后执行以下命令：
 
-```
+```py
 
 python3 abq_data_entry.py
 
 ```
 
-It should look and act just like the single script from Chapter 4, *Reducing User Error with Validation and Automation,* and run without errors, as shown in the following screenshot:
+它应该看起来和行为就像第四章中的单个脚本*通过验证和自动化减少用户错误*一样，并且在下面的截图中运行无错误：
 
 ![](img/4151fc4d-d11b-4bf1-a5a3-df5ab3971dca.png)
 
-Success!
+成功！
 
-# Using version control software
+# 使用版本控制软件
 
-Our code is nicely structured for expansion, but there's one more critical item we should address: **version control**. You may already be familiar with a **version control system** (**VCS**), sometimes called **revision control** or **source code management**, but if not, it's an indispensable tool for dealing with a large and changing codebase.
+我们的代码结构良好，可以扩展，但是还有一个非常关键的问题我们应该解决：**版本控制**。您可能已经熟悉了**版本控制系统**（**VCS**），有时也称为**修订控制**或**源代码管理**，但如果不了解，它是处理大型和不断变化的代码库的不可或缺的工具。
 
-When working on an application, we sometimes think we know what needs to be changed, but it turns out we're wrong. Sometimes we don't know exactly how to code something, and it takes several attempts to find the correct approach. Sometimes we need to revert to code that was changed a long time back. Sometimes we have multiple people working on the same piece of code, and we need to merge their changes together. Version control systems were created to address these issues and more.
+在开发应用程序时，我们有时会认为自己知道需要更改什么，但事实证明我们错了。有时我们不完全知道如何编写某些代码，需要多次尝试才能找到正确的方法。有时我们需要恢复到很久之前更改过的代码。有时我们有多个人在同一段代码上工作，需要将他们的更改合并在一起。版本控制系统就是为了解决这些问题以及更多其他问题而创建的。
 
-There are dozens of different version control systems, but most of them work essentially the same:
+有数十种不同的版本控制系统，但它们大多数本质上都是相同的：
 
-*   You have a working copy of the code that you make changes to
-*   You periodically select changes to commit back to the master copy
-*   You can checkout older versions of the code at any point, then revert back to the master copy
-*   You can create branches of the code to experiment with different approaches, new features, or large refactors
-*   You can later merge these branches back into the master copy
++   您有一个可用于进行更改的代码副本
 
-VCS provides a safety net that gives you the freedom to change your code without the fear that you'll hopelessly ruin it: reverting to a known working state is just a few quick commands away. It also helps us to document changes to our code, and collaborate with others if the opportunity arises.
++   您定期选择要提交回主副本的更改
 
-There are dozens of VC systems available, but by far the most popular for many years now is **Git**.
++   您可以随时查看代码的旧版本，然后恢复到主副本
 
-# A super-quick guide to using Git
++   您可以创建代码分支来尝试不同的方法、新功能或大型重构
 
-Git was created by Linus Torvalds to be the version control software for the Linux kernel project, and has since grown to be the most popular VC software in the world. It is utilized by source sharing sites like GitHub, Bitbucket, SourceForge, and GitLab. Git is extremely powerful, and mastering it can take months or years; fortunately, the basics can be grasped in a few minutes.
++   您随后可以将这些分支合并回主副本
 
-First, you'll need to install Git; visit [`git-scm.com/downloads`](https://git-scm.com/downloads) for instructions on how to install Git on macOS, Windows, Linux, or other Unix operating systems.
+VCS 提供了一个安全网，让您可以自由更改代码，而无需担心您会彻底毁坏它：返回到已知的工作状态只需几个快速的命令即可。它还帮助我们记录代码的更改，并在机会出现时与他人合作。
 
-# Initializing and configuring a Git repository
+有数十种 VC 系统可供选择，但迄今为止，远远最流行的是**Git**。
 
-Once Git is installed, we need to initialize and configure our project directory as a Git repository by following these steps:
+# 使用 Git 的超快速指南
 
-1.  Run the following command in the application's root directory (`ABQ_Data_Entry`):
+Git 是由 Linus Torvalds 创建的，用于 Linux 内核项目的版本控制软件，并且已经发展成为世界上最流行的 VC 软件。它被源代码共享网站如 GitHub、Bitbucket、SourceForge 和 GitLab 使用。Git 非常强大，掌握它可能需要几个月或几年；幸运的是，基础知识可以在几分钟内掌握。
 
-```
+首先，您需要安装 Git；访问[`git-scm.com/downloads`](https://git-scm.com/downloads)获取有关如何在 macOS、Windows、Linux 或其他 Unix 操作系统上安装 Git 的说明。
+
+# 初始化和配置 Git 仓库
+
+安装完 Git 后，我们需要通过以下步骤初始化和配置我们的项目目录为一个 Git 仓库：
+
+1.  在应用程序的根目录（`ABQ_Data_Entry`）中运行以下命令：
+
+```py
 
 git init
 
 ```
 
-This command creates a hidden directory under our project root called `.git` and initializes it with the basic files that make up the repository. The `.git` directory will contain all the data and metadata about our saved revisions.
+此命令在我们项目根目录下创建一个名为`.git`的隐藏目录，并使用构成仓库的基本文件对其进行初始化。`.git`目录将包含关于我们保存的修订的所有数据和元数据。
 
-2.  Before we add any files to the repository, we need to instruct Git to ignore certain kinds of files. For example, Python creates bytecode (`.pyc`) files whenever it executes a file, and we don't want to save these as part of our code. To do this, create a file in your project root called `.gitignore` and put the following lines in it:
+1.  在我们添加任何文件到仓库之前，我们需要告诉 Git 忽略某些类型的文件。例如，Python 在执行文件时会创建字节码（`.pyc`）文件，我们不希望将这些文件保存为我们代码的一部分。为此，请在您的项目根目录中创建一个名为`.gitignore`的文件，并在其中放入以下行：
 
-```
+```py
 
 *.pyc
 __pycache__/
 
 ```
 
-# Adding and committing code
+# 添加和提交代码
 
-Now that our repository is initialized, we can add files and directories to our Git repository using the following commands:
+现在我们的仓库已经初始化，我们可以使用以下命令向我们的 Git 仓库添加文件和目录：
 
-```
+```py
 
 git add abq_data_entry
 git add abq_data_entry.py
@@ -789,11 +817,11 @@ git add README.rst
 
 ```
 
-At this point, our files are staged, but not yet committed to the repository. You can check the status of your repository and the files in it at any time by entering `git status`.
+此时，我们的文件已经准备就绪，但尚未提交到仓库。您可以随时输入`git status`来检查仓库及其中的文件的状态。
 
-You should get the following output:
+你应该得到以下输出：
 
-```
+```py
 
 On branch master
 
@@ -819,23 +847,23 @@ Untracked files:
     .gitignore
 ```
 
-This shows you that all the files under `abq_data_entry` and `docs`, as well as the files you specified directly, are staged to be committed to the repository.
+这向您展示了`abq_data_entry`和`docs`下的所有文件以及您直接指定的文件都已经准备好提交到仓库中。
 
-Let's go ahead and commit the changes as follows:
+让我们继续提交更改，如下所示：
 
-```
+```py
 
 git commit -m "Initial commit"
 
 ```
 
-The `-m` flag here passes in a commit message, which is stored with the commit. Each time you commit code to the repository, you will be required to write a message. You should always make these messages as meaningful as possible, detailing what changes you made and the rationale behind them.
+这里的`-m`标志传入了一个提交消息，该消息将与提交一起存储。每次向仓库提交代码时，您都需要编写一条消息。您应该尽可能使这些消息有意义，详细说明您所做的更改以及背后的原因。
 
-# Viewing and using our commits
+# 查看和使用我们的提交
 
-To view your repository's history, run the `git log` command as follows:
+要查看仓库的历史记录，请运行以下`git log`命令：
 
-```
+```py
 
 alanm@alanm-laptop:~/ABQ_Data_Entry$ git log
 commit df48707422875ff545dc30f4395f82ad2d25f103 (HEAD -> master)
