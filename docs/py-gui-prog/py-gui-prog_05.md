@@ -167,37 +167,28 @@ We've used RST already in Chapter 2, *Designing GUI Applications with Tkinter,* 
 1.  Open the file and start with the title and description, as follows:
 
 ```
-
+============================
+ ABQ Data Entry Application
 ============================
 
-ABQ 数据输入应用程序
-
-============================
-
-描述
-
+Description
 ===========
 
-此程序为 ABQ Agrilabs 实验室数据提供数据输入表单。
+This program provides a data entry form for ABQ Agrilabs laboratory data.
 
-特点
-
+Features
 --------
 
-* 提供经过验证的输入表单，以确保正确的数据
-
-* 将数据存储到 ABQ 格式的 CSV 文件中
-
-* 在可能的情况下自动填充表单字段
+* Provides a validated entry form to ensure correct data
+* Stores data to ABQ-format CSV files
+* Auto-fills form fields whenever possible
 
 ```
 
 2.  Next, we'll list the authors by adding the following code:
 
 ```
-
-作者
-
+Authors
 =======
 
 Alan D Moore, 2018
@@ -208,12 +199,10 @@ Add yourself, of course. Eventually, other people might work on your application
 
 ```
 
-要求
-
+Requirements
 ============
 
 * Python 3
-
 * Tkinter
 
 ```
@@ -222,27 +211,25 @@ Right now, we only need Python 3 and Tkinter, but as our application grows we ma
 
 ```
 
-用法
-
+Usage
 =====
 
-要启动应用程序，请运行::
+To start the application, run::
 
-python3 ABQ_Data_Entry/abq_data_entry.py
+  python3 ABQ_Data_Entry/abq_data_entry.py
 
 ```
 
 There really isn't much to know about running the program other than this command; no command-line switches or arguments. We don't know of any bugs, so we'll just leave some general notes at the end as follows:
 
 ```
-
-一般说明
-
+General Notes
 =============
 
-CSV 文件将以“abq_data_record_CURRENTDATE.csv”的格式保存在您当前的目录中，其中 CURRENTDATE 是今天的日期，采用 ISO 格式。
+The CSV file will be saved to your current directory in the format "abq_data_record_CURRENTDATE.csv", where CURRENTDATE is today's date in ISO format.
 
-此程序仅追加到 CSV 文件。您应该安装电子表格程序，以防需要编辑或检查文件。
+This program only appends to the CSV file.  You should have a spreadsheet program installed in case you need to edit or check the file.
+
 
 ```
 
@@ -321,20 +308,13 @@ To store the data type for each field, let's define some data types. Open the `c
 ```
 
 class FieldTypes:
-
-string = 1
-
-string_list = 2
-
-iso_date_string = 3
-
-long_string = 4
-
-decimal = 5
-
-integer = 6
-
-boolean = 7
+    string = 1
+    string_list = 2
+    iso_date_string = 3
+    long_string = 4
+    decimal = 5
+    integer = 6
+    boolean = 7
 
 ```
 
@@ -347,77 +327,42 @@ Now, open `models.py`, where we'll import `FieldTypes` and create our model cla
 ```
 
 import csv
-
 import os
-
 from .constants import FieldTypes as FT
 
 class CSVModel:
-
-"""CSV 文件存储"""
-
-字段 = {
-
-"日期": {'req': True, 'type': FT.iso_date_string},
-
-"时间": {'req': True, 'type': FT.string_list,
-
-'values': ['8:00', '12:00', '16:00', '20:00']},
-
-"技术员": {'req': True, 'type':  FT.string},
-
-"实验室": {'req': True, 'type': FT.string_list,
-
-'values': ['A', 'B', 'C', 'D', 'E']},
-
-"情节": {'req': True, 'type': FT.string_list,
-
-'values': [str(x) for x in range(1, 21)]},
-
-"种子样本":  {'req': True, 'type': FT.string},
-
-"湿度": {'req': True, 'type': FT.decimal,
-
-'min': 0.5, 'max': 52.0, 'inc': .01},
-
-"光": {'req': True, 'type': FT.decimal,
-
-'min': 0, 'max': 100.0, 'inc': .01},
-
-"温度": {'req': True, 'type': FT.decimal,
-
-'min': 4, 'max': 40, 'inc': .01},
-
-"设备故障": {'req': False, 'type': FT.boolean},
-
-"植物": {'req': True, 'type': FT.integer,
-
-'min': 0, 'max': 20},
-
-"花": {'req': True, 'type': FT.integer,
-
-'min': 0, 'max': 1000},
-
-"水果": {'req': True, 'type': FT.integer,
-
-'min': 0, 'max': 1000},
-
-"最小高度": {'req': True, 'type': FT.decimal,
-
-'min': 0, 'max': 1000, 'inc': .01},
-
-"最大高度": {'req': True, 'type': FT.decimal,
-
-'min': 0, 'max': 1000, 'inc': .01},
-
-"中位数高度": {'req': True, 'type': FT.decimal,
-
-'min': 0, 'max': 1000, 'inc': .01},
-
-"注释": {'req': False, 'type': FT.long_string}
-
-}
-
+    """CSV file storage"""
+    fields = {
+        "Date": {'req': True, 'type': FT.iso_date_string},
+        "Time": {'req': True, 'type': FT.string_list,
+                 'values': ['8:00', '12:00', '16:00', '20:00']},
+        "Technician": {'req': True, 'type':  FT.string},
+        "Lab": {'req': True, 'type': FT.string_list,
+                'values': ['A', 'B', 'C', 'D', 'E']},
+        "Plot": {'req': True, 'type': FT.string_list,
+                 'values': [str(x) for x in range(1, 21)]},
+        "Seed sample":  {'req': True, 'type': FT.string},
+        "Humidity": {'req': True, 'type': FT.decimal,
+                     'min': 0.5, 'max': 52.0, 'inc': .01},
+        "Light": {'req': True, 'type': FT.decimal,
+                  'min': 0, 'max': 100.0, 'inc': .01},
+        "Temperature": {'req': True, 'type': FT.decimal,
+                        'min': 4, 'max': 40, 'inc': .01},
+        "Equipment Fault": {'req': False, 'type': FT.boolean},
+        "Plants": {'req': True, 'type': FT.integer,
+                   'min': 0, 'max': 20},
+        "Blossoms": {'req': True, 'type': FT.integer,
+                     'min': 0, 'max': 1000},
+        "Fruit": {'req': True, 'type': FT.integer,
+                  'min': 0, 'max': 1000},
+        "Min Height": {'req': True, 'type': FT.decimal,
+                       'min': 0, 'max': 1000, 'inc': .01},
+        "Max Height": {'req': True, 'type': FT.decimal,
+                       'min': 0, 'max': 1000, 'inc': .01},
+        "Median Height": {'req': True, 'type': FT.decimal,
+                          'min': 0, 'max': 1000, 'inc': .01},
+        "Notes": {'req': False, 'type': FT.long_string}
+    }
 ```
 
 Notice the way we import `FieldTypes`:  `from .constants import FieldTypes`. The dot in front of `constants` makes this a **relative import**. Relative imports can be used inside a Python package to locate other modules in the same package. In this case, we're in the `models` module, and we need to access the `constants` module inside the `abq_data_entry` package. The single dot represents our current parent module (`abq_data_entry`), and thus `.constants` means the `constants` module of the `abq_data_entry` package.
@@ -433,23 +378,16 @@ The code in our current script is as follows:
 ```
 
 datestring = datetime.today().strftime("%Y-%m-%d")
-
 filename = "abq_data_record_{}.csv".format(datestring)
-
 newfile = not os.path.exists(filename)
 
 data = self.recordform.get()
 
 with open(filename, 'a') as fh:
-
-csvwriter = csv.DictWriter(fh, fieldnames=data.keys())
-
-if newfile:
-
-csvwriter.writeheader()
-
-csvwriter.writerow(data)
-
+    csvwriter = csv.DictWriter(fh, fieldnames=data.keys())
+    if newfile:
+        csvwriter.writeheader()
+    csvwriter.writerow(data)
 ```
 
 Let's go through this code and determine what goes to the model and what stays in the controller (that is, the `Application` class):
@@ -464,35 +402,25 @@ Now, let's begin moving code into the `CSVModel` class:
 1.  To start the process, let's create a constructor for `CSVModel` that allows us to pass in a filename:
 
 ```
-
-def __init__(self, filename):
-
-self.filename = filename
-
+    def __init__(self, filename):
+        self.filename = filename
 ```
 
 The constructor is pretty simple; it just takes a `filename` parameter and stores it as a property. Now, we'll migrate the save logic as follows:
 
 ```
 
-def save_record(self, data):
+    def save_record(self, data):
+        """Save a dict of data to the CSV file"""
 
-"""将数据字典保存到 CSV 文件"""
+        newfile = not os.path.exists(self.filename)
 
-newfile = not os.path.exists(self.filename)
-
-with open(self.filename, 'a') as fh:
-
-csvwriter = csv.DictWriter(fh,
-
-fieldnames=self.fields.keys())
-
-if newfile:
-
-csvwriter.writeheader()
-
-csvwriter.writerow(data)
-
+        with open(self.filename, 'a') as fh:
+            csvwriter = csv.DictWriter(fh, 
+                fieldnames=self.fields.keys())
+            if newfile:
+                csvwriter.writeheader()
+            csvwriter.writerow(data)
 ```
 
 This is essentially the logic we chose to copy from `Application.on_save()`, but with one difference; in the call to `csv.DictWriter()`, the `fieldnames` parameter is defined by the model's `fields` list rather than the keys of the `data` dict. This allows our model to manage the format of the CSV file itself, and not depend on what the form gives it.
@@ -502,7 +430,6 @@ This is essentially the logic we chose to copy from `Application.on_save()`, but
 ```
 
 import csv
-
 import os
 
 ```
@@ -520,11 +447,8 @@ Open `widgets.py` and copy in all of the code for `ValidatedMixin`, `DateInput`,
 The `widgets.py` file will need to import any module dependencies used by the code being copied in. We'll need to look through our code and find what libraries we use and import them. Obviously, we need `tkinter` and `ttk`, so add those at the top as follows:
 
 ```
-
 import tkinter as tk
-
 from tkinter import ttk
-
 ```
 
 Our `DateInput` class uses the `datetime` class from the `datetime` library, so import that too, as follows:
@@ -556,9 +480,7 @@ Add them to the top of the file as follows:
 ```
 
 import tkinter as tk
-
 from tkinter import ttk
-
 from datetime import datetime
 
 ```
@@ -592,45 +514,25 @@ For example, `line 1` of the form is as follows:
 ```
 
 # line 1
-
 self.inputs['Date'] = w.LabelInput(
-
-recordinfo, "Date",
-
-input_class=w.DateEntry,
-
-input_var=tk.StringVar()
-
+    recordinfo, "Date",
+    input_class=w.DateEntry,
+    input_var=tk.StringVar()
 )
-
 self.inputs['Date'].grid(row=0, column=0)
-
 self.inputs['Time'] = w.LabelInput(
-
-recordinfo, "Time",
-
-input_class=w.ValidatedCombobox,
-
-input_var=tk.StringVar(),
-
-input_args={"values": ["8:00", "12:00", "16:00", "20:00"]}
-
+    recordinfo, "Time",
+    input_class=w.ValidatedCombobox,
+    input_var=tk.StringVar(),
+    input_args={"values": ["8:00", "12:00", "16:00", "20:00"]}
 )
-
 self.inputs['Time'].grid(row=0, column=1)
-
 self.inputs['Technician'] = w.LabelInput(
-
-recordinfo, "Technician",
-
-input_class=w.RequiredEntry,
-
-input_var=tk.StringVar()
-
+    recordinfo, "Technician",
+    input_class=w.RequiredEntry,
+    input_var=tk.StringVar()
 )
-
 self.inputs['Technician'].grid(row=0, column=2)
-
 ```
 
 Before you go through and change that everywhere, though, let's stop and take a moment to refactor some of the redundancy out of this code.
@@ -647,27 +549,15 @@ Now, locate the `LabelInput` class and add the following code before the `__init
 
 ```
 
-field_types = {
-
-FT.string: (RequiredEntry, tk.StringVar),
-
-FT.string_list: (ValidatedCombobox, tk.StringVar),
-
-FT.iso_date_string: (DateEntry, tk.StringVar),
-
-FT.long_string: (tk.Text, lambda: None),
-
-FT.decimal: (ValidatedSpinbox, tk.DoubleVar),
-
-```
-
-```
-
-FT.integer: (ValidatedSpinbox, tk.IntVar),
-
-FT.boolean: (ttk.Checkbutton, tk.BooleanVar)
-
-}
+    field_types = {
+        FT.string: (RequiredEntry, tk.StringVar),
+        FT.string_list: (ValidatedCombobox, tk.StringVar),
+        FT.iso_date_string: (DateEntry, tk.StringVar),
+        FT.long_string: (tk.Text, lambda: None),
+        FT.decimal: (ValidatedSpinbox, tk.DoubleVar),
+        FT.integer: (ValidatedSpinbox, tk.IntVar),
+        FT.boolean: (ttk.Checkbutton, tk.BooleanVar)
+    }
 
 ```
 
@@ -677,68 +567,38 @@ Now, we need to update `__init__()` to take a `field_spec` parameter and, if giv
 
 ```
 
-def __init__(self, parent, label='', input_class=None,
-
-input_var=None, input_args=None, label_args=None,
-
-field_spec=None, **kwargs):
-
-super().__init__(parent, **kwargs)
-
-input_args = input_args or {}
-
-label_args = label_args or {}
-
-if field_spec:
-
-field_type = field_spec.get('type', FT.string)
-
-input_class = input_class or
-
-self.field_types.get(field_type)[0]
-
-var_type = self.field_types.get(field_type)[1]
-
-self.variable = input_var if input_var else var_type()
-
-# min, max, increment
-
-如果字段规范中包含'min'，并且输入参数中不包含'from_'：
-
-input_args['from_'] = field_spec.get('min')
-
-如果字段规范中包含'max'，并且输入参数中不包含'to'：
-
-input_args['to'] = field_spec.get('max')
-
-if 'inc' in field_spec and 'increment' not in input_args:
-
-input_args['increment'] = field_spec.get('inc')
-
-# values
-
-如果字段规范中包含'values'，并且输入参数中不包含'values'：
-
-input_args['values'] = field_spec.get('values')
-
-else:
-
-self.variable = input_var        if input_class in (ttk.Checkbutton, ttk.Button, ttk.Radiobutton):
-
-input_args["text"] = label
-
-input_args["variable"] = self.variable
-
-else:
-
-self.label = ttk.Label(self, text=label, **label_args)
-
-self.label.grid(row=0, column=0, sticky=(tk.W + tk.E))
-
-input_args["textvariable"] = self.variable
-
-# ... __init__()的其余部分相同
-
+    def __init__(self, parent, label='', input_class=None,
+         input_var=None, input_args=None, label_args=None,
+         field_spec=None, **kwargs):
+        super().__init__(parent, **kwargs)
+        input_args = input_args or {}
+        label_args = label_args or {}
+        if field_spec:
+            field_type = field_spec.get('type', FT.string)
+            input_class = input_class or 
+            self.field_types.get(field_type)[0]
+            var_type = self.field_types.get(field_type)[1]
+            self.variable = input_var if input_var else var_type()
+            # min, max, increment
+            if 'min' in field_spec and 'from_' not in input_args:
+                input_args['from_'] = field_spec.get('min')
+            if 'max' in field_spec and 'to' not in input_args:
+                input_args['to'] = field_spec.get('max')
+            if 'inc' in field_spec and 'increment' not in input_args:
+                input_args['increment'] = field_spec.get('inc')
+            # values
+            if 'values' in field_spec and 'values' not in input_args:
+                input_args['values'] = field_spec.get('values')
+        else:
+            self.variable = input_var
+        if input_class in (ttk.Checkbutton, ttk.Button, ttk.Radiobutton):
+            input_args["text"] = label
+            input_args["variable"] = self.variable
+        else:
+            self.label = ttk.Label(self, text=label, **label_args)
+            self.label.grid(row=0, column=0, sticky=(tk.W + tk.E))
+            input_args["textvariable"] = self.variable
+        # ... Remainder of __init__() is the same
 ```
 
 Let's break down the changes:
@@ -767,30 +627,18 @@ Now, the first line looks like this:
 
 ```
 
-self.inputs['Date'] = w.LabelInput(
-
-recordinfo, "Date",
-
-field_spec=fields['Date'])
-
-self.inputs['Date'].grid(row=0, column=0)
-
-self.inputs['Time'] = w.LabelInput(
-
-recordinfo, "Time",
-
-field_spec=fields['Time'])
-
-self.inputs['Time'].grid(row=0, column=1)
-
-self.inputs['Technician'] = w.LabelInput(
-
-recordinfo, "Technician",
-
-field_spec=fields['Technician'])
-
-self.inputs['Technician'].grid(row=0, column=2)
-
+        self.inputs['Date'] = w.LabelInput(
+            recordinfo, "Date",
+            field_spec=fields['Date'])
+        self.inputs['Date'].grid(row=0, column=0)
+        self.inputs['Time'] = w.LabelInput(
+            recordinfo, "Time",
+            field_spec=fields['Time'])
+        self.inputs['Time'].grid(row=0, column=1)
+        self.inputs['Technician'] = w.LabelInput(
+            recordinfo, "Technician",
+            field_spec=fields['Technician'])
+        self.inputs['Technician'].grid(row=0, column=2)
 ```
 
 Go ahead and update the rest of the widgets the same way, replacing `input_class`, `input_var`, and `input_args` with `field_spec`. Note that when you get to the height fields, you'll need to keep the part of `input_args` that defines `min_var`, `max_var`, and `focus_update_var`.
@@ -799,16 +647,11 @@ For example, the following is the `Min Height` input definition:
 
 ```
 
-self.inputs['Min Height'] = w.LabelInput(
-
-plantinfo, "Min Height (cm)",
-
-field_spec=fields['Min Height'],
-
-input_args={"max_var": max_height_var,
-
-"focus_update_var": min_height_var})
-
+        self.inputs['Min Height'] = w.LabelInput(
+            plantinfo, "Min Height (cm)",
+            field_spec=fields['Min Height'],
+            input_args={"max_var": max_height_var,
+                        "focus_update_var": min_height_var})
 ```
 
 That does it. Now, any changes to our field specification can be made solely in the model, and the form will simply do the correct thing.
@@ -823,15 +666,10 @@ Finally, let's create our controller class, `Application`, by following these st
 ```
 
 import tkinter as tk
-
 from tkinter import ttk
-
 from datetime import datetime
-
 from . import views as v
-
 from . import models as m
-
 ```
 
 We need `tkinter` and `ttk`, of course, and `datetime` to define our filename. Although we only need one class each from `views` and `models`, we're going to keep them in their own namespaces anyway. It's likely we're going to have many more views as the application expands, and possibly more models.
@@ -848,48 +686,29 @@ self.recordform = v.DataRecordForm(self, m.CSVModel.fields)
 
 ```
 
-def on_save(self):
+    def on_save(self):
+        """Handles save button clicks"""
 
-"""处理保存按钮点击"""
+        errors = self.recordform.get_errors()
+        if errors:
+            self.status.set(
+                "Cannot save, error in fields: {}"
+                .format(', '.join(errors.keys())))
+            return False
 
-errors = self.recordform.get_errors()
-
-if errors:
-
-self.status.set(
-
-"无法保存，字段错误：{}"
-
-.format(', '.join(errors.keys())))
-
-return False
-
-# 目前，我们保存到一个硬编码的文件名
-
-带有日期字符串。
-
-datestring = datetime.today().strftime("%Y-%m-%d")
-
-filename = "abq_data_record_{}.csv".format(datestring)
-
-model = m.CSVModel(filename)
-
-data = self.recordform.get()
-
-模型保存记录（数据）
-
-self.records_saved += 1
-
-self.status.set(
-
-"{}条记录已保存此会话"。
-
-format(self.records_saved)
-
-）
-
-self.recordform.reset()
-
+        # For now, we save to a hardcoded filename 
+        with a datestring.
+        datestring = datetime.today().strftime("%Y-%m-%d")
+        filename = "abq_data_record_{}.csv".format(datestring)
+        model = m.CSVModel(filename)
+        data = self.recordform.get()
+        model.save_record(data)
+        self.records_saved += 1
+        self.status.set(
+            "{} records saved this session".
+            format(self.records_saved)
+        )
+        self.recordform.reset()
 ```
 
 As you can see, using our model is pretty seamless; we just created a `CSVModel` class by passing in the filename, and then passed the form's data to `save_record()`.
@@ -953,7 +772,6 @@ This command creates a hidden directory under our project root called `.git` an
 ```
 
 *.pyc
-
 __pycache__/
 
 ```
@@ -965,11 +783,8 @@ Now that our repository is initialized, we can add files and directories to our 
 ```
 
 git add abq_data_entry
-
 git add abq_data_entry.py
-
 git add docs
-
 git add README.rst
 
 ```
@@ -980,40 +795,28 @@ You should get the following output:
 
 ```
 
-在主分支上
+On branch master
 
-还没有提交
+No commits yet
 
-要提交的更改：
+Changes to be committed:
+  (use "git rm --cached <file>..." to unstage)
 
-（使用“git rm --cached <file>…”取消暂存）
+    new file:   README.rst
+    new file:   abq_data_entry.py
+    new file:   abq_data_entry/__init__.py
+    new file:   abq_data_entry/application.py
+    new file:   abq_data_entry/models.py
+    new file:   abq_data_entry/views.py
+    new file:   abq_data_entry/widgets.py
+    new file:   docs/Application_layout.png
+    new file:   docs/abq_data_entry_spec.rst
+    new file:   docs/lab-tech-paper-form.png
 
-新文件：README.rst
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
 
-新文件：abq_data_entry.py
-
-新文件：abq_data_entry/__init__.py
-
-新文件：abq_data_entry/application.py
-
-新文件：abq_data_entry/models.py
-
-新文件：abq_data_entry/views.py
-
-新文件：abq_data_entry/widgets.py
-
-新文件：docs/Application_layout.png
-
-新文件：docs/abq_data_entry_spec.rst
-
-新文件：docs/lab-tech-paper-form.png
-
-未跟踪的文件：
-
-（使用“git add <file>…”将其包含在将要提交的内容中）
-
-.gitignore
-
+    .gitignore
 ```
 
 This shows you that all the files under `abq_data_entry` and `docs`, as well as the files you specified directly, are staged to be committed to the repository.
@@ -1035,14 +838,12 @@ To view your repository's history, run the `git log` command as follows:
 ```
 
 alanm@alanm-laptop:~/ABQ_Data_Entry$ git log
+commit df48707422875ff545dc30f4395f82ad2d25f103 (HEAD -> master)
+Author: Alan Moore <alan@example.com>
+Date:   Thu Dec 21 18:12:17 2017 -0600
 
-提交 df48707422875ff545dc30f4395f82ad2d25f103（HEAD -> master）
+    Initial commit
 
-作者：Alan Moore <alan@example.com>
-
-日期：2017 年 12 月 21 日星期四 18:12:17 -0600
-
-初始提交
 
 ```
 
