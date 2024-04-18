@@ -6,7 +6,7 @@
 > 
 > 软件就像性，免费的比花钱的好得多。——林纳斯·托瓦兹
 
-* [在线阅读](https://py.flygon.net)
+* [在线阅读](https://flpy.flygon.net)
 
 ## 下载
 
