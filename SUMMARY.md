@@ -9,7 +9,6 @@
 +   [现代 Python 秘籍](docs/mod-py-cb/README.md)
 +   [现代 Python 标准库秘籍](docs/mod-py-stlib-cb/README.md)
 +   [精通 Python GUI 编程](docs/ms-gui-prog-py/README.md)
-+   [精通 Python 金融第二版](docs/ms-py-fin-2e/README.md)
 +   [精通 Python 网络编程第二版](docs/ms-py-net-2e/README.md)
 +   [精通 Python 网络安全](docs/ms-py-net-sec/README.md)
 +   [精通 Python 系统管理脚本编程](docs/ms-py-sc-sys-adm/README.md)
