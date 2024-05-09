@@ -1,5 +1,0 @@
-+   [Python 密码学实用指南](README.md)
-+   [前言](hsn-crpt-py_0.md)
-+   [第一章：混淆](hsn-crpt-py_1.md)
-+   [第二章：哈希](hsn-crpt-py_2.md)
-+   [第三章：强加密](hsn-crpt-py_3.md)
