@@ -10,7 +10,6 @@
 +   [现代 Python 标准库秘籍](docs/mod-py-stlib-cb/README.md)
 +   [精通 Python GUI 编程](docs/ms-gui-prog-py/README.md)
 +   [精通 Python 网络编程第二版](docs/ms-py-net-2e/README.md)
-+   [精通 Python 网络安全](docs/ms-py-net-sec/README.md)
 +   [精通 Python 系统管理脚本编程](docs/ms-py-sc-sys-adm/README.md)
 +   [Python 自动化秘籍](docs/py-auto-cb/README.md)
 +   [Python 分布式计算](docs/py-dist-comp/README.md)
