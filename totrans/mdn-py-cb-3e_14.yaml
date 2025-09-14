@@ -1,0 +1,1417 @@
+- en: '14'
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Application Integration: Combination'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Python language is designed to permit extensibility. We can create sophisticated
+    programs by combining a number of smaller components. In this chapter, we’ll look
+    at ways to combine modules and scripts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We’ll look at the complications that can arise from composite applications and
+    the need to centralize some features, like command-line parsing. This will enable
+    us to create uniform interfaces for a variety of closely related programs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We’ll extend some of the concepts from Chapter [7](ch011_split_000.xhtml#x1-3760007)
+    and Chapter [8](ch012.xhtml#x1-4520008), and apply the idea of the Command design
+    pattern to Python programs. By encapsulating features in class definitions, we’ll
+    find it easier to combine and extend programs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we’ll look at the following recipes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[Combining two applications into one](ch018.xhtml#x1-7590001)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[Combining many applications using the Command design pattern](ch018.xhtml#x1-7670002)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[Managing arguments and configuration in composite applications](ch018.xhtml#x1-7730003)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[Wrapping and combining CLI applications](ch018.xhtml#x1-7790004)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[Wrapping a program and checking the output](ch018.xhtml#x1-7850005)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We’ll start with a direct approach to combining multiple Python applications
+    into a single, more sophisticated application. We’ll expand this to apply object-oriented
+    design techniques and create an even more flexible composite. Then, we’ll apply
+    uniform command-line argument parsing for composite applications.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 14.1 Combining two applications into one
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: For this recipe, we’ll look at two scripts that need to be combined. One script
+    emits data from a Markov chain process, and the second script summarizes those
+    results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: What’s important here is the Markov chain application is (intentionally) a bit
+    mysterious. For the purposes of several recipes, we’ll treat this as opaque software,
+    possibly written in another language.
+  prefs: []
+  type: TYPE_NORMAL
+- en: (The GitHub repository for this book has the Markov chain written in Pascal
+    to be reasonably opaque.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For reference, here’s a depiction of the Markov chain state changes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![SSFGp””””””tuaro00000nacioi.....orclwn21610tteUt21668en21773(dte””””—faist0ila.lb1
+    o(l1rpi1oshpine—otd0i).n1t3)”9 ” ](img/file78.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 14.1: Markov chain states'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Start state will either succeed, fail, or generate a ”point” value. There
+    are a number of values, each with distinct probabilities that sum to P = 0.667\.
+    The GrowUntil state generates values that may match the point, not match the point,
+    or indicate failure. In the cases of a non-match and non-failure, the chain transitions
+    back to this state. The exact probability of a match depends on the starting-point
+    value, which is why the state transition is labeled with three probabilities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The generator application emits a TOML-format file with some configuration
+    details and a collection of individual samples. The file looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: A summary application reads all of these generated files to create some simple
+    statistics to describe the raw data. This summary was originally done with Jupyter
+    Notebook. While these can be executed with the jupyter execute command, an alternative
+    approach is to save the notebook as a script and then execute the script.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We want to be able to combine this generator and the summary applications to
+    reduce the manual steps in using the generator. There are several common approaches
+    to combining multiple applications:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A shell script can run the generator application and then run the summary application.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A Python program can implement the high-level operation, using the runpy module
+    to run each of the two applications.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We can build a composite application from the essential components of each application.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In this recipe, we’ll look at the third path of combining the essential components
+    of each application by writing a new composite application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 14.1.1 Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In the [Designing scripts for composition](ch017.xhtml#x1-7410005) and [Using
+    logging for control and audit output](ch017.xhtml#x1-7470006) recipes in Chapter [13](ch017.xhtml#x1-71500013),
+    we followed a design pattern that separated the input gathering, the essential
+    processing, and the production of output. The objective of that design pattern
+    was to gather the interesting pieces together to combine and recombine them into
+    higher-level constructs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that we have a tiny mismatch between the two applications. We can borrow
+    a phrase from database engineering (and also electrical engineering) and call
+    this an ”impedance mismatch.”
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When building this composite application, the impedance mismatch is a cardinality
+    problem. The data generator process is designed to run more frequently than the
+    statistical summary process. We have a couple of choices for addressing issues
+    such as this one:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Total redesign: We can rewrite the generator to an iterator as desired, producing
+    multiple sets of samples.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Add the iterator: We can build the composite application to do bulk data generation
+    processing. After all the data is produced, the composite application can then
+    summarize it.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The choice between these design alternatives depends on the user stories for
+    this application. It may also depend on the established base of users. For this
+    recipe, the users would like to follow the Add the iterator design to create a
+    composite process without touching the underlying generator.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Looking inside the two module implementation choices, we see two distinct design
+    patterns for top-level applications:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The markov_gen module has the following main() function definition:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The markov_summ module, on the other hand, is a script, exported from a notebook.
+    A direct Command-Line Interface (CLI) is not part of this script, and some rewriting
+    is required. See the [Designing scripts for composition](ch017.xhtml#x1-7410005)
+    recipe in Chapter [13](ch017.xhtml#x1-71500013) for details on this.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'To create a more useful script, we need to add a def main(): line and indent
+    the entire script inside the body of this function. At the end of the indented
+    main() function, the if __name__ == "__main__": block can be added. Without creating
+    a function that can be imported, the script is very difficult to test and integrate.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 14.1.2 How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Import the other modules required:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Import the modules with the constituent applications. This is generally done
+    after all standard library modules:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Create a new function to combine the existing functions from the other applications.
+    We’re including the iteration in this function to meet the expectation of generating
+    1,000 sample files. It looks like this:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The overall problem statement has two parameters, with fixed values: the users
+    would like 1,000 iterations of 1,000 samples. This provides a large collection
+    of large files to work with. We can define command-line arguments with these values
+    as defaults:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: For more on how to use the argparse module, see the recipes in Chapter [6](ch010.xhtml#x1-3300006).
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'The final report is sent to standard output, sys.stdout, by the print() function
+    in the markov_summ application. This isn’t ideal, so we’ll use a contextlib context
+    manager to redirect the output to a file:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The combined functionality is now a new module with a function, main(), that
+    we can invoke from a block of code like the following:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This gives us a combined application written entirely in Python. We can write
+    unit tests for this composite, as well as for each of the two steps that make
+    up the overall application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 14.1.3 How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The central feature of this design is importing useful functionality from existing,
+    working, and tested modules. This avoids the problems with copy-and-paste programming.
+    Copying code from one file and pasting it into another means that any change made
+    to one is unlikely to be made to any of the copies. As the various copies of a
+    function slowly diverge, problems fixed in one place surface in another. This
+    phenomenon is sometimes called code rot.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The copy-and-paste approach is made more complicated when a class or function
+    does several things. Too many features reduces the potential for reuse. We summarize
+    this as the Inverse Power Law of Reuse – the reusability of a class or function,
+    R(c), is related to the inverse of the number of features in that class or function,
+    F(c):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ 1 R (c) ∝ F-(c) ](img/file79.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The idea of counting features depends, of course, on the level of abstraction.
+    It can help to consider the processing that maps inputs to outputs. Too many input-process-output
+    mappings will limit reuse.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The SOLID design principles provide guidance for keeping components small and
+    narrowly focused. These principles apply to applications as well as components.
+    In particular, the Single Responsibility Principle suggests that an application
+    should do one thing. It’s better to have many small applications – like bricks
+    – that can easily be combined than to have one large application that’s an imponderable
+    big ball of mud.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 14.1.4 There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We’ll look at two additional areas of rework of the application:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Structure: Using the top-level main() function treats each component as an
+    opaque container. When trying to create a composite application, we may need to
+    refactor the component modules to look for better organization of the features.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Logging: When multiple applications are combined, the combined logging can
+    become complicated. To improve observability, we may need to refactor the logging.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We’ll go through these in turn.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Structure
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In some cases, it becomes necessary to rearrange software to expose useful features.
+    For example, the main() function inside the markov_gen.py module relies on a write_samples()
+    function. This function creates a single file with the required number of samples,
+    which are (outcome, chain) two-tuples.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The input to the summary processing is a sequence of these (outcome, chain)
+    two-tuples. The composite application doesn’t really need to process 1,000 separate
+    files. It needs to process 1,000 collections of 1,000 two-tuples.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Doing the refactoring to expose this detail will make this feature available
+    for the composite application. This can make the composite easier to understand
+    and maintain.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Logging
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In the [Using logging for control and audit output](ch017.xhtml#x1-7470006)
+    recipe in Chapter [13](ch017.xhtml#x1-71500013), we looked at how to use the logging
+    module for control, audit, and error outputs. When we build a composite application,
+    we’ll have to combine the logging features from each of the original applications.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The logging configuration for a composite application needs to be examined
+    carefully. If we don’t ensure that the logging configuration is done only once
+    in the top-level application, then combining applications can lead to multiple,
+    conflicting logging configurations. There are two approaches that a composite
+    application can follow:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The composite application manages the logging configuration. This may mean overwriting
+    all previously defined loggers. This is the default behavior and can be stated
+    explicitly via incremental = false in a TOML configuration document.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The composite application can preserve other application loggers and merely
+    modify the configuration. This is not the default behavior and requires including
+    incremental = true in the TOML configuration document.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The use of incremental configuration can be helpful when combining Python applications
+    that don’t properly isolate the logging configuration into the __name__ == "__main__"
+    block of code. It’s often easier to refactor logging configuration to put it into
+    the top-level block of code; this permits the composite application to more simply
+    configure logging for all of the components.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 14.1.5 See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In the [Designing scripts for composition](ch017.xhtml#x1-7410005) recipe in
+    Chapter [13](ch017.xhtml#x1-71500013), we looked at the core design pattern for
+    a composable application.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Books and articles on Clean Architecture and Hexagonal Architecture can be very
+    helpful. Titles on design patterns are also helpful, such as [Mastering Python
+    Design Patterns – Third Edition](https://www.packtpub.com/en-de/product/mastering-python-design-patterns-9781837639618).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 14.2 Combining many applications using the Command design pattern
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Many complex suites of applications follow a design pattern similar to the one
+    used by the Git program. There’s a base command, git, with a number of subcommands.
+    These include git pull, git commit, and git push.
+  prefs: []
+  type: TYPE_NORMAL
+- en: What’s central to this design is the idea of a collection of individual commands
+    under a common parent command. Each of the various features of Git can be thought
+    of as a separate subclass definition that performs a given function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 14.2.1 Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We’ll build a composite application from two commands. This is based on the
+    [Combining two applications into one](ch018.xhtml#x1-7590001) recipe from earlier
+    in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: These features are based on modules with names such as markov_gen, markov_summ,
+    and markov_analysis. The idea is that we can restructure separate modules into
+    a single class hierarchy following the Command design pattern.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There are two key ingredients to this design pattern:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A client class depends only on the methods of the abstract superclass, Command.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Each individual subclass of the Command superclass has an identical interface.
+    We can substitute any one of them for any other.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: An overall application script can then create and execute any one of the Command
+    subclasses.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that any feature that can be wrapped into a class is a candidate for this
+    design. Consequently, some rework to create a single Facade class is sometimes
+    required for sprawling, poorly designed applications.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 14.2.2 How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We’ll start by creating a superclass for all of the related commands. We’ll
+    then extend that superclass for the subcommands that are part of the overall application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here’s the Command superclass:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: It helps to rely on argparse.Namespace to provide a very flexible collection
+    of options and arguments to each subclass.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: We’ll use this also in the Managing arguments and configuration in composite
+    applications recipe in this chapter.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Create a subclass of the Command superclass for the Generate class. This will
+    wrap the processing and output from the example module in the execute() method
+    of this class:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Create a subclass of the Command superclass for the Summarize class. For this
+    class, we’ve wrapped the file creation and file processing into the execute()
+    method of the class:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The overall composite processing can be performed by the following main() function:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We’ve created two commands: one is an instance of the Generate class, and the
+    other is an instance of the Summarize class. These commands can be executed to
+    provide a combined feature that both generates and summarizes data.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 14.2.3 How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Creating interchangeable, polymorphic classes for the various subcommands is
+    a handy way to provide an extensible design. The Command design pattern strongly
+    encourages each individual subclass to have an identical signature. Doing this
+    makes it easier for the command subclasses to be created and executed. Also, new
+    commands can be added that fit this pattern.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One of the SOLID design principles is the Liskov Substitution Principle (LSP).
+    It suggests any of the subclasses of the Command abstract class can be used in
+    place of the parent class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Each Command instance has a consistent interface. The use of the Command design
+    pattern makes it easy to be sure that Command subclasses can be interchanged with
+    each other. The overall main() script can create instances of the Generate or
+    Summarize classes. The substitution principle means that either instance can be
+    executed because the interfaces are the same. This flexibility makes it easy to
+    parse the command-line options and create an instance of either of the available
+    classes. We can extend this idea and create sequences of individual command instances.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 14.2.4 There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'One of the more common extensions to this design pattern is to provide for
+    composite commands. In the [Combining two applications into one](ch018.xhtml#x1-7590001)
+    recipe, we showed one way to create composites. This is another way, based on
+    defining a new Command class that implements a combination of existing Command
+    class instances:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: This class will accept other Command classes via the *commands parameter. From
+    the classes, it will build the individual class instances.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We might use this CmdSequence class like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: This design exposes some implementation details. In particular, the two class
+    names and the intermediate x.csv file are details that seem superfluous.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can create a slightly nicer subclass of the CmdSequence argument if we focus
+    specifically on the two commands being combined. This will have an __init__()
+    method that follows the pattern of other Command subclasses:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: This class definition incorporates two other classes into the already defined
+    CmdSequence class structure. The super().__init__() expression invokes the parent
+    class initialization with the Generate and Summarize classes as argument values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This provides a composite application definition that conceals the details of
+    how a file is used to pass data from the first step to a subsequent step. This
+    is purely a feature of the composite integration and doesn’t lead to any changes
+    in either of the original applications that form the composite.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 14.2.5 See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In the [Designing scripts for composition](ch017.xhtml#x1-7410005) and [Using
+    logging for control and audit output](ch017.xhtml#x1-7470006) recipes in Chapter [13](ch017.xhtml#x1-71500013),
+    we looked at the constituent parts of this composite application.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In the [Combining two applications into one](ch018.xhtml#x1-7590001) recipe
+    earlier in this chapter, we looked at the constituent parts of this composite
+    application. In most cases, we’ll need to combine elements of all of these recipes
+    to create a useful application.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We’ll often need to follow the [Managing arguments and configuration in composite
+    applications](ch018.xhtml#x1-7730003) recipe, which comes next in this chapter.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: For other advanced design patterns, see [Mastering Python Design Patterns –
+    Third Edition](https://www.packtpub.com/en-de/product/mastering-python-design-patterns-9781837639618).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 14.3 Managing arguments and configuration in composite applications
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: When we have a complex suite (or system) of individual applications, they may
+    share common features. The coordination of common features among many applications
+    can become awkward. As a concrete example, imagine defining the various one-letter
+    abbreviated options for command-line arguments. We might want all of our applications
+    to use the -v option for verbose output. Ensuring that there are no conflicts
+    among all the applications might require keeping some kind of master list of all
+    options.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This kind of common configuration should be kept in only one place. Ideally,
+    it would be in a common module, used throughout a family of applications.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Additionally, we often want to divorce the modules that perform useful work
+    from the CLI. This lets us refactor the internal software design without changing
+    the user’s understanding of how to use the application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this recipe, we’ll look at ways to ensure that a suite of applications can
+    be refactored without creating unexpected changes to the CLI.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 14.3.1 Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We’ll imagine an application suite built from three commands. This is based
+    on the applications shown in the [Combining two applications into one](ch018.xhtml#x1-7590001)
+    recipe earlier in this chapter. We’ll have a markov application with three subcommands:
+    markov generate, markov summarize, and the combined application, markov gensumm.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We’ll rely on the subcommand design from the Combining many applications using
+    the Command design pattern recipe earlier in this chapter. This will provide a
+    handy hierarchy of Command subclasses:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Command class is an abstract superclass.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The Generate subclass performs the chain-generating functions from Chapter [13](ch017.xhtml#x1-71500013)
+    recipe the [Designing scripts for composition](ch017.xhtml#x1-7410005) recipe.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The Summarize subclass performs summarizing functions from Chapter [13](ch017.xhtml#x1-71500013)
+    recipe the Using logging for control and audit output recipe.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A GenSumm subclass can perform combined chain generation and summarization,
+    following the ideas of the [Combining many applications using the Command design
+    pattern](ch018.xhtml#x1-7670002) recipe.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In order to create a simple command-line application, we’ll need appropriate
+    argument parsing. For more on argument parsing, see Chapter [6](ch010.xhtml#x1-3300006).
+  prefs: []
+  type: TYPE_NORMAL
+- en: This argument parsing will rely on the subcommand-parsing capability of the
+    built-in argparse module. We can create a common set of command options that apply
+    to all subcommands. We can also create unique options for each of the distinct
+    subcommands.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 14.3.2 How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: This recipe will start with a consideration of what the CLI commands need to
+    look like. A first release often involves some prototypes or examples to be sure
+    that the commands are truly useful to the user. After learning the user’s preferences,
+    we can change how we implement the argument definitions in each of the Command
+    subclasses.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Define the CLI. This is an exercise in User Experience (UX) design. While a
+    great deal of UX design is focused on web and mobile device applications, the
+    core principles are appropriate for CLI applications as well. Earlier, we noted
+    that the root application will be called markov. It will have the following three
+    subcommands:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The gensumm command combines the generate and summarize commands into a single
+    operation that does both.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Define the root Python application. We’ll call it markov.py. It’s common to
+    have a package __main__.py file that contains the application. It’s often simpler
+    to use an OS alias to provide the UX name.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'We’ll import the class definitions from the [Combining many applications using
+    the Command design pattern](ch018.xhtml#x1-7670002) recipe. This will include
+    the Command superclass and the Generate, Summarize, and GenSumm subclasses. We’ll
+    extend the Command class with an additional method, arguments(), to set the unique
+    options in the argument parser for this command. This is a class method and is
+    called on the class as a whole, not an instance of the class:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Here are the unique options for the generate subcommand. We won’t repeat the
+    entire class definition, only the new arguments() method. This creates arguments
+    that are unique to the markov generate subcommand:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Here is the new arguments() method of the Summarize subcommand:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Here is the new arguments() method for the composite command, GenSumm:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Create the overall argument parser. Use this to create a subparser builder.
+    For each subcommand, create a subparser and add arguments that are unique to that
+    command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Parse the command-line values. In most cases, the argument definitions include
+    validation rules. In this case, there’s an additional validation check to make
+    sure a command was provided. Here are the final parsing and validating steps:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The overall parser includes three subcommand parsers. One will handle the markov
+    generate command, another handles markov summarize, and the third handles a combined
+    markov gensumm. Each subcommand has slightly different combinations of options.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The command option is set via the set_defaults() method. This also provides
+    useful additional information about the command to be executed. In this case,
+    we’ve provided the class that must be instantiated.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The overall application is defined by the following main() function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: The resulting object will have an execute() method that does the real work of
+    this command.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 14.3.3 How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'There are two parts to this recipe:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the Command design pattern to define a related set of classes that are
+    polymorphic. For more information on this, see the [Combining many applications
+    using the Command design pattern](ch018.xhtml#x1-7670002) recipe.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using features of the argparse module to handle subcommands.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The argparse module feature that’s important here is the add_subparsers() method
+    of a parser. This method returns an object to build each distinct subcommand parser.
+    We assigned this object to the subparsers variable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We also used the set_defaults() method of a parser to add a command argument
+    to each of the subparsers. This argument will be populated by the defaults defined
+    for one of the subparsers. The value assigned by the set_defaults() method actually
+    used will show which of the subcommands was invoked.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Consider the following OS command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This command will be parsed to create a Namespace object that looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: The command attribute in the Namespace object is the default value provided
+    as part of the subcommand definition. The values for output and samples come from
+    the -o and -g options.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 14.3.4 There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The get_options() function has an explicit list of classes that it incorporates
+    into the overall command. As shown, a number of lines of code are repeated, and
+    this could be optimized. We can provide a data structure that replaces a number
+    of lines of code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: This variation on the get_options() function uses a sequence of two-tuples to
+    provide the command name and the relevant class to implement the command. Iterating
+    through this list ensures that all of the various subclasses of the Command class
+    are processed in a perfectly uniform manner.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 14.3.5 See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: See the [Designing scripts for composition](ch017.xhtml#x1-7410005) and [Using
+    logging for control and audit output](ch017.xhtml#x1-7470006) recipes in Chapter [13](ch017.xhtml#x1-71500013)
+    for the basics of building applications focused on being composable.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: See the [Combining two applications into one](ch018.xhtml#x1-7590001) recipe
+    from earlier in this chapter for the background on the components used in this
+    recipe.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: See the [Using argparse to get command-line input](ch010.xhtml#x1-3490004) recipe
+    in Chapter [6](ch010.xhtml#x1-3300006) for more on the background of argument
+    parsing.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Other tools for creating CLIs include [click](https://click.palletsprojects.com/en/8.1.x/),
+    [hydra](https://hydra.cc/docs/intro/), and [invoke](https://www.pyinvoke.org).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 14.4 Wrapping and combining CLI applications
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: One common kind of automation involves running several programs, some of which
+    are not Python applications. This commonly arises when integrating multiple tools,
+    which are often applications used to build applications or documents. Since the
+    programs aren’t written in Python, it’s impossible to refactor each program to
+    create a composite Python application. When using a non-Python application, we
+    can’t follow the [Combining two applications into one](ch018.xhtml#x1-7590001)
+    recipe shown earlier in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Instead of aggregating the Python components, an alternative is to wrap the
+    other programs in Python, creating a composite application. The use case is very
+    similar to the use case for writing a shell script. The difference is that Python
+    is used instead of a shell language. Using Python has some advantages:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Python has a rich collection of data structures. Most shell languages are limited
+    to strings and arrays of strings.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Python has several outstanding unit test frameworks. Rigorous unit testing gives
+    us confidence that the combined application will work as expected.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In this recipe, we’ll look at how we can run other applications from within
+    Python.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 14.4.1 Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In the [Designing scripts for composition](ch017.xhtml#x1-7410005) recipe in
+    Chapter [13](ch017.xhtml#x1-71500013), we identified an application that did some
+    processing that led to the creation of a rather complex result. For the purposes
+    of this recipe, we’ll assume that the application is not written in Python.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We’d like to run this program several thousand times, but we don’t want to copy
+    and paste the necessary commands into a script. Also, because the shell is difficult
+    to test and has so few data structures, we’d like to avoid using the shell.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For this recipe, we’ll work with an application as if it were a native binary
+    application, written in Rust, Go, or Pascal. There are two ways to explore this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The markov_gen.pas file in this book’s Git repository can be used to build a
+    working, native binary application. The Free Pascal Compiler project ( [https://www.freepascal.org](https://www.freepascal.org))
+    has compilers for a large number of platforms.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Another common situation is the need to execute a Jupyter notebook using the
+    jupyter execute command. We can’t directly import a notebook, but must execute
+    it via a separate command.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Another alternative that can help with exploring these design alternatives
+    is to make a Python application behave like a binary executable by adding a shebang
+    line as the first line in the file. In many cases, the following can be used as
+    the first line of a Python script:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'For macOS and Linux, use the following to change the mode of the file to executable:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: Working with a native binary application means that we can’t import a Python
+    module that comprises the application. Instead, the application is run as a separate
+    OS process. This limits interaction to command-line argument values and OS environment
+    variables.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To run a native binary application, we use the subprocess module. There are
+    two common design patterns for running another program from within Python:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The other program doesn’t produce any output, or we don’t want to gather the
+    output in our Python program. The first situation is typical of OS utilities that
+    return a status code when they succeed or fail. The second situation is typical
+    of programs that update files and produce logs.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The other program produces the output; the Python wrapper needs to capture and
+    process it. This may happen when the Python wrapper needs to take extra actions
+    to clean up or retry in the event of failure.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'In this recipe, we’ll look at the first case: the output isn’t something we
+    need to capture. In the [Wrapping a program and checking the output](ch018.xhtml#x1-7850005)
+    recipe, we’ll look at the second case, where the output will be scrutinized by
+    the Python wrapper program.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In many cases, one benefit of wrapping an existing application with Python is
+    the ability to dramatically rethink the UX. This lets us redesign the CLI to better
+    fit the user’s needs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s look at wrapping a program that’s normally started with the src/ch14/markov_gen
+    command. Here’s an example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: The output filename needs to be flexible so that we can run the program hundreds
+    of times. This is often done by interpolating a sequence number into the filename.
+    For example, f"data/ch14/samples_{n}.csv" would be used in Python to create unique
+    filenames.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 14.4.2 How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In this recipe, we’ll start by creating a small demonstration application.
+    This is a spike solution ( [https://wiki.c2.com/?SpikeSolution](https://wiki.c2.com/?SpikeSolution)).
+    This will be used to be sure we understand how the other application works. Once
+    we have the correct OS command, we can wrap this in a function call to make it
+    easier to use:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Import the argparse and subprocess modules and the Path class. We’ll also need
+    the sys module:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Write the core processing using the subprocess module to invoke the target
+    application. This can be tested separately to ensure it can execute the application.
+    In this case, subprocess.run() will execute the given command, and the check=True
+    option will raise an exception if the status is non-zero. Here’s the spike solution
+    that demonstrates the essential processing:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This minimal spike can be run to make sure things work before proceeding to
+    refactor the spike into something more useful.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Wrap the spike solution in a function that reflects the desired behavior. The
+    processing looks like this:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Write a function to parse the command-line options. In this case, there are
+    two positional parameters: a directory and a number of chain samples to generate.
+    The function looks like this:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Write a main function to do the parsing and processing:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: We now have a function that’s testable using any of the Python unit-testing
+    frameworks. This can give us real confidence that we have a reliable application
+    built around an existing non-Python application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 14.4.3 How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The subprocess module is how Python runs other programs. The run() function
+    does a number of things for us.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In a POSIX (such as Linux or macOS) context, the steps are similar to the following
+    sequence:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Prepare the stdin, stdout, and stderr file descriptors for the child process.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Invoke a function like the os.execve() function to start the child process.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Wait for the child process to finish and collect the final status.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: An OS shell, such as bash, conceals these details from application developers
+    and users. The subprocess.run() function, similarly, hides the details of creating
+    and waiting for a child process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the subprocess module to run a separate executable allows Python to integrate
+    a wide variety of software components into a unified whole. Using Python offers
+    a much richer collection of data structures than the shell, proper exception handling
+    instead of checking the final status code, and a way to unit test.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 14.4.4 There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We’ll add a simple clean-up feature to this script. The idea is that all of
+    the output files should be created as an atomic operation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In order to clean up, we’ll need to wrap the core processing in a try: block.
+    We’ll write a second function, make_files_clean(), that uses the original make_files()
+    function to include a clean-up feature. A new overall function, make_files_clean(),
+    would look like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: The exception-handling block does two things. First, it removes any incomplete
+    files from the current working directory. Second, it re-raises the original exception
+    so that the failure will propagate to the client application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Any test cases for this application would need to make use of mock objects.
+    See the [Mocking external resources](ch019_split_001.xhtml#x1-85500010) recipe
+    in Chapter [15](ch019_split_000.xhtml#x1-79400015).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 14.4.5 See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: This kind of automation is often combined with other Python processing. See
+    the [Designing scripts for composition](ch017.xhtml#x1-7410005) recipe in Chapter [13](ch017.xhtml#x1-71500013).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The goal is often to create a composite application; see the [Managing arguments
+    and configuration in composite applications](ch018.xhtml#x1-7730003) recipe earlier
+    in this chapter.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: For a variation on this recipe, see the [Wrapping a program and checking the
+    output](ch018.xhtml#x1-7850005) recipe, which is up next in this chapter.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 14.5 Wrapping a program and checking the output
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: One common kind of automation involves wrapping a program. The advantage of
+    a Python wrapper is the ability to perform detailed aggregation and analysis of
+    the output files. A Python program might transform, filter, or summarize the output
+    from a subprocess.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this recipe, we’ll see how to run other applications from within Python,
+    and collect and process the output.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 14.5.1 Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In the [Designing scripts for composition](ch017.xhtml#x1-7410005) recipe in
+    Chapter [13](ch017.xhtml#x1-71500013), we identified an application that did some
+    processing, leading to the creation of a rather complex result. We’d like to run
+    this program several hundred times, but we don’t want to copy and paste the necessary
+    commands into a script. Also, because the shell is difficult to test and has so
+    few data structures, we’d like to avoid using the shell.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For this recipe, we’ll work with a native binary application written in some
+    compiled language like Ada, Fortran, or Pascal. This means that we can’t simply
+    import the Python module that comprises the application. Instead, we’ll have to
+    execute this application by running a separate OS process with the subprocess
+    module. There are two common use cases for running another binary program from
+    within Python:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Either there isn’t any output, or we don’t want to process the output file in
+    our Python program.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We need to capture and possibly analyze the output to retrieve information or
+    ascertain the level of success. We might need to transform, filter, or summarize
+    the log output.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'In this recipe, we’ll look at the second case: the output must be captured
+    and summarized. In the [Wrapping and combining CLI applications](ch018.xhtml#x1-7790004)
+    recipe in this chapter, we looked at the first case, where the output is simply
+    ignored.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here’s an example of running the markov_gen application:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'There were three lines of output written to the OS standard output file, all
+    starting with #. These show the file being created, the number of samples, and
+    the random number generator seed being used. This output is confirmation the data
+    was correctly created.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We want to capture the details of these lines from this application and summarize
+    them. The total of all the generated samples should match the number of samples
+    summarized, confirming that all of the data was processed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 14.5.2 How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We’ll start by creating a spike solution ( [https://wiki.c2.com/?SpikeSolution](https://wiki.c2.com/?SpikeSolution))
+    to confirm the command and arguments needed to run another application. We’ll
+    transform the spike solution into a function that captures output for further
+    analysis.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Import the argparse and subprocess modules and the Path class. We’ll also need
+    the sys module and the Any type hint:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Write the core processing, using the subprocess module to invoke the target
+    application. Here’s a spike solution that demonstrates the essential processing:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'This spike does two things: it builds a complicated command line for a subprocess
+    and it also collects the output from the subprocess. A temporary file allows the
+    subprocess module to run a process that creates a very large file.'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: The idea is to create a script with this minimal spike and be sure things work
+    before proceeding to refactor the spike into something more useful.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Refactor the spike to create a function that runs a command and collects the
+    output. Here’s a command_output() function:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Refactor the rest of the spike into a function to generate the commands. It
+    makes sense for this function to be a generator so it can create a collection
+    of similar commands.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Define a function to parse the expected output from a command. We’ll decompose
+    the parsing into a sequence of generators that create regular expression Match
+    objects, extract the matched groups, and build a final dictionary reflecting the
+    content. The function can look like this:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Here’s the high-level function to extract useful information from the command
+    output. The generator function looks like this:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This function will use a stack of generator expressions. For more background,
+    see the [Using stacked generator expressions](ch013_split_000.xhtml#x1-5180003)recipe
+    in Chapter [9](ch013_split_000.xhtml#x1-5020009). Since these are all generator
+    expressions, each individual result is processed separately. This can allow large
+    files to be digested as small summaries one at a time.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Write a function to parse the command-line options. In this case, the target
+    directory is a positional parameter, and the number of samples in each file and
+    the number of files to generate are options. The function looks like this:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Combine the parsing and execution into a main function:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Now we can run this new application and have it execute the underlying application
+    and also gather the output, producing a helpful summary. We’ve built this using
+    Python instead of a bash (or other shell) script. We can make use of Python’s
+    data structures and unit testing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 14.5.3 How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The subprocess module is how Python programs run other programs available on
+    a given computer. For more background, see the [Wrapping and combining CLI applications](ch018.xhtml#x1-7790004)
+    recipe in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The subprocess module gives us access to one of the most important parts of
+    the operating system: launching a subprocess and collecting the output. The underlying
+    OS can direct output to the console, or files, or through ”pipes” to another process.
+    The default behavior when launching a subprocess is to inherit the parent process
+    definitions for the three standard files, stdin, stdout, and stderr. In this recipe,
+    we’ve replaced the default stdout assignment with a file that permits us to gather
+    (and analyze) output that would have gone to the console.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 14.5.4 There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Once we’ve wrapped the markov_gen binary application within a Python application,
+    we have a number of alternatives available to us for improving the output.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Because we’ve wrapped the underlying application, we don’t need to change this
+    code to change the results it produces. We can modify our wrapper program, leaving
+    the original data generator intact.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can refactor the main() function to replace the print() functions with processing
+    to create a more useful format. A possible rewrite would emit a CSV file with
+    the detailed generator information:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: The list of files and numbers of samples can be used to partition the data for
+    model training purposes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We are able to build useful features separately by creating layers of features.
+    Leaving the underlying application untouched can help us to perform regression
+    tests to be sure the core statistical validity has not been harmed by adding new
+    features.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 14.5.5 See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: See the [Wrapping and combining CLI applications](ch018.xhtml#x1-7790004) recipe
+    from earlier in this chapter for another approach to this recipe.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: This kind of automation is often combined with other Python processing. See
+    the [Designing scripts for composition](ch017.xhtml#x1-7410005) recipe in Chapter [13](ch017.xhtml#x1-71500013).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The goal is often to create a composite application; see the [Managing arguments
+    and configuration in composite applications](ch018.xhtml#x1-7730003) recipe from
+    earlier in this chapter.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Many practical applications will work with more complex output formats. For
+    information on processing complex line formats, see the [String parsing with regular
+    expressions](ch005_split_000.xhtml#x1-350003) recipe in Chapter [1](ch005_split_000.xhtml#x1-170001)
+    and the [Reading complex formats using regular expressions](ch015_split_001.xhtml#x1-6440005)
+    recipe in Chapter [11](ch015_split_000.xhtml#x1-61500011). Much of Chapter [11](ch015_split_000.xhtml#x1-61500011),
+    relates to the details of parsing input files.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'For more information on interprocess communication, see [The Linux Documentation
+    Project: Interprocess Communication Mechanisms](https://tldp.org/LDP/tlk/ipc/ipc.html).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Join our community Discord space
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Join our Python Discord workspace to discuss and find out more about the book:
+    [https://packt.link/dHrHU](https://packt.link/dHrHU).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file1.png)'
+  prefs: []
+  type: TYPE_IMG

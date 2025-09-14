@@ -1,0 +1,1088 @@
+- en: '7'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Network Monitoring with Python – Part 1
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Imagine you get a call from your company’s network operations center at 2:00
+    a.m. The person on the other end says: “Hi, we are facing a difficult issue that
+    is impacting production services. We suspect it might be network related. Can
+    you check for us?” For this type of urgent, open-ended question, what would be
+    the first thing you do? Most of the time, the thing that comes to mind would be:
+    What changed in the time between when the network was working and when something
+    went wrong? We would check our monitoring tool and see if any key metrics have
+    changed in the last few hours. Better yet, we may have received monitoring alerts
+    for any metrics that deviated from the normal baseline numbers.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Throughout this book, we have been discussing various ways to systematically
+    make predictable changes to our network, intending to keep the network running
+    as smoothly as possible. However, networks are not static – far from it. They
+    are probably one of the most fluid parts of the entire infrastructure. By definition,
+    a network connects different parts of the infrastructure, constantly passing traffic
+    back and forth.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There are lots of moving parts that can cause our network to stop working as
+    expected: hardware failures, software with bugs, human mistakes despite their
+    best intentions, and many more. It is not a question of whether things will go
+    wrong but of when and what will go wrong when it happens. We need ways to monitor
+    our network to make sure it works as expected and hopefully be notified when it
+    does not.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the upcoming two chapters, we will look at various ways to perform network
+    monitoring tasks. Many tools we have looked at thus far can be tied together or
+    directly managed by Python. Like many tools we have looked at, network monitoring
+    has two parts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: First, we need to know what monitoring-related information the equipment can
+    transmit. Second, we need to identify what useful, actionable information we can
+    interpret from the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will begin by looking at a few tools that allow us to monitor
+    the network effectively:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The lab setup
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The **Simple Network Management Protocol** (**SNMP**) and related Python libraries
+    to work with SNMP
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Python visualization libraries:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Matplotlib and examples
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Pygal and examples
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Python integration with MRTG and Cacti for network visualization
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: This list is not exhaustive, and there is certainly no lack of commercial vendors
+    in the network monitoring space. The basics of network monitoring that we will
+    look at, however, carry well for both open source and commercial tools.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Lab Setup
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The lab for this chapter consists of IOSv devices to simplify device configuration.
+    We will use the same lab for this and the next chapters. The topology is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Diagram  Description automatically generated](img/B18403_07_01.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.1: Lab topology'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The device configuration is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Device** | **Management IP** | **Loopback IP** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| r1 | `192.168.2.218` | `192.168.0.1` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| r2 | `192.168.2.219` | `192.168.0.2` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| r3 | `192.168.2.220` | `192.168.0.3` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| r5 | `192.168.2.221` | `192.168.0.4` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| r6 | `192.168.2.222` | `192.168.0.5` |'
+  prefs: []
+  type: TYPE_TB
+- en: 'The Ubuntu hosts information is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Device Name** | **External Link Eth0** | **Internal IP Eth1** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Client | `192.168.2.211` | `10.0.0.9` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Server | `192.168.2.212` | `10.0.0.5` |'
+  prefs: []
+  type: TYPE_TB
+- en: 'The Linux hosts are `tinycore-linux` ([http://tinycorelinux.net/](http://tinycorelinux.net/))
+    migrated from previous versions of VIRL. The default username and password are
+    both `cisco`. If we need to change the interface IP and default gateways, they
+    can be done via the following commands:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: The two Ubuntu hosts will be used to generate traffic across the network so
+    that we can look at some non-zero counters. The lab file is included in the book’s
+    GitHub repository.
+  prefs: []
+  type: TYPE_NORMAL
+- en: SNMP
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: SNMP is a standardized protocol used to collect and manage devices. Although
+    the standard allows you to use SNMP for device management, in my experience, most
+    network administrators prefer to keep SNMP as an information collection mechanism
+    only. Since SNMP operates on UDP, which is connectionless, and considering the
+    relatively weak security mechanism in versions 1 and 2, making device changes
+    via SNMP tends to make network operators uneasy. SNMP version 3 has added cryptographic
+    security and new concepts and terminology to the protocol, but how SNMP version
+    3 is adapted varies among network device vendors.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'SNMP is widely used in network monitoring and has been around since 1988 as
+    part of RFC 1065\. The operations are straightforward, with the network manager
+    sending `GET` and `SET` requests toward the device and the device with the SNMP
+    agent responding with the information per request. The most widely adopted standard
+    is SNMPv2c, defined in RFC 1901 – RFC 1908\. It uses a simple community-based
+    security scheme for security. It has also introduced new features, such as the
+    ability to get bulk information. The following diagram displays the high-level
+    operation for SNMP:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Diagram  Description automatically generated](img/B18403_07_02.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.2: SNMP operations'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The information residing in the device is structured in the **management information
+    base** (**MIB**). The MIB uses a hierarchical namespace containing an **object
+    identifier** (**OID**), which represents the information that can be read and
+    fed back to the requester. When we talk about using SNMP to query device information,
+    we are talking about using the management station to query the specific OID that
+    represents the information we are after. A common OID structure, such as a systems
+    and interfaces OID, is shared among vendors. Besides common OID, each vendor can
+    also supply an enterprise-level OID specific to them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As an operator, we must put some effort into consolidating information into
+    an OID structure in our environment to retrieve useful information. This can sometimes
+    be a tedious process of finding one OID at a time. For example, you might be requesting
+    a device OID and receive a value of 10,000\. What is that value? Is that interface
+    traffic? Is it in bytes or bits? Or maybe it represents the number of packets?
+    How do we know? We will need to consult either the standard or the vendor documentation
+    to find out. There are tools that help with this process, such as a MIB browser
+    that can provide more metadata to the value. But, at least in my experience, constructing
+    an SNMP-based monitoring tool for your network can sometimes feel like a cat-and-mouse
+    game of trying to find that one missing value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Some of the main points to take away from the operation are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The implementation relies heavily on the amount of information the device agent
+    can provide. This, in turn, relies on how the vendor treats SNMP: as a core feature
+    or an added feature.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: SNMP agents generally require CPU cycles from the control plane to return a
+    value. Not only is this inefficient for devices with, say, large BGP tables, it
+    is also not feasible to use SNMP to query the data at small intervals.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The user needs to know the OID to query the data.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Since SNMP has been around for a while, I assume you have some experience with
+    it already. Let’s jump directly into package installation and our first SNMP example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setup
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: First, let’s ensure we have the SNMP managing device and agent working in our
+    setup. The SNMP bundle can be installed on either the hosts (client or server)
+    in our lab or the managing device on the management network. As long as the SNMP
+    manager has IP reachability to the device and the managed device allows the inbound
+    connection, SNMP should work. In production, you should only install the software
+    on the management host and only allow SNMP traffic in the control plane.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this lab, we have installed SNMP on both the Ubuntu host on the management
+    network and the client host in the lab:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The next step is to turn on and configure the SNMP options on the network devices.
+    There are many optional parameters you can configure on the network device, such
+    as contact, location, chassis ID, and SNMP packet size. The SNMP configuration
+    options are device-specific, and you should check the documentation for the particular
+    device. For IOSv devices, we will configure an access list to limit only the desired
+    host for querying the device and tying the access list with the SNMP community
+    string. In our example, we will use the word `secret` as the read-only community
+    string and `permit_snmp` as the access list name:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: The SNMP community string is acting as a shared password between the manager
+    and the agent; therefore, it needs to be included any time you want to query the
+    device.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As mentioned earlier in this chapter, finding the right OID is oftentimes half
+    of the battle when working with SNMP. We can use tools such as Cisco SNMP Object
+    Navigator ([https://snmp.cloudapps.cisco.com/Support/SNMP/do/BrowseOID.do?local=en](https://cloudsso.cisco.com/as/authorization.oauth2?response_type=code&code_challenge=ngEnA4XYgjNQYcrfs1YqSc5DMFgNzZ7gqLljZkt7gnY&code_challenge_method=S256&client_id=wam_prod_ac&redirect_uri=https%3A%2F%2Fsnmp.cloudapps.cisco.com%2Fpa%2Foidc%2Fcb&state=eyJ6aXAiOiJERUYiLCJhbGciOiJkaXIiLCJlbmMiOiJBMTI4Q0JDLUhTMjU2Iiwia2lkIjoiRUU2UUxudnVkSm1OMmVaYUpxcHhXNy02SWI4Iiwic3VmZml4IjoiVU5ZRU9NLjE2NzM2MDI1NjgifQ..TUfcVL2mjdqQ8HCH_OkAcw.3VfzJObgb7ak5DdJQGzP4H6DPuQCfDTez1jSiP9r9h3iJLDUbipZ7wsoGmEHWW8pfRngsJ9tCWdpPOsu3YtmUe-JBeUxD91Z0H4lb17SU0kIlM-cVuwRylmF3nYZiIM0UVVvX4b4mJPUqTOjYbM-ZQFOPhfuZDSh6gVGkXOYQf0REPvaD38pxhntp12igJod.vH_7zysxoaMerV1XEUYU3w&nonce=J2Cc7sHznKF_at2Ghrf8z63yUIh0FIjvrIY5h7kIoys&acr_values=stdnomfa&scope=openid%20profile%20address%20email%20phone&vnd_pi_requested_resource=https%3A%2F%2Fsnmp.cloudapps.cisco.com%2FSupport%2FSNMP%2Fdo%2FBrowseOID.do%3Flocal%3Den&vnd_pi_application_name=CAEAXprod-snmp.cloudapps))
+    to find specific OIDs to query.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Alternatively, we can just start walking through the SNMP tree, starting from
+    the top of Cisco’s enterprise tree at `.1.3.6.1.4.1.9`. We will perform the walk
+    to make sure that the SNMP agent and the access list are working:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can be more specific about the OID we need to query as well:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As a matter of demonstration, what if we type in the wrong value by `1` digit,
+    from `0` to `1` at the end of the last OID? This is what we would see:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: Unlike API calls, there are no useful error codes or messages; it simply states
+    that the OID does not exist. This can be pretty frustrating at times.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The last thing to check would be that the access list we configured will deny
+    unwanted SNMP queries. Because we had the log keyword for both the `permit` and
+    `deny` entries in the access list, only `172.16.1.123` is permitted to query the
+    devices:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: As you can see, the biggest challenge in setting up SNMP is finding the right
+    OID. Some OIDs are defined in standardized MIB-2; others are under the enterprise
+    portion of the tree. Vendor documentation is the best bet, though. Some tools
+    can help, such as a MIB browser; you can add MIBs (again, provided by the vendors)
+    to the browser and see the description of the enterprise-based OIDs. A tool such
+    as Cisco’s SNMP Object Navigator ([http://snmp.cloudapps.cisco.com/Support/SNMP/do/BrowseOID.do?local=en](http://snmp.cloudapps.cisco.com/Support/SNMP/do/BrowseOID.do?local=en))
+    proves to be very valuable when you need to find the correct OID of the object
+    you are looking for.
+  prefs: []
+  type: TYPE_NORMAL
+- en: PySNMP
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: PySNMP is a cross-platform, pure Python SNMP engine implementation developed
+    by Ilya Etingof ([https://github.com/etingof](https://github.com/etingof)). It
+    abstracts a lot of SNMP details for you, as great libraries do, and supports both
+    Python 2 and Python 3.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'PySNMP requires the PyASN1 package. The following is taken from Wikipedia:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: ”ASN.1 is a standard and notation that describes rules and structures for representing,
+    encoding, transmitting, and decoding data in telecommunication and computer networking.”
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: 'PyASN1 conveniently provides a Python wrapper around ASN.1\. Let’s install
+    the package first. Note that since we are using a virtual environment, we will
+    use the virtual environment’s Python interpreter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, install the PySNMP package:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: We are using an older version of PySNMP due to the fact that `pysnmp.entity.rfc3413.oneliner`
+    was removed starting with version 5.0.0 ([https://github.com/etingof/pysnmp/blob/a93241007b970c458a0233c16ae2ef82dc107290/CHANGES.txt](https://github.com/etingof/pysnmp/blob/a93241007b970c458a0233c16ae2ef82dc107290/CHANGES.txt)).
+    If you use `pip` to install the packages, the examples will probably break.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s look at how to use PySNMP to query the same Cisco contact information
+    we used in the previous example. We will import the necessary module and create
+    a `CommandGenerator` object first:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can perform SNMP using the `getCmd` method. The result is unpacked into
+    various variables; of these, we care most about `varBinds`, which contains the
+    query result:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note that the response values are PyASN1 objects. The `prettyPrint()` method
+    will convert some of these values into a human-readable format, but the result
+    in our return variable was not converted. We converted it into a string manually.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can write a script based on the preceding interactive example. We will name
+    it `pysnmp_1.py` with error checking. We can also include multiple OIDs in the
+    `getCmd()` method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The result will be unpacked and list the values of the two OIDs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: In the following example, we will persist the values we received from the queries
+    to perform other functions, such as visualization, with the data. For our example,
+    we will use `ifEntry` within the MIB-2 tree for interface-related values to be
+    graphed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can find a number of resources that map out the `ifEntry` tree; here is
+    a screenshot of the Cisco SNMP Object Navigator site that we accessed previously
+    for `ifEntry`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![A picture containing text  Description automatically generated](img/B18403_07_03.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.3: SNMP ifEntry OID tree'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A quick test will illustrate the OID mapping of the interfaces on the device:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'From the documentation, we can map the values of `ifInOctets(10)`, `ifInUcastPkts(11)`,
+    `ifOutOctets(16)`, and `ifOutUcastPkts(17)` into their respective OID values.
+    From a quick check of the CLI and MIB documentation, we can see that the value
+    of the `GigabitEthernet0/0` packets output maps to OID `1.3.6.1.2.1.2.2.1.17.1`.
+    We will follow the rest of the same process to map out the rest of the OIDs for
+    the interface statistics. When checking between the CLI and SNMP, keep in mind
+    that the values should be close but not the same since there might be some traffic
+    on the wire between the time of the CLI output and the SNMP query time:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If we are in a production environment, we will probably write the results into
+    a database. But since this is just an example, we will write the query values
+    to a flat file. We will write the `pysnmp_3.py` script for information queries
+    and write the results to the file. In the script, we have defined various OIDs
+    that we need to query:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The values were consumed in the `snmp_query()` function, with `host`, `community`,
+    and `oid` as input:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'All of the values are put in a dictionary with various keys and written to
+    a file called `results.txt`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The outcome will be a file with results showing the interface packets represented
+    at the time of the query:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can make this script executable and schedule a `cron` job to be executed
+    every 5 minutes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: As mentioned previously, in a production environment, we would put the information
+    in a database. For a SQL database, you can use a unique ID as the primary key.
+    In a NoSQL database, we might use time as the primary index (or key) because it
+    is always unique, followed by various key-value pairs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will wait for the script to be executed a few times for the values to be
+    populated. If you are the impatient type, you can shorten the `cron` job interval
+    to 1 minute. After you see enough values in the `results.txt` file to make an
+    interesting graph, we can move on to the next section to see how we can use Python
+    to visualize the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Python for Data Visualization
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We gather network data to gain insight into our network. One of the best ways
+    to know what the data means is to visualize it with graphs. This is true for almost
+    all data, but especially true for time series data in the context of network monitoring.
+    How much data was transmitted over the network in the last week? What is the percentage
+    of the TCP protocol among all of the traffic? These are values we can glean from
+    using data-gathering mechanisms such as SNMP, and we can produce visualization
+    graphs with some of the popular Python libraries.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, we will use the data we collected from the last section using
+    SNMP and use two popular Python libraries, Matplotlib and Pygal, to graph them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Matplotlib
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '**Matplotlib** ([http://matplotlib.org/](http://matplotlib.org/)) is a Python
+    2D plotting library for the Python language and its NumPy mathematical extension.
+    It can produce publication-quality figures, such as plots, histograms, and bar
+    graphs, with a few lines of code.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: NumPy is an extension of the Python programming language. It is open source
+    and widely used in various data science projects. You can learn more about it
+    at [https://en.wikipedia.org/wiki/NumPy](https://en.wikipedia.org/wiki/NumPy).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s begin with the installation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Installation
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The installation can be done using the Linux package management system for
+    the distribution or Python `pip`. In the latest version of Matplotlib, we will
+    also install `python3-tk` for display:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now, let’s get into our first example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Matplotlib – the first example
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: For the following examples, the output figures are displayed as the standard
+    output by default. Typically, the standard output is your monitor screen. During
+    development, it is often easier to try out the code initially and produce the
+    graph on the standard output first before finalizing the code with a script. If
+    you have been following along with this book via a virtual machine, it is recommended
+    that you use the VM window instead of SSH so that you can see the graphs. If you
+    do not have access to the standard output, you can save the figure and view it
+    after downloading it (as you will see soon). Note that you will need to set the
+    `$DISPLAY` variable in some of the graphs we produce in this section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following screenshot of the Ubuntu desktop is used in this chapter’s visualization
+    example. As soon as the `plt.show()` command is issued in the Terminal window,
+    **Figure 1** will appear on the screen. When you close the figure, you will return
+    to the Python shell:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![A screenshot of a computer  Description automatically generated](img/B18403_07_04.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.4: Matplotlib visualization with the Ubuntu desktop'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s look at the line graph first. A line graph simply gives two lists of
+    numbers that correspond to the *x*-axis and *y*-axis values:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The graph will be a line graph:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Graphical user interface, chart, line chart  Description automatically generated](img/B18403_07_05.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.5: Matplotlib line graph'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Alternatively, if you do not have access to standard output or have saved the
+    figure first, you can use the `savefig()` method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: With this basic knowledge of graphing plots, we can now graph the results we
+    receive from SNMP queries.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Matplotlib for SNMP results
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In our first Matplotlib example, `matplotlib_1.py`, we will import the `dates`
+    module besides `pyplot`. We will use the `matplotlib.dates` module instead of
+    the Python standard library `dates` module.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Unlike the Python `dates` module, the `matplotlib.dates` library will convert
+    the date value internally into a float type, which is required by Matplotlib:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: Matplotlib provides sophisticated date plotting capabilities; you can find more
+    information on this at [https://matplotlib.org/stable/api/dates_api.html](https://matplotlib.org/stable/api/dates_api.html).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the script, we will create two empty lists, each representing the *x*-axis
+    and *y*-axis values. Note that on line 12, we used the built-in `eval()` Python
+    function to read the input as a dictionary instead of a default string:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In order to read the *x*-axis value back in a human-readable date format, we
+    will need to use the `plot_date()` function instead of `plot()`. We will also
+    tweak the size of the figure a bit, as well as rotate the value on the *x*-axis
+    so that we can read the value in full:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The final result will display the **Router1 G0/0** and **Output Unicast Packets**,
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Graphical user interface, chart, line chart  Description automatically generated](img/B18403_07_06.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.6: Router1 Matplotlib graph'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Note that if you prefer a straight line instead of dots, you can use the third
+    optional parameter in the `plot_date()` function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can repeat the steps for the rest of the values for output octets, input
+    unicast packets, and input as individual graphs. However, in our next example,
+    that is, `matplotlib_2.py`, we will show you how to graph multiple values against
+    the same time range, as well as additional Matplotlib options.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this case, we will create additional lists and populate the values accordingly:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Since we have identical *x*-axis values, we can just add the different *y*-axis
+    values to the same graph:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Also, add `grid` and `legend` to the graph:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The final result will combine all of the values in a single graph. Note that
+    some of the values in the upper-left corner are blocked by the legend. You can
+    resize the figure and/or use the pan/zoom option to move around the graph to see
+    the values:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Graphical user interface, application, table  Description automatically generated](img/B18403_07_07.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.7: Router1 – Matplotlib multiline graph'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There are many more graphing options available in Matplotlib; we are certainly
+    not limited to plot graphs. For example, in `matplotlib_3.py`, we can use the
+    following mock data to graph the percentage of different traffic types that we
+    can see on the wire:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code leads to this pie chart from `plt.show()`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Chart, pie chart  Description automatically generated](img/B18403_07_08.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.8: Matplotlib pie chart'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, we have used Matplotlib to graph our network data into more
+    visually appealing graphs to help us understand the state of our network. This
+    was done with bar graphs, line charts, and pie charts, which are appropriate for
+    the data at hand. Matplotlib is a powerful tool that is not limited to Python.
+    As an open-source tool, many additional Matplotlib resources can be leveraged
+    to learn about the tool.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Additional Matplotlib resources
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Matplotlib is one of the best Python plotting libraries, able to produce publication-quality
+    figures. Like Python, it aims to make complex tasks simple. With over 10,000 stars
+    (and counting) on GitHub, it is also one of the most popular open-source projects.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Its popularity directly translates into faster bug fixes, a friendly user community,
+    extensive documentation, and general usability. Using the package has a bit of
+    a learning curve, but it is well worth the effort.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, we barely scratched the surface of Matplotlib. You’ll find
+    additional resources at [https://matplotlib.org/stable/index.html](https://matplotlib.org/stable/index.html)
+    (the Matplotlib project page) and [https://github.com/matplotlib/matplotlib](https://github.com/matplotlib/matplotlib)
+    (the Matplotlib GitHub repository).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the coming section, we will take a look at another popular Python graph
+    library: **Pygal**.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Pygal
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Pygal ([https://www.pygal.org/en/stable/](https://www.pygal.org/en/stable/))
+    is a dynamic **Scalable Vector Graphics** (**SVG**) charting library written in
+    Python. The biggest advantage of Pygal, in my opinion, is that it produces write
+    SVG graphs easily and natively. There are many advantages of SVG over other graph
+    formats. Two of the main advantages are that it is web browser-friendly and it
+    provides scalability without sacrificing image quality. In other words, you can
+    display the resulting image in any modern web browser and zoom in and out of the
+    image without losing the details of the graph. Did I mention that we can do this
+    in a few lines of Python code? How cool is that?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s get Pygal installed, then move on to the first example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Installation
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The installation is done via `pip`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: Pygal – the first example
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Let’s look at the line chart example demonstrated on Pygal’s documentation,
+    available at [http://pygal.org/en/stable/documentation/types/line.html](http://pygal.org/en/stable/documentation/types/line.html):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: In this example, we created a line object with the `x_labels` automatically
+    rendered as strings for 11 units. Each of the objects can be added with the label
+    and the value in a list format, such as Firefox, Chrome, and IE.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The interesting bit to focus on is the fact that each of the line chart items
+    has the exact number of matching numbers to the number of x units. When there
+    is no value, for example, the years 2002 – 2007 for Chrome, the value **None**
+    is entered.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here’s the resulting graph, as viewed in the Firefox browser:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Chart, line chart  Description automatically generated](img/B18403_07_09.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.9: Pygal sample graph'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we can see the general usage of Pygal, we can use the same method to
+    graph the SNMP results we have in hand. We will do this in the coming section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Pygal for SNMP results
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'For the Pygal line graph, we can largely follow the same pattern as our Matplotlib
+    example, where we create lists of values by reading the file. We no longer need
+    to convert the *x*-axis value into an internal float, as we did for Matplotlib;
+    however, we do need to convert the numbers in each of the values we would have
+    received into float:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can use the same mechanism that we saw to construct the line graph:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The outcome is similar to what we have already seen, but the graph is now in
+    an SVG format that can be easily displayed on a web page. It can be viewed in
+    a modern web browser:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Table  Description automatically generated](img/B18403_07_10.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.10: Router 1— Pygal multiline graph'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Just like Matplotlib, Pygal provides many more options for graphs. For example,
+    to graph the pie chart we saw previously in Matplotlib, we can use the `pygal.Pie()`
+    object. This is shown in `pygal_2.py`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The resulting SVG file is shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Chart, pie chart  Description automatically generated](img/B18403_07_11.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.11: Pygal pie chart'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Pygal is a great tool when it comes to generating production-ready SVG graphs.
+    If this is the type of graph required, look no further than the Pygal library.
+    In this section, we have examined examples of using Pygal to generate graphs for
+    our network data. Similar to Matplotlib, there are many additional resources to
+    help us to learn about Pygal if you’re interested.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Additional Pygal resources
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Pygal provides many more customizable features and graphing capabilities for
+    the data you collect from basic network monitoring tools such as SNMP. We demonstrated
+    a simple line graph and pie graph in this section. You can find more information
+    about the project here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Pygal documentation**: [http://www.pygal.org/en/stable/index.html](http://www.pygal.org/en/stable/index.html)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Pygal GitHub project page**: [https://github.com/Kozea/pygal](https://github.com/Kozea/pygal)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In the coming section, we will continue with the SNMP theme of network monitoring
+    but with a fully featured network monitoring system called **Cacti**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Python for Cacti
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In my early days as a junior network engineer at a regional ISP, we used the
+    open-source cross-platform **Multi Router Traffic Grapher** (**MRTG**) ([https://en.wikipedia.org/wiki/Multi_Router_Traffic_Grapher](https://en.wikipedia.org/wiki/Multi_Router_Traffic_Grapher))
+    tool to check the traffic load on network links. We relied on the tool almost
+    exclusively for traffic monitoring. I was amazed at how good and useful an open-source
+    project could be. It was one of the first open-source high-level network monitoring
+    systems that abstracted the details of SNMP, the database, and HTML for network
+    engineers. Then came the **round-robin database tool** (**RRDtool**) ([https://en.wikipedia.org/wiki/RRDtool](https://en.wikipedia.org/wiki/RRDtool)).
+    In its first release in 1999, it was referred to as “MRTG Done Right.” It greatly
+    improved the database and poller performance in the backend.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Released in 2001, Cacti ([https://en.wikipedia.org/wiki/Cacti_(software)](https://en.wikipedia.org/wiki/Cacti_(software)))
+    is an open-source web-based network monitoring and graphing tool designed as an
+    improved frontend for RRDtool. Because of the heritage of MRTG and RRDtool, you
+    will notice a familiar graph layout, templates, and SNMP poller. As a packaged
+    tool, the installation and usage will need to stay within the boundary of the
+    tool. However, Cacti offers a custom data query feature that we can use Python
+    to handle. In this section, we will see how we can use Python as an input method
+    for Cacti.
+  prefs: []
+  type: TYPE_NORMAL
+- en: First, we’ll go through the installation process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Installation
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Because Cacti is an all-in-one tool, including web frontend, collection scripts,
+    and database backend, unless you already have experience with Cacti, I would recommend
+    installing the tool on a standalone VM or a container in our lab. The following
+    instructions will be shown for a VM, but a container Dockerfile would be similar.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Installation on Ubuntu is straightforward when using APT on the Ubuntu management
+    VM:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: It will trigger a series of installation and setup steps, including the MySQL
+    database, web server (Apache or `lighttpd`), and various configuration tasks.
+    Once it’s installed, navigate to `http://<ip>/cacti` to get started. The last
+    step is to log in with the default username and password (`admin/admin`); you
+    will be prompted to change the password.
+  prefs: []
+  type: TYPE_NORMAL
+- en: During installation, when in doubt, go with the default option and keep it simple.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once logged in, we can follow the documentation to add a device and associate
+    it with a template. There is a Cisco router premade template that you can go with.
+    Cacti has good documentation at [http://docs.cacti.net/](http://docs.cacti.net/)
+    for adding a device and creating your first graph, so we will quickly look at
+    some screenshots that you can expect to see:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Graphical user interface, application  Description automatically generated](img/B18403_07_12.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.12: Cacti device edit page'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A sign indicating the SNMP communication is working is when you can see the
+    device uptime:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Text  Description automatically generated](img/B18403_07_13.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.13: Device edit result page'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can add graphs to the device for interface traffic and other statistics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Graphical user interface  Description automatically generated](img/B18403_07_14.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.14: New graphs for the device'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'After some time, you will start seeing traffic, as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Table  Description automatically generated](img/B18403_07_15.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.15: 5-minute average graph'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We are now ready to look at how to use Python scripts to extend Cacti’s data-gathering
+    functionality.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Python script as an input source
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'There are two documents that we should read before we try to use our Python
+    script as an input source:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Data input methods**: [http://www.cacti.net/downloads/docs/html/data_input_methods.html](http://www.cacti.net/downloads/docs/html/data_input_methods.html
+    )'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Making your scripts work with Cacti**: [http://www.cacti.net/downloads/docs/html/making_scripts_work_with_cacti.html](http://www.cacti.net/downloads/docs/html/making_scripts_work_with_cacti.html)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: You might wonder what the use cases are for using a Python script as an extension
+    for data inputs. One of the use cases would be to provide monitoring to resources
+    that do not have a corresponding OID, for example, if we would like to know how
+    to graph how many times the access list `permit_snmp` has allowed the host `172.16.1.173`
+    to conduct an SNMP query.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The example assumes the SNMP station is at IP `172.16.1.173`; please substitute
+    the IP for the current lab management station IP.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We know we can see the number of matches via the CLI:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: However, the chances are there are no OIDs associated with this value (or we
+    can just pretend that there are none). This is where we can use an external script
+    to produce an output that can be consumed by the Cacti host.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can reuse the Pexpect script we discussed in *Chapter 2*, *Low-Level Network
+    Device Interactions*, `chapter1_1.py`. We will rename it `cacti_1.py`. Everything
+    should be the same as the original script, except that we will execute the CLI
+    command and save the output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output in its raw form will appear as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We will use the `split()` function for the string to only leave the number
+    of matches and print them out on standard output in the script:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To test this, we can see the number of increments by executing the script a
+    number of times:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can make the script executable and put it into the default Cacti script
+    location:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: The Cacti documentation, available at [http://www.cacti.net/downloads/docs/html/how_to.html](http://www.cacti.net/downloads/docs/html/how_to.html),
+    provides detailed steps on how to add the script result to the output graph.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'These steps include adding the script as a data input method, adding the input
+    method to a data source, and then creating a graph to be viewed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Graphical user interface  Description automatically generated](img/B18403_07_16.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.16: Data input method results page'
+  prefs: []
+  type: TYPE_NORMAL
+- en: SNMP is a common way to provide network monitoring services to devices. RRDtool
+    with Cacti as the frontend provides a good platform for all network devices via
+    SNMP. We can also use Python scripts to extend information gathering beyond SNMP.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we explored ways to perform network monitoring via SNMP. We
+    configured SNMP-related commands on network devices and used our network management
+    VM with an SNMP poller to query the devices. We used the PySNMP module to simplify
+    and automate our SNMP queries. We also learned how to save the query results in
+    a flat file or database to be used for future examples.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Later in this chapter, we used two different Python visualization packages,
+    Matplotlib and Pygal, to graph SNMP results. Each package has its distinct advantages.
+    Matplotlib is a mature, feature-rich library widely used in data science projects.
+    Pygal can natively generate SVG-format graphs that are flexible and web-friendly.
+    We saw how to generate line and pie graphs relevant to network monitoring.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Toward the end of this chapter, we looked at an all-inclusive network monitoring
+    tool named Cacti. It primarily uses SNMP for network monitoring, but we saw how
+    we could use Python scripts as an input source to extend the platform’s monitoring
+    capabilities when SNMP OID is not available on the remote host.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Chapter 8*, *Network Monitoring with Python – Part 2*, we will continue
+    to discuss the tools we can use to monitor our networks and gain insight into
+    whether the network is behaving as expected. We will look at flow-based monitoring
+    using NetFlow, sFlow, and IPFIX. We will also use tools such as Graphviz to visualize
+    our network topology and detect any topological changes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Join our book community
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'To join our community for this book – where you can share feedback, ask questions
+    to the author, and learn about new releases – follow the QR code below:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://packt.link/networkautomationcommunity](https://packt.link/networkautomationcommunity)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/QR_Code2903617220506617062.png)'
+  prefs: []
+  type: TYPE_IMG

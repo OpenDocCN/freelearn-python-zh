@@ -1,0 +1,2255 @@
+- en: '14'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Multiprocessing – When a Single CPU Core Is Not Enough
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapter, we discussed `asyncio`, which can use the `threading`
+    and `multiprocessing` modules but mainly uses single-thread/single-process parallelization.
+    In this chapter, we will see how we can directly use multiple threads or processes
+    to speed up our code and what caveats to keep in mind. This chapter can actually
+    be seen as an extension to the list of performance tips.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `threading` module makes it possible to run code in parallel in a single
+    process. This makes `threading` very useful for I/O-related tasks such as reading/writing
+    files or network communication, but a useless option for slow and heavy calculations,
+    which is where the `multiprocessing` module shines.
+  prefs: []
+  type: TYPE_NORMAL
+- en: With the `multiprocessing` module, you can run code in multiple processes, which
+    means you can run code on multiple CPU cores, multiple processors, or even on
+    multiple computers. This is an easy way to work around the **Global Interpreter
+    Lock** (**GIL**) that was discussed in *Chapter 12*, *Performance – Tracking and
+    Reducing Your Memory and CPU Usage.*
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `multiprocessing` module has a fairly easy-to-use interface with many convenience
+    features, but the `threading` module is rather basic and requires you to manually
+    create and manage the threads. For this, we also have the `concurrent.futures`
+    module, which offers a simple way of executing a list of tasks either through
+    threads or processes. This interface is also partially comparable to the `asyncio`
+    features we saw in the previous chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To summarize, this chapter covers:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Global Interpreter Lock (GIL)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Multithreading versus multiprocessing
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Locking, deadlocks, and thread safety
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Data sharing and synchronization between processes
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Choosing between multithreading, multiprocessing, and single-threading
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Hyper-threading versus physical cores
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Remote multiprocessing with `multiprocessing` and `ipyparallel`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The Global Interpreter Lock (GIL)
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The GIL has been mentioned in this book several times already, but we have not
+    really covered it in detail and it really does need a bit more explanation before
+    we continue with this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In short, the name already explains what it does. It is a global lock for the
+    Python interpreter so it can only execute a single statement at once. A **lock**
+    or **mutex** (**mutual exclusion**) in parallel computing is a synchronization
+    primitive that can block parallel execution. With a lock, you can make sure that
+    nobody can touch your variable while you are working on it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Python offers several types of synchronization primitives, such as `threading.Lock`
+    and `threading.Semaphore`. These are covered in more detail in the *Sharing data
+    between threads and processes* section of this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: That means that even with the `threading` module, you are still only executing
+    a single Python statement at the same time. So, when it comes to pure Python code,
+    your multithreaded solutions will **always** be slower than single-threaded solutions
+    because `threading` introduces some synchronization overhead while not offering
+    any benefit for that scenario.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s continue with some more in-depth information about the GIL.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The use of multiple threads
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Since the GIL only allows a single Python statement to be executed at the same
+    time, what point does threading have? The effectiveness greatly depends on your
+    goal. Similar to the `asyncio` examples in *Chapter 13*, `threading` can give
+    you a lot of benefit if you are waiting for external resources.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For example, if you are trying to fetch a webpage, open a file (remember that
+    the `aiofiles` module actually uses threads), or if you want to execute something
+    periodically, `threading` can work great.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When writing a new application, I would generally recommend that you make it
+    ready for `asyncio` if there is even a small chance of becoming I/O-limited in
+    the future. Rewriting for `asyncio` at a later time can be a huge amount of work.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There are several advantages to `asyncio` over `threading`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`asyncio` is generally faster than threading because you don’t have any thread
+    synchronization overhead.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Since `asyncio` is normally single-threaded, you don’t have to worry about thread
+    safety (more about thread safety later in the chapter).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Why do we need the GIL?
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The GIL is currently an essential part of the CPython interpreter because it
+    makes sure that memory management is always consistent.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To explain how this works, we need to know a bit about how the CPython interpreter
+    manages its memory.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Within CPython, the memory management system and garbage collection system
+    rely on reference counting. This means that CPython counts how many names you
+    have linked to a value. If you have a line of Python like this: `a = SomeObject()`,
+    that means that this instance of `SomeObject` has 1 reference, namely, `a`. If
+    we were to do `b = a`, the reference count would increase to 2\. When the reference
+    count reaches 0, the variable will be deleted by the garbage collector when it
+    runs.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can check the number of references using `sys.getrefcount(variable)`. You
+    should note that the call to `sys.getrefcount()` increases your reference count
+    by 1, so if it returns 2, the actual number is 1.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As the GIL makes sure that only a single Python statement can be executed simultaneously,
+    you can never have issues where multiple bits of code manipulate memory at the
+    same time, or where memory is being released to the system that is not actually
+    free.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If the reference counter is not correctly managed, this could easily result
+    in memory leaks or a crashing Python interpreter. Remember the segmentation faults
+    we saw in *Chapter 11*, *Debugging – Solving the Bugs?* That is what could easily
+    happen without the GIL, and it would instantly kill your Python interpreter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Why do we still have the GIL?
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'When Python was initially created, many operating systems didn’t even have
+    a concept of threading, and all common processors only had a single core. Long
+    story short, there are two main reasons for the GIL:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: There was initially no point in creating a complex solution that would handle
+    threading
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The GIL is a really simple solution for a very complex problem
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Luckily, it seems that is not the end of the discussion. Recently (May 2021),
+    Guido van Rossum came out of retirement and he has plans to address the GIL limitations
+    by creating sub-interpreters for threads. How this will work out in practice remains
+    to be seen, of course, but the ambitious plan is to make CPython 3.15 about 5
+    times faster than CPython 3.10, which would be an amazing performance increase.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we know when the GIL limits CPython threads, let’s look at how we can
+    create and use multiple threads and processes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Multiple threads and processes
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The `multiprocessing` module was introduced in Python 2.6, and it has been a
+    game changer when it comes to working with multiple processes in Python. Specifically,
+    it has made it rather easy to work around the limitations of the GIL because each
+    process has its own GIL.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The usage of the `multiprocessing` module is largely similar to the `threading`
+    module, but it has several really useful extra features that make much more sense
+    with multiple processes. Alternatively, you can also use it with `concurrent.futures.ProcessPoolExecutor`,
+    which has an interface nearly identical to `concurrent.futures.ThreadPoolExecutor`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: These similarities mean that in many cases you can simply swap out the modules
+    and your code will keep running as expected. Don’t be fooled, however; while threads
+    can still use the same memory objects and only have thread safety and deadlocks
+    to worry about, multiple processes also have these issues and introduce several
+    other issues when it comes to sharing memory, objects, and results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In either case, dealing with parallel code comes with caveats. This is also
+    why code that uses multiple threads or processes has the reputation of being difficult
+    to work with. Many of these issues are not as daunting as they might seem; if
+    you follow a few rules, that is.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before we continue with the example code, you should be aware that it is critically
+    important to have your code in an `if` `__name__ == '__main__'` block when using
+    `multiprocessing`. When the `multiprocessing` module launches the extra Python
+    processes, it will execute the same Python script, so without using this block
+    you will end up with an infinite loop of starting processes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Within this section, we are going to cover:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Basic examples using `threading`, `multiprocessing`, and `concurrent.futures`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Cleanly exiting threads and processes
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Batch processing
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Sharing memory between processes
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Thread safety
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Deadlocks
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Thread-local variables
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Several of these, such as race conditions and locking, are not exclusive to
+    threading and could be interesting for `multiprocessing` as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Basic examples
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'To create threads and processes, we have several options:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`concurrent.futures`: An easy-to-use interface for running functions in either
+    threads or processes, similar to `asyncio`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`threading`: An interface for creating threads directly'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`multiprocessing`: An interface with many utility and convenience functions
+    to create and manage multiple Python processes'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Let’s look at an example of each one.
+  prefs: []
+  type: TYPE_NORMAL
+- en: concurrent.futures
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Let’s start with a basic example of the `concurrent.futures` module. In this
+    example, we run two timer jobs that run and print in parallel:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: Before we execute the code, let’s see what we did here. First, we created a
+    `timer` function that runs `time.sleep(interval)` and does that `steps` times.
+    Before sleeping, it prints the `name` and the current `step` so we can easily
+    see what is happening.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Then, we create an `executor` using `concurrent.futures.ThreadPoolExecutor`
+    to execute the functions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Lastly, we submit the functions we want to execute with their respective arguments
+    to start both of the threads. In between starting them, we sleep a very short
+    time so our output in this example is consistent. If we were to execute the code
+    without the `time.sleep(0.1)`, the output order would be random because sometimes
+    `a` would be faster and other times `b` would be faster.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The main reason for including the tiny sleep is testing. All of the code in
+    this book is available on GitHub ([https://github.com/mastering-python/code_2](https://github.com/mastering-python/code_2))
+    and is automatically tested.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now when executing this script, we get the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: As expected, they run right next to each other, but due to the tiny `time.sleep(0.1)`
+    we added, the results are consistently interleaved. In this case we started the
+    `ThreadPoolExecutor` with the default arguments, which results in threads without
+    specific names and an automatically calculated thread count.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The thread count depends on the Python version. Up to Python 3.8, the number
+    of workers was equal to the number of hyper-threaded CPU cores in the machine
+    multiplied by 5\. So, if your machine has 2 cores with hyper-threading enabled,
+    it would result in 4 cores * 5 = 20 threads. With a 64-core machine, that would
+    result in 320 threads, which would probably incur more synchronization overhead
+    than benefits.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For Python 3.8 and above, this has been changed to `min(32, cores + 4)`, which
+    should be enough to always have at least 5 threads for I/O operations but not
+    so much that it uses large amounts of resources on machines with many cores. For
+    the same `64`-core machine, this would still be capped at `32` threads.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the case of the `ProcessPoolExecutor`, the number of processor cores including
+    hyper-threading will be used. That means that if your processor has 4 cores with
+    hyper-threading enabled, you will get a default of 8 processes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Naturally, the traditional `threading` module is still a good option and offers
+    a bit more control while still having an easy-to-use interface.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before Python 3, the `thread` module was also available as a low-level API to
+    threads. This module is still available but renamed to `_thread`. Internally,
+    both `concurrent.futures.ThreadPoolExecutor` and `threading` are still using it,
+    but you should generally have no need to access it directly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: threading
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Now we will look at how to recreate the `concurrent.futures` example using
+    the `threading` module:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `timer` function is identical to the previous example, so no difference
+    there. The execution, however, is a bit different.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this case we create the threads by instantiating `threading.Thread()` directly,
+    but inheriting `threading.Thread` is also an option, as we will see in the next
+    example. The arguments to the `target` function can be given by passing an `args`
+    and/or `kwargs` argument, but these are optional if you have no need for them
+    or if you have prefilled them using `functools.partial`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: With the earlier example, we created a `ThreadPoolExecutor()` that creates a
+    bunch of threads and runs the functions on those threads. With this example, we
+    are explicitly creating the threads to run a single function and exit as soon
+    as the function is done. This is mostly useful for long-running backgrounded threads
+    as this method requires setting up and tearing down a thread for each function.
+    Generally, the overhead of starting a thread is very little, but it depends on
+    your Python interpreter (CPython, PyPy, and so on) and your operating system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now for the same example, but inheriting `threading.Thread` instead of a declarative
+    call to `threading.Thread()`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The code is roughly the same as the procedural version where we called `threading.Thread()`
+    directly, but there are two critical differences that you need to be aware of:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`name` is a reserved attribute for `threading.Thread`. On Linux/Unix machines
+    your process manager (for instance, `top`) can display this name instead of `/usr/bin/python3`.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The default target function is `run()`. Be careful to override the `run()` method
+    instead of the `start()` method, otherwise your code will *not* execute in a separate
+    thread but will execute like a regular function call when you call `start()` instead.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The procedural and class-based versions use the exact same API internally and
+    are equally powerful, so choosing between them comes down to personal preference
+    only.
+  prefs: []
+  type: TYPE_NORMAL
+- en: multiprocessing
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Lastly, we can recreate the earlier timer scripts using `multiprocessing` as
+    well. First with the procedural call to `multiprocessing.Process()`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: The code looks effectively the same with a few minor changes. Instead of `threading.Thread`
+    we used `multiprocessing.Process`, and we have to run the code from an `if __name__
+    == '__main__'` block. Beyond that, both the code and execution are the same in
+    this simple example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Lastly, for completeness, let’s look at the class-based version as well:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: Once again, we are required to use the `if __name__ == '__main__'` block. But
+    beyond that, the code is virtually identical to the `threading` version. As was
+    the case with `threading`, choosing between the procedural and class-based style
+    depends only on your personal preference.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we know how to start threads and processes, let’s look at how we can
+    cleanly shut them down again.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Cleanly exiting long-running threads and processes
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The `threading` module is mostly useful for long-running threads that handle
+    an external resource. Some example scenarios:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: When creating a server and you want to keep listening for new connections
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: When connecting to HTTP WebSockets and you need the connection to stay open
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: When you need to periodically save your changes
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Naturally, these scenarios can also use `multiprocessing`, but `threading` is
+    often more convenient, as we will see later.
+  prefs: []
+  type: TYPE_NORMAL
+- en: At some point you might need to shut the thread down from **outside** of the
+    thread; during the exit of your main script, for example. Waiting for a thread
+    that is exiting by itself is trivial; the only thing you need to do is `future.result()`
+    or `some_thread.join(timeout=...)` and you are done. The harder part is telling
+    a thread to shut itself down and run the cleanup while it’s still doing something.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The only real solution for this issue, which applies if you are lucky, is a
+    simple `while` loop that keeps running until you give a stop signal like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: This code uses `threading.Event()` as a flag to tell the thread to exit when
+    needed. While you can use a `bool` instead of `threading.Event()` with the current
+    CPython interpreter, there is no guarantee for this to work with future Python
+    versions and/or other types of interpreters. The reason this is currently safe
+    for CPython is that, due to the GIL, all Python operations are effectively single-threaded.
+    That’s why threads are useful for waiting for external resources, but have a negative
+    effect on the performance of your Python code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Additionally, if you were to translate this code to multiprocessing, you could
+    simply replace `threading.Event()` with `multiprocessing.Event()` and it should
+    keep working with no other changes, assuming you are not interacting with external
+    variables. With multiple Python processes, you are no longer protected by the
+    single GIL so you need to be more careful when modifying variables. More about
+    this topic in the *Sharing data between threads and processes* section later in
+    this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have the `stop` event, we can run `stop.set()` so the thread knows
+    when to exit and will do so after the maximum of 0.1 seconds’ sleep.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is the ideal scenario: to have a loop where the loop condition is checked
+    regularly and the loop interval is your maximum thread shutdown delay. What happens
+    if the thread is busy doing some operation and doesn’t check the `while` condition?
+    As you might suspect, setting the `stop` event is useless in those scenarios and
+    you need a more powerful method to exit the thread.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To handle this scenario, you have a few options:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Avoid the issue entirely by using `asyncio` or `multiprocessing` instead. In
+    terms of performance, `asyncio` is your best option by far, but `multiprocessing`
+    can work as well if your code is suitable.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Make the thread a daemon thread by setting `your_thread.daemon = True` *before*
+    starting the thread. This will automatically kill the thread when the main process
+    exits so it is not a graceful shutdown. You can still add a teardown using the
+    `atexit` module.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Kill the thread from the outside by either telling your operating system to
+    send a terminate/kill signal or by raising an exception within the thread from
+    the main thread. You might be tempted to go for this method, but I would strongly
+    recommend against it. Not only is it unreliable, but it can cause your entire
+    Python interpreter to crash, so it really is not an option you should ever consider.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We have already seen how to use `asyncio` in the previous chapter, so let’s
+    look at how we can terminate with `multiprocessing`. Before we start, however,
+    you should note that the same limitations that apply to `threading` also largely
+    apply to `multiprocessing`. While `multiprocessing` does have a built-in solution
+    for terminating processes as opposed to threading, it is still not a clean method
+    and it won’t (reliably) run your exit handlers, `finally` clauses, and so on.
+    This means you should *always* try an event first, but use `multiprocessing.Event`
+    instead of `threading.Event`, of course.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To illustrate how we can forcefully terminate or kill a thread (while risking
+    memory corruption):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: In this example, we first try a regular `terminate()`, which sends a `SIGTERM`
+    signal on Unix machines and `TerminateProcess()` on Windows. If that does not
+    work, we try again with a `kill()`, which sends a `SIGKILL` on Unix and does not
+    currently have a Windows equivalent, so on Windows the `kill()` and `terminate()`
+    methods behave the same way and both effectively kill the process without teardown.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Batch processing using concurrent.futures
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Starting threads or processes in a fire-and-forget fashion is easy enough, as
+    we have seen in the prior examples. However, often, you want to spin up several
+    threads or processes and wait until they have all finished.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is a case where `concurrent.futures` and `multiprocessing` really shine.
+    They allow you to call `executor.map()` or `pool.map()` very similarly to how
+    we saw in *Chapter 5*, *Functional Programming – Readability Versus Brevity*.
+    Effectively, you only need to create a list of items to process, call the `[executor/pool].map()`
+    function, and you are done. You could build something similar with the `threading`
+    module if you are looking for a fun challenge, but there is little use for it
+    otherwise.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To give our system a test, let’s get some information about a hostname that
+    should use the system DNS resolving system. Since that queries an external resource,
+    we should expect nice results when using threading, right? Well... let’s give
+    it a try and have a look:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: Let’s analyze this code. First, we have the `getaddrinfo()` function, which
+    attempts to fetch some info about a hostname through your operating system, an
+    external resource that could benefit from multiple threads.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Second, we have the `benchmark()` function, which uses multiple threads for
+    the `map()` if `threads` is set to a number above 1\. If not, it goes for the
+    regular `map()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Lastly, we execute the benchmarks for `1`, `10`, `50`, and `100` threads where
+    `1` is the regular non-threaded approach. So how much can threads help us here?
+    This test strongly depends on your computer, operating system, network, etc.,
+    so your results may be different, but this is what happened on my OS X machine
+    using CPython 3.10:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: Did you expect those results? While `1` thread is indeed slower than `10` threads
+    and `50` threads, at `100` we are clearly seeing the diminishing returns and the
+    overhead of having `100` threads. Also, the benefit of using multiple threads
+    is rather limited here due to `socket.getaddrinfo()` being pretty fast.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we were to read a whole bunch of files from a slow networked filesystem
+    or if we were to use it to fetch multiple webpages in parallel, we would see a
+    much larger difference. That immediately shows the downside of threading: it only
+    gives you a benefit if the external resource is slow enough to warrant the synchronization
+    overhead. With a fast external resource, you are likely to experience slowdowns
+    instead because the GIL becomes the bottleneck. CPython can only execute a single
+    statement at once so that can quickly become problematic.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: When it comes to performance, you should always run a benchmark to see what
+    works best for your case, especially when it comes to thread count. As you saw
+    in the earlier example, more is not always better and the 100-thread version is
+    many times slower than even the single-threaded version.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So, what if we try the same using processes instead of threads? For brevity,
+    we will skip the actual code since we effectively only need to swap out `concurrent.futures.ThreadPoolExecutor()`
+    with `concurrent.futures.ProcessPoolExecutor()` and we are done. The tested code
+    can be found on GitHub if you are interested. When we execute that code, we get
+    these results:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: As you can see, we got universally slower results when using multiple processes.
+    While multiprocessing can offer a lot of benefit when the GIL or a single CPU
+    core is the limit, the overhead can cost you performance in other scenarios.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Batch processing using multiprocessing
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In the previous section, we saw how we can use `concurrent.futures` to do batch
+    processing. You might be wondering why we would want to use `multiprocessing`
+    directly if `concurrent.futures` can handle it for us. The reason is rather simple:
+    `concurrent.futures` is an easy-to-use and very simple interface to both `threading`
+    and `multiprocessing`, but `multiprocessing` offers several advanced options that
+    can be very convenient and can even help your performance in some scenarios.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the previous examples we only saw `multiprocessing.Process`, which is the
+    process analog to `threading.Thread`. In this case, however, we will be using
+    `multiprocessing.Pool`, which creates a process pool very similar to the `concurrent.futures`
+    executors but offers several additional features:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`map_async(func, iterable, [..., callback, ...])`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `map_async()` method is similar to the `map()` method in `concurrent.futures`,
+    but instead of blocking it returns a list of `AsyncResult` objects so you can
+    fetch the results when you need them.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '`imap(func, iterable[, chunksize])`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `imap()` method is effectively the generator version of `map()`. It works
+    in roughly the same way, but it doesn’t preload the items from the iterable so
+    you can safely process large iterables if needed. This can be *much* faster if
+    you need to process many items.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '`imap_unordered(func, iterable[, chunksize])`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `imap_unordered()` method is effectively the same as `imap()` except that
+    it returns the results as soon as they are processed, which can improve performance
+    even further. If the order of your results is of no importance to you, give it
+    a try as it can make your code even faster.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '`starmap(func, iterable[, chunksize])`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `starmap()` method is very similar to the `map()` method, but supports multiple
+    arguments by passing them like `*args`. If you were to run `starmap(function,
+    [(1, 2), (3, 4)])`, the `starmap()` method would call `function(1, 2)` and `function(3,
+    4)`. This can be really useful in conjunction with `zip()` to combine several
+    lists of arguments.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '`starmap_async(func, iterable, [..., callback, ...])`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: As you can imagine, `starmap_async()` is effectively the non-blocking `starmap()`
+    method, but it returns a list of `AsyncResult` objects so you can fetch them at
+    your convenience.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'The usage of `multiprocessing.Pool()` is largely analogous to `concurrent.future.SomeExecutor()`
+    beyond the extra methods mentioned above. Depending on your scenario, it can be
+    slower, a similar speed, or faster than `concurrent.futures`, so always make sure
+    to benchmark for your specific use case. This little bit of benchmark code should
+    give you a nice starting point:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'On my machine, this gives the following results:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: Before I benchmarked this, I was not expecting `concurrent.futures` to be that
+    much faster in some cases and that much slower in other cases. Analyzing these
+    results, you can see that processing 1,000 items with `concurrent.futures` took
+    more time than processing 10,000 items with multiprocessing in this particular
+    case. Similarly, for 100 items the `multiprocessing` module was nearly twice as
+    slow. Naturally, every run yields different results and there is not a single
+    option that will perform well for every scenario, but it is something to keep
+    in mind.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we know how to run our code in multiple threads or processes, let’s
+    look at how we can safely share data between the threads/processes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sharing data between threads and processes
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Data sharing is really the most difficult part about multiprocessing, multithreading,
+    and distributed programming in general: which data to pass along, which data to
+    share, and which data to skip. The theory is really simple, however: whenever
+    possible, don’t transfer any data, don’t share any data, and keep everything local.
+    This is essentially the **functional programming** paradigm, which is why functional
+    programming mixes really well with multiprocessing. In practice, regrettably,
+    this is simply not always possible. The `multiprocessing` library has several
+    options to share data, but internally they break down to two different options:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Shared memory**: This is by far the fastest solution since it has very little
+    overhead, but it can only be used for immutable types and is restricted to a select
+    few types and custom objects that are created through `multiprocessing.sharedctypes`.
+    This is a fantastic solution if you only need to store primitive types such as
+    `int`, `float`, `bool`, `str`, `bytes`, and/or fixed-sized lists or dicts (where
+    the children are primitives).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`multiprocessing.Manager`: The `Manager` classes offer a host of different
+    options for storing and synchronizing data, such as locks, semaphores, queues,
+    lists, dicts, and several others. If it can be pickled, it can work with a manager.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'For threading, the solution is even easier: all memory is shared so, by default,
+    all objects are available from every thread. There is an exception called a thread-local
+    variable, which we will see later.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sharing memory brings its own caveats, however, as we will see in the *Thread
+    safety* section in the case of `threading`. Since multiple threads and/or processes
+    can write to the same piece of memory at the same time, this is an inherently
+    risky operation. At best, your changes can become lost due to conflicting writes;
+    at worst, your memory could become corrupted, which could even result in a crashing
+    interpreter. Luckily, Python is pretty good at protecting you, so if you are not
+    doing anything too exotic you do not have to worry about crashing your interpreter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Shared memory between processes
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Python offers several different structures to make memory sharing between processes
+    a safe operation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`multiprocessing.Value`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`multiprocessing.Array`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`multiprocessing.shared_memory.SharedMemory`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`multiprocessing.shared_memory.ShareableList`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Let’s dive into a few of these types to demonstrate how to use them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For sharing primitive values, you can use `multiprocessing.Value` and `multiprocessing.Array`.
+    These are essentially the same, but with `Array` you can store multiple values
+    whereas `Value` is just a single value. As arguments, these expect a typecode
+    identical to how the `array` module works in Python, which means they map to C
+    types. This results in `d` as a double (floating point) number, `i` as a signed
+    integer, `b` as a signed char, etc.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For more options, look at the documentation for the `array` module: [https://docs.python.org/3/library/array.html](https://docs.python.org/3/library/array.html).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: For more advanced types, you can take a look at the `multiprocessing.sharedctypes`
+    module, which is also where the `Value` and `Array` classes originate from.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Both `multiprocessing.Value` and `multiprocessing.Array` are not difficult
+    to use, but they do not feel very Pythonic to me:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: If you need to share memory and performance is important to you, feel free to
+    use them. If possible, however, I would avoid them (or sharing memory at all if
+    possible) as the usage is clunky at best.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `multiprocessing.shared_memory.SharedMemory` object is similar to the `Array`
+    but it is a lower-level structure. It offers you an interface to read/write to
+    an optionally **named** block of memory so you can access it from other processes
+    by name as well. Additionally, when you are done using it you *must* call `unlink()`
+    to release the memory:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: As we can see in this example, the first call had a `create=True` parameter
+    to ask the operating system for memory. Only after that (and before calling `unlink()`)
+    can we reference the block from other (or the same) processes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once again it is not the most Pythonic interface, but it can be effective for
+    sharing memory. Since the name is optional and automatically generated otherwise,
+    you could omit it from the creation of the shared memory block and read it back
+    from `share_a.name`. Also, like the `Array` and `Value` objects, this too has
+    a fixed size and cannot be grown without replacing it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Lastly, we have the `multiprocessing.shared_memory.ShareableList` object. While
+    this object is slightly more convenient than `Array` and `SharedMemory` since
+    it allows you to be flexible with types (i.e. `item[0]` could be a `str` and `item[1]`
+    could be an `int`), it is still a hard-to-use interface and it does not allow
+    you to resize it. While you can change the type for the items, you cannot resize
+    the object, so swapping out a number with a larger string will not work. At least
+    its usage is more Pythonic than the other options:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: Seeing all of these options for sharing memory between processes, should you
+    be using them? Yes, if you need high performance, that is.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It should be a good indication of why it is best to keep memory local with parallel
+    processing, however. Sharing memory between processes is a complicated problem
+    to solve. Even with these methods, which are the fastest and least complicated
+    available, it is a bit of a pain already.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So, how much performance impact does memory sharing have? Let’s run a few benchmarks
+    to see the difference between sharing a variable and returning it for post-processing.
+    First, the version that does not use shared memory as a performance base:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `triangle_number_local()` function calculates the sum of all numbers up
+    to and including `n` and returns it, similar to a factorial function but with
+    addition instead.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `bench_local()` function calls the `triangle_number_local()` function `count`
+    times and stores the results. After that, we `sum()` those results to verify the
+    output.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now let’s look at the version using shared memory:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: In this case we have created a `Shared` class as a namespace to store the shared
+    variable, but a `global` variable would also be an option.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To make sure the shared variable is available, we need to send it along to all
+    workers in the `pool` using an `initializer` method argument.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Additionally, as the `+=` operation is not atomic (not a single operation, since
+    it does *fetch, add, set*), we need to make sure to lock the variable using the
+    `get_lock()` method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The *Thread safety* section later in this chapter goes into more detail about
+    when locking is and is not needed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To run the benchmarks, we use the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now when executing this, we see the reason for not sharing memory if possible:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: The code using shared memory is roughly 8 times slower, which makes sense because
+    my machine has 8 cores. Since the shared memory example spends most of its time
+    with locking/unlocking (which can only be done by one process at the same time),
+    we have effectively made the code run on a single core again.
+  prefs: []
+  type: TYPE_NORMAL
+- en: I should point out that this is pretty much the worst-case scenario for shared
+    memory. Since all the functions do is write to the shared variable, most of the
+    time is spent locking and unlocking the variables. If you were to do actual processing
+    in the function and only write the results, it would be much better already.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You might be curious about how we could rewrite this example the right way
+    while still using shared variables. In this case it is rather easy, but this largely
+    depends on your specific use case and this might not work for you:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: This code runs almost as fast as the `bench_local()` function. As a rule of
+    thumb, just remember to reduce the number of locks and writes as much as possible.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sharing data between processes using managers
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now that we have seen how we can directly share memory to get the best performance
+    possible, let’s look at a far more convenient and much more flexible solution:
+    the `multiprocessing.Manager` class.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Whereas shared memory restricted us to primitive types, with a `Manager` we
+    can share anything that can be pickled in a very easy way if we are willing to
+    sacrifice a little bit of performance. The mechanism it uses is very different,
+    though; it connects through a network connection. The huge advantage of this method
+    is that you can even use this across multiple devices (which we will see later
+    in this chapter).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `Manager` itself is not an object you will use much, though you will probably
+    use the objects provided by the `Manager`. The list is plentiful so we will only
+    cover a few in detail, but you can always look at the Python documentation for
+    the current list of options: [https://docs.python.org/3/library/multiprocessing.html#managers](https://docs.python.org/3/library/multiprocessing.html#managers).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'One of the most convenient options for sharing data with `multiprocessing`
+    is the `multiprocessing.Namespace` object. The `Namespace` object behaves very
+    similarly to a regular object, with the difference being that it can be accessed
+    as a shared memory object from all processes. As long as your objects can be pickled,
+    you can use them as attributes of a `Namespace` instance. To illustrate the usage
+    of the `Namespace`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As you can see in this example, you can simply set the attributes of `namespace`
+    as you would expect from regular objects, but they are shared between all processes.
+    Since the locking now happens through network sockets, the overhead is even larger
+    than with shared memory, so only write data when you must. Directly translating
+    the earlier shared memory example to use a `Namespace` and explicit `Lock` (a
+    `Namespace` does not have a `get_lock()` method) yields the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: As with the shared memory example, this is a really inefficient case because
+    we are locking for each iteration of the loop, and it really shows. While the
+    local version took about 0.6 seconds and the shared memory version took about
+    4 seconds, this version takes a whopping 90 seconds for effectively the same operation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once again, we can easily speed it up by reducing the time spent in the synchronized/locked
+    code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'When benchmarking this version with the same benchmark code as before, we can
+    see that it is still much slower than the 0.6 seconds we got with the local version:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: That being said, at least this is much more acceptable than the 90 seconds we
+    would get otherwise.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Why are these locks so incredibly slow? For a proper lock to be set, all the
+    parties need to agree that the data is locked, which is a process that takes time.
+    That simple fact slows down execution much more than most people would expect.
+    The server/process that runs the `Manager` needs to confirm to the client that
+    it has the lock; only once that has been done can the client read, write, and
+    release the lock again.
+  prefs: []
+  type: TYPE_NORMAL
+- en: On a regular hard disk setup, database servers aren’t able to handle more than
+    about 10 transactions per second *on the same row* due to locking and disk latency.
+    Using lazy file syncing, SSDs, and a battery-backed RAID cache, that performance
+    can be increased to handle, perhaps, 100 transactions per second on the same row.
+    These are simple hardware limitations; because you have multiple processes trying
+    to write to a single target, you need to synchronize the actions between the processes,
+    and that takes a lot of time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Even with the fastest hardware available, synchronization can lock all the processes
+    and produce enormous slowdowns, so if at all possible, try to avoid sharing data
+    between multiple processes. Put simply, if all the processes are constantly reading
+    and writing from/to the same object, it is generally faster to use a single process
+    instead because the locking will effectively restrict you to a single process
+    anyway.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Redis, one of the fastest data storage systems available, was fully single-threaded
+    for over a decade until 2020 because the locking overhead was not worth the benefit.
+    Even the current threaded version is effectively a collection of single-threaded
+    servers with their own memory space to avoid locking.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Thread safety
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: When working with threads or processes, you need to be aware that you might
+    not be the only one modifying a variable at some point in time. There are many
+    scenarios where this will not be an issue and often you are lucky and it won’t
+    affect you, but when it does it can cause bugs that are extremely difficult to
+    debug.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As an example, imagine having two bits of code incrementing a number at the
+    same time and imagine what could go wrong. Initially, let’s assume the value is
+    10\. With multiple threads, this could result in the following sequence:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Two threads fetch the number to local memory to increment. It is currently 10
+    for both.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Both threads increment the number in their local memory to 11.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Both threads write the number back from local memory (which is 11 for both)
+    to the global one, so the global number is now 11.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Since both threads fetched the number at the same time, one overwrote the increment
+    of the other with its own increment. So instead of incrementing twice, you now
+    have a variable that was only incremented once.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In many cases, the current GIL implementation in CPython will protect you from
+    these issues when using `threading`, but you should never take that protection
+    for granted and make sure to protect your variables if multiple threads might
+    update your variable at the same time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Perhaps an actual code example might make the scenario a bit clearer:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: As you can see, the `increment` function stores `counter` in a temporary variable,
+    prints it, and writes to `counter` after adding 1 to it. This example is admittedly
+    a bit contrived because you would normally do `counter += 1` instead, which reduces
+    the odds of unexpected behaviour, but even in that case you have no guarantee
+    that your results are correct.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To illustrate the output of this script:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: Why did we end up with 13 at the end? Pure luck really. Some of my attempts
+    resulted in 15, some in 11, and others in 14\. That’s what makes thread safety
+    issues so incredibly hard to debug; in a complicated codebase, it can be really
+    hard to figure out what is causing the bug and you cannot reliably reproduce the
+    issue.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When experiencing strange and hard-to-explain errors in a system using multiple
+    threads/processes, make sure to see if they also occur when running single-threaded.
+    Mistakes like these are easily made and can easily be introduced by third-party
+    code that was not meant to be thread-safe.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To make your code thread-safe, you have a few different options:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This might seem obvious, but if you don’t update shared variables from multiple
+    threads/processes in parallel then there is nothing to worry about.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Use atomic operations when modifying your variables. An atomic operation is
+    one that executes in a single instruction so no conflicts could ever arise. For
+    example, incrementing a number could be an atomic operation where the fetching,
+    incrementing, and updating happens in a single instruction.Within Python, an increment
+    is usually done with `counter += 1` which is actually a shorthand for `counter
+    = counter + 1`. Can you see the issue here? Instead of incrementing `counter`
+    internally, Python will write a new value to the variable `counter`, which means
+    it is not an atomic operation.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Use locks to protect your variables.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Knowing these options for thread-safe code, you might be wondering which operations
+    are thread-safe and which aren’t. Luckily, Python does have some documentation
+    about the issue, and I would strongly recommend looking at it as this is prone
+    to change in the future: [https://docs.python.org/3/faq/library.html#what-kinds-of-global-value-mutation-are-thread-safe](https://docs.python.org/3/faq/library.html#what-kinds-of-global-value-mutation-are-thread-safe).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For the current CPython versions (at least CPython 3.10 and below) where the
+    GIL is protecting us, we can assume these operations to be atomic and therefore
+    thread-safe:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'These are not atomic and not thread-safe:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'What could we do to make `i = i + 1` thread-safe? The most obvious solution
+    is to use our own lock, similar to the GIL:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: As you can see, with a lock we can protect the updates for a variable easily.
+    I should note that even though we used a `global` variable in this case, the same
+    limitation applies for the attributes of class instances and other variables as
+    well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Naturally, this all applies to `multiprocessing` as well, with the subtle difference
+    that variables are not shared by default with multiple processes, so you need
+    to do something to explicitly cause an issue. Having said that, the earlier shared
+    memory and `Manager` examples break immediately if you remove the locks from them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Deadlocks
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Now that you know how to update your variables in a thread-safe manner, you
+    might be hoping that we are done with threading limitations. Unfortunately, the
+    opposite is true. The locks we used to make our variable updates thread-safe can
+    actually introduce another issue that can be even more devious to solve: **deadlocks**.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A deadlock can occur when threads or processes are holding a lock while waiting
+    for another thread/process to release a lock. In some cases, you can even have
+    a thread/process that is waiting for itself. To illustrate, let’s assume that
+    we have locks `a` and `b` and two different threads. Now the following occurs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Thread 0 locks `a`
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Thread 1 locks `b`
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Thread 0 waits for lock `b`
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Thread 1 waits for lock `a`
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Now thread 1 is waiting for thread 0 to finish, and vice versa. Neither will
+    ever finish because they are waiting for each other.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To illustrate this scenario:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: The code is relatively straightforward but warrants at least some explanation.
+    As previously discussed, the `thread_0` function locks `a` first and `b` after
+    and `thread_1` does this in the reverse order. This is what causes the deadlock;
+    they will each wait for the other to finish. To be sure we actually reach the
+    deadlock in this example, we have a small sleep to make sure `thread_0` does not
+    finish before `thread_1` starts. In real-world scenarios, you would have some
+    code in that bit that would take time as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How can we resolve locking issues like these? Locking strategies and resolving
+    these issues could easily fill a chapter by themselves and there are several different
+    types of locking problems and solutions. You could even have a livelock problem
+    where both threads are attempting to resolve the deadlock problem at the same
+    time with the same method, causing them to also wait for each other but with constantly
+    changing locks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: An easy way to visualize a livelock is to think of a narrow part of a road where
+    two cars are approaching from opposite sides. Both cars would attempt to drive
+    at the same time and both would back off when they notice that the other car is
+    moving. Repeat that and you have a livelock.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In general, there are several strategies that you can employ to avoid deadlocks:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Deadlocks can only occur when you have multiple locks, so if your code only
+    ever acquires a single lock at the same time, no problems can occur.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Try to keep the lock section small so there is less chance of accidentally adding
+    another lock within that block. This can also help performance because a lock
+    can make your parallel code essentially single-threaded again.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: This is probably the most important tip for fixing deadlocks. *Always have a
+    consistent locking order.* If you always lock in the same order, you can never
+    have deadlocks. Let’s explain how this helps:With the earlier example and the
+    two locks `a` and `b`, the problem occurred because thread 0 was waiting for `b`
+    and thread 1 was waiting for `a`.If they both had attempted to lock `a` first
+    and `b` after, we never would have reached the deadlock state because one of the
+    threads would lock `a` and that would cause the other thread to stall long before
+    `b` could ever be locked.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Thread-local variables
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We have seen how to lock variables so only a single thread can modify a variable
+    simultaneously. We have also seen how we can prevent deadlocks while using locks.
+    What if we want to give a thread a separate global variable? That is where `threading.local`
+    comes in: it gives you a context specifically for your current thread. This can
+    be useful for database connections, for example; you probably want to give each
+    thread its own database connection, but having to pass around the connection is
+    inconvenient, so a global variable or connection manager is a much more convenient
+    option.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This section does not apply to `multiprocessing`, since variables are not automatically
+    shared between processes. A forked process can inherit the variables from the
+    parent, however, so care must be taken to explicitly initialize non-shared resources.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s illustrate the usage of thread-local variables with a small example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: This example is largely the same as the thread-safety example, but instead of
+    having a global `counter` variable, we are now using `threading.local()` as a
+    context to set the `counter` variable to. We are also using an extra feature of
+    the `concurrent.futures.ThreadPoolExecutor` here, the `initializer` function.
+    Since a thread-local variable only exists within that thread and is not automatically
+    copied to other threads, all threads (including the main thread) need to have
+    `counter` set separately. Without setting it, we would get an `AttributeError`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When running the code, we can see that all threads are independently updating
+    their variables instead of the completely mixed version we saw in the thread-safety
+    example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: If possible, I would always recommend returning variables from a thread or appending
+    them to a post-processing queue and never updating a global variable or global
+    state because it is faster and less error-prone. Using thread-local variables
+    can really help you in these cases to make sure you have only one instance of
+    a connection or collection class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we know how to share (or stop sharing) variables, it is time to learn
+    about the advantages and disadvantages of using threads as opposed to processes.
+    We should have a basic grasp of memory management with threads and processes now.
+    With all of these options, what should we choose and why?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Processes, threads, or a single thread?
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Now that we know how to use `multiprocessing`, `threading` and `concurrent.futures`,
+    which should you choose for your case?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Since `concurrent.futures` implements both `threading,` and `multiprocessing`,
+    you can mentally exchange `threading` in this section with `concurrent.futures.ThreadPoolExecutor`.
+    The same goes for `multiprocessing` and `concurrent.futures.ProcessPoolExecutor`,
+    of course.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When we consider the choice between single-threaded, multithreaded, and multiprocess,
+    there are multiple factors that we can consider.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first and most important question you should ask yourself is whether you
+    really need to use `threading` or `multiprocessing`. Often, code is fast enough
+    and you should ask yourself if the cost of dealing with the potential side effects
+    of memory sharing and such is worth it. Not only does writing code become more
+    complicated when parallel processing is involved, but the complexity of debugging
+    is multiplied as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Second, you should ask yourself what is limiting your performance. If the limitation
+    is external I/O, then it could be useful to use `asyncio` or `threading` to handle
+    that, but it is still no guarantee.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For example, if you are reading a bunch of files from a slow hard disk, threading
+    might not even help you. If the hard disk is the limiting factor, it will not
+    become faster no matter what you try. So before you rewrite your entire codebase
+    to function with `threading`, make sure to test if your solution has any chance
+    of working.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Assuming that your I/O bottleneck can be alleviated, then you still have the
+    choice of `asyncio` versus `threading`. Since `asyncio` is the fastest of the
+    available options, I would opt for that solution if it works with your codebase,
+    but using `threading` is not a bad option either, of course.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If the GIL is your bottleneck due to heavy calculations from your Python code,
+    then `multiprocessing` can help you a lot. But even in those cases, `multiprocessing`
+    is not your only option; for many slow processes, it can also help to employ fast
+    libraries such as `numpy`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: I am a great fan of the `multiprocessing` library and it is one of the easiest
+    implementations of multiprocess code that I have seen so far, but it still comes
+    with several caveats such as more difficult memory management and deadlocks, as
+    we have seen. So always consider if you actually need the solution and if your
+    problem is suitable for multiprocessing. If a large portion of code is written
+    using functional programming it can be really easy to implement; if you need to
+    interact with a lot of external resources, such as databases, it can be really
+    difficult to implement.
+  prefs: []
+  type: TYPE_NORMAL
+- en: threading versus concurrent.futures
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: When given the choice, should you use `threading` or `concurrent.futures`? In
+    my opinion, it depends on what you are trying to do.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The advantages of `threading` over `concurrent.futures` are:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can specify the name of the thread explicitly, which can be seen in the task
+    manager on many operating systems.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We can explicitly create and start a long-running thread for a function instead
+    of relying on the availability within a thread pool.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'If your scenario allows you to choose, I believe you should use `concurrent.futures`
+    instead of `threading` for the following reasons:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: With `concurrent.futures` you can switch between threads and processes by using
+    `concurrent.futures.ProcessPoolExecutor` instead of `concurrent.futures.ThreadPoolExecutor`.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: With `concurrent.futures` you have the `map()` method to easily batch-process
+    a list of items without having the (potential) overhead of setting up and shutting
+    down the thread.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `concurrent.futures.Future` objects as returned by the `concurrent.futures`
+    methods allow for fine-grained control of the results and the handling.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: multiprocessing versus concurrent.futures
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: When it comes to multiprocessing, I think the `concurrent.futures` interface
+    adds much less benefit than it does in the case of threading, especially since
+    `multiprocessing.Pool` essentially offers you a nearly identical interface to
+    `concurrent.futures.ProcessPoolExecutor`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The advantages of `multiprocessing` over `concurrent.futures` are:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Many advanced mapping methods such as `imap_unordered` and `starmap`.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: More control over the pool (i.e. `terminate()`, `close()`).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It can be used across multiple machines.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: You can manually specify the startup method (`fork`, `spawn`, or `forkserver`),
+    which gives you control over how variables are copied from the parent process.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: You can choose the Python interpreter. Using `multiprocessing.set_executable()`,
+    you could run a Python 3.10 pool while running Python 3.9 for the main process.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The advantages of `concurrent.futures` over `multiprocessing` are:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can easily switch to the `concurrent.futures.ThreadPoolExecutor.`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The returned `Future` objects allow for more fine-grained control over the result
+    handling when compared to the `AsyncResult` objects `multiprocessing` uses.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Personally, I prefer `multiprocessing` if you have no need for compatibility
+    with `threads` because of the advanced mapping methods.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Hyper-threading versus physical CPU cores
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Hyper-threading is a technology that offers extra virtual CPU cores to your
+    physical cores. The idea is that, because these virtual CPU cores have separate
+    caches and other resources, you can more efficiently switch between multiple tasks.
+    If you task-switch between two heavy processes, the CPU won’t have to unload/reload
+    all caches. When it comes to actual CPU instruction processing, however, it will
+    not help you.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When you truly maximize CPU usage, it is generally better to only use the physical
+    processor count. To demonstrate how this affects the performance, we will run
+    a simple test with several process counts. Since my processor has `8` cores (`16`
+    if you include hyper-threading), we will run it with `1`, `2`, `4`, `8`, `16`,
+    and `32` processes to demonstrate how it affects the performance:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To keep the processor busy, we are using a `while` loop from `n` to `0` in
+    the `busy_wait()` function. For the benchmarking, we are using a `multiprocessing.Pool()`
+    instance with the given number of processes and running `busy_wait(100000)` 128
+    times:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: As you can see, with my `8`-`c`ore CPU with hyper-threading enabled, the version
+    with `8` threads is obviously the fastest. Even though the operating system task
+    manager shows `16` cores, it is not always faster to utilize more than the `8`
+    physical cores. Additionally, due to the boosting behavior of modern processors,
+    you can see that using `8` processors is only `3.4` times faster than the single-threaded
+    variant, as opposed to the expected `8`-`t`imes speedup.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This illustrates the problem with hyper-threading when heavily loading the processor
+    with instructions. As soon as the single processes actually use 100% of a CPU
+    core, the task switching between the processes actually reduces performance. Since
+    there are only `8` physical cores, the other processes have to fight to get something
+    done on the processor cores. Don’t forget that other processes on the system and
+    the operating system itself will also consume a bit of processing power.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you are truly pressed for performance with a CPU-bound problem then matching
+    the physical CPU cores is often the best solution, but if locking is a bottleneck,
+    then a single thread can be faster than any multithreaded solution due to CPU
+    boosting behavior.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you do not expect to maximize all cores all the time, then I recommend not
+    passing the `processes` parameter to `multiprocessing.Pool()`, which causes it
+    to default to `os.cpu_count()`, which returns all cores including hyper-threaded
+    ones.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It all depends on your use case, however, and the only way to know for certain
+    is to test for your specific scenario. As a rule of thumb, I recommend the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Disk I/O bound? A single process is most likely your best bet.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: CPU bound? The number of physical CPU cores is your best bet.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Network I/O bound? Start with the defaults and tune if needed. This is one of
+    the few cases where 128 threads on an 8-core processor can still be useful.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: No obvious bound but many (hundreds of) parallel processes are needed? Perhaps
+    you should try `asyncio` instead of `multiprocessing`.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Note that the creation of multiple processes is not free in terms of memory
+    and open files; while you could have a nearly unlimited number of coroutines,
+    this is not the case for processes. Depending on your operating system configuration,
+    you could reach the maximum open files limit long before you even reach 100 processes,
+    and even if you reach those numbers, CPU scheduling will be your bottleneck instead.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So what should we do if our CPU cores are not enough? Simple: use more CPU
+    cores. Where do we get those? Multiple computers! It is time to graduate to distributed
+    computing.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Remote processes
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: So far, we have only executed our scripts on multiple local processors, but
+    we can actually expand this much further. Using the `multiprocessing` library,
+    it’s actually very easy to execute jobs on remote servers, but the documentation
+    is currently still a bit cryptic. There are actually a few ways of executing processes
+    in a distributed way, but the most obvious one isn’t the easiest one. The `multiprocessing.connection`
+    module has both the `Client` and `Listener` classes, which facilitate secure communication
+    between the clients and servers in a simple way.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Communication is not the same as process management and queue management, however;
+    those features require some extra effort. The `multiprocessing` library is still
+    a bit bare in this regard, but it’s most certainly possible given a few different
+    processes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Distributed processing using multiprocessing
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We will start with a module containing a few constants that should be shared
+    between all clients and the server, so the secret password and the hostname of
+    the server are available to all. In addition to that, we will add our prime calculation
+    functions, which we will be using later. The imports in the following modules
+    will expect this file to be stored as `T_17_remote_multiprocessing/constants.py,`
+    but feel free to call it anything you like as long as the imports and references
+    keep working:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next up, we define the functions that need to be available to both the server
+    and the client. We will store this as `T_17_remote_multiprocessing/functions.py`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now it’s time to create the actual server that links the functions and the
+    job queue. We will store this as `T_17_remote_multiprocessing/server.py`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: After creating the server, we need to have a client script that sends the jobs.
+    You could use a single script for both sending and processing, but to keep things
+    sensible we will use separate scripts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following script will add `0` to `999` to the queue for processing. We
+    will store this as `T_17_remote_multiprocessing/submitter.py`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Lastly, we need to create a client to actually process the queue. We will store
+    this as `T_17_remote_multiprocessing/client.py`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: From the preceding code, you can see how we pass along functions; the manager
+    allows the registering of functions and classes that can be called from the clients
+    as well. With that, we pass along a queue from the multiprocessing class, which
+    is safe for both multithreading and multiprocessing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now we need to start the processes themselves. First, the server that keeps
+    on running:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'After that, run the producer to generate the prime generation requests:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now we can run multiple clients on multiple machines to get the first 1,000
+    primes. Since these clients now print the first 1,000 primes, the output is a
+    bit too lengthy to show here, but you can simply run this in parallel multiple
+    times or on multiple machines to generate your output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: Instead of printing, you can use queues or pipes to send the output to a different
+    process if you’d like. As you can see, though, it’s still a bit of work to process
+    things in parallel and it requires some code synchronization to work. There are
+    a few alternatives available, such as **Redis**, **ØMQ**, **Celery**, **Dask**,
+    and **IPython Parallel**. Which of these is the best and most suitable depends
+    on your use case. If you are simply looking for processing tasks on multiple CPUs,
+    then `multiprocessing`, Dask, and IPython Parallel are probably your best choices.
+    If you are looking for background processing and/or easy offloading to multiple
+    machines, then ØMQ and Celery are better choices.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Distributed processing using Dask
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The Dask library is quickly becoming the standard for distributed Python execution.
+    It has very tight integration with many scientific Python libraries such as NumPy
+    and Pandas, making parallel execution in many cases completely transparent. These
+    libraries are covered in detail in *Chapter 15*, *Scientific Python and Plotting*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Dask library provides an easy parallel interface that can execute single-threaded,
+    use multiple threads, use multiple processes, and even use multiple machines.
+    As long as you keep the data-sharing limitations of multiple threads, processes,
+    and machines in mind, you can easily switch between them to see which performs
+    best for your use case.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Installing Dask
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The Dask library consists of multiple packages and you might not need all of
+    them. Broadly speaking, the `Dask` package is only the core, and we can choose
+    from several extras, which can be installed through `pip install dask[extra]`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`array`: Adds an array interface similar to `numpy.ndarray`. Internally, these
+    structures consist of multiple `numpy.ndarray` instances spread across your Dask
+    cluster for easy parallel processing.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`dataframe`: Similar to the array interface, this is a collection of `pandas.DataFrame`
+    objects.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`diagnostics`: Adds profilers, progress bars, and even a fully interactive
+    dashboard with live information about the currently running jobs.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`distributed`: Packages needed for running Dask across multiple systems instead
+    of locally only.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`complete`: All of the above extras.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'For the demonstrations in this chapter, we will need to install at least the
+    `distributed` extra, so you need to run either:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Or:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: If you are playing around with Jupyter notebooks, the progress bars in the `diagnostics`
+    extra also have Jupyter support, which can be useful.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Basic example
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Let’s start with a basic example of executing some code via Dask without explicitly
+    setting up a cluster. To illustrate how this can help performance, we will be
+    using a `busy-wait` loop to maximize CPU load.In this case, we will be using the
+    `dask.distributed` submodule, which has an interface quite similar to `concurrent.futures`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs: []
+  type: TYPE_PRE
+- en: The code is mostly straightforward, but there are a few small caveats to look
+    at. First of all, when submitting the task to Dask, you need to tell Dask that
+    it is an impure function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you recall from *Chapter 5*, *Functional Programming – Readability Versus
+    Brevity*, a pure function in functional programming is one that has no side effects;
+    its output is consistent and only depends on the input. A function returning a
+    random value is impure because repeated calls return different results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Dask will automatically cache the results in the case of pure functions. If
+    you have two identical calls, Dask will only execute the function once.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To queue the tasks, we need to use a function such as `client.map()` or `client.submit()`.
+    These work in a very similar way to `executor.submit()` in the case of `concurrent.futures`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Lastly, we need to fetch the results from the futures. This can be done by calling
+    `future.result()`, or in batch by using `client.gather(futures)`. Once again,
+    very similar to `concurrent.futures`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To make the code a bit more flexible, we made the number of tasks configurable
+    so it runs in a reasonable amount of time on your system. If you have a much slower
+    or much faster system, you will want to adjust this to get useful results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When we execute the script, we get the following results:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE46]'
+  prefs: []
+  type: TYPE_PRE
+- en: That is how easily you can execute some code across all of your CPU cores. Naturally,
+    we can also test in single-threaded or distributed mode; the only part we need
+    to vary is how we initialize `distributed.Client()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Running a single thread
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Let’s run the same code but in single-threaded mode:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE47]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now if we run it, we can see that Dask was definitely using multiple processes
+    before:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE48]'
+  prefs: []
+  type: TYPE_PRE
+- en: This can be useful for debugging thread-safety issues. If the issues still persist
+    in single-threaded mode, thread safety is probably not your issue.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Distributed execution across multiple machines
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'For a much more impressive feat, let’s run the code on multiple machines at
+    the same time. To run Dask on multiple systems simultaneously, there are many
+    deployment options available:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Manual setup using the `dask-scheduler` and `dask-worker` commands
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Automatic deployment over SSH using the `dask-ssh` command
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Deployment straight to an existing compute cluster running Kubernetes, Hadoop,
+    and others
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Deployment to cloud providers such as Amazon, Google, and Microsoft Azure
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In this case, we are going to use `dask-scheduler` since it’s the solution that
+    you can run on pretty much any machine that can run Python.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that you can encounter errors if the Dask versions and dependencies are
+    not in sync, so updating to the latest version before starting is a good idea.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we start the `dask-scheduler`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE49]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Once you have the `dask-scheduler` running, it will also host the dashboard
+    mentioned above, which shows the current status: `http://localhost:8787/status`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now we can run the `dask-worker` processes on all machines that need to participate:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE50]'
+  prefs: []
+  type: TYPE_PRE
+- en: With the `--nprocs` parameter, you can set the number of processes to start.
+    With `auto`, it is set to the number of CPU cores including hyper-threading. When
+    set to a positive number, it will start that exact number of processes; when set
+    to a negative number the number is added to the number of CPU cores.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Your dashboard screen and the console should show all of the connected clients
+    now. It’s time to run our script again, but distributed this time:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE51]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'That’s the only thing we need to do: configure where the scheduler is running.
+    Note that we could also connect from other machines using the IP or hostname instead.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s run it and see if it became any faster:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE52]'
+  prefs: []
+  type: TYPE_PRE
+- en: Wow, that’s quite a difference! Instead of the `20` per second we could do in
+    single-threaded mode or the `71` per second we could do in multiple-process mode,
+    we can now process `405` of these tasks per second. As you can see, it also took
+    very little effort to set up.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Dask library has many more options to increase efficiency, limit memory,
+    prioritize work, and more. We didn’t even cover the combining of tasks by chaining
+    them or running a `reduce` on bundled results. I can strongly recommend considering
+    Dask if your code could benefit from running on multiple systems at the same time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Distributed processing using ipyparallel
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The IPython Parallel module, similar to Dask, makes it possible to process code
+    on multiple computers at the same time. It should be noted that you can run Dask
+    on top of `ipyparallel`. The library supports more features than you are likely
+    to need, but the basic usage is important to know just in case you need to do
+    heavy calculations that can benefit from multiple computers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, let’s start by installing the latest `ipyparallel` package and all the
+    IPython components:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE53]'
+  prefs: []
+  type: TYPE_PRE
+- en: Especially on Windows, it might be easier to install IPython using Anaconda
+    instead, as it includes binaries for many science, math, engineering, and data
+    analysis packages. To get a consistent installation, the Anaconda installer is
+    also available for OS X and Linux systems.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Secondly, we need a cluster configuration. Technically, this is optional, but
+    since we are going to create a distributed IPython cluster, it is much more convenient
+    to configure everything using a specific profile:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE54]'
+  prefs: []
+  type: TYPE_PRE
+- en: These configuration files contain a huge number of options, so I recommend searching
+    for a specific section instead of walking through them. A quick listing gave me
+    about 2,500 lines of configuration in total for these five files. The filenames
+    already provide hints about the purpose of the configuration files, but we’ll
+    walk through the files explaining their purpose and some of the most important
+    settings.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ipython_config.py
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'This is the generic IPython configuration file; you can customize pretty much
+    everything about your IPython shell here. It defines how your shell should look,
+    which modules should be loaded by default, whether or not to load a GUI, and quite
+    a bit more. For the purpose of this chapter, it’s not all that important, but
+    it’s definitely worth a look if you’re going to use IPython more often. One of
+    the things you can configure here is the automatic loading of extensions, such
+    as `line_profiler` and `memory_profiler` discussed in *Chapter 12*, *Performance
+    – Tracking and Reducing Your Memory and CPU Usage*. For example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE55]'
+  prefs: []
+  type: TYPE_PRE
+- en: ipython_kernel_config.py
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: This file configures your IPython kernel and allows you to overwrite/extend
+    `ipython_config.py`. To understand its purpose, it’s important to know what an
+    IPython kernel is. The kernel, in this context, is the program that runs and introspects
+    the code. By default, this is `IPyKernel`, which is a regular Python interpreter,
+    but there are also other options such as `IRuby` or `IJavascript` to run Ruby
+    or JavaScript respectively.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One of the more useful options is the possibility of configuring the listening
+    port(s) and IP addresses for the kernel. By default, the ports are all set to
+    use a random number, but it is important to note that if someone else has access
+    to the same machine while you are running your kernel, they will be able to connect
+    to your IPython kernel, which can be dangerous on shared machines.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ipcontroller_config.py
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '`ipcontroller` is the master process of your IPython cluster. It controls the
+    engines and the distribution of tasks and takes care of tasks such as logging.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The most important parameter in terms of performance is the `TaskScheduler`
+    setting. By default, the `c.TaskScheduler.scheme_name` setting is set to use the
+    Python LRU scheduler, but depending on your workload, others such as `leastload`
+    and `weighted` might be better. If you have to process so many tasks on such a
+    large cluster that the scheduler becomes the bottleneck, there is also the `plainrandom`
+    scheduler, which works surprisingly well if all your machines have similar specs
+    and the tasks have similar durations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For the purpose of our test, we will set the IP of the controller to `*`, which
+    means that *all* IP addresses will be accepted and that every network connection
+    will be accepted. If you are in an unsafe environment/network and/or don’t have
+    any firewalls that allow you to selectively enable certain IP addresses, then
+    this method is *not* recommended! In such cases, I recommend launching through
+    more secure options, such as `SSHEngineSetLauncher` or `WindowsHPCEngineSetLauncher`,
+    instead.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Assuming your network is indeed safe, set the factory IP to all the local addresses:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE56]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now start the controller:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE57]'
+  prefs: []
+  type: TYPE_PRE
+- en: Pay attention to the files that were written to the security directory of the
+    profile directory. They contain the authentication information that is used by
+    `ipengine` to find and connect to the `ipcontroller`, such as the encryption keys
+    and port information.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ipengine_config.py
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '`ipengine` is the actual worker process. These processes run the actual calculations,
+    so to speed up the processing you will need these on as many machines as you have
+    available. You probably won’t need to change this file, but it can be useful if
+    you want to configure centralized logging or need to change the working directory.
+    Generally, you don’t want to start the `ipengine` process manually since you will
+    most likely want to launch multiple processes per computer. That’s where our next
+    command comes in, the `ipcluster` command.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: ipcluster_config.py
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The `ipcluster` command is actually just an easy shorthand to start a combination
+    of `ipcontroller` and `ipengine` at the same time. For a simple local processing
+    cluster, I recommend using this, but when starting a distributed cluster, it can
+    be useful to have the control that the separate use of `ipcontroller` and `ipengine`
+    offers. In most cases the command offers enough options, so you might have no
+    need for the separate commands.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The most important configuration option is `c.IPClusterEngines.engine_launcher_class`,
+    as this controls the communication method between the engines and the controller.
+    Along with that, it is also the most important component for secure communication
+    between the processes. By default it’s set to `ipyparallel.apps.launcher.LocalControllerLauncher`,
+    which is designed for local processes, but `ipyparallel.apps.launcher.SSHEngineSetLauncher`
+    is also an option if you want to use SSH to communicate with the clients. Alternatively,
+    there is `ipyparallel.apps.launcher.WindowsHPCEngineSetLauncher` for Windows HPC.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before we can create the cluster on all machines, we need to transfer the configuration
+    files. Your options are to transfer all the files or to simply transfer the files
+    in your IPython profile’s `security` directory.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now it’s time to start the cluster. Since we already started the `ipcontroller`
+    separately, we only need to start the engines. On the local machine, we simply
+    need to start it, but the other machines don’t have the configuration yet. One
+    option is copying the entire IPython profile directory, but the only file that
+    really needs copying is `security/ipcontroller-engine.json`; after creating the
+    profile using the profile creation command, that is. So unless you are going to
+    copy the entire IPython profile directory, you need to execute the profile creation
+    command again:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE58]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'After that, simply copy the `ipcontroller-engine.json` file and you’re done.
+    Now we can start the actual engines:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE59]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note that the `4` here was chosen for a quad-core processor, but any number
+    would do. The default will use the number of logical processor cores, but depending
+    on the workload it might be better to match the number of physical processor cores
+    instead.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now we can run some parallel code from our IPython shell. To demonstrate the
+    performance difference, we will use a simple sum of all the numbers from 0 to
+    10,000,000\. Not an extremely heavy task, but when performed 10 times in succession,
+    a regular Python interpreter takes a while:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE60]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This time however, to illustrate the difference, we will run it 100 times to
+    demonstrate how fast a distributed cluster is. Note that this is with only a three-machine
+    cluster, but it’s still quite a bit faster:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE61]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'More fun, however, is the definition of parallel functions in `ipyparallel`.
+    With just a simple decorator, a function is marked as parallel:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE62]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `ipyparallel` library offers many more useful features, but that is outside
+    the scope of this book. Even though `ipyparallel` is a separate entity from the
+    rest of Jupyter/IPython, it does integrate well, which makes combining them easy
+    enough.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Exercises
+  prefs: []
+  type: TYPE_NORMAL
+- en: While preparing for multiple threads and/or multiple processes is less invasive
+    than preparing for `asyncio` is, it still requires a bit of thought if you have
+    to pass or share variables. So, this is really a question of how difficult you
+    want to make it for yourself.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See if you can make an echo server and client as separate processes.Even though
+    we did not cover `multiprocessing.Pipe()`, I trust you can work with it regardless.
+    It can be created through `a, b = multiprocessing.Pipe()` and you can use it with
+    `[a/b].send()` and `[a/b].recv()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Read all files in a directory and sum the size of the files by reading each
+    file using `threading` and `multiprocessing`, or `concurrent.futures` if you want
+    an easier exercise. If you want an extra challenge, walk through the directories
+    recursively by letting the thread/process queue new items while running.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Create a pool of workers that keeps waiting for items to be queued through `multiprocessing.Queue()`.
+    Bonus points if you make it a safe RPC (remote procedure call) type operation.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Apply your functional programming skills and calculate something in a parallel
+    way. Perhaps parallel sorting?
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: All of these exercises are unfortunately still easy compared to what you can
+    experience in the wild. If you really want a challenge, start applying these techniques
+    (especially memory sharing) to your existing or new projects and hope (or not)
+    that you run into a real challenge.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Example answers for these exercises can be found on GitHub: [https://github.com/mastering-python/exercises](Chapter_14.xhtml).
+    You are encouraged to submit your own solutions and learn about alternative solutions
+    from others.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'We have covered many different topics in this chapter, so let’s summarize them:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: What the Python GIL is, why we need it, and how we can work around it
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: When to use threads, when to use processes, and when to use `asyncio`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Running code in parallel threads using `threading` and `concurrent.futures`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Running code in parallel processes using `multiprocessing` and `concurrent.futures`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Running code distributed across multiple machines
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Sharing data between threads and processes
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Thread safety
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Deadlocks
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The most important lesson you can learn from this chapter is that the synchronization
+    of data between threads and processes is *really slow*. Whenever possible, you
+    should only send data to the function and return once it is done, with nothing
+    in between. Even in that case, if you can send less data, send less data. If possible,
+    keep your calculations and data local.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we will learn about scientific Python libraries and plotting.
+    These libraries can help you perform difficult calculations and data processing
+    in record time. These libraries are mostly highly optimized for performance and
+    go great together with multiprocessing or the Dask library.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Join our community on Discord
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Join our community’s Discord space for discussions with the author and other
+    readers: [https://discord.gg/QMzJenHuJf](https://discord.gg/QMzJenHuJf)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/QR_Code156081100001293319171.png)'
+  prefs: []
+  type: TYPE_IMG
