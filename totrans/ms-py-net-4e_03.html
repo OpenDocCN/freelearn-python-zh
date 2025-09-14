@@ -1,0 +1,900 @@
+<html><head></head><body>
+  <div class="Basic-Text-Frame" id="_idContainer049">
+    <h1 class="chapterNumber">3</h1>
+    <h1 class="chapterTitle" id="_idParaDest-78">APIs and Intent-Driven Networking</h1>
+    <p class="normal">In <em class="chapterRef">Chapter 2</em>, <em class="italic">Low-Level Network Device Interactions</em>, we looked at ways to interact with network devices using Python libraries such as Pexpect, Paramiko, Netmiko, and Nornir. Paramiko and similar libraries use persistent sessions that simulate a user typing in commands as if sitting in front of a Terminal. This approach works fine up to a point. It is easy to send commands for execution on a device and capture the output. However, when the output becomes more than a few lines of characters, it becomes difficult for a computer program to interpret the output. The returned output from Paramiko, for example, is a series of characters meant to be read by a human being. The structure of the output consists of lines and spaces that are human-friendly but difficult to be understood by computer programs.</p>
+    <p class="normal">The key point is: for our computer programs to automate many of the tasks we want to perform, we need to interpret the returned results and make follow-up actions based on the returned results. When we cannot accurately and predictably interpret the returned results, we cannot execute the next command with confidence.</p>
+    <p class="normal">This is a similar issue faced by the internet community in general, not just with network automation, whenever computers need to communicate with each other. Imagine the difference between a computer and a human being when they both read a web page. The human sees words, pictures, and spaces interpreted by the browser; the computer sees raw HTML code, Unicode characters, and binary files. What happens when a website needs to become a web service for another computer? The same web resources need to accommodate both human clients and other computer programs. Essentially, the web server needs to transfer information to another computer in the most optimized way. How do we do that?</p>
+    <p class="normal">The answer is the <strong class="keyWord">application program interface</strong> (<strong class="keyWord">API</strong>). It is important to note that an API is a concept and not a particular technology or framework. As defined by Wikipedia:</p>
+    <blockquote class="packt_quote">
+      <p class="quote">In computer programming, an application programming interface (API) is a set of subroutine definitions, protocols, and tools for building application software. In general terms, it’s a set of clearly defined methods of communication between various software components. A good API makes it easier to develop a computer program by providing all the building blocks, which are then put together by the programmer.</p>
+    </blockquote>
+    <p class="normal">In our use case, the set of clearly defined methods of communication would be between our Python program and the destination device. The APIs from our network devices provide a separate interface for the computer programs, such as our Python scripts. The exact API implementation is vendor and sometimes product specific. One vendor will prefer XML, while another might use JSON; one product might use HTTPS as the underlying transport protocol, and others might provide Python libraries called SDKs to be used with the device. We will see many different vendors and product examples in this chapter.</p>
+    <p class="normal">Despite the differences, the concept of an API remains the same: it is a communication method optimized for other computer programs.</p>
+    <p class="normal">In this chapter, we will look at the following topics:</p>
+    <ul>
+      <li class="bulletList">Treating <strong class="keyWord">infrastructure as code</strong> (<strong class="keyWord">IaC</strong>), intent-driven networking, and data modeling</li>
+      <li class="bulletList">Cisco NX-API, <strong class="keyWord">Application Centric Infrastructure</strong> (<strong class="keyWord">ACI</strong>), and Meraki examples</li>
+      <li class="bulletList">Juniper <strong class="keyWord">Network Configuration Protocol</strong> (<strong class="keyWord">NETCONF</strong>) and PyEZ</li>
+      <li class="bulletList">Arista eAPI and pyeapi</li>
+    </ul>
+    <p class="normal">We will start by examining why we want to treat infrastructure as code.</p>
+    <h1 class="heading-1" id="_idParaDest-79">Infrastructure-as-Code (IaC)</h1>
+    <p class="normal">In a perfect world, network <a id="_idIndexMarker187"/>engineers and architects who design and manage networks should focus on what they want the network to achieve instead of the device-level interactions. But we all know the world is far from perfect. Many years ago, when I worked as an intern for a second-tier ISP, one of my first assignments was to install a router on a customer’s site to turn up their fractional frame relay link (remember those?). <em class="italic">How would I do that?</em> I asked. I was handed down a standard operating procedure for turning up frame relay links.</p>
+    <p class="normal">I went to the customer site, blindly typed in the commands, looked at the green lights flashing, happily packed my bag, and patted myself on the back for a job well done. As exciting as that assignment was, I did not fully understand what I was doing. I was simply following<a id="_idIndexMarker188"/> instructions without thinking about the implication of the commands I was typing in. How would I troubleshoot something if the light was red instead of green? No doubt I would have had to call the office and ask a more senior engineer for help.</p>
+    <p class="normal">Network engineering is not about typing commands into a device; it is about building a way that allows services to be delivered from one point to another with as little friction as possible. The commands we have to use and the output we have to interpret are merely means to an end. In other words, we should be focused on our intent for the network. <strong class="keyWord">What we want our network to achieve is much more important than the command syntax we use to get the device to do what we want it to do</strong>. If we further abstract that idea of describing our intent as lines of code, we can potentially describe our whole infrastructure as a particular state. The infrastructure will be described in lines of code with the necessary software or framework to enforce that state.</p>
+    <h2 class="heading-2" id="_idParaDest-80">Intent-driven networking</h2>
+    <p class="normal">Since the publication of the <a id="_idIndexMarker189"/>first edition of this book, the<a id="_idIndexMarker190"/> terms <strong class="keyWord">intent-based networking</strong> (<strong class="keyWord">IBN</strong>) and <strong class="keyWord">intent-driven networking</strong> (<strong class="keyWord">IDN</strong>) have <a id="_idIndexMarker191"/>seen an uptick after major network vendors chose to use them to describe their next-generation devices. The two terms generally mean the same thing. <em class="italic">In my opinion, IDN is the idea of defining a state that the network should be in and having software code to enforce that state</em>. As an example, if my goal is to block port <code class="inlineCode">80</code> from being externally accessible, that is how I should declare it as the intention of the network. The underlying software will be responsible for knowing the syntax of configuring and applying the necessary access list on the border router to achieve that goal. Of course, IDN is an idea with no clear answer on the exact implementation. The software we use to enforce our declared intent can be a library, a framework, or a complete package we purchase from a vendor.</p>
+    <p class="normal">When using an API, it is my opinion that it gets us closer to a state of IDN. In short, because we abstract the layer of a specific command executed on our destination device, we focus on our intent instead of the specific commands. For example, going back to our <code class="inlineCode">block port 80</code> access-list example, we might use <code class="inlineCode">access-list</code> and <code class="inlineCode">access-group</code> on a Cisco router and <code class="inlineCode">filter-list</code> on a Juniper router. However, by using an API, our program can start asking the executor for their intent while masking the kind of physical device the software is<a id="_idIndexMarker192"/> talking to. We can even use a higher-level declarative framework, such as Ansible, which we will cover in <em class="chapterRef">Chapter 4</em>, <em class="italic">The Python Automation Framework</em>. But for now, let’s focus on network APIs.</p>
+    <h2 class="heading-2" id="_idParaDest-81">Screen scraping versus API structured output</h2>
+    <p class="normal">Imagine a common<a id="_idIndexMarker193"/> scenario where we need to log into the network device and make sure all the interfaces on the device<a id="_idIndexMarker194"/> are in an up/up state (both the status and the protocol are showing as <code class="inlineCode">up</code>). For the human network engineers getting into <a id="_idIndexMarker195"/>a Cisco NX-OS device, it is simple enough to issue the <code class="inlineCode">show ip interface brief</code> command in the Terminal to easily tell from the output which interface is up:</p>
+    <pre class="programlisting con"><code class="hljs-con">lax-edg-r1#sh ip int brief
+Interface                  IP-Address      OK? Method Status                Protocol
+GigabitEthernet0/0         192.168.2.51    YES NVRAM  up                    up
+GigabitEthernet0/1         10.0.0.1        YES NVRAM  up                    up
+Loopback0                  192.168.0.10    YES NVRAM  up                    
+</code></pre>
+    <p class="normal">The line break, white spaces, and the first line of the column title are easily distinguished by the human eye. They are there to help us line up, say, the IP addresses of each interface from line one to lines two and three. If we were to put ourselves in the computer’s position for capturing the information, all these spaces and line breaks only take us away from the important output, which is: which interfaces are in the up/up state? To illustrate this point, we can look at the Paramiko output for the <code class="inlineCode">show interface brief</code> command:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">new_connection.send(</span><span class="hljs-con-string">'show ip int brief/n'</span><span class="language-python">) </span>
+16
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">output = new_connection.recv(</span><span class="hljs-con-number">5000</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(output)</span>
+b'show ip interface brief\r\nInterface                  IP-Address      OK? Method Status                Protocol\r\nGigabitEthernet0/0         192.168.2.51    YES NVRAM  up                    up      \r\nGigabitEthernet0/1         10.0.0.1        YES NVRAM  up                    up      \r\nLoopback0                  192.168.0.10    YES NVRAM  up                    up      \r\nlax-edg-r1#'
+<span class="hljs-con-meta">&gt;&gt;&gt;</span>
+</code></pre>
+    <p class="normal">If we were to parse out that data contained in the output variable, this is what I would do in a pseudo-code fashion (pseudo-code means a simplified representation of the actual code I would write) to<a id="_idIndexMarker196"/> subtract the<a id="_idIndexMarker197"/> text into the information I need:</p>
+    <ol class="numberedList" style="list-style-type: decimal;">
+      <li class="numberedList" value="1">Split each line via the line break.</li>
+      <li class="numberedList">I do not need the first line that contains the executed command of <code class="inlineCode">show ip interface brief</code> and will discard it.</li>
+      <li class="numberedList">Take out<a id="_idIndexMarker198"/> everything on the second line up until the hostname prompt, and save it in a variable.</li>
+      <li class="numberedList">For the rest of the lines, because we do not know how many interfaces there are, we will use a regular expression statement to search if the line starts with interface names, such as <code class="inlineCode">lo</code> for loopback and <code class="inlineCode">GigabitEthernet</code> for Ethernet interfaces.</li>
+      <li class="numberedList">We will need to split this line into three sections separated by a space, each consisting of the name of the interface, IP address, and then the interface status.</li>
+      <li class="numberedList">The interface status will then be split further using the while space to give us the protocol, the link, and the admin status.</li>
+    </ol>
+    <p class="normal">Whew, that is a lot of work just for something that a human being can tell at a glance! The steps are what we need to do when we need to screen scrap unstructured texts. There are many downsides to this method, but some of the bigger problems that I can see are listed as follows:</p>
+    <ul>
+      <li class="bulletList"><strong class="keyWord">Scalability</strong>: We spent so much time on painstaking details to parse out the outputs from each command. It is hard to imagine how we can do this for the hundreds of commands we typically run.</li>
+      <li class="bulletList"><strong class="keyWord">Predictability</strong>: There is no guarantee that the output stays the same between different software versions. If the output is changed ever so slightly, it might just render our hard-fought battle of information gathering useless.</li>
+      <li class="bulletList"><strong class="keyWord">Vendor and software lock-in</strong>: Once we spend all this effort parsing the output for this particular vendor and software version, in this case, Cisco IOS, we need to repeat this process for the next vendor we pick. I don’t know about you, but if I were to evaluate a new vendor, the new vendor would be at a severe <a id="_idIndexMarker199"/>onboarding disadvantage if I have to rewrite all the screen scrap code again.</li>
+    </ul>
+    <p class="normal">Let’s compare that with <a id="_idIndexMarker200"/>an output from an NX-API call for the same <code class="inlineCode">show ip interface brief</code> command. We will go over the specifics of getting this output from the device later in this chapter, but what is<a id="_idIndexMarker201"/> important here is to compare the following output to the previous screen scraping output (the full output is in the course code repository):</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-punctuation">{</span>
+<span class="hljs-attr">"ins_api"</span><span class="hljs-punctuation">:{</span>
+<span class="hljs-attr">"outputs"</span><span class="hljs-punctuation">:{</span>
+<span class="hljs-attr">"output"</span><span class="hljs-punctuation">:{</span>
+<span class="hljs-attr">"body"</span><span class="hljs-punctuation">:{</span> <span class="hljs-attr">"TABLE_intf"</span><span class="hljs-punctuation">:[</span>
+<span class="hljs-punctuation">{</span>
+<span class="hljs-attr">"ROW_intf"</span><span class="hljs-punctuation">:{</span>
+<span class="hljs-attr">"admin-state"</span><span class="hljs-punctuation">:</span><span class="hljs-string">"up"</span><span class="hljs-punctuation">,</span>
+<span class="hljs-attr">"intf-name"</span><span class="hljs-punctuation">:</span><span class="hljs-string">"Lo0"</span><span class="hljs-punctuation">,</span>
+<span class="hljs-attr">"iod"</span><span class="hljs-punctuation">:</span><span class="hljs-number">84</span><span class="hljs-punctuation">,</span>
+<span class="hljs-attr">"ip-disabled"</span><span class="hljs-punctuation">:</span><span class="hljs-string">"FALSE"</span><span class="hljs-punctuation">,</span>
+<span class="hljs-attr">"link-state"</span><span class="hljs-punctuation">:</span><span class="hljs-string">"up"</span><span class="hljs-punctuation">,</span>
+<span class="hljs-attr">"prefix"</span><span class="hljs-punctuation">:</span><span class="hljs-string">"192.168.2.50"</span><span class="hljs-punctuation">,</span>
+<span class="hljs-attr">"proto-state"</span><span class="hljs-punctuation">:</span><span class="hljs-string">"up"</span>
+<span class="hljs-punctuation">}</span>
+<span class="hljs-punctuation">},</span>
+<span class="hljs-punctuation">{</span>
+<span class="hljs-attr">"ROW_intf"</span><span class="hljs-punctuation">:{</span>
+<span class="hljs-attr">"admin-state"</span><span class="hljs-punctuation">:</span><span class="hljs-string">"up"</span><span class="hljs-punctuation">,</span>
+<span class="hljs-attr">"intf-name"</span><span class="hljs-punctuation">:</span><span class="hljs-string">"Eth2/1"</span><span class="hljs-punctuation">,</span>
+<span class="hljs-attr">"iod"</span><span class="hljs-punctuation">:</span><span class="hljs-number">36</span><span class="hljs-punctuation">,</span>
+<span class="hljs-attr">"ip-disabled"</span><span class="hljs-punctuation">:</span><span class="hljs-string">"</span><span class="hljs-string">FALSE"</span><span class="hljs-punctuation">,</span>
+<span class="hljs-attr">"link-state"</span><span class="hljs-punctuation">:</span><span class="hljs-string">"up"</span><span class="hljs-punctuation">,</span>
+<span class="hljs-attr">"prefix"</span><span class="hljs-punctuation">:</span><span class="hljs-string">"10.0.0.6"</span><span class="hljs-punctuation">,</span>
+<span class="hljs-attr">"proto-state"</span><span class="hljs-punctuation">:</span><span class="hljs-string">"up"</span>
+<span class="hljs-punctuation">}</span>
+<span class="hljs-punctuation">}</span>
+<span class="hljs-punctuation">],</span>
+<span class="hljs-attr">"TABLE_vrf"</span><span class="hljs-punctuation">:[</span>
+<span class="hljs-punctuation">{</span>
+<span class="hljs-attr">"ROW_vrf"</span><span class="hljs-punctuation">:{</span>
+<span class="hljs-attr">"vrf-name-out"</span><span class="hljs-punctuation">:</span><span class="hljs-string">"default"</span>
+<span class="hljs-punctuation">}</span>
+<span class="hljs-punctuation">},</span>
+<span class="hljs-punctuation">{</span>
+<span class="hljs-attr">"ROW_vrf"</span><span class="hljs-punctuation">:{</span>
+<span class="hljs-attr">"vrf-name-out"</span><span class="hljs-punctuation">:</span><span class="hljs-string">"default"</span>
+<span class="hljs-punctuation">}</span>
+<span class="hljs-punctuation">}</span>
+<span class="hljs-punctuation">]</span>
+<span class="hljs-punctuation">},</span>
+<span class="hljs-attr">"code"</span><span class="hljs-punctuation">:</span><span class="hljs-string">"200"</span><span class="hljs-punctuation">,</span>
+<span class="hljs-attr">"input"</span><span class="hljs-punctuation">:</span><span class="hljs-string">"show ip int brief"</span><span class="hljs-punctuation">,</span>
+<span class="hljs-attr">"msg"</span><span class="hljs-punctuation">:</span><span class="hljs-string">"Success"</span>
+<span class="hljs-punctuation">}</span>
+<span class="hljs-punctuation">},</span>
+<span class="hljs-attr">"sid"</span><span class="hljs-punctuation">:</span><span class="hljs-string">"eoc"</span><span class="hljs-punctuation">,</span>
+<span class="hljs-attr">"type"</span><span class="hljs-punctuation">:</span><span class="hljs-string">"cli_show"</span><span class="hljs-punctuation">,</span>
+<span class="hljs-attr">"version"</span><span class="hljs-punctuation">:</span><span class="hljs-string">"1.2"</span>
+<span class="hljs-punctuation">}</span>
+<span class="hljs-punctuation">}</span>
+</code></pre>
+    <p class="normal">NX-API can return output in XML or JSON, and this is the JSON output. Right away, we can see the output is structured and can be mapped directly to the Python dictionary data structure. Once this is<a id="_idIndexMarker202"/> converted to a Python dictionary, no extensive parsing is required — we can <a id="_idIndexMarker203"/>simply pick the key and retrieve the value associated with the key. We can also see from the output that there is various metadata in the output, such as the success or failure of the<a id="_idIndexMarker204"/> command. If the command fails, there will be a message telling the sender the reason for the failure. We no longer need to keep track of the command issued, because it is already returned to you in the <code class="inlineCode">input</code> field. There is also other useful metadata in the output, such as the NX-API version.</p>
+    <p class="normal">This type of exchange makes life easier for both vendors and operators. On the vendor side, they can easily transfer configuration and state information. They can add extra fields when the need to expose additional data arises using the same data structure. On the operator side, we can easily ingest the information and build our infrastructure automation around it. It is agreed by all that network automation and programmability are beneficial to both <a id="_idIndexMarker205"/>network vendors and operators. The questions are usually about the transport, format, and structure of the automation messages. As we will see later in this chapter, there are<a id="_idIndexMarker206"/> many competing technologies under the umbrella of API. On the transport language<a id="_idIndexMarker207"/> alone, we have REST API, NETCONF, and RESTCONF, among others.</p>
+    <h2 class="heading-2" id="_idParaDest-82">Data modeling for IaC</h2>
+    <p class="normal">According to <a id="_idIndexMarker208"/>Wikipedia (<a href="https://en.wikipedia.org/wiki/Data_model"><span class="url">https://en.wikipedia.org/wiki/Data_model</span></a>), the definition of a data<a id="_idIndexMarker209"/> model is as follows:</p>
+    <blockquote class="packt_quote">
+      <p class="quote">A data model is an<a id="_idIndexMarker210"/> abstract model that organizes elements of data and standardizes how they relate to one another and to properties of real-world entities. For instance, a data model may specify that the data element representing a car be composed of a number of other elements which, in turn, represent the color and size of the car and define its owner.</p>
+    </blockquote>
+    <p class="normal">The data modeling process is illustrated in the following diagram:</p>
+    <figure class="mediaobject"><img alt="Diagram  Description automatically generated" src="../Images/B18403_03_01.png"/></figure>
+    <p class="packt_figref">Figure 3.1: Data example process</p>
+    <p class="normal">When applying the data model concept to the network, we can say the network data model is an abstract model<a id="_idIndexMarker211"/> that describes our network. If we take a closer look at a physical data center, a layer 2 Ethernet switch can be considered a device containing a table of MAC addresses mapped to each port. Our switch data model describes how the MAC address should be kept in a table, which includes the keys, additional characteristics (think of VLAN and private VLAN), and more. </p>
+    <p class="normal">Similarly, we can move<a id="_idIndexMarker212"/> beyond devices and map the whole data center in a data model. We can start with the number of devices in each of the access, distribution, and core layers, how they are connected, and how they should behave in a production environment. </p>
+    <p class="normal">For example, if we have a fat-tree network, we can declare in the model how many links each of the spine routers have, the number of routes they should contain, and the number of next-hops each of the prefixes would have.</p>
+    <p class="normal">Remember we talked about IaC? These characteristics can be mapped out in a format that can then be referenced as the ideal state we can check against using software programs.</p>
+    <h2 class="heading-2" id="_idParaDest-83">YANG and NETCONF</h2>
+    <p class="normal">One of the network data modeling languages is YANG, an interesting acronym for <strong class="keyWord">Yet Another Next Generation</strong> (despite <a id="_idIndexMarker213"/>common belief, some of the IETF workgroups do have a sense of humor). It was first published in RFC 6020 in <a id="_idIndexMarker214"/>2010 and has since gained traction among vendors and operators.</p>
+    <p class="normal">As a data modeling language, YANG is used to model the configuration of devices. It can also represent state data manipulated by the NETCONF protocol, NETCONF remote procedure calls, and NETCONF notifications. It aims to provide a common abstraction layer between the protocols, such as NETCONF, and the underlying vendor-specific syntax for configuration and operations. We will look at some examples of YANG later in this chapter.</p>
+    <p class="normal">Now that we have discussed the high-level concepts of API-based device management and data modeling, let us look at some examples from Cisco in their API structures.</p>
+    <h1 class="heading-1" id="_idParaDest-84">Cisco API examples</h1>
+    <p class="normal">Cisco Systems, the 800-pound gorilla in the networking space, have not missed out on the trend of network<a id="_idIndexMarker215"/> automation. In their push for network automation, they have made various in-house developments, product enhancements, partnerships, and many external acquisitions. However, with product lines spanning routers, switches, firewalls, servers (unified computing), wireless, collaboration software and hardware, and analytic software, it is hard to know where to start.</p>
+    <p class="normal">Since this book focuses on Python and networking, we will scope the Cisco examples in this section to the main networking products. In particular, we will cover the following:</p>
+    <ul>
+      <li class="bulletList">Nexus with NX-API</li>
+      <li class="bulletList">Cisco NETCONF and YANG examples</li>
+      <li class="bulletList">Cisco <strong class="keyWord">Application Centric Infrastructure</strong> (<strong class="keyWord">ACI</strong>) </li>
+      <li class="bulletList">Cisco Meraki examples</li>
+    </ul>
+    <p class="normal">For the NX-API and NETCONF examples in this chapter, we can either use the Cisco DevNet always-on lab devices mentioned in <em class="chapterRef">Chapter 2</em>, <em class="italic">Low-Level Network Device Interactions</em>, or a locally run Cisco CML virtual lab.</p>
+    <p class="normal">We will use the same lab topology as we did in <em class="chapterRef">Chapter 2</em>, <em class="italic">Low-Level Network Device Interactions</em>, and focus on the devices running <strong class="keyWord">NX-OSv</strong>,<strong class="keyWord"> lax-cor-r1</strong>, and <strong class="keyWord">nyc-cor-r1</strong>:</p>
+    <figure class="mediaobject"><img alt="Diagram  Description automatically generated" src="../Images/B18403_03_02.png"/></figure>
+    <p class="packt_figref">Figure 3.2: Lab NX-OSv Device</p>
+    <p class="normal">Let’s take a look at the Cisco NX-API example first.</p>
+    <h2 class="heading-2" id="_idParaDest-85">Cisco NX-API</h2>
+    <p class="normal">Nexus is <a id="_idIndexMarker216"/>Cisco’s primary product line of data center switches. The<a id="_idIndexMarker217"/> NX-API (<a href="http://www.cisco.com/c/en/us/td/docs/switches/datacenter/nexus9000/sw/6-x/programmability/guide/b_Cisco_Nexus_9000_Series_NX-OS_Programmability_Guide/b_Cisco_Nexus_9000_Series_NX-OS_Programmability_Guide_chapter_011.html"><span class="url">http://www.cisco.com/c/en/us/td/docs/switches/datacenter/nexus9000/sw/6-x/programmability/guide/b_Cisco_Nexus_9000_Series_NX-OS_Programmability_Guide/b_Cisco_Nexus_9000_Series_NX-OS_Programmability_Guide_chapter_011.html</span></a>) allows the engineer to interact with the switch outside of the device via a variety of transports including SSH, HTTP, and HTTPS.</p>
+    <h3 class="heading-3" id="_idParaDest-86">Lab preparation</h3>
+    <p class="normal">Remember to<a id="_idIndexMarker218"/> activate our Python virtual environment. This should be a given requirement whenever we perform labs from now on: </p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">$ </span><span class="hljs-con-built_in">source</span><span class="language-bash"> venv/bin/activate</span> 
+</code></pre>
+    <p class="normal">The <code class="inlineCode">ncclient</code> (<a href="https://github.com/ncclient/ncclient"><span class="url">https://github.com/ncclient/ncclient</span></a>) library is a Python library for NETCONF clients. We will also install a popular Python HTTP client library called Requests (<a href="https://pypi.org/project/requests/"><span class="url">https://pypi.org/project/requests/</span></a>). We can<a id="_idIndexMarker219"/> install both via pip: </p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">$ </span><span class="language-bash">pip install ncclient==0.6.13</span>
+<span class="hljs-con-meta">$ </span><span class="language-bash">pip install requests==2.28.1</span>
+</code></pre>
+    <p class="normal">NX-API on Nexus <a id="_idIndexMarker220"/>devices is turned off by default, so we will need to turn it on. We will also need a user. In this case, we will just use the existing user of <code class="inlineCode">cisco</code>: </p>
+    <pre class="programlisting con"><code class="hljs-con">feature nxapi
+username cisco password 5 $1$Nk7ZkwH0$fyiRmMMfIheqE3BqvcL0C1 role network-operator
+username cisco role network-admin
+username cisco passphrase lifetime 99999 warntime 14 gracetime 3
+</code></pre>
+    <p class="normal">For our lab, we will turn on both the <code class="inlineCode">nxapi</code> <code class="inlineCode">http</code> and the <code class="inlineCode">nxapi</code> <code class="inlineCode">sandbox</code> configuration; keep in mind that both should be turned off in production:</p>
+    <pre class="programlisting con"><code class="hljs-con">lax-cor-r1(config)# nxapi http port 80
+lax-cor-r1(config)# nxapi sandbox
+</code></pre>
+    <p class="normal">We are now ready to look at our first NX-API example.</p>
+    <h3 class="heading-3" id="_idParaDest-87">NX-API examples</h3>
+    <p class="normal">NX-API sandbox is <a id="_idIndexMarker221"/>a great way to play around with various commands, data formats, and even copy the Python script directly from the web page. In the last step, we turned it on for learning purposes. Again, the sandbox should be turned off in production.</p>
+    <p class="normal">Let’s launch a web browser with the Nexus device’s management IP and look at the various message formats, requests, and responses based on the CLI commands that we are already familiar with:</p>
+    <figure class="mediaobject"><img alt="" src="../Images/B18403_03_03.png"/></figure>
+    <p class="packt_figref">Figure 3.3: NX-API Developer Sandbox</p>
+    <p class="normal">In the following<a id="_idIndexMarker222"/> example, I have selected <code class="inlineCode">JSON-RPC</code> and the <code class="inlineCode">CLI</code> command type for the <code class="inlineCode">show version</code> command. Click on <strong class="keyWord">POST</strong>, and we will see both the <strong class="keyWord">REQUEST</strong> and <strong class="keyWord">RESPONSE</strong>:</p>
+    <figure class="mediaobject"><img alt="Graphical user interface, text, application  Description automatically generated" src="../Images/B18403_03_04.png"/></figure>
+    <p class="packt_figref">Figure 3.4: NX-API Sandbox example output</p>
+    <p class="normal">The sandbox comes in handy if you are unsure about the supportability of the message format or if you have <a id="_idIndexMarker223"/>questions about the response data field keys for the value you want to retrieve in your code.</p>
+    <p class="normal">In our first example, <code class="inlineCode">cisco_nxapi_1.py</code>, we are just going to connect to the Nexus device and print out the capabilities exchanged when the connection was first made:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment">#!/usr/bin/env python3</span>
+<span class="hljs-keyword">from</span> ncclient <span class="hljs-keyword">import</span> manager
+conn = manager.connect(
+        host=<span class="hljs-string">'192.168.2.50'</span>, 
+        port=<span class="hljs-number">22</span>, 
+        username=<span class="hljs-string">'cisco'</span>, 
+        password=<span class="hljs-string">'cisco'</span>, 
+        hostkey_verify=<span class="hljs-literal">False</span>, 
+        device_params={<span class="hljs-string">'name'</span>: <span class="hljs-string">'nexus'</span>}, 
+        look_for_keys=<span class="hljs-literal">False</span>
+        )
+<span class="hljs-keyword">for</span> value <span class="hljs-keyword">in</span> conn.server_capabilities:
+    <span class="hljs-built_in">print</span>(value)
+conn.close_session()
+</code></pre>
+    <p class="normal">In our example, we are using the <code class="inlineCode">ncclient</code> library to connect to the device. The connection parameters of the host, port, username, and password are self-explanatory. The device parameter<a id="_idIndexMarker224"/> specifies the kind of device the client is connecting to. The <code class="inlineCode">hostkey_verify</code> bypasses the <code class="inlineCode">known_host</code> requirement for SSH; if it’s not set to false, the host fingerprint will need to be listed in the <code class="inlineCode">~/.ssh/known_hosts</code> file. The <code class="inlineCode">look_for_keys</code> option disables public-private key authentication and uses the username and password combination for authentication.</p>
+    <p class="normal">The output will show the XML- and NETCONF-supported features of this version of NX-OS:</p>
+    <pre class="programlisting con"><code class="hljs-con">(venv) $ python cisco_nxapi_1.py
+urn:ietf:params:xml:ns:netconf:base:1.0
+urn:ietf:params:netconf:base:1.0
+urn:ietf:params:netconf:capability:validate:1.0
+urn:ietf:params:netconf:capability:writable-running:1.0
+urn:ietf:params:netconf:capability:url:1.0?scheme=file
+urn:ietf:params:netconf:capability:rollback-on-error:1.0
+urn:ietf:params:netconf:capability:candidate:1.0
+urn:ietf:params:netconf:capability:confirmed-commit:1.0
+</code></pre>
+    <p class="normal">Using ncclient and NETCONF over SSH is great because it gets us closer to the native implementation and syntax. We will use the same library later on in this book for other vendors as a comparison. For NX-API, we can also use HTTPS and JSON-RPC. In the earlier screenshot of <strong class="keyWord">NX-API Developer Sandbox</strong>, if you noticed, in the <strong class="keyWord">REQUEST</strong> box, there is a box labeled <strong class="keyWord">Python</strong>. If you click on it, you will be able to get an automatically converted Python script based on the Requests library.</p>
+    <p class="normal">For the <code class="inlineCode">show version</code> example from the NX-API sandbox, the following Python script is automatically generated for us. I am pasting in the output without any modifications:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-string">"""</span>
+NX-API-BOT 
+<span class="hljs-string">"""</span>
+<span class="hljs-keyword">import</span> requests
+<span class="hljs-keyword">import</span> json
+<span class="hljs-string">"""</span>
+Modify these please
+<span class="hljs-string">"""</span>
+url=<span class="hljs-string">'http://YOURIP/ins'</span>
+switchuser=<span class="hljs-string">'</span><span class="hljs-string">USERID'</span>
+switchpassword=<span class="hljs-string">'PASSWORD'</span>
+myheaders={<span class="hljs-string">'content-type'</span>:<span class="hljs-string">'application/json-rpc'</span>}
+payload=[
+  {
+    <span class="hljs-string">"jsonrpc"</span>: <span class="hljs-string">"2.0"</span>,
+    <span class="hljs-string">"method"</span>: <span class="hljs-string">"cli"</span>,
+    <span class="hljs-string">"params"</span>: {
+      <span class="hljs-string">"cmd"</span>: <span class="hljs-string">"</span><span class="hljs-string">show version"</span>,
+      <span class="hljs-string">"version"</span>: <span class="hljs-number">1.2</span>
+     },
+     <span class="hljs-string">"id"</span>: <span class="hljs-number">1</span>
+  }
+]
+response = requests.post(url,data=json.dumps(payload), headers=myheaders,auth=(switchuser,switchpassword)).json()
+</code></pre>
+    <p class="normal">In the <code class="inlineCode">cisco_nxapi_2.py</code> script, you will see that I have taken the script the NX-API sandbox generated and<a id="_idIndexMarker225"/> only modified the URL, username, and password of the script. The output was parsed to include only the software version. Here is the output:</p>
+    <pre class="programlisting con"><code class="hljs-con">(venv) $ python cisco_nxapi_2.py
+7.3(0)D1(1)
+</code></pre>
+    <p class="normal">The best part about using this method is that the same overall syntax structure works with configuration and <code class="inlineCode">show</code> commands. This is illustrated in the <code class="inlineCode">cisco_nxapi_3.py</code> file, configuring the device with a new hostname. After command execution, you will see the device hostname being changed from <code class="inlineCode">lax-cor-r1</code> to <code class="inlineCode">lax-cor-r1-new</code>:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">lax-cor-r1-new# </span><span class="language-bash">sh run | i hostname</span>
+hostname lax-cor-r1-new
+</code></pre>
+    <p class="normal">For multiline configuration, you can use the ID field to specify the order of operations. This is shown in <code class="inlineCode">cisco_nxapi_4.py</code>. The following payload was listed for changing the description of the interface Ethernet 2/12 in the interface configuration mode:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-punctuation">{</span>
+  <span class="hljs-attr">"jsonrpc"</span><span class="hljs-punctuation">:</span> <span class="hljs-string">"2.0"</span><span class="hljs-punctuation">,</span>
+  <span class="hljs-attr">"method"</span><span class="hljs-punctuation">:</span> <span class="hljs-string">"cli"</span><span class="hljs-punctuation">,</span>
+  <span class="hljs-attr">"params"</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">{</span>
+    <span class="hljs-attr">"cmd"</span><span class="hljs-punctuation">:</span> <span class="hljs-string">"interface ethernet 2/12"</span><span class="hljs-punctuation">,</span>
+    <span class="hljs-attr">"version"</span><span class="hljs-punctuation">:</span> <span class="hljs-number">1.2</span>
+  <span class="hljs-punctuation">},</span>
+  <span class="hljs-attr">"id"</span><span class="hljs-punctuation">:</span> <span class="hljs-number">1</span>
+<span class="hljs-punctuation">},</span>
+<span class="hljs-punctuation">{</span>
+  <span class="hljs-attr">"jsonrpc"</span><span class="hljs-punctuation">:</span> <span class="hljs-string">"2.0"</span><span class="hljs-punctuation">,</span>
+  <span class="hljs-attr">"method"</span><span class="hljs-punctuation">:</span> <span class="hljs-string">"cli"</span><span class="hljs-punctuation">,</span>
+  <span class="hljs-attr">"params"</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">{</span>
+    <span class="hljs-attr">"cmd"</span><span class="hljs-punctuation">:</span> <span class="hljs-string">"description foo-bar"</span><span class="hljs-punctuation">,</span>
+    <span class="hljs-attr">"version"</span><span class="hljs-punctuation">:</span> <span class="hljs-number">1.2</span>
+  <span class="hljs-punctuation">},</span>
+  <span class="hljs-attr">"id"</span><span class="hljs-punctuation">:</span> <span class="hljs-number">2</span>
+<span class="hljs-punctuation">},</span>
+<span class="hljs-punctuation">{</span>
+  <span class="hljs-attr">"jsonrpc"</span><span class="hljs-punctuation">:</span> <span class="hljs-string">"2.0"</span><span class="hljs-punctuation">,</span>
+  <span class="hljs-attr">"</span><span class="hljs-attr">method"</span><span class="hljs-punctuation">:</span> <span class="hljs-string">"cli"</span><span class="hljs-punctuation">,</span>
+  <span class="hljs-attr">"params"</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">{</span>
+    <span class="hljs-attr">"cmd"</span><span class="hljs-punctuation">:</span> <span class="hljs-string">"end"</span><span class="hljs-punctuation">,</span>
+    <span class="hljs-attr">"version"</span><span class="hljs-punctuation">:</span> <span class="hljs-number">1.2</span>
+  <span class="hljs-punctuation">},</span>
+  <span class="hljs-attr">"id"</span><span class="hljs-punctuation">:</span> <span class="hljs-number">3</span>
+<span class="hljs-punctuation">},</span>
+<span class="hljs-punctuation">{</span>
+  <span class="hljs-attr">"jsonrpc"</span><span class="hljs-punctuation">:</span> <span class="hljs-string">"2.0"</span><span class="hljs-punctuation">,</span>
+  <span class="hljs-attr">"method"</span><span class="hljs-punctuation">:</span> <span class="hljs-string">"cli"</span><span class="hljs-punctuation">,</span>
+  <span class="hljs-attr">"params"</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">{</span>
+    <span class="hljs-attr">"cmd"</span><span class="hljs-punctuation">:</span> <span class="hljs-string">"copy run start"</span><span class="hljs-punctuation">,</span>
+    <span class="hljs-attr">"version"</span><span class="hljs-punctuation">:</span> <span class="hljs-number">1.2</span>
+  <span class="hljs-punctuation">},</span>
+  <span class="hljs-attr">"</span><span class="hljs-attr">id"</span><span class="hljs-punctuation">:</span> <span class="hljs-number">4</span>
+  <span class="hljs-punctuation">}</span>
+<span class="hljs-punctuation">]</span>
+</code></pre>
+    <p class="normal">We can verify the <a id="_idIndexMarker226"/>result of the previous configuration script by looking at the running configuration of the Nexus device:</p>
+    <pre class="programlisting con"><code class="hljs-con">interface Ethernet2/12
+  description foo-bar
+  shutdown
+  no switchport
+  mac-address 0000.0000.002f
+</code></pre>
+    <p class="normal">In the next example, we will see how we can use YANG with NETCONF.</p>
+    <h2 class="heading-2" id="_idParaDest-88">The Cisco YANG Model</h2>
+    <p class="normal">Let us take a look at <a id="_idIndexMarker227"/>Cisco’s YANG model support with an example. First, we should know that the YANG model only defines the type of schema sent over the NETCONF protocol without dictating what the data should be. Secondly, it is worth<a id="_idIndexMarker228"/> pointing out that NETCONF exists as a standalone protocol, as we saw in the NX-API section. Thirdly, YANG has different supportability across vendors and product lines. For example, if we run a capability exchange script for a Cisco CSR 1000v running IOS-XE, we can see the YANG models supported on the platform:</p>
+    <pre class="programlisting con"><code class="hljs-con">urn:cisco:params:xml:ns:yang:cisco-virtual-service?module=cisco- virtual-service&amp;revision=2015-04-09
+http://tail-f.com/ns/mibs/SNMP-NOTIFICATION-MIB/200210140000Z? module=SNMP-NOTIFICATION-MIB&amp;revision=2002-10-14
+urn:ietf:params:xml:ns:yang:iana-crypt-hash?module=iana-crypt-hash&amp;revision=2014-04-04&amp;features=crypt-hash-sha-512,crypt-hash-sha-256,crypt-hash-md5
+urn:ietf:params:xml:ns:yang:smiv2:TUNNEL-MIB?module=TUNNEL-MIB&amp;revision=2005-05-16
+urn:ietf:params:xml:ns:yang:smiv2:CISCO-IP-URPF-MIB?module=CISCO-IP-URPF-MIB&amp;revision=2011-12-29
+urn:ietf:params:xml:ns:yang:smiv2:ENTITY-STATE-MIB?module=ENTITY-STATE-MIB&amp;revision=2005-11-22
+urn:ietf:params:xml:ns:yang:smiv2:IANAifType-MIB?module=IANAifType-MIB&amp;revision=2006-03-31
+&lt;omitted&gt;
+</code></pre>
+    <p class="normal">YANG has somewhat uneven support among different vendors and products. I have included a <code class="inlineCode">cisco_yang_1.py</code> script with the book code repository for a Cisco IOS-XE always-on sandbox provided by Cisco Devnet that shows how to parse out the NETCONF XML output with YANG filters called <code class="inlineCode">urn:ietf:params:xml:ns:yang:ietf-interfaces</code>. </p>
+    <p class="normal">We can see the latest vendor support on the YANG GitHub project page (<a href="https://github.com/YangModels/yang/tree/master/vendor"><span class="url">https://github.com/YangModels/yang/tree/master/vendor</span></a>).</p>
+    <h2 class="heading-2" id="_idParaDest-89">The Cisco ACI examples</h2>
+    <p class="normal">The Cisco <a id="_idIndexMarker229"/>Application Centric Infrastructure, or<a id="_idIndexMarker230"/> ACI, is meant to provide a centralized controller approach to all network components we defined within its management scope. In the data center context, the centralized controller is aware of and manages the spine, leaf, and top-of-rack switches, as well as all the network service functions. This can be done through a GUI, CLI, or API. Some might argue that the ACI is Cisco’s answer to broader<a id="_idIndexMarker231"/> controller-based, software-defined networking.</p>
+    <p class="normal">The ACI API follows the REST model to use the HTTP verbs (<code class="inlineCode">GET</code>, <code class="inlineCode">POST</code>, and <code class="inlineCode">DELETE</code>) to specify the<a id="_idIndexMarker232"/> intended operation. In our example, we can use the Cisco DevNet always-on lab ACI device (<a href="https://devnetsandbox.cisco.com/RM/Topology"><span class="url">https://devnetsandbox.cisco.com/RM/Topology</span></a>): </p>
+    <figure class="mediaobject"><img alt="A picture containing graphical user interface  Description automatically generated" src="../Images/B18403_03_05.png"/></figure>
+    <p class="packt_figref">Figure 3.5: Cisco DevNet Sandboxes</p>
+    <div class="packt_tip">
+      <p class="normal">Always check the latest Cisco DevNet page for the latest device information, username, and password as they may have changed since the book was written.</p>
+    </div>
+    <p class="normal">The controller is the brain of the network that maintains visibility to all network devices: </p>
+    <figure class="mediaobject"><img alt="Diagram  Description automatically generated" src="../Images/B18403_03_06.png"/></figure>
+    <p class="packt_figref">Figure 3.6: Cisco ACI Controller</p>
+    <p class="normal">We can use a<a id="_idIndexMarker233"/> web browser to log on to the controller and take<a id="_idIndexMarker234"/> a look at the different tenants: </p>
+    <figure class="mediaobject"><img alt="Graphical user interface  Description automatically generated" src="../Images/B18403_03_07.png"/></figure>
+    <p class="packt_figref">Figure 3.7: Cisco ACI Tenants</p>
+    <p class="normal">Let’s use a Python interactive prompt to see how we can interact with the ACI controller. We will start <a id="_idIndexMarker235"/>by importing the correct libraries <a id="_idIndexMarker236"/>and defining the destination URL as well as the login credentials:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">import</span> requests, json
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> URL = <span class="hljs-con-string">'https://sandboxapicdc.cisco.com'</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> PASSWORD = <span class="hljs-con-string">"&lt;password&gt;"</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> LOGIN = <span class="hljs-con-string">"admin"</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> AUTH_URL = URL + <span class="hljs-con-string">'/api/aaaLogin.json'</span>
+</code></pre>
+    <p class="normal">We can then make a request and convert the response into JSON format: </p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> r = requests.post(AUTH_URL, json={<span class="hljs-con-string">"aaaUser"</span>:{<span class="hljs-con-string">"attributes"</span>:{<span class="hljs-con-string">"name"</span>:LOGIN,<span class="hljs-con-string">"pwd"</span>:PASSWORD}}}, verify=<span class="hljs-con-literal">False</span>)
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> r_json = r.json()
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> r_json
+{'totalCount': '1', 'imdata': [{'aaaLogin': {'attributes': {'token': _&lt;skip&gt;} 
+</code></pre>
+    <p class="normal">We can grab the token from the response and use it as an authentication cookie for future requests to the controller. In the example below, we query for the <code class="inlineCode">cisco</code> tenant that we saw in the controller tenant section: </p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> token = r_json[<span class="hljs-con-string">"imdata"</span>][<span class="hljs-con-number">0</span>][<span class="hljs-con-string">"aaaLogin"</span>][<span class="hljs-con-string">"attributes"</span>][<span class="hljs-con-string">"token"</span>]
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> cookie = {<span class="hljs-con-string">'APIC-cookie'</span>:token}
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> QUERY_URL = URL + <span class="hljs-con-string">'/api/node/class/fvTenant.json?query-target-filter=eq(fvTenant.name,"Cisco")'</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> r_cisco = requests.get(QUERY_URL, cookies=cookie, verify=<span class="hljs-con-literal">False</span>)
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> r_cisco.json()
+{'totalCount': '1', 'imdata': [{'fvTenant': {'attributes': {'annotation': '', 'childAction': '', 'descr': '', 'dn': 'uni/tn-Cisco', 'extMngdBy': '', 'lcOwn': 'local', 'modTs': '2022-08-06T14:05:15.893+00:00', 'monPolDn': 'uni/tn-common/monepg-default', 'name': 'Cisco', 'nameAlias': '', 'ownerKey': '', 'ownerTag': '', 'status': '', 'uid': '15374', 'userdom': ':all:'}}}]}
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span>(r_cisco.json()[<span class="hljs-con-string">'imdata'</span>][<span class="hljs-con-number">0</span>][<span class="hljs-con-string">'fvTenant'</span>][<span class="hljs-con-string">'attributes'</span>][<span class="hljs-con-string">'dn'</span>])
+uni/tn-Cisco
+</code></pre>
+    <p class="normal">As you can see, we only query a single controller device, but we can get a high-level view of all the network<a id="_idIndexMarker237"/> devices that the controller is aware of. This is pretty neat! The downside is, of course, that the ACI controller only supports Cisco devices at this time.</p>
+    <p class="normal"><strong class="keyWord">Cisco IOS-XE</strong></p>
+    <p class="normal">For the most part, Cisco IOS-XE scripts <a id="_idIndexMarker238"/>are functionally similar to scripts we have written for NX-OS. IOS-XE has additional features that can benefit Python network programmability, such as on-box Python and a guest shell, <a href="https://developer.cisco.com/docs/ios-xe/#!on-box-python-and-guestshell-quick-start-guide/onbox-python"><span class="url">https://developer.cisco.com/docs/ios-xe/#!on-box-python-and-guestshell-quick-start-guide/onbox-python</span></a>.</p>
+    <p class="normal">Similar to ACI, Cisco <a id="_idIndexMarker239"/>Meraki is a centrally managed controller that has visibility for multiple wired and wireless networks. Unlike the ACI controller, Meraki is cloud based, so it is hosted outside of the on-premises location. Let us look at some of the Cisco Meraki features and examples in the next section.</p>
+    <h1 class="heading-1" id="_idParaDest-90">Cisco Meraki controller</h1>
+    <p class="normal">Cisco Meraki is a cloud-based centralized controller that simplifies IT management of devices. The approach is very <a id="_idIndexMarker240"/>similar to ACI with the exception that the controller has a cloud-based public URL. The user typically receives the API key via the GUI, then it can be used in a Python script to retrieve the organization ID:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment">#!/usr/bin/env python3</span>
+<span class="hljs-keyword">import</span> requests
+<span class="hljs-keyword">import</span> pprint
+myheaders={'<span class="hljs-string">X-Cisco-Meraki-API-Key'</span>: &lt;skip&gt;}
+url ='<span class="hljs-string">https://dashboard.meraki.com/api/v0/organizations'</span>
+response = requests.get(url, headers=myheaders, verify=<span class="hljs-literal">False</span>)
+pprint.pprint(response.json())
+</code></pre>
+    <p class="normal">Let us execute the script, <code class="inlineCode">cisco_meraki_1.py</code>, which is a simple request toward an always-on Meraki controller provided by Cisco DevNet:</p>
+    <pre class="programlisting con"><code class="hljs-con">(venv) $ python cisco_meraki_1.py
+ [{'id': '681155',
+  'name': 'DeLab',
+  'url': 'https://n6.meraki.com/o/49Gm_c/manage/organization/overview'},
+ {'id': '865776',
+  'name': 'Cisco Live US 2019',
+  'url': 'https://n22.meraki.com/o/CVQqTb/manage/organization/overview'},
+ {'id': '549236',
+  'name': 'DevNet Sandbox',
+  'url': 'https://n149.meraki.com/o/t35Mb/manage/organization/overview'},
+ {'id': '52636',
+  'name': 'Forest City - Other',
+  'url': 'https://n42.meraki.com/o/E_utnd/manage/organization/overview'}]
+</code></pre>
+    <p class="normal">From there, the organization<a id="_idIndexMarker241"/> ID can be used to further retrieve information, such as the inventory, network information, and so on:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment">#!/usr/bin/env python3</span>
+<span class="hljs-keyword">import</span> requests
+<span class="hljs-keyword">import</span> pprint
+myheaders={<span class="hljs-string">'X-Cisco-Meraki-API-Key'</span>: &lt;skip&gt;}
+orgId = <span class="hljs-string">'549236'</span>
+url = <span class="hljs-string">'https://dashboard.meraki.com/api/v0/organizations/'</span> + orgId + <span class="hljs-string">'/networks'</span>
+response = requests.get(url, headers=myheaders, verify=<span class="hljs-literal">False</span>)
+pprint.pprint(response.json())
+</code></pre>
+    <p class="normal">Let’s take a look at the output from the <code class="inlineCode">cisco_meraki_2.py</code> script:</p>
+    <pre class="programlisting con"><code class="hljs-con">(venv) $ python cisco_meraki_2.py
+&lt;skip&gt;
+[{'disableMyMerakiCom': False,
+  'disableRemoteStatusPage': True,
+  'id': 'L_646829496481099586',
+  'name': 'DevNet Always On Read Only',
+  'organizationId': '549236',
+  'productTypes': ['appliance', 'switch'],
+  'tags': ' Sandbox ',
+  'timeZone': 'America/Los_Angeles',
+  'type': 'combined'},
+ {'disableMyMerakiCom': False,
+  'disableRemoteStatusPage': True,
+  'id': 'N_646829496481152899',
+  'name': 'test - mx65',
+  'organizationId': '549236',
+  'productTypes': ['appliance'],
+  'tags': None,
+  'timeZone': 'America/Los_Angeles',
+  'type': 'appliance'},
+&lt;skip&gt;
+</code></pre>
+    <p class="normal">We have seen examples of Cisco devices using NX-API, ACI, and the Meraki controller. In the next section, let <a id="_idIndexMarker242"/>us take a look at some of the Python examples working with Juniper Networks devices.</p>
+    <h1 class="heading-1" id="_idParaDest-91">The Python API for Juniper Networks</h1>
+    <p class="normal">Juniper Networks has always been a favorite among the service provider crowd. If we take a step back and look at the service provider vertical, it would make sense that automating network <a id="_idIndexMarker243"/>equipment is at the top of their list of requirements. Before the dawn of cloud-scale data centers, service providers had the most network equipment to manage. For example, a typical enterprise network might have a few redundant internet connections at the corporate headquarters with a few hub-and-spoke remote sites connected back to the HQ using a <a id="_idIndexMarker244"/>private <strong class="keyWord">multiprotocol label switching</strong> (<strong class="keyWord">MPLS</strong>) network. But to a service provider, they are the ones needing to build, provision, manage, and troubleshoot the MPLS connections and the underlying networks. They make their money by selling the bandwidth along with value-added managed services. It would make sense for the service providers to invest in automation to use the fewest engineering hours to keep the network humming along. In their use case, network automation is a key to their competitive advantage.</p>
+    <p class="normal">In my opinion, the difference between a service provider’s network needs compared to a cloud data center is that, traditionally, service providers aggregate more services into a single device. A good example would be MPLS, which almost all major service providers provide but rarely adopt in enterprise or data center networks. Juniper Networks has identified this need for network programmability and excelled at fulfilling the service provider requirements of automating. Let’s take a look at some of Juniper’s automation APIs.</p>
+    <h2 class="heading-2" id="_idParaDest-92">Juniper and NETCONF</h2>
+    <p class="normal">NETCONF is an IETF standard that was first published in 2006 as <code class="inlineCode">RFC 4741</code> and later revised in <code class="inlineCode">RFC 6241</code>. Juniper <a id="_idIndexMarker245"/>Networks contributed heavily to both of the RFC standards. In fact, Juniper was the sole author of <code class="inlineCode">RFC 4741</code>. It makes sense that Juniper devices fully support NETCONF, and it serves as the underlying layer for most of its automation tools and frameworks. Some of the main characteristics of NETCONF include the following:</p>
+    <ol class="numberedList" style="list-style-type: decimal;">
+      <li class="numberedList" value="1">It uses <strong class="keyWord">extensible markup language</strong> (<strong class="keyWord">XML</strong>) for data <a id="_idIndexMarker246"/>encoding.</li>
+      <li class="numberedList">It uses <strong class="keyWord">remote procedure calls</strong> (<strong class="keyWord">RPCs</strong>). Therefore, if<a id="_idIndexMarker247"/> HTTP(s) is the transport protocol, the URL endpoint is identical while the operation intended is specified in the<a id="_idIndexMarker248"/> request’s body.</li>
+      <li class="numberedList">It is conceptually based on layers from top to bottom. The layers include the content, operations, messages, and transport:</li>
+    </ol>
+    <figure class="mediaobject"><img alt="Diagram  Description automatically generated with medium confidence" src="../Images/B18403_03_08.png"/></figure>
+    <p class="packt_figref">Figure 3.8: NETCONF model</p>
+    <p class="normal">Juniper Networks provides an extensive NETCONF XML management protocol developer guide (<a href="https://www.juniper.net/techpubs/en_US/junos13.2/information-products/pathway-pages/netconf-guide/netconf.html#overview"><span class="url">https://www.juniper.net/techpubs/en_US/junos13.2/information-products/pathway-pages/netconf-guide/netconf.html#overview</span></a>) in its technical library. Let’s take a look at its usage.</p>
+    <h3 class="heading-3" id="_idParaDest-93">Device preparation</h3>
+    <p class="normal">To start using NETCONF, let’s create <a id="_idIndexMarker249"/>a separate user as well as turn on the required services:</p>
+    <pre class="programlisting con"><code class="hljs-con">set system login user juniper uid 2001
+set system login user juniper class super-user
+set system login user juniper authentication encrypted-password "$1$0EkA.XVf$cm80A0GC2dgSWJIYWv7Pt1" 
+set system services ssh
+set system services telnet
+set system services netconf ssh port 830
+</code></pre>
+    <p class="normal">For the Juniper device lab, I am using an older, unsupported <a id="_idIndexMarker250"/>platform called <strong class="keyWord">JunOS Olive</strong>. It is solely used for lab purposes. You can use your favorite search engine to find some interesting facts and history about Juniper Olive. </p>
+    <p class="normal">On the Juniper device, you<a id="_idIndexMarker251"/> can always take a look at the configuration either in a flat file or in XML format. The <code class="inlineCode">flat</code> file comes in handy when you need to specify a one-liner command to make configuration changes:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">netconf@foo&gt; </span><span class="language-bash">show configuration | display </span><span class="hljs-con-built_in">set</span> 
+set version 12.1R1.9
+set system host-name foo set system domain-name bar
+&lt;omitted&gt;
+</code></pre>
+    <p class="normal">The XML format comes in handy at times when you need to see the XML structure of the configuration:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">netconf@foo&gt; </span><span class="language-bash">show configuration | display xml</span>
+&lt;rpc-reply &gt;
+&lt;configuration junos:commit-seconds="1485561328" junos:commit- localtime="2017-01-27 23:55:28 UTC" junos:commit-user="netconf"&gt;
+&lt;version&gt;12.1R1.9&lt;/version&gt;
+&lt;system&gt;
+&lt;host-name&gt;foo&lt;/host-name&gt;
+&lt;domain-name&gt;bar&lt;/domain-name&gt;
+</code></pre>
+    <p class="normal">We installed the necessary Linux libraries and the <code class="inlineCode">ncclient</code> Python library in the <em class="italic">Lab software installation and device preparation within Cisco NX-API</em> section. If you have not done so, go back to that section and install the necessary packages.</p>
+    <p class="normal">We are now ready to look at our first Juniper NETCONF example.</p>
+    <h3 class="heading-3" id="_idParaDest-94">Juniper NETCONF examples</h3>
+    <p class="normal">We will use a pretty<a id="_idIndexMarker252"/> straightforward example to execute <code class="inlineCode">show version</code>. We will name this file <code class="inlineCode">junos_netconf_1.py</code>:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment">#!/usr/bin/env python3</span>
+<span class="hljs-keyword">from</span> ncclient <span class="hljs-keyword">import</span> manager
+conn = manager.connect(
+    host=<span class="hljs-string">'192.168.2.70'</span>, 
+    port=<span class="hljs-string">'830'</span>, 
+    username=<span class="hljs-string">'juniper'</span>, 
+    password=<span class="hljs-string">'juniper!'</span>,
+    timeout=<span class="hljs-number">10</span>,
+    device_params={<span class="hljs-string">'name'</span>:<span class="hljs-string">'junos'</span>},
+    hostkey_verify=<span class="hljs-literal">False</span>)
+result = conn.command(<span class="hljs-string">'show version'</span>, <span class="hljs-built_in">format</span>=<span class="hljs-string">'text'</span>)
+<span class="hljs-built_in">print</span>(result.xpath(<span class="hljs-string">'output'</span>)[<span class="hljs-number">0</span>].text)
+conn.close_session()
+</code></pre>
+    <p class="normal">All the fields in the script should be pretty self-explanatory, with the exception of <code class="inlineCode">device_params</code>. Starting <a id="_idIndexMarker253"/>with ncclient 0.4.1, the device handler was added to specify different vendors or platforms. For example, the name can be Juniper, CSR, Nexus, or Huawei. We also added <code class="inlineCode">hostkey_verify=False</code> because we are using a self-signed certificate from the Juniper device.</p>
+    <p class="normal">The returned output is <code class="inlineCode">rpc-reply</code> encoded in XML with an output element:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-section">&lt;rpc-reply message-id=</span><span class="hljs-string">"urn:uuid:7d9280eb-1384-45fe-be48- b7cd14ccf2b7"</span><span class="hljs-section">&gt;</span>
+<span class="hljs-section">&lt;output&gt;</span>
+<span class="hljs-attribute">Hostname</span>: foo
+<span class="hljs-attribute">Model</span>: olive
+<span class="hljs-attribute">JUNOS</span> Base OS boot<span class="hljs-meta"> [12.1R1.9]</span>
+<span class="hljs-attribute">JUNOS</span> Base OS Software Suite<span class="hljs-meta"> [12.1R1.9]</span>
+<span class="hljs-section">&lt;omitted&gt;</span>
+<span class="hljs-attribute">JUNOS</span> Runtime Software Suite<span class="hljs-meta"> [12.1R1.9] JUNOS Routing Software Suite [12.1R1.9]</span>
+<span class="hljs-section">&lt;/output&gt;</span>
+<span class="hljs-section">&lt;/rpc-reply&gt;</span>
+</code></pre>
+    <p class="normal">We can parse the XML output to just include the output text:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-title">print</span><span class="hljs-params">(result.xpath(</span><span class="hljs-string">'output'</span><span class="hljs-params">)</span><span class="hljs-selector-attr">[0]</span>.text)
+</code></pre>
+    <p class="normal">In <code class="inlineCode">junos_netconf_2.py</code>, we will make configuration changes to the device. We will start with some new imports for constructing new XML elements and the connection manager object:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment">#!/usr/bin/env python3</span>
+<span class="hljs-keyword">from</span> ncclient import manager
+<span class="hljs-keyword">from</span> ncclient.xml_ import new_ele, sub_ele
+conn = manager.connect(<span class="hljs-attribute">host</span>=<span class="hljs-string">'192.168.2.70'</span>, <span class="hljs-attribute">port</span>=<span class="hljs-string">'830'</span>, <span class="hljs-attribute">username</span>=<span class="hljs-string">'juniper'</span>, <span class="hljs-attribute">password</span>=<span class="hljs-string">'juniper!'</span>, <span class="hljs-attribute">timeout</span>=10, device_params={<span class="hljs-string">'name'</span>:<span class="hljs-string">'junos'</span>}, <span class="hljs-attribute">hostkey_verify</span>=<span class="hljs-literal">False</span>)
+</code></pre>
+    <p class="normal">We will lock the <a id="_idIndexMarker254"/>configuration and make configuration changes:</p>
+    <pre class="programlisting code"><code class="hljs-code"># <span class="hljs-keyword">lock</span> <span class="hljs-keyword">configuration</span> <span class="hljs-keyword">and</span> make <span class="hljs-keyword">configuration</span> changes conn.<span class="hljs-keyword">lock</span>()
+# build <span class="hljs-keyword">configuration</span>
+config = new_ele(<span class="hljs-string">'system'</span>)
+sub_ele(config, <span class="hljs-string">'host-name'</span>).text = <span class="hljs-string">'master'</span>
+sub_ele(config, <span class="hljs-string">'domain-name'</span>).text = <span class="hljs-string">'python'</span>
+</code></pre>
+    <p class="normal">In the build configuration section, we create a new element of <code class="inlineCode">system</code> with sub-elements of <code class="inlineCode">host-name</code> and <code class="inlineCode">domain-name</code>. If you were wondering about the hierarchy structure, you can see from the XML display that the node structure with <code class="inlineCode">system</code> is the parent of <code class="inlineCode">host-name</code> and <code class="inlineCode">domain-name</code>:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-tag">&lt;</span><span class="hljs-name">system</span><span class="hljs-tag">&gt;</span>
+    <span class="hljs-tag">&lt;</span><span class="hljs-name">host-name</span><span class="hljs-tag">&gt;</span>foo<span class="hljs-tag">&lt;/</span><span class="hljs-name">host-name</span><span class="hljs-tag">&gt;</span>
+    <span class="hljs-tag">&lt;</span><span class="hljs-name">domain-name</span><span class="hljs-tag">&gt;</span>bar<span class="hljs-tag">&lt;/</span><span class="hljs-name">domain-name</span><span class="hljs-tag">&gt;</span>
+...
+<span class="hljs-tag">&lt;/</span><span class="hljs-name">system</span><span class="hljs-tag">&gt;</span>
+</code></pre>
+    <p class="normal">After the configuration is built, the script will push the configuration and commit the configuration changes. These are the normal best practice steps (<code class="inlineCode">lock</code>, <code class="inlineCode">configure</code>, <code class="inlineCode">unlock</code>, <code class="inlineCode">commit</code>) for Juniper configuration changes:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># send, validate, and commit config conn.load_configuration(config=config)</span>
+conn.validate()
+commit_config = conn.commit()
+<span class="hljs-built_in">print</span>(commit_config.<span class="hljs-built_in">tostring</span>)
+<span class="hljs-comment"># unlock config</span>
+conn.unlock()
+<span class="hljs-comment"># close session</span>
+conn.close_session()
+</code></pre>
+    <p class="normal">Overall, the NETCONF steps map pretty well to what we would have done in the CLI steps. Please take a look at the <code class="inlineCode">junos_netconf_3.py</code> script for a more reusable code. The following example combines the step-by-step example with a few Python functions:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># make a connection object</span>
+def connect(host, port, user, password):
+   <span class="hljs-built_in"> connection </span>= manager.connect(<span class="hljs-attribute">host</span>=host, <span class="hljs-attribute">port</span>=port,
+        <span class="hljs-attribute">username</span>=user, <span class="hljs-attribute">password</span>=password, <span class="hljs-attribute">timeout</span>=10,
+        device_params={<span class="hljs-string">'name'</span>:<span class="hljs-string">'junos'</span>}, <span class="hljs-attribute">hostkey_verify</span>=<span class="hljs-literal">False</span>)
+    return<span class="hljs-built_in"> connection</span>
+<span class="hljs-comment"># execute show commands</span>
+def show_cmds(conn, cmd):
+    result = conn.command(cmd, <span class="hljs-attribute">format</span>=<span class="hljs-string">'text'</span>)
+    return result
+<span class="hljs-comment"># push out configuration</span>
+def config_cmds(conn, config):
+    conn.lock()
+    conn.load_configuration(<span class="hljs-attribute">config</span>=config)
+    commit_config = conn.commit()
+    return commit_config.tostring
+</code></pre>
+    <p class="normal">This file can be <a id="_idIndexMarker255"/>executed by itself, or it can be imported to be used by other Python scripts.</p>
+    <p class="normal">Juniper also provides a Python library to be used with their devices called PyEZ. We will look at a few examples of using the library in the following section.</p>
+    <h2 class="heading-2" id="_idParaDest-95">Juniper PyEZ for developers</h2>
+    <p class="normal"><strong class="keyWord">PyEZ</strong> is a high-level Python library implementation that integrates better with your existing Python code. By utilizing the Python API that wraps around the underlying configuration, you can perform <a id="_idIndexMarker256"/>common operations and configuration tasks without extensive knowledge of the Junos CLI.</p>
+    <p class="normal">Juniper maintains a comprehensive Junos PyEZ developer guide at <a href="https://www.juniper.net/techpubs/en_US/junos-pyez1.0/information-products/pathway-pages/junos-pyez-developer-guide.html#configuration"><span class="url">https://www.juniper.net/techpubs/en_US/junos-pyez1.0/information-products/pathway-pages/junos-pyez-developer-guide.html#configuration</span></a> on their technical library. If you are interested in using PyEZ, I would highly recommend at least a glance through the various topics in the guide.</p>
+    <h3 class="heading-3" id="_idParaDest-96">Installation and preparation</h3>
+    <p class="normal">The installation<a id="_idIndexMarker257"/> instructions for each of the operating systems can be found on the <em class="italic">Installing Junos PyEZ</em> (<a href="https://www.juniper.net/techpubs/en_US/junos-pyez1.0/topics/task/installation/junos-pyez-server-installing.html"><span class="url">https://www.juniper.net/techpubs/en_US/junos-pyez1.0/topics/task/installation/junos-pyez-server-installing.html</span></a>) page. </p>
+    <p class="normal"><code class="inlineCode">PyEZ</code> packages can be installed via <code class="inlineCode">pip</code>:</p>
+    <pre class="programlisting con"><code class="hljs-con">(venv) $ pip install junos-eznc
+</code></pre>
+    <p class="normal">On the Juniper device, NETCONF needs to be configured as the underlying XML API for PyEZ:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-built_in">set system </span>services netconf ssh<span class="hljs-built_in"> port </span>830
+</code></pre>
+    <p class="normal">For user authentication, we can either use password authentication or an SSH key pair. We can create a new user<a id="_idIndexMarker258"/> or use the existing user. For <code class="inlineCode">ssh</code> key authentication, first, generate the key pair on your management host if you have not done so for <em class="chapterRef">Chapter 2</em>, <em class="italic">Low-Level Network Device Interactions</em>:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">$ </span><span class="language-bash">ssh-keygen -t rsa</span>
+</code></pre>
+    <p class="normal">By default, the public key will be called <code class="inlineCode">id_rsa.pub</code> under <code class="inlineCode">~/.ssh/</code>, while the private key will be named <code class="inlineCode">id_rsa</code> in the same directory. Treat the private key like a password that you never share. The public key can be freely distributed. In our use case, we will copy the public key to the <code class="inlineCode">/tmp</code> directory and enable the Python 3 HTTP server module to create a reachable URL:</p>
+    <pre class="programlisting con"><code class="hljs-con">(venv) $ cp ~/.ssh/id_rsa.pub /tmp
+(venv) $ cd /tmp
+(venv) $ python3 -m http.server
+(venv) Serving HTTP on 0.0.0.0 port 8000 ...
+</code></pre>
+    <p class="normal">From the Juniper device, we can create the user and associate the public key by downloading the public key from the Python 3 web server:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">netconf@foo# </span><span class="hljs-con-built_in">set</span><span class="language-bash"> system login user echou class super-user authentication load-key-file http://&lt;management host ip&gt;:8000/id_rsa.pub</span>
+/var/home/netconf/...transferring.file........100% of 394 B 2482 kBps
+</code></pre>
+    <p class="normal">Now, if we try to <code class="inlineCode">ssh</code> with the private key from the management station, the user will be automatically authenticated:</p>
+    <pre class="programlisting con"><code class="hljs-con">(venv) $ ssh -i ~/.ssh/id_rsa &lt;Juniper device ip&gt;
+--- JUNOS 12.1R1.9 built 2012-03-24 12:52:33 UTC
+<span class="hljs-con-meta">echou@foo&gt;</span>
+</code></pre>
+    <p class="normal">Let’s make sure that both of the authentication methods work with PyEZ. Let’s try the username and password combination:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> jnpr.junos </span><span class="hljs-con-keyword">import</span><span class="language-python"> Device</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">dev = Device(host=</span><span class="hljs-con-string">'&lt;Juniper device ip, in our case 192.168.2.70&gt;'</span><span class="language-python">, user=</span><span class="hljs-con-string">'</span><span class="hljs-con-string">juniper'</span><span class="language-python">, password=</span><span class="hljs-con-string">'juniper!'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">dev.</span><span class="hljs-con-built_in">open</span><span class="language-python">()</span>
+Device(192.168.2.70)
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">dev.facts</span>
+{'serialnumber': '', 'personality': 'UNKNOWN', 'model': 'olive', 'ifd_style': 'CLASSIC', '2RE': False, 'HOME': '/var/home/juniper', 'version_info': junos.version_info(major=(12, 1), type=R, minor=1, build=9), 'switch_style': 'NONE', 'fqdn': 'foo.bar', 'hostname': 'foo', 'version': '12.1R1.9', 'domain': 'bar', 'vc_capable': False}
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">dev.close()</span>
+</code></pre>
+    <p class="normal">We can also try to use<a id="_idIndexMarker259"/> the SSH key authentication:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> jnpr.junos </span><span class="hljs-con-keyword">import</span><span class="language-python"> Device</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">dev1 = Device(host=</span><span class="hljs-con-string">'192.168.2.70'</span><span class="language-python">, user=</span><span class="hljs-con-string">'echou'</span><span class="language-python">, ssh_private_key_file=</span><span class="hljs-con-string">'/home/echou/.ssh/id_rsa'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">dev1.</span><span class="hljs-con-built_in">open</span><span class="language-python">()</span>
+Device(192.168.2.70)
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">dev1.facts</span>
+{'HOME': '/var/home/echou', 'model': 'olive', 'hostname': 'foo', 'switch_style': 'NONE', 'personality': 'UNKNOWN', '2RE': False, 'domain': 'bar', 'vc_capable': False, 'version': '12.1R1.9', 'serialnumber': '', 'fqdn': 'foo.bar', 'ifd_style': 'CLASSIC', 'version_info': junos.version_info(major=(12, 1), type=R, minor=1, build=9)}
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">dev1.close()</span>
+</code></pre>
+    <p class="normal">Great! We are now ready to look at some examples for PyEZ.</p>
+    <h3 class="heading-3" id="_idParaDest-97">PyEZ examples</h3>
+    <p class="normal">In the previous interactive <a id="_idIndexMarker260"/>prompt, we saw that when the device connects, the object automatically retrieves a few facts about the device. In our first example, <code class="inlineCode">junos_pyez_1.py</code>, we were connecting to the device and executing an RPC call for <code class="inlineCode">show interface em1</code>:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment">#!/usr/bin/env python3</span>
+<span class="hljs-keyword">from</span> jnpr.junos import Device
+import xml.etree.ElementTree as ET
+import pprint
+dev = Device(<span class="hljs-attribute">host</span>=<span class="hljs-string">'192.168.2.70'</span>, <span class="hljs-attribute">user</span>=<span class="hljs-string">'juniper'</span>, <span class="hljs-attribute">passwd</span>=<span class="hljs-string">'juniper!'</span>)
+try:
+    dev.open()
+except Exception as err:
+    <span class="hljs-built_in">print</span>(err)
+    sys.exit(1)
+result = dev.rpc.get_interface_information(<span class="hljs-attribute">interface_name</span>=<span class="hljs-string">'em1'</span>, <span class="hljs-attribute">terse</span>=<span class="hljs-literal">True</span>)
+pprint.pprint(ET.tostring(result))
+dev.close()
+</code></pre>
+    <p class="normal">The <code class="inlineCode">Device</code> class has an <code class="inlineCode">rpc</code> property that includes all operational commands. This is awesome because there is no slippage between what we can do in CLI versus API. The catch is that we need to find the<a id="_idIndexMarker261"/> corresponding <code class="inlineCode">xml rpc</code> element tag for the CLI command. In our first example, how do we know <code class="inlineCode">show interface em1</code> equates to <code class="inlineCode">get_interface_information</code>? We have three ways of finding out this information:</p>
+    <ol class="numberedList" style="list-style-type: decimal;">
+      <li class="numberedList" value="1">We can reference the <em class="italic">Junos XML API Operational Developer Reference</em>.</li>
+      <li class="numberedList">We can use the CLI and display the XML RPC equivalent and replace the dash (-) between the words with an underscore (_).</li>
+      <li class="numberedList">We can also do this programmatically by using the PyEZ library.</li>
+    </ol>
+    <p class="normal">I typically use the second option to get the output directly:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">netconf@foo&gt; </span><span class="language-bash">show interfaces em1 | display xml rpc</span>
+&lt;rpc-reply &gt;
+ &lt;rpc&gt;
+ &lt;get-interface-information&gt;
+ &lt;interface-name&gt;em1&lt;/interface-name&gt;
+ &lt;/get-interface-information&gt;
+ &lt;/rpc&gt;
+ &lt;cli&gt;
+ &lt;banner&gt;&lt;/banner&gt;
+ &lt;/cli&gt;
+&lt;/rpc-reply&gt;
+</code></pre>
+    <p class="normal">Here is an example of using PyEZ programmatically (the third option):</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">dev1.display_xml_rpc(</span><span class="hljs-con-string">'show interfaces em1'</span><span class="language-python">, </span><span class="hljs-con-built_in">format</span><span class="language-python">=</span><span class="hljs-con-string">'text'</span><span class="language-python">) </span>
+'&lt;get-interface-information&gt;/n &lt;interface-name&gt;em1&lt;/interface- name&gt;/n&lt;/get-interface-information&gt;/n'
+</code></pre>
+    <p class="normal">Of course, we can make configuration changes as well. In the <code class="inlineCode">junos_pyez_2.py</code> configuration example, we<a id="_idIndexMarker262"/> will import an additional <code class="inlineCode">Config()</code> method from PyEZ:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-meta">#!/usr/bin/env python3</span>
+from jnpr.junos <span class="hljs-keyword">import</span> Device
+from jnpr.junos.utils.config <span class="hljs-keyword">import</span> Config
+</code></pre>
+    <p class="normal">We will utilize the same block to connect to a device:</p>
+    <pre class="programlisting code"><code class="hljs-code">dev = Device(host=<span class="hljs-string">'192.168.2.70'</span>, user=<span class="hljs-string">'juniper'</span>,
+    passwd=<span class="hljs-string">'juniper!'</span>)
+try:
+    dev.open()
+except Exception as err:
+    print(err)
+    sys.<span class="hljs-keyword">exit</span>(<span class="hljs-number">1</span>)
+</code></pre>
+    <p class="normal">The <code class="inlineCode">new Config()</code> method will load the XML data and make the configuration changes:</p>
+    <pre class="programlisting code"><code class="hljs-code">config_change = <span class="hljs-string">""</span>
+<span class="hljs-string">&lt;system&gt;</span>
+<span class="hljs-string">  &lt;host-name&gt;master&lt;/host-name&gt;</span>
+<span class="hljs-string">  &lt;domain-name&gt;python&lt;/domain-name&gt;</span>
+<span class="hljs-string">&lt;/system&gt;</span>
+<span class="hljs-string">""</span>
+cu = Config(dev)
+cu.lock()
+cu.load(config_change)
+cu.commit()
+cu.unlock()
+dev.close()
+</code></pre>
+    <p class="normal">The PyEZ examples are simple by design. Hopefully, they demonstrate the ways you can leverage PyEZ for your Junos automation needs. In the following example, let’s look at how we can work with Arista network devices using Python libraries.</p>
+    <h1 class="heading-1" id="_idParaDest-98">The Arista Python API</h1>
+    <p class="normal"><strong class="keyWord">Arista Networks</strong> has always been<a id="_idIndexMarker263"/> focused on large-scale data center networks. On its <a id="_idIndexMarker264"/>corporate profile page (<a href="https://www.arista.com/en/company/company-overview"><span class="url">https://www.arista.com/en/company/company-overview</span></a>), it states the following:</p>
+    <blockquote class="packt_quote">
+      <p class="quote">”Arista Networks is an industry leader in data-driven, client to cloud networking for large data center, campus, and routing environments.”</p>
+    </blockquote>
+    <p class="normal">Notice that the statement specifically called<a id="_idIndexMarker265"/> out <strong class="keyWord">large data centers</strong>, which we know are exploding with servers, databases, and, yes, network equipment. It makes sense that automation has always been one of Arista’s leading features. In fact, it has a Linux underpinning behind its operating system, allowing many added benefits, such as Linux commands and a built-in Python interpreter directly on the platform. From day one, Arista was open about exposing the Linux and Python features to the network operators.</p>
+    <p class="normal">Like other vendors, you can<a id="_idIndexMarker266"/> interact with Arista devices directly via eAPI, or you can choose to leverage their Python library. We will see examples of both in this chapter. </p>
+    <h2 class="heading-2" id="_idParaDest-99">Arista eAPI management</h2>
+    <p class="normal">Arista’s eAPI was first introduced in EOS 4.12 a few years ago. It transports a list of show or configuration commands over HTTP or HTTPS and responds in JSON. An important distinction is that it is <a id="_idIndexMarker267"/>an RPC and <strong class="keyWord">JSON-RPC</strong>, instead of a pure RESTful API that is served over HTTP or HTTPS. The difference is that we make the request to the same URL endpoint using the same HTTP method (<code class="inlineCode">POST</code>). But instead of using HTTP verbs (<code class="inlineCode">GET</code>, <code class="inlineCode">POST</code>, <code class="inlineCode">PUT</code>, <code class="inlineCode">DELETE</code>) to express our action, we simply state our intended action in the request’s body. In the case of eAPI, we will specify a <code class="inlineCode">method</code> key with a <code class="inlineCode">runCmds</code> value.</p>
+    <p class="normal">For the following examples, I am using a physical Arista switch running EOS 4.16.</p>
+    <h3 class="heading-3" id="_idParaDest-100">eAPI preparation</h3>
+    <p class="normal">The eAPI agent on the Arista<a id="_idIndexMarker268"/> device is disabled by default, so we will need to enable it on the device before we can use it:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">arista1(config)#</span><span class="language-bash">management api http-commands</span>
+<span class="hljs-con-meta">arista1(config-mgmt-api-http-cmds)#</span><span class="language-bash">no shut</span>
+<span class="hljs-con-meta">arista1(config-mgmt-api-http-cmds)#</span><span class="language-bash">protocol https port 443 </span>
+<span class="hljs-con-meta">arista1(config-mgmt-api-http-cmds)#</span><span class="language-bash">no protocol http</span>
+<span class="hljs-con-meta">arista1(config-mgmt-api-http-cmds)#</span><span class="language-bash">vrf management</span>
+</code></pre>
+    <p class="normal">As you can see, we have turned off the HTTP server and are using HTTPS as the sole transport instead. The management interfaces, by default, reside in a VRF called <strong class="keyWord">management</strong>. In my topology, I am accessing the device via the management interface; therefore, I have specified the VRF for eAPI management. </p>
+    <p class="normal">You can check that API management state via the <code class="inlineCode">show management api http-commands</code> command:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">arista1#</span><span class="language-bash">sh management</span>
+api http-commands Enabled: Yes
+HTTPS server: running, set to use port 443 HTTP server: shutdown, set to use port 80
+Local HTTP server: shutdown, no authentication, set to use port 8080 
+Unix Socket server: shutdown, no authentication
+VRF: management 
+Hits: 64
+Last hit: 33 seconds ago Bytes in: 8250
+Bytes out: 29862
+Requests: 23
+Commands: 42
+Duration: 7.086 
+seconds SSL Profile: none
+QoS DSCP: 0
+User Requests Bytes in Bytes out Last hit
+----------- -------------- -------------- --------------- -----------
+admin 23 8250 29862 33 seconds ago
+URLs
+-----------------------------------------
+Management1 : https://192.168.199.158:443
+<span class="hljs-con-meta">arista1#</span>
+</code></pre>
+    <p class="normal">After enabling the agent, we can access the exploration page for eAPI by going to the device’s IP address in a <a id="_idIndexMarker269"/>web browser. If you have changed the default port for access, just append it. The authentication is tied to the method of authentication on the switch. We will use the username and password configured locally on the device. By default, a self-signed certificate will be used:</p>
+    <figure class="mediaobject"><img alt="Graphical user interface, text, application  Description automatically generated" src="../Images/B18403_03_09.png"/></figure>
+    <p class="packt_figref">Figure 3.9: Arista EOS explorer</p>
+    <p class="normal">We will be taken to an explorer page, where we can type in the CLI command and get a nice output for the body <a id="_idIndexMarker270"/>of our request. For example, if I want to see how to make a request body for <code class="inlineCode">show version</code>, this is the output I will see from the explorer:</p>
+    <figure class="mediaobject"><img alt="Graphical user interface, text, application  Description automatically generated" src="../Images/B18403_03_10.png"/></figure>
+    <p class="packt_figref">Figure 3.10: Arista EOS explorer viewer</p>
+    <p class="normal">The overview link will take us to the sample use and background information, while the command documentation will <a id="_idIndexMarker271"/>serve as reference points for the show commands. Each command reference will contain the returned value field name, type, and a brief description. The online reference scripts from Arista use <code class="inlineCode">jsonrpclib</code> (<a href="https://github.com/joshmarshall/jsonrpclib/"><span class="url">https://github.com/joshmarshall/jsonrpclib/</span></a>), which we will use.</p>
+    <p class="normal">The examples in this section mainly use Python 2.7 as jsonrpclib was not ported to Python 3 for a long time. However, per GitHub pull request <a href="https://github.com/joshmarshall/jsonrpclib/issues/38"><span class="url">https://github.com/joshmarshall/jsonrpclib/issues/38</span></a>, Python 3 support should be included.</p>
+    <p class="normal">Installation is straightforward <a id="_idIndexMarker272"/>using <code class="inlineCode">pip</code>:</p>
+    <pre class="programlisting con"><code class="hljs-con">(venv) $ pip install jsonrpclib
+</code></pre>
+    <h3 class="heading-3" id="_idParaDest-101">eAPI examples</h3>
+    <p class="normal">We can then write a simple <a id="_idIndexMarker273"/>program called <code class="inlineCode">eapi_1.py</code> to look at the response text:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment">#!/usr/bin/python2</span>
+<span class="hljs-keyword">from</span> __future__ <span class="hljs-keyword">import</span> print_function
+<span class="hljs-keyword">from</span> jsonrpclib <span class="hljs-keyword">import</span> Server
+<span class="hljs-keyword">import</span> ssl
+ssl._create_default_https_context = ssl._create_unverified_context
+switch = Server(<span class="hljs-string">"https://admin:arista@192.168.199.158/command-api"</span>)
+response = switch.runCmds( <span class="hljs-number">1</span>, [ <span class="hljs-string">"show version"</span> ] )
+<span class="hljs-built_in">print</span>(<span class="hljs-string">'Serial Number: '</span> + response[<span class="hljs-number">0</span>][<span class="hljs-string">'serialNumber'</span>])
+</code></pre>
+    <p class="normal">This is the response I received from the previous <code class="inlineCode">runCmds()</code> method:</p>
+    <pre class="programlisting code"><code class="hljs-code">[{<span class="hljs-string">u'memTotal'</span>: <span class="hljs-number">3978148</span>, <span class="hljs-string">u'internalVersion'</span>: <span class="hljs-string">u'4.16.6M- 3205780.4166M'</span>, <span class="hljs-string">u'serialNumber'</span>: <span class="hljs-string">u'&lt;omitted&gt;'</span>, <span class="hljs-string">u'systemMacAddress'</span>: <span class="hljs-string">u'&lt;omitted&gt;'</span>, <span class="hljs-string">u'bootupTimestamp'</span>: <span class="hljs-number">1465964219.71</span>, <span class="hljs-string">u'memFree'</span>: <span class="hljs-number">277832</span>, <span class="hljs-string">u'version'</span>: <span class="hljs-string">u'4.16.6M'</span>, <span class="hljs-string">u'modelName'</span>: <span class="hljs-string">u'DCS-7050QX-32-F'</span>, <span class="hljs-string">u'isIntlVersion'</span>: <span class="hljs-literal">False</span>, <span class="hljs-string">u'internalBuildId'</span>: <span class="hljs-string">u'373dbd3c-60a7-4736-8d9e-bf5e7d207689'</span>, <span class="hljs-string">u'hardwareRevision'</span>: <span class="hljs-string">u'00.00'</span>, <span class="hljs-string">u'architecture'</span>: <span class="hljs-string">u'i386'</span>}]
+</code></pre>
+    <p class="normal">As you can see, the result is a list containing one dictionary item. If we need to grab the serial number, we can simply reference the item number and the key:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-title">print</span><span class="hljs-params">(</span><span class="hljs-string">'Serial Number: '</span><span class="hljs-params"> + response[</span><span class="hljs-number">0</span><span class="hljs-params">][</span><span class="hljs-string">'serialNumber'</span><span class="hljs-params">])</span>
+</code></pre>
+    <p class="normal">The output will contain only the serial number:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">$ </span><span class="language-bash">python eapi_1.py</span> 
+Serial Number: &lt;omitted&gt;
+</code></pre>
+    <p class="normal">To be more familiar with the command reference, I recommend clicking on the <strong class="keyWord">Command Documentation</strong> link on the eAPI page and comparing our output with the output of <strong class="keyWord">show version</strong> in the documentation.</p>
+    <p class="normal">As noted earlier, unlike REST, the JSON-RPC client uses the same URL endpoint for calling the server resources. We can see from the previous example that the <code class="inlineCode">runCmds()</code> method contains a list of commands. For the execution of configuration commands, you can follow the same steps and configure the device via a list of commands.</p>
+    <p class="normal">Here is an example of <a id="_idIndexMarker274"/>configuration commands in a file named <code class="inlineCode">eapi_2.py</code>. In our example, we wrote a function that takes the <code class="inlineCode">switch</code> object and the list of commands as attributes:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment">#!/usr/bin/python2</span>
+<span class="hljs-keyword">from</span> __future__ <span class="hljs-keyword">import</span> print_function
+<span class="hljs-keyword">from</span> jsonrpclib <span class="hljs-keyword">import</span> Server
+<span class="hljs-keyword">import</span> ssl, pprint
+ssl._create_default_https_context = ssl._create_unverified_context
+<span class="hljs-comment"># Run Arista commands thru eAPI</span>
+def runAristaCommands(switch_object, list_of_commands):
+    response = switch_object.runCmds(<span class="hljs-number">1</span>, list_of_commands)
+    <span class="hljs-keyword">return</span> response
+<span class="hljs-keyword">switch</span> = Server(<span class="hljs-string">"https://admin:arista@192.168.199.158/command-api"</span>) 
+commands = [<span class="hljs-string">"enable"</span>, <span class="hljs-string">"configure"</span>, <span class="hljs-string">"interface ethernet 1/3"</span>, <span class="hljs-string">"switchport access vlan 100"</span>, <span class="hljs-string">"end"</span>, <span class="hljs-string">"write memory"</span>]
+response = runAristaCommands(<span class="hljs-keyword">switch</span>, commands)
+pprint.pprint(response)
+</code></pre>
+    <p class="normal">Here is the output of the command’s execution:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">$ </span><span class="language-bash">python2 eapi_2.py</span>
+[{}, {}, {}, {}, {}, {u'messages': [u'Copy completed successfully.']}]
+</code></pre>
+    <p class="normal">Now, do a quick check on the <code class="inlineCode">switch</code> to verify the command’s execution:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">arista1#</span><span class="language-bash">sh run int eth 1/3</span> 
+interface Ethernet1/3
+    switchport access vlan 100 
+<span class="hljs-con-meta">arista1#</span>
+</code></pre>
+    <p class="normal">Overall, eAPI is fairly straightforward and simple to use. Most programming languages have libraries similar to <code class="inlineCode">jsonrpclib</code>, which abstracts away JSON-RPC internals. With a few commands, you can start integrating Arista EOS automation into your network.</p>
+    <h2 class="heading-2" id="_idParaDest-102">The Arista Pyeapi library</h2>
+    <p class="normal">The Python client Pyeapi (<a href="http://pyeapi.readthedocs.io/en/master/index.html"><span class="url">http://pyeapi.readthedocs.io/en/master/index.html</span></a>) library is a native Python library wrapper around eAPI. It provides a set of bindings to configure Arista EOS nodes. Why<a id="_idIndexMarker275"/> do we need Pyeapi when we already have eAPI? The answer is “it depends.” Picking between Pyeapi and eAPI is mostly a judgment call.</p>
+    <p class="normal">If you are in a non-Python environment, eAPI is probably the way to go. From our examples, you can see that the only requirement of eAPI is a JSON-RPC-capable client. Thus, it is compatible with most programming languages. When I first started out in the field, Perl was the dominant language for scripting and network automation. There are still many enterprises that rely on Perl scripts as their primary automation tool. If you’re in a situation where the company has already invested a ton of resources and the code base is in a language other than Python, eAPI with JSON-RPC would be a good bet.</p>
+    <p class="normal">However, for those of us who prefer to code in Python, a native Python library such as Pyeapi means a more natural feeling in writing our code. It certainly makes extending a Python program to support the EOS node easier. It also makes keeping up with the latest changes in Python easier. For example, we can use Python 3 with Pyeapi (<a href="https://pyeapi.readthedocs.io/en/master/requirements.html"><span class="url">https://pyeapi.readthedocs.io/en/master/requirements.html</span></a>)!</p>
+    <h3 class="heading-3" id="_idParaDest-103">Pyeapi installation</h3>
+    <p class="normal">Installation is straightforward with <code class="inlineCode">pip</code>:</p>
+    <pre class="programlisting con"><code class="hljs-con">(venv) $ pip install pyeapi
+</code></pre>
+    <p class="normal">Note that pip will <a id="_idIndexMarker276"/>also install the <code class="inlineCode">netaddr</code> library as it is part of the stated requirements (<a href="http://pyeapi.readthedocs.io/en/master/requirements.html"><span class="url">http://pyeapi.readthedocs.io/en/master/requirements.html</span></a>) for Pyeapi.</p>
+    <p class="normal">By default, the Pyeapi client will look for an INI-style hidden (with a period in front) file called <code class="inlineCode">eapi.conf</code> in your home directory. You can override this behavior by specifying the <code class="inlineCode">eapi.conf</code> file path. It is generally a good idea to separate your connection credential and lock it down from the script itself. You can check out the Arista Pyeapi documentation (<a href="http://pyeapi.readthedocs.io/en/master/configfile.html#configfile"><span class="url">http://pyeapi.readthedocs.io/en/master/configfile.html#configfile</span></a>) for the fields contained in the file.</p>
+    <p class="normal">Here is the file I am using in the lab:</p>
+    <pre class="programlisting con"><code class="hljs-con">cat ~/.eapi.conf
+[connection:Arista1]
+host: 192.168.199.158
+username: admin
+password: arista
+transport: https
+</code></pre>
+    <p class="normal">The first line, <code class="inlineCode">[connection:Arista1]</code>, contains the name that we will use in our Pyeapi connection; the rest of<a id="_idIndexMarker277"/> the fields should be pretty self-explanatory. You can lock down the file to be read-only for the user using this file:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">$ </span><span class="hljs-con-built_in">chmod</span><span class="language-bash"> 400 ~/.eapi.conf</span>
+<span class="hljs-con-meta">$ </span><span class="hljs-con-built_in">ls</span><span class="language-bash"> -l ~/.eapi.conf</span>
+-r-------- 1 echou echou 94 Jan 27 18:15 /home/echou/.eapi.conf
+</code></pre>
+    <p class="normal">Now that Pyeapi is installed, let’s get into some examples.</p>
+    <h3 class="heading-3" id="_idParaDest-104">Pyeapi examples</h3>
+    <p class="normal">Let’s start by connecting <a id="_idIndexMarker278"/>to the EOS node by creating an object in the interactive Python shell:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">import</span><span class="language-python"> pyeapi</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">arista1 = pyeapi.connect_to(</span><span class="hljs-con-string">'Arista1'</span><span class="language-python">)</span>
+</code></pre>
+    <p class="normal">We can execute <code class="inlineCode">show</code> commands to the node and receive the output:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">import</span><span class="language-python"> pprint</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">pprint.pprint(arista1.enable(</span><span class="hljs-con-string">'show hostname'</span><span class="language-python">))</span>
+[{'command': 'show hostname',
+'encoding': 'json',
+'result': {'fqdn': 'arista1', 'hostname': 'arista1'}}]
+</code></pre>
+    <p class="normal">The configuration field can be either a single command or a list of commands using the <code class="inlineCode">config()</code> method:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">arista1.config(</span><span class="hljs-con-string">'hostname arista1-new'</span><span class="language-python">)</span>
+[{}]
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">pprint.pprint(arista1.enable(</span><span class="hljs-con-string">'show hostname'</span><span class="language-python">))</span>
+[{'command': 'show hostname',
+ 'encoding': 'json',
+ 'result': {'fqdn': 'arista1-new', 'hostname': 'arista1-new'}}]
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">arista1.config([</span><span class="hljs-con-string">'interface ethernet 1/3'</span><span class="language-python">, </span><span class="hljs-con-string">'description my_link'</span><span class="language-python">]) [{}, {}]</span>
+</code></pre>
+    <p class="normal">Note that command abbreviations (<code class="inlineCode">show run</code> versus <code class="inlineCode">show running-config</code>) and some extensions will not<a id="_idIndexMarker279"/> work:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">pprint.pprint(arista1.enable(</span><span class="hljs-con-string">'show run'</span><span class="language-python">))</span>
+Traceback (most recent call last):
+<span class="hljs-con-meta">...</span>
+File "/usr/local/lib/python3.5/dist-packages/pyeapi/eapilib.py", line 396, in send
+raise CommandError(code, msg, command_error=err, output=out) pyeapi.eapilib.CommandError: Error [1002]: CLI command 2 of 2 'show run' failed: invalid command [incomplete token (at token 1: 'run')]
+<span class="hljs-con-meta">&gt;&gt;&gt;</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">pprint.pprint(arista1.enable(</span><span class="hljs-con-string">'show running-config interface ethernet 1/3'</span><span class="language-python">))</span>
+Traceback (most recent call last):
+<span class="hljs-con-meta">...</span>
+pyeapi.eapilib.CommandError: Error [1002]: CLI command 2 of 2 'show running-config interface ethernet 1/3' failed: invalid command [incomplete token (at token 2: 'interface')]
+</code></pre>
+    <p class="normal">We can always catch the results and get the desired value:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">result = arista1.enable(</span><span class="hljs-con-string">'show running-config'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">pprint.pprint(result[</span><span class="hljs-con-number">0</span><span class="language-python">][</span><span class="hljs-con-string">'result'</span><span class="language-python">][</span><span class="hljs-con-string">'cmds'</span><span class="language-python">][</span><span class="hljs-con-string">'interface Ethernet1/3'</span><span class="language-python">])</span>
+{'cmds': {'description my_link': None, 'switchport access vlan 100': None}, 'comments': []}
+</code></pre>
+    <p class="normal">So far, we have been doing what we have been doing with eAPI for <code class="inlineCode">show</code> and <code class="inlineCode">configuration</code> commands. Pyeapi offers various APIs to make life easier. In the following example, we will connect to the node, call the VLAN API, and start to operate on the VLAN parameters of the device. Let’s take a look:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">import</span><span class="language-python"> pyeapi</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">node = pyeapi.connect_to(</span><span class="hljs-con-string">'Arista1'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">vlans = node.api(</span><span class="hljs-con-string">'vlans'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">type</span><span class="language-python">(vlans)</span>
+&lt;class 'pyeapi.api.vlans.Vlans'&gt;
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">dir</span><span class="language-python">(vlans)</span>
+[...'command_builder', 'config', 'configure', 'configure_interface', 'configure_vlan', 'create', 'default', 'delete', 'error', 'get', 'get_block', 'getall', 'items', 'keys', 'node', 'remove_trunk_group', 'set_name', 'set_state', 'set_trunk_groups', 'values']
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">vlans.getall()</span>
+{'1': {'vlan_id': '1', 'trunk_groups': [], 'state': 'active', 'name': 'default'}}
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">vlans.get(</span><span class="hljs-con-number">1</span><span class="language-python">)</span>
+{'vlan_id': 1, 'trunk_groups': [], 'state': 'active', 'name': 'default'}
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">vlans.create(</span><span class="hljs-con-number">10</span><span class="language-python">) </span><span class="hljs-con-literal">True</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">vlans.getall()</span>
+{'1': {'vlan_id': '1', 'trunk_groups': [], 'state': 'active', 'name':
+'default'}, '10': {'vlan_id': '10', 'trunk_groups': [], 'state': 'active', 'name': 'VLAN0010'}}
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">vlans.set_name(</span><span class="hljs-con-number">10</span><span class="language-python">, </span><span class="hljs-con-string">'my_vlan_10'</span><span class="language-python">) </span><span class="hljs-con-literal">True</span>
+</code></pre>
+    <p class="normal">Let’s verify that VLAN 10<a id="_idIndexMarker280"/> was created on the device:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">arista1#</span><span class="language-bash">sh vlan</span>
+VLAN Name Status Ports
+----- -------------------------------- --------- --------------------
+-----
+1 default active
+10 my_vlan_10 active
+</code></pre>
+    <p class="normal">As we can see, the Python native API on the EOS object is where Pyeapi excels beyond eAPI. It abstracts the lower-level attributes into the device object and makes the code cleaner and easier to read.</p>
+    <p class="normal">For a full list of ever-increasing Pyeapi APIs, check the official documentation (<a href="http://pyeapi.readthedocs.io/en/master/api_modules/_list_of_modules.html"><span class="url">http://pyeapi.readthedocs.io/en/master/api_modules/_list_of_modules.html</span></a>).</p>
+    <p class="normal">To round up this section, let’s assume that we repeat the previous steps enough times that we would like to write another Python class to save us some work.</p>
+    <p class="normal">The <code class="inlineCode">pyeapi_1.py</code> script is shown as follows:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment">#!/usr/bin/env python3</span>
+<span class="hljs-keyword">import</span> pyeapi
+<span class="hljs-keyword">class</span> <span class="hljs-title">my_switch</span>():
+    
+    <span class="hljs-keyword">def</span> <span class="hljs-title">__init__</span>(<span class="hljs-params">self, config_file_location, device</span>):
+        <span class="hljs-comment"># loads the config file</span>
+        pyeapi.client.load_config(config_file_location)
+        self.node = pyeapi.connect_to(device)
+        self.hostname = self.node.enable(<span class="hljs-string">'show hostname'</span>)[<span class="hljs-number">0</span>][<span class="hljs-string">'result'</span>][<span class="hljs-string">'hostname'</span>]
+        self.running_config = self.node.enable(<span class="hljs-string">'show running-config'</span>)
+    <span class="hljs-keyword">def</span> <span class="hljs-title">create_vlan</span>(<span class="hljs-params">self, vlan_number, vlan_name</span>):
+        vlans = self.node.api(<span class="hljs-string">'vlans'</span>)
+        vlans.create(vlan_number)
+        vlans.set_name(vlan_number, vlan_name)
+</code></pre>
+    <p class="normal">As we can see from the <a id="_idIndexMarker281"/>script, we automatically connect to the node, set the hostname, and load <code class="inlineCode">running_config</code> upon connection. We also create a method of the class that creates VLAN by using the VLAN API. Let’s try out the script in an interactive shell:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">import</span><span class="language-python"> pyeapi_1</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">s1 = pyeapi_1.my_switch(</span><span class="hljs-con-string">'/tmp/.eapi.conf'</span><span class="language-python">, </span><span class="hljs-con-string">'Arista1'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">s1.hostname</span>
+'arista1'
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">s1.running_config</span>
+[{'encoding': 'json', 'result': {'cmds': {'interface Ethernet27': {'cmds':
+{}, 'comments': []}, 'ip routing': None, 'interface face Ethernet29':
+{'cmds': {}, 'comments': []}, 'interface Ethernet26': {'cmds': {}, 'comments': []}, 'interface Ethernet24/4': h.':
+&lt;omitted&gt;
+'interface Ethernet3/1': {'cmds': {}, 'comments': []}}, 'comments': [],
+'header': ['! device: arista1 (DCS-7050QX-32, EOS-4.16.6M)n!n']},
+'command': 'show running-config'}]
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">s1.create_vlan(</span><span class="hljs-con-number">11</span><span class="language-python">, </span><span class="hljs-con-string">'</span><span class="hljs-con-string">my_vlan_11'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">s1.node.api(</span><span class="hljs-con-string">'vlans'</span><span class="language-python">).getall()</span>
+{'11': {'name': 'my_vlan_11', 'vlan_id': '11', 'trunk_groups': [], 'state':
+'active'}, '10': {'name': 'my_vlan_10', 'vlan_id': '10', 'trunk_groups': [], 'state': 'active'}, '1': {'name': 'default', 'vlan_id': '1', 'trunk_groups': [], 'state': 'active'}}
+<span class="hljs-con-meta">&gt;&gt;&gt;</span>
+</code></pre>
+    <p class="normal">We have now looked at Python scripts for three of the top vendors in networking: Cisco Systems, Juniper Networks, and Arista Networks. In the next section, we will take a look at an open-source network operating system that is gaining some momentum in the same space.</p>
+    <h1 class="heading-1" id="_idParaDest-105">VyOS example</h1>
+    <p class="normal">VyOS is a fully open-source <a id="_idIndexMarker282"/>network OS that runs on a wide range of hardware, virtual <a id="_idIndexMarker283"/>machines, and cloud providers (<a href="https://vyos.io/"><span class="url">https://vyos.io/</span></a>). Because of its open-source nature, it is gaining wide support in the open-source community. Many open-source projects are using VyOS as the default platform for testing. In the last section of the chapter, we will look at a quick VyOS example.</p>
+    <p class="normal">The VyOS image can be<a id="_idIndexMarker284"/> downloaded in various formats: <a href="https://wiki.vyos.net/wiki/Installation"><span class="url">https://wiki.vyos.net/wiki/Installation</span></a>. Once it’s downloaded and initialized, we can install the Python library on our management host:</p>
+    <pre class="programlisting con"><code class="hljs-con">(venv) $ pip install vymgmt
+</code></pre>
+    <p class="normal">The example script, <code class="inlineCode">vyos_1.py</code>, is very simple:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment">#!/usr/bin/env python3</span>
+import vymgmt
+vyos = vymgmt.Router(<span class="hljs-string">'192.168.2.116'</span>, <span class="hljs-string">'vyos'</span>, password=<span class="hljs-string">'vyos'</span>)
+vyos.login()
+vyos.configure()
+vyos.set(<span class="hljs-string">"system domain-name networkautomationnerds.net"</span>)
+vyos.commit()
+vyos.save()
+vyos.<span class="hljs-keyword">exit</span>()
+vyos.logout()
+</code></pre>
+    <p class="normal">We can execute the <a id="_idIndexMarker285"/>script to change the system domain name:</p>
+    <pre class="programlisting con"><code class="hljs-con">(venv) $ python vyos_1.py
+</code></pre>
+    <p class="normal">We can log in to the device to verify the domain name change:</p>
+    <pre class="programlisting con"><code class="hljs-con">vyos@vyos:~$ show configuration | match domain
+domain-name networkautomationnerds.net
+</code></pre>
+    <p class="normal">As you can see from the example, the method we use for VyOS is pretty similar to the other examples we have seen before from proprietary vendors. This is mainly by design, as they provide an easy transition from using other vendor equipment to open-source VyOS. We are getting close to the end of the chapter. There are some other libraries that are worth mentioning and should be kept an eye out for in development, which we will do in the next section.</p>
+    <h1 class="heading-1" id="_idParaDest-106">Other libraries</h1>
+    <p class="normal">We’ll finish this chapter by mentioning that there are several excellent efforts in terms of vendor-neutral libraries<a id="_idIndexMarker286"/> such as <a id="_idIndexMarker287"/>Nornir (<a href="https://nornir.readthedocs.io/en/stable/index.html"><span class="url">https://nornir.readthedocs.io/en/stable/index.html</span></a>), Netmiko (<a href="https://github.com/ktbyers/netmiko"><span class="url">https://github.com/ktbyers/netmiko</span></a>), NAPALM (<a href="https://github.com/napalm-automation/napalm"><span class="url">https://github.com/napalm-automation/napalm</span></a>), and Scrapli (<a href="https://carlmontanari.github.io/scrapli/"><span class="url">https://carlmontanari.github.io/scrapli/</span></a>). We have seen some of their examples <a id="_idIndexMarker288"/>in the last chapter. Most of these vendor-neutral libraries are likely a step slower to support the latest platform or features. However, because the libraries are vendor neutral, if you do not like vendor lock-in for your tools, these libraries are good choices. Another benefit of using vendor-neutral libraries is that they are normally open source, so you can contribute upstream for new features and bug fixes.</p>
+    <h1 class="heading-1" id="_idParaDest-107">Summary</h1>
+    <p class="normal">In this chapter, we looked at various ways to communicate with and manage network devices from Cisco, Juniper, Arista, and Vyatta. We looked at both direct communication with the likes of NETCONF and REST and using vendor-provided libraries such as PyEZ and Pyeapi. These are different layers of abstraction meant to provide a way to programmatically manage your network devices without human intervention.</p>
+    <p class="normal">In <em class="chapterRef">Chapter 4</em>, <em class="italic">The Python Automation Framework</em>, we will take a look at a higher level of vendor-neutral abstraction framework called Ansible. Ansible is <a id="_idIndexMarker289"/>an open-source, general-purpose automation tool written in Python. It can be used to automate servers, network devices, load balancers, and much more. Of course, for our purpose, we will focus on using this automation framework for network devices.</p>
+    <h1 class="heading-1">Join our book community</h1>
+    <p class="normal">To join our community for this book – where you can share feedback, ask questions to the author, and learn about new releases – follow the QR code below:</p>
+    <p class="normal"><a href="https://packt.link/networkautomationcommunity"><span class="url">https://packt.link/networkautomationcommunity</span></a></p>
+    <p class="normal"><img alt="" src="../Images/QR_Code2903617220506617062.png"/></p>
+  </div>
+</body></html>

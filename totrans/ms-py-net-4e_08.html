@@ -1,0 +1,845 @@
+<html><head></head><body>
+  <div class="Basic-Text-Frame" id="_idContainer124">
+    <h1 class="chapterNumber">8</h1>
+    <h1 class="chapterTitle" id="_idParaDest-192">Network Monitoring with Python – Part 2</h1>
+    <p class="normal">In <em class="chapterRef">Chapter 7</em>, <em class="italic">Network Monitoring with Python – Part 1</em>, we used SNMP to query information from network devices. We did this using an SNMP manager to query the SNMP agent residing on the network device. The SNMP information is structured in a hierarchy format with a specific object ID as a way to represent the value of the object. Most of the time, the value we care about is a number, such as CPU load, memory usage, or interface traffic. We can graph this data against time to give us a sense of how the value has changed over time.</p>
+    <p class="normal">We can typically classify the SNMP approach as a <code class="inlineCode">pull</code> method as we constantly ask the device for a particular answer. This method adds a burden to the device because it needs to spend a CPU cycle on the control plane to find answers from the subsystem, package the answer in an SNMP packet, and transport the answer back to the poller. If you have ever been to a family reunion where you have that one family member who keeps asking you the same questions repeatedly, that would be analogous to the SNMP manager polling the managed node.</p>
+    <p class="normal">Over time, if we have multiple SNMP pollers querying the same device every 30 seconds (you would be surprised how often this happens), the management overhead will become substantial. In the same family reunion example we have given, instead of one family member, imagine many people interrupting you every 30 seconds to ask you a question. I don’t know about you, but I know I would be very annoyed even if it was a simple question (or worse, if all of them were asking the same question).</p>
+    <p class="normal">Another way we can provide more efficient network monitoring is to reverse the relationship between the management station from a <em class="italic">pull</em> to a <em class="italic">push</em> model. In other words, the information can be pushed from the device toward the management station in an agreed-upon format. This concept is what flow-based monitoring is based on. In a flow-based model, the network device streams the traffic information, called flow, to the management station. The format can be the Cisco proprietary NetFlow (version 5 or 9), the industry-standard IPFIX, or the open source sFlow format. In this chapter, we will spend some time looking into NetFlow, IPFIX, and sFlow with Python.</p>
+    <p class="normal">Not all monitoring comes in the form of time series data. You can represent information such as network topology and Syslog in a time series format if you want to, but this is not ideal. We can use Python to check network topology information and see whether the topology has changed over time. We can use tools, such as Graphviz, with a Python wrapper to illustrate the topology. As already seen in <em class="chapterRef">Chapter 6</em>, <em class="italic">Network Security with Python</em>, Syslog contains security information. Later in this book, we will look at using the Elastic Stack (Elasticsearch, Logstash, Kibana, and Beat) as an efficient way to collect and index network security and log information.</p>
+    <p class="normal">Specifically, in this chapter, we will cover the following topics:</p>
+    <ul>
+      <li class="bulletList">Graphviz, which is an open source graph visualization software that can help us quickly and efficiently graph our network</li>
+      <li class="bulletList">Flow-based monitoring, such as NetFlow, IPFIX, and sFlow</li>
+      <li class="bulletList">Using ntop to visualize the flow of information</li>
+    </ul>
+    <p class="normal">Let’s start by looking at how to use Graphviz to monitor network topology changes.</p>
+    <h1 class="heading-1" id="_idParaDest-193">Graphviz</h1>
+    <p class="normal">Graphviz is an open<a id="_idIndexMarker596"/> source graph visualization software. Imagine we have to describe our network topology to a colleague without the benefit of a picture. We might say our network consists of three layers: core, distribution, and access.</p>
+    <p class="normal">The core layer comprises two routers for redundancy, and both of the routers are full-meshed toward the four distribution routers; the distribution routers are also full-meshed toward the access routers. The internal routing protocol is OSPF, and externally, we use BGP for peering with our service provider. While this description lacks some details, it is probably enough for your colleague to paint a pretty good high-level picture of your network.</p>
+    <p class="normal">Graphviz works similarly to the process by describing the graph in a text format that Graphviz can understand in a text file. We can then feed the file to the Graphviz program to construct the graph. Here, the graph<a id="_idIndexMarker597"/> is described in a text format called DOT (<a href="https://en.wikipedia.org/wiki/DOT_(graph_description_language)"><span class="url">https://en.wikipedia.org/wiki/DOT_(graph_description_language)</span></a>) and Graphviz renders the graph based <a id="_idIndexMarker598"/>on the description. Of course, because the computer lacks human imagination, the language has to be very precise and detailed.</p>
+    <p class="normal">For Graphviz-specific DOT grammar definitions, take a look at <a href="http://www.graphviz.org/doc/info/lang.html"><span class="url">http://www.graphviz.org/doc/info/lang.html</span></a>.</p>
+    <p class="normal">In this section, we will use the <strong class="keyWord">Link Layer Discovery Protocol</strong> (<strong class="keyWord">LLDP</strong>) to query the device neighbors and create a<a id="_idIndexMarker599"/> network topology graph via Graphviz. Upon completing this extensive example, we will see how we can take something new, such as Graphviz, and combine it with things we have already learned (network LLDP) to solve interesting problems (automatically graph the current network topology).</p>
+    <p class="normal">Let’s start by looking over the lab we will be using.</p>
+    <h2 class="heading-2" id="_idParaDest-194">Lab setup</h2>
+    <p class="normal">We will use the <a id="_idIndexMarker600"/>same lab topology as the last chapter. To recap, we have a three-tier topology, with r6 being the external facing edge device and r5 the top-of-rack router connecting to the server.</p>
+    <figure class="mediaobject"><img alt="Diagram  Description automatically generated" src="../Images/B18403_08_01.png"/></figure>
+    <p class="packt_figref">Figure 8.1: Lab topology</p>
+    <p class="normal">The devices are<a id="_idIndexMarker601"/> vIOS devices to save on lab resources and simplify configuration: </p>
+    <ul>
+      <li class="bulletList">Nodes virtualized by NX-OS and IOS-XR are much more memory-intensive than IOS.</li>
+      <li class="bulletList">If you wish to use NX-OS, consider using NX-API or other API calls that will return structured data.</li>
+    </ul>
+    <p class="normal">The devices have the following information: </p>
+    <table class="table-container" id="table001-1">
+      <tbody>
+        <tr>
+          <td class="table-cell">
+            <p class="normal"><strong class="keyWord">Device</strong></p>
+          </td>
+          <td class="table-cell">
+            <p class="normal"><strong class="keyWord">Management IP</strong></p>
+          </td>
+          <td class="table-cell">
+            <p class="normal"><strong class="keyWord">Loopback IP</strong></p>
+          </td>
+        </tr>
+        <tr>
+          <td class="table-cell">
+            <p class="normal">r1</p>
+          </td>
+          <td class="table-cell">
+            <p class="normal"><code class="inlineCode">192.168.2.218</code></p>
+          </td>
+          <td class="table-cell">
+            <p class="normal"><code class="inlineCode">192.168.0.1</code></p>
+          </td>
+        </tr>
+        <tr>
+          <td class="table-cell">
+            <p class="normal">r2</p>
+          </td>
+          <td class="table-cell">
+            <p class="normal"><code class="inlineCode">192.168.2.219</code></p>
+          </td>
+          <td class="table-cell">
+            <p class="normal"><code class="inlineCode">192.168.0.2</code></p>
+          </td>
+        </tr>
+        <tr>
+          <td class="table-cell">
+            <p class="normal">r3</p>
+          </td>
+          <td class="table-cell">
+            <p class="normal"><code class="inlineCode">192.168.2.220</code></p>
+          </td>
+          <td class="table-cell">
+            <p class="normal"><code class="inlineCode">192.168.0.3</code></p>
+          </td>
+        </tr>
+        <tr>
+          <td class="table-cell">
+            <p class="normal">r5</p>
+          </td>
+          <td class="table-cell">
+            <p class="normal"><code class="inlineCode">192.168.2.221</code></p>
+          </td>
+          <td class="table-cell">
+            <p class="normal"><code class="inlineCode">192.168.0.4</code></p>
+          </td>
+        </tr>
+        <tr>
+          <td class="table-cell">
+            <p class="normal">r6</p>
+          </td>
+          <td class="table-cell">
+            <p class="normal"><code class="inlineCode">192.168.2.222</code></p>
+          </td>
+          <td class="table-cell">
+            <p class="normal"><code class="inlineCode">192.168.0.5</code></p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="normal">The Ubuntu host’s information is as follows:</p>
+    <table class="table-container" id="table002-1">
+      <tbody>
+        <tr>
+          <td class="table-cell">
+            <p class="normal"><strong class="keyWord">Device Name</strong></p>
+          </td>
+          <td class="table-cell">
+            <p class="normal"><strong class="keyWord">External Link Eth0</strong></p>
+          </td>
+          <td class="table-cell">
+            <p class="normal"><strong class="keyWord">Internal IP Eth1</strong></p>
+          </td>
+        </tr>
+        <tr>
+          <td class="table-cell">
+            <p class="normal">Client</p>
+          </td>
+          <td class="table-cell">
+            <p class="normal"><code class="inlineCode">192.168.2.211</code></p>
+          </td>
+          <td class="table-cell">
+            <p class="normal"><code class="inlineCode">10.0.0.9</code></p>
+          </td>
+        </tr>
+        <tr>
+          <td class="table-cell">
+            <p class="normal">Server</p>
+          </td>
+          <td class="table-cell">
+            <p class="normal"><code class="inlineCode">192.168.2.212</code></p>
+          </td>
+          <td class="table-cell">
+            <p class="normal"><code class="inlineCode">10.0.0.5</code></p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="normal">For our example, we will use LLDP (<a href="https://en.wikipedia.org/wiki/Link_Layer_Discovery_Protocol"><span class="url">https://en.wikipedia.org/wiki/Link_Layer_Discovery_Protocol</span></a>). It is a vendor-neutral link-layer<a id="_idIndexMarker602"/> neighbor discovery protocol. Let us proceed to install the necessary software packages.</p>
+    <h2 class="heading-2" id="_idParaDest-195">Installation</h2>
+    <p class="normal">Graphviz can<a id="_idIndexMarker603"/> be obtained via <code class="inlineCode">apt</code>:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">$ </span><span class="language-bash">sudo apt-get install graphviz</span>
+</code></pre>
+    <p class="normal">After the installation is complete, note that verification is performed by using the <code class="inlineCode">dot</code> command:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">$ </span><span class="language-bash">dot -V</span>
+dot - graphviz version 2.43.0 (0)$ dot -V
+</code></pre>
+    <p class="normal">We will use the Python wrapper for Graphviz, so let’s install it now while we are at it:</p>
+    <pre class="programlisting con"><code class="hljs-con">(venv)$ pip install graphviz
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">import</span><span class="language-python"> graphviz</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">graphviz.__version__</span>
+'0.20.1'
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">exit()</span>
+</code></pre>
+    <p class="normal">Let’s take a look at how we can use the software.</p>
+    <h2 class="heading-2" id="_idParaDest-196">Graphviz examples</h2>
+    <p class="normal">Like most<a id="_idIndexMarker604"/> popular open source projects, the documentation of Graphviz (<a href="https://www.graphviz.org/documentation/"><span class="url">https://www.graphviz.org/documentation/</span></a>) is extensive. The challenge for someone new to the software is often the starting point, going from zero to one. For our purpose, we will focus on the dot graph, which draws directed graphs as hierarchies (not to be confused with the DOT language, which is a graph description language).</p>
+    <p class="normal">Let’s start with some of the basic concepts:</p>
+    <ul>
+      <li class="bulletList">Nodes represent <a id="_idIndexMarker605"/>our network entities, such as routers, switches, and servers</li>
+      <li class="bulletList">The edges represent the links between the network entities</li>
+      <li class="bulletList">The graph, nodes, and edges each have attributes (<a href="https://www.graphviz.org/doc/info/attrs.html"><span class="url">https://www.graphviz.org/doc/info/attrs.html</span></a>) that can be tweaked</li>
+      <li class="bulletList">After describing the network, we can output the network graph (<a href="https://www.graphviz.org/doc/info/output.html"><span class="url">https://www.graphviz.org/doc/info/output.html</span></a>) in either PNG, JPEG, or PDF format</li>
+    </ul>
+    <p class="normal">Our first example, <code class="inlineCode">chapter8_gv_1.gv</code>, is an undirected dot graph consisting of four nodes (<code class="inlineCode">core</code>, <code class="inlineCode">distribution</code>, <code class="inlineCode">access1</code>, and <code class="inlineCode">access2</code>). The edges, represented by the dash (<code class="inlineCode">-</code>) sign, join the core node to the distribution node, as well as the distribution node to both of the access nodes:</p>
+    <pre class="programlisting code"><code class="hljs-code">graph my_network {
+    core -- distribution;
+    distribution -- access1;
+    distribution -- access2;
+}
+</code></pre>
+    <p class="normal">The graph can be output in the <code class="inlineCode">dot -T&lt;format&gt; source -o &lt;output file&gt;</code> command line:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">$ </span><span class="hljs-con-built_in">mkdir</span><span class="language-bash"> output</span> 
+<span class="hljs-con-meta">$ </span><span class="language-bash">dot -Tpng chapter8_gv_1.gv -o output/chapter8_gv_1.png</span>
+</code></pre>
+    <p class="normal">The resultant graph can be viewed from the following output folder:</p>
+    <figure class="mediaobject"><img alt="" src="../Images/B18403_08_02.png"/></figure>
+    <p class="packt_figref">Figure 8.2: Graphviz undirected dot graph example</p>
+    <p class="normal">Just like <em class="chapterRef">Chapter 7</em>, <em class="italic">Network Monitoring with Python – Part 1</em>, it might be easier to work in the Linux desktop window while working with these graphs so you can see the graphs right away.</p>
+    <p class="normal">Note that we can <a id="_idIndexMarker606"/>use a directional graph by specifying the graph as a digraph and using the arrow (<code class="inlineCode">-&gt;</code>) sign to represent the edges. There are several attributes we can modify in the case of nodes and edges, such as the node shape, edge labels, etc. The same graph can be modified as follows in <code class="inlineCode">chapter8_gv_2.gv</code>:</p>
+    <pre class="programlisting code"><code class="hljs-code">digraph my_network {
+    node [shape=box];
+    size = <span class="hljs-string">"50 30"</span>;
+    core -&gt; distribution [label=<span class="hljs-string">"2x10G"</span>];
+    distribution -&gt; access1 [label=<span class="hljs-string">"1G"</span>];
+    distribution -&gt; access2 [label=<span class="hljs-string">"1G"</span>];
+}
+</code></pre>
+    <p class="normal">We will output the file in PDF this time:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">$ </span><span class="language-bash">dot -Tpdf chapter8_gv_2.gv -o output/chapter8_gv_2.pdf</span>
+</code></pre>
+    <p class="normal">Take a look at the directional arrows in the new graph:</p>
+    <figure class="mediaobject"><img alt="" src="../Images/B18403_08_03.png"/></figure>
+    <p class="packt_figref">Figure 8.3: Network graph with directional arrows and line descriptions</p>
+    <p class="normal">Now let’s take a<a id="_idIndexMarker607"/> look at the Python wrapper around Graphviz.</p>
+    <h2 class="heading-2" id="_idParaDest-197">Python with Graphviz examples</h2>
+    <p class="normal">We can reproduce<a id="_idIndexMarker608"/> the same topology graph as before using the Python Graphviz package and construct the same three-layer network topology:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> graphviz </span><span class="hljs-con-keyword">import</span><span class="language-python"> Digraph</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">my_graph = Digraph(comment=</span><span class="hljs-con-string">"My Network"</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">my_graph.node(</span><span class="hljs-con-string">"core"</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">my_graph.node(</span><span class="hljs-con-string">"distribution"</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">my_graph.node(</span><span class="hljs-con-string">"access1"</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">my_graph.node(</span><span class="hljs-con-string">"access2"</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">my_graph.edge(</span><span class="hljs-con-string">"core"</span><span class="language-python">, </span><span class="hljs-con-string">"distribution"</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">my_graph.edge(</span><span class="hljs-con-string">"distribution"</span><span class="language-python">, </span><span class="hljs-con-string">"access1"</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">my_graph.edge(</span><span class="hljs-con-string">"distribution"</span><span class="language-python">, </span><span class="hljs-con-string">"access2"</span><span class="language-python">)</span>
+</code></pre>
+    <p class="normal">The code produces what you would normally write in the DOT language but in a more Pythonic way. You can view the source of the graph before the graph generation:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(my_graph.source)</span>
+// My Network
+digraph {
+    core
+    distribution
+    access1
+    access2
+    core -&gt; distribution
+    distribution -&gt; access1
+    distribution -&gt; access2
+}
+</code></pre>
+    <p class="normal">The graph can be rendered by the <code class="inlineCode">render()</code> method. By default, the output format is PDF:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">my_graph.render(</span><span class="hljs-con-string">"output/chapter8_gv_3.gv"</span><span class="language-python">)</span>
+'output/chapter8_gv_3.gv.pdf'
+</code></pre>
+    <p class="normal">The Python package<a id="_idIndexMarker609"/> wrapper closely mimics all the API options of Graphviz. You can find documentation about the options on the Graphviz Read the Docs website (<a href="http://graphviz.readthedocs.io/en/latest/index.html"><span class="url">http://graphviz.readthedocs.io/en/latest/index.html</span></a>). You can also refer to the source code on GitHub for more information (<a href="https://github.com/xflr6/graphviz"><span class="url">https://github.com/xflr6/graphviz</span></a>). We are now ready to use the tool to map out our network.</p>
+    <h2 class="heading-2" id="_idParaDest-198">LLDP neighbor graphing</h2>
+    <p class="normal">In this section, we<a id="_idIndexMarker610"/> will use the example of mapping out LLDP neighbors to illustrate a problem-solving pattern that<a id="_idIndexMarker611"/> has helped me over the years:</p>
+    <ol class="numberedList" style="list-style-type: decimal;">
+      <li class="numberedList" value="1">Modularize each task into smaller pieces, if possible. In our example, we can combine a few steps, but if we break them into smaller pieces, we will be able to reuse and improve them more easily.</li>
+      <li class="numberedList">Use an automation tool to interact with the network devices, but keep the more complex logic aside at the management station. For example, the router has provided an LLDP neighbor output that is a bit messy. In this case, we will stick with the working command and the output and use a Python script at the management station to parse out the output we need.</li>
+      <li class="numberedList">When given choices for the same task, pick the one that can be reused. In our example, we can use low-level Pexpect, Paramiko, or Ansible playbooks to query the routers. In my opinion, Ansible is a more reusable option, so that is what I have picked.</li>
+    </ol>
+    <p class="normal">To get started, since LLDP is not <a id="_idIndexMarker612"/>enabled on the routers by default, we will need to configure them on the devices first. By now, we know we have a number of <a id="_idIndexMarker613"/>options to choose from; in this case, I chose the Ansible playbook with the <code class="inlineCode">ios_config</code> module for the task. The <code class="inlineCode">hosts</code> file consists of five routers:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">$ </span><span class="hljs-con-built_in">cat</span><span class="language-bash"> hosts</span> 
+[devices]
+r1
+r2
+r3
+r5-tor
+r6-edge
+[edge-devices]
+r5-tor
+r6-edge
+</code></pre>
+    <p class="normal">Each host contains the corresponding names in the <code class="inlineCode">host_vars</code> folder. We are showing <code class="inlineCode">r1</code> as an example:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-meta">---</span>
+<span class="hljs-attr">ansible_host:</span> <span class="hljs-number">192.168.2.218</span>
+<span class="hljs-attr">ansible_user:</span> <span class="hljs-string">cisco</span>
+<span class="hljs-attr">ansible_ssh_pass:</span> <span class="hljs-string">cisco</span>
+<span class="hljs-attr">ansible_connection:</span> <span class="hljs-string">network_cli</span>
+<span class="hljs-attr">ansible_network_os:</span> <span class="hljs-string">ios</span>
+<span class="hljs-attr">ansbile_become:</span> <span class="hljs-literal">yes</span>
+<span class="hljs-attr">ansible_become_method:</span> <span class="hljs-string">enable</span>
+<span class="hljs-attr">ansible_become_pass:</span> <span class="hljs-string">cisco</span>
+</code></pre>
+    <p class="normal">The <code class="inlineCode">cisco_config_lldp.yml</code> playbook<a id="_idIndexMarker614"/> consists of one play with the <code class="inlineCode">ios_lldp</code> module:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-meta">---</span>
+<span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Enable</span> <span class="hljs-string">LLDP</span>
+  <span class="hljs-attr">hosts:</span> <span class="hljs-string">"devices"</span>
+  <span class="hljs-attr">gather_facts:</span> <span class="hljs-literal">false</span>
+  <span class="hljs-attr">connection:</span> <span class="hljs-string">network_cli</span>
+  <span class="hljs-attr">tasks:</span>
+    <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">enable</span> <span class="hljs-string">LLDP</span> <span class="hljs-string">service</span>
+      <span class="hljs-attr">ios_lldp:</span>
+        <span class="hljs-attr">state:</span> <span class="hljs-string">present</span>
+      <span class="hljs-attr">register:</span> <span class="hljs-string">output</span>
+    <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">show</span> <span class="hljs-string">output</span>
+      <span class="hljs-attr">debug:</span>
+        <span class="hljs-attr">var:</span> <span class="hljs-string">output</span>
+</code></pre>
+    <p class="normal">The <code class="inlineCode">ios_lldp</code> Ansible module <a id="_idIndexMarker615"/>is new in version 2.5 and later. Use the <code class="inlineCode">ios_config</code> module if you are using an older version of Ansible.</p>
+    <p class="normal">Run the playbook to<a id="_idIndexMarker616"/> turn on <code class="inlineCode">lldp</code>:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">$ </span><span class="language-bash">ansible-playbook -i hosts cisco_config_lldp.yml</span>
+&lt;skip&gt;
+PLAY RECAP ****************************************************************************
+r1                         : ok=2    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+r2                         : ok=2    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+r3                         : ok=2    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+r5-tor                     : ok=2    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+r6-edge                    : ok=2    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+</code></pre>
+    <p class="normal">Since the default <code class="inlineCode">lldp</code> advertise timer is 30 seconds, we should wait a bit for <code class="inlineCode">lldp</code> advertisements to be exchanged between the devices. We can verify that LLDP is indeed active on the routers and the neighbors it has discovered:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">r1#</span><span class="language-bash">sh lldp</span>
+Global LLDP Information:
+    Status: ACTIVE
+    LLDP advertisements are sent every 30 seconds
+    LLDP hold time advertised is 120 seconds
+    LLDP interface reinitialisation delay is 2 seconds
+<span class="hljs-con-meta">r1#</span><span class="language-bash">sh lldp neighbors</span>
+Capability codes:
+    (R) Router, (B) Bridge, (T) Telephone, (C) DOCSIS Cable Device
+    (W) WLAN Access Point, (P) Repeater, (S) Station, (O) Other
+Device ID           Local Intf     Hold-time  Capability      Port ID
+r6.virl.info        Gi0/1          120        R               Gi0/1
+r5.virl.info        Gi0/2          120        R               Gi0/1
+Total entries displayed: 2          
+</code></pre>
+    <p class="normal">In older versions of<a id="_idIndexMarker617"/> CML, e.g. VIRL, or other lab software, you might see LLDP neighbors on the <code class="inlineCode">G0/0</code> MGMT interfaces. What we really care about are the <code class="inlineCode">G0/1</code> and <code class="inlineCode">G0/2</code> interfaces that are directly connected to other peers. This information will come<a id="_idIndexMarker618"/> in handy as we prepare to parse the output and construct our topology graph.</p>
+    <h3 class="heading-3" id="_idParaDest-199">Information retrieval</h3>
+    <p class="normal">We can now use <a id="_idIndexMarker619"/>another Ansible playbook, namely <code class="inlineCode">cisco_discover_lldp.yml</code>, to execute the LLDP command on the device and copy the output of each device to a <code class="inlineCode">tmp</code> directory.</p>
+    <p class="normal">Let’s create the <code class="inlineCode">tmp</code> directory:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">$ </span><span class="hljs-con-built_in">mkdir</span><span class="language-bash"> tmp</span>
+</code></pre>
+    <p class="normal">The playbook will have three tasks. The first task will execute the <code class="inlineCode">show lldp</code> neighbor command on each of the devices, the second task will display the output, and the third task will copy the output to a text file in the output directory:</p>
+    <pre class="programlisting code"><code class="hljs-code">  <span class="hljs-attr">tasks:</span>
+    <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Query</span> <span class="hljs-string">for</span> <span class="hljs-string">LLDP</span> <span class="hljs-string">Neighbors</span>
+      <span class="hljs-attr">ios_command:</span>
+        <span class="hljs-attr">commands:</span> <span class="hljs-string">show</span> <span class="hljs-string">lldp</span> <span class="hljs-string">neighbors</span>
+      <span class="hljs-attr">register:</span> <span class="hljs-string">output</span>
+    <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">show</span> <span class="hljs-string">output</span>
+      <span class="hljs-attr">debug:</span>
+        <span class="hljs-attr">var:</span> <span class="hljs-string">output</span>
+    <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">copy</span> <span class="hljs-string">output</span> <span class="hljs-string">to</span> <span class="hljs-string">file</span>
+      <span class="hljs-attr">copy:</span> <span class="hljs-string">content="{{</span> <span class="hljs-string">output.stdout_lines</span> <span class="hljs-string">}}"</span> <span class="hljs-string">dest="./tmp/{{</span> <span class="hljs-string">inventory_hostname</span> <span class="hljs-string">}}_lldp_output.txt"</span>
+</code></pre>
+    <p class="normal">After execution, the <code class="inlineCode">./tmp</code> directory now contains all the routers’ output (showing LLDP neighbors) in its own file:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">$ </span><span class="hljs-con-built_in">ls</span><span class="language-bash"> -l tmp</span>
+total 20
+-rw-rw-r-- 1 echou echou 413 Sep 18 10:44 r1_lldp_output.txt
+-rw-rw-r-- 1 echou echou 413 Sep 18 10:44 r2_lldp_output.txt
+-rw-rw-r-- 1 echou echou 413 Sep 18 10:44 r3_lldp_output.txt
+-rw-rw-r-- 1 echou echou 484 Sep 18 10:44 r5-tor_lldp_output.txt
+-rw-rw-r-- 1 echou echou 484 Sep 18 10:44 r6-edge_lldp_output.txt
+</code></pre>
+    <p class="normal"><code class="inlineCode">r1_lldp_output.txt</code>, as with <a id="_idIndexMarker620"/>the rest of the output files, contains the <code class="inlineCode">output.stdout_lines</code> variable from the Ansible playbook for each device:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">$ </span><span class="hljs-con-built_in">cat</span><span class="language-bash"> tmp/r1_lldp_output.txt</span> 
+[["Capability codes:", "    (R) Router, (B) Bridge, (T) Telephone, (C) DOCSIS Cable Device", "    (W) WLAN Access Point, (P) Repeater, (S) Station, (O) Other", "", "Device ID           Local Intf     Hold-time  Capability      Port ID", "r6.virl.info        Gi0/1          120        R               Gi0/1", "r5.virl.info        Gi0/2          120        R               Gi0/1", "", "Total entries displayed: 2"]]
+</code></pre>
+    <p class="normal">So far, we have worked on retrieving information from network devices. Now we are ready to tie everything together with a Python script.</p>
+    <h3 class="heading-3" id="_idParaDest-200">Python parser script</h3>
+    <p class="normal">We can now use a Python script to parse the LLDP neighbor output from each device and construct a network <a id="_idIndexMarker621"/>topology graph from the results. The purpose is to automatically check the device to see whether any LLDP neighbors have disappeared due to link failure or other issues. Let’s look at the <code class="inlineCode">cisco_graph_lldp.py</code> file and see how that is done.</p>
+    <p class="normal">We start with the necessary imports of the packages: an empty list that we will populate with tuples of node relationships. We also know that <code class="inlineCode">Gi0/0</code> on the devices is connected to the management network; therefore, we are only searching for <code class="inlineCode">Gi0/[1234]</code> as our regular expression pattern in the <code class="inlineCode">show LLDP neighbors</code> output:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">import</span> glob, re
+<span class="hljs-keyword">from</span> graphviz <span class="hljs-keyword">import</span> Digraph, Source
+pattern = re.<span class="hljs-built_in">compile</span>(<span class="hljs-string">'Gi0/[1234]'</span>)
+device_lldp_neighbors = []
+</code></pre>
+    <p class="normal">We will use the <code class="inlineCode">glob.glob()</code> method to traverse the <code class="inlineCode">./tmp</code> directory of all the files, parse out the device name, and find the neighbors that the device is connected to. There are some embedded <a id="_idIndexMarker622"/>print statements in the script that we can comment out for the final version; if the statements are uncommented, we can see the parsed result:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">$ </span><span class="language-bash">python cisco_graph_lldp.py</span>
+device: r6-edge
+  neighbors: r2
+  neighbors: r1
+  neighbors: r3
+device: r2
+  neighbors: r5
+  neighbors: r6
+device: r3
+  neighbors: r5
+  neighbors: r6
+device: r5-tor
+  neighbors: r3
+  neighbors: r1
+  neighbors: r2
+device: r1
+  neighbors: r5
+  neighbors: r6
+</code></pre>
+    <p class="normal">The fully populated edge list contains tuples that consist of the device and its neighbors:</p>
+    <pre class="programlisting con"><code class="hljs-con">Edges: [('r6-edge', 'r2'), ('r6-edge', 'r1'), ('r6-edge', 'r3'), ('r2', 'r5'), ('r2', 'r6'), ('r3', 'r5'), ('r3', 'r6'), ('r5-tor', 'r3'), ('r5-tor', 'r1'), ('r5-tor', 'r2'), ('r1', 'r5'), ('r1', 'r6')]
+</code></pre>
+    <p class="normal">We can now construct<a id="_idIndexMarker623"/> the network topology graph using the Graphviz package. The most important part is the unpacking of the tuples that represent the edge relationship:</p>
+    <pre class="programlisting code"><code class="hljs-code">my_graph = Digraph(<span class="hljs-string">"My_Network"</span>)
+my_graph.edge(<span class="hljs-string">"Client"</span>, <span class="hljs-string">"r6-edge"</span>)
+my_graph.edge(<span class="hljs-string">"r5-tor"</span>, <span class="hljs-string">"Server"</span>)
+<span class="hljs-comment"># construct the edge relationships</span>
+<span class="hljs-keyword">for</span> neighbors <span class="hljs-keyword">in</span> device_lldp_neighbors:
+    node1, node2 = neighbors
+    my_graph.edge(node1, node2)
+</code></pre>
+    <p class="normal">If we were to print out the resulting source dot file, it would be an accurate representation of our <a id="_idIndexMarker624"/>network:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-title">digraph</span><span class="hljs-function"> My_Network {</span>
+<span class="hljs-function">        Client -&gt;</span> <span class="hljs-string">"r6-edge"</span>
+        <span class="hljs-string">"r5-tor"</span> -&gt; <span class="hljs-title">Server</span>
+<span class="hljs-function">        "r6-edge" -&gt;</span> <span class="hljs-title">r2</span>
+<span class="hljs-function">        "r6-edge" -&gt;</span> <span class="hljs-title">r1</span>
+<span class="hljs-function">        "r6-edge" -&gt;</span> <span class="hljs-title">r3</span>
+<span class="hljs-function">        r2 -&gt;</span> <span class="hljs-title">r5</span>
+<span class="hljs-function">        r2 -&gt;</span> <span class="hljs-title">r6</span>
+<span class="hljs-function">        r3 -&gt;</span> <span class="hljs-title">r5</span>
+<span class="hljs-function">        r3 -&gt;</span> <span class="hljs-title">r6</span>
+<span class="hljs-function">        "r5-tor" -&gt;</span> <span class="hljs-title">r3</span>
+<span class="hljs-function">        "r5-tor" -&gt;</span> <span class="hljs-title">r1</span>
+<span class="hljs-function">        "r5-tor" -&gt;</span> <span class="hljs-title">r2</span>
+<span class="hljs-function">        r1 -&gt;</span> <span class="hljs-title">r5</span>
+<span class="hljs-function">        r1 -&gt;</span> r6
+}
+</code></pre>
+    <p class="normal">Sometimes, it is confusing to see the same link twice; for example, the <code class="inlineCode">r2</code> to <code class="inlineCode">r5-tor</code> link appeared twice in the previous diagram for each of the directions of the link. As network engineers, we understand that sometimes a fault in the physical link will result in a unidirectional link, which we don’t want to see.</p>
+    <p class="normal">If we were to graph the diagram as is, the placement of the nodes would be a bit funky. The placement of the nodes is auto-rendered. The following diagram illustrates the rendering in a default layout as well as the <code class="inlineCode">neato</code> layout, namely, a digraph (<code class="inlineCode">My_Network</code>, <code class="inlineCode">engine='neato'</code>):</p>
+    <figure class="mediaobject"><img alt="" src="../Images/B18403_08_04.png"/></figure>
+    <p class="packt_figref">Figure 8.4: Topology graph 1</p>
+    <p class="normal">The <code class="inlineCode">neato</code> layout<a id="_idIndexMarker625"/> represents an attempt to draw undirected graphs with even less hierarchy:</p>
+    <figure class="mediaobject"><img alt="" src="../Images/B18403_08_05.png"/></figure>
+    <p class="packt_figref">Figure 8.5: Topology graph 2</p>
+    <p class="normal">Sometimes, the default layout presented by the tool is just fine, especially if your goal is to detect faults instead of making them visually appealing. However, in this case, let’s see how we can insert raw DOT language knobs into the source file. From research, we know that we can use the <code class="inlineCode">rank</code> command to specify the level where some nodes can stay on the same level. However, there is no option presented in the Graphviz Python API. Luckily, the dot<a id="_idIndexMarker626"/> source file is just a string, which we can insert as raw dot comments using the <code class="inlineCode">replace()</code> method with the following:</p>
+    <pre class="programlisting code"><code class="hljs-code">source = my_graph.source
+original_text = <span class="hljs-string">"digraph My_Network {"</span>
+<span class="hljs-keyword">new</span><span class="hljs-type">_text</span> = <span class="hljs-string">'digraph My_Network {\n{rank=same Client "r6-edge"}\n{rank=same r1 r2 r3}\n'</span>
+<span class="hljs-keyword">new</span><span class="hljs-type">_source</span> = source.replace(original_text, <span class="hljs-keyword">new</span><span class="hljs-type">_text</span>)
+print(<span class="hljs-keyword">new</span><span class="hljs-type">_source</span>)
+<span class="hljs-keyword">new</span><span class="hljs-type">_graph</span> = Source(<span class="hljs-keyword">new</span><span class="hljs-type">_source</span>)
+<span class="hljs-keyword">new</span><span class="hljs-type">_graph</span>.render(<span class="hljs-string">"output/chapter8_lldp_graph.gv"</span>)
+</code></pre>
+    <p class="normal">The end result is a new source that we can render the final topology graph from:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-symbol">digraph</span> My_Network {
+{rank<span class="hljs-symbol">=same</span> Client <span class="hljs-string">"r6-edge"</span>}
+{rank<span class="hljs-symbol">=same</span> <span class="hljs-built_in">r1</span> <span class="hljs-built_in">r2</span> <span class="hljs-built_in">r3</span>}
+        Client -&gt; <span class="hljs-string">"</span><span class="hljs-string">r6-edge"</span>
+        <span class="hljs-string">"r5-tor"</span> -&gt; Server
+        <span class="hljs-string">"r6-edge"</span> -&gt; <span class="hljs-built_in">r2</span>
+        <span class="hljs-string">"r6-edge"</span> -&gt; <span class="hljs-built_in">r1</span>
+        <span class="hljs-string">"r6-edge"</span> -&gt; <span class="hljs-built_in">r3</span>
+        <span class="hljs-built_in">r2</span> -&gt; <span class="hljs-built_in">r5</span>
+        <span class="hljs-built_in">r2</span> -&gt; <span class="hljs-built_in">r6</span>
+        <span class="hljs-built_in">r3</span> -&gt; <span class="hljs-built_in">r5</span>
+        <span class="hljs-built_in">r3</span> -&gt; <span class="hljs-built_in">r6</span>
+        <span class="hljs-string">"r5-tor"</span> -&gt; <span class="hljs-built_in">r3</span>
+        <span class="hljs-string">"r5-tor"</span> -&gt; <span class="hljs-built_in">r1</span>
+        <span class="hljs-string">"</span><span class="hljs-string">r5-tor"</span> -&gt; <span class="hljs-built_in">r2</span>
+        <span class="hljs-built_in">r1</span> -&gt; <span class="hljs-built_in">r5</span>
+        <span class="hljs-built_in">r1</span> -&gt; <span class="hljs-built_in">r6</span>
+}
+</code></pre>
+    <p class="normal">The graph is now good to go with the correct hierarchy:</p>
+    <figure class="mediaobject"><img alt="" src="../Images/B18403_08_06.png"/></figure>
+    <p class="packt_figref">Figure 8.6: Topology graph 3</p>
+    <p class="normal">We have used the Python script to automatically retrieve network information from the devices and automatically<a id="_idIndexMarker627"/> graph the topology. It is quite a bit of work, but the reward is the consistency and the assurance that the graph always represents the latest state of the actual network. Let’s follow up with some verification that our script can detect the latest state change of the network with the necessary graph.</p>
+    <h3 class="heading-3" id="_idParaDest-201">Testing the playbook</h3>
+    <p class="normal">We are now ready to<a id="_idIndexMarker628"/> incorporate a test to check whether the playbook can accurately depict the topology change when a link change happens.</p>
+    <p class="normal">We can test this by shutting down the <code class="inlineCode">Gi0/1</code> and <code class="inlineCode">Go0/2</code> interfaces on <code class="inlineCode">r6-edge</code>:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">r6#</span><span class="language-bash">confi t</span>
+Enter configuration commands, one per line.  End with CNTL/Z.
+<span class="hljs-con-meta">r6(config)#</span><span class="language-bash">int gig 0/1</span>
+<span class="hljs-con-meta">r6(config-if)#</span><span class="language-bash">shut</span>
+<span class="hljs-con-meta">r6(config-if)#</span><span class="language-bash">int gig 0/2</span>
+<span class="hljs-con-meta">r6(config-if)#</span><span class="language-bash">shut</span>
+<span class="hljs-con-meta">r6(config-if)#</span><span class="language-bash">end</span>
+<span class="hljs-con-meta">r6#</span>
+</code></pre>
+    <p class="normal">When the LLDP neighbor passes the hold timer, they will disappear from the LLDP table on <code class="inlineCode">r6-edge</code>:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">r6#</span><span class="language-bash">sh lldp neighbors</span>
+Capability codes:
+    (R) Router, (B) Bridge, (T) Telephone, (C) DOCSIS Cable Device
+    (W) WLAN Access Point, (P) Repeater, (S) Station, (O) Other
+Device ID           Local Intf     Hold-time  Capability      Port ID
+r1.virl.info        Gi0/0          120        R               Gi0/0
+r2.virl.info        Gi0/0          120        R               Gi0/0
+r3.virl.info        Gi0/0          120        R               Gi0/0
+r5.virl.info        Gi0/0          120        R               Gi0/0
+r3.virl.info        Gi0/3          120        R               Gi0/1
+          
+Device ID           Local Intf     Hold-time  Capability      Port ID
+Total entries displayed: 5
+</code></pre>
+    <p class="normal">If we execute the<a id="_idIndexMarker629"/> playbook and the Python script, the graph will automatically show <code class="inlineCode">r6-edge</code> only connects to <code class="inlineCode">r3</code> and we can start to troubleshoot why that is the case:</p>
+    <figure class="mediaobject"><img alt="" src="../Images/B18403_08_07.png"/></figure>
+    <p class="packt_figref">Figure 8.7: Topology graph 4</p>
+    <p class="normal">This is a relatively long example demonstrating multiple tools working together to solve a problem. We used the tools we have learned – Ansible and Python – to modularize and break tasks into reusable pieces.</p>
+    <p class="normal">We then used a new tool, namely, Graphviz, to help monitor the network for non-time series data, such as network topology relationships.</p>
+    <p class="normal">In the next section, we <a id="_idIndexMarker630"/>will change direction a bit and look into monitoring our network with network flows collected by our network equipment.</p>
+    <h1 class="heading-1" id="_idParaDest-202">Flow-based monitoring</h1>
+    <p class="normal">As mentioned in the chapter introduction, besides polling technology, such as SNMP, we can also use a push strategy, which <a id="_idIndexMarker631"/>allows the device to push network information toward the management station. NetFlow and its closely associated cousins, IPFIX and sFlow, are examples of such information pushed from the direction of the network device toward the management station. We can argue that the <code class="inlineCode">push</code> method is more sustainable since the network device is inherently in charge of allocating the necessary resources to push the information. If the device CPU is busy, for example, it can skip the flow export process in favor of a more critical task such as routing packets.</p>
+    <p class="normal">A flow, as defined by IETF (<a href="https://www.ietf.org/proceedings/39/slides/int/ip1394-background/tsld004.htm"><span class="url">https://www.ietf.org/proceedings/39/slides/int/ip1394-background/tsld004.htm</span></a>), is a sequence of packets moving from an application sending something to the application receiving it. If we refer back to the OSI model, a flow is what constitutes a single unit of communication between two applications. Each flow comprises some packets; some flows have more packets (such as a video stream), while some have just a few (such as an HTTP request). If you think about flows for a minute, you’ll notice that routers and switches might care about packets and frames, but the application and user usually care more about the network flows.</p>
+    <p class="normal">Flow-based monitoring usually refers to NetFlow, IPFIX, and sFlow:</p>
+    <ul>
+      <li class="bulletList"><strong class="keyWord">NetFlow</strong>: NetFlow v5 is a<a id="_idIndexMarker632"/> technology where the network device<a id="_idIndexMarker633"/> caches flow entries and aggregates packets by matching the set of tuples (source interface, source IP/port, destination IP/port, and so on). Once a flow is completed, the network device exports the flow characteristics, including total bytes and packet counts, to the management station.</li>
+      <li class="bulletList"><strong class="keyWord">IPFIX</strong>: IPFIX is the proposed <a id="_idIndexMarker634"/>standard for structured streaming and is<a id="_idIndexMarker635"/> similar to NetFlow v9, also known as Flexible NetFlow. Essentially, it is a definable flow export, which allows the user to export nearly anything that the network device knows about. The flexibility often comes at the expense of simplicity compared to NetFlow v5. The configuration <a id="_idIndexMarker636"/>of IPFIX is more complex than the traditional NetFlow v5. Additional complexity <a id="_idIndexMarker637"/>makes it less ideal for introductory learning. However, once you are familiar with NetFlow v5, you can parse IPFIX as long as you match the template definition.</li>
+      <li class="bulletList"><strong class="keyWord">sFlow</strong>: sFlow has no notion of a flow or packet aggregation by itself. It performs two types<a id="_idIndexMarker638"/> of sampling of packets. It randomly samples<a id="_idIndexMarker639"/> one out of “n” packets/applications and has a time-based sampling counter. It sends the information to the management station, and the station derives the network flow information by referring to the type of packet sample received along with the counters. As it doesn’t perform any aggregation on the network device, you can argue that sFlow is more scalable than NetFlow and IPFIX.</li>
+    </ul>
+    <p class="normal">The best way to learn about each one of these is probably to dive right into examples. Let’s get into some of the flow-based examples in the following section.</p>
+    <h2 class="heading-2" id="_idParaDest-203">NetFlow parsing with Python</h2>
+    <p class="normal">We can use Python to parse<a id="_idIndexMarker640"/> the NetFlow datagram transported on the wire. This allows us to look at the NetFlow packet in detail and troubleshoot any NetFlow issues that are not working as expected.</p>
+    <p class="normal">First, let’s generate traffic between the client and server across the lab network. We can use the built-in HTTP server module from Python to quickly launch a simple HTTP server on the VIRL host acting as the server. Open a new Terminal window to the server host and start the HTTP server; let’s keep the window open:</p>
+    <pre class="programlisting con"><code class="hljs-con">cisco@Server:~$ python3 -m http.server
+Serving HTTP on 0.0.0.0 port 8000 ...
+</code></pre>
+    <p class="normal">For Python 2, the module is named <code class="inlineCode">SimpleHTTPServer</code>, for example, <code class="inlineCode">python2 -m SimpleHTTPServer</code>.</p>
+    <p class="normal">In a separate Terminal window, <code class="inlineCode">ssh</code> to the client. We can create a short <code class="inlineCode">while</code> loop in a Python script to continuously send <code class="inlineCode">HTTP GET</code> to the web server:</p>
+    <pre class="programlisting con"><code class="hljs-con">cisco@Client:~$ cat http_get.py
+import requests
+import time
+while True:
+    r = requests.get("http://10.0.0.5:8000")
+    print(r.text)
+    time.sleep(5)
+</code></pre>
+    <p class="normal">The client should get a very<a id="_idIndexMarker641"/> plain HTML page every 5 seconds:</p>
+    <pre class="programlisting con"><code class="hljs-con">cisco@Client:~$ python3 http_get.py
+&lt;!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"&gt;
+&lt;html&gt;
+&lt;head&gt;
+&lt;skip&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</code></pre>
+    <p class="normal">If we look back to the server Terminal window, we should also see the requests continuously coming in from the client every 5 seconds:</p>
+    <pre class="programlisting con"><code class="hljs-con">cisco@Server:~$ python3 -m http.server
+Serving HTTP on 0.0.0.0 port 8000 ...
+10.0.0.9 - - [02/Oct/2019 00:55:57] "GET / HTTP/1.1" 200 -
+10.0.0.9 - - [02/Oct/2019 00:56:02] "GET / HTTP/1.1" 200 -
+10.0.0.9 - - [02/Oct/2019 00:56:07] "GET / HTTP/1.1" 200 –
+</code></pre>
+    <p class="normal">The traffic from the client to the server traverses through the network devices, and we can export NetFlow from any of the devices in between. Since <code class="inlineCode">r6-edge</code> is the first hop for the client host, we will have this router export NetFlow to the management host at port <code class="inlineCode">9995</code>.</p>
+    <p class="normal">In this example, we use only one device for demonstration; therefore, we manually configure it with the necessary commands. In the next section, when we enable NetFlow on all the devices, we will use an Ansible playbook to configure all the routers at once.</p>
+    <p class="normal">The following configurations are necessary for exporting NetFlow on Cisco IOS devices:</p>
+    <pre class="programlisting con"><code class="hljs-con">!
+ip flow-export version 5
+ip flow-export destination 192.168.2.126 9995 vrf Mgmt-intf
+!
+interface GigabitEthernet0/4
+ description to Client
+ ip address 10.0.0.10 255.255.255.252
+ ip flow ingress
+ ip flow egress
+&lt;skip&gt;
+</code></pre>
+    <p class="normal">Next, let’s look at the Python parser script that helps us separate the different network flow fields we received from<a id="_idIndexMarker642"/> network devices.</p>
+    <h3 class="heading-3" id="_idParaDest-204">Python Socket and Struct</h3>
+    <p class="normal">The script, <code class="inlineCode">netFlow_v5_parser.py</code>, was modified from Brian Rak’s blog post at <a href="http://blog.devicenull.org/2013/09/04/python-netflow-v5-parser.html"><span class="url">http://blog.devicenull.org/2013/09/04/python-netflow-v5-parser.html</span></a>. The modification was mainly for Python 3 compatibility and parsing additional NetFlow version 5 fields. The reason we<a id="_idIndexMarker643"/> chose NetFlow v5 instead of NetFlow v9 is that v9 is more complex and uses templates to map out the fields, making it more difficult to learn in an introductory session. However, since NetFlow version 9 is an extended <a id="_idIndexMarker644"/>format of the original NetFlow version 5, all the concepts we introduced in this section apply to it.</p>
+    <p class="normal">Because NetFlow packets are represented in bytes over the wire, we will use the Python struct module included in the standard library to convert bytes into native Python data types.</p>
+    <p class="normal">You can find more information about the two modules at <a href="https://docs.python.org/3.10/library/socket.html"><span class="url">https://docs.python.org/3.10/library/socket.html</span></a> and <a href="https://docs.python.org/3.10/library/struct.html"><span class="url">https://docs.python.org/3.10/library/struct.html</span></a>. </p>
+    <p class="normal">In the script, we will start by using the <code class="inlineCode">socket</code> module to bind and listen for the UDP datagrams. With <code class="inlineCode">socket.AF_INET</code>, we intend on listening to the IPv4 address sockets; with <code class="inlineCode">socket.SOCK_DGRAM</code>, we specify that we’ll see the UDP datagram:</p>
+    <pre class="programlisting code"><code class="hljs-code">sock = <span class="hljs-built_in">socket</span>.<span class="hljs-built_in">socket</span>(<span class="hljs-built_in">socket</span>.AF_INET, <span class="hljs-built_in">socket</span>.SOCK_DGRAM)
+sock.bind((<span class="hljs-string">'0.0.0.0'</span>, <span class="hljs-number">9995</span>))
+</code></pre>
+    <p class="normal">We will start a loop and retrieve information off the wire 1,500 bytes at a time:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">while</span> <span class="hljs-literal">True</span>:
+    buf, addr = sock.recvfrom(<span class="hljs-number">1500</span>)
+</code></pre>
+    <p class="normal">The following line is where we begin to deconstruct or unpack the packet. The first argument of <code class="inlineCode">!HH</code> specifies the network’s big-endian byte order with the exclamation point (big-endian) as well as the format of the C type (<code class="inlineCode">H = 2</code> byte unsigned short integer):</p>
+    <pre class="programlisting code"><code class="hljs-code">(version, count) = struct.unpack(<span class="hljs-string">'!HH'</span>,buf[<span class="hljs-number">0</span>:<span class="hljs-number">4</span>])
+</code></pre>
+    <p class="normal">The first 4 bytes include<a id="_idIndexMarker645"/> the version and the number of flows exported in this <a id="_idIndexMarker646"/>packet. If you do not remember the NetFlow version 5 header off the top of your head (that was a joke, by the way; I only read the header when I want to fall asleep quickly), here is a glance:</p>
+    <figure class="mediaobject"><img alt="" src="../Images/B18403_08_08.png"/></figure>
+    <p class="packt_figref">Figure 8.8: NetFlow v5 header (source: http://www.cisco.com/c/en/us/td/docs/net_mgmt/netﬂow_collection_engine/3-6/user/guide/format.html#wp1006108)</p>
+    <p class="normal">The rest of the header can be parsed accordingly, depending on the byte location and data type. Python allows us to unpack several header items in a single line:</p>
+    <pre class="programlisting code"><code class="hljs-code">    (sys_uptime, unix_secs, unix_nsecs, flow_sequence) = struct<span class="hljs-selector-class">.unpack</span>(<span class="hljs-string">'!IIII'</span>, buf<span class="hljs-selector-attr">[4:20]</span>)
+    (engine_type, engine_id, sampling_interval) = struct<span class="hljs-selector-class">.unpack</span>(<span class="hljs-string">'!BBH'</span>, buf<span class="hljs-selector-attr">[20:24]</span>)
+</code></pre>
+    <p class="normal">The <code class="inlineCode">while</code> loop that <a id="_idIndexMarker647"/>follows will fill the <code class="inlineCode">nfdata</code> dictionary with the flow record that <a id="_idIndexMarker648"/>unpacks the source address and port, destination address and port, packet count, and byte count and print the information out on the screen:</p>
+    <pre class="programlisting code"><code class="hljs-code">    nfdata = {}
+    <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(<span class="hljs-number">0</span>, count):
+        <span class="hljs-keyword">try</span>:
+            base = SIZE_OF_HEADER+(i*SIZE_OF_RECORD)
+            data = struct.unpack(<span class="hljs-string">'!IIIIHH'</span>,buf[base+<span class="hljs-number">16</span>:base+<span class="hljs-number">36</span>])
+            input_int, output_int = struct.unpack(<span class="hljs-string">'!HH'</span>, buf[base+<span class="hljs-number">12</span>:base+<span class="hljs-number">16</span>])
+            nfdata[i] = {}
+            nfdata[i][<span class="hljs-string">'saddr'</span>] = inet_ntoa(buf[base+<span class="hljs-number">0</span>:base+<span class="hljs-number">4</span>])
+            nfdata[i][<span class="hljs-string">'daddr'</span>] = inet_ntoa(buf[base+<span class="hljs-number">4</span>:base+<span class="hljs-number">8</span>])
+            nfdata[i][<span class="hljs-string">'pcount'</span>] = data[<span class="hljs-number">0</span>]
+            nfdata[i][<span class="hljs-string">'bcount'</span>] = data[<span class="hljs-number">1</span>]
+            nfdata[i][<span class="hljs-string">'stime'</span>] = data[<span class="hljs-number">2</span>]
+            nfdata[i][<span class="hljs-string">'etime'</span>] = data[<span class="hljs-number">3</span>]
+            nfdata[i][<span class="hljs-string">'sport'</span>] = data[<span class="hljs-number">4</span>]
+            nfdata[i][<span class="hljs-string">'dport'</span>] = data[<span class="hljs-number">5</span>]
+            <span class="hljs-built_in">print</span>(i, <span class="hljs-string">" {0}:{1} -&gt; {2}:{3} {4} packts {5} bytes"</span>.<span class="hljs-built_in">format</span>(
+                nfdata[i][<span class="hljs-string">'saddr'</span>], 
+                nfdata[i][<span class="hljs-string">'sport'</span>], 
+                nfdata[i][<span class="hljs-string">'daddr'</span>], 
+                nfdata[i][<span class="hljs-string">'dport'</span>], 
+                nfdata[i][<span class="hljs-string">'pcount'</span>],
+                nfdata[i][<span class="hljs-string">'bcount'</span>]),
+                )
+</code></pre>
+    <p class="normal">The output of the script allows you to visualize the header as well as the flow content at a glance. In the following output, we can see both BGP control packets (TCP port <code class="inlineCode">179</code>) as well as HTTP traffic (TCP port <code class="inlineCode">8000</code>) on <code class="inlineCode">r6-edge</code>:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">$ </span><span class="language-bash">python3 netFlow_v5_parser.py</span>
+Headers:  
+NetFlow Version: 5
+Flow Count: 6
+System Uptime: 116262790
+Epoch Time in seconds: 1569974960
+Epoch Time in nanoseconds: 306899412
+Sequence counter of total flow: 24930
+0  192.168.0.3:44779 -&gt; 192.168.0.2:179 1 packts 59 bytes
+1  192.168.0.3:44779 -&gt; 192.168.0.2:179 1 packts 59 bytes
+2  192.168.0.4:179 -&gt; 192.168.0.5:30624 2 packts 99 bytes
+3  172.16.1.123:0 -&gt; 172.16.1.222:771 1 packts 176 bytes
+4  192.168.0.2:179 -&gt; 192.168.0.5:59660 2 packts 99 bytes
+5  192.168.0.1:179 -&gt; 192.168.0.5:29975 2 packts 99 bytes
+**********
+Headers:  
+NetFlow Version: 5 
+Flow Count: 15 
+System Uptime: 116284791 
+Epoch Time in seconds: 1569974982 
+Epoch Time in nanoseconds: 307891182 
+Sequence counter of total flow: 24936
+0  10.0.0.9:35676 -&gt; 10.0.0.5:8000 6 packts 463 bytes
+1  10.0.0.9:35676 -&gt; 10.0.0.5:8000 6 packts 463 bytes
+&lt;skip&gt;
+11  10.0.0.9:35680 -&gt; 10.0.0.5:8000 6 packts 463 bytes
+12  10.0.0.9:35680 -&gt; 10.0.0.5:8000 6 packts 463 bytes
+13  10.0.0.5:8000 -&gt; 10.0.0.9:35680 5 packts 973 bytes
+14  10.0.0.5:8000 -&gt; 10.0.0.9:35680 5 packts 973 bytes
+</code></pre>
+    <p class="normal">Note that, in <a id="_idIndexMarker649"/>NetFlow version 5, the record size is fixed at 48 bytes; therefore, the<a id="_idIndexMarker650"/> loop and script are relatively straightforward. </p>
+    <p class="normal">However, in the case of NetFlow version 9 or IPFIX, after the header, there is a template FlowSet (<a href="http://www.cisco.com/en/US/technologies/tk648/tk362/technologies_white_paper09186a00800a3db9.html"><span class="url">http://www.cisco.com/en/US/technologies/tk648/tk362/technologies_white_paper09186a00800a3db9.html</span></a>) that specifies the field count, field type, and field length. This allows the collector to parse the data without knowing the data format in advance. We will need to build additional logic in the Python script for NetFlow version 9.</p>
+    <p class="normal">By parsing the NetFlow data in a script, we gained a solid understanding of the fields, but this is very tedious and hard to scale. As you may have guessed, other tools save us the problem of parsing NetFlow records one by one. Let’s look at one such tool, called <strong class="keyWord">ntop</strong>, in the coming section.</p>
+    <h1 class="heading-1" id="_idParaDest-205">ntop traffic monitoring</h1>
+    <p class="normal">Like the PySNMP script in <em class="chapterRef">Chapter 7</em>, <em class="italic">Network Monitoring with Python – Part 1</em><em class="chapterRef">,</em> and the NetFlow parser script in this chapter, we can use Python scripts to handle low-level tasks on the wire. However, there<a id="_idIndexMarker651"/> are tools such as Cacti, which is an all-in-one open source package that includes data collection (pollers), data storage (RRDs), and a web frontend for visualization. These tools can save you a lot of work by packing the frequently used features and software in one package.</p>
+    <p class="normal">In the case of NetFlow, there are several open source and commercial NetFlow collectors we can choose from. If we do a quick search for the top N open source NetFlow analyzers, we will see several comparison studies for different tools.</p>
+    <p class="normal">Each one has its strengths and weaknesses; which one to use is a matter of preference, platform, and appetite for customization. I would recommend choosing a tool that would support both v5 and v9, and potentially sFlow. A secondary consideration would be whether the tool is written in a language that we can understand; I would imagine having Python extensibility would be a nice thing.</p>
+    <p class="normal">Two of the open source NetFlow tools I like and have used before are NfSen (with NFDUMP as the backend collector) and <code class="inlineCode">ntop</code> (or <code class="inlineCode">ntopng</code>). Between the two of them, <code class="inlineCode">ntop</code> is the better-known traffic analyzer; it runs on both Windows and Linux platforms and integrates well with Python. Therefore, let’s use <code class="inlineCode">ntop</code> as an example in this section.</p>
+    <p class="normal">Similar to Cacti, ntop is an all-in-one tool. I recommend installing ntop on a separate host than the management station in production or a container on the management station.</p>
+    <p class="normal">The installation of our Ubuntu host is straightforward:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">$ </span><span class="language-bash">sudo apt-get install ntop</span>
+</code></pre>
+    <p class="normal">The installation process will prompt for the necessary interface for listening and setting the administrator password. By default, the <code class="inlineCode">ntop</code> web interface listens on port <code class="inlineCode">3000</code>, while the probe listens on UDP port <code class="inlineCode">5556</code>. On the network device, we need to specify the location of the NetFlow exporter:</p>
+    <pre class="programlisting con"><code class="hljs-con">!
+ip flow-export version 5
+ip flow-export destination 192.168.2.126 5556 vrf Mgmt-intf
+!
+</code></pre>
+    <p class="normal">By default, IOSv creates a VRF called <code class="inlineCode">Mgmt-intf</code> and places <code class="inlineCode">Gi0/0</code> under VRF.</p>
+    <p class="normal">We will also need to specify the direction of traffic exports, such as <code class="inlineCode">ingress</code> or <code class="inlineCode">egress</code>, under the interface configuration:</p>
+    <pre class="programlisting con"><code class="hljs-con">!
+interface GigabitEthernet0/0
+...
+ip flow ingress 
+ip flow egress
+...
+</code></pre>
+    <p class="normal">For your reference, I have included the Ansible playbook, <code class="inlineCode">cisco_config_netflow.yml</code>, to configure the lab device<a id="_idIndexMarker652"/> for the NetFlow export.</p>
+    <p class="normal"><code class="inlineCode">r5-tor</code> and <code class="inlineCode">r6-edge</code> have two more interfaces than <code class="inlineCode">r1</code>, <code class="inlineCode">r2</code>, and <code class="inlineCode">r3</code>; therefore, there is an additional playbook to enable the additional interfaces for them.</p>
+    <p class="normal">Execute the playbook and make sure the changes were applied properly on the devices:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">$ </span><span class="language-bash">ansible-playbook -i hosts cisco_config_netflow.yml</span>
+TASK [configure netflow export station] ****************************************************************************
+changed: [r2]
+changed: [r1]
+changed: [r3]
+changed: [r5-tor]
+changed: [r6-edge]
+TASK [configure flow export on Gi0/0] ****************************************************************************
+ok: [r1]
+ok: [r3]
+ok: [r2]
+ok: [r5-tor]
+ok: [r6-edge]
+&lt;skip&gt;
+</code></pre>
+    <p class="normal">It is always a good idea to verify the device configuration after the playbook is run, so let’s spot-check on <code class="inlineCode">r2</code>:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">r2#</span><span class="language-bash">sh run</span>
+!
+interface GigabitEthernet0/0
+ description OOB Management
+ vrf forwarding Mgmt-intf
+ ip address 192.168.2.126 255.255.255.0
+ ip flow ingress
+ ip flow egress
+&lt;skip&gt;
+!
+ip flow-export version 5
+ip flow-export destination 192.168.2.126 5556 vrf Mgmt-intf
+!
+</code></pre>
+    <p class="normal">Once everything is set up, you can <a id="_idIndexMarker653"/>check the <strong class="keyWord">ntop</strong> web interface for local IP traffic:</p>
+    <figure class="mediaobject"><img alt="" src="../Images/B18403_08_09.png"/></figure>
+    <p class="packt_figref">Figure 8.9: ntop local IP traffic</p>
+    <p class="normal">One of the most often used features of ntop is using it to look at the Top Talkers graph:</p>
+    <figure class="mediaobject"><img alt="Table  Description automatically generated" src="../Images/B18403_08_10.png"/> </figure>
+    <p class="packt_figref">Figure 8.10: ntop top talkers</p>
+    <p class="normal">The ntop reporting engine is written in C; it is fast and efficient, but the need to have adequate knowledge of C to<a id="_idIndexMarker654"/> do something as simple as changing the web frontend does not fit the modern agile development mindset.</p>
+    <p class="normal">After a few false starts with Perl in the mid-2000s, the good folks at ntop finally settled on embedding Python as an extensible scripting engine. Let’s take a look.</p>
+    <h2 class="heading-2" id="_idParaDest-206">Python extension for ntop</h2>
+    <p class="normal">We can use Python to extend ntop<a id="_idIndexMarker655"/> through the ntop web server. The ntop web server can execute Python scripts. At a high level, the scripts will involve the following:</p>
+    <ul>
+      <li class="bulletList">Methods to access the state of ntop</li>
+      <li class="bulletList">The Python CGI module to process forms and URL parameters</li>
+      <li class="bulletList">Making templates that generate dynamic HTML pages</li>
+      <li class="bulletList">Each Python script can read from <code class="inlineCode">stdin</code> and print out <code class="inlineCode">stdout/stderr</code>. The <code class="inlineCode">stdout</code> script is the returned HTTP page.</li>
+    </ul>
+    <p class="normal">Several resources come in <a id="_idIndexMarker656"/>handy with Python integration. Under the web interface, you can click on <strong class="screenText">About | Show Configuration</strong> to see the Python interpreter version as well as the directory for your Python script:</p>
+    <figure class="mediaobject"><img alt="A picture containing table  Description automatically generated" src="../Images/B18403_08_11.png"/></figure>
+    <p class="packt_figref">Figure 8.11: Python version</p>
+    <p class="normal">You can also check the various directories where the Python script should reside:</p>
+    <figure class="mediaobject"><img alt="Table  Description automatically generated" src="../Images/B18403_08_12.png"/></figure>
+    <p class="packt_figref">Figure 8.12: Plugin directories</p>
+    <p class="normal">Under <strong class="screenText">About | Online Documentation | Python ntop Engine</strong>, there are links for the Python API as well as the tutorial:</p>
+    <figure class="mediaobject"><img alt="Graphical user interface, text, application  Description automatically generated" src="../Images/B18403_08_13.png"/></figure>
+    <p class="packt_figref">Figure 8.13: Python ntop documentation</p>
+    <p class="normal">As mentioned, the <code class="inlineCode">ntop</code> web <a id="_idIndexMarker657"/>server directly executes the Python script placed under the designated directory:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">$ </span><span class="hljs-con-built_in">pwd</span>
+/usr/share/ntop/python
+</code></pre>
+    <p class="normal">We will place our first script, namely, <code class="inlineCode">chapter8_ntop_1.py</code>, in the directory. The Python <code class="inlineCode">CGI</code> module processes forms and parses URL parameters:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># Import modules for CGI handling </span>
+<span class="hljs-keyword">import</span> cgi, cgitb
+<span class="hljs-keyword">import</span> ntop
+<span class="hljs-comment"># Parse URL cgitb.enable();</span>
+</code></pre>
+    <p class="normal"><code class="inlineCode">ntop</code> implements three Python modules; each one of them has a specific purpose:</p>
+    <ul>
+      <li class="bulletList"><strong class="keyWord">ntop</strong>: This module interacts with the <code class="inlineCode">ntop</code> engine.</li>
+      <li class="bulletList"><strong class="keyWord">Host</strong>: This module drills down into a specific host’s information.</li>
+      <li class="bulletList"><strong class="keyWord">Interfaces</strong>: This module represents the information about the localhost interfaces.</li>
+    </ul>
+    <p class="normal">In our script, we will use the <code class="inlineCode">ntop</code> module to<a id="_idIndexMarker658"/> retrieve the <code class="inlineCode">ntop</code> engine information as well as using the <code class="inlineCode">sendString()</code> method to send the HTML body text:</p>
+    <pre class="programlisting code"><code class="hljs-code">form = cgi.FieldStorage();
+name = form.getvalue(<span class="hljs-string">'Name'</span>, default=<span class="hljs-string">"Eric"</span>)
+version = ntop.version() 
+os = ntop.os()
+uptime = ntop.uptime()
+ntop.printHTMLHeader(<span class="hljs-string">'Mastering Python Networking'</span>, <span class="hljs-number">1</span>, <span class="hljs-number">0</span>) ntop.sendString(<span class="hljs-string">"Hello, "</span>+ name +<span class="hljs-string">"&lt;br&gt;"</span>)
+ntop.sendString(<span class="hljs-string">"</span><span class="hljs-string">Ntop Information: %s %s %s"</span> % (version, os, uptime))
+ntop.printHTMLFooter()
+</code></pre>
+    <p class="normal">We will execute the Python script using <code class="inlineCode">http://&lt;ip&gt;:3000/python/&lt;script name&gt;</code>. Here is the result of our <code class="inlineCode">chapter8_ntop_1.py</code> script:</p>
+    <figure class="mediaobject"><img alt="Graphical user interface, text, application, email  Description automatically generated" src="../Images/B18403_08_14.png"/></figure>
+    <p class="packt_figref">Figure 8.14: ntop script result</p>
+    <p class="normal">We can look at another example that interacts with the interface module, <code class="inlineCode">chapter8_ntop_2.py</code>. We will use the API to iterate through the interfaces:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">import</span> ntop, interface, json
+ifnames = []
+<span class="hljs-keyword">try</span>:
+<span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(interface.numInterfaces()):
+    ifnames.append(interface.name(i))
+<span class="hljs-keyword">except</span> Exception <span class="hljs-keyword">as</span> inst:
+    <span class="hljs-built_in">print</span>(<span class="hljs-built_in">type</span>(inst)) <span class="hljs-comment"># the exception instance </span>
+    <span class="hljs-built_in">print</span>(inst.args) <span class="hljs-comment"># arguments stored in .args</span>
+    <span class="hljs-built_in">print</span>(inst) <span class="hljs-comment">#   str _ allows args to printed directly</span>
+&lt;skip&gt;
+</code></pre>
+    <p class="normal">The resulting page will <a id="_idIndexMarker659"/>display the <code class="inlineCode">ntop</code> interfaces:</p>
+    <figure class="mediaobject"><img alt="Graphical user interface, text, application, email  Description automatically generated" src="../Images/B18403_08_15.png"/></figure>
+    <p class="packt_figref">Figure 8.15: ntop interface information</p>
+    <p class="normal">Besides the community version, ntop also offers a few commercial products that you can choose from. With the active open source community, commercial backing, and Python extensibility, ntop is a good choice for your NetFlow monitoring needs.</p>
+    <p class="normal">Next, let’s take a look at NetFlow’s cousin: sFlow.</p>
+    <h2 class="heading-2" id="_idParaDest-207">sFlow</h2>
+    <p class="normal">sFlow, which stands for sampled<a id="_idIndexMarker660"/> flow, was originally developed by InMon (<a href="http://www.inmon.com"><span class="url">http://www.inmon.com</span></a>) and later standardized by way of RFC. The current version is v5. Many in the industry believe the primary advantage of sFlow is its scalability.</p>
+    <p class="normal">sFlow uses random [one in <code class="inlineCode">n</code> ] packet flow samples along with the polling interval of counter samples to estimate the traffic; this is less CPU-intensive than NetFlow for network devices. sFlow’s statistical sampling is integrated with the hardware and provides real-time, raw exports.</p>
+    <p class="normal">For scalability and competitive reasons, sFlow is generally preferred over NetFlow for newer vendors, such as Arista Networks, Vyatta, and A10 Networks. While Cisco supports sFlow on its Nexus line of products, sFlow is generally “not” supported on Cisco platforms.</p>
+    <h3 class="heading-3" id="_idParaDest-208">SFlowtool and sFlow-RT with Python</h3>
+    <p class="normal">Unfortunately, at this<a id="_idIndexMarker661"/> point, sFlow is something our CML lab devices do not support (not even with the NX-OSv virtual switches). You can use a Cisco Nexus 3000 switch or other vendor switches, such as Arista, that support sFlow. Another good option for the lab is to<a id="_idIndexMarker662"/> use an Arista vEOS virtual instance. I have access to a Cisco Nexus 3048 switch running 7.0 (3), which I will use for this section as the sFlow exporter.</p>
+    <p class="normal">The configuration of Cisco Nexus 3000 for sFlow is straightforward:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">Nexus-2# </span><span class="language-bash">sh run | i sflow feature sflow</span>
+sflow max-sampled-size 256
+sflow counter-poll-interval 10
+sflow collector-ip 192.168.199.185 vrf management sflow agent-ip 192.168.199.148
+sflow data-source interface Ethernet1/48
+</code></pre>
+    <p class="normal">The easiest way to ingest sFlow is to use <code class="inlineCode">sflowtool</code>. For installation instructions, refer to the documentation at <a href="http://blog.sflow.com/2011/12/sflowtool.html"><span class="url">http://blog.sflow.com/2011/12/sflowtool.html</span></a>:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">$ </span><span class="language-bash">wget http://www.inmon.com/bin/sflowtool-3.22.tar.gz</span>
+<span class="hljs-con-meta">$ </span><span class="language-bash">tar -xvzf sflowtool-3.22.tar.gz</span>
+<span class="hljs-con-meta">$ </span><span class="hljs-con-built_in">cd</span><span class="language-bash"> sflowtool-3.22/</span>
+<span class="hljs-con-meta">$ </span><span class="language-bash">./configure</span>
+<span class="hljs-con-meta">$ </span><span class="language-bash">make</span>
+<span class="hljs-con-meta">$ </span><span class="language-bash">sudo make install</span>
+</code></pre>
+    <p class="normal">I am using an older version of <code class="inlineCode">sFlowtool</code> in the lab. The newer versions work the same.</p>
+    <p class="normal">After the installation, you can launch <code class="inlineCode">sflowtool</code> and look at the datagram Nexus 3048 is sending on the standard output:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">$ </span><span class="language-bash">sflowtool</span>
+startDatagram =================================
+datagramSourceIP 192.168.199.148
+datagramSize 88
+unixSecondsUTC 1489727283
+datagramVersion 5
+agentSubId 100
+agent 192.168.199.148
+packetSequenceNo 5250248
+sysUpTime 4017060520
+samplesInPacket 1
+startSample ----------------------
+sampleType_tag 0:4 sampleType COUNTERSSAMPLE sampleSequenceNo 2503508
+sourceId 2:1
+counterBlock_tag 0:1001
+5s_cpu 0.00
+1m_cpu 21.00
+5m_cpu 20.80
+total_memory_bytes 3997478912
+free_memory_bytes 1083838464 endSample ----------------------
+endDatagram =================================
+</code></pre>
+    <p class="normal">There are a number<a id="_idIndexMarker663"/> of good usage examples on the sflowtool GitHub repository (<a href="https://github.com/sflow/sflowtool)"><span class="url">https://github.com/sflow/sflowtool)</span></a>; one of them is to use a script to receive the <code class="inlineCode">sflowtool</code> input and parse the output. We can use a Python script for this purpose. In the <code class="inlineCode">chapter8_sflowtool_1.py</code> example, we will use <code class="inlineCode">sys.stdin.readline</code> to<a id="_idIndexMarker664"/> receive the input and use a regular expression search to print out only the lines containing the word agent when we see the sFlow packets:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment">#!/usr/bin/env python3</span>
+<span class="hljs-keyword">import</span> sys, re
+<span class="hljs-keyword">for</span> line <span class="hljs-keyword">in</span> <span class="hljs-built_in">iter</span>(sys.stdin.readline, <span class="hljs-string">''</span>):
+    <span class="hljs-keyword">if</span> re.search(<span class="hljs-string">'agent '</span>, line):
+         <span class="hljs-built_in">print</span>(line.strip())
+</code></pre>
+    <p class="normal">The script can be piped to <code class="inlineCode">sflowtool</code>:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">$ </span><span class="language-bash">sflowtool | python3 chapter8_sflowtool_1.py</span> 
+agent 192.168.199.148
+agent 192.168.199.148
+</code></pre>
+    <p class="normal">There are a number of other useful output examples, such as <code class="inlineCode">tcpdump</code>, output as NetFlow version 5 records, and a compact line-by-line output. This makes <code class="inlineCode">sflowtool</code> flexible for different monitoring environments.</p>
+    <p class="normal">ntop supports sFlow, which <a id="_idIndexMarker665"/>means you can directly export your sFlow to the ntop collector. If <a id="_idIndexMarker666"/>your collector is only NetFlow-aware, you can use the <code class="inlineCode">-c</code> option for the <code class="inlineCode">sflowtool</code> output in the NetFlow version 5 format:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">$ </span><span class="language-bash">sflowtool --</span><span class="hljs-con-built_in">help</span>
+...
+tcpdump output:
+-t - (output in binary tcpdump(1) format)
+-r file - (read binary tcpdump(1) format)
+-x - (remove all IPV4 content)
+-z pad - (extend tcpdump pkthdr with this many zeros
+e.g. try -z 8 for tcpdump on Red Hat Linux 6.2)
+NetFlow output:
+-c hostname_or_IP - (netflow collector host)
+-d port - (netflow collector UDP port)
+-e - (netflow collector peer_as (default = origin_as))
+-s - (disable scaling of netflow output by sampling rate)
+-S - spoof source of netflow packets to input agent IP
+</code></pre>
+    <p class="normal">Alternatively, you can also use InMon’s sFlow-RT (<a href="http://www.sflow-rt.com/index.php"><span class="url">http://www.sflow-rt.com/index.php</span></a>) as your sFlow analytics engine. What sets sFlow-RT apart from an operator perspective is its vast RESTful API, which can be customized to support your use cases. You can also easily retrieve the metrics from the API. You can take a look at its extensive API reference at: <a href="http://www.sflow-rt.com/reference.php"><span class="url">http://www.sflow-rt.com/reference.php</span></a>.</p>
+    <p class="normal">Note that sFlow-RT requires Java to run the following:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">$ </span><span class="language-bash">sudo apt-get install default-jre</span>
+<span class="hljs-con-meta">$ </span><span class="language-bash">java -version</span>
+openjdk version "1.8.0_121"
+OpenJDK Runtime Environment (build 1.8.0_121-8u121-b13-0ubuntu1.16.04.2- b13)
+OpenJDK 64-Bit Server VM (build 25.121-b13, mixed mode)
+</code></pre>
+    <p class="normal">Once installed, downloading and running sFlow-RT is straightforward (<a href="https://sflow-rt.com/download.php"><span class="url">https://sflow-rt.com/download.php</span></a>):</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">$ </span><span class="language-bash">wget http://www.inmon.com/products/sFlow-RT/sflow-rt.tar.gz</span>
+<span class="hljs-con-meta">$ </span><span class="language-bash">tar -xvzf sflow-rt.tar.gz</span>
+<span class="hljs-con-meta">$ </span><span class="hljs-con-built_in">cd</span><span class="language-bash"> sflow-rt/</span>
+<span class="hljs-con-meta">$ </span><span class="language-bash">./start.sh</span>
+2017-03-17T09:35:01-0700 INFO: Listening, sFlow port 6343
+2017-03-17T09:35:02-0700 INFO: Listening, HTTP port 8008
+</code></pre>
+    <p class="normal">We can point the web<a id="_idIndexMarker667"/> browser to HTTP port <code class="inlineCode">8008</code> and verify the installation:</p>
+    <figure class="mediaobject"><img alt="Graphical user interface, application  Description automatically generated" src="../Images/B18403_08_16.png"/></figure>
+    <p class="packt_figref">Figure 8.16: sFlow-RT version</p>
+    <p class="normal">As soon as sFlow-RT<a id="_idIndexMarker668"/> receives any sFlow packets, the agents and other metrics will appear:</p>
+    <figure class="mediaobject"><img alt="Graphical user interface, text, application  Description automatically generated" src="../Images/B18403_08_17.png"/></figure>
+    <p class="packt_figref">Figure 8.17: sFlow-RT agent IP</p>
+    <p class="normal">Here are two examples of using Python requests to retrieve information from sFlow-RT’s REST API:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">import</span><span class="language-python"> requests</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">r = requests.get(</span><span class="hljs-con-string">"http://192.168.199.185:8008/version"</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">r.text </span><span class="hljs-con-string">'2.0-r1180'</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">r = requests.get(</span><span class="hljs-con-string">"http://192.168.199.185:8008/agents/json"</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">r.text</span>
+'{"192.168.199.148": {n "sFlowDatagramsLost": 0,n "sFlowDatagramSource": ["192.168.199.148"],n "firstSeen": 2195541,n "sFlowFlowDuplicateSamples": 0,n "sFlowDatagramsReceived": 441,n "sFlowCounterDatasources": 2,n "sFlowFlowOutOfOrderSamples": 0,n "sFlowFlowSamples": 0,n "sFlowDatagramsOutOfOrder": 0,n "uptime": 4060470520,n "sFlowCounterDuplicateSamples": 0,n "lastSeen": 3631,n "sFlowDatagramsDuplicates": 0,n "sFlowFlowDrops": 0,n "sFlowFlowLostSamples": 0,n "sFlowCounterSamples": 438,n "sFlowCounterLostSamples": 0,n "sFlowFlowDatasources": 0,n "sFlowCounterOutOfOrderSamples": 0n}}'
+</code></pre>
+    <p class="normal">Consult the reference documentation for additional REST endpoints available for your needs.</p>
+    <p class="normal">In this section, we<a id="_idIndexMarker669"/> looked at sFlow-based monitoring examples both <a id="_idIndexMarker670"/>as a standalone tool as well as part of the integration with <code class="inlineCode">ntop</code>. sFlow is one of the newer flow formats that intends to address scalability issues faced with traditional <code class="inlineCode">netflow</code> formats, and it’s worth us spending some time to see whether it is the right tool for the network monitoring tasks at hand. We are close to the end of this chapter, so let’s look at what we have covered.</p>
+    <h1 class="heading-1" id="_idParaDest-209">Summary</h1>
+    <p class="normal">In this chapter, we looked at additional ways in which we can utilize Python to enhance our network monitoring efforts. We began using Python’s Graphviz package to create network topology graphs with real-time LLDP information reported by the network devices. This allows us to effortlessly show the current network topology, as well as to easily notice any link failures.</p>
+    <p class="normal">Next, we used Python to parse NetFlow version 5 packets to enhance our understanding and troubleshooting of NetFlow. We also looked at how to use ntop and Python to extend ntop for NetFlow monitoring. sFlow is an alternative packet sampling technology. We used <code class="inlineCode">sflowtool</code> and sFlow-RT to interpret sFlow results.</p>
+    <p class="normal">In <em class="chapterRef">Chapter 9</em>, <em class="italic">Building Network Web Services with Python</em>, we will explore how to use the Python web framework Flask to build network web services.</p>
+    <h1 class="heading-1">Join our book community</h1>
+    <p class="normal">To join our community for this book – where you can share feedback, ask questions to the author, and learn about new releases – follow the QR code below:</p>
+    <p class="normal"><a href="https://packt.link/networkautomationcommunity"><span class="url">https://packt.link/networkautomationcommunity</span></a></p>
+    <p class="normal"><img alt="" src="../Images/QR_Code2903617220506617062.png"/></p>
+  </div>
+</body></html>

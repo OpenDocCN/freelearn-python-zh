@@ -1,0 +1,854 @@
+<html><head></head><body>
+  <div id="_idContainer077">
+    <h1 class="chapterNumber">6</h1>
+    <h1 id="_idParaDest-148" class="chapterTitle">Getting More Out of Our Objects with Descriptors</h1>
+    <p class="normal">This chapter introduces a new concept that is more advanced in Python development since it features descriptors. Moreover, descriptors are not something programmers of other languages are familiar with, so there are no easy analogies or parallelisms to make.</p>
+    <p class="normal">Descriptors are another distinctive feature of Python that take object-oriented programming to another level, and their potential allows users to build more powerful and reusable abstractions. Most of the time, the full potential of descriptors is observed in libraries or frameworks.</p>
+    <p class="normal">In this chapter, we will achieve the following goals that relate to descriptors:</p>
+    <ul>
+      <li class="bullet">Understand what descriptors are, how they work, and how to implement them effectively</li>
+      <li class="bullet">Analyze the two types of descriptors (data and non-data descriptors) in terms of their conceptual differences and implementation details</li>
+      <li class="bullet">Reuse code effectively through descriptors</li>
+      <li class="bullet">Analyze examples of good uses of descriptors, and how to take advantage of them for our API libraries</li>
+    </ul>
+    <h1 id="_idParaDest-149" class="title">A first look at descriptors</h1>
+    <p class="normal">First, we<a id="_idIndexMarker371"/> will explore the main idea behind descriptors to understand their mechanics and internal workings. Once this is clear, it will be easier to assimilate how the different types of descriptors work, which we will explore in the next section.</p>
+    <p class="normal">Once we have a general understanding of the idea behind descriptors, we will look at an example where their use gives us a cleaner and more Pythonic implementation.</p>
+    <h2 id="_idParaDest-150" class="title">The machinery behind descriptors</h2>
+    <p class="normal">The way <a id="_idIndexMarker372"/>descriptors work is not all that complicated, but the problem with them is that there are a lot of caveats to take into consideration, so the implementation details are of the utmost importance here.</p>
+    <p class="normal">To implement descriptors, we need at least two classes. For this generic example, the <code class="Code-In-Text--PACKT-">client</code> class will take advantage of the functionality we want to implement in the <code class="Code-In-Text--PACKT-">descriptor</code> (this is generally just a domain model class, a regular abstraction we create for our solution), and the <code class="Code-In-Text--PACKT-">descriptor</code> class will implement the logic of the descriptor itself.</p>
+    <p class="normal">A descriptor is, therefore, just an object that is an instance of a class that implements the descriptor protocol. This means that the interface of this class must contain at least one of the following magic methods (part of the descriptor protocol as of Python 3.6+):</p>
+    <ul>
+      <li class="bullet"><code class="Code-In-Text--PACKT-">__get__</code></li>
+      <li class="bullet"><code class="Code-In-Text--PACKT-">__set__</code></li>
+      <li class="bullet"><code class="Code-In-Text--PACKT-">__delete__</code></li>
+      <li class="bullet"><code class="Code-In-Text--PACKT-">__set_name__</code></li>
+    </ul>
+    <p class="normal">For the purposes of this initial high-level introduction, the following naming conventions will be used:</p>
+    <table id="table001-1" class="No-Table-Style">
+      <colgroup>
+        <col/>
+        <col/>
+      </colgroup>
+      <tbody>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Name</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Meaning</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-"><code class="Code-In-Text--PACKT-">ClientClass</code></p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">The domain-level abstraction that will take advantage of the functionality to be implemented by the descriptor. This class is said to be a client of the descriptor.</p>
+            <p class="Table-Column-Content--PACKT-">This class contains a class attribute (named <code class="Code-In-Text--PACKT-">descriptor</code> by this convention), which is an instance of <code class="Code-In-Text--PACKT-">DescriptorClass</code>.</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-"><code class="Code-In-Text--PACKT-">DescriptorClass</code></p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">The class that implements the <code class="Code-In-Text--PACKT-">descriptor</code> itself. This class should implement some of the aforementioned magic methods that entail the descriptor protocol.</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-"><code class="Code-In-Text--PACKT-">client</code></p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">An instance of <code class="Code-In-Text--PACKT-">ClientClass</code>.</p>
+            <p class="Table-Column-Content--PACKT-"><code class="Code-In-Text--PACKT-">client = ClientClass()</code>.</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-"><code class="Code-In-Text--PACKT-">descriptor</code></p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">An instance of <code class="Code-In-Text--PACKT-">DescriptorClass</code>.</p>
+            <p class="Table-Column-Content--PACKT-"><code class="Code-In-Text--PACKT-">descriptor = DescriptorClass()</code>.</p>
+            <p class="Table-Column-Content--PACKT-">This object is a class attribute that is placed in <code class="Code-In-Text--PACKT-">ClientClass</code>.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="packt_figref">Table 6.1: Descriptor naming conventions used in this chapter</p>
+    <p class="normal">This relationship is illustrated in <em class="italic">Figure 6.1</em>:</p>
+    <figure class="mediaobject"><img src="../Images/16567_06_01.png" alt="Picture 1"/></figure>
+    <p class="packt_figref">Figure 6.1: The relationship between ClientClass and DescriptorClass</p>
+    <p class="normal">A very important observation to keep in <a id="_idIndexMarker373"/>mind is that for this protocol to work, the <code class="Code-In-Text--PACKT-">descriptor</code> object has to be defined as a <code class="Code-In-Text--PACKT-">class</code> attribute. Creating this object as an instance attribute will not work, so it must be in the body of the class, and not in the <code class="Code-In-Text--PACKT-">__init__</code> method.</p>
+    <div class="note">
+      <p class="Information-Box--PACKT-">Always place the <code class="Code-In-Text--PACKT-">descriptor</code> object as a class attribute! </p>
+    </div>
+    <p class="normal">On a slightly more critical note, readers can also note that it is possible to implement the descriptor protocol partially—not all methods must always be defined; instead, we can implement only those we need, as we will see shortly.</p>
+    <p class="normal">So, now we have the structure in place—we know what elements are set and how they interact. We need a class for the <code class="Code-In-Text--PACKT-">descriptor</code>, another class that will consume the logic of the <code class="Code-In-Text--PACKT-">descriptor</code>, which, in turn, will have a <code class="Code-In-Text--PACKT-">descriptor</code> object (an instance of <code class="Code-In-Text--PACKT-">DescriptorClass</code>) as a class attribute, and instances of <code class="Code-In-Text--PACKT-">ClientClass</code> that will follow the descriptor protocol when we call for the attribute named <code class="Code-In-Text--PACKT-">descriptor</code>. But now what? How does all of this fit into place at runtime?</p>
+    <p class="normal">Normally, when we have a regular class and we access its attributes, we simply obtain the objects as we expect them, and even their properties, as in the following example:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;</span>&gt;&gt; class Attribute:
+...     value = 42
+... 
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; class Client:
+...     attribute = Attribute()
+... 
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; Client().attribute
+&lt;__main__.Attribute object at 0x...&gt;
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; Client().attribute.value
+42
+</code></pre>
+    <p class="normal">But, in the case of descriptors, something different happens. When an object is defined as a <code class="Code-In-Text--PACKT-">class</code> attribute (and this one is a <code class="Code-In-Text--PACKT-">descriptor</code>), when a <code class="Code-In-Text--PACKT-">client</code> requests this attribute, instead of getting the object itself (as we would expect from the previous example), we get the <a id="_idIndexMarker374"/>result of having called the <code class="Code-In-Text--PACKT-">__get__</code> magic method.</p>
+    <p class="normal">Let's start with some simple code that only logs information about the context, and returns the same <code class="Code-In-Text--PACKT-">client</code> object:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">DescriptorClass</span><span class="hljs-class">:</span>
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__get__</span><span class="hljs-function">(</span><span class="hljs-params">self, instance, owner</span><span class="hljs-function">):</span>
+        <span class="hljs-keyword">if</span> instance <span class="hljs-keyword">is</span> <span class="hljs-literal">None</span>:
+            <span class="hljs-keyword">return</span> self
+        logger.info(
+            <span class="hljs-stri">"Call: %s.__get__(%r, %r)"</span>,
+            self.__class__.__name__,
+            instance,
+            owner
+        )
+        <span class="hljs-keyword">return</span> instance
+<span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">ClientClass</span><span class="hljs-class">:</span>
+    descriptor = DescriptorClass()
+</code></pre>
+    <p class="normal">When running this code, and requesting the <code class="Code-In-Text--PACKT-">descriptor</code> attribute of an instance of <code class="Code-In-Text--PACKT-">ClientClass</code>, we will discover that we are, in fact, not getting an instance of <code class="Code-In-Text--PACKT-">DescriptorClass</code>, but whatever its <code class="Code-In-Text--PACKT-">__get__()</code> method returns instead:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;</span>&gt;&gt; client = ClientClass()
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; client.descriptor
+INFO:Call: DescriptorClass.__get__(&lt;ClientClass object at 0x...&gt;, &lt;class 'ClientClass'&gt;)
+&lt;ClientClass object at 0x...&gt;
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; client.descriptor is client
+INFO:Call: DescriptorClass.__get__(ClientClass object at 0x...&gt;, &lt;class 'ClientClass'&gt;)
+True
+</code></pre>
+    <p class="normal">Notice how the logging line, placed under the <code class="Code-In-Text--PACKT-">__get__</code> method, was called instead of just returning the object we created. In this case, we made that method return the <code class="Code-In-Text--PACKT-">client</code> itself, hence making a true comparison of the last statement. The parameters of this method are explained in more detail in the following subsections, so don't worry about them for now. The crux of this example is to understand that the lookup of attributes behaves differently when one of those attributes is a descriptor (in this case, because it has a <code class="Code-In-Text--PACKT-">__get__</code> method).</p>
+    <p class="normal">Starting from this simple, yet <a id="_idIndexMarker375"/>demonstrative, example, we can start creating more complex abstractions and better decorators because the important note here is that we have a new (powerful) tool to work with. Notice how this changes the control flow of the program in a completely different way. With this tool, we can abstract all sorts of logic behind the <code class="Code-In-Text--PACKT-">__get__</code> method, and make the <code class="Code-In-Text--PACKT-">descriptor</code> transparently run all sorts of transformations without clients even noticing. This takes encapsulation to a new level.</p>
+    <h2 id="_idParaDest-151" class="title">Exploring each method of the descriptor protocol</h2>
+    <p class="normal">Up until now, we have seen quite a<a id="_idIndexMarker376"/> few examples of descriptors in action, and we got the idea of how they work. These examples gave us a first glimpse of the power of descriptors, but you might be wondering about some implementation details and idioms whose explanations we failed to address.</p>
+    <p class="normal">Since descriptors are just objects, these methods take <code class="Code-In-Text--PACKT-">self</code> as the first parameter. For all of them, this just means the <code class="Code-In-Text--PACKT-">descriptor</code> object itself.</p>
+    <p class="normal">In this section, we will explore each method of the descriptor protocol in full detail, explaining what each parameter signifies, and how they are intended to be used.</p>
+    <h3 id="_idParaDest-152" class="title">The get method</h3>
+    <p class="normal">The signature of this <a id="_idIndexMarker377"/>magic method is as follows:</p>
+    <pre class="programlisting code"><code class="hljs-code">__get__(self, instance, owner)
+</code></pre>
+    <p class="normal">The first parameter, <code class="Code-In-Text--PACKT-">instance</code>, refers to the object from which the <code class="Code-In-Text--PACKT-">descriptor</code> is being called. In our first example, this would mean the <code class="Code-In-Text--PACKT-">client</code> object.</p>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">owner</code> parameter is a reference to the class of that object, which, following our example (from <em class="italic">Figure 6.1</em>), would be <code class="Code-In-Text--PACKT-">ClientClass</code>.</p>
+    <p class="normal">From the previous paragraph, we can conclude that the parameter named <code class="Code-In-Text--PACKT-">instance</code> in the signature of <code class="Code-In-Text--PACKT-">__get__</code> is the object over which the descriptor is taking action, and <code class="Code-In-Text--PACKT-">owner</code> is the class of <code class="Code-In-Text--PACKT-">instance</code>. The astute reader might be wondering why the signature is defined like this. After all, the class can be taken from <code class="Code-In-Text--PACKT-">instance</code> directly (<code class="Code-In-Text--PACKT-">owner = instance.__class__</code>). There is an edge case—when the <code class="Code-In-Text--PACKT-">descriptor</code> is called from the class (<code class="Code-In-Text--PACKT-">ClientClass</code>), and not from the instance (<code class="Code-In-Text--PACKT-">client</code>), then the value of <code class="Code-In-Text--PACKT-">instance</code> is <code class="Code-In-Text--PACKT-">None</code>, but we might still want to do some processing in that case. That's why Python chooses to pass the class as a different parameter.</p>
+    <p class="normal">With the following simple <a id="_idIndexMarker378"/>code, we can demonstrate the difference between a <code class="Code-In-Text--PACKT-">descriptor</code> being called from the <code class="Code-In-Text--PACKT-">class</code> or from an <code class="Code-In-Text--PACKT-">instance</code>. In this case, the <code class="Code-In-Text--PACKT-">__get__</code> method is doing two separate things for each case:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># descriptors_methods_1.py</span>
+<span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">DescriptorClass</span><span class="hljs-class">:</span>
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__get__</span><span class="hljs-function">(</span><span class="hljs-params">self, instance, owner</span><span class="hljs-function">):</span>
+        <span class="hljs-keyword">if</span> instance <span class="hljs-keyword">is</span> <span class="hljs-literal">None</span>:
+            <span class="hljs-keyword">return</span> <span class="hljs-stri">f"</span><span class="hljs-subst">{self.__class__.__name__}</span><span class="hljs-stri">.</span><span class="hljs-subst">{owner.__name__}</span><span class="hljs-stri">"</span>
+        <span class="hljs-keyword">return</span> <span class="hljs-stri">f"value for </span><span class="hljs-subst">{instance}</span><span class="hljs-stri">"</span>
+<span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">ClientClass</span><span class="hljs-class">:</span>
+    descriptor = DescriptorClass()
+</code></pre>
+    <p class="normal">When we call it from <code class="Code-In-Text--PACKT-">ClientClass</code> directly, it will do one thing, which is composing a namespace with the names of the classes:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;</span>&gt;&gt; ClientClass.descriptor
+'DescriptorClass.ClientClass'
+</code></pre>
+    <p class="normal">And then if we call it from an object we have created, it will return the other message instead:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;</span>&gt;&gt; ClientClass().descriptor
+'value for &lt;descriptors_methods_1.ClientClass object at 0x...&gt;'
+</code></pre>
+    <p class="normal">In general, unless we really need to do something with the <code class="Code-In-Text--PACKT-">owner</code> parameter, the most common idiom is to just return the descriptor itself when <code class="Code-In-Text--PACKT-">instance</code> is <code class="Code-In-Text--PACKT-">None</code>. This is because when users are calling the descriptor from the class, they're probably expecting to get the descriptor itself, so it makes sense. But of course, it really depends on the example (later in the chapter, we'll see different usages with their explanations).</p>
+    <h3 id="_idParaDest-153" class="title">The set method</h3>
+    <p class="normal">The signature of this <a id="_idIndexMarker379"/>method is as follows:</p>
+    <pre class="programlisting code"><code class="hljs-code">__set__(self, instance, value)
+</code></pre>
+    <p class="normal">This method is called when we try to assign something to a <code class="Code-In-Text--PACKT-">descriptor</code>. It is activated with statements such as the following, in which a <code class="Code-In-Text--PACKT-">descriptor</code> is an object that implements <code class="Code-In-Text--PACKT-">__set__ ()</code>. The <code class="Code-In-Text--PACKT-">instance</code> parameter, in this case, would be <code class="Code-In-Text--PACKT-">client</code>, and the <code class="Code-In-Text--PACKT-">value</code> would be the <code class="Code-In-Text--PACKT-">"value"</code> string:</p>
+    <pre class="programlisting code"><code class="hljs-code">client.descriptor = <span class="hljs-stri">"value"</span>
+</code></pre>
+    <p class="normal">You can note some similarity between this behavior and the <code class="Code-In-Text--PACKT-">@property.setter</code> decorator from previous chapters, on which the argument of the setter function was the right-hand-side value of the statement (in this case the string <code class="Code-In-Text--PACKT-">"value"</code>). We'll revisit this later in the chapter.</p>
+    <p class="normal">If <code class="Code-In-Text--PACKT-">client.descriptor</code> doesn't implement <code class="Code-In-Text--PACKT-">__set__()</code>, then <code class="Code-In-Text--PACKT-">"value"</code> (any object on the right-hand side of the statement) will override the descriptor entirely.</p>
+    <div class="note">
+      <p class="Information-Box--PACKT-">Be careful when assigning a value to an attribute that is a <code class="Code-In-Text--PACKT-">descriptor</code>. Make sure it implements the <code class="Code-In-Text--PACKT-">__set__</code> method, and that we are not causing an undesired side effect. </p>
+    </div>
+    <p class="normal">By default, the most common use of this method is just to store data in an object. Nevertheless, we have seen how powerful descriptors are so far, and that we can take advantage of them, for example, if we were to create generic validation objects that can be applied multiple times (again, this is something that if we don't abstract, we might end up repeating multiple times in setter methods of properties).</p>
+    <p class="normal">The following listing illustrates how we can take advantage of this method in order to create generic <code class="Code-In-Text--PACKT-">validation</code> objects for attributes, which can be created dynamically with functions to validate on the values before assigning them to the object:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">Validation</span><span class="hljs-class">:</span>
+    <span class="hljs-keyword">def</span> <span class="hljs-title">__init__</span>(
+        self, validation_function: <span class="hljs-title">Callable</span>[[<span class="hljs-title">Any</span>], bool], error_msg: str
+    ) -&gt; <span class="hljs-title">None</span>:
+        self.validation_function = validation_function
+        self.error_msg = error_msg
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__call__</span><span class="hljs-function">(</span><span class="hljs-params">self, value</span><span class="hljs-function">):</span>
+        <span class="hljs-keyword">if</span> <span class="hljs-keyword">not</span> self.validation_function(value):
+            <span class="hljs-keyword">raise</span> ValueError(<span class="hljs-stri">f"</span><span class="hljs-subst">{value!r}</span><span class="hljs-stri"> </span><span class="hljs-subst">{self.error_msg}</span><span class="hljs-stri">"</span>)
+<span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">Field</span><span class="hljs-class">:</span>
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__init__</span><span class="hljs-function">(</span><span class="hljs-params">self, *validations</span><span class="hljs-function">):</span>
+        self._name = <span class="hljs-literal">None</span>
+        self.validations = validations
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__set_name__</span><span class="hljs-function">(</span><span class="hljs-params">self, owner, name</span><span class="hljs-function">):</span>
+        self._name = name
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__get__</span><span class="hljs-function">(</span><span class="hljs-params">self, instance, owner</span><span class="hljs-function">):</span>
+        <span class="hljs-keyword">if</span> instance <span class="hljs-keyword">is</span> <span class="hljs-literal">None</span>:
+            <span class="hljs-keyword">return</span> self
+        <span class="hljs-keyword">return</span> instance.__dict__[self._name]
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">validate</span><span class="hljs-function">(</span><span class="hljs-params">self, value</span><span class="hljs-function">):</span>
+        <span class="hljs-keyword">for</span> validation <span class="hljs-keyword">in</span> self.validations:
+            validation(value)
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__set__</span><span class="hljs-function">(</span><span class="hljs-params">self, instance, value</span><span class="hljs-function">):</span>
+        self.validate(value)
+        instance.__dict__[self._name] = value
+<span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">ClientClass</span><span class="hljs-class">:</span>
+    descriptor = Field(
+        Validation(<span class="hljs-keyword">lambda</span> x: <span class="hljs-built_in">isinstance</span>(x, (<span class="hljs-built_in">int</span>, <span class="hljs-built_in">float</span>)), <span class="hljs-stri">"is not a </span>
+<span class="hljs-stri">        number"</span>),
+        Validation(<span class="hljs-keyword">lambda</span> x: x &gt;= <span class="hljs-number">0</span>, <span class="hljs-stri">"is not &gt;= 0"</span>),
+    )
+</code></pre>
+    <p class="normal">We can see this <a id="_idIndexMarker380"/>object in action in the following listing:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;</span>&gt;&gt; client = ClientClass()
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; client.descriptor = 42
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; client.descriptor
+42
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; client.descriptor = -42
+Traceback (most recent call last):
+   ...
+ValueError: -42 is not &gt;= 0
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; client.descriptor = <span class="hljs-co -stri">"invalid value"</span>
+...
+ValueError: 'invalid value' is not a number
+</code></pre>
+    <p class="normal">The idea is that <a id="_idIndexMarker381"/>something that we would normally place in a property can be abstracted away into a <code class="Code-In-Text--PACKT-">descriptor</code>, and be reused multiple times. In this case, the <code class="Code-In-Text--PACKT-">__set__()</code> method would be doing what the <code class="Code-In-Text--PACKT-">@property.setter</code> would have been doing.</p>
+    <p class="normal">This is a more generic mechanism than using properties, because, as we'll see later, properties are a particular case of descriptors.</p>
+    <h3 id="_idParaDest-154" class="title">The delete method</h3>
+    <p class="normal">The signature for the <code class="Code-In-Text--PACKT-">delete</code><a id="_idIndexMarker382"/> method is simpler, and it looks like this:</p>
+    <pre class="programlisting code"><code class="hljs-code">__delete__(self, instance)
+</code></pre>
+    <p class="normal">This method is called upon with the following statement, in which <code class="Code-In-Text--PACKT-">self</code> would be the <code class="Code-In-Text--PACKT-">descriptor</code> attribute, and <code class="Code-In-Text--PACKT-">instance</code> would be the <code class="Code-In-Text--PACKT-">client</code> object in this example:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;</span>&gt;&gt; del client.descriptor
+</code></pre>
+    <p class="normal">In the following example, we use this method to create a <code class="Code-In-Text--PACKT-">descriptor</code> with the goal of preventing you from removing attributes from an object without the required administrative privileges. Notice how, in this case, the <code class="Code-In-Text--PACKT-">descriptor</code> has logic that is used to predicate with the values of the object that is using it, instead of different related objects:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># descriptors_methods_3.py</span>
+<span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">ProtectedAttribute</span><span class="hljs-class">:</span>
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__init__</span><span class="hljs-function">(</span><span class="hljs-params">self, requires_role=</span><span class="hljs-literal">None</span><span class="hljs-function">) -&gt; </span><span class="hljs-keyword">None</span><span class="hljs-function">:</span> 
+        self.permission_required = requires_role
+        self._name = <span class="hljs-literal">None</span>
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__set_name__</span><span class="hljs-function">(</span><span class="hljs-params">self, owner, name</span><span class="hljs-function">):</span>
+        self._name = name
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__set__</span><span class="hljs-function">(</span><span class="hljs-params">self, user, value</span><span class="hljs-function">):</span>
+        <span class="hljs-keyword">if</span> value <span class="hljs-keyword">is</span> <span class="hljs-literal">None</span>:
+            <span class="hljs-keyword">raise</span> ValueError(<span class="hljs-stri">f"</span><span class="hljs-subst">{self._name}</span><span class="hljs-stri"> can't be set to None"</span>)
+        user.__dict__[self._name] = value
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__delete__</span><span class="hljs-function">(</span><span class="hljs-params">self, user</span><span class="hljs-function">):</span>
+        <span class="hljs-keyword">if</span> self.permission_required <span class="hljs-keyword">in</span> user.permissions:
+            user.__dict__[self._name] = <span class="hljs-literal">None</span>
+        <span class="hljs-keyword">else</span>:
+            <span class="hljs-keyword">raise</span> ValueError(
+                <span class="hljs-stri">f"User </span><span class="hljs-subst">{user!s}</span><span class="hljs-stri"> doesn't have </span><span class="hljs-subst">{self.permission_required}</span><span class="hljs-stri"> "</span>
+                <span class="hljs-stri">"permission"</span>
+            )
+<span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">User</span><span class="hljs-class">:</span>
+    <span class="hljs-stri">"""Only users with "admin" privileges can remove their email address."""</span>
+    email = ProtectedAttribute(requires_role=<span class="hljs-stri">"admin"</span>)
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__init__</span><span class="hljs-function">(</span><span class="hljs-params">self, username: </span><span class="hljs-built_in">str</span><span class="hljs-params">, email: </span><span class="hljs-built_in">str</span><span class="hljs-params">, permission_list: </span><span class="hljs-built_in">list</span><span class="hljs-params"> = </span><span class="hljs-literal">None</span><span class="hljs-function">) -&gt; </span><span class="hljs-keyword">None</span><span class="hljs-function">:</span>
+        self.username = username
+        self.email = email
+        self.permissions = permission_list <span class="hljs-keyword">or</span> []
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__str__</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">):</span>
+        <span class="hljs-keyword">return</span> self.username
+</code></pre>
+    <p class="normal">Before seeing<a id="_idIndexMarker383"/> examples of how this object works, it's important to remark on some of the criteria of this descriptor. Notice the <code class="Code-In-Text--PACKT-">User</code> class requires the <code class="Code-In-Text--PACKT-">username</code> and <code class="Code-In-Text--PACKT-">email</code> as mandatory parameters. According to its <code class="Code-In-Text--PACKT-">__init__</code> method, it cannot be a user if it doesn't have an <code class="Code-In-Text--PACKT-">email</code> attribute. If we were to delete that attribute and extract it from the object entirely, we would be creating an inconsistent object, with some invalid intermediate state that does not correspond to the interface defined by the class <code class="Code-In-Text--PACKT-">User</code>. Details like this one are really important, in order to avoid issues. Some other object is expecting to work with this <code class="Code-In-Text--PACKT-">User</code>, and it also expects that it has an <code class="Code-In-Text--PACKT-">email</code> attribute.</p>
+    <p class="normal">For this reason, it was decided that the "deletion" of an email will just simply set it to <code class="Code-In-Text--PACKT-">None</code>, and that is the part of the code listing that is in bold. For the same reason, we must forbid someone from trying to set a <code class="Code-In-Text--PACKT-">None</code> value to it, because that would bypass the mechanism we placed in the <code class="Code-In-Text--PACKT-">__delete__</code> method.</p>
+    <p class="normal">Here, we can <a id="_idIndexMarker384"/>see it in action, assuming a case where only users with "<code class="Code-In-Text--PACKT-">admin</code>" privileges can remove their email address:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;</span>&gt;&gt; admin = User(<span class="hljs-co -stri">"root"</span>, <span class="hljs-co -stri">"root@d.com"</span>, [<span class="hljs-co -stri">"admin"</span>])
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; user = User(<span class="hljs-co -stri">"user"</span>, <span class="hljs-co -stri">"user1@d.com"</span>, [<span class="hljs-co -stri">"email"</span>, <span class="hljs-co -stri">"helpdesk"</span>]) 
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; admin.email
+'root@d.com'
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; del admin.email
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; admin.email is None
+True
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; user.email
+'user1@d.com'
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; user.email = None
+...
+ValueError: email can't be set to None
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; del user.email
+...
+ValueError: User user doesn't have admin permission
+</code></pre>
+    <p class="normal">Here, in this simple <code class="Code-In-Text--PACKT-">descriptor</code>, we see that we can delete the email from users that contain the "<code class="Code-In-Text--PACKT-">admin</code>" permission only. As for the rest, when we try to call <code class="Code-In-Text--PACKT-">del</code> on that attribute, we will get a <code class="Code-In-Text--PACKT-">ValueError</code> exception.</p>
+    <p class="normal">In general, this method of the <code class="Code-In-Text--PACKT-">descriptor</code> is not as commonly used as the two previous ones, but it is shown here for completeness.</p>
+    <h3 id="_idParaDest-155" class="title">The set name method</h3>
+    <p class="normal">This is a relatively new <a id="_idIndexMarker385"/>method that was added in Python 3.6, and has this structure:</p>
+    <pre class="programlisting code"><code class="hljs-code">__set_name__(self, owner, name)
+</code></pre>
+    <p class="normal">When we create the <code class="Code-In-Text--PACKT-">descriptor</code> object in the class that is going to use it, we generally need the <code class="Code-In-Text--PACKT-">descriptor</code> to know the name of the attribute it is going to be handling.</p>
+    <p class="normal">This attribute name is the one we use to read from and write to <code class="Code-In-Text--PACKT-">__dict__</code> in the <code class="Code-In-Text--PACKT-">__get__</code> and <code class="Code-In-Text--PACKT-">__set__</code> methods, respectively.</p>
+    <p class="normal">Before Python 3.6, the <code class="Code-In-Text--PACKT-">descriptor</code> couldn't take this name automatically, so the most general approach was to just pass it explicitly when initializing the object. This works fine, but it has an issue in that it requires that we duplicate the name every time we want to use the <code class="Code-In-Text--PACKT-">descriptor</code> for a new attribute.</p>
+    <p class="normal">This is what a <a id="_idIndexMarker386"/>typical <code class="Code-In-Text--PACKT-">descriptor</code> would look like if we didn't have this method:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">DescriptorWithName</span><span class="hljs-class">:</span>
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__init__</span><span class="hljs-function">(</span><span class="hljs-params">self, name</span><span class="hljs-function">):</span>
+        self.name = name
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__get__</span><span class="hljs-function">(</span><span class="hljs-params">self, instance, value</span><span class="hljs-function">):</span>
+        <span class="hljs-keyword">if</span> instance <span class="hljs-keyword">is</span> <span class="hljs-literal">None</span>:
+            <span class="hljs-keyword">return</span> self
+        logger.info(<span class="hljs-stri">"getting %r attribute from %r"</span>, self.name, instance)
+        <span class="hljs-keyword">return</span> instance.__dict__[self.name]
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__set__</span><span class="hljs-function">(</span><span class="hljs-params">self, instance, value</span><span class="hljs-function">):</span>
+        instance.__dict__[self.name] = value
+<span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">ClientClass</span><span class="hljs-class">:</span>
+    descriptor = DescriptorWithName(<span class="hljs-stri">"descriptor"</span>)
+</code></pre>
+    <p class="normal">We can see how the <code class="Code-In-Text--PACKT-">descriptor</code> uses this value:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;</span>&gt;&gt; client = ClientClass()
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; client.descriptor = <span class="hljs-co -stri">"value"</span>
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; client.descriptor
+INFO:getting 'descriptor' attribute from &lt;ClientClass object at 0x...&gt;
+'value'
+</code></pre>
+    <p class="normal">Now, if we wanted to avoid writing the name of the attribute twice (once for the variable assigned inside the class, and once again as the name of the first parameter of the <code class="Code-In-Text--PACKT-">descriptor</code>), we'd have to resort to a few tricks, like using a class decorator, or (even worse) using a meta-class.</p>
+    <p class="normal">In Python 3.6, the new method <code class="Code-In-Text--PACKT-">__set_name__</code> was added, and it receives the class where that descriptor is being created, and the name that is being given to that <code class="Code-In-Text--PACKT-">descriptor</code>. The most common idiom is to use this method for the <code class="Code-In-Text--PACKT-">descriptor</code> so that it can store the required name in this method.</p>
+    <p class="normal">For compatibility, it is generally a good idea to keep a default value in the <code class="Code-In-Text--PACKT-">__init__</code> method but still take advantage of <code class="Code-In-Text--PACKT-">__set_name__</code>.</p>
+    <p class="normal">With this method, we can rewrite the previous <code class="Code-In-Text--PACKT-">descriptor</code> as follows:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">DescriptorWithName</span><span class="hljs-class">:</span>
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__init__</span><span class="hljs-function">(</span><span class="hljs-params">self, name=</span><span class="hljs-literal">None</span><span class="hljs-function">):</span>
+        self.name = name
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__set_name__</span><span class="hljs-function">(</span><span class="hljs-params">self, owner, name</span><span class="hljs-function">):</span>
+        self.name = name
+    ...
+</code></pre>
+    <p class="normal"><code class="Code-In-Text--PACKT-">__set_name__</code> is useful to<a id="_idIndexMarker387"/> get the name of the attribute the descriptor was assigned, but if we wanted to override the value, the <code class="Code-In-Text--PACKT-">__init__</code> method would still take precedence, so we retain flexibility.</p>
+    <p class="normal">Even though we're free to name our descriptors however we like, we generally use the name of the descriptor (the attribute name) as a key of the <code class="Code-In-Text--PACKT-">__dict__</code> of the client object, which means it'll be interpreted as an attribute. For this reason, try to name the descriptors you use as valid Python identifiers.</p>
+    <div class="packt_tip">
+      <p class="Tip--PACKT-">If you're setting a bespoke name for your descriptor, use a valid Python identifier.</p>
+    </div>
+    <h1 id="_idParaDest-156" class="title">Types of descriptors</h1>
+    <p class="normal">Based on the methods we have<a id="_idIndexMarker388"/> just explored, we can make an important distinction among descriptors in terms of how they work. Understanding this distinction plays an important role in working effectively with descriptors and will also help to avoid caveats or common errors at runtime.</p>
+    <p class="normal">If a descriptor <a id="_idIndexMarker389"/>implements the <code class="Code-In-Text--PACKT-">__set__</code> or <code class="Code-In-Text--PACKT-">__delete__</code> methods, it is called a <strong class="keyword">data descriptor</strong>. Otherwise, a<a id="_idIndexMarker390"/> descriptor that solely implements <code class="Code-In-Text--PACKT-">__get__</code> is a <strong class="keyword">non-data descriptor</strong>. Notice that <code class="Code-In-Text--PACKT-">__set_name__</code> does not affect this classification at all.</p>
+    <p class="normal">When trying to resolve an attribute of an object, a data descriptor will always take precedence over the dictionary of the object, whereas a non-data descriptor will not. That means that in a non-data descriptor if the object has a key on its dictionary with the same name as the descriptor, then that will always be called, and the descriptor itself will never run.</p>
+    <p class="normal">Conversely, in a data <a id="_idIndexMarker391"/>descriptor, even if there is a key in the dictionary with the same name as the descriptor, this one will never be used since the descriptor itself will always end up being called.</p>
+    <p class="normal">The following two sections explain this in more detail, with examples, to get a deeper idea of what to expect from each type of descriptor.</p>
+    <h2 id="_idParaDest-157" class="title">Non-data descriptors</h2>
+    <p class="normal">We will start with a <code class="Code-In-Text--PACKT-">descriptor</code> that<a id="_idIndexMarker392"/> only implements the <code class="Code-In-Text--PACKT-">__get__</code> method, and<a id="_idIndexMarker393"/> see how it is used:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">NonDataDescriptor</span><span class="hljs-class">:</span>
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__get__</span><span class="hljs-function">(</span><span class="hljs-params">self, instance, owner</span><span class="hljs-function">):</span>
+        <span class="hljs-keyword">if</span> instance <span class="hljs-keyword">is</span> <span class="hljs-literal">None</span>:
+            <span class="hljs-keyword">return</span> self
+        <span class="hljs-keyword">return</span> <span class="hljs-number">42</span>
+<span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">ClientClass</span><span class="hljs-class">:</span>
+    descriptor = NonDataDescriptor()
+</code></pre>
+    <p class="normal">As usual, if we ask for the <code class="Code-In-Text--PACKT-">descriptor</code>, we get the result of its <code class="Code-In-Text--PACKT-">__get__</code> method:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;</span>&gt;&gt; client = ClientClass()
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; client.descriptor
+42
+</code></pre>
+    <p class="normal">But if we change the <code class="Code-In-Text--PACKT-">descriptor</code> attribute to something else, we lose access to this value, and get what was assigned to it instead:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;</span>&gt;&gt; client.descriptor = 43
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; client.descriptor
+43
+</code></pre>
+    <p class="normal">Now, if we delete the <code class="Code-In-Text--PACKT-">descriptor</code> and ask for it again, let's see what we get:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;</span>&gt;&gt; del client.descriptor
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; client.descriptor
+42
+</code></pre>
+    <p class="normal">Let's rewind what just happened. When we first created the <code class="Code-In-Text--PACKT-">client</code> object, the <code class="Code-In-Text--PACKT-">descriptor</code> attribute lay in the class, not the instance, so if we ask for the dictionary of the <code class="Code-In-Text--PACKT-">client</code> object, it will be empty:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;</span>&gt;&gt; vars(client)
+{}
+</code></pre>
+    <p class="normal">And then, when we <a id="_idIndexMarker394"/>request the <code class="Code-In-Text--PACKT-">.descriptor</code> attribute, it doesn't find <a id="_idIndexMarker395"/>any key in <code class="Code-In-Text--PACKT-">client.__dict__</code> named <code class="Code-In-Text--PACKT-">"descriptor"</code>, so it goes to the class, where it will find it ... but only as a descriptor, hence why it returns the result of the <code class="Code-In-Text--PACKT-">__get__</code> method.</p>
+    <p class="normal">But then, we change the value of the <code class="Code-In-Text--PACKT-">.descriptor</code> attribute to something else, and what this does is sets the value <code class="Code-In-Text--PACKT-">99</code> into the dictionary of the <code class="Code-In-Text--PACKT-">instance</code>, meaning that this time it won't be empty:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;</span>&gt;&gt; client.descriptor = 99
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; vars(client)
+{'descriptor': 99}
+</code></pre>
+    <p class="normal">So, when we ask for the <code class="Code-In-Text--PACKT-">.descriptor</code> attribute here, it will look for it in the object (and this time it will find it because there is a key named <code class="Code-In-Text--PACKT-">descriptor</code> in the <code class="Code-In-Text--PACKT-">__dict__</code> attribute of the object, as the <code class="Code-In-Text--PACKT-">vars</code> result shows us), and return it without having to look for it in the class. For this reason, the <code class="Code-In-Text--PACKT-">descriptor</code> protocol is never invoked, and the next time we ask for this attribute, it will instead return the value we have overridden it with (<code class="Code-In-Text--PACKT-">99</code>).</p>
+    <p class="normal">Afterward, we delete this attribute by calling <code class="Code-In-Text--PACKT-">del</code>, and what this does is to remove the key named <code class="Code-In-Text--PACKT-">"descriptor"</code> from the dictionary of the object, leaving us back in the first scenario, where it's going to default to the class where the descriptor protocol will be triggered:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;</span>&gt;&gt; del client.descriptor
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; vars(client)
+{}
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; client.descriptor
+42
+</code></pre>
+    <p class="normal">This means that if we set the attribute of the <code class="Code-In-Text--PACKT-">descriptor</code> to something else, we might accidentally break it. Why? Because the <code class="Code-In-Text--PACKT-">descriptor</code> doesn't handle the delete action (some of them don't need to).</p>
+    <p class="normal">This is called a<a id="_idIndexMarker396"/> non-data descriptor because it doesn't implement <a id="_idIndexMarker397"/>the <code class="Code-In-Text--PACKT-">__set__</code> magic method, as we will see in the next example.</p>
+    <h2 id="_idParaDest-158" class="title">Data descriptors</h2>
+    <p class="normal">Now, let's look at the<a id="_idIndexMarker398"/> difference in using a data descriptor. For this, we are going to create<a id="_idIndexMarker399"/> another simple <code class="Code-In-Text--PACKT-">descriptor</code> that does implement the <code class="Code-In-Text--PACKT-">__set__</code> method:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">DataDescriptor</span><span class="hljs-class">:</span>
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__get__</span><span class="hljs-function">(</span><span class="hljs-params">self, instance, owner</span><span class="hljs-function">):</span>
+        <span class="hljs-keyword">if</span> instance <span class="hljs-keyword">is</span> <span class="hljs-literal">None</span>:
+            <span class="hljs-keyword">return</span> self
+        <span class="hljs-keyword">return</span> <span class="hljs-number">42</span>
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__set__</span><span class="hljs-function">(</span><span class="hljs-params">self, instance, value</span><span class="hljs-function">):</span>
+        logger.debug(<span class="hljs-stri">"setting %s.descriptor to %s"</span>, instance, value)
+        instance.__dict__[<span class="hljs-stri">"descriptor"</span>] = value
+<span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">ClientClass</span><span class="hljs-class">:</span>
+    descriptor = DataDescriptor()
+</code></pre>
+    <p class="normal">Let's see what the value of the <code class="Code-In-Text--PACKT-">descriptor</code> returns:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;</span>&gt;&gt; client = ClientClass()
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; client.descriptor
+42
+</code></pre>
+    <p class="normal">Now, let's try to change this value to something else, and see what it returns instead:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;</span>&gt;&gt; client.descriptor = 99
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; client.descriptor
+42
+</code></pre>
+    <p class="normal">The value returned by the <code class="Code-In-Text--PACKT-">descriptor</code> didn't change. But when we assign a different value to it, it must be set to the dictionary of the object (as it was previously):</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;</span>&gt;&gt; vars(client)
+{'descriptor': 99}
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; client.__dict__[<span class="hljs-co -stri">"descriptor"</span>]
+99
+</code></pre>
+    <p class="normal">So, the <code class="Code-In-Text--PACKT-">__set__()</code> method was called, and indeed it did set the value to the dictionary of the object, only this time, when we request this attribute, instead of using the <code class="Code-In-Text--PACKT-">__dict__</code> attribute of the dictionary, the <code class="Code-In-Text--PACKT-">descriptor</code> takes precedence (because it's an overriding descriptor).</p>
+    <p class="normal">One more thing—deleting the attribute will not work anymore:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;</span>&gt;&gt; del client.descriptor
+Traceback (most recent call last):
+   ...
+AttributeError: __delete__
+</code></pre>
+    <p class="normal">The reason is as follows—given that now the <code class="Code-In-Text--PACKT-">descriptor</code> always takes precedence, calling <code class="Code-In-Text--PACKT-">del</code> on an object doesn't try to delete the attribute from its dictionary (<code class="Code-In-Text--PACKT-">__dict__</code>), but instead it tries to call the <code class="Code-In-Text--PACKT-">__delete__()</code> method of the <code class="Code-In-Text--PACKT-">descriptor</code> (which is not implemented in this example, hence the attribute error).</p>
+    <p class="normal">This is the difference <a id="_idIndexMarker400"/>between data and non-data descriptors. If the descriptor implements <code class="Code-In-Text--PACKT-">__set__()</code>, then it will always take precedence, no matter what attributes are present in<a id="_idIndexMarker401"/> the dictionary of the object. If this method is not implemented, then the dictionary will be looked up first, and then the descriptor will run.</p>
+    <p class="normal">An interesting observation you might have noticed is this line on the <code class="Code-In-Text--PACKT-">set</code> method:</p>
+    <pre class="programlisting code"><code class="hljs-code">instance.__dict__[<span class="hljs-stri">"descriptor"</span>] = value
+</code></pre>
+    <p class="normal">There are a lot of things to question about that line, but let's break it down into parts.</p>
+    <p class="normal">First, why is it altering just the name of a <code class="Code-In-Text--PACKT-">"descriptor"</code> attribute? This is just a simplification for this example, but, as it happens, the descriptor doesn't know at this point the name of the attribute it was assigned to, so we just used the one from the example, knowing that it was going to be <code class="Code-In-Text--PACKT-">"descriptor"</code>. This is a simplification to make the example use less code, but it could be easily resolved by using the <code class="Code-In-Text--PACKT-">__set_name__</code> method we studied in the previous section.</p>
+    <p class="normal">In a real example, you would do one of two things—either receive the name as a parameter and store it internally in the <code class="Code-In-Text--PACKT-">init</code> method, so that this one will just use the internal attribute, or, even better, use the <code class="Code-In-Text--PACKT-">__set_name__</code> method.</p>
+    <p class="normal">Why is it accessing the <code class="Code-In-Text--PACKT-">__dict__</code> attribute of the instance directly? Another good question, which also has at least two explanations. First, you might be thinking why not just do the following?</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-built_in">setattr</span>(instance, <span class="hljs-stri">"descriptor"</span>, value)
+</code></pre>
+    <p class="normal">Remember that this method <code class="Code-In-Text--PACKT-">(__set__</code>) is called when we try to assign something to the attribute that is a <code class="Code-In-Text--PACKT-">descriptor</code>. So, using <code class="Code-In-Text--PACKT-">setattr()</code> will call this <code class="Code-In-Text--PACKT-">descriptor</code> again, which, in turn, will call it again, and so on and so forth. This will end up in an infinite recursion.</p>
+    <div class="note">
+      <p class="Information-Box--PACKT-">Do not use <code class="Code-In-Text--PACKT-">setattr()</code> or the assignment expression directly on the descriptor inside the <code class="Code-In-Text--PACKT-">__set__</code> method because that will trigger an infinite recursion. </p>
+    </div>
+    <p class="normal">Why, then, is the<a id="_idIndexMarker402"/> descriptor not able to book-keep the values of the properties for all of its objects?</p>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">client</code> class<a id="_idIndexMarker403"/> already has a reference to the descriptor. If we add a reference from the descriptor back to the <code class="Code-In-Text--PACKT-">client</code> object, we are creating circular dependencies, and these objects will never be garbage-collected. Since they are pointing at each other, their reference counts will never drop below the threshold for removal, and that will cause memory leaks in our program.</p>
+    <div class="packt_tip">
+      <p class="Tip--PACKT-">Watch out for potential memory leaks when working with descriptors (or objects in general). Make sure you don't create circular dependencies.</p>
+    </div>
+    <p class="normal">A possible alternative here is to use weak references, with the <code class="Code-In-Text--PACKT-">weakref</code> module, and create a weak reference key dictionary if we want to do that. This implementation is explained later on in this chapter, but for the implementations within this book, we prefer to use this idiom (and not <code class="Code-In-Text--PACKT-">weakref</code>), since it is fairly common and accepted when writing descriptors.</p>
+    <p class="normal">As of now, we have studied the different kinds of descriptors, what they are, and how they work, and we even got a first idea of how we can use them to our advantage. The next section emphasizes precisely that last point: we'll see descriptors in action. From now on, we'll take a more practical approach, and see how we can use descriptors to achieve better code. After that, we'll even explore examples of good descriptors.</p>
+    <h1 id="_idParaDest-159" class="title">Descriptors in action</h1>
+    <p class="normal">Now that we have<a id="_idIndexMarker404"/> seen what descriptors are, how they work, and what the main ideas behind them are, we can see them in action. In this section, we will be exploring some situations that can be elegantly addressed through descriptors.</p>
+    <p class="normal">Here, we will look at some examples of working with descriptors, and we will also cover implementation considerations for them (different ways of creating them, with their pros and cons), and finally, we will discuss what the most suitable scenarios for descriptors are.</p>
+    <h2 id="_idParaDest-160" class="title">An application of descriptors</h2>
+    <p class="normal">We will start with a simple<a id="_idIndexMarker405"/> example that works but will lead to some code duplication. Later on, we will devise a way of abstracting the repeated logic into a descriptor, which will address the duplication problem, and we will observe that the code on our client classes will reduce drastically.</p>
+    <h3 id="_idParaDest-161" class="title">A first attempt without using descriptors</h3>
+    <p class="normal">The problem we want to solve now<a id="_idIndexMarker406"/> is that we have a regular class with some attributes, but we wish to track all of the different values a particular attribute has over time, for example, in a <code class="Code-In-Text--PACKT-">list</code>. The first solution that comes to mind is to use a property, and every time a value is changed for that attribute in the setter method of the property, we add it to an internal list that will keep this trace as we want it.</p>
+    <p class="normal">Imagine that our class represents a traveler in our application that has a current city, and we want to keep track of all the cities that user has visited throughout the running of the program. The following code is a possible implementation that addresses these requirements:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">Traveler</span><span class="hljs-class">:</span>
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__init__</span><span class="hljs-function">(</span><span class="hljs-params">self, name, current_city</span><span class="hljs-function">):</span>
+        self.name = name
+        self._current_city = current_city
+        self._cities_visited = [current_city]
+<span class="hljs-meta">    @property</span>
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">current_city</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">):</span>
+        <span class="hljs-keyword">return</span> self._current_city
+<span class="hljs-meta">    @current_city.setter</span>
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">current_city</span><span class="hljs-function">(</span><span class="hljs-params">self, new_city</span><span class="hljs-function">):</span>
+        <span class="hljs-keyword">if</span> new_city != self._current_city:
+            self._cities_visited.append(new_city)
+        self._current_city = new_city
+<span class="hljs-meta">    @property</span>
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">cities_visited</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">):</span>
+        <span class="hljs-keyword">return</span> self._cities_visited
+</code></pre>
+    <p class="normal">We can easily check that this code works according to our requirements:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;</span>&gt;&gt; alice = Traveler(<span class="hljs-co -stri">"Alice"</span>, <span class="hljs-co -stri">"Barcelona"</span>)
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; alice.current_city = <span class="hljs-co -stri">"Paris"</span>
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; alice.current_city = <span class="hljs-co -stri">"Brussels"</span>
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; alice.current_city = <span class="hljs-co -stri">"Amsterdam"</span>
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; alice.cities_visited
+['Barcelona', 'Paris', 'Brussels', 'Amsterdam']
+</code></pre>
+    <p class="normal">So far, this <a id="_idIndexMarker407"/>is all we need and nothing else has to be implemented. For the purposes of this problem, the property would be more than enough. What happens if we need the exact same logic in multiple places of the application? This would mean that this is actually an instance of a more generic problem—tracing all the values of an attribute in another one. What would happen if we want to do the same with other attributes, such as keeping track of all the tickets Alice bought, or all the countries she has been to? We would have to repeat the logic in all of these places.</p>
+    <p class="normal">Moreover, what would happen if we need this same behavior in different classes? We would have to repeat the code or come up with a generic solution (maybe a decorator, a property builder, or a descriptor). Since property builders are a particular (and more convoluted) case of descriptors, they are beyond the scope of this book, and instead, descriptors are suggested as a cleaner way of proceeding.</p>
+    <p class="normal">As another solution to this problem, we can use the <code class="Code-In-Text--PACKT-">__setattr__</code> magic method that was introduced in <em class="chapterRef">Chapter 2</em>, <em class="italic">Pythonic Code</em>. We have already seen solutions of this kind in the previous chapter when we discussed class decorators as an alternative to using <code class="Code-In-Text--PACKT-">__getattr__</code>. The considerations of these solutions are analogous: we would need to create a new base class that implements this generic method, then define some class attributes to signal the attributes that need to be traced, and finally implement this logic in the method. This class would be a mixin that could be added to the hierarchy of the classes, but that also has the same problems that were previously discussed (a stronger coupling and potential problems with a hierarchy that is not conceptually right).</p>
+    <p class="normal">As we saw in the <a id="_idIndexMarker408"/>previous chapter, we analyzed the differences, and we saw how a class decorator was better than using this magic method in a base class; here, I also assume descriptors will provide a cleaner solution, so the magic method will be avoided, and we'll explore how to solve this problem with descriptors in the next section. That said, the reader is more than welcome to implement the solution that uses <code class="Code-In-Text--PACKT-">__setattr__</code> to compare and a similar analysis.</p>
+    <h3 id="_idParaDest-162" class="title">The idiomatic implementation</h3>
+    <p class="normal">We will now look at how to address the <a id="_idIndexMarker409"/>questions of the previous section by using a descriptor that is generic enough to be applied in any class. Again, this example is not really needed because the requirements do not specify such generic behavior (we haven't even followed the rule of three instances of the similar pattern previously creating the abstraction), but it is shown with the goal of portraying descriptors in action.</p>
+    <div class="note">
+      <p class="Information-Box--PACKT-">Do not implement a descriptor unless there is actual evidence of the repetition we are trying to solve, and the complexity is proven to have paid off.</p>
+    </div>
+    <p class="normal">Now, we will create a generic descriptor that, given a name for the attribute to hold the traces of another one, will store the different values of the attribute in a list.</p>
+    <p class="normal">As we mentioned previously, the code is more than what we need for the problem, but its intention is just to show how a descriptor would help us in this case. Given the generic nature of descriptors, the reader will notice that the logic on it (the name of their method and attributes) does not relate to the domain problem at hand (a Traveler object). This is because the idea of the descriptor is to be able to use it in any type of class, probably in different projects, with the same outcomes.</p>
+    <p class="normal">In order to address this gap, some parts of the code are annotated, and the respective explanation for each section (what it does, and how it relates to the original problem) is described in the following code:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">HistoryTracedAttribute</span><span class="hljs-class">:</span>
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__init__</span><span class="hljs-function">(</span><span class="hljs-params">self, trace_attribute_name: </span><span class="hljs-built_in">str</span><span class="hljs-function">) -&gt; </span><span class="hljs-keyword">None</span><span class="hljs-function">:</span>
+        self.trace_attribute_name = trace_attribute_name  <span class="hljs-comment"># [1]</span>
+        self._name = <span class="hljs-literal">None</span>
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__set_name__</span><span class="hljs-function">(</span><span class="hljs-params">self, owner, name</span><span class="hljs-function">):</span>
+        self._name = name
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__get__</span><span class="hljs-function">(</span><span class="hljs-params">self, instance, owner</span><span class="hljs-function">):</span>
+        <span class="hljs-keyword">if</span> instance <span class="hljs-keyword">is</span> <span class="hljs-literal">None</span>:
+            <span class="hljs-keyword">return</span> self
+        <span class="hljs-keyword">return</span> instance.__dict__[self._name]
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__set__</span><span class="hljs-function">(</span><span class="hljs-params">self, instance, value</span><span class="hljs-function">):</span>
+        self._track_change_in_value_for_instance(instance, value)
+        instance.__dict__[self._name] = value
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">_track_change_in_value_for_instance</span><span class="hljs-function">(</span><span class="hljs-params">self, instance, value</span><span class="hljs-function">):</span>
+        self._set_default(instance)   <span class="hljs-comment"># [2]</span>
+        <span class="hljs-keyword">if</span> self._needs_to_track_change(instance, value):
+            instance.__dict__[self.trace_attribute_name].append(value)
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">_needs_to_track_change</span><span class="hljs-function">(</span><span class="hljs-params">self, instance, value</span><span class="hljs-function">) -&gt; bool:</span>
+        <span class="hljs-keyword">try</span>:
+            current_value = instance.__dict__[self._name]
+        <span class="hljs-keyword">except</span> KeyError:   <span class="hljs-comment"># [3]</span>
+            <span class="hljs-keyword">return</span> <span class="hljs-literal">True</span>
+        <span class="hljs-keyword">return</span> value != current_value  <span class="hljs-comment"># [4]</span>
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">_set_default</span><span class="hljs-function">(</span><span class="hljs-params">self, instance</span><span class="hljs-function">):</span>
+        instance.__dict__.setdefault(self.trace_attribute_name, [])  <span class="hljs-comment"># [6]</span>
+<span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">Traveler</span><span class="hljs-class">:</span>
+    current_city = HistoryTracedAttribute(<span class="hljs-stri">"cities_visited"</span>)  <span class="hljs-comment"># [1]</span>
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__init__</span><span class="hljs-function">(</span><span class="hljs-params">self, name: </span><span class="hljs-built_in">str</span><span class="hljs-params">, current_city: </span><span class="hljs-built_in">str</span><span class="hljs-function">) -&gt; </span><span class="hljs-keyword">None</span><span class="hljs-function">:</span>
+        self.name = name
+        self.current_city = current_city  <span class="hljs-comment"># [5]</span>
+</code></pre>
+    <p class="normal">The idea behind the descriptor is that it will create a new attribute that is in charge of keeping track of the changes that have been happening to some other attribute. For the purposes of this explanation, we can call them tracer and traced attributes, respectively.</p>
+    <p class="normal">Some annotations <a id="_idIndexMarker410"/>and comments on the code are as follows (the numbers in the list correspond to the number annotations in the previous listing):</p>
+    <ol>
+      <li class="numbered">The name of the attribute is one of the variables assigned to the <code class="Code-In-Text--PACKT-">descriptor</code>, in this case, <code class="Code-In-Text--PACKT-">current_city</code> (the traced attribute). We pass to the <code class="Code-In-Text--PACKT-">descriptor</code> the name of the variable in which it will store the trace for the variable of the <code class="Code-In-Text--PACKT-">descriptor</code>. In this example, we are telling our object to keep track of all the values that <code class="Code-In-Text--PACKT-">current_city</code> has had in the attribute named <code class="Code-In-Text--PACKT-">cities_visited</code> (the tracer).</li>
+      <li class="numbered">The first time we call the descriptor, in <code class="Code-In-Text--PACKT-">__init__</code>, the attribute for tracing values will not exist, in which case we initialize it to an empty list to later append values to it.</li>
+      <li class="numbered">In the <code class="Code-In-Text--PACKT-">__ init__</code> method, the name of the attribute <code class="Code-In-Text--PACKT-">current_city</code> will not exist either, so we want to keep track of this change as well. This is the equivalent of initializing the list with the first value in the previous example.</li>
+      <li class="numbered">Only track changes when the new value is different from the one that is currently set.</li>
+      <li class="numbered">In the <code class="Code-In-Text--PACKT-">__init__</code> method, the <code class="Code-In-Text--PACKT-">descriptor</code> already exists, and this assignment instruction triggers the actions from <em class="italic">step 2</em> (create the empty list to start tracking values for it), and <em class="italic">step 3</em> (append the value to this <code class="Code-In-Text--PACKT-">list</code>, and set it to the key in the object for retrieval later).</li>
+      <li class="numbered">The <code class="Code-In-Text--PACKT-">setdefault</code> method in a dictionary is used to avoid a <code class="Code-In-Text--PACKT-">KeyError</code>. In this case, an empty list will be returned for those attributes that aren't still available (see <a href="https://docs.python.org/3/library/stdtypes.html#dict.setdefault"><span class="url">https://docs.python.org/3/library/stdtypes.html#dict.setdefault</span></a> for reference).</li>
+    </ol>
+    <p class="normal">It is true that the code in the <code class="Code-In-Text--PACKT-">descriptor</code> is rather complex. On the other hand, the code in the <code class="Code-In-Text--PACKT-">client</code> class is considerably simpler. Of course, this balance only pays off if we are going to use this <code class="Code-In-Text--PACKT-">descriptor</code> multiple times, which is a concern we have already covered.</p>
+    <p class="normal">What might not be so clear at this point is that the descriptor is indeed completely independent from the <code class="Code-In-Text--PACKT-">client</code> class. Nothing in it suggests anything about the business logic. That makes it perfectly suitable to apply it in any other class; even if it does something completely different, the descriptor will have the same effect.</p>
+    <p class="normal">That is the true Pythonic nature of descriptors. They are more appropriate for defining libraries, frameworks, and internal APIs, but less so for business logic.</p>
+    <p class="normal">Now that we have <a id="_idIndexMarker411"/>seen some first descriptors implemented, we can take a look at different ways of writing descriptors. So far, the examples have used a single form, but as anticipated earlier in the chapter, there are different ways in which we can implement descriptors, as we shall see.</p>
+    <h2 id="_idParaDest-163" class="title">Different forms of implementing descriptors</h2>
+    <p class="normal">We have to first<a id="_idIndexMarker412"/> understand a common issue that's specific to the nature of descriptors before thinking of ways of implementing them. First, we will discuss the problem of a global shared state, and afterward, we will move on and look at different ways descriptors can be implemented while taking this into consideration.</p>
+    <h3 id="_idParaDest-164" class="title">The issue of shared state</h3>
+    <p class="normal">As we have already <a id="_idIndexMarker413"/>mentioned, descriptors need to be set as class attributes in order to work. This should not be a problem most of the time, but it does come with some warnings that need to be taken into consideration.</p>
+    <p class="normal">The problem with class attributes is that they are shared across all instances of that class. Descriptors are not an exception here, so if we try to keep data in a <code class="Code-In-Text--PACKT-">descriptor</code> object, keep in mind that all of them will have access to the same value.</p>
+    <p class="normal">Let's see what happens when we incorrectly define a <code class="Code-In-Text--PACKT-">descriptor</code> that keeps the data itself, instead of storing it in each object:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">SharedDataDescriptor</span><span class="hljs-class">:</span>
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__init__</span><span class="hljs-function">(</span><span class="hljs-params">self, initial_value</span><span class="hljs-function">):</span>
+        self.value = initial_value
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__get__</span><span class="hljs-function">(</span><span class="hljs-params">self, instance, owner</span><span class="hljs-function">):</span>
+        <span class="hljs-keyword">if</span> instance <span class="hljs-keyword">is</span> <span class="hljs-literal">None</span>:
+            <span class="hljs-keyword">return</span> self
+        <span class="hljs-keyword">return</span> self.value
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__set__</span><span class="hljs-function">(</span><span class="hljs-params">self, instance, value</span><span class="hljs-function">):</span>
+        self.value = value
+<span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">ClientClass</span><span class="hljs-class">:</span>
+    descriptor = SharedDataDescriptor(<span class="hljs-stri">"first value"</span>)
+</code></pre>
+    <p class="normal">In this example, the <code class="Code-In-Text--PACKT-">descriptor</code> object stores the data itself. This carries with it the inconvenience that when we modify the value for an <code class="Code-In-Text--PACKT-">instance</code>, all other instances of the same classes are also modified with this value as well. The following code listing puts that theory into action:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;</span>&gt;&gt; client1 = ClientClass()
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; client1.descriptor
+'first value'
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; client2 = ClientClass()
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; client2.descriptor
+'first value'
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; client2.descriptor = <span class="hljs-co -stri">"value for client 2"</span>
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; client2.descriptor
+'value for client 2'
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; client1.descriptor
+'value for client 2'
+</code></pre>
+    <p class="normal">Notice how we change one<a id="_idIndexMarker414"/> object, and suddenly all of them are from the same class, and we can see that this value is reflected. This is because <code class="Code-In-Text--PACKT-">ClientClass.descriptor</code> is unique; it's the same object for all of them.</p>
+    <p class="normal">In some cases, this might be what we actually want (for instance, if we were to create a sort of Borg pattern implementation, on which we want to share state across all objects from a class), but in general, that is not the case, and we need to differentiate between objects. Such a pattern is discussed in more detail in <em class="chapterRef">Chapter 9</em>, <em class="italic">Common Design Patterns</em>.</p>
+    <p class="normal">To achieve this, the descriptor needs to know the value for each <code class="Code-In-Text--PACKT-">instance</code> and return it accordingly. That is the reason we have been operating with the dictionary (<code class="Code-In-Text--PACKT-">__dict__</code>) of each <code class="Code-In-Text--PACKT-">instance</code> and setting and retrieving the values from there.</p>
+    <p class="normal">This is the most common approach. We have already covered why we cannot use <code class="Code-In-Text--PACKT-">getattr()</code> and <code class="Code-In-Text--PACKT-">setattr()</code> on those methods, so modifying the <code class="Code-In-Text--PACKT-">__dict__</code> attribute is the last standing option, and, in this case, is acceptable.</p>
+    <h3 id="_idParaDest-165" class="title">Accessing the dictionary of the object</h3>
+    <p class="normal">The way we implement <a id="_idIndexMarker415"/>descriptors throughout this book is making the <code class="Code-In-Text--PACKT-">descriptor</code> object store the values in the dictionary of the object, <code class="Code-In-Text--PACKT-">__dict__</code>, and retrieve the parameters from there as well.</p>
+    <div class="note">
+      <p class="Information-Box--PACKT-">Always store and return the data from the <code class="Code-In-Text--PACKT-">__dict__</code> attribute of the instance. </p>
+    </div>
+    <p class="normal">All of the examples we have seen so far use this approach, but in the following section, we will take a look at some alternatives.</p>
+    <h3 id="_idParaDest-166" class="title">Using weak references</h3>
+    <p class="normal">Another <a id="_idIndexMarker416"/>alternative (if we don't want to use <code class="Code-In-Text--PACKT-">__dict__</code>) is to make the <code class="Code-In-Text--PACKT-">descriptor</code> object keep track of the values for each instance itself, in an internal mapping, and return values from this mapping as well.</p>
+    <p class="normal">There is a caveat, though. This mapping cannot just be any dictionary. Since the <code class="Code-In-Text--PACKT-">client</code> class has a reference to the descriptor, and now the descriptor will keep references to the objects that use it, this will create circular dependencies, and, as a result, these objects will never be garbage-collected because they are pointing at each other.</p>
+    <p class="normal">In order to address this, the dictionary has to be a weak key one, as defined in the <code class="Code-In-Text--PACKT-">weakref (WEAKREF 01)</code> module.</p>
+    <p class="normal">In this case, the code for the <code class="Code-In-Text--PACKT-">descriptor</code> might look like the following:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">from</span> weakref <span class="hljs-keyword">import</span> WeakKeyDictionary
+<span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">DescriptorClass</span><span class="hljs-class">:</span>
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__init__</span><span class="hljs-function">(</span><span class="hljs-params">self, initial_value</span><span class="hljs-function">):</span>
+        self.value = initial_value
+        self.mapping = WeakKeyDictionary()
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__get__</span><span class="hljs-function">(</span><span class="hljs-params">self, instance, owner</span><span class="hljs-function">):</span>
+        <span class="hljs-keyword">if</span> instance <span class="hljs-keyword">is</span> <span class="hljs-literal">None</span>:
+            <span class="hljs-keyword">return</span> self
+        <span class="hljs-keyword">return</span> self.mapping.get(instance, self.value)
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__set__</span><span class="hljs-function">(</span><span class="hljs-params">self, instance, value</span><span class="hljs-function">):</span>
+        self.mapping[instance] = value
+</code></pre>
+    <p class="normal">This addresses the issues, but it does come with some considerations:</p>
+    <ul>
+      <li class="bullet">The objects no longer hold their attributes—the descriptor does instead. This is somewhat controversial, and it might not be entirely accurate from a conceptual point of view. If we forget this detail, we might ask the object, by inspecting its dictionary, to find things that just aren't there (for example, calling <code class="Code-In-Text--PACKT-">vars(client)</code> will not return the complete data,).</li>
+      <li class="bullet">It poses the<a id="_idIndexMarker417"/> requirement that the objects need to be hashable. If they aren't, they can't be part of the mapping. This might be too demanding a requirement for some applications (or it might force us to implement custom <code class="Code-In-Text--PACKT-">__hash__</code> and <code class="Code-In-Text--PACKT-">__eq__</code> magic methods).</li>
+    </ul>
+    <p class="normal">For these reasons, we prefer the implementation that has been shown so far in this book, which uses the dictionary of each instance. However, for completeness, we have shown this alternative as well.</p>
+    <h2 id="_idParaDest-167" class="title">More considerations about descriptors</h2>
+    <p class="normal">Here, we will discuss <a id="_idIndexMarker418"/>general considerations about descriptors in terms of what we can do with them, when it is a good idea to use them, and also how things that we might have initially conceived as having been resolved by means of another approach can be improved through descriptors. We will then analyze the pros and cons of the original implementation versus the one after descriptors have been used.</p>
+    <h3 id="_idParaDest-168" class="title">Reusing code</h3>
+    <p class="normal">Descriptors are a generic tool and a<a id="_idIndexMarker419"/> powerful abstraction that we can use to avoid code duplication.</p>
+    <p class="normal">A good scenario where descriptors might be useful is if we find ourselves in a situation where we need to write properties (as in a method decorated with <code class="Code-In-Text--PACKT-">@property @&lt;property&gt;.setter</code> or <code class="Code-In-Text--PACKT-">@&lt;property&gt;.deleter</code>), but we need to do the same property logic multiple times. That is, if we needed something like a generic property, or else we'll find ourselves writing multiple properties with the same logic and repeating boilerplate. Properties are just a particular case of descriptors (the <code class="Code-In-Text--PACKT-">@property</code> decorator is a descriptor that implements the full descriptor protocol to define its <code class="Code-In-Text--PACKT-">get</code>, <code class="Code-In-Text--PACKT-">set</code>, and <code class="Code-In-Text--PACKT-">delete</code> actions), which means that we can even use descriptors to accomplish far more complex tasks.</p>
+    <p class="normal">Another powerful type we have seen for reusing code was decorators, as explained in <em class="chapterRef">Chapter 5</em>, <em class="italic">Using Decorators to Improve Our Code</em>. Descriptors can help us create better decorators by making sure that they will be able to work correctly for class methods as well.</p>
+    <p class="normal">When it comes to decorators, we could say that it is safe to always implement the <code class="Code-In-Text--PACKT-">__get__()</code> method on them, and also make it a descriptor. When trying to decide whether the decorator is worth creating, consider the three-problems rule we stated in <em class="chapterRef">Chapter 5</em>, <em class="italic">Using Decorators to Improve Our Code</em>, but note that there are no extra considerations toward descriptors.</p>
+    <p class="normal">As for generic descriptors, besides <a id="_idIndexMarker420"/>the aforementioned three-instances rule that applies to decorators (and, in general, any reusable component), it is advisable to also keep in mind that you should use descriptors for cases where you want to define an internal API, which is some code that will have clients consuming it. This is a feature oriented more towards designing libraries and frameworks, rather than one-time solutions.</p>
+    <p class="normal">Unless there is a very good reason to, or the code will look significantly better, we should avoid putting business logic in a descriptor. Instead, the code of a descriptor will contain more implementational code rather than business code. It is more similar to defining a new data structure or object that another part of our business logic will use as a tool.</p>
+    <div class="note">
+      <p class="Information-Box--PACKT-">In general, descriptors will contain implementation logic, and not so much business logic.</p>
+    </div>
+    <h3 id="_idParaDest-169" class="title">An alternative to class decorators</h3>
+    <p class="normal">If we recall the class<a id="_idIndexMarker421"/> decorator we used in <em class="chapterRef">Chapter 5</em>, <em class="italic">Using Decorators to Improve Our Code</em>, to determine how an event object is going to be serialized, we ended up with an implementation that (for Python 3.7+) relied on two class decorators:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-meta">@Serialization(</span>
+<span class="hljs-params">    username=show_original,</span>
+<span class="hljs-params">    password=hide_field,</span>
+<span class="hljs-params">    ip=show_original,</span>
+<span class="hljs-params">    timestamp=format_time,</span>
+<span class="hljs-meta">)</span>
+<span class="hljs-meta">@dataclass</span>
+<span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">LoginEvent</span><span class="hljs-class">:</span>
+    username: <span class="hljs-built_in">str</span>
+    password: <span class="hljs-built_in">str</span>
+    ip: <span class="hljs-built_in">str</span>
+    timestamp: datetime
+</code></pre>
+    <p class="normal">The first one takes the attributes from the annotations to declare the variables, whereas the second one defines how to treat each file. Let's see whether we can change these two decorators for descriptors instead.</p>
+    <p class="normal">The idea is to create a <a id="_idIndexMarker422"/>descriptor that will apply the transformation over the values of each attribute, returning the modified version according to our requirements (for example, hiding sensitive information, and formatting dates correctly):</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">from</span> dataclasses <span class="hljs-keyword">import</span> dataclass
+<span class="hljs-keyword">from</span> datetime <span class="hljs-keyword">import</span> datetime
+<span class="hljs-keyword">from</span> functools <span class="hljs-keyword">import</span> partial
+<span class="hljs-keyword">from</span> typing <span class="hljs-keyword">import</span> Callable
+<span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">BaseFieldTransformation</span><span class="hljs-class">:</span>
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__init__</span><span class="hljs-function">(</span><span class="hljs-params">self, transformation: Callable[[], </span><span class="hljs-built_in">str</span><span class="hljs-params">]</span><span class="hljs-function">) -&gt; </span><span class="hljs-keyword">None</span><span class="hljs-function">:</span>
+        self._name = <span class="hljs-literal">None</span>
+        self.transformation = transformation
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__get__</span><span class="hljs-function">(</span><span class="hljs-params">self, instance, owner</span><span class="hljs-function">):</span>
+        <span class="hljs-keyword">if</span> instance <span class="hljs-keyword">is</span> <span class="hljs-literal">None</span>:
+            <span class="hljs-keyword">return</span> self
+        raw_value = instance.__dict__[self._name]
+        <span class="hljs-keyword">return</span> self.transformation(raw_value)
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__set_name__</span><span class="hljs-function">(</span><span class="hljs-params">self, owner, name</span><span class="hljs-function">):</span>
+        self._name = name
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__set__</span><span class="hljs-function">(</span><span class="hljs-params">self, instance, value</span><span class="hljs-function">):</span>
+        instance.__dict__[self._name] = value
+ShowOriginal = partial(BaseFieldTransformation, transformation=<span class="hljs-keyword">lambda</span> x: x)
+HideField = partial(
+    BaseFieldTransformation, transformation=<span class="hljs-keyword">lambda</span> x: <span class="hljs-stri">"**redacted**"</span>
+)
+FormatTime = partial(
+    BaseFieldTransformation,
+    transformation=<span class="hljs-keyword">lambda</span> ft: ft.strftime(<span class="hljs-stri">"%Y-%m-%d %H:%M"</span>),
+)
+</code></pre>
+    <p class="normal">This <code class="Code-In-Text--PACKT-">descriptor</code> is interesting. It was created with a function that takes one argument and returns one value. This function will be the transformation we want to apply to the field. From the base definition that defines generically how it is going to work, the rest of the <code class="Code-In-Text--PACKT-">descriptor</code> classes are defined, simply by changing the particular function each one needs.</p>
+    <p class="normal">The example <a id="_idIndexMarker423"/>uses <code class="Code-In-Text--PACKT-">functools.partial</code> (<a href="https://docs.python.org/3/library/functools.html#functools.partial"><span class="url">https://docs.python.org/3/library/functools.html#functools.partial</span></a>) as a way of simulating sub-classes, by applying a partial application of the transformation function for that class, leaving a new callable that can be instantiated directly.</p>
+    <p class="normal">In order to keep the example<a id="_idIndexMarker424"/> simple, we will implement the <code class="Code-In-Text--PACKT-">__init__()</code> and <code class="Code-In-Text--PACKT-">serialize()</code> methods, although they could be abstracted away as well. Under these considerations, the class for the event will now be defined as follows:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-title">@dataclass</span>
+<span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">LoginEvent</span><span class="hljs-class">:</span>
+    username: str = ShowOriginal()
+    password: str = HideField()
+    ip: str = ShowOriginal()
+    timestamp: datetime = FormatTime()
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">serialize</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">) -&gt; dict:</span>
+        <span class="hljs-keyword">return</span> {
+            <span class="hljs-stri">"username"</span>: self.username,
+            <span class="hljs-stri">"password"</span>: self.password,
+            <span class="hljs-stri">"ip"</span>: self.ip,
+            <span class="hljs-stri">"timestamp"</span>: self.timestamp,
+        }
+</code></pre>
+    <p class="normal">We can see how the object behaves at runtime:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;</span>&gt;&gt; le = LoginEvent(<span class="hljs-co -stri">"john"</span>, <span class="hljs-co -stri">"secret password"</span>, <span class="hljs-co -stri">"1.1.1.1"</span>, datetime.utcnow())
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; vars(le)
+{'username': 'john', 'password': 'secret password', 'ip': '1.1.1.1', 'timestamp': ...}
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; le.serialize()
+{'username': 'john', 'password': '**redacted**', 'ip': '1.1.1.1', 'timestamp': '...'}
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; le.password
+'**redacted**'
+</code></pre>
+    <p class="normal">There are some differences with respect to the previous implementation that used a decorator. This example added the <code class="Code-In-Text--PACKT-">serialize()</code> method and hid the fields before presenting them to its resulting dictionary, but if we asked for any of these attributes from an instance of the event in memory at any point, it would still give us the original value, without any transformation applied to it (we could have chosen to apply the transformation when setting the value, and return it directly on <code class="Code-In-Text--PACKT-">__get__()</code>, as well).</p>
+    <p class="normal">Depending on the sensitivity of the application, this may or may not be acceptable, but in this case, when we ask the object for its <code class="Code-In-Text--PACKT-">public</code> attributes, the descriptor will apply the transformation before presenting the results. It is still possible to access the original values by asking for the dictionary of the object (by accessing <code class="Code-In-Text--PACKT-">__dict__</code>), but when we ask for the value, by default, it will return it converted.</p>
+    <p class="normal">In this example, all <a id="_idIndexMarker425"/>descriptors follow a common logic, which is defined in the base class. The descriptor should store the value in the object and then ask for it, applying the transformation it defines. We could create a hierarchy of classes, each one defining its own conversion function, in a way that the template method design pattern works. In this case, since the changes in the derived classes are relatively small (just one function), we opted for creating the derived classes as partial applications of the base class. Creating any new transformation field should be as simple as defining a new class that will be the base class, which is partially applied with the function we need. This can even be done ad hoc, so there might be no need to set a name for it.</p>
+    <p class="normal">Regardless of this implementation, the point is that since descriptors are objects, we can create models, and apply all rules of object-oriented programming to them. Design patterns also apply to descriptors. We could define our hierarchy, set the custom behavior, and so on. This example <a id="_idIndexMarker426"/>follows the <strong class="keyword">Open/Closed Principle</strong> (<strong class="keyword">OCP</strong>), which we introduced in <em class="chapterRef">Chapter 4</em>, <em class="italic">The SOLID Principles</em>, because adding a new type of conversion method would just be about creating a new class, derived from the base one with the function it needs, without having to modify the base class itself (to be fair, the previous implementation with decorators was also OCP-compliant, but there were no classes involved for each transformation mechanism).</p>
+    <p class="normal">Let's take an example where we create a base class that implements the <code class="Code-In-Text--PACKT-">__init__()</code> and <code class="Code-In-Text--PACKT-">serialize()</code> methods so that we can define the <code class="Code-In-Text--PACKT-">LoginEvent</code> class simply by deriving from it, as follows:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">LoginEvent</span><span class="hljs-class">(</span><span class="hljs-params">BaseEvent</span><span class="hljs-class">):</span>
+    username = ShowOriginal()
+    password = HideField()
+    ip = ShowOriginal()
+    timestamp = FormatTime()
+</code></pre>
+    <p class="normal">Once we achieve this code, the<a id="_idIndexMarker427"/> class looks cleaner. It only defines the attributes it needs, and its logic can be quickly analyzed by looking at the class for each attribute. The base class will abstract only the common methods, and the class of each event will look simpler and more compact.</p>
+    <p class="normal">Not only do the classes for each event look simpler, but the descriptor itself is very compact and a lot simpler than the class decorators. The original implementation with class decorators was good, but descriptors made it even better.</p>
+    <h1 id="_idParaDest-170" class="title">Analysis of descriptors</h1>
+    <p class="normal">We have seen how descriptors <a id="_idIndexMarker428"/>work so far and explored some interesting situations in which they contribute to clean design by simplifying their logic and leveraging more compact classes.</p>
+    <p class="normal">Up to this point, we know that by using descriptors, we can achieve cleaner code, abstracting away repeated logic and implementation details. But how do we know our implementation of the descriptors is clean and correct? What makes a good descriptor? Are we using this tool properly or over-engineering with it?</p>
+    <p class="normal">In this section, we will analyze descriptors in order to answer these questions.</p>
+    <h2 id="_idParaDest-171" class="title">How Python uses descriptors internally</h2>
+    <p class="normal"><em class="italic">What makes a good descriptor?</em> A <a id="_idIndexMarker429"/>simple answer would be that a good descriptor is <a id="_idIndexMarker430"/>pretty much like any other good Python object. It is consistent with Python itself. The idea that follows this premise is that analyzing how Python uses descriptors will give us a good idea of good implementations so that we know what to expect from the descriptors we write.</p>
+    <p class="normal">We will see the most common scenarios where Python itself uses descriptors to solve parts of its internal logic, and we will also discover elegant descriptors and that have been there in plain sight all along.</p>
+    <h3 id="_idParaDest-172" class="title">Functions and methods</h3>
+    <p class="normal">The most resonating case of an object that is a descriptor is probably a function. Functions<a id="_idIndexMarker431"/> implement the <code class="Code-In-Text--PACKT-">__get__</code> method, so they can work as methods when defined inside a class.</p>
+    <p class="normal">In Python, methods<a id="_idIndexMarker432"/> are just regular functions, only they take an extra argument. By convention, the first argument of a method is named <code class="Code-In-Text--PACKT-">self</code>, and it represents an instance of the class that the method is being defined in. Then, whatever the method does with <code class="Code-In-Text--PACKT-">self</code> would be the same as any other function receiving the object and applying modifications to it.</p>
+    <p class="normal">In order words, when we define something like this:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">MyClass</span><span class="hljs-class">:</span>
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">method</span><span class="hljs-function">(</span><span class="hljs-params">self, ...</span><span class="hljs-function">):</span>
+        self.x = <span class="hljs-number">1</span>
+</code></pre>
+    <p class="normal">It is actually the same as if we define this:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">MyClass</span><span class="hljs-class">:</span> <span class="hljs-keyword">pass</span>
+<span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">method</span><span class="hljs-function">(</span><span class="hljs-params">myclass_instance: MyClass, ...</span><span class="hljs-function">):</span>
+    myclass_instance.x = <span class="hljs-number">1</span>
+ method(MyClass())
+</code></pre>
+    <p class="normal">So, it is just another function, modifying the object, only it's defined inside the class, and it is said to be bound to the object.</p>
+    <p class="normal">When we call something in the form of this:</p>
+    <pre class="programlisting code"><code class="hljs-code">instance = MyClass()
+instance.method(...)
+</code></pre>
+    <p class="normal">Python is, in fact, doing something equivalent to this:</p>
+    <pre class="programlisting code"><code class="hljs-code">instance = MyClass()
+MyClass.method(instance, ...)
+</code></pre>
+    <p class="normal">Note that this is just a syntax conversion that is handled internally by Python. The way this works is by means of descriptors.</p>
+    <p class="normal">Since functions <a id="_idIndexMarker433"/>implement the descriptor protocol (see the following listing) before calling the method, the <code class="Code-In-Text--PACKT-">__get__()</code> method is invoked first (as we saw at the beginning of the chapter, this is part of the descriptor protocol: when the object being retrieved implements <code class="Code-In-Text--PACKT-">__set__</code>, this is invoked and its result is returned instead). Then within this <code class="Code-In-Text--PACKT-">__get__</code> method, some transformations happen before running the code on the internal callable:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;</span>&gt;&gt; def <span class="hljs-con-keyword">function</span>(): pass
+...
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; function.__get__
+&lt;method-wrapper '__get__' of function object at 0x...&gt;
+</code></pre>
+    <p class="normal">In the <code class="Code-In-Text--PACKT-">instance.method(...)</code> statement, before processing all the arguments of the callable inside the parentheses, the <code class="Code-In-Text--PACKT-">"instance.method"</code> part is evaluated.</p>
+    <p class="normal">Since <code class="Code-In-Text--PACKT-">method</code> is an object defined as a class attribute, and it has a <code class="Code-In-Text--PACKT-">__get__</code> method, this is called. What this does is convert the function into a method, which means binding the callable to the instance of the object it is going to work with.</p>
+    <p class="normal">Let's see this with an <a id="_idIndexMarker434"/>example so that we can get an idea of what Python might be doing internally.</p>
+    <p class="normal">We will define a callable object inside a class that will act as a sort of function or method that we want to define to be invoked externally. An instance of the <code class="Code-In-Text--PACKT-">Method</code> class is supposed to be a function or method to be used inside a different class. This function will just print its three parameters—the <code class="Code-In-Text--PACKT-">instance</code> that it received (which would be the <code class="Code-In-Text--PACKT-">self</code> parameter on the class it's being defined in), and two more arguments. In the <code class="Code-In-Text--PACKT-">__call__()</code> method, the <code class="Code-In-Text--PACKT-">self</code> parameter does not represent an instance of <code class="Code-In-Text--PACKT-">MyClass</code>, but instead an instance of <code class="Code-In-Text--PACKT-">Method</code>. The parameter named <code class="Code-In-Text--PACKT-">instance</code> is meant to be a <code class="Code-In-Text--PACKT-">MyClass</code> type of object:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">Method</span><span class="hljs-class">:</span>
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__init__</span><span class="hljs-function">(</span><span class="hljs-params">self, name</span><span class="hljs-function">):</span>
+        self.name = name
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__call__</span><span class="hljs-function">(</span><span class="hljs-params">self, instance, arg1, arg2</span><span class="hljs-function">):</span>
+        print(<span class="hljs-stri">f"</span><span class="hljs-subst">{self.name}</span><span class="hljs-stri">: </span><span class="hljs-subst">{instance}</span><span class="hljs-stri"> called with </span><span class="hljs-subst">{arg1}</span><span class="hljs-stri"> and </span><span class="hljs-subst">{arg2}</span><span class="hljs-stri">"</span>)
+<span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">MyClass</span><span class="hljs-class">:</span>
+    method = Method(<span class="hljs-stri">"Internal call"</span>)
+</code></pre>
+    <p class="normal">Under these considerations and, after creating the object, the following two calls should be equivalent, based on the preceding definition:</p>
+    <pre class="programlisting code"><code class="hljs-code">instance = MyClass()
+Method(<span class="hljs-stri">"External call"</span>)(instance, <span class="hljs-stri">"first"</span>, <span class="hljs-stri">"second"</span>)
+instance.method(<span class="hljs-stri">"first"</span>, <span class="hljs-stri">"second"</span>)
+</code></pre>
+    <p class="normal">However, only the first one works as expected, as the second one gives an error:</p>
+    <pre class="programlisting con"><code class="hljs-con">Traceback (most recent call last):
+File "file", line , in &lt;module&gt;
+    instance.method("first", "second")
+TypeError: __call__() missing 1 required positional argument: 'arg2'
+</code></pre>
+    <p class="normal">We are seeing<a id="_idIndexMarker435"/> the same error we faced with a decorator in <em class="chapterRef">Chapter 5</em>, <em class="italic">Using Decorators to Improve Our Code</em>. The arguments are being shifted to the left by <a id="_idIndexMarker436"/>one: <code class="Code-In-Text--PACKT-">instance</code> is taking the place of <code class="Code-In-Text--PACKT-">self</code>, <code class="Code-In-Text--PACKT-">"first"</code> is being passed in the place of <code class="Code-In-Text--PACKT-">instance</code>, and <code class="Code-In-Text--PACKT-">"second"</code> in the place of <code class="Code-In-Text--PACKT-">arg1</code>. There is nothing to provide for <code class="Code-In-Text--PACKT-">arg2</code>.</p>
+    <p class="normal">In order to fix this, we need to make <code class="Code-In-Text--PACKT-">Method</code> a descriptor.</p>
+    <p class="normal">This way, when we call <code class="Code-In-Text--PACKT-">instance.method</code> first, we are going to call its <code class="Code-In-Text--PACKT-">__get__()</code>, on which we bind this callable to the object accordingly (bypassing the object as the first parameter), and then proceed:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">from</span> types <span class="hljs-keyword">import</span> MethodType
+<span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">Method</span><span class="hljs-class">:</span>
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__init__</span><span class="hljs-function">(</span><span class="hljs-params">self, name</span><span class="hljs-function">):</span>
+        self.name = name
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__call__</span><span class="hljs-function">(</span><span class="hljs-params">self, instance, arg1, arg2</span><span class="hljs-function">):</span>
+        print(<span class="hljs-stri">f"</span><span class="hljs-subst">{self.name}</span><span class="hljs-stri">: </span><span class="hljs-subst">{instance}</span><span class="hljs-stri"> called with </span><span class="hljs-subst">{arg1}</span><span class="hljs-stri"> and </span><span class="hljs-subst">{arg2}</span><span class="hljs-stri">"</span>)
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__get__</span><span class="hljs-function">(</span><span class="hljs-params">self, instance, owner</span><span class="hljs-function">):</span>
+        <span class="hljs-keyword">if</span> instance <span class="hljs-keyword">is</span> <span class="hljs-literal">None</span>:
+            <span class="hljs-keyword">return</span> self
+        <span class="hljs-keyword">return</span> MethodType(self, instance)
+</code></pre>
+    <p class="normal">Now, both calls work as expected:</p>
+    <pre class="programlisting con"><code class="hljs-con">External call: &lt;MyClass object at 0x...&gt; called with first and second
+Internal call: &lt;MyClass object at 0x...&gt; called with first and second
+</code></pre>
+    <p class="normal">What we did is convert the <code class="Code-In-Text--PACKT-">function</code> (actually the callable object we defined instead) into a method by using <code class="Code-In-Text--PACKT-">MethodType</code> from the <code class="Code-In-Text--PACKT-">types</code> module. The first parameter of this class should be a callable (<code class="Code-In-Text--PACKT-">self</code>, in this case, is one by definition because it implements <code class="Code-In-Text--PACKT-">__call__</code>), and the second one is the object to bind this function to.</p>
+    <p class="normal">Something similar to this is what function objects use in Python so they can work as methods when they are defined inside a class. In this example, the <code class="Code-In-Text--PACKT-">MyClass</code> abstraction was trying to simulate a function object because in the actual interpreter, this is implemented in C, so it would be harder to experiment with, but with this illustration, we can get an idea of what <a id="_idIndexMarker437"/>Python is internally doing when calling methods of our objects.</p>
+    <p class="normal">Since this is a very <a id="_idIndexMarker438"/>elegant solution, it's worth exploring it to keep it in mind as a Pythonic approach when defining our own objects. For instance, if we were to define our own callable, it would be a good idea to also make it a descriptor so that we can use it in classes as class attributes as well.</p>
+    <h3 id="_idParaDest-173" class="title">Built-in decorators for methods</h3>
+    <p class="normal">As you might have known from<a id="_idIndexMarker439"/> looking at the official documentation (PYDESCR-02), all <code class="Code-In-Text--PACKT-">@property</code>, <code class="Code-In-Text--PACKT-">@classmethod</code>, and <code class="Code-In-Text--PACKT-">@staticmethod</code> decorators are descriptors.</p>
+    <p class="normal">We have mentioned several times that the idiom makes the descriptor return itself when it's being called from a class directly. Since properties are actually descriptors, that is the reason why, when we ask it from the class, we don't get the result of computing the property, but the entire <code class="Code-In-Text--PACKT-">property</code> object instead:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;</span>&gt;&gt; class MyClass:
+... @property
+... def prop(self): pass
+...
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; MyClass.prop
+&lt;property object at 0x...&gt;
+</code></pre>
+    <p class="normal">For class methods, the <code class="Code-In-Text--PACKT-">__get__</code> function in the descriptor will make sure that the class is the first parameter to be passed to the function being decorated, regardless of whether it's called from the class directly or from an instance. For static methods, it will make sure that no parameters are bound other than those defined by the function, namely undoing the binding done by <code class="Code-In-Text--PACKT-">__get__()</code> on functions that make <code class="Code-In-Text--PACKT-">self</code> the first parameter of that function.</p>
+    <p class="normal">Let's take an example; we create a <code class="Code-In-Text--PACKT-">@classproperty</code> decorator that works like the regular <code class="Code-In-Text--PACKT-">@property</code> decorator, but for classes instead. With a decorator like this one, the following code should be able to solve our use case:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">TableEvent</span><span class="hljs-class">:</span>
+    schema = <span class="hljs-stri">"public"</span>
+    table = <span class="hljs-stri">"user"</span>
+<span class="hljs-meta">    @classproperty</span>
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">topic</span><span class="hljs-function">(</span><span class="hljs-params">cls</span><span class="hljs-function">):</span>
+        prefix = read_prefix_from_config()
+        <span class="hljs-keyword">return</span> <span class="hljs-stri">f"</span><span class="hljs-subst">{prefix}{cls.schema}</span><span class="hljs-stri">.</span><span class="hljs-subst">{cls.table}</span><span class="hljs-stri">"</span>
+</code></pre>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;</span>&gt;&gt; TableEvent.topic
+'public.user'
+<span class="hljs-con-meta">&gt;</span>&gt;&gt; TableEvent().topic 'public.user'
+</code></pre>
+    <p class="normal">The code for making <a id="_idIndexMarker440"/>this work is compact and relatively straightforward:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">classproperty</span><span class="hljs-class">:</span>
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__init__</span><span class="hljs-function">(</span><span class="hljs-params">self, fget</span><span class="hljs-function">):</span>
+        self.fget = fget
+ 
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__get__</span><span class="hljs-function">(</span><span class="hljs-params">self, instance, owner</span><span class="hljs-function">):</span>
+        <span class="hljs-keyword">return</span> self.fget(owner)
+</code></pre>
+    <p class="normal">As we saw in the previous chapter, the initialization method takes the function that is going to be decorated when the decorator syntax is used. The interesting bit here is that we take advantage of the <code class="Code-In-Text--PACKT-">__get__</code> magic method to call that function with the class as a parameter when it's being called.</p>
+    <p class="normal">You can appreciate how this example is different from the general boilerplate of the <code class="Code-In-Text--PACKT-">__get__</code> method when called from a class: in these cases, most of the time, we ask if <code class="Code-In-Text--PACKT-">instance</code> is <code class="Code-In-Text--PACKT-">None</code>, and<a id="_idIndexMarker441"/> return <code class="Code-In-Text--PACKT-">self</code>, but not here. In this case, we actually expect the instance to be <code class="Code-In-Text--PACKT-">None</code> (because it's being called from a class and not an object), so we do need the owner parameter (namely the class being acted upon).</p>
+    <h3 id="_idParaDest-174" class="title">Slots</h3>
+    <p class="normal"><code class="Code-In-Text--PACKT-">__slots__</code> is a class attribute to define a fixed set of fields an object of that class can have.</p>
+    <p class="normal">From the examples that <a id="_idIndexMarker442"/>have been given so far, the reader might have already <a id="_idIndexMarker443"/>noticed that in Python the internal representation for objects is done with dictionaries. This is why the attributes of an object are stored as strings in its <code class="Code-In-Text--PACKT-">__dict__</code> attribute. This is the reason why we can dynamically add new attributes to an object or remove current ones. There is no such thing as a <code class="Code-In-Text--PACKT-">"frozen"</code> definition of attributes to be declared for objects. We can also inject methods dynamically (and we have done so in previous examples).</p>
+    <p class="normal">All of this changes with the <code class="Code-In-Text--PACKT-">__slots__</code> class attribute. In this attribute, we define as a string what the names of the attributes that are allowed in a class are. And from that moment on, we will not be able to dynamically add any new attributes to instances of this class. Trying to add extra attributes dynamically to a class that defines <code class="Code-In-Text--PACKT-">__slots__</code> will result in an <code class="Code-In-Text--PACKT-">AttributeError</code>. By defining this attribute, the class becomes static, so it will not have a <code class="Code-In-Text--PACKT-">__dict__</code> attribute where you can add more objects dynamically.</p>
+    <p class="normal">How, then, are its attributes retrieved if not from the dictionary of the object? By using descriptors. Each name defined in a slot will have its own descriptor that will store the value for retrieval later:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">from</span> dataclasses <span class="hljs-keyword">import</span> dataclass
+ 
+<span class="hljs-meta">@dataclass</span>
+<span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">Coordinate2D</span><span class="hljs-class">:</span>
+    __slots__ = (<span class="hljs-stri">"lat"</span>, <span class="hljs-stri">"long"</span>)
+    lat: <span class="hljs-built_in">float</span>
+    long: <span class="hljs-built_in">float</span>
+ 
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__repr__</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">):</span>
+        <span class="hljs-keyword">return</span> <span class="hljs-stri">f"</span><span class="hljs-subst">{self.__class__.__name__}</span><span class="hljs-stri">(</span><span class="hljs-subst">{self.lat}</span><span class="hljs-stri">, </span><span class="hljs-subst">{self.long}</span><span class="hljs-stri">)"</span>
+</code></pre>
+    <p class="normal">With the use of <code class="Code-In-Text--PACKT-">__slots__</code>, Python will only reserve enough memory for the attributes defined on it on the new objects as they're created. This will make the objects not have a <code class="Code-In-Text--PACKT-">__dict__</code> attribute, so they can't be changed dynamically, and any attempt to use its dictionary (for example, by using the <code class="Code-In-Text--PACKT-">function vars(...)</code>) would result in a <code class="Code-In-Text--PACKT-">TypeError</code>.</p>
+    <p class="normal">And because there is no <code class="Code-In-Text--PACKT-">__dict__</code> attribute to store the values of the instance variables, what Python does instead is to create a descriptor for each slot and store the value there. This has the side effect that we cannot mix class attributes with instance ones (for example, if a common idiom for us would be to use a class attribute as a default value for an instance attribute, with this approach we would not be able to, because values would get overridden).</p>
+    <p class="normal">While this is an interesting <a id="_idIndexMarker444"/>feature, it has to be used with caution because it takes away the dynamic nature of Python. In general, this ought to be reserved only for objects that we know are <a id="_idIndexMarker445"/>static, and if we are absolutely sure we are not adding any attributes to them dynamically in other parts of the code.</p>
+    <p class="normal">As an upside of this, objects defined with slots use less memory, since they only need a fixed set of fields to hold values and not an entire dictionary.</p>
+    <h2 id="_idParaDest-175" class="title">Implementing descriptors in decorators</h2>
+    <p class="normal">We now <a id="_idIndexMarker446"/>understand how Python uses descriptors in <a id="_idIndexMarker447"/>functions to make them work as methods when they are defined inside a class. We have also seen examples of cases where we can make decorators work by making them comply with the descriptor protocol by using the <code class="Code-In-Text--PACKT-">__get__()</code> method of the interface to adapt the decorator to the object it is being called with. This solves the problem for our decorators in the same way that Python solves the issue of functions as methods in objects.</p>
+    <p class="normal">The general recipe for adapting a decorator in such a way is to implement the <code class="Code-In-Text--PACKT-">__get__()</code> method on it and use <code class="Code-In-Text--PACKT-">types.MethodType</code> to convert the callable (the decorator itself) into a method bound to the object it is receiving (the <code class="Code-In-Text--PACKT-">instance</code> parameter received by <code class="Code-In-Text--PACKT-">__get__</code>).</p>
+    <p class="normal">For this to work, we will have to implement the decorator as an object, because otherwise, if we are using a function, it will already have a <code class="Code-In-Text--PACKT-">__get__()</code> method, which will be doing something different that will not work unless we adapt it. The cleaner way to proceed is to define a class for the decorator.</p>
+    <div class="note">
+      <p class="Information-Box--PACKT-">Use a decorator class when defining a decorator that we want to apply to class methods, and implement the <code class="Code-In-Text--PACKT-">__get__()</code> method on it.</p>
+    </div>
+    <h1 id="_idParaDest-176" class="title">Final remarks about descriptors</h1>
+    <p class="normal">To wrap up our analysis on descriptors, I would like to share some thoughts in terms of clean code and good practices or recommendations from experience.</p>
+    <h2 id="_idParaDest-177" class="title">Interface of descriptors</h2>
+    <p class="normal">When we revisited the<a id="_idIndexMarker448"/> interface segregation principle in <em class="chapterRef">Chapter 4</em>, <em class="italic">The SOLID Principles</em> (the "I" in SOLID), we said that it's good practice to keep the interfaces small, and for that reason, we might want to separate them into smaller ones.</p>
+    <p class="normal">This idea appears here once again, not in the sense of an interface as in an abstract base class, but as the interface that the descriptor itself will present.</p>
+    <p class="normal">As already mentioned, the descriptor protocol entails four methods, but partial implementation is allowed. That means you don't need to implement all of them all the time. In fact, if you only implement the minimal required methods, that would be better.</p>
+    <p class="normal">Most of the time, you'll find that you can address your requirements by only implementing the <code class="Code-In-Text--PACKT-">__get__</code> method.</p>
+    <div class="packt_tip">
+      <p class="Tip--PACKT-">Do not implement more methods than are necessary. The fewer methods you can implement of the descriptor protocol, the better. </p>
+    </div>
+    <p class="normal">Moreover, you'll find that the <code class="Code-In-Text--PACKT-">__delete__</code> method is seldom required.</p>
+    <h2 id="_idParaDest-178" class="title">Object-oriented design of the descriptors</h2>
+    <p class="normal">With this<a id="_idIndexMarker449"/> concept, I don't mean that we can improve our object-oriented<a id="_idIndexMarker450"/> design capabilities by merely using descriptors (we have already covered that). But since descriptors are just regular objects, the rules of object-oriented design apply to them as well. For example, we can have base classes of descriptors, make use of inheritance to create more specific ones, etc.</p>
+    <p class="normal">Keep in mind that all the rules and recommendations of good practices apply as well. For example, if you have a base class for a descriptor that only implements the <code class="Code-In-Text--PACKT-">__get__</code> method, then it wouldn't be a good idea to create a sub-class of it that also implements the <code class="Code-In-Text--PACKT-">__set__</code> method, as it <a id="_idIndexMarker451"/>wouldn't comply with Liskov's substitution <a id="_idIndexMarker452"/>principle (because we'd have a more specific type that implements an enhanced interface that the parent doesn't provide).</p>
+    <h2 id="_idParaDest-179" class="title">Type annotations on descriptors</h2>
+    <p class="normal">Applying type <a id="_idIndexMarker453"/>annotations on descriptors might <a id="_idIndexMarker454"/>be complicated most of the time.</p>
+    <p class="normal">There could be issues with circular dependencies (meaning the Python file that contains the definition for the descriptor will have to read from the file of the consumer in order to get the types, but then the client needs to read the file with the definition of the descriptor object to use it). Even if you surmount these issues with the use of strings instead of the actual types, there's another problem.</p>
+    <p class="normal">If you know the exact type to annotate the descriptor methods, that means the descriptor is probably only useful for one type of class. And that generally defeats the purpose of a descriptor: the recommendation of this book is to use descriptors for scenarios in which we know we can benefit from a generalization, and reuse a lot of code. If we're not reusing code, the complexity of having descriptors is not worth it.</p>
+    <p class="normal">For this reason, and even though it is generally good practice to always add annotations to our definitions, for the case of descriptors, it might be simpler just not to. Instead, think of it as a good opportunity for writing useful docstrings that accurately document the behavior of the descriptor.</p>
+    <h1 id="_idParaDest-180" class="title">Summary</h1>
+    <p class="normal">Descriptors are a more advanced feature in Python that push the boundaries closer to metaprogramming. One of their most interesting aspects is how they make crystal clear that classes in Python are just regular objects, and, as such, they have properties that we can interact with. Descriptors are, in this sense, the most interesting type of attribute a class can have because their protocol facilitates more advanced, object-oriented possibilities.</p>
+    <p class="normal">We have seen the mechanics of descriptors, their methods, and how all of this fits together, making a more interesting picture of object-oriented software design. By understanding descriptors, we were able to create powerful abstractions that yield clean and compact classes. We have seen how to fix decorators that we want to apply to functions and methods, and we have understood a lot more about how Python works internally, and how descriptors play such a core and critical role in the implementation of the language.</p>
+    <p class="normal">This study of how descriptors are used internally in Python should work as a reference to identify good uses of descriptors in our own code, with the goal of achieving idiomatic solutions.</p>
+    <p class="normal">Despite all of the powerful options that descriptors represent to our advantage, we have to keep in mind when to properly make use of them without over-engineering. In this line, we have suggested that we should reserve the functionality of descriptors for truly generic cases, such as the design of internal development APIs, libraries, or frameworks. Another important consideration along these lines is that, in general, we should not place business logic in descriptors, but rather logic that implements technical functionality to be used by other components that do contain business logic.</p>
+    <p class="normal">Speaking of advanced functionality, the next chapter also covers an interesting and in-depth topic: generators. On the surface, generators are rather simple (and most readers are probably already familiar with them), but what they have in common with descriptors is that they can also be complex, yield a more advanced and elegant design, and make Python a unique language to work with.</p>
+    <h1 id="_idParaDest-181" class="title">References</h1>
+    <p class="normal">Here is a list of a few things you can reference for more information:</p>
+    <ul>
+      <li class="bullet">Python's official documentation on descriptors: <a href="https://docs.python.org/3/reference/datamodel.html#implementing-descriptors"><span class="url">https://docs.python.org/3/reference/datamodel.html#implementing-descriptors</span></a></li>
+      <li class="bullet"><em class="italic">WEAKREF 01: Python's weakref module</em> (<a href="https://docs.python.org/3/library/weakref.html"><span class="url">https://docs.python.org/3/library/weakref.html</span></a>)</li>
+      <li class="bullet"><em class="italic">PYDESCR-02: Built-in decorators as descriptors</em> (<a href="https://docs.python.org/3/howto/descriptor.html#static-methods-and-class-methods"><span class="url">https://docs.python.org/3/howto/descriptor.html#static-methods-and-class-methods</span></a>)</li>
+    </ul>
+  </div>
+</body></html>
