@@ -1,6 +1,6 @@
-# 10
 
-# 将 LoRa 与互联网集成
+
+# 第十章：将 LoRa 与互联网集成
 
 在本章中，我们将从我们远程放置的 LoRa 传感器发射器获取传感信息，并使用配备 Raspberry Pi Pico W 的**LoRa**接收器将其发布到互联网。我们的互联网目的地将是 CloudAMQP 服务器上的 MQTT 实例。然后，我们将我们创建的修改过的模拟仪表天气指示器连接到 MQTT 服务器，并使用这些数据根据湿度读数定位指针和设置 LED 指示器的颜色。这种修改将涉及用 Raspberry Pi Pico WH（也称为带引脚的 Raspberry Pi Pico W）替换安装在模拟仪表天气指示器上的 Raspberry Pi，以及将单色 LED 替换为 RGB LED。
 

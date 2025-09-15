@@ -1,6 +1,6 @@
-# 1
 
-# Flask 配置
+
+# 第一章：Flask 配置
 
 这章入门指南将帮助我们了解 Flask 可以以不同的方式配置，以满足项目的各种需求。Flask 是 “*The Python micro framework for building web applications*” (pallets/Flask, [`github.com/pallets/flask`](https://github.com/pallets/flask))。
 

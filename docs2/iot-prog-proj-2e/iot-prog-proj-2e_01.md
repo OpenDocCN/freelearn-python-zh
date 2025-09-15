@@ -1,6 +1,6 @@
-# 1
 
-# 理解 Raspberry Pi
+
+# 第一章：理解 Raspberry Pi
 
 欢迎来到物联网项目以及 Raspberry Pi 的奇妙世界，这是《物联网编程项目》的第二版。
 

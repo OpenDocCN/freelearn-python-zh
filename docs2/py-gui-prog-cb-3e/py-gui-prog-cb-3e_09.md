@@ -1,4 +1,4 @@
-# 使用 wxPython 库扩展我们的 GUI
+# 第九章：使用 wxPython 库扩展我们的 GUI
 
 在本章中，我们将介绍另一个不与 Python 一起分发的 Python GUI 工具包。它被称为 wxPython。这个库有两个版本。原始版本被称为 **Classic**，而最新版本被称为其开发项目的代码名，即 **Phoenix**。
 
