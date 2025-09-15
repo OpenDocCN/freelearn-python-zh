@@ -1,0 +1,787 @@
+<html><head></head><body>
+		<div id="_idContainer073">
+			<h1 id="_idParaDest-262" class="chapter-number"><a id="_idTextAnchor266"/>9</h1>
+			<h1 id="_idParaDest-263"><a id="_idTextAnchor267"/>Utilizing Other Advanced Features</h1>
+			<p>The previous chapters have already showcased several essential core features of the FastAPI framework. However, there are features not truly inherent to the framework that can help fine-tune performance and patch missing links in our implementations. These include session handling, managing <strong class="bold">Cross-Origin Resource Sharing</strong> (<strong class="bold">CORS</strong>)-related issues, and selecting the appropriate rendition types for an application.</p>
+			<p>Aside from the built-in features, there are workaround solutions proven to work with FastAPI when applied to the application, such as its session handling mechanism, which can function well using a <strong class="bold">JWT</strong>, and <strong class="source-inline">SessionMiddleware</strong>. Concerning middleware, this chapter will also explore ways of customizing request and response filters other than applying the <strong class="source-inline">@app.middleware</strong> decorator. Other issues such as using custom <strong class="source-inline">APIRoute</strong> and <strong class="source-inline">Request</strong> will be covered in this chapter to guide us on managing incoming <em class="italic">byte</em> <em class="italic">body</em>, <em class="italic">form</em>, or <em class="italic">JSON</em> data. Moreover, this chapter will highlight how to test FastAPI components using the <strong class="source-inline">pytest</strong> framework and the <strong class="source-inline">fastapi.testclient</strong> library and how we can document the endpoint using the <em class="italic">OpenAPI 3.x</em> specification.</p>
+			<p>Overall, the main objective of this chapter is to provide us with other solutions that can help us complete our microservice applications. In this chapter, the following topics are included:</p>
+			<ul>
+				<li>Applying session management</li>
+				<li>Managing the CORS mechanism</li>
+				<li>Customizing <strong class="source-inline">APIRoute</strong> and <strong class="source-inline">Request</strong></li>
+				<li>Choosing appropriate responses</li>
+				<li>Applying the OpenAPI 3.x specification</li>
+				<li>Testing the API endpoints</li>
+			</ul>
+			<h1 id="_idParaDest-264"><a id="_idTextAnchor268"/>Technical requirements</h1>
+			<p>Although not data analysis-related, our application prototype for this chapter is the <strong class="bold">online restaurant review system</strong>, which will gather ordinal and nominal ratings and feedback for restaurants. The software aims to gather rates and feedback to establish the user profiles of restaurants and conduct surveys concerning their food menus, facilities, ambiance, and services. The prototype will use MongoDB as the data storage and asynchronous ODMantic as its ORM. All of the code is uploaded to <a href="https://github.com/PacktPublishing/Building-Python-Microservices-with-FastAPI">https://github.com/PacktPublishing/Building-Python-Microservices-with-FastAPI</a> under the <strong class="source-inline">ch09</strong> project.</p>
+			<h1 id="_idParaDest-265"><a id="_idTextAnchor269"/>Applying session management</h1>
+			<p>Session management is<a id="_idIndexMarker735"/> a feature used for managing requests and responses created by a user’s access to an application. It is also about creating and<a id="_idIndexMarker736"/> sharing data across a user session. Many frameworks usually include session handling features in their security plugins but not FastAPI. Creating user sessions and storing session data are two separate programming concerns in FastAPI. We use a JWT to establish a user session and Starlette’s <strong class="source-inline">SessionMiddleware</strong> to create and retrieve session data. Creating user sessions and storing session data are two entirely different programming solutions in FastAPI. We use JWT to establish a user session and Starlette’s <strong class="source-inline">SessionMiddleware</strong> to create and retrieve session data.</p>
+			<h2 id="_idParaDest-266"><a id="_idTextAnchor270"/>Creating user sessions</h2>
+			<p>We have <a id="_idIndexMarker737"/>already proven the importance of JWT when it comes to securing FastAPI microservice applications in <a href="B17975_07.xhtml#_idTextAnchor190"><em class="italic">Chapter 7</em></a><em class="italic">,</em> <em class="italic">Securing the REST APIs</em>. However, here, the JWT is applied to create a session based on user credentials. In the <strong class="source-inline">api/login.py</strong> router, an <strong class="source-inline">authenticate()</strong> API service is implemented to create a user session for an authenticated user. It is inherent for FastAPI to generate user sessions utilizing the browser cookies. The following snippet shows the authentication process that uses the cookie values:</p>
+			<pre class="source-code">
+from util.auth_session import <strong class="bold">secret_key</strong>
+from jose import jwt
+<strong class="bold">@router.post("/login/authenticate")</strong>
+async def authenticate(username:str, password: str, 
+   response: Response, engine=Depends(create_db_engine)):
+    repo:LoginRepository = LoginRepository(engine)
+    <strong class="bold">login = await repo.get_login_username(username, </strong>
+                       <strong class="bold">password)</strong>
+    if login == None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, 
+                detail="Invalid authentication"
+            )
+    <strong class="bold">token = jwt.encode({"sub": username}, secret_key)</strong>
+    <strong class="bold">response.set_cookie("session", token)</strong>
+    return {"username": username}</pre>
+			<p>The <a id="_idIndexMarker738"/>service will verify through <strong class="source-inline">LoginRepository</strong> whether the user is a valid account using its <strong class="source-inline">username</strong> and <strong class="source-inline">password</strong> credentials. If the user is a certified one, it will use a JWT to create a token derived from a certain <strong class="source-inline">secret_key</strong> generated using the following command:</p>
+			<p class="source-code">openssl rand -hex 32</p>
+			<p>The token key will serve as the session ID of the cookie-based session. With the <strong class="source-inline">username</strong> credential as its payload, the JWT will be stored as a browser cookie named <strong class="source-inline">session</strong>.</p>
+			<p>To ensure that <strong class="source-inline">session</strong> has been applied, all subsequent requests must undergo authentication by the cookie-based session through the <strong class="source-inline">APIKeyCookie</strong> class, an API class of the <strong class="source-inline">fastapi.security</strong> module that implements cookie-based authentication. The <strong class="source-inline">APIKeyCookie</strong> class fetches the session before it is injected into a dependable function for the JWT decoding through the <strong class="source-inline">secret_key</strong> value used to generate the<a id="_idIndexMarker739"/> session ID. The following dependable function in <strong class="source-inline">util/auth_session.py</strong> will verify every access to each endpoint of the application: </p>
+			<pre class="source-code">
+<strong class="bold">from fastapi.security import APIKeyCookie</strong>
+from jose import jwt
+<strong class="bold">cookie_sec = APIKeyCookie(name="session")</strong>
+secret_key = "pdCFmblRt4HWKNpWkl52Jnq3emH3zzg4b80f+4AFVC8="
+async def get_current_user(<strong class="bold">session: str = </strong>
+<strong class="bold">   Depends(cookie_sec)</strong>, engine=Depends(create_db_engine)):
+    try:
+        <strong class="bold">payload = jwt.decode(session, secret_key)</strong>
+        repo:LoginRepository = LoginRepository(engine)
+        <strong class="bold">login = await repo.validate_login(</strong>
+                    <strong class="bold">payload["sub"])</strong>
+        if login == None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, 
+                detail="Invalid authentication"
+            )
+        else:
+            return login
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, 
+            detail="Invalid authentication"
+        )</pre>
+			<p>The preceding function is injected into every API endpoint to impose user session verification. When an endpoint is requested, this function will decode the token and extract the <strong class="source-inline">username</strong> credential for account validation. Then, it will issue <em class="italic">Status Code 403 (Forbidden)</em> if the <a id="_idIndexMarker740"/>user is an <em class="italic">unauthenticated</em> one or the <em class="italic">session is not valid</em>. An example of an authenticated service can be found in the following implementation:</p>
+			<pre class="source-code">
+<strong class="bold">from util.auth_session import get_current_user</strong>
+<strong class="bold">@router.post("/restaurant/add")</strong>
+async def add_restaurant(req:RestaurantReq, 
+         engine=Depends(create_db_engine), 
+         <strong class="bold">user: str = Depends(get_current_user)</strong>):
+    restaurant_dict = req.dict(exclude_unset=True) 
+    restaurant_json = dumps(restaurant_dict, 
+              default=json_datetime_serializer)
+    repo:RestaurantRepository = 
+             RestaurantRepository(engine)
+    result = await repo.insert_restaurant(
+               loads(restaurant_json))
+    if result == True: 
+        return req 
+    else: 
+        return JSONResponse(content={"message": 
+         "insert login unsuccessful"}, status_code=500)</pre>
+			<p>The <strong class="source-inline">add_restaurant()</strong> service is an endpoint that adds a restaurant <strong class="source-inline">Document</strong> to the MongoDB collection. But before <a id="_idIndexMarker741"/>the transaction proceeds, it checks first whether there is a cookie-based session through the injected <strong class="source-inline">get_current_user()</strong> dependable function. </p>
+			<h2 id="_idParaDest-267"><a id="_idTextAnchor271"/>Managing session data</h2>
+			<p>Unfortunately, adding<a id="_idIndexMarker742"/> and retrieving session data is not part of <strong class="source-inline">APIKeyCookie</strong>-based session authentication. The JWT payload must only include the username but not all credentials and body of data. To manage session data, we need to create a separate session using Starlette’s <strong class="source-inline">SessionMiddleware</strong>. Although FastAPI has its <strong class="source-inline">fastapi.middleware</strong> module, it still supports Starlette’s built-in middleware.</p>
+			<p>We mentioned middleware in <a href="B17975_02.xhtml#_idTextAnchor033"><em class="italic">Chapter 2</em></a><em class="italic">,</em> <em class="italic">Exploring the Core Features</em>, and showed its implementation using the <strong class="source-inline">@app.middleware</strong> decorator. And we have proven that it acts as a filter for all incoming requests and outgoing responses to the services. This time, we will not custom implement a middleware but built-in middleware classes.</p>
+			<p>Middleware is implemented, configured, and activated in the <strong class="source-inline">main.py</strong> module where the instance of <strong class="source-inline">FastAPI</strong> is located because <strong class="source-inline">APIRouter</strong> cannot add middleware. We enable the <strong class="source-inline">middleware</strong> parameter of the FastAPI constructor and add to that List-type parameter the built-in <strong class="source-inline">SessionMiddleware</strong> with its <strong class="source-inline">secret_key</strong> and the name of the new session as constructor parameters using the injectable class, <strong class="source-inline">Middleware</strong>. The following code snippet of <strong class="source-inline">main.py</strong> shows you how to configure this:</p>
+			<pre class="source-code">
+<strong class="bold">from starlette.middleware.sessions import SessionMiddleware</strong>
+app = FastAPI(<strong class="bold">middleware=[</strong>
+        <strong class="bold">Middleware(SessionMiddleware, </strong>
+        <strong class="bold">secret_key=</strong>
+            <strong class="bold">'7UzGQS7woBazLUtVQJG39ywOP7J7lkPkB0UmDhMgBR8=', </strong>
+        <strong class="bold">session_cookie="session_vars")]</strong>)</pre>
+			<p>Another way of adding middleware is to utilize the <strong class="source-inline">add_middleware()</strong> function of the <strong class="source-inline">FastAPI</strong> decorator. Initially, adding <strong class="source-inline">SessionMiddleware</strong> will create another cookie-based session that will handle <em class="italic">session-scoped data</em>. It is the only way since there is no direct support from FastAPI regarding session handling mechanisms where a user session is created not only for security but also for handling session objects.</p>
+			<p>To add <a id="_idIndexMarker743"/>session data to our newly created session, <strong class="source-inline">session_vars</strong>, we need to inject <strong class="source-inline">Request</strong> into each endpoint service and utilize its session dictionary to store the session-scoped objects. The following <strong class="source-inline">list_restaurants()</strong> service retrieves the list of restaurants from the database, extracts all the restaurant names, and shares the list of names across the session through <strong class="source-inline">request.session[]</strong>:</p>
+			<pre class="source-code">
+<strong class="bold">@router.get("/restaurant/list/all")</strong>
+async def list_restaurants(request: Request, 
+       engine=Depends(create_db_engine), 
+       user: str = Depends(get_current_user)):
+    repo:RestaurantRepository = 
+             RestaurantRepository(engine)
+    result = await repo.get_all_restaurant()
+    <strong class="bold">resto_names = [resto.name for resto in result]</strong>
+    <strong class="bold">request.session['resto_names'] = resto_names</strong>
+    return result
+<strong class="bold">@router.get("/restaurant/list/names")</strong>
+async def list_restaurant_names(request: Request, 
+           user: str = Depends(get_current_user)):
+    <strong class="bold">resto_names = request.session['resto_names']</strong>
+    return resto_names</pre>
+			<p>On the other hand, the <strong class="source-inline">list_restaurant_names()</strong> service retrieves the <strong class="source-inline">resto_names</strong> session data through <strong class="source-inline">request.session[]</strong> and returns it as its response. By the<a id="_idIndexMarker744"/> way, it is due to <strong class="source-inline">SessionMiddleware</strong> that <strong class="source-inline">session[]</strong> exists. Otherwise, the use of this dictionary will raise an change to - exception.</p>
+			<h2 id="_idParaDest-268"><a id="_idTextAnchor272"/>Removing the sessions</h2>
+			<p>It is always <a id="_idIndexMarker745"/>mandatory to log out from the application when done with the transactions to remove all the sessions created. Since the easiest and most direct way of creating sessions is through browser cookies, removing all the sessions protects the application from any compromise. The following <strong class="source-inline">/ch09/logout</strong> endpoint removes our sessions, <strong class="source-inline">session</strong> and <strong class="source-inline">session_vars</strong>, which technically logs out the user from the application:</p>
+			<pre class="source-code">
+<strong class="bold">@router.get("/logout")</strong>
+async def logout(response: Response, 
+            user: str = Depends(get_current_user)):
+    <strong class="bold">response.delete_cookie("session")</strong>
+    <strong class="bold">response.delete_cookie("session_vars")</strong>
+    return {"ok": True}</pre>
+			<p>The <strong class="source-inline">delete_cookie()</strong> method of the <strong class="source-inline">Response</strong> class removes any existing browser session utilized by the application.</p>
+			<h2 id="_idParaDest-269"><a id="_idTextAnchor273"/>Customizing BaseHTTPMiddleware</h2>
+			<p>The default <a id="_idIndexMarker746"/>approach in managing FastAPI sessions is through cookies, and it does not offer any other options such as <a id="_idIndexMarker747"/>database-backed, cached, and file-based sessions. The best way to implement non-cookie-based strategies for managing user sessions and session data is to customize <strong class="source-inline">BaseHTTPMiddleware</strong>. The following custom middleware is a prototype that creates user sessions for authenticated users:</p>
+			<pre class="source-code">
+from repository.login import LoginRepository
+<strong class="bold">from repository.session import DbSessionRepository</strong>
+<strong class="bold">from starlette.middleware.base import BaseHTTPMiddleware</strong>
+from datetime import date, datetime
+import re
+from odmantic import AIOEngine
+from motor.motor_asyncio import AsyncIOMotorClient
+<strong class="bold">class SessionDbMiddleware(BaseHTTPMiddleware):</strong>
+    def __init__(self, app, sess_key: str, 
+                    sess_name:str, expiry:str):
+        super().__init__(app)
+        self.sess_key = sess_key
+        self.sess_name = sess_name 
+        self.expiry = expiry
+        self.client_od = 
+         AsyncIOMotorClient(f"mongodb://localhost:27017/")
+        self.engine = 
+         AIOEngine(motor_client=self.client_od, 
+            database="orrs")
+                
+    async def dispatch(self, request: Request, call_next):
+        try:
+            if re.search(r'\bauthenticate\b', 
+                    request.url.path):
+                credentials = request.query_params
+                username = credentials['username']
+                password = credentials['password']
+                repo_login:LoginRepository = 
+                      LoginRepository(self.engine)
+                <strong class="bold">repo_session:DbSessionRepository = </strong>
+                      <strong class="bold">DbSessionRepository(self.engine)</strong>
+               
+                login = await repo_login.
+                  get_login_credentials(username, password)
+               
+                if login == None:
+                    self.client_od.close()
+                    return JSONResponse(status_code=403) 
+                else:
+                    <strong class="bold">token = jwt.encode({"sub": username}, </strong>
+                        <strong class="bold">self.sess_key)</strong>
+                    <strong class="bold">sess_record = dict()</strong>
+                    <strong class="bold">sess_record['session_key'] = </strong>
+                        <strong class="bold">self.sess_key</strong>
+                    <strong class="bold">sess_record['session_name'] = </strong>
+                        <strong class="bold">self.sess_name</strong>
+                    <strong class="bold">sess_record['token'] = token</strong>
+                    <strong class="bold">sess_record['expiry_date'] = </strong>
+                       <strong class="bold">datetime.strptime(self.expiry, </strong>
+                            <strong class="bold">'%Y-%m-%d')</strong>
+                    <strong class="bold">await repo_session.</strong>
+                        <strong class="bold">insert_session(sess_record)</strong>
+                    <strong class="bold">self.client_od.close()</strong>
+                    <strong class="bold">response = await call_next(request)</strong>
+                    return response
+            else:
+                response = await call_next(request)
+                return response
+        except Exception as e :
+            return JSONResponse(status_code=403)</pre>
+			<p>As <a id="_idIndexMarker748"/>discussed in <a href="B17975_02.xhtml#_idTextAnchor033"><em class="italic">Chapter 2</em></a><em class="italic">,</em> <em class="italic">Exploring the Core Features</em>, <strong class="bold">middleware</strong> is a low-level implementation of a filter for all<a id="_idIndexMarker749"/> requests and responses of the applications. So, first, <strong class="source-inline">SessionDbMiddleware</strong> will filter our <strong class="source-inline">/ch09/login/authenticate</strong> endpoint for the <strong class="source-inline">username</strong> and <strong class="source-inline">password</strong> query parameters, check whether the user is a registered one, and <a id="_idIndexMarker750"/>generate a database-backed session from the JWT. Afterward, endpoints can validate all their requests from the session stored in the database. The <strong class="source-inline">/ch09/logout</strong> endpoint will not include the deletion of the session from the database using its repository transactions, as shown in the following code:</p>
+			<pre class="source-code">
+<strong class="bold">@router.get("/logout")</strong>
+async def logout(response: Response, 
+       <strong class="bold">engine=Depends(create_db_engine), </strong>
+       user: str = Depends(get_current_user)):
+    <strong class="bold">repo_session:DbSessionRepository = </strong>
+<strong class="bold">             DbSessionRepository(engine)</strong>
+    <strong class="bold">await repo_session.delete_session("session_db")</strong>
+    return {"ok": True}</pre>
+			<p>Note that <strong class="source-inline">DbSessionRepository</strong> is a custom repository implementation for our prototype, and<a id="_idIndexMarker751"/> it has a <strong class="source-inline">delete_session()</strong> method that will remove the session through its <a id="_idIndexMarker752"/>name from the <strong class="source-inline">db_session</strong> collection of our MongoDB database. </p>
+			<p>Another type of middleware that can help FastAPI applications resolve issues regarding the CORS browser mechanism is <strong class="source-inline">CORSMiddleware</strong>. </p>
+			<h1 id="_idParaDest-270"><a id="_idTextAnchor274"/>Managing the CORS mechanism</h1>
+			<p>When<a id="_idIndexMarker753"/> integrating API endpoints with various frontend frameworks, we often encounter the "<em class="italic">no ‘access-control-allow-origin’ header present</em>" error from our browser. Nowadays, this setup is an HTTP-header-based mechanism of any browser, which requires the backend server to provide the browser with the "origin" details of the server-side application, which includes the server domain, scheme, and port. This mechanism is called CORS, which happens when the frontend application and its web resources belong to a different domain area than the backend app. Nowadays, browsers prohibit cross-origin requests between the server-side and frontend applications for security reasons.</p>
+			<p>To resolve this issue, we need our <strong class="source-inline">main.py</strong> module to place all the origins of our application and other integrated resources used by the prototype inside a <strong class="source-inline">List</strong>. Then, we import the built-in <strong class="source-inline">CORSMiddleware</strong> from the <strong class="source-inline">fastapi.middleware.cors</strong> module and add that to the <strong class="source-inline">FastAPI</strong> constructor with the list of origins, which should not be too long to avoid overhead from validating each URL. The following code snippet shows the injection of <strong class="source-inline">CORSMiddleware</strong> into the <strong class="source-inline">FastAPI</strong> constructor:</p>
+			<pre class="source-code">
+<strong class="bold">origins = [</strong>
+    <strong class="bold">"https://192.168.10.2",</strong>
+    <strong class="bold">"http://192.168.10.2",</strong>
+    <strong class="bold">"https://localhost:8080",</strong>
+    <strong class="bold">"http://localhost:8080"</strong>
+<strong class="bold">]</strong>
+app = FastAPI(middleware=[
+           Middleware(SessionMiddleware, <strong class="bold">secret_key</strong>=
+            '7UzGQS7woBazLUtVQJG39ywOP7J7lkPkB0UmDhMgBR8=', 
+               session_cookie="session_vars"),
+           Middleware(SessionDbMiddleware, <strong class="bold">sess_key</strong>=
+            '7UzGQS7woBazLUtVQJG39ywOP7J7lkPkB0UmDhMgBR8=',
+              sess_name='session_db', expiry='2020-10-10')
+            ])
+<strong class="bold">app.add_middleware(CORSMiddleware, max_age=3600,</strong>
+     <strong class="bold">allow_origins=origins, allow_credentials=True,</strong>
+     <strong class="bold">allow_methods= ["POST", "GET", "DELETE", </strong>
+       <strong class="bold">"PATCH", "PUT"], allow_headers=[</strong>
+            <strong class="bold">"Access-Control-Allow-Origin", </strong>
+            <strong class="bold">"Access-Control-Allow-Credentials", </strong>
+            <strong class="bold">"Access-Control-Allow-Headers",</strong>
+            <strong class="bold">"Access-Control-Max-Age"</strong>])</pre>
+			<p>This time, we <a id="_idIndexMarker754"/>used FastAPI’s <strong class="source-inline">add_middleware()</strong> function to add CORS support to our application. Aside from <strong class="source-inline">allow_origins</strong>, we also need to add into <strong class="source-inline">CORSMiddleware</strong> the <strong class="source-inline">allow_credentials</strong> parameter, which adds <strong class="source-inline">Access-Control-Allow-Credentials: true</strong> to the response header for the browser to recognize the domain origin matches and send an <strong class="source-inline">Authorization</strong> cookie to allow the request. Also, we must include the <strong class="source-inline">allow_headers</strong> parameter, which registers a list of acceptable header keys during browser interaction. Aside from <strong class="source-inline">Accept</strong>, <strong class="source-inline">Accept-Language</strong>, <strong class="source-inline">Content-Language</strong>, and <strong class="source-inline">Content-Type</strong>, which are included by default, we need to register <strong class="source-inline">Access-Control-Allow-Origin</strong>, <strong class="source-inline">Access-Control-Allow-Credentials</strong>, <strong class="source-inline">Access-Control-Allow-Headers</strong>, and <strong class="source-inline">Access-Control-Max-Age</strong> explicitly instead of using the asterisk (<strong class="source-inline">*</strong>). The <strong class="source-inline">allow_headers</strong> parameter must also be part of the middleware to specify other HTTP methods that need to be supported by the browser. And lastly, the <strong class="source-inline">max_age</strong> parameter must also be in the configuration because we need to tell the browser the amount of time it will cache all the resources loaded into the browser.</p>
+			<p>If the application<a id="_idIndexMarker755"/> needs additional CORS support features, customizing the <strong class="source-inline">CORSMiddleware</strong> to extend some built-in utilities and features to manage CORS is a better solution. </p>
+			<p>By the way, it is not only the middleware that we can subclass and use to create custom implementations of but also the <strong class="source-inline">Request</strong> data and API routes. </p>
+			<h1 id="_idParaDest-271"><a id="_idTextAnchor275"/>Customizing APIRoute and Request</h1>
+			<p>Middleware <a id="_idIndexMarker756"/>can process incoming <strong class="source-inline">Request</strong> data and outgoing <strong class="source-inline">Response</strong> objects of all API methods in a FastAPI application, except that it cannot manipulate the message body, attach state objects from the <strong class="source-inline">Request</strong> data, or modify the response object before the client consumes it. Only <strong class="source-inline">APIRoute</strong> and <strong class="source-inline">Request</strong> customization can give us a full grasp of how to control the request and response transaction. The control might include determining whether the incoming data is a byte body, form, or JSON and providing an effective logging mechanism, exception handling, content transformation, and extraction.  </p>
+			<h2 id="_idParaDest-272"><a id="_idTextAnchor276"/>Managing body, form, or JSON data</h2>
+			<p>Unlike in <a id="_idIndexMarker757"/>middleware, customizing <strong class="source-inline">APIRoute</strong> does not apply to all the API endpoints. Implementing <strong class="source-inline">APIRoute</strong> for some <strong class="source-inline">APIRouter</strong> will only impose new routing rules to those affected endpoints, while the other services can pursue the default request and response <a id="_idIndexMarker758"/>process. For<a id="_idIndexMarker759"/> instance, the following customization is responsible for data extraction that only applies to the endpoints of <strong class="source-inline">api.route_extract.router</strong>:</p>
+			<pre class="source-code">
+<strong class="bold">from fastapi.routing import APIRoute</strong>
+from typing import Callable
+from fastapi import Request, Response
+<strong class="bold">class ExtractContentRoute(APIRoute):</strong>
+    def get_route_handler(self) -&gt; Callable:
+        original_route_handler = 
+                super().get_route_handler()
+        
+        <strong class="bold">async def custom_route_handler(request: Request) </strong>
+                    <strong class="bold">-&gt; Response:</strong>
+            <strong class="bold">request = ExtractionRequest(request.scope, </strong>
+                        <strong class="bold">request.receive)</strong>
+            response: Response = <strong class="bold">await </strong>
+                    <strong class="bold">original_route_handler(request)</strong>
+            return response
+        <strong class="bold">return custom_route_handler</strong></pre>
+			<p>Customizing <strong class="source-inline">APIRoute</strong> requires <a id="_idIndexMarker760"/>the creation of a Python <strong class="bold">closure</strong> that will directly manage<a id="_idIndexMarker761"/> the <strong class="source-inline">Request</strong> and <strong class="source-inline">Response</strong> flow from <strong class="source-inline">APIRoute</strong>’s <strong class="source-inline">original_route_handler</strong>. On the other hand, our <strong class="source-inline">ExtractContentRoute</strong> filter uses a custom <strong class="source-inline">ExtractionRequest</strong> that identifies and processes each type of incoming request data separately. The<a id="_idIndexMarker762"/> following is the implementation of <strong class="source-inline">ExtractionRequest</strong> that will replace the default <strong class="source-inline">Request</strong> object: </p>
+			<pre class="source-code">
+<strong class="bold">class ExtractionRequest(Request):</strong>
+    <strong class="bold">async def body(self):</strong>
+        <strong class="bold">body = await super().body()</strong>
+        data = ast.literal_eval(body.decode('utf-8'))
+        <strong class="bold">if isinstance(data, list):</strong>
+            sum = 0
+            for rate in data:
+                sum += rate 
+            average = sum / len(data)
+            self.state.sum = sum 
+            self.state.avg = average
+        return body 
+    
+    <strong class="bold">async def form(self):</strong>
+        <strong class="bold">body = await super().form()</strong>
+        user_details = dict()
+        user_details['fname'] = body['firstname']
+        user_details['lname'] = body['lastname']
+        user_details['age'] = body['age']
+        user_details['bday'] = body['birthday']
+        self.session["user_details"] = user_details
+        return body
+    
+    <strong class="bold">async def json(self):</strong>
+        <strong class="bold">body = await super().json()</strong>
+        <strong class="bold">if isinstance(body, dict):</strong>
+                
+            sum = 0
+            for rate in body.values():
+                sum += rate  
+                    
+            average = sum / len(body.values())
+            self.state.sum = sum 
+            self.state.avg = average
+        return body</pre>
+			<p>To <a id="_idIndexMarker763"/>activate this <strong class="source-inline">ExtractionRequest</strong>, we need to set the <strong class="source-inline">route_class</strong> of the <strong class="source-inline">APIRouter</strong> of the<a id="_idIndexMarker764"/> endpoints to <strong class="source-inline">ExtractContentRoute</strong>, as <a id="_idIndexMarker765"/>shown in the following snippet:</p>
+			<pre class="source-code">
+router = APIRouter()
+<strong class="bold">router.route_class = ExtractContentRoute</strong></pre>
+			<p>There are three methods of choice to override when managing various request bodies:</p>
+			<ul>
+				<li><strong class="source-inline">body()</strong>: This manages incoming request data that is in bytes</li>
+				<li><strong class="source-inline">form()</strong>: This processes incoming form data</li>
+				<li><strong class="source-inline">json()</strong>: This manages incoming parsed JSON data</li>
+				<li><strong class="source-inline">stream()</strong>: This accesses the body via a chunk of bytes using the <strong class="source-inline">async for</strong> construct</li>
+			</ul>
+			<p>All of these methods return the original request body in bytes back to the service.</p>
+			<p>In <strong class="source-inline">ExtractionRequest</strong>, we have implemented three interface methods from the given choices to filter and process all incoming requests of the API endpoints defined in the <strong class="source-inline">/api/route_extract.py</strong> module.</p>
+			<p>The following <strong class="source-inline">create_profile()</strong> service accepts profile data from the client and implements the <strong class="source-inline">ExtractContentRoute</strong> filter, which will store all of this profile data in the dictionary using session handling:</p>
+			<pre class="source-code">
+<strong class="bold">@router.post("/user/profile")</strong>
+async def create_profile(req: Request, 
+        <strong class="bold">firstname: str = Form(...), </strong>
+        <strong class="bold">lastname: str = Form(...), age: int = Form(...), </strong>
+        <strong class="bold">birthday: date = Form(...), </strong>
+        user: str = Depends(get_current_user)):
+    user_details = <strong class="bold">req.session["user_details"]</strong>
+    return {'profile' : user_details} </pre>
+			<p>The overridden <strong class="source-inline">form()</strong> method of <strong class="source-inline">ExtractionRequest</strong> is responsible for the <strong class="source-inline">user_details</strong> attribute containing all the user details.</p>
+			<p>On the other<a id="_idIndexMarker766"/> hand, the<a id="_idIndexMarker767"/> given <strong class="source-inline">set_ratings()</strong> method<a id="_idIndexMarker768"/> has an incoming dictionary of various ratings in which the <strong class="source-inline">json()</strong> override will derive some basic statistics. All the results will be returned as <strong class="source-inline">Request</strong>’s state objects or request attributes:</p>
+			<pre class="source-code">
+<strong class="bold">@router.post("/rating/top/three")</strong>
+async def set_ratings(req: Request, data : 
+ <strong class="bold">Dict[str, float],</strong> user: str = Depends(get_current_user)):
+    stats = dict()
+    stats['sum'] = <strong class="bold">req.state.sum</strong>
+    stats['average'] = <strong class="bold">req.state.avg</strong>
+    return {'stats' : stats } </pre>
+			<p>And lastly, the preceding <strong class="source-inline">compute_data()</strong> service will have an incoming list of ratings as a source of some basic statistics like in the previous service. The <strong class="source-inline">body()</strong> method override of <strong class="source-inline">ExtractionRequest</strong> will process the computation:</p>
+			<pre class="source-code">
+<strong class="bold">@router.post("/rating/data/list")</strong>
+async def compute_data(req: Request, <strong class="bold">data: List[float]</strong>, 
+  user: str = Depends(get_current_user)):
+    stats = dict()
+    stats['sum'] = <strong class="bold">req.state.sum</strong>
+    stats['average'] = <strong class="bold">req.state.avg</strong>
+    return {'stats' : stats }</pre>
+			<h2 id="_idParaDest-273"><a id="_idTextAnchor277"/>Encrypting and decrypting the message body</h2>
+			<p>Another scenario <a id="_idIndexMarker769"/>where we need to<a id="_idIndexMarker770"/> customize the routing of the endpoints is when we must secure the message body through encryption. The following custom request decrypts an encrypted body using Python’s <strong class="source-inline">cryptography</strong> module<a id="_idIndexMarker771"/> and the key of the encrypted body:</p>
+			<pre class="source-code">
+from cryptography.fernet import Fernet
+<strong class="bold">class DecryptRequest(Request):</strong>
+    async def body(self):
+        <strong class="bold">body = await super().body()</strong>
+        login_dict = ast.literal_eval(body.decode('utf-8'))
+        fernet = Fernet(bytes(login_dict['key'], 
+             encoding='utf-8'))
+        <strong class="bold">data = fernet.decrypt(</strong>
+          <strong class="bold">bytes(login_dict['enc_login'], encoding='utf-8'))</strong>
+        self.state.dec_data = json.loads(
+             data.decode('utf-8'))
+        return body</pre>
+			<p class="callout-heading">Important note</p>
+			<p class="callout">The <strong class="source-inline">cryptography</strong> module requires the installation of the <strong class="source-inline">itsdangerous</strong> extension for the encryption/decryption procedure used in this project.</p>
+			<p><strong class="source-inline">DecryptRequest</strong> will <a id="_idIndexMarker772"/>decrypt the message and return the list of login records as a request <strong class="source-inline">state</strong> object. The following service provides the encrypted message body and key and returns the decrypted list of login records from <strong class="source-inline">DecryptRequest</strong> as a response:</p>
+			<pre class="source-code">
+<strong class="bold">@router.post("/login/decrypt/details")</strong>
+async def send_decrypt_login(<strong class="bold">enc_data: EncLoginReq</strong>, 
+   req:Request, user: str = Depends(get_current_user)):
+    return {"data" : req.state.dec_data}</pre>
+			<p>Note that <strong class="source-inline">send_decrypt_login()</strong> has an <strong class="source-inline">EncLoginReq</strong> request model that contains the encrypted message body and the encryption key from the client. </p>
+			<p>Customizing the<a id="_idIndexMarker773"/> routes and their <strong class="source-inline">Request</strong> objects <a id="_idIndexMarker774"/>can help optimize and streamline microservice transactions, especially those API endpoints that require heavy loads on message body conversions, transformations, and computations.</p>
+			<p>Now, our next discussion will focus on applying different <strong class="source-inline">Response</strong> types for the API services.</p>
+			<h1 id="_idParaDest-274"><a id="_idTextAnchor278"/>Choosing the appropriate responses</h1>
+			<p>The FastAPI framework offers other options for rendering API endpoint responses other than the <a id="_idIndexMarker775"/>most common <strong class="source-inline">JsonResponse</strong> option. Here<a id="_idIndexMarker776"/> is a list of some of the response types supported by FastAPI and their corresponding samples from our application:</p>
+			<ul>
+				<li>The API endpoints can utilize<a id="_idIndexMarker777"/> the <strong class="source-inline">PlainTextResponse</strong> type if their response is text-based only. The following <strong class="source-inline">intro_list_restaurants()</strong> service returns a text-based message to the client: <p class="source-code"><strong class="bold">@router.get("/restaurant/index")</strong></p><p class="source-code">def intro_list_restaurants():</p><p class="source-code">  return <strong class="bold">PlainTextResponse(content="The Restaurants")</strong></p></li>
+				<li>Services can<a id="_idIndexMarker778"/> use <strong class="source-inline">RedirectResponse</strong> if they need to pursue navigation to another entirely different application or another endpoint of the same application. The following endpoint jumps to a hypertext reference about some known Michelin-starred restaurants:<p class="source-code"><strong class="bold">@router.get("/restaurant/michelin")</strong></p><p class="source-code">def redirect_restaurants_rates():</p><p class="source-code">  return <strong class="bold">RedirectResponse(</strong></p><p class="source-code">      <strong class="bold">url="https://guide.michelin.com/en/restaurants")</strong></p></li>
+				<li>A <strong class="source-inline">FileResponse</strong> type <a id="_idIndexMarker779"/>can help <a id="_idIndexMarker780"/>services render some content of a file, preferably text-based files. The following <strong class="source-inline">load_questions()</strong> service shows the list of questions saved in the <strong class="source-inline">questions.txt</strong> file placed inside the <strong class="source-inline">/file</strong> folder of the application:<p class="source-code"><strong class="bold">@router.get("/question/load/questions")</strong></p><p class="source-code">async def load_questions(user: str = </p><p class="source-code">                    Depends(get_current_user)):</p><p class="source-code">    <strong class="bold">file_path = os.getcwd() + </strong></p><p class="source-code"><strong class="bold">      '\\files\\questions.txt';</strong></p><p class="source-code">    return <strong class="bold">FileResponse(path=file_path,</strong> </p><p class="source-code">                 <strong class="bold">media_type="text/plain")</strong></p></li>
+				<li><strong class="source-inline">StreamingResponse</strong> is another<a id="_idIndexMarker781"/> response type that <a id="_idIndexMarker782"/>can provide us with another approach to the <strong class="bold">Server-Sent Events</strong> (<strong class="bold">SSE</strong>) implementation. <a href="B17975_08.xhtml#_idTextAnchor229"><em class="italic">Chapter 8</em></a><em class="italic">,</em> <em class="italic">Creating Coroutines, Events, and Message-Driven Transactions</em>, has provided <a id="_idIndexMarker783"/>us with an SSE that utilizes the <strong class="source-inline">EventSourceResponse</strong> type:<p class="source-code"><strong class="bold">@router.get("/question/sse/list")    </strong></p><p class="source-code">async def list_questions(req:Request, </p><p class="source-code">         engine=Depends(create_db_engine), </p><p class="source-code">            user: str = Depends(get_current_user)):</p><p class="source-code">    async def print_questions():</p><p class="source-code">        repo:QuestionRepository = </p><p class="source-code">                QuestionRepository(engine)</p><p class="source-code">        result = await repo.get_all_question()</p><p class="source-code">        for q in result:</p><p class="source-code">            disconnected = await req.is_disconnected()</p><p class="source-code">            if disconnected:</p><p class="source-code">                break</p><p class="source-code">            <strong class="bold">yield 'data: {}\n\n.format(</strong></p><p class="source-code">               <strong class="bold">json.dumps(jsonable_encoder(q), </strong></p><p class="source-code">                      <strong class="bold">cls=MyJSONEncoder))</strong></p><p class="source-code">            await asyncio.sleep(1)</p><p class="source-code">    return <strong class="bold">StreamingResponse(print_questions(),</strong> </p><p class="source-code">                <strong class="bold">media_type="text/event-stream")</strong></p></li>
+				<li>Services<a id="_idIndexMarker784"/> that render images can also use<a id="_idIndexMarker785"/> the <strong class="source-inline">StreamingResponse</strong> type. The following <strong class="source-inline">logo_upload_png()</strong> service uploads any <strong class="bold">JPEG</strong> or <strong class="bold">PNG</strong> file and renders it in the browser:<p class="source-code"><strong class="bold">@router.post("/restaurant/upload/logo")</strong></p><p class="source-code">async def logo_upload_png(<strong class="bold">logo: UploadFile = File(...)</strong>):</p><p class="source-code">    original_image = Image.open(logo.file)</p><p class="source-code">    original_image = </p><p class="source-code">         original_image.filter(ImageFilter.SHARPEN)</p><p class="source-code">    <strong class="bold">filtered_image = BytesIO()</strong></p><p class="source-code">    if logo.content_type == "image/png":</p><p class="source-code">        original_image.save(filtered_image, "PNG")</p><p class="source-code">        filtered_image.seek(0)</p><p class="source-code">        return <strong class="bold">StreamingResponse(filtered_image, </strong></p><p class="source-code">                 <strong class="bold">media_type="image/png")</strong></p><p class="source-code">    elif logo.content_type == "image/jpeg":</p><p class="source-code">        original_image.save(filtered_image, "JPEG")</p><p class="source-code">        filtered_image.seek(0)</p><p class="source-code">        return <strong class="bold">StreamingResponse(filtered_image,</strong> </p><p class="source-code">               <strong class="bold">media_type="image/jpeg") </strong></p></li>
+				<li>The <strong class="source-inline">StreamingResponse</strong> type is <a id="_idIndexMarker786"/>also effective in rendering videos in various formats such as <strong class="bold">MP4</strong>. The<a id="_idIndexMarker787"/> following service reads a file inside the application named <strong class="source-inline">sample.mp4</strong> and publishes it to the browser:<p class="source-code"><strong class="bold">@router.get("/restaurant/upload/video")</strong></p><p class="source-code">def video_presentation():</p><p class="source-code">    file_path = os.getcwd() + '\\files\\sample.mp4'</p><p class="source-code">    def load_file():  </p><p class="source-code">        with open(file_path, mode="rb") as video_file:  </p><p class="source-code">            yield from video_file  </p><p class="source-code">    return <strong class="bold">StreamingResponse(load_file(),</strong> </p><p class="source-code">              <strong class="bold">media_type="video/mp4")</strong></p></li>
+				<li>If the<a id="_idIndexMarker788"/> service wants to publish a simple HTML markup page without making references to static CSS or JavaScript files, then <strong class="source-inline">HTMLResponse</strong> is the right choice. The <a id="_idIndexMarker789"/>following service renders an HTML page with a Bootstrap framework provided by some CDN libraries:<p class="source-code"><strong class="bold">@router.get("/signup")</strong></p><p class="source-code">async def signup(engine=Depends(create_db_engine), </p><p class="source-code">       user: str = Depends(get_current_user) ):</p><p class="source-code">   signup_content = """</p><p class="source-code">    &lt;html lang='en'&gt;</p><p class="source-code">        &lt;head&gt;</p><p class="source-code">          &lt;meta charset="UTF-8"&gt;</p><p class="source-code">          &lt;script src="https://code.jquery.com/jquery-</p><p class="source-code">                    3.4.1.min.js"&gt;&lt;/script&gt;</p><p class="source-code">          &lt;link rel="stylesheet" </p><p class="source-code">            href="https://stackpath.bootstrapcdn.com/</p><p class="source-code">              bootstrap/4.4.1/css/bootstrap.min.css"&gt;</p><p class="source-code">          &lt;script src="https://cdn.jsdelivr.net/npm/</p><p class="source-code">            popper.js@1.16.0/dist/umd/popper.min.js"&gt;</p><p class="source-code">          &lt;/script&gt;</p><p class="source-code">          &lt;script   </p><p class="source-code">           src="https://stackpath.bootstrapcdn.com/</p><p class="source-code">       bootstrap/4.4.1/js/bootstrap.min.js"&gt;&lt;/script&gt;</p><p class="source-code">   </p><p class="source-code">        &lt;/head&gt;</p><p class="source-code">        &lt;body&gt;</p><p class="source-code">          &lt;div class="container"&gt;</p><p class="source-code">            &lt;h2&gt;Sign Up Form&lt;/h2&gt;</p><p class="source-code">            &lt;form&gt;</p><p class="source-code">                &lt;div class="form-group"&gt;</p><p class="source-code">                   &lt;label for="firstname"&gt;</p><p class="source-code">                          Firstname:&lt;/label&gt;</p><p class="source-code">                   &lt;input type='text' </p><p class="source-code">                       class="form-control" </p><p class="source-code">                       name='firstname' </p><p class="source-code">                       id='firstname'/&gt;&lt;br/&gt;</p><p class="source-code">                &lt;/div&gt;</p><p class="source-code">                … … … … … … … …</p><p class="source-code">                &lt;div class="form-group"&gt;</p><p class="source-code">                   &lt;label for="role"&gt;Role:&lt;/label&gt;</p><p class="source-code">                   &lt;input type='text' </p><p class="source-code">                     class="form-control" </p><p class="source-code">                     name='role' id='role'/&gt;&lt;br/&gt;</p><p class="source-code">                &lt;/div&gt;</p><p class="source-code">                &lt;button type="submit" class="btn </p><p class="source-code">                    btn-primary"&gt;Sign Up&lt;/button&gt;</p><p class="source-code">            &lt;/form&gt;</p><p class="source-code">           &lt;/div&gt;</p><p class="source-code">        &lt;/body&gt;</p><p class="source-code">    &lt;/html&gt;</p><p class="source-code">    """</p><p class="source-code">    <strong class="bold">return HTMLResponse(content=signup_content, </strong></p><p class="source-code">               <strong class="bold">status_code=200)</strong></p></li>
+				<li>If the <a id="_idIndexMarker790"/>API endpoints have other rendition types needed to be published, the <strong class="source-inline">Response</strong> class can customize them through its <strong class="source-inline">media_type</strong> property. The following is a service that converts JSON data into XML content by setting the <strong class="source-inline">media_type</strong> property of <strong class="source-inline">Response</strong> to the <strong class="source-inline">application/xml</strong> MIME type:  <p class="source-code"><strong class="bold">@router.get("/keyword/list/all/xml")</strong></p><p class="source-code">async def </p><p class="source-code">   convert_to_xml(engine=Depends(create_db_engine), </p><p class="source-code">        user: str = Depends(get_current_user)): </p><p class="source-code">    repo:KeyRepository = KeyRepository(engine)</p><p class="source-code">    list_of_keywords = await repo.get_all_keyword()</p><p class="source-code">    root = minidom.Document() </p><p class="source-code">    xml = root.createElement('keywords') </p><p class="source-code">    root.appendChild(xml) </p><p class="source-code">  </p><p class="source-code">    for keyword in list_of_keywords:</p><p class="source-code">        key = root.createElement('keyword')</p><p class="source-code">        word = root.createElement('word')</p><p class="source-code">        key_text = root.createTextNode(keyword.word)</p><p class="source-code">        weight= root.createElement('weight')</p><p class="source-code">        weight_text = </p><p class="source-code">             root.createTextNode(str(keyword.weight))</p><p class="source-code">        word.appendChild(key_text)</p><p class="source-code">        weight.appendChild(weight_text)</p><p class="source-code">        key.appendChild(word)</p><p class="source-code">        key.appendChild(weight)</p><p class="source-code">        xml.appendChild(key)</p><p class="source-code">    <strong class="bold">xml_str = root.toprettyxml(indent ="\t") </strong></p><p class="source-code">    return <strong class="bold">Response(content=xml_str,</strong> </p><p class="source-code">            <strong class="bold">media_type="application/xml")</strong></p></li>
+			</ul>
+			<p>Although FastAPI is <a id="_idIndexMarker791"/>not a web framework, it can support Jinja2 templating for rare cases where API services require rendering their response as an HTML page. Let us highlight how API services utilize Jinja2 templates as part of the response. </p>
+			<h2 id="_idParaDest-275"><a id="_idTextAnchor279"/>Setting up the Jinja2 template engine</h2>
+			<p>First, we need to install the <strong class="source-inline">jinja2</strong> module using <strong class="source-inline">pip</strong>: </p>
+			<p class="source-code">pip install jinja2</p>
+			<p>Then, we <a id="_idIndexMarker792"/>need to create a folder that will hold all the Jinja2 templates. Jinja2 must define this folder, usually named <strong class="source-inline">templates</strong>, by creating the <strong class="source-inline">Jinja2Templates</strong> instance in <strong class="source-inline">FastAPI</strong> or any <strong class="source-inline">APIRouter</strong>. The following snippet is part of the <strong class="source-inline">/api/login.py</strong> router that <a id="_idIndexMarker793"/>shows the setup and configuration of the Jinja2 templating engine:</p>
+			<pre class="source-code">
+from fastapi.templating import Jinja2Templates
+router = APIRouter()
+<strong class="bold">templates = Jinja2Templates(directory="templates")</strong></pre>
+			<h2 id="_idParaDest-276"><a id="_idTextAnchor280"/>Setting up the static resources</h2>
+			<p>After the<a id="_idIndexMarker794"/> <strong class="source-inline">templates</strong> folder, the Jinja2 engine requires the application to have a folder named <strong class="source-inline">static</strong> in the project directory to hold the CSS, JavaScript, images, and other static files for the Jinja2 templates. Then, we need to instantiate the <strong class="source-inline">StaticFiles</strong> instance to define the <strong class="source-inline">static</strong> folder and map it with a virtual name. Additionally, the <strong class="source-inline">StaticFiles</strong> instance must be mounted to a specific path through <strong class="source-inline">FastAPI</strong>’s <strong class="source-inline">mount()</strong> method. We also need to set the <strong class="source-inline">html</strong> property of the <strong class="source-inline">StaticFiles</strong> instance to <strong class="source-inline">True</strong> to set the folder in HTML mode. The following configuration shows how to set up the static resource folder in the <strong class="source-inline">main.py</strong> module:</p>
+			<pre class="source-code">
+from fastapi.staticfiles import StaticFiles
+<strong class="bold">app.mount("/static", StaticFiles(directory="static", </strong>
+          <strong class="bold">html=True), name="static")</strong></pre>
+			<p>For the FastAPI components to access these static files, the engine needs the <strong class="source-inline">aiofiles</strong> extension installed: </p>
+			<p class="source-code">pip install aiofiles</p>
+			<h2 id="_idParaDest-277"><a id="_idTextAnchor281"/>Creating the template layout</h2>
+			<p>The following <a id="_idIndexMarker795"/>template is the <strong class="bold">base</strong> or <strong class="bold">parent</strong> template for the application that can now access the Bootstrap resources from the <strong class="source-inline">static</strong> folder due to the template engine and <strong class="source-inline">aiofiles</strong> module:</p>
+			<pre class="source-code">
+&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+    &lt;head&gt;
+        &lt;meta charset="UTF-8"&gt;
+        &lt;meta http-equiv="X-UA-Compatible" 
+              content="IE=edge"&gt;
+        &lt;meta name="viewport" content="width=device-width, 
+             initial-scale=1.0, shrink-to-fit=no"&gt;
+        &lt;meta name="apple-mobile-web-app-capable" 
+             content="yes"&gt;
+        
+        &lt;link rel="stylesheet" type="text/css" 
+            href="{{url_for('static', 
+               path='/css/bootstrap.min.css')}}"&gt;
+        &lt;script src="{{url_for('static', path='/js/
+               jquery-3.6.0.js')}}"&gt;&lt;/script&gt;
+        &lt;script src="{{url_for('static', 
+              path='/js/bootstrap.min.js')}}"&gt;&lt;/script&gt;
+    &lt;/head&gt;
+    &lt;body&gt;
+        <strong class="bold">{% block content %}</strong>
+        <strong class="bold">{% endblock content %}</strong>
+    &lt;/body&gt;
+&lt;/html&gt;</pre>
+			<p>Other templates can <a id="_idIndexMarker796"/>inherit the structure and design of this <strong class="source-inline">layout.html</strong> using the <strong class="source-inline">{% extends %}</strong> tags. The Jinja2 base template, like our <strong class="source-inline">layout.html</strong>, has these Jinja2 tags, namely the <strong class="source-inline">{% block content %}</strong> and <strong class="source-inline">{% endblock %}</strong> tags, which indicate where child templates can insert their content during the translation phase. But for all these templates to work, they must be saved in the <strong class="source-inline">/templates</strong> directory. The following is a sample child template named <strong class="source-inline">users.html</strong> that generates a table of profiles from the context data:</p>
+			<pre class="source-code">
+<strong class="bold">{% extends "layout.html" %}</strong>
+<strong class="bold">{% block content %}</strong>
+&lt;div class="container"&gt;
+&lt;h2&gt;List of users &lt;/h2&gt;
+&lt;p&gt;This is a Boostrap 4 table applied to JinjaTemplate.&lt;/p&gt;
+&lt;table class="table"&gt;
+    &lt;thead&gt;
+        &lt;tr&gt;
+          &lt;th&gt;Login ID&lt;/th&gt;
+          &lt;th&gt;Username&lt;/th&gt;
+          &lt;th&gt;Password&lt;/th&gt;
+          &lt;th&gt;Passphrase&lt;/th&gt;
+        &lt;/tr&gt;
+      &lt;/thead&gt;
+      &lt;tbody&gt;
+    {% for login in data %} 
+    &lt;tr&gt;
+        &lt;td&gt;{{ login.login_id}}&lt;/td&gt;
+        &lt;td&gt;{{ login.username}}&lt;/td&gt;
+        &lt;td&gt;{{ login.password}}&lt;/td&gt;
+        &lt;td&gt;{{ login.passphrase}}&lt;/td&gt;
+    &lt;/tr&gt;
+    {% endfor%}
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+<strong class="bold">{% endblock %}</strong></pre>
+			<p>Observe <a id="_idIndexMarker797"/>that the child Jinja2 template also has the "block" tags to mark the content to be merged into the parent template. </p>
+			<p>For the API to render the templates, the service must use the Jinja2 engine’s <strong class="source-inline">TemplateResponse</strong> type as the response type. <strong class="source-inline">TemplateResponse</strong> needs the filename of the template, the <strong class="source-inline">Request</strong> object, and the context data if there is any. The following is the API service that renders the previous <strong class="source-inline">users.html</strong> template:</p>
+			<pre class="source-code">
+<strong class="bold">@router.get("/login/html/list")</strong>
+async def list_login_html(req: Request,
+       engine=Depends(create_db_engine), 
+       user: str = Depends(get_current_user)):
+    repo:LoginRepository = LoginRepository(engine)
+    result = await repo.get_all_login()
+    return <strong class="bold">templates.TemplateResponse("users.html",</strong> 
+           <strong class="bold">{"request": req, "data": result})</strong></pre>
+			<h2 id="_idParaDest-278"><a id="_idTextAnchor282"/>Using ORJSONResponse and UJSONResponse</h2>
+			<p>When it <a id="_idIndexMarker798"/>comes to yielding numerous <a id="_idIndexMarker799"/>dictionaries or JSON-able-components, it is appropriate to <a id="_idIndexMarker800"/>use either <strong class="source-inline">ORJSONResponse</strong> or <strong class="source-inline">UJSONResponse</strong>. <strong class="source-inline">ORJSONResponse</strong> uses <strong class="source-inline">orjson</strong> to serialize a <a id="_idIndexMarker801"/>humongous listing of dictionary objects into a JSON string as a response. So, first, we need to install <strong class="source-inline">orjson</strong> using the <strong class="source-inline">pip</strong> command before using <strong class="source-inline">ORJSONResponse</strong>. <strong class="source-inline">ORJSONResponse</strong> serializes UUID, <strong class="source-inline">numpy</strong>, data classes, and datetime objects faster than the common <strong class="source-inline">JSONResponse</strong>.</p>
+			<p>However, <strong class="source-inline">UJSONResponse</strong> is relatively faster than <strong class="source-inline">ORJSONResponse</strong> because it uses the <strong class="source-inline">ujson</strong> serializer. The <strong class="source-inline">ujson</strong> serializer must first be installed before using <strong class="source-inline">UJSONResponse</strong>.</p>
+			<p>The following are the two API services that use these two fast alternatives for a JSON serializer:</p>
+			<pre class="source-code">
+<strong class="bold">@router.get("/login/list/all")</strong>
+async def list_all_login(engine=Depends(create_db_engine), 
+         user: str = Depends(get_current_user)): 
+    repo:LoginRepository = LoginRepository(engine)
+    result = await repo.get_all_login()
+    return <strong class="bold">ORJSONResponse(content=jsonable_encoder(result),</strong>
+             <strong class="bold">status_code=201)</strong>
+<strong class="bold">@router.get("/login/account")</strong>
+async def get_login(id:int, 
+       engine=Depends(create_db_engine), 
+       user: str = Depends(get_current_user) ):
+    repo:LoginRepository = LoginRepository(engine)
+    result = await repo.get_login_id(id)
+    return <strong class="bold">UJSONResponse(content=jsonable_encoder(result),</strong> 
+             <strong class="bold">status_code=201)</strong></pre>
+			<p>We still <a id="_idIndexMarker802"/>need to apply the <strong class="source-inline">jsonable_encoder()</strong> component to convert <strong class="source-inline">BSON</strong>’s <strong class="source-inline">ObjectId</strong> of the result into <strong class="source-inline">str</strong> before the<a id="_idIndexMarker803"/> two responses pursue their serialization processes. Now, let us focus on how we provide internal API documentation using the OpenAPI 3.0 specification.</p>
+			<h1 id="_idParaDest-279"><a id="_idTextAnchor283"/>Applying the OpenAPI 3.x specification</h1>
+			<p>The <a id="_idIndexMarker804"/>OpenAPI 3.0 specification is a standard API documentation<a id="_idIndexMarker805"/> and language-agnostic specification that can describe the API services without knowing its sources, reading its documentation, and understanding its business logic. Additionally, FastAPI supports OpenAPI, and it can even automatically generate the default internal documentation of the API based on OpenAPI standards.</p>
+			<p>There are three ways to document our API services using the specification:</p>
+			<ul>
+				<li>By extending the OpenAPI schema definition</li>
+				<li>By using the internal code base properties</li>
+				<li>By using the <strong class="source-inline">Query</strong>, <strong class="source-inline">Body</strong>, <strong class="source-inline">Form</strong>, and <strong class="source-inline">Path</strong> functions</li>
+			</ul>
+			<h2 id="_idParaDest-280"><a id="_idTextAnchor284"/>Extending the OpenAPI schema definition</h2>
+			<p>FastAPI <a id="_idIndexMarker806"/>has a <strong class="source-inline">get_openapi()</strong> method from its <strong class="source-inline">fastapi.openapi.utils</strong> extension that can override some schema descriptions. We can modify the <strong class="source-inline">info</strong>, <strong class="source-inline">servers</strong>, and <strong class="source-inline">paths</strong> details of the schema definition through the <strong class="source-inline">get_openapi()</strong> function. The function returns a <strong class="source-inline">dict</strong> of all details of the OpenAPI schema definition of the application.</p>
+			<p>The default OpenAPI schema documentation is always set up in the <strong class="source-inline">main.py</strong> module because it is consistently associated with the FastAPI instance. For the function to generate the <strong class="source-inline">dict</strong> of schema<a id="_idIndexMarker807"/> details, it must accept at least the <strong class="source-inline">title</strong>, <strong class="source-inline">version</strong>, and <strong class="source-inline">routes</strong> parameter values. The following custom function extracts the default <em class="italic">OpenAPI</em> schema for updating:</p>
+			<pre class="source-code">
+def update_api_schema():
+   DOC_TITLE = "The Online Restaurant Rating System API"
+   DOC_VERSION = "1.0"
+   <strong class="bold">openapi_schema = get_openapi(</strong>
+       <strong class="bold">title=DOC_TITLE</strong>,
+       <strong class="bold">version=DOC_VERSION</strong>,
+       <strong class="bold">routes=app.routes</strong>,
+   <strong class="bold">)</strong>
+<strong class="bold">app.openapi_schema = openapi_schema</strong>
+return openapi_schema</pre>
+			<p>The <strong class="source-inline">title</strong> parameter value is the document title, the <strong class="source-inline">version</strong> parameter value is the version of the API implementation, and <strong class="source-inline">routes</strong> contains a list of registered API services. Observe that the last line before the <strong class="source-inline">return</strong> statement updates FastAPI’s built-in <strong class="source-inline">openapi_schema</strong> defaults. Now, to update the general information details, we use the <strong class="source-inline">info</strong> key of the schema definition to change some values, as shown in the following sample:</p>
+			<pre class="source-code">
+<strong class="bold">openapi_schema["info"]</strong> = {
+       "title": DOC_TITLE,
+       "version": DOC_VERSION,
+       "description": "This application is a prototype.",
+       "contact": {
+           "name": "Sherwin John Tragura",
+           "url": "https://ph.linkedin.com/in/sjct",
+           "email": "cowsky@aol.com"
+       },
+       "license": {
+           "name": "Apache 2.0",
+           "url": "https://www.apache.org/
+                  licenses/LICENSE-2.0.html"
+       },
+   }</pre>
+			<p>The<a id="_idIndexMarker808"/> preceding info schema update must also be part of the <strong class="source-inline">update_api_schema()</strong> function together with the update on the documentation of each registered API service. These details can includeAPI service's description and summary, the POST endpoint's description of its <strong class="source-inline">requestBody</strong> and GET endpoint's details about its parameters, and the API tags. Add the following <strong class="source-inline">paths</strong> updates:</p>
+			<pre class="source-code">
+openapi_schema["paths"]["/ch09/login/authenticate"]["post"]["description"] = "User Authentication Session"
+openapi_schema["paths"]["/ch09/login/authenticate"]["post"]["summary"] = "This is an API that stores credentials in session."
+openapi_schema["paths"]["/ch09/login/authenticate"]["post"]["tags"] = ["auth"]
+   
+openapi_schema["paths"]["/ch09/login/add"]["post"]
+["description"] = "Adding Login User"
+openapi_schema["paths"]["/ch09/login/add"]["post"]
+["summary"] = "This is an API adds new user."
+openapi_schema["paths"]["/ch09/login/add"]["post"]
+["tags"] = ["operation"]
+openapi_schema["paths"]["/ch09/login/add"]["post"]
+["requestBody"]["description"]="Data for LoginReq"
+   
+openapi_schema["paths"]["/ch09/login/profile/add"]
+["description"] = "Updating Login User"
+openapi_schema["paths"]["/ch09/login/profile/add"]
+["post"]["summary"] = "This is an API updating existing user record."
+openapi_schema["paths"]["/ch09/login/profile/add"]
+["post"]["tags"] = ["operation"]
+openapi_schema["paths"]["/ch09/login/profile/add"]
+["post"]["requestBody"]["description"]="Data for LoginReq"
+   
+openapi_schema["paths"]["/ch09/login/html/list"]["get"]["description"] = "Renders Jinja2Template with context data."
+openapi_schema["paths"]["/ch09/login/html/list"]["get"]["summary"] = "Uses Jinja2 template engine for rendition."
+openapi_schema["paths"]["/ch09/login/html/list"]["get"]["tags"] = ["rendition"]
+openapi_schema["paths"]["/ch09/login/list/all"]["get"]["description"] = "List all the login records."
+openapi_schema["paths"]["/ch09/login/list/all"]["get"]["summary"] = "Uses JsonResponse for rendition."
+openapi_schema["paths"]["/ch09/login/list/all"]["get"]["tags"] = ["rendition"]</pre>
+			<p>The preceding will give us a new OpenAPI document dashboard, as shown in <em class="italic">Figure 9.1</em>:</p>
+			<div>
+				<div id="_idContainer068" class="IMG---Figure">
+					<img src="image/Figure_9.01_B17975.jpg" alt="Figure 9.1 – A customized OpenAPI dashboard"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 9.1 – A customized OpenAPI dashboard</p>
+			<p>Tags are <a id="_idIndexMarker809"/>essential variables of the OpenAPI documentation because they organize the API endpoints according to the routers, business processes, requirements, and modules. It is a best practice to use tags.</p>
+			<p>Once all the updates have been set, replace FastAPI’s <strong class="source-inline">openapi()</strong> function with the new <strong class="source-inline">update_api_schema()</strong> function.</p>
+			<h2 id="_idParaDest-281"><a id="_idTextAnchor285"/>Using the internal code base properties</h2>
+			<p>FastAPI’s constructor<a id="_idIndexMarker810"/> has parameters that can replace the default info document details without using the <strong class="source-inline">get_openapi()</strong> function. The following snippet showcases a sample documentation update on the <strong class="source-inline">title</strong>, <strong class="source-inline">description</strong>, <strong class="source-inline">version</strong>, and <strong class="source-inline">servers</strong> details of the OpenAPI documentation:</p>
+			<pre class="source-code">
+app = FastAPI(… … … …, 
+            <strong class="bold">title</strong>="The Online Restaurant Rating 
+                       System API",
+            <strong class="bold">description</strong>="This a software prototype.",
+            <strong class="bold">version</strong>="1.0.0",
+            <strong class="bold">servers</strong>= [
+                {
+                    "url": "http://localhost:8000",
+                    "description": "Development Server"
+                },
+                {
+                    "url": "https://localhost:8002",
+                    "description": "Testing Server",
+                }
+            ])</pre>
+			<p>When <a id="_idIndexMarker811"/>adding documentation to the API endpoints, the path operators of <strong class="source-inline">FastAPI</strong> and <strong class="source-inline">APIRouter</strong> also have parameters that allow changes to the default OpenAPI variables attributed to each endpoint. The following is a sample service that updates its <strong class="source-inline">summary</strong>, <strong class="source-inline">description</strong>, <strong class="source-inline">response_description</strong>, and other response details through the <strong class="source-inline">post()</strong> path operator:</p>
+			<pre class="source-code">
+@router.post("/restaurant/add",
+     <strong class="bold">summary</strong>="This API adds new restaurant details.",
+     <strong class="bold">description</strong>="This operation adds new record to the 
+          database. ",
+     <strong class="bold">response_description</strong>="The message body.",
+     <strong class="bold">responses</strong>={
+        <strong class="bold">200</strong>: {
+            "<strong class="bold">content</strong>": {
+                "application/json": {
+                    "<strong class="bold">example</strong>": {
+                        "restaurant_id": 100,
+                        "name": "La Playa",
+                        "branch": "Manila",
+                        "address": "Orosa St.",
+                        "province": "NCR",
+                        "date_signed": "2022-05-23",
+                        "city": "Manila",
+                        "country": "Philippines",
+                        "zipcode": 1603
+                    }
+                }
+            },
+        },
+        <strong class="bold">404</strong>: {
+            "<strong class="bold">description</strong>": "An error was encountered during 
+                     saving.",
+            "<strong class="bold">content</strong>": {
+                "application/json": {
+                    "<strong class="bold">example</strong>": {"message": "insert login 
+                       unsuccessful"}
+                }
+            },
+        },
+    },
+    tags=["operation"])
+async def add_restaurant(req:RestaurantReq, 
+        engine=Depends(create_db_engine), 
+          user: str = Depends(get_current_user)):
+    restaurant_dict = req.dict(exclude_unset=True) 
+    restaurant_json = dumps(restaurant_dict, 
+           default=json_datetime_serializer)
+    repo:RestaurantRepository = 
+            RestaurantRepository(engine)
+    result = await repo.insert_restaurant(
+              loads(restaurant_json))
+    if result == True: 
+        return req 
+    else: 
+        return JSONResponse(content={"message": 
+           "insert login unsuccessful"}, status_code=500)</pre>
+			<h2 id="_idParaDest-282"><a id="_idTextAnchor286"/>Using the Query, Form, Body, and Path functions</h2>
+			<p>Aside from the declaration and additional validations, the <strong class="source-inline">Query</strong>, <strong class="source-inline">Path</strong>, <strong class="source-inline">Form</strong>, and <strong class="source-inline">Body</strong> parameter functions can also be used to add some metadata to the API endpoints. The following <strong class="source-inline">authenticate()</strong> endpoint has added descriptions and validations<a id="_idIndexMarker812"/> through the <strong class="source-inline">Query()</strong> function:</p>
+			<pre class="source-code">
+<strong class="bold">@router.post("/login/authenticate")</strong>
+async def authenticate(response: Response, 
+    username:str = <strong class="bold">Query(...,</strong> 
+       <strong class="bold">description='The username of the credentials.', </strong>
+       <strong class="bold">max_length=50</strong>), 
+    password: str = <strong class="bold">Query(...,</strong> 
+     <strong class="bold">description='The password of the of the credentials.', </strong>
+     <strong class="bold">max_length=20</strong>), 
+    engine=Depends(create_db_engine)):
+    repo:LoginRepository = LoginRepository(engine)
+    … … … … … …
+    response.set_cookie("session", token)
+    return {"username": username}</pre>
+			<p>The <a id="_idIndexMarker813"/>following <strong class="source-inline">get_login()</strong> uses the <strong class="source-inline">Path()</strong> directive to insert a description of the <strong class="source-inline">id</strong> parameter:</p>
+			<pre class="source-code">
+<strong class="bold">@router.get("/login/account/{id}")</strong>
+<strong class="bold">async def get_login(id:int = Path(..., </strong>
+<strong class="bold">         description="The user ID of the user."), </strong>
+   engine=Depends(create_db_engine), 
+   user: str = Depends(get_current_user) ):
+    … … … … … …
+    return UJSONResponse(content=jsonable_encoder(result),
+         status_code=201)</pre>
+			<p>The <strong class="source-inline">description</strong> and <strong class="source-inline">max_length</strong> metadata of the <strong class="source-inline">Query()</strong> function will become part of the OpenAPI documentation for <strong class="source-inline">authenticate()</strong>, as shown in <em class="italic">Figure 9.2</em>:</p>
+			<div>
+				<div id="_idContainer069" class="IMG---Figure">
+					<img src="image/Figure_9.02_B17975.jpg" alt="Figure 9.2 – The Query metadata"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 9.2 – The Query metadata</p>
+			<p>Additionally, the <strong class="source-inline">description</strong> metadata <a id="_idIndexMarker814"/>of the <strong class="source-inline">Path()</strong> directive will also appear in the <strong class="source-inline">get_login()</strong> documentation, as presented in <em class="italic">Figure 9.3</em>:  </p>
+			<div>
+				<div id="_idContainer070" class="IMG---Figure">
+					<img src="image/Figure_9.03_B17975.jpg" alt="Figure 9.3 – The Path metadata&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 9.3 – The Path metadata</p>
+			<p>Likewise, we can add descriptions to form parameters<a id="_idIndexMarker815"/> using the <strong class="source-inline">Form</strong> directive. The following service shows you how to insert documentation through the <strong class="source-inline">Form</strong> directive: </p>
+			<pre class="source-code">
+<strong class="bold">@router.post("/user/profile")</strong>
+async def create_profile(req: Request, 
+<strong class="bold">        firstname: str = Form(..., </strong>
+<strong class="bold">          description='The first name of the user.'), </strong>
+<strong class="bold">        lastname: str = Form(..., </strong>
+<strong class="bold">          description='The last name of the user.'), </strong>
+<strong class="bold">        age: int = Form(..., </strong>
+<strong class="bold">          description='The age of the user.'), </strong>
+<strong class="bold">        birthday: date = Form(..., </strong>
+<strong class="bold">           description='The birthday of the user.'), </strong>
+        user: str = Depends(get_current_user)):
+    user_details = req.session["user_details"]
+    return {'profile' : user_details}
+   </pre>
+			<p>Moreover, it is<a id="_idIndexMarker816"/> also possible to document all types of HTTP responses or status codes that the API service can throw through the path operator’s <strong class="source-inline">responses</strong> parameter. The following <strong class="source-inline">video_presentation()</strong> service provides metadata regarding the nature of its response when it encounters no errors (<em class="italic">HTTP Status Code 200</em>) and with runtime errors (<em class="italic">HTTP Status Code 500</em>):</p>
+			<pre class="source-code">
+<strong class="bold">from models.documentation.response import Error500Model</strong>
+… … … … …
+<strong class="bold">@router.get("/restaurant/upload/video",responses={</strong>
+<strong class="bold">        200: {</strong>
+<strong class="bold">            "content": {"video/mp4": {}},</strong>
+<strong class="bold">            "description": "Return an MP4 encoded video.",</strong>
+        },
+<strong class="bold">        500:{</strong>
+<strong class="bold">            "model": Error500Model, </strong>
+<strong class="bold">            "description": "The item was not found"</strong>
+        }
+    },)
+def video_presentation():
+    file_path = os.getcwd() + '\\files\\sample.mp4'
+    def load_file():  
+        with open(file_path, mode="rb") as video_file:  
+            yield from video_file  
+    return StreamingResponse(load_file(), 
+<strong class="bold">              media_type="video/mp4")</strong></pre>
+			<p><strong class="source-inline">Error500Model</strong> is a <strong class="source-inline">BaseModel</strong> class that will give you a clear picture of the response <a id="_idIndexMarker817"/>once the application encounters an <em class="italic">HTTP Status Code 500</em> error and will only be used in the OpenAPI documentation. It contains metadata such as the message that holds a hardcoded error message. <em class="italic">Figure 9.4</em> shows the resulting OpenAPI documentation for <strong class="source-inline">video_presentation()</strong> after adding the metadata for its responses:</p>
+			<div>
+				<div id="_idContainer071" class="IMG---Figure">
+					<img src="image/Figure_9.04_B17975.jpg" alt="Figure 9.4 – The documentation for API responses&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 9.4 – The documentation for API responses</p>
+			<p>And now, for our last discussion, let us explore how we can perform unit testing in FastAPI, which could lead to a test-driven development setup.</p>
+			<h1 id="_idParaDest-283"><a id="_idTextAnchor287"/>Testing the API endpoints</h1>
+			<p>FastAPI<a id="_idIndexMarker818"/> uses the <strong class="source-inline">pytest</strong> framework to run its test classes. So, before we create our test classes, first, we need to install the <strong class="source-inline">pytest</strong> framework using the <strong class="source-inline">pip</strong> command:</p>
+			<p class="source-code">pip install pytest</p>
+			<p>FastAPI has a module called <strong class="source-inline">fastapi.testclient</strong> where all components are <strong class="source-inline">Request</strong>-based, including the <strong class="source-inline">TestClient</strong> class. To access all the API endpoints, we need the <strong class="source-inline">TestClient</strong> object. But first, we need to create a folder such as <strong class="source-inline">test</strong>, which will contain test modules where we implement our test methods. We place our test methods outside <strong class="source-inline">main.py</strong> or the router modules to maintain clean code and organization.</p>
+			<h2 id="_idParaDest-284"><a id="_idTextAnchor288"/>Writing the unit test cases</h2>
+			<p>It is a <a id="_idIndexMarker819"/>best practice to write one test module per router component, except for cases where there is a tight connection between these routers. We place these test modules inside the <strong class="source-inline">test</strong> directory. To pursue the automated testing, we need to import the <strong class="source-inline">APIRouter</strong> instance or the <strong class="source-inline">FastAPI</strong> instance into the test module to set up <strong class="source-inline">TestClient</strong>. <strong class="source-inline">TestClient</strong> is almost like Python’s client module, <strong class="source-inline">requests</strong>, when it comes to the helper methods used to consume APIs.</p>
+			<p>The method names of the test cases must start with a <strong class="source-inline">test_</strong> prefix, which is a <strong class="source-inline">pytest</strong> requirement. Test methods are all standard Python methods and should not be asynchronous. The following is a test method in <strong class="source-inline">test/test_restaurants.py</strong> that checks whether the endpoint returns the proper text-based response:</p>
+			<pre class="source-code">
+<strong class="bold">from fastapi.testclient import TestClient</strong>
+from api import restaurant
+<strong class="bold">client = TestClient(restaurant.router)</strong>
+def test_restaurant_index():
+    <strong class="bold">response = client.get("/restaurant/index")</strong>
+    <strong class="bold">assert response.status_code == 200</strong>
+    <strong class="bold">assert response.text == "The Restaurants"</strong></pre>
+			<p><strong class="source-inline">TestClient</strong> supports assert statements that check the response of its helper methods, like <strong class="source-inline">get()</strong>, <strong class="source-inline">post()</strong>, <strong class="source-inline">put()</strong>, and <strong class="source-inline">delete()</strong> the status code and response body of the API. The <strong class="source-inline">test_restaurant_index()</strong>, for instance, uses the <strong class="source-inline">get()</strong> method of the TestClient API to run <strong class="source-inline">/restaurant/index</strong> GET service and extract its response. The assert statements are used if the <strong class="source-inline">statuc_code</strong> and <strong class="source-inline">response.text</strong> are correct. The endpoint has no imposed dependencies, so the test module is <em class="italic">router-based</em>. </p>
+			<h2 id="_idParaDest-285"><a id="_idTextAnchor289"/>Mocking the dependencies</h2>
+			<p>Testing<a id="_idIndexMarker820"/> API endpoints with dependencies is not as straightforward as the previous example. Our endpoints have session-based security through the JWT and the <strong class="source-inline">APIKeyCookie</strong> class, so we cannot just run <strong class="source-inline">pytest</strong> to test them. First, we need to apply <em class="italic">mocking</em> to these dependencies by adding them to the <strong class="source-inline">dependency_overrides</strong> of the <strong class="source-inline">FastAPI</strong> instance. Since <strong class="source-inline">APIRouter</strong> cannot mock dependencies, we need to use the <strong class="source-inline">FastAPI</strong> instance to set up <strong class="source-inline">TestClient</strong>. All endpoints can be unit tested if the routers are part of the FastAPI configuration through <strong class="source-inline">include_router()</strong>:</p>
+			<pre class="source-code">
+from fastapi.testclient import TestClient
+<strong class="bold">from models.data.orrs import Login</strong>
+<strong class="bold">from main import app</strong>
+<strong class="bold">from util.auth_session import get_current_user</strong>
+<strong class="bold">client = TestClient(app)</strong>
+<strong class="bold">async def get_user():</strong>
+    <strong class="bold">return Login(**{"username": "sjctrags", </strong>
+      <strong class="bold">"login_id": 101,  </strong>
+      <strong class="bold">"password":"sjctrags", "passphrase": None, </strong>
+      <strong class="bold">"profile": None})</strong>
+<strong class="bold">app.dependency_overrides[get_current_user] =  get_user</strong>
+def test_rating_top_three():
+   <strong class="bold"> response = client.post("/ch09/rating/top/three", </strong>
+     <strong class="bold">json={</strong>
+          "rate1": 10.0, 
+          "rate2": 20.0 ,
+          "rate3": 30.0
+        
+    })
+    <strong class="bold">assert response.status_code == 200</strong>
+    <strong class="bold">assert response.json() == { "stats": {</strong>
+          "sum": 60.0,
+          "average": 20.0
+      }
+}</pre>
+			<p>The <strong class="source-inline">/rating/top/three</strong> API from the <strong class="source-inline">/api/route_extract.py</strong> router requires a <strong class="source-inline">dict</strong> of ratings<a id="_idIndexMarker821"/> to derive a JSON result containing <strong class="source-inline">average</strong> and <strong class="source-inline">sum</strong>. <strong class="source-inline">TestClient</strong>’s path operators have JSON and data parameters, where we can pass test data to the API. Likewise, <strong class="source-inline">TestClient</strong>’s response has methods that can derive the expected response body, such as, in this example, the <strong class="source-inline">json()</strong> function.</p>
+			<p>Running the test method will result in some <strong class="source-inline">APIKeyCookie</strong> exceptions due to the dependency on session-based security. To bypass this issue, we need to create a fake <strong class="source-inline">get_current_user()</strong> dependable function to proceed with the testing. We add the <strong class="source-inline">get_current_user()</strong> dependable function into the roster of overrides and map it with the fake ones, such as our <strong class="source-inline">get_user()</strong> function, to replace its execution. This process is what <a id="_idIndexMarker822"/>we call <strong class="bold">mocking</strong> in the FastAPI context.</p>
+			<p>Aside from <a id="_idIndexMarker823"/>security, we can also mock the database connection by creating a mock database object or database engine, depending on whether it is a relational database or a NoSQL database. In the following test case, we are performing a unit test in <strong class="source-inline">/ch09/login/list/all</strong>, which needs MongoDB connectivity to access the list of login profiles. For the test to work, we need to create a mock <strong class="source-inline">AsyncIOMotorClient</strong> object with a dummy test database called <strong class="source-inline">orrs_test</strong>. Here is the <strong class="source-inline">test_list_login()</strong> test, which implements this database mocking:</p>
+			<pre class="source-code">
+<strong class="bold">def db_connect():</strong>
+<strong class="bold">    client_od = </strong>
+<strong class="bold">         AsyncIOMotorClient(f"mongodb://localhost:27017/")</strong>
+<strong class="bold">    engine = AIOEngine(motor_client=client_od, </strong>
+<strong class="bold">            database="orrs_test")</strong>
+<strong class="bold">    return engine</strong>
+async def get_user():
+    return Login(**{"username": "sjctrags", "login_id": 101,
+           "password":"sjctrags", "passphrase": None, 
+           "profile": None})
+app.dependency_overrides[get_current_user] =  get_user
+<strong class="bold">app.dependency_overrides[create_db_engine] = db_connect</strong>
+def test_list_login():
+    response = client.get("/ch09/login/list/all")
+    assert response.status_code == 201</pre>
+			<h2 id="_idParaDest-286"><a id="_idTextAnchor290"/>Running test methods</h2>
+			<p>Run <a id="_idIndexMarker824"/>the <strong class="source-inline">pytest</strong> command <a id="_idIndexMarker825"/>on the command line to execute all unit tests. The <strong class="source-inline">pytest</strong> engine will compile and run all <strong class="source-inline">TestClient</strong> apps in the <strong class="source-inline">test</strong> folder, thus running all the test methods. <em class="italic">Figure 9.5</em> shows a snapshot of the test result:</p>
+			<div>
+				<div id="_idContainer072" class="IMG---Figure">
+					<img src="image/Figure_9.05_B17975.jpg" alt="Figure 9.5 – The test result&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 9.5 – The test result</p>
+			<p>Learning more about the <strong class="source-inline">pytest</strong> framework offers a heads-up in understanding the automation of test cases in FastAPI. Organizing all test methods through modules is essential in the testing phase of the application since we run all of them in bulk.</p>
+			<h1 id="_idParaDest-287"><a id="_idTextAnchor291"/>Summary</h1>
+			<p>This chapter showcased some essential features that were not part of the previous chapters but can help fill some gaps during microservice development. One involves choosing better and more appropriate JSON serializers and de-serializers when converting a huge amount of data into JSON. Also, the advanced customizations, session handling, message body encryption and decryption, and testing API endpoints gave us a clear understanding of the potential of FastAPI to create cutting-edge and progressive microservice solutions. Also, this chapter introduced different API responses supported by FastAPI, including Jinja2’s <strong class="source-inline">TemplateResponse</strong>. </p>
+			<p>The next chapter will show us the strength of FastAPI in cracking numerical and symbolic computations.</p>
+		</div>
+		<div>
+			<div id="_idContainer074">
+			</div>
+		</div>
+	</body></html>

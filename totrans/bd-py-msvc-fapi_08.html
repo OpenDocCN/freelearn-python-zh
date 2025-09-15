@@ -1,0 +1,671 @@
+<html><head></head><body>
+		<div id="_idContainer064">
+			<h1 id="_idParaDest-225" class="chapter-number"><a id="_idTextAnchor229"/>8</h1>
+			<h1 id="_idParaDest-226"><a id="_idTextAnchor230"/>Creating Coroutines, Events, and Message-Driven Transactions</h1>
+			<p>The FastAPI framework is an asynchronous framework that runs over the asyncio platform, which utilizes the ASGI protocol. It is well known for its 100% support for asynchronous endpoints and non-blocking tasks. This chapter will focus on how we create highly scalable applications with asynchronous tasks and event-driven and message-driven transactions.</p>
+			<p>We learned in <a href="B17975_02.xhtml#_idTextAnchor033"><em class="italic">Chapter 2</em></a><em class="italic">, Exploring the Core Features</em>, that <em class="italic">Async/Await</em> or asynchronous programming is a design pattern that enables other services or transactions to run outside the main thread. The framework uses the <strong class="source-inline">async</strong> keyword to create asynchronous processes that will run on top of other thread pools and will be <em class="italic">awaited</em>, instead of invoking them directly. The number of external threads is defined during the Uvicorn server startup through the <strong class="source-inline">--worker</strong> option.</p>
+			<p>In this chapter, we will delve into the framework and scrutinize the various components of the FastAPI Framework that can run asynchronously using multiple threads. The following highlights will help us understand how asynchronous FastAPI is: </p>
+			<ul>
+				<li>Implementing coroutines</li>
+				<li>Creating asynchronous background tasks</li>
+				<li>Understanding Celery tasks</li>
+				<li>Building message-driven transactions using RabbitMQ</li>
+				<li>Building publish/subscribe messaging using Kafka</li>
+				<li>Applying reactive programming in tasks</li>
+				<li>Customizing events</li>
+				<li>Implementing asynchronous <strong class="bold">Server-Sent Events</strong> (<strong class="bold">SSE</strong>)</li>
+				<li>Building an asynchronous WebSocket</li>
+			</ul>
+			<h1 id="_idParaDest-227"><a id="_idTextAnchor231"/>Technical requirements</h1>
+			<p>This chapter will cover asynchronous features, software specifications, and the components of a <em class="italic">newsstand management system</em> prototype. The discussions will use this online newspaper management system prototype as a specimen to understand, explore, and implement asynchronous transactions that will manage the <em class="italic">newspaper content</em>, <em class="italic">subscription</em>, <em class="italic">billing</em>, <em class="italic">user profiles</em>, <em class="italic">customers</em>, and other business-related transactions. The code has all been uploaded to <a href="https://github.com/PacktPublishing/Building-Python-Microservices-with-FastAPI">https://github.com/PacktPublishing/Building-Python-Microservices-with-FastAPI</a> under the <strong class="source-inline">ch08</strong> project.</p>
+			<h1 id="_idParaDest-228"><a id="_idTextAnchor232"/>Implementing coroutines</h1>
+			<p>In the FastAPI framework, a <em class="italic">thread pool</em> is always <a id="_idIndexMarker631"/>present to execute both synchronous API and non-API <a id="_idIndexMarker632"/>transactions for every request. For ideal cases where both the transactions have minimal performance overhead with <em class="italic">CPU-bound</em> and <em class="italic">I/O-bound</em> transactions, the overall performance of using the FastAPI framework is still better than those frameworks that use non-ASGI-based platforms. However, when contention occurs due to high CPU-bound traffic or heavy CPU workloads, the performance of FastAPI starts to wane due to <em class="italic">thread switching</em>. </p>
+			<p>Thread switching is a context switch from one thread to another within the same process. So, if we have <a id="_idIndexMarker633"/>several transactions with varying workloads running in the background and on the browser, FastAPI will run these transactions in the thread pool with several context switches. This scenario will cause contention and degradation to lighter workloads. To avoid performance issues, we apply <em class="italic">coroutine switching</em> instead of threads.</p>
+			<h2 id="_idParaDest-229"><a id="_idTextAnchor233"/>Applying coroutine switching</h2>
+			<p>The FastAPI framework <a id="_idIndexMarker634"/>works at the optimum speed with a mechanism called <em class="italic">coroutine switching</em>. This approach allows transaction-tuned tasks to work cooperatively by allowing other running processes to pause so that the thread can execute and finish more urgent tasks, and resume "awaited" transactions without preempting the thread. These coroutine switches are programmer-defined components and not kernel-related or memory-related features. In FastAPI, there <a id="_idIndexMarker635"/>are two ways of implementing coroutines: (a) applying the <strong class="source-inline">@asyncio.coroutine</strong> decorator, and (b) using the <strong class="source-inline">async</strong>/<strong class="source-inline">await</strong> construct.</p>
+			<h3>Applying @asyncio.coroutine </h3>
+			<p><strong class="source-inline">asyncio</strong> is a Python extension <a id="_idIndexMarker636"/>that implements the Python concurrency paradigm <a id="_idIndexMarker637"/>using a single-threaded and single-process model <a id="_idIndexMarker638"/>and provides API classes and methods for running and managing coroutines. This extension provides an <strong class="source-inline">@asyncio.coroutine</strong> decorator that transforms API and native services into <em class="italic">generator-based coroutines</em>. However, this is an old approach and can only be used in FastAPI that uses Python 3.9 and below. The following is a login service transaction of our <em class="italic">newsstand management system</em> prototype implemented as a coroutine:</p>
+			<pre class="source-code">
+<strong class="bold">@asyncio.coroutine</strong>
+def build_user_list(query_list):
+    user_list = []
+    for record in query_list:
+        <strong class="bold">yield from asyncio.sleep(2)</strong>
+        user_list.append(" ".join([str(record.id), 
+            record.username, record.password]))
+    return user_list</pre>
+			<p><strong class="source-inline">build_user_list()</strong> is a native service that converts all login records into the <strong class="source-inline">str</strong> format. It is decorated with the <strong class="source-inline">@asyncio.coroutine</strong> decorator to transform the transaction into an asynchronous task or coroutine. A coroutine can invoke another coroutine function or method using only the <strong class="source-inline">yield from</strong> clause. This construct pauses the coroutine and passes the control of the thread to the coroutine function invoked. By the way, the <strong class="source-inline">asyncio.sleep()</strong> method is one of the most widely used asynchronous utilities of the <strong class="source-inline">asyncio</strong> module, which can pause a process for a few seconds, but is not the ideal one. On the other hand, the following code is an API service implemented as a coroutine that can minimize contention and performance degradation in client-side executions:</p>
+			<pre class="source-code">
+@router.get("/login/list/all")
+<strong class="bold">@asyncio.coroutine</strong>
+def list_login():
+    repo = LoginRepository()
+    <strong class="bold">result = yield from repo.get_all_login()</strong>
+    data = jsonable_encoder(result)
+    return data</pre>
+			<p>The <strong class="source-inline">list_login()</strong> API service retrieves all the login details of the application’s users through a coroutine CRUD transaction implemented in <em class="italic">GINO ORM</em>. The API service again uses the <strong class="source-inline">yield from</strong> clause to run and execute the <strong class="source-inline">get_all_login()</strong> coroutine function.</p>
+			<p>A coroutine function can <a id="_idIndexMarker639"/>invoke and await multiple coroutines concurrently <a id="_idIndexMarker640"/>using the <strong class="source-inline">asyncio.gather()</strong> utility. This <strong class="source-inline">asyncio</strong> method manages a list of coroutines and waits until all its coroutines have completed their tasks. Then, it will return a list of results from the corresponding coroutines. The following code is an API that retrieves login records through an asynchronous CRUD transaction and then invokes <strong class="source-inline">count_login()</strong> and <strong class="source-inline">build_user_list()</strong> concurrently to process these records:</p>
+			<pre class="source-code">
+@router.get("/login/list/records")
+<strong class="bold">@asyncio.coroutine</strong>
+def list_login_records():
+    repo = LoginRepository()
+    login_data = yield from repo.get_all_login()
+    <strong class="bold">result = yield from </strong>
+       <strong class="bold">asyncio.gather(count_login(login_data), </strong>
+            <strong class="bold">build_user_list(login_data))</strong>
+    data = jsonable_encoder(<strong class="bold">result[1]</strong>)
+    return {'num_rec': <strong class="bold">result[0]</strong>, 'user_list': <strong class="bold">data</strong>}</pre>
+			<p><strong class="source-inline">list_login_records()</strong> uses <strong class="source-inline">asyncio.gather()</strong> to run the <strong class="source-inline">count_login()</strong> and <strong class="source-inline">build_user_list()</strong> tasks <a id="_idIndexMarker641"/>and later extract <a id="_idIndexMarker642"/>their corresponding returned values for processing.</p>
+			<h3>Using the async/await construct</h3>
+			<p>Another way of <a id="_idIndexMarker643"/>implementing a coroutine is using <strong class="source-inline">async</strong>/<strong class="source-inline">await</strong> constructs. As <a id="_idIndexMarker644"/>with the previous approach, this syntax creates a task that can pause anytime during its operation before <a id="_idIndexMarker645"/>it reaches the end. But the kind of coroutine that this approach produces is called a <em class="italic">native coroutine</em>, which is not iterable in the way that the generator type is. The <strong class="source-inline">async</strong>/<strong class="source-inline">await</strong> syntax also allows the creation of other asynchronous components such as the <strong class="source-inline">async with</strong> context managers and <strong class="source-inline">async for</strong> iterators. The following code is the <strong class="source-inline">count_login()</strong> task previously invoked in the generator-based coroutine service, <strong class="source-inline">list_login_records()</strong>:</p>
+			<pre class="source-code">
+<strong class="bold">async</strong> def count_login(query_list):
+    <strong class="bold">await asyncio.sleep(2)</strong>
+    return len(query_list)</pre>
+			<p>The <strong class="source-inline">count_login()</strong> native service is a native coroutine because of the <strong class="source-inline">async</strong> keyword placed before its method definition. It only uses <strong class="source-inline">await</strong> to invoke other coroutines. The <strong class="source-inline">await</strong> keyword suspends the execution of the current coroutine and passes the control of the thread to the invoked coroutine function. After the invoked coroutine finishes its process, the thread control will yield back to the caller coroutine. Using the <strong class="source-inline">yield from</strong> construct instead of <strong class="source-inline">await</strong> will raise an error because our coroutine here is not generator-based. The following is an API service implemented as a native coroutine that manages data entry for the new administrator profiles:</p>
+			<pre class="source-code">
+@router.post("/admin/add")
+<strong class="bold">async</strong> def add_admin(req: AdminReq):
+    admin_dict = req.dict(exclude_unset=True)
+    repo = AdminRepository()
+    <strong class="bold">result = await repo.insert_admin(admin_dict)</strong>
+    if result == True: 
+        return req 
+    else: 
+        return JSONResponse(content={'message':'update 
+            trainer profile problem encountered'}, 
+              status_code=500)</pre>
+			<p>Both generator-based and native coroutines are monitored and managed by an <em class="italic">event loop</em>, which represents <a id="_idIndexMarker646"/>an infinite loop inside a thread. Technically, it is an <a id="_idIndexMarker647"/>object found in the <em class="italic">thread</em>, and each <em class="italic">thread</em> in the thread pool can only have one event loop, which contains a list of helper <a id="_idIndexMarker648"/>objects called <em class="italic">tasks</em>. Each task, pre-generated or manually created, executes one coroutine. For instance, when the previous <strong class="source-inline">add_admin()</strong> API service invokes the <strong class="source-inline">insert_admin()</strong> coroutine transaction, the event loop will suspend <strong class="source-inline">add_admin()</strong> and tag its task as an <em class="italic">awaited</em> task. Afterward, the event loop will assign a task to run the <strong class="source-inline">insert_admin()</strong> transaction. Once the task has completed its execution, it will yield the control back to <strong class="source-inline">add_admin()</strong>. The thread that manages the FastAPI application is not interrupted during these shifts of execution since it is the event loop and its tasks that participate in the <em class="italic">coroutine switching</em> mechanism. Let us now use these coroutines to build our application</p>
+			<h2 id="_idParaDest-230"><a id="_idTextAnchor234"/>Designing asynchronous transactions</h2>
+			<p>There are a few <a id="_idIndexMarker649"/>programming paradigms that we can follow <a id="_idIndexMarker650"/>when creating coroutines for our application. Utilizing more coroutine switching in the process can help improve the software performance. In our <em class="italic">newsstand</em> application, there is an endpoint, <strong class="source-inline">/admin/login/list/enc</strong>, in the <strong class="source-inline">admin.py</strong> router that returns a list of encrypted user details. In its API service, shown in the following code, each record is managed by an <strong class="source-inline">extract_enc_admin_profile()</strong> transaction call instead of passing the whole data record to a single call, thus allowing the concurrent executions of tasks. This strategy is better than running the bulk of transactions in a thread without <em class="italic">context switches</em>:</p>
+			<pre class="source-code">
+<strong class="bold">@router.get("/admin/login/list/enc")</strong>
+<strong class="bold">async </strong>def generate_encypted_profile():
+    repo = AdminLoginRepository()
+    <strong class="bold">result = await repo.join_login_admin()</strong>
+    <strong class="bold">encoded_data = await asyncio.gather(</strong>
+       <strong class="bold">*(extract_enc_admin_profile(rec) for rec in result))</strong>
+    return encoded_data</pre>
+			<p>Now, the <strong class="source-inline">extract_enc_admin_profile()</strong> coroutine, shown in the following code, implements a chaining design pattern, where it calls the other smaller coroutines through a <a id="_idIndexMarker651"/>chain. Simplifying and breaking down the <a id="_idIndexMarker652"/>monolithic and complex processes into smaller but more robust coroutines will improve the application’s performance by utilizing more context switches. In this API, <strong class="source-inline">extract_enc_admin_profile()</strong> creates three context switches in a chain, better than thread switches:</p>
+			<pre class="source-code">
+<strong class="bold">async def extract_enc_admin_profile(admin_rec):</strong>
+    <strong class="bold">p = await extract_profile(admin_rec)</strong>
+    <strong class="bold">pinfo = await extract_condensed(p)</strong>
+    <strong class="bold">encp = await decrypt_profile(pinfo)</strong>
+    return encp</pre>
+			<p>On the other hand, the following implementation is the smaller subroutines awaited and executed by <strong class="source-inline">extract_enc_admin_profile()</strong>:</p>
+			<pre class="source-code">
+<strong class="bold">async def extract_profile(admin_details):</strong>
+    profile = {}
+    login = admin_details.parent
+    profile['firstname'] = admin_details.firstname
+    … … … … … …
+    profile['password'] = login.password 
+    await asyncio.sleep(1)
+    return profile
+<strong class="bold">async def extract_condensed(profiles):</strong>
+    profile_info = " ".join([profiles['firstname'], 
+       profiles['lastname'], profiles['username'], 
+       profiles['password']])
+    await asyncio.sleep(1)
+    return profile_info 
+<strong class="bold">async def decrypt_profile(profile_info):</strong>
+    key = Fernet.generate_key()
+    fernet = Fernet(key)
+    encoded_profile = fernet.encrypt(profile_info.encode())
+    return encoded_profile</pre>
+			<p>These three subroutines will give the main coroutine the encrypted <strong class="source-inline">str</strong> that contains the details of an administrator profile. All these encrypted strings will be collated by the API service using the <strong class="source-inline">asyncio.gather()</strong> utility.</p>
+			<p>Another programming approach to utilizing the coroutine switching is the use of pipelines created <a id="_idIndexMarker653"/>by <strong class="source-inline">asyncio.Queue</strong>. In this programming design, the <a id="_idIndexMarker654"/>queue structure is the common point between two tasks: (a) the task that will place a value to the queue called the <em class="italic">producer</em>, and (b) the task that will fetch the item from the queue, the <em class="italic">consumer</em>. We can implement a <em class="italic">one producer/one consumer</em> interaction or a <em class="italic">multiple producers/multiple consumers</em> setup with this approach. </p>
+			<p>The following code highlights the <strong class="source-inline">process_billing()</strong> native service that builds a <em class="italic">producer/consumer</em> transaction flow. The <strong class="source-inline">extract_billing()</strong> coroutine is the producer that retrieves the billing records from the database and passes each record one at a time to the queue. <strong class="source-inline">build_billing_sheet()</strong>, on the other hand, is the <a id="_idIndexMarker655"/>consumer that fetches the record from the queue structure and <a id="_idIndexMarker656"/>generates the billing sheet:</p>
+			<pre class="source-code">
+<strong class="bold">async def process_billing(query_list):</strong>
+    billing_list = []
+    
+    <strong class="bold">async def extract_billing(qlist, q: Queue):</strong>
+        assigned_billing = {}
+        for record in qlist:
+            await asyncio.sleep(2)
+            assigned_billing['admin_name'] = "{} {}"
+              .format(record.firstname, record.lastname)
+            if not len(record.children) == 0:
+                assigned_billing['billing_items'] = 
+                      record.children
+            else:
+                assigned_billing['billing_items'] = None
+            
+            await q.put(assigned_billing)
+    <strong class="bold">async def build_billing_sheet(q: Queue):</strong>
+        while True: 
+            await asyncio.sleep(2)
+            assigned_billing = await q.get()
+            name = assigned_billing['admin_name']
+            billing_items = 
+                assigned_billing['billing_items']
+            if not billing_items == None:
+                for item in billing_items:
+                    billing_list.append(
+                    {'admin_name': name, 'billing': item})
+            else: 
+                billing_list.append(
+                    {'admin_name': name, 'billing': None})
+            q.task_done()</pre>
+			<p>In this programming design, the <strong class="source-inline">build_billing()</strong> coroutine will explicitly wait for the record queued by <strong class="source-inline">extract_billing()</strong>. This setup is possible due to the <strong class="source-inline">asyncio.create_task()</strong> utility, which directly assigns and schedules a task to each coroutine. </p>
+			<p>The queue is <a id="_idIndexMarker657"/>the only method parameter common to the <a id="_idIndexMarker658"/>coroutines because it is their common point. The <strong class="source-inline">join()</strong>of <strong class="source-inline">asyncio.Queue</strong> ensures that all the items passed to the pipeline by <strong class="source-inline">extract_billing()</strong> are fetched and processed by <strong class="source-inline">build_billing_sheet()</strong>. It also blocks the external controls that would affect the coroutine interactions. The following code shows how to create <strong class="source-inline">asyncio.Queue</strong> and schedule a task for execution:</p>
+			<pre class="source-code">
+    <strong class="bold">q = asyncio.Queue()</strong>
+    <strong class="bold">build_sheet = asyncio.create_task(</strong>
+               <strong class="bold">build_billing_sheet(q))</strong>
+    await asyncio.gather(<strong class="bold">asyncio.create_task(</strong>
+             <strong class="bold">extract_billing(query_list, q))</strong>)
+    
+    <strong class="bold">await q.join()</strong>
+    <strong class="bold">build_sheet.cancel()</strong>
+    return billing_list</pre>
+			<p>By the way, always pass <strong class="source-inline">cancel()to</strong> the task right after its coroutine has completed the process. On the other hand, we can also apply other ways so that the performance of our coroutines can improve.</p>
+			<h2 id="_idParaDest-231"><a id="_idTextAnchor235"/>Using the HTTP/2 protocol</h2>
+			<p>Coroutine execution can <a id="_idIndexMarker659"/>be faster in applications running <a id="_idIndexMarker660"/>on the <em class="italic">HTTP/2</em> protocol. We can replace the <em class="italic">Uvicorn</em> server with <em class="italic">Hypercorn</em>, which now supports ASGI-based frameworks such as FastAPI. But first, we need to install <strong class="source-inline">hypercorn</strong> using <strong class="source-inline">pip</strong>:</p>
+			<p class="source-code">pip install hypercorn</p>
+			<p>For <em class="italic">HTTP/2</em> to work, we need to create an SSL certificate. Using OpenSSL, our app has two <em class="italic">PEM</em> files for our <em class="italic">newsstand</em> prototype: (a) the private encryption (<strong class="source-inline">key.pem</strong>) and (b) the certificate information (<strong class="source-inline">cert.pem</strong>.) We place these files in the main project folder before executing the following <strong class="source-inline">hypercorn</strong> command to run our FastAPI application:</p>
+			<p class="source-code">hypercorn --keyfile key.pem --certfile cert.pem main:app       --bind 'localhost:8000' --reload</p>
+			<p>Now, let us explore other FastAPI tasks that can also use coroutines.</p>
+			<h1 id="_idParaDest-232"><a id="_idTextAnchor236"/>Creating asynchronous background tasks</h1>
+			<p>In <a href="B17975_02.xhtml#_idTextAnchor033"><em class="italic">Chapter 2</em></a><em class="italic">, Exploring the Core Features</em>, we first showcased the <strong class="source-inline">BackgroundTasks</strong> injectable <a id="_idIndexMarker661"/>API class, but we didn’t mention creating asynchronous background tasks. In this discussion, we will be focusing on creating asynchronous background tasks using the <strong class="source-inline">asyncio</strong> module and coroutines.</p>
+			<h2 id="_idParaDest-233"><a id="_idTextAnchor237"/>Using the coroutines</h2>
+			<p>The framework <a id="_idIndexMarker662"/>supports the creation and execution <a id="_idIndexMarker663"/>of asynchronous background processes using the <strong class="source-inline">async</strong>/<strong class="source-inline">await</strong> structure. The following native service is an asynchronous transaction that generates a billing sheet in CSV format in the background:</p>
+			<pre class="source-code">
+<strong class="bold">async</strong> def generate_billing_sheet(<strong class="bold">billing_date</strong>, <strong class="bold">query_list</strong>):
+    filepath = os.getcwd() + '/data/billing-' + 
+                  str(billing_date) +'.csv'
+    with open(filepath, mode="a") as sheet:
+        for vendor in query_list:
+            billing = vendor.children
+            for record in billing:
+                if billing_date == record.date_billed:
+                    entry = ";".join(
+             [str(record.date_billed), vendor.account_name, 
+              vendor.account_number, str(record.payable),
+              str(record.total_issues) ])
+                    sheet.write(entry)
+                <strong class="bold">await asyncio.sleep(1) </strong></pre>
+			<p>This <strong class="source-inline">generate_billing_sheet()</strong> coroutine service will be executed as a background <a id="_idIndexMarker664"/>task in the following <a id="_idIndexMarker665"/>API service, <strong class="source-inline">save_vendor_billing()</strong>:</p>
+			<pre class="source-code">
+<strong class="bold">@router.post("/billing/save/csv")</strong>
+<strong class="bold">async</strong> def save_vendor_billing(billing_date:date, 
+              <strong class="bold">tasks: BackgroundTasks</strong>):
+    repo = BillingVendorRepository()
+    result = await repo.join_vendor_billing()
+    <strong class="bold">tasks.add_task(generate_billing_sheet, </strong>
+            <strong class="bold">billing_date, result)</strong>
+    <strong class="bold">tasks.add_task(create_total_payables_year, </strong>
+            <strong class="bold">billing_date, result)</strong>
+    return {"message" : "done"}</pre>
+			<p>Now, nothing has changed when it comes to defining background processes. We usually inject <strong class="source-inline">BackgroundTasks</strong> into the API service method and apply <strong class="source-inline">add_task()</strong> to provide task schedules, assignments, and execution for a specific process. But since the approach is now to utilize coroutines, the background task will use the event loop instead of waiting for the current thread to finish its jobs.</p>
+			<p>If the background <a id="_idIndexMarker666"/>process requires <a id="_idIndexMarker667"/>arguments, we pass these arguments to <strong class="source-inline">add_task()</strong> right after its <em class="italic">first parameter</em>. For instance, the arguments for the <strong class="source-inline">billing_date</strong> and <strong class="source-inline">query_list</strong> parameters of <strong class="source-inline">generate_billing_sheet()</strong> should be placed after the <strong class="source-inline">generate_billing_sheet</strong> injection into <strong class="source-inline">add_task()</strong>. Moreover, the <strong class="source-inline">billing_date</strong> value should be passed before the <strong class="source-inline">result</strong> argument because <strong class="source-inline">add_task()</strong> still follows the order of parameter declaration in <strong class="source-inline">generate_billing_sheet()</strong> to avoid a type mismatch.</p>
+			<p>All asynchronous background tasks will continuously execute and will not be <em class="italic">awaited</em> even if their coroutine API service has already returned a response to the client.</p>
+			<h2 id="_idParaDest-234"><a id="_idTextAnchor238"/>Creating multiple tasks</h2>
+			<p><strong class="source-inline">BackgroundTasks</strong> allows the creation of multiple asynchronous transactions that will execute <a id="_idIndexMarker668"/>concurrently in the background. In the <strong class="source-inline">save_vendor_billing()</strong> service, there is another task created for a new transaction called the <strong class="source-inline">create_total_payables_year()</strong> transaction, which requires the same arguments as <strong class="source-inline">generate_billing_sheet()</strong>. Again, this newly created task will be utilizing the event loop instead of the thread.</p>
+			<p>The application always encounters performance issues when the background processes have high-CPU workloads. Also, tasks generated by <strong class="source-inline">BackgroundTasks</strong> are not capable of returning values from the transactions. Let us look for another solution where tasks can manage high workloads and execute processes with returned values.</p>
+			<h1 id="_idParaDest-235"><a id="_idTextAnchor239"/>Understanding Celery tasks</h1>
+			<p><em class="italic">Celery</em> is a non-blocking <a id="_idIndexMarker669"/>task queue that runs on a distributed system. It can manage <a id="_idIndexMarker670"/>asynchronous background processes that are huge and heavy with CPU workloads. It is a third-party tool, so we need to install it first through <strong class="source-inline">pip</strong>:</p>
+			<p class="source-code">pip install celery</p>
+			<p>It schedules and runs tasks concurrently on a single server or distributed environment. But it requires a message transport to send and receive messages, such as <em class="italic">Redis</em>, an in-memory database that can be used as a message broker for messages in strings, dictionaries, lists, sets, bitmaps, and stream types. Also, we can install Redis on Linux, macOS, and Windows. Now, after the installation, run its <strong class="source-inline">redis-server.exe</strong> command to start the server. In Windows, the Redis service is set to run by default after installation, which causes a <em class="italic">TCP bind listener</em> error. So, we need to stop it before running the startup command. <em class="italic">Figure 8.1</em> shows Windows <strong class="bold">Task Manager</strong> with the Redis service giving a <strong class="bold">Stopped</strong> status:</p>
+			<div>
+				<div id="_idContainer058" class="IMG---Figure">
+					<img src="image/Figure_8.01_B17975.jpg" alt="Figure 8.1 – Stopping the Redis service&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 8.1 – Stopping the Redis service</p>
+			<p>After stopping the service, we should now see Redis running as shown in <em class="italic">Figure 8.2</em>:</p>
+			<div>
+				<div id="_idContainer059" class="IMG---Figure">
+					<img src="image/Figure_8.02_B17975.jpg" alt="Figure 8.2 – A running Redis server&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 8.2 – A running Redis server</p>
+			<h2 id="_idParaDest-236"><a id="_idTextAnchor240"/>Creating and configuring the Celery instance</h2>
+			<p>Before creating Celery tasks, we <a id="_idIndexMarker671"/>need a Celery instance placed in a <a id="_idIndexMarker672"/>dedicated module of our application. The <em class="italic">newsstand</em> prototype has the Celery instance in the <strong class="source-inline">/services/billing.py</strong> module, and the following is part of the code that shows the process of Celery instantiation:</p>
+			<pre class="source-code">
+from celery import Celery
+from celery.utils.log import get_task_logger 
+celery = Celery(<strong class="bold">"services.billing"</strong>,   
+   <strong class="bold">broker='redis://localhost:6379/0'</strong>, 
+   <strong class="bold">backend='redis://localhost'</strong>, 
+   <strong class="bold">include=["services.billing", "models", "config"]</strong>)
+class CeleryConfig:
+    <strong class="bold">task_create_missing_queues = True</strong>
+    celery_store_errors_even_if_ignored = True
+    task_store_errors_even_if_ignored = True 
+    task_ignore_result = False
+    <strong class="bold">task_serializer = "pickle"</strong>
+    <strong class="bold">result_serializer = "pickle"</strong>
+    event_serializer = "json"
+    <strong class="bold">accept_content = ["pickle", "application/json", </strong>
+          <strong class="bold">"application/x-python-serialize"]</strong>
+    <strong class="bold">result_accept_content = ["pickle", "application/json",</strong>
+          <strong class="bold">"application/x-python-serialize"]</strong>
+celery.config_from_object(CeleryConfig)
+celery_log = get_task_logger(__name__)</pre>
+			<p>To create <a id="_idIndexMarker673"/>the Celery <a id="_idIndexMarker674"/>instance, we need the following details:</p>
+			<ul>
+				<li>The name of the current module containing the Celery instance (the first argument)</li>
+				<li>The URL of Redis as our message broker (<strong class="source-inline">broker</strong>)</li>
+				<li>The backend result where the results of tasks are stored and monitored (<strong class="source-inline">backend</strong>)</li>
+				<li>The list of other modules used in the message body or by the Celery task (<strong class="source-inline">include</strong>)</li>
+			</ul>
+			<p>After the instantiation, we need to set the appropriate serializer and content types to process the incoming and outgoing message body of the tasks involved, if there are any. To allow the passing of full Python objects with non-JSON-able values, we need to include <strong class="source-inline">pickle</strong> as a supported content type, then declare a default task and result serializer to the object stream. However, using a <strong class="source-inline">pickle</strong> serializer poses some security issues because it <a id="_idIndexMarker675"/>tends to expose some transaction data. To avoid compromising the <a id="_idIndexMarker676"/>app, apply sanitation to message objects, such as removing sensitive values or credentials, before pursuing the messaging operation. </p>
+			<p>Apart from the serialization options, other important properties such as <strong class="source-inline">task_create_missing_queues</strong>, <strong class="source-inline">task_ignore_result</strong>, and error-related configuration should also be part of the <strong class="source-inline">CeleryConfig</strong> class. Now, we declare all these details in a custom class, which we will inject into the <strong class="source-inline">config_from_object()</strong> method of the Celery instance.</p>
+			<p>Additionally, we can create a Celery logger through its <strong class="source-inline">get_task_logger()</strong>with the name of the current task.</p>
+			<h2 id="_idParaDest-237"><a id="_idTextAnchor241"/>Creating the task</h2>
+			<p>The main goal of the <em class="italic">Celery instance</em> is to annotate Python methods to become tasks. The Celery instance has a <strong class="source-inline">task()</strong> decorator that we can apply to all callable procedures we want <a id="_idIndexMarker677"/>to define as asynchronous tasks. Part of the <strong class="source-inline">task()</strong> decorator is the task’s <strong class="source-inline">name</strong>, an optional unique name composed of the <em class="italic">package</em>, <em class="italic">module name(s)</em>, and the <em class="italic">method name of the transaction</em>. It has other attributes that can add more refinement to the task definition, such as the <strong class="source-inline">auto_retry</strong> list, which registers <strong class="source-inline">Exception</strong> classes that may cause execution retries when emitted, and <strong class="source-inline">max_tries</strong>, which limits the number of retry executions of a task. By the way, Celery 5.2.3 and below can only define tasks from <em class="italic">non-coroutine methods</em>. </p>
+			<p>The <strong class="source-inline">services.billing.tasks.create_total_payables_year_celery</strong> task shown here adds all the payable amounts per date and returns the total amount:</p>
+			<pre class="source-code">
+<strong class="bold">@celery.task(</strong>
+    <strong class="bold">name="services.billing.tasks</strong>
+            <strong class="bold">.create_total_payables_year_celery", </strong>
+                <strong class="bold">auto_retry=[ValueError, TypeError]</strong>, 
+                  <strong class="bold">max_tries=5)</strong>
+def create_total_payables_year_celery(billing_date,
+              query_list):
+        total = 0.0
+        for vendor in query_list:
+            billing = vendor.children
+            for record in billing:
+                if billing_date == record.date_billed:
+                    total += record.payable      
+        <strong class="bold">celery_log.info('computed result: ' + str(total))</strong>
+        return total   </pre>
+			<p>The given task has only five (<strong class="source-inline">5</strong>) retries to recover when it encounters either <strong class="source-inline">ValueError</strong> or <strong class="source-inline">TypeError</strong> at runtime. Also, it is a function that returns a computed amount, which <a id="_idIndexMarker678"/>is impossible to create when using <strong class="source-inline">BackgroundTasks</strong>. All functional tasks use the <em class="italic">Redis</em> database as the temporary storage for their returned values, which is the reason there is a backend parameter in the Celery constructor. </p>
+			<h2 id="_idParaDest-238"><a id="_idTextAnchor242"/>Calling the task</h2>
+			<p>FastAPI services can call these tasks using the <strong class="source-inline">apply_async()</strong>or <strong class="source-inline">delay()</strong>function. The latter is the <a id="_idIndexMarker679"/>easier option since it is preconfigured and only needs the parameters for the transaction to get the result. The <strong class="source-inline">apply_async()</strong> function is a better option since it accepts more details that can optimize the task execution. These details are <strong class="source-inline">queue</strong>, <strong class="source-inline">time_limit</strong>, <strong class="source-inline">retry</strong>, <strong class="source-inline">ignore_result</strong>, <strong class="source-inline">expires</strong>, and some <strong class="source-inline">kwargs</strong> of arguments. But both these functions return an <strong class="source-inline">AsyncResult</strong> object, which returns resources such as the task’s <strong class="source-inline">state</strong>, the <strong class="source-inline">wait()</strong> function to help the task finish its operation, and the <strong class="source-inline">get()</strong> function to return its computed value or an exception. The following code is a coroutine API service that calls the <strong class="source-inline">services.billing.tasks.create_total_payables_year_celery</strong> task using the <strong class="source-inline">apply_async</strong> method:</p>
+			<pre class="source-code">
+@router.post("/billing/total/payable")
+<strong class="bold">async</strong> def compute_payables_yearly(billing_date:date):
+    repo = BillingVendorRepository()
+    <strong class="bold">result = await repo.join_vendor_billing()</strong>
+    <strong class="bold">total_result = create_total_payables_year_celery</strong>
+       <strong class="bold">.apply_async(queue='default', </strong>
+            <strong class="bold">args=(billing_date, result))</strong>
+    <strong class="bold">total_payable = total_result.get(timeout=1)</strong>
+    return {"total_payable": total_payable }</pre>
+			<p>Setting <strong class="source-inline">task_create_missing_queues</strong> to <strong class="source-inline">True</strong> at the <strong class="source-inline">CeleryConfig</strong> setup is always recommended because it automatically creates the task <strong class="source-inline">queue</strong>, default or not, once the worker <a id="_idIndexMarker680"/>server starts. The worker server places all the loaded tasks in a task <strong class="source-inline">queue</strong> for execution, monitoring, and result retrieval. Thus, we should always define a task <strong class="source-inline">queue</strong> in the <strong class="source-inline">apply_async()</strong> function’s argument before extracting <strong class="source-inline">AsyncResult</strong>.</p>
+			<p>The <strong class="source-inline">AsyncResult</strong> object has a <strong class="source-inline">get()</strong> method that releases the returned value of the task from the <strong class="source-inline">AsyncResult</strong> instance, with or without a timeout. In the <strong class="source-inline">compute_payables_yearly()</strong> service, the amount payable in <strong class="source-inline">AsyncResult</strong> is retrieved by the <strong class="source-inline">get()</strong> function with a timeout of 5 seconds. Let us now deploy and run our tasks using the Celery server</p>
+			<h2 id="_idParaDest-239"><a id="_idTextAnchor243"/>Starting the worker server</h2>
+			<p>Running the Celery <a id="_idIndexMarker681"/>worker creates a single process that handles and manages all the queued tasks. The worker needs to know in which module the Celery instance is created, together with the tasks to establish the server process. In our prototype, the <strong class="source-inline">services.billing</strong> module is where we place our Celery application. Thus, the complete command to start the worker is the following:</p>
+			<p class="source-code">celery  -A services.billing worker -Q default -P solo -c 2 -l info</p>
+			<p>Here, <strong class="source-inline">-A</strong> specifies the module of our Celery object and tasks. The <strong class="source-inline">-Q</strong> option indicates that the worker will be using a <em class="italic">low-</em>,<em class="italic"> normal-</em>,<em class="italic"> or high-priority</em> queue. But first, we need to set <strong class="source-inline">task_create_missing_queues</strong> to <strong class="source-inline">True</strong> in the Celery setup. We also need to indicate the number of threads that the worker needs for task execution by adding the <strong class="source-inline">-c</strong> option. The <strong class="source-inline">-P</strong> option specifies the type of <em class="italic">thread pool</em> that the worker will be utilizing. By default, the Celery worker uses the <strong class="source-inline">prefork pool</strong> applicable to most CPU-bound transactions. Other options are <em class="italic">solo</em>, <em class="italic">eventlet</em>, and <em class="italic">gevent</em>, but our setup will be utilizing <em class="italic">solo</em>, the <a id="_idIndexMarker682"/>most suitable choice for running CPU-intensive tasks in a microservice environment. On the other hand, the <strong class="source-inline">-l</strong> option enables the logger we set using <strong class="source-inline">get_task_logger()</strong> during the setup. Now, there are also ways to monitor our running tasks and one of those options is to use the Flower tool.</p>
+			<h2 id="_idParaDest-240"><a id="_idTextAnchor244"/>Monitoring the tasks</h2>
+			<p><em class="italic">Flower</em> is Celery’s monitoring <a id="_idIndexMarker683"/>tool that observes and monitors all tasks <a id="_idIndexMarker684"/>executions by generating a real-time audit on a web-based platform. But first, we need to install it using <strong class="source-inline">pip</strong>:</p>
+			<p class="source-code">pip install flower</p>
+			<p>And then, we run the following <strong class="source-inline">celery</strong> command with the <strong class="source-inline">flower</strong> option:</p>
+			<p class="source-code">celery -A services.billing flower</p>
+			<p>To view the audit, we run <strong class="source-inline">http://localhost:5555/tasks</strong> on a browser. <em class="italic">Figure 8.3</em> shows a <em class="italic">Flower</em> snapshot of an execution log incurred by the <strong class="source-inline">services.billing.tasks.create_total_payables_year_celery</strong> task:</p>
+			<div>
+				<div id="_idContainer060" class="IMG---Figure">
+					<img src="image/Figure_8.03_B17975.jpg" alt="Figure 8.3 – The Flower monitoring tool&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 8.3 – The Flower monitoring tool</p>
+			<p>So far, we have used Redis as our in-memory backend database for task results and a message broker. Let us now use another asynchronous message broker that can replace Redis, <em class="italic">RabbitMQ</em>. </p>
+			<h1 id="_idParaDest-241"><a id="_idTextAnchor245"/>Building message-driven transactions using RabbitMQ</h1>
+			<p>RabbitMQ is a lightweight <a id="_idIndexMarker685"/>asynchronous message broker that supports <a id="_idIndexMarker686"/>multiple messaging <a id="_idIndexMarker687"/>protocols such as <em class="italic">AMQP</em>, <em class="italic">STOM</em>, <em class="italic">WebSocket</em>, and <em class="italic">MQTT</em>. It requires <em class="italic">erlang</em> before it works properly in <a id="_idIndexMarker688"/>Windows, Linux, or macOS. Its installer can be downloaded from <a href="https://www.rabbitmq.com/download.html">https://www.rabbitmq.com/download.html</a>.</p>
+			<h2 id="_idParaDest-242"><a id="_idTextAnchor246"/>Creating the Celery instance</h2>
+			<p>Instead of using <a id="_idIndexMarker689"/>Redis as the broker, RabbitMQ is a better replacement <a id="_idIndexMarker690"/>as a message broker that will mediate messages between the client and the Celery worker threads. For multiple tasks, RabbitMQ can command the Celery worker to work on these tasks one at a time. The RabbitMQ broker is good for huge messages and it saves these messages to disk memory.</p>
+			<p>To start, we need to set up a new Celery instance that will utilize the RabbitMQ message broker using its <em class="italic">guest</em> account. We will use the AMQP protocol as the mechanism for a producer/consumer type of messaging setup. Here is the snippet that will replace the previous Celery configuration:</p>
+			<pre class="source-code">
+celery = Celery("services.billing",   
+    <strong class="bold">broker='amqp://guest:guest@127.0.0.1:5672',   </strong>
+    <strong class="bold">result_backend='redis://localhost:6379/0', </strong>
+    include=["services.billing", "models", "config"])</pre>
+			<p>Redis will still be the backend resource, as indicated in Celery’s <strong class="source-inline">backend_result</strong>, since it is still simple and easy to control and manage when message traffic increases. Let us now use the RabbitMQ to create and manage message-driven transactions.</p>
+			<h2 id="_idParaDest-243"><a id="_idTextAnchor247"/>Monitoring AMQP messaging</h2>
+			<p>We can configure <a id="_idIndexMarker691"/>the RabbitMQ management <a id="_idIndexMarker692"/>dashboard to monitor the messages handled by RabbitMQ. After the setup, we can log in to the dashboard using the account details to set the broker. <em class="italic">Figure 8.4</em> shows a screenshot of RabbitMQ’s analytics of a situation where the API services called the <strong class="source-inline">services.billing.tasks.create_total_payables_year_celery</strong> task several times:</p>
+			<div>
+				<div id="_idContainer061" class="IMG---Figure">
+					<img src="image/Figure_8.04_B17975.jpg" alt="Figure 8.4 – The RabbitMQ management tool&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 8.4 – The RabbitMQ management tool</p>
+			<p>If the RabbitMQ dashboard fails to capture the behavior of the tasks, the <em class="italic">Flower</em> tool will always be an option for gathering the details about the arguments, <strong class="source-inline">kwargs</strong>, UUID, state, and processing date of the tasks. And if RabbitMQ is not the right messaging tool, we can always resort to <em class="italic">Apache Kafka</em>.</p>
+			<h1 id="_idParaDest-244"><a id="_idTextAnchor248"/>Building publish/subscribe messaging using Kafka</h1>
+			<p>As with <a id="_idIndexMarker693"/>RabbitMQ, <em class="italic">Apache Kafka</em> is an asynchronous messaging <a id="_idIndexMarker694"/>tool used by <a id="_idIndexMarker695"/>applications to send and store messages between producers and consumers. However, it is faster than RabbitMQ because it uses <em class="italic">topics</em> with partitions where producers can append various types of messages across these minute folder-like structures. In this architecture, the consumers can consume all these messages in a parallel mode, unlike in queue-based messaging, which enables producers to send multiple messages to a queue that can only allow message <a id="_idIndexMarker696"/>consumption <a id="_idIndexMarker697"/>sequentially. Within this publish/subscribe architecture, Kafka can handle an exchange of large quantities of data per second in continuous and real-time mode.</p>
+			<p>There are three Python extensions that we can use to integrate the FastAPI services with Kafka, namely the <strong class="source-inline">kafka-python</strong>, <strong class="source-inline">confluent-kafka</strong>, and <strong class="source-inline">pykafka</strong> extensions. Our online <em class="italic">newsstand</em> prototype will use <strong class="source-inline">kafka-python</strong>, so we need to install it using the <strong class="source-inline">pip</strong> command:</p>
+			<p class="source-code">pip install kafka-python</p>
+			<p>Among the three extensions, it is only with <strong class="source-inline">kafka-python</strong> that we can channel and apply Java API libraries to Python for the implementation of a client. We can download Kafka from <a href="https://kafka.apache.org/downloads">https://kafka.apache.org/downloads</a>. </p>
+			<h2 id="_idParaDest-245"><a id="_idTextAnchor249"/>Running the Kafka broker and server</h2>
+			<p>Kafka has a <em class="italic">ZooKeeper</em> server <a id="_idIndexMarker698"/>that manages and synchronizes the <a id="_idIndexMarker699"/>exchange of messages within Kafka’s distributed system. The ZooKeeper server runs as the broker that monitors and maintains the Kafka nodes and topics. The following command starts the server:</p>
+			<p class="source-code">C:\..\kafka\bin\windows\zookeeper-server-start.bat            C:\..\kafka\config\zookeeper.properties</p>
+			<p>Now, we can start the Kafka server by running the following console command:</p>
+			<p class="source-code">C:\..\kafka\bin\windows\kafka-server-start.bat                C:\..\kafka\config\server.properties</p>
+			<p>By default, the server will run on localhost at port <strong class="source-inline">9092</strong>.</p>
+			<h2 id="_idParaDest-246"><a id="_idTextAnchor250"/>Creating the topic</h2>
+			<p>When the two <a id="_idIndexMarker700"/>servers have started, we can now create a topic called <strong class="source-inline">newstopic</strong> through the following command:</p>
+			<p class="source-code">C:\..\kafka-topics.bat --create --bootstrap-server             localhost:9092 --replication-factor 1 --partitions 3         --topic newstopic</p>
+			<p>The <strong class="source-inline">newstopic</strong> topic has three (<strong class="source-inline">3</strong>) partitions that will hold all the appended messages of our FastAPI services. These are also the points where the consumers will simultaneously access all the published messages.</p>
+			<h2 id="_idParaDest-247"><a id="_idTextAnchor251"/>Implementing the publisher</h2>
+			<p>After creating <a id="_idIndexMarker701"/>the topic, we can now implement a producer that publishes messages to the Kafka cluster. The <strong class="source-inline">kafka-python</strong> extension has a <strong class="source-inline">KafkaProducer</strong> class that instantiates a single thread-safe producer for all the running FastAPI threads. The following is an API service that sends a newspaper messenger record to the Kafka <strong class="source-inline">newstopic</strong> topic for the consumer to access and process:</p>
+			<pre class="source-code">
+<strong class="bold">from kafka import KafkaProducer</strong>
+<strong class="bold">producer = KafkaProducer(</strong>
+     <strong class="bold">bootstrap_servers='localhost:9092')</strong>
+def <strong class="bold">json_date_serializer</strong>(obj):
+    if isinstance(obj, (datetime, date)):
+        return obj.isoformat()
+    raise TypeError ("Data %s not serializable" % 
+             type(obj))
+@router.post("/messenger/kafka/send")
+async def send_messnger_details(req: MessengerReq): 
+    messenger_dict = req.dict(exclude_unset=True)
+    <strong class="bold">producer.send("newstopic", </strong>
+       <strong class="bold">bytes(str(json.dumps(messenger_dict, </strong>
+          <strong class="bold">default=json_date_serializer)), 'utf-8')) </strong>
+    return {"content": "messenger details sent"}</pre>
+			<p>The coroutine <a id="_idIndexMarker702"/>API service, <strong class="source-inline">send_messenger_details()</strong>, asks for details about a newspaper messenger and stores them in a <strong class="source-inline">BaseModel</strong> object. And then, it sends the dictionary of profile details to the cluster in byte format. Now, one of the options to consume Kafka tasks is to run its built-in <strong class="source-inline">kafka-console-consumer.bat</strong> command.</p>
+			<h2 id="_idParaDest-248"><a id="_idTextAnchor252"/>Running a consumer on a console</h2>
+			<p>Running the <a id="_idIndexMarker703"/>following command from the console is one way to consume the current messages from the <strong class="source-inline">newstopic</strong> topic:</p>
+			<p class="source-code">kafka-console-consumer.bat --bootstrap-server                                                                                                                                                                                                                 127.0.0.1:9092 --topic newstopic</p>
+			<p>This command creates a consumer that will connect to the Kafka cluster to read in real time the current messages from <strong class="source-inline">newtopic</strong> sent by the producer. <em class="italic">Figure 8.5</em> shows the capture of the consumer while it is running on the console:</p>
+			<div>
+				<div id="_idContainer062" class="IMG---Figure">
+					<img src="image/Figure_8.05_B17975.jpg" alt="Figure 8.5 – The Kafka consumer &#13;&#10;"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 8.5 – The Kafka consumer </p>
+			<p>If we want the consumer to read all the messages sent by the producer starting from the point where the Kafka server and broker began running, we need to add the <strong class="source-inline">--from-beginning</strong> option to the command. The following will read all the messages from <strong class="source-inline">newstopic</strong> and continuously capture incoming messages in real time:</p>
+			<p class="source-code">kafka-console-consumer.bat --bootstrap-server 127.0.0.1:9092 --topic newstopic --from-beginning</p>
+			<p>Another way of implementing a consumer using the FastAPI framework is through SSE. Typical API service <a id="_idIndexMarker704"/>implementation will not work with the Kafka consumer requirement since we need a continuously running service that subscribes to <strong class="source-inline">newstopic</strong> for real-time data. So, let us now explore how we create SSE in the FastAPI framework and how it will consume Kafka messages. </p>
+			<h1 id="_idParaDest-249"><a id="_idTextAnchor253"/>Implementing asynchronous Server-Sent Events (SSE)</h1>
+			<p>SSE is a server push <a id="_idIndexMarker705"/>mechanism that sends data to the <a id="_idIndexMarker706"/>browser without reloading the page. Once subscribed, it generates event-driven streams in real time for various purposes. </p>
+			<p>Creating SSE in the FastAPI framework only requires the following:</p>
+			<ul>
+				<li>The <strong class="source-inline">EventSourceResponse</strong> class from the <strong class="source-inline">sse_starlette.see</strong> module</li>
+				<li>An event generator</li>
+			</ul>
+			<p>Above all, the framework also allows non-blocking implementation of the whole server push mechanism using coroutines that can run even on <em class="italic">HTTP/2</em>. The following is a coroutine API service that implements a Kafka consumer using SSE’s open and lightweight protocol:</p>
+			<pre class="source-code">
+<strong class="bold">from sse_starlette.sse import EventSourceResponse</strong>
+<strong class="bold">@router.get('/messenger/sse/add')</strong>
+async def send_message_stream(request: Request):
+        
+    <strong class="bold">async def event_provider():</strong>
+        while True:
+            <strong class="bold">if await request.is_disconnected():</strong>
+                break
+            <strong class="bold">message = consumer.poll()</strong>
+            if not len(message.items()) == 0:
+                for tp, records in message.items():
+                   for rec in records:
+                     messenger_dict = 
+                      json.loads(rec.value.decode('utf-8'),
+                       object_hook=date_hook_deserializer )
+                                             
+                     <strong class="bold">repo = MessengerRepository()</strong>
+                     <strong class="bold">result = await </strong>
+                      <strong class="bold">repo.insert_messenger(messenger_dict)</strong>
+                     id = uuid4()
+                     <strong class="bold">yield {</strong>
+                       <strong class="bold">"event": "Added … status: {},  </strong>
+                           <strong class="bold">Received: {}". format(result, </strong>
+                            <strong class="bold">datetime.utcfromtimestamp(</strong>
+                               <strong class="bold">rec.timestamp // 1000)</strong>
+                               <strong class="bold">.strftime("%B %d, %Y </strong>
+                                      <strong class="bold">[%I:%M:%S %p]")),</strong>
+                       <strong class="bold">"id": str(id),</strong>
+                       <strong class="bold">"retry": SSE_RETRY_TIMEOUT,</strong>
+                       <strong class="bold">"data": rec.value.decode('utf-8')</strong>
+                      <strong class="bold">}</strong>
+            
+            await asyncio.sleep(SSE_STREAM_DELAY)
+    return <strong class="bold">EventSourceResponse(event_provider())</strong></pre>
+			<p><strong class="source-inline">send_message_stream()</strong> is a coroutine API service that implements the whole SSE. It returns a special response generated by an <strong class="source-inline">EventSourceResponse</strong> function. While the HTTP stream is open, it continuously retrieves data from its source and converts any internal events into SSE signals until the connection is closed. </p>
+			<p>On the other hand, event generator functions create internal events, which can also be asynchronous. <strong class="source-inline">send_message_stream()</strong>, for instance, has a nested generator function, <strong class="source-inline">event_provider()</strong>, which consumes the last message sent by the producer service using the <strong class="source-inline">consumer.poll()</strong> method. If the message is valid, the generator <a id="_idIndexMarker707"/>converts the message retrieved into a <strong class="source-inline">dict</strong> object and inserts all its details into the database through <strong class="source-inline">MessengerRepository</strong>. Then, it yields all the internal details for the <strong class="source-inline">EventSourceResponse</strong> function to convert into SSE signals. <em class="italic">Figure 8.6</em> shows the data streams generated by <strong class="source-inline">send_message_stream()</strong>rendered from the browser:</p>
+			<div>
+				<div id="_idContainer063" class="IMG---Figure">
+					<img src="image/Figure_8.06_B17975.jpg" alt="Figure 8.6 – The SSE data streams&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 8.6 – The SSE data streams</p>
+			<p>Another way to implement a Kafka consumer is through <em class="italic">WebSocket</em>. But this time, we will focus on the general procedure of how to create an asynchronous WebSocket application using the FastAPI framework.</p>
+			<h1 id="_idParaDest-250"><a id="_idTextAnchor254"/>Building an asynchronous WebSocket</h1>
+			<p>Unlike in SSE, connection in WebSocket is always <em class="italic">bi-directional</em>, which means the server and client <a id="_idIndexMarker708"/>communicate with each other using a long TCP socket connection. The communication is always in real time and it doesn’t require the client or the server to reply to every event sent.</p>
+			<h2 id="_idParaDest-251"><a id="_idTextAnchor255"/>Implementing the asynchronous WebSocket endpoint</h2>
+			<p>The FastAPI <a id="_idIndexMarker709"/>framework allows the implementation of an asynchronous WebSocket that can also run on the <em class="italic">HTTP/2</em> protocol. The following is an example of an asynchronous WebSocket created using the coroutine block:</p>
+			<pre class="source-code">
+import asyncio
+<strong class="bold">from fastapi import WebSocket</strong>
+<strong class="bold">@router.websocket("/customer/list/ws")</strong>
+async def customer_list_ws(<strong class="bold">websocket: WebSocket</strong>):
+    await websocket.accept()
+    repo = CustomerRepository()
+    <strong class="bold">result = await repo.get_all_customer()</strong>
+    
+    <strong class="bold">for rec in result:</strong>
+        data = rec.to_dict()
+        <strong class="bold">await websocket.send_json(json.dumps(data, </strong>
+           <strong class="bold">default=json_date_serializer))</strong>
+        await asyncio.sleep(0.01)
+        <strong class="bold">client_resp = await websocket.receive_json()</strong>
+        print("Acknowledging receipt of record id 
+           {}.".format(client_resp['rec_id']))
+    <strong class="bold">await websocket.close()    </strong></pre>
+			<p>First, we decorate a coroutine function with <strong class="source-inline">@router.websocket()</strong> when using APIRouter, or <strong class="source-inline">@api.websocket()</strong> when using the FastAPI decorator to declare a WebSocket component. The decorator must also define a unique endpoint URL for the WebSocket. Then, the WebSocket function must have an injected <strong class="source-inline">WebSocket</strong> as its first method argument. It can also include other parameters such as query and header parameters.</p>
+			<p>The <strong class="source-inline">WebSocket</strong> injectable has four ways for sending messages, namely <strong class="source-inline">send()</strong>, <strong class="source-inline">send_text()</strong>, <strong class="source-inline">send_json()</strong>, and <strong class="source-inline">send_bytes()</strong>. Applying <strong class="source-inline">send()</strong> will always manage <a id="_idIndexMarker710"/>every message as plain text by default. The previous <strong class="source-inline">customer_list_ws()</strong>coroutine is a WebSocket that sends every customer record in JSON format.</p>
+			<p>On the other hand, there are also four methods the WebSocket injectable can provide, and these are the <strong class="source-inline">receive()</strong>, <strong class="source-inline">receive_text()</strong>, <strong class="source-inline">receive_json()</strong>, and <strong class="source-inline">receive_bytes()</strong> methods. The <strong class="source-inline">receive()</strong> method expects the message to be in plain-text format by default. Now, our <strong class="source-inline">customer_list_ws()</strong> endpoint expects a JSON reply from a client because it invokes the <strong class="source-inline">receive_json()</strong> method after its send message operation. </p>
+			<p>The WebSocket endpoint must close the connection right after its transaction is done.</p>
+			<h2 id="_idParaDest-252"><a id="_idTextAnchor256"/>Implementing the WebSocket client</h2>
+			<p>There are many <a id="_idIndexMarker711"/>ways to create a WebSocket client but this chapter will focus on utilizing a coroutine API service that will perform a handshake with the asynchronous <strong class="source-inline">customer_list_ws()</strong> endpoint once called on a browser or a <strong class="source-inline">curl</strong> command. Here is the code of our WebSocket client implemented using the <strong class="source-inline">websockets</strong> library that runs on top of the <strong class="source-inline">asyncio</strong> framework:</p>
+			<pre class="source-code">
+<strong class="bold">import websockets</strong>
+<strong class="bold">@router.get("/customer/wsclient/list/")  </strong>
+async def customer_list_ws_client():
+    <strong class="bold">uri = "ws://localhost:8000/ch08/customer/list/ws"</strong>
+    <strong class="bold">async with websockets.connect(uri) as websocket:</strong>
+        while True:
+           try:
+             <strong class="bold">res = await websocket.recv()</strong>
+             <strong class="bold">data_json = json.loads(res, </strong>
+                <strong class="bold">object_hook=date_hook_deserializer)</strong>
+                   
+             print("Received record: 
+                       {}.".format(data_json))
+                   
+             <strong class="bold">data_dict = json.loads(data_json)</strong>
+             <strong class="bold">client_resp = {"rec_id": data_dict['id'] }</strong>
+             <strong class="bold">await websocket.send(json.dumps(client_resp))</strong>
+                    
+           <strong class="bold">except websockets.ConnectionClosed:</strong>
+                 break
+        return {"message": "done"}</pre>
+			<p>After a successful handshake is created by the <strong class="source-inline">websockets.connect()</strong> method, <strong class="source-inline">customer_list_ws_client()</strong> will have a loop running continuously to fetch all incoming consumer details from the WebSocket endpoint. The message received will be converted into <a id="_idIndexMarker712"/>its dictionary needed by other processes. Now, our client also sends an acknowledgment notification message back to the WebSocket coroutine with JSON data containing the <em class="italic">customer ID</em> of the profile. The loop will stop once the WebSocket endpoint closes its connection.</p>
+			<p>Let us now explore other asynchronous programming features that can work with the FastAPI framework.</p>
+			<h1 id="_idParaDest-253"><a id="_idTextAnchor257"/>Applying reactive programming in tasks</h1>
+			<p>Reactive programming is a <a id="_idIndexMarker713"/>paradigm that involves the generation <a id="_idIndexMarker714"/>of streams that undergo a series of operations to propagate some changes during the process. Python has an <em class="italic">RxPY</em> library that offers several methods that we can apply to these streams asynchronously to extract the terminal result as desired by the subscribers. </p>
+			<p>In the reactive programming paradigm, all intermediate operators working along the streams will execute to propagate some changes if there is an <strong class="source-inline">Observable</strong> instance beforehand and an <strong class="source-inline">Observer</strong> that subscribes to this instance. The main goal of this paradigm is to achieve the desired result at the end of the propagation process using functional programming. </p>
+			<h2 id="_idParaDest-254"><a id="_idTextAnchor258"/>Creating the Observable data using coroutines</h2>
+			<p>It all starts <a id="_idIndexMarker715"/>with the implementation <a id="_idIndexMarker716"/>of a coroutine function that will emit <a id="_idIndexMarker717"/>these streams of data based on a business process. The following is an <strong class="source-inline">Observable</strong> function that emits publication details in <strong class="source-inline">str</strong> format for those publications that did well in sales:</p>
+			<pre class="source-code">
+<strong class="bold">import asyncio</strong>
+<strong class="bold">from rx.disposable import Disposable</strong>
+<strong class="bold">async def process_list(observer):</strong>
+      repo = SalesRepository()
+      result = await repo.get_all_sales()
+      
+      for item in result:
+        record = " ".join([str(item.publication_id),  
+          str(item.copies_issued), str(item.date_issued), 
+          str(item.revenue), str(item.profit), 
+          str(item.copies_sold)])
+        cost = item.copies_issued * 5.0
+        projected_profit = cost - item.revenue
+        diff_err = projected_profit - item.profit
+        if (diff_err &lt;= 0):
+            <strong class="bold">observer.on_next(record)</strong>
+        else:
+            <strong class="bold">observer.on_error(record)</strong>
+      <strong class="bold">observer.on_completed()</strong></pre>
+			<p>An <strong class="source-inline">Observable</strong> function can be synchronous or asynchronous. Our target is to create an <a id="_idIndexMarker718"/>asynchronous one such as <strong class="source-inline">process_list()</strong>. The <a id="_idIndexMarker719"/>coroutine function should have the following callback methods to qualify as an <strong class="source-inline">Observable</strong> function:</p>
+			<ul>
+				<li>An <strong class="source-inline">on_next()</strong> method that emits items given a certain condition</li>
+				<li>An <strong class="source-inline">on_completed()</strong> method that is executed once when the function has completed the operation</li>
+				<li>An <strong class="source-inline">on_error()</strong> method that is called when an error occurs on <strong class="source-inline">Observable</strong></li>
+			</ul>
+			<p>Our <strong class="source-inline">process_list()</strong> emits the details of the publication that gained some profit. Then, we create an <strong class="source-inline">asyncio</strong> task for the call of the <strong class="source-inline">process_list()</strong> coroutine. We created a nested function, <strong class="source-inline">evaluate_profit()</strong>, which returns the <strong class="source-inline">Disposable</strong> task required by RxPY’s <strong class="source-inline">create()</strong> method for the production of the <strong class="source-inline">Observable</strong> stream. The cancellation of this task happens when the <strong class="source-inline">Observable</strong> stream is all consumed. The following is the complete implementation for the execution of the asynchronous <strong class="source-inline">Observable</strong> function and the use of the <strong class="source-inline">create()</strong> method to generate streams of data from this <strong class="source-inline">Observable</strong> function:</p>
+			<pre class="source-code">
+<strong class="bold">def create_observable(loop):</strong>
+    def evaluate_profit(observer, scheduler):
+        <strong class="bold">task = asyncio.ensure_future(</strong>
+            <strong class="bold">process_list(observer), loop=loop)</strong>
+        return <strong class="bold">Disposable(lambda: task.cancel())</strong>
+    return <strong class="bold">rx.create(evaluate_profit)</strong></pre>
+			<p>The subscriber created by <strong class="source-inline">create_observable()</strong>is our application’s <strong class="source-inline">list_sales_by_quota()</strong> API service. It needs to get the current event loop running for the <a id="_idIndexMarker720"/>method to generate the observable. Afterward, it <a id="_idIndexMarker721"/>invokes the <strong class="source-inline">subscribe()</strong> method to send a subscription to the stream and extract the needed result. The Observable’s <strong class="source-inline">subscribe()</strong> method is invoked for a client to subscribe to the stream and observe the occurring propagations:</p>
+			<pre class="source-code">
+<strong class="bold">@router.get("/sales/list/quota")</strong>
+async def list_sales_by_quota():
+    <strong class="bold">loop = asyncio.get_event_loop()</strong>
+    <strong class="bold">observer = create_observable(loop)</strong>
+    
+    <strong class="bold">observer.subscribe(</strong>
+        <strong class="bold">on_next=lambda value: print("Received Instruction </strong>
+              <strong class="bold">to buy {0}".format(value)),</strong>
+        <strong class="bold">on_completed=lambda: print("Completed trades"),</strong>
+        <strong class="bold">on_error=lambda e: print(e),</strong>
+        <strong class="bold">scheduler = AsyncIOScheduler(loop)   </strong>
+    )
+    return {"message": "Notification 
+           sent to the background"}</pre>
+			<p>The <strong class="source-inline">list_sales_by_quote()</strong> coroutine service shows us how to subscribe to an <strong class="source-inline">Observable</strong>. A subscriber should utilize the following callback methods: </p>
+			<ul>
+				<li>An <strong class="source-inline">on_next()</strong> method to consume all the items from the stream</li>
+				<li>An <strong class="source-inline">on_completed()</strong> method to indicate the end of the subscription </li>
+				<li>An <strong class="source-inline">on_error()</strong> method to flag an error during the subscription process</li>
+			</ul>
+			<p>And since the <strong class="source-inline">Observable</strong> processes run asynchronously, the scheduler is an optional argument <a id="_idIndexMarker722"/>that provides the right manager to schedule and <a id="_idIndexMarker723"/>run these processes. The API service used <strong class="source-inline">AsyncIOScheduler</strong> as the appropriate schedule for the subscription. But there are other shortcuts to generating Observables that do not use a custom function.</p>
+			<h2 id="_idParaDest-255"><a id="_idTextAnchor259"/>Creating background process</h2>
+			<p>As when we <a id="_idIndexMarker724"/>create continuously running Observables, we use the <strong class="source-inline">interval()</strong> function instead of using a custom <strong class="source-inline">Observable</strong> function. Some observables are designed to end successfully, but some are created to run continuously in the background. The following Observable runs in the background periodically to provide some updates on the total amount received from newspaper subscriptions:</p>
+			<pre class="source-code">
+import asyncio
+import rx
+<strong class="bold">import rx.operators as ops</strong>
+async def compute_subscriptions():
+    total = 0.0
+    repo = SubscriptionCustomerRepository()
+    result = await repo.join_customer_subscription_total()
+    
+    for customer in result:
+        subscription = customer.children
+        for item in subscription:
+            total = total + (item.price * item.qty)
+    await asyncio.sleep(1)
+    return total
+def fetch_records(rate, loop) -&gt; <strong class="bold">rx.Observable</strong>:
+    return <strong class="bold">rx.interval(rate).pipe(</strong>
+        <strong class="bold">ops.map(lambda i: rx.from_future(</strong>
+          <strong class="bold">loop.create_task(compute_subscriptions()))),</strong>
+        <strong class="bold">ops.merge_all()</strong>
+    )</pre>
+			<p>The <strong class="source-inline">interval()</strong> method creates a stream of data periodically in seconds. But this Observable imposes some propagations on its stream because of the execution of the <strong class="source-inline">pipe()</strong> method. The Observable’s <strong class="source-inline">pipe()</strong> method creates a pipeline of reactive <a id="_idIndexMarker725"/>operators called the intermediate operators. This pipeline can consist of a chain of operators running one at a time to change items from the streams. It seems that this series of operations creates multiple subscriptions on the subscriber. So, <strong class="source-inline">fetch_records()</strong> has a <strong class="source-inline">map()</strong> operator in its pipeline to extract the result from the <strong class="source-inline">compute_subcription()</strong> method. It uses <strong class="source-inline">merge_all()</strong> at the end of the pipeline to merge and flatten all substreams created into one final stream, the stream expected by the subscriber. Now, we can also generate Observable data from files or API response.</p>
+			<h2 id="_idParaDest-256"><a id="_idTextAnchor260"/>Accessing API resources</h2>
+			<p>Another way <a id="_idIndexMarker726"/>of creating an Observable is using the <strong class="source-inline">from_()</strong> method, which extracts resources from files, databases, or API endpoints. The Observable function retrieves its data from a JSON document generated by an API endpoint from our application. The assumption is that we are running the application using <strong class="source-inline">hypercorn</strong>, which uses <em class="italic">HTTP/2</em>, and so we need to bypass the TLS certificate by setting the <strong class="source-inline">verify</strong> parameter of <strong class="source-inline">httpx.AsyncClient()</strong> to <strong class="source-inline">False</strong>. </p>
+			<p>The following <a id="_idIndexMarker727"/>code highlights the <strong class="source-inline">from_()</strong> in the <strong class="source-inline">fetch_subscription()</strong> operation, which creates an Observable that emits streams of <strong class="source-inline">str</strong> data from the <strong class="source-inline">https://localhost:8000/ch08/subscription/list/all</strong> endpoint. These reactive operators of the Observable, namely <strong class="source-inline">filter()</strong>, <strong class="source-inline">map()</strong>, and <strong class="source-inline">merge_all()</strong>, are used to propagate the needed contexts along the stream:</p>
+			<pre class="source-code">
+<strong class="bold">async def fetch_subscription(min_date:date, </strong>
+         <strong class="bold">max_date:date, loop) -&gt; rx.Observable:</strong>
+    headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json"
+        }
+    async with httpx.AsyncClient(http2=True, 
+             verify=False) as client:
+        content = await 
+          client.get('https://localhost:8000/ch08/
+            subscription/list/all', headers=headers)
+    <strong class="bold">y = json.loads(content.text)</strong>
+    <strong class="bold">source = rx.from_(y)</strong>
+    observable = source.pipe(
+      <strong class="bold">ops.filter(lambda c: filter_within_dates(</strong>
+               <strong class="bold">c, min_date, max_date)),</strong>
+      <strong class="bold">ops.map(lambda a: rx.from_future(loop.create_task(</strong>
+            <strong class="bold">convert_str(a)))),</strong>
+      <strong class="bold">ops.merge_all(),</strong>
+    )
+    return observable</pre>
+			<p>The <strong class="source-inline">filter()</strong> method is another pipeline operator that returns Boolean values from a validation rule. It executes the following <strong class="source-inline">filter_within_dates()</strong> to verify whether the record retrieved from the JSON document is within the date range specified by the subscriber:</p>
+			<pre class="source-code">
+def <strong class="bold">filter_within_dates</strong>(rec, min_date:date, max_date:date):
+    date_pur = datetime.strptime(
+             rec['date_purchased'], '%Y-%m-%d')
+    if date_pur.date() &gt;= min_date and 
+             date_pur.date() &lt;= max_date:
+        return True
+    else:
+        return False</pre>
+			<p>On the other <a id="_idIndexMarker728"/>hand, the following <strong class="source-inline">convert_str()</strong> is a coroutine function executed by the <strong class="source-inline">map()</strong> operator to generate a concise profile detail of the newspaper subscribers derived from the JSON data:    </p>
+			<pre class="source-code">
+async def <strong class="bold">convert_str</strong>(rec):
+    if not rec == None:
+        total = rec['qty'] * rec['price']
+        record = " ".join([rec['branch'], 
+            str(total), rec['date_purchased']])
+        await asyncio.sleep(1)
+        return record</pre>
+			<p>Running these two functions modifies the original emitted data stream from JSON to a date-filtered stream of <strong class="source-inline">str</strong> data. The coroutine <strong class="source-inline">list_dated_subscription()</strong>API service, on the other hand, subscribes to <strong class="source-inline">fetch_subscription()</strong> to extract the newspaper subscriptions within the <strong class="source-inline">min_date</strong> and <strong class="source-inline">max_date</strong> range:</p>
+			<pre class="source-code">
+<strong class="bold">@router.post("/subscription/dated")</strong>
+async def list_dated_subscription(min_date:date, 
+            max_date:date):
+     
+    loop = asyncio.get_event_loop()
+    observable = await fetch_subscription(min_date, 
+             max_date, loop)
+    
+    observable.subscribe(
+       on_next=lambda item: 
+         print("Subscription details: {}.".format(item)),
+       scheduler=AsyncIOScheduler(loop)
+    )</pre>
+			<p>Although the <a id="_idIndexMarker729"/>FastAPI framework does not yet fully support reactive programming, we can still create coroutines that can work with various RxPY utilities. Now, we will explore how coroutines are not only for background processes but also for FastAPI event handlers.</p>
+			<h1 id="_idParaDest-257"><a id="_idTextAnchor261"/>Customizing events</h1>
+			<p>The FastAPI framework has <a id="_idIndexMarker730"/>special functions called <em class="italic">event handlers</em> that execute before the application starts up and during shutdown. These events are <a id="_idIndexMarker731"/>activated every time the <strong class="source-inline">uvicorn</strong> or <strong class="source-inline">hypercorn</strong> server reloads. Event handlers can also be coroutines.</p>
+			<h2 id="_idParaDest-258"><a id="_idTextAnchor262"/>Defining the startup event</h2>
+			<p>The <em class="italic">startup event</em> is an <a id="_idIndexMarker732"/>event handler that the server executes when <a id="_idIndexMarker733"/>it starts up. We decorate the function with the <strong class="source-inline">@app.on_event("startup")</strong> decorator to create a startup event. Applications may require a startup event to centralize some transactions, such as the initial configuration of some components or the set up of data-related resources. The following example is the application startup event that opens a database connection for the GINO repository transactions:</p>
+			<pre class="source-code">
+app = FastAPI()
+<strong class="bold">@app.on_event("startup")</strong>
+<strong class="bold">async</strong> def initialize():
+    engine = await db.set_bind("postgresql+asyncpg://
+          postgres:admin2255@localhost:5433/nsms")</pre>
+			<p>This <strong class="source-inline">initialize()</strong> event is defined in our application’s <strong class="source-inline">main.py</strong> file so that GINO can only create the connection once every server reload or restart. </p>
+			<h2 id="_idParaDest-259"><a id="_idTextAnchor263"/>Defining shutdown events</h2>
+			<p>Meanwhile, the <em class="italic">shutdown event</em> cleans up unwanted memory, destroys unwanted connections, and <a id="_idIndexMarker734"/>logs the reason for shutting down the application. The following is the shutdown event of our application that closes the GINO database connection:</p>
+			<pre class="source-code">
+<strong class="bold">@app.on_event("shutdown")</strong>
+async def destroy():
+    engine, db.bind = db.bind, None
+    await engine.close()</pre>
+			<p>We can define startup and shutdown events in APIRouter but be sure this will not cause transaction overlapping or collision with other routers. Moreover, event handlers do not work in mounted sub-applications.</p>
+			<h1 id="_idParaDest-260"><a id="_idTextAnchor264"/>Summary</h1>
+			<p>The use of coroutines is one of the factors that makes the FastAPI microservice application fast, aside from its use of an ASGI-based server. This chapter has proven that using coroutines to implement API services will improve the performance better than utilizing more threads in the thread pool. Since the framework runs on an asyncio platform, we can utilize asyncio utilities to design various design patterns to manage the CPU-bound and I/O-bound services. </p>
+			<p>This chapter used Celery and Redis for creating and managing asynchronous background tasks for behind-the-scenes transactions such as logging, system monitoring, time-sliced computations, and batch jobs. We learned that RabbitMQ and Apache Kafka provided an integrated solution for building asynchronous and loosely coupled communication between FastAPI components, especially for the message-passing part of these interactions. Most importantly, coroutines were applied to create these asynchronous and non-blocking background processes and message-passing solutions to enhance performance. Reactive programming was also introduced in this chapter through the RxPy extension module.</p>
+			<p>This chapter, in general, concludes that the FastAPI framework is ready to build a microservice application that has a <em class="italic">reliable</em>, <em class="italic">asynchronous</em>, <em class="italic">message-driven</em>, <em class="italic">real-time message-passing</em>, and <em class="italic">distributed core system</em>. The next chapter will highlight other FastAPI features that provide integrations with UI-related tools and frameworks, API documentation using OpenAPI Specification, session handling, and circumventing CORS. </p>
+		</div>
+		<div>
+			<div id="_idContainer065">
+			</div>
+		</div>
+	
+
+		<div id="_idContainer066" class="Content">
+			<h1 id="_idParaDest-261"><a id="_idTextAnchor265"/>Part 3: Infrastructure-Related Issues, Numerical and Symbolic Computations, and Testing Microservices</h1>
+			<p>In this final part of the book, we will discuss other essential microservice features, such as distributed tracing and logging, service registries, virtual environments, and API metrics. Serverless deployment using Docker and Docker Compose with NGINX as a reverse proxy will also be covered. Furthermore, we will look at FastAPI as a framework for building scientific applications using numerical algorithms from the <strong class="source-inline">numpy</strong>, <strong class="source-inline">scipy</strong>, <strong class="source-inline">sympy</strong>, and <strong class="source-inline">pandas</strong> modules to model, analyze, and visualize the mathematical and statistical solutions of its API services. </p>
+			<p>This part comprises the following chapters:</p>
+			<ul>
+				<li><a href="B17975_09.xhtml#_idTextAnchor266"><em class="italic">Chapter 9</em></a><em class="italic">, Utilizing Other Advanced Features</em></li>
+				<li><a href="B17975_10.xhtml#_idTextAnchor292"><em class="italic">Chapter 10</em></a><em class="italic">, Solving Numerical, Symbolic, and Graphical Problems </em></li>
+				<li><a href="B17975_11.xhtml#_idTextAnchor321"><em class="italic">Chapter 11</em></a><em class="italic">, Adding Other Microservice Features </em></li>
+			</ul>
+		</div>
+		<div>
+			<div id="_idContainer067">
+			</div>
+		</div>
+	</body></html>
