@@ -1,0 +1,310 @@
+<html><head></head><body>
+		<div id="_idContainer162">
+			<h1 id="_idParaDest-251" class="chapter-number"><a id="_idTextAnchor286"/>14</h1>
+			<h1 id="_idParaDest-252"><a id="_idTextAnchor287"/>Automating Deployment on AWS</h1>
+			<p>In the previous chapter, we successfully deployed the Django application on an EC2 instance. However, most of the deployment is done manually, and we don’t check for regression when pushing a new version of the application. Interestingly, all the deploying can be automated using <a id="_idTextAnchor288"/><span class="No-Break">GitHub Actions.</span></p>
+			<p>In this chapter, we will use GitHub Actions to automatically deploy on an AWS EC2 <a id="_idTextAnchor289"/>instance so that you don’t have to do it manually. We will explore how to write a configuration file that will run tests on the code to avoid regressions, and finally connect via <strong class="bold">Secure Socket Shell</strong> (<strong class="bold">SSH</strong>) to a server and execute the script to pull and build the recent version of the code and up the container. To recapitulate, we will cover the <span class="No-Break">following topics:</span></p>
+			<ul>
+				<li>Explaining <strong class="bold">continuous integration and continuous </strong><span class="No-Break"><strong class="bold">deployment</strong></span><span class="No-Break"> (</span><span class="No-Break"><strong class="bold">CI/CD</strong></span><span class="No-Break">)</span></li>
+				<li>Defining the <span class="No-Break">CI/CD workflow</span></li>
+				<li>What is <span class="No-Break">GitHub Actions?</span></li>
+				<li>Configuring the backend for <span class="No-Break">automated deployment</span></li>
+			</ul>
+			<h1 id="_idParaDest-253"><a id="_idTextAnchor290"/>Technical requirements</h1>
+			<p>The code for this chapter can be found at <a href="https://github.com/PacktPublishing/Full-stack-Django-and-React/tree/chap14">https://github.com/PacktPublishing/Full-stack-Django-and-React/tree/chap14</a>. If you are using a Windows machine, ensure that you have the OpenSSH client installed on your machine as we will generate SSH <span class="No-Break">key pairs.</span></p>
+			<h1 id="_idParaDest-254"><a id="_idTextAnchor291"/>Explaining CI/CD</h1>
+			<p>Before going deeper into GitHub Actions, we must understand the terms <em class="italic">CI</em> and <em class="italic">CD</em>. In this section, we will understand each term and explain <span class="No-Break">the differences.</span></p>
+			<h2 id="_idParaDest-255"><a id="_idTextAnchor292"/>CI</h2>
+			<p><strong class="bold">CI</strong> is a practice of automating the integration of code changes from multiple collaborators into a single <a id="_idIndexMarker798"/>project. It also concerns the ability to reliably release changes made to an application at any time. Without CI, we should have to manually coordinate the deployment, the integration of changes into an application,<a id="_idTextAnchor293"/> and security and <span class="No-Break">regression checks.</span></p>
+			<p>Here’s a typical <span class="No-Break">CI workflow:</span></p>
+			<ol>
+				<li>A developer <a id="_idIndexMarker799"/>creates a new branch from the main branch, makes changes, commits, and then pushes it to <span class="No-Break">the branch.</span></li>
+				<li>When the push is done, the code i<a id="_idTextAnchor294"/>s built, and then automated tests <span class="No-Break">are run.</span></li>
+				<li>If the automated tests fail, the developer team i<a id="_idTextAnchor295"/>s notified, and the next steps (usually deployment) are canceled. If the tests succeed, then the code is ready to be deployed in a staging or <span class="No-Break">production environment.</span></li>
+			</ol>
+			<p>You can find many tools for CI pipeline configurations. You have tools such as GitHub Actions, Semaphore, Travis CI, and a lot more. In this book, we will use GitHub Actions to build the CI pipeline, and if the CI pipeline passes, we ca<a id="_idTextAnchor296"/>n deploy it on AWS. Let’s now learn more <span class="No-Break">about CD.</span></p>
+			<h2 id="_idParaDest-256"><a id="_idTextAnchor297"/>CD</h2>
+			<p><strong class="bold">CD</strong> is related to CI but most of the time represents the next step after a successful CI pipeline passes. The quality <a id="_idIndexMarker800"/>of the CI pipeline (builds and tests) will determine the quality of the releases made. With CD, the software is automatically deployed to a staging or production environment once it passes the <span class="No-Break">CI step.</span></p>
+			<p>An example of a CD pipeline <a id="_idIndexMarker801"/>could look <span class="No-Break">like this:</span></p>
+			<ol>
+				<li value="1">A developer writes a branch, makes changes and pushes the changes, and then creates a <span class="No-Break">merge request.</span></li>
+				<li>Tests and builds are done to make sure there is <span class="No-Break">no regression.</span></li>
+				<li>The code is reviewed by another developer, and if the review is done, the merge request is validated <a id="_idIndexMarker802"/>and then another suite of tests and builds <span class="No-Break">are done.</span></li>
+				<li>After that, the changes are deployed to a staging or <span class="No-Break">production environment.</span></li>
+			</ol>
+			<p>GitHub Actions and the <a id="_idIndexMarker803"/>other tools mentioned for CI also support CD. With a better understanding of CI and CD, let’s define the workflow that we will configure for <span class="No-Break">the backend.</span></p>
+			<p class="callout-heading">Important note</p>
+			<p class="callout">You will also hear about <em class="italic">continuous delivery</em> if you are diving deeper into CI/C<a id="_idTextAnchor298"/>D; it is a further extension of <em class="italic">continuous deployment</em>. Continuous deployment focuses on the deployment of the servers while continuous delivery focuses on the release and <span class="No-Break">release strategy.</span></p>
+			<h1 id="_idParaDest-257"><a id="_idTextAnchor299"/>Defining the CI/CD workflow</h1>
+			<p>Before deploying an application as we did in the previous chapter, we need to write off the steps we <a id="_idIndexMarker804"/>will follow, along with the tools needed for the deployment. In this chapter, we will automate the deployment of the backend on AWS. Basically, each time we have a push made on the main branch of the repository, the code should be updated on the server and the containers should be updated <span class="No-Break">and restarted.</span></p>
+			<p>Again, let’s define the<a id="_idTextAnchor300"/> fl<a id="_idTextAnchor301"/>ow, <span class="No-Break">as follows:</span></p>
+			<ol>
+				<li value="1">A push is made on the principal branch of <span class="No-Break">the server.</span></li>
+				<li>Docker containers are built and started to run tests. If the tests fail, the following steps <span class="No-Break">are ignored.</span></li>
+				<li>We connect via SSH to the server and run a script to pull the new changes from the remote repository, build the containers, and restart the services <span class="No-Break">using </span><span class="No-Break"><strong class="source-inline">docker-compose</strong></span><span class="No-Break">.</span></li>
+			</ol>
+			<p>The following diagram illustrates a typical <span class="No-Break">CI/CD workflow:</span></p>
+			<div>
+				<div id="_idContainer154" class="IMG---Figure">
+					<img src="image/Figure_14.01_B18221.jpg" alt="Figure 14.1 – CI/CD workflow"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 14.1 – CI/CD workflow</p>
+			<p>That is a lot of things <a id="_idIndexMarker805"/>to do manually, and thank<a id="_idTextAnchor302"/>fully, GitHub provides an interesting feature called GitHub Actions. Now that we have a better idea about the deployment strategy, let’s explore this <span class="No-Break">feature more.</span></p>
+			<h1 id="_idParaDest-258"><a id="_idTextAnchor303"/>What is GitHub Actions?</h1>
+			<p>GitHub Actions is a service built and developed by GitHub for automating builds, testing, and deployment <a id="_idIndexMarker806"/>pipelines. Using GitHub Actions, we can easily implement the CI/CD workflow shown in <span class="No-Break"><em class="italic">Figure 14</em></span><em class="italic">.1</em>. Before continuing, make sure that your project is ho<a id="_idTextAnchor304"/>sted <span class="No-Break">on GitHub.</span></p>
+			<p>GitHub Actions configurations are made in a file that must be stored in a dedicated directory in the repository called <strong class="source-inline">.github/workflows</strong>. For a better workflow, we will also use GitHub secrets to store deployment information such as the IP address of the server, the SSH passphrase, and the server username. Let’s start by understanding how to write a GitHub Actions <span class="No-Break">workflow file.</span></p>
+			<h2 id="_idParaDest-259"><a id="_idTextAnchor305"/>How to write a GitHub Actions workflow file</h2>
+			<p>Workflow files are <a id="_idIndexMarker807"/>stored in a dedicated directory called <strong class="source-inline">.github/workflows</strong>. The syntax used for these <a id="_idTextAnchor306"/>files is YAML syntax, hence workflow files have the <strong class="source-inline">.</strong><span class="No-Break"><strong class="source-inline">yml</strong></span><span class="No-Break"> extension.</span></p>
+			<p>Let’s dive deeper into the syntax of a <span class="No-Break">workflo<a id="_idTextAnchor307"/>w file:</span></p>
+			<ul>
+				<li><strong class="source-inline">name</strong>: This represents the name of the workflow. This name is set by placing the following line at the beginning of <span class="No-Break">the file:</span><pre class="source-code">
+name: Name of the Workflow</pre></li>
+				<li><strong class="source-inline">on</strong>: This specifies the <a id="_idIndexMarker808"/>events that will trigger the workflow automatically. An example of an event is a push, a pull request, or<a id="_idTextAnchor308"/> <span class="No-Break">a fork:</span><pre class="source-code">
+on: push</pre></li>
+				<li><strong class="source-inline">jobs</strong>: This specifies the actions that the workflow will perform. You can have multiple jobs and even have some jobs depending on <span class="No-Break">each other:</span><pre class="source-code">
+jobs:</pre><pre class="source-code">
+ build-test:</pre><pre class="source-code">
+   runs-on: ubuntu-latest</pre><pre class="source-code">
+   steps:</pre><pre class="source-code">
+   - uses: actions/checkout@v2</pre><pre class="source-code">
+   - name: Listing files in a directory</pre><pre class="source-code">
+     run: ls -a</pre></li>
+			</ul>
+			<p>In our GitHub Actions workflow, we will have <span class="No-Break">two jobs:</span></p>
+			<ul>
+				<li>A job named <strong class="source-inline">build-test</strong> to build the Docker containers and run the tests inside <span class="No-Break">those containers</span></li>
+				<li>A job named <strong class="source-inline">deploy</strong> to deploy the application to the <span class="No-Break">AWS server</span></li>
+			</ul>
+			<p>The deployment of the application will depend on the failure or success of the <strong class="source-inline">build-test</strong> job. It’s a good way to prevent code from failing and crashing in the production environment. Now that <a id="_idIndexMarker809"/>we unde<a id="_idTextAnchor309"/>rstand the GitHub Actions workflow, YAML syntax, and the jobs we want to write for our workflow, let’s write the GitHub Actions file and configure the server for <span class="No-Break">automatic deployment.</span></p>
+			<h1 id="_idParaDest-260"><a id="_idTextAnchor310"/>Configuring the backend for automated deployment</h1>
+			<p>In the previous <a id="_idIndexMarker810"/>sections, we discussed more <a id="_idIndexMarker811"/>about the syntax of a GitHub Actions file and<a id="_idTextAnchor311"/> the jobs we must write to add CI and CD to the Django application. Let’s write the GitHub Action file and configure the backend for <span class="No-Break">automatic deployment.</span></p>
+			<h2 id="_idParaDest-261"><a id="_idTextAnchor312"/>Adding the GitHub Actions file</h2>
+			<p>At the root of the <a id="_idIndexMarker812"/>project, create a directory called <strong class="source-inline">.github</strong>, and inside this directory create another directory called <strong class="source-inline">workflow<a id="_idTextAnchor313"/>s</strong>. Inside the <strong class="source-inline">workflows</strong> directory, create a file called <strong class="source-inline">ci-cd.yml</strong>. This file will contain the YAML configur<a id="_idTextAnchor314"/>ation for the GitHub action. Let’s start by defining the name and the events that will trigger the running of <span class="No-Break">the workflow:</span></p>
+			<p class="SC---Heading" lang="en-US" xml:lang="en-US">.github/workflows/ci-cd.yml</p>
+			<pre class="source-code">
+name: Build, Test and Deploy Postagram
+on:
+ push:
+   branches: [ main ]</pre>
+			<p>The workflow will run every time there is a push on the main branch. Let’s go on to write a <strong class="source-inline">build-test</strong> job. For this job, we will follow <span class="No-Break">three steps:</span></p>
+			<ol>
+				<li value="1">Injecting environment variables into a file. Docker will need a <strong class="source-inline">.env</strong> file to build the images and start the containers. We’ll inject dummy environment variables into the <span class="No-Break">Ubuntu environment.</span></li>
+				<li>After that, we will build <span class="No-Break">the containers.</span></li>
+				<li>And finally, we run the tests on the <span class="No-Break"><strong class="source-inline">api</strong></span><span class="No-Break"> container.</span></li>
+			</ol>
+			<p>Let’s get started with <span class="No-Break">the steps:</span></p>
+			<ol>
+				<li value="1">Let’s start by writing the job and injecting the <span class="No-Break">environment variables:</span></li>
+			</ol>
+			<p class="SC---Heading" lang="en-US" xml:lang="en-US">.github/workflows/ci-cd.yml</p>
+			<pre class="source-code">
+build-test:
+ runs-on: ubuntu-latest
+ steps:
+ - uses: actions/checkout@v2
+ - name: Injecting env vars
+   run: |
+     echo "SECRET_KEY=test_foo
+           DATABASE_NAME=test_coredb
+           DATABASE_USER=test_core
+           DATABASE_PASSWORD=12345678
+           DATABASE_HOST=test_postagram_db
+           DATABASE_PORT=5432
+           POSTGRES_USER=test_core
+           POSTGRES_PASSWORD=12345678
+           POSTGRES_DB=test_coredb
+           ENV=TESTING
+           DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost
+            <a id="_idTextAnchor315"/>" &gt;&gt; .env</pre>
+			<p>The tests will probably fail because we haven’t defined the Github Secret <span class="No-Break">called </span><span class="No-Break"><strong class="source-inline">TEST_SECRETS</strong></span><span class="No-Break">.</span></p>
+			<div>
+				<div id="_idContainer155" class="IMG---Figure">
+					<img src="image/Figure_14.02_B18221.jpg" alt="Figure 14.2 – Testing Github secrets"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 14.2 – Testing Github secrets</p>
+			<ol>
+				<li value="2">Next, let’s add <a id="_idIndexMarker813"/>the command to build <span class="No-Break">the containers:</span></li>
+			</ol>
+			<p class="SC---Heading" lang="en-US" xml:lang="en-US">.github/workflows/ci-cd.yml</p>
+			<pre class="source-code">
+<strong class="bold">- name: Building containers</strong>
+<strong class="bold"> run: |</strong>
+<strong class="bold">   docker-compose up -d --build</strong></pre>
+			<ol>
+				<li value="3">And finally, let’s run the <strong class="source-inline">pytest</strong> command in the <span class="No-Break"><strong class="source-inline">api</strong></span><span class="No-Break"> container:</span></li>
+			</ol>
+			<p class="SC---Heading" lang="en-US" xml:lang="en-US">.github/workflows/ci-cd.yml</p>
+			<pre class="source-code">
+- name: Running Tests
+ run: |
+   docker-compose exec -T api pytest</pre>
+			<p>Great! We have the first job of the workflow <span class="No-Break">fully written.</span></p>
+			<ol>
+				<li value="4">Let’s push the code by running the following command and see how <a id="_idTextAnchor316"/>it runs on the <span class="No-Break">GitHub side:</span><pre class="source-code">
+<strong class="bold">git push</strong></pre></li>
+				<li>Go to GitHub to <a id="_idIndexMarker814"/>check your repository. You will see an orange badge on the details of the repository, meaning that <a id="_idTextAnchor317"/>the workflow <span class="No-Break">is running:</span></li>
+			</ol>
+			<div>
+				<div id="_idContainer156" class="IMG---Figure">
+					<img src="image/Figure_14.03_B18221.jpg" alt="Figure 14.3 – Running GitHub Actions"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 14.3 – Running GitHub Actions</p>
+			<ol>
+				<li value="6">Click on the orange badge to have more details about the running workflows. The w<a id="_idTextAnchor318"/>orkflow should pass, and you will have a <span class="No-Break">green status:</span></li>
+			</ol>
+			<div>
+				<div id="_idContainer157" class="IMG---Figure">
+					<img src="image/Figure_14.04_B18221.jpg" alt="Figure 14.4 – Successful GitHub Action job"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 14.4 – Successful GitHub Action job</p>
+			<p>Great! We have the <strong class="source-inline">build-test</strong> job running successfully, which means that our code can be deployed in <a id="_idIndexMarker815"/>a production environment. Before writing the <strong class="source-inline">deploy</strong> job, let’s configure the server first for <span class="No-Break">automatic deployment.</span></p>
+			<h2 id="_idParaDest-262"><a id="_idTextAnchor319"/>Configuring the EC2 instance</h2>
+			<p>It’s time to go back <a id="_idIndexMarker816"/>to the EC2 instance and make some configurations to ease the automatic deployment. Here’s the list of task<a id="_idTextAnchor320"/>s to do so that GitHub Actions can automatically handle the deployment <span class="No-Break">for us:</span></p>
+			<ul>
+				<li>Generate a pair of SSH keys (private and public keys) with <span class="No-Break">a passphrase.</span></li>
+				<li>Add the public key to <strong class="source-inline">authorized_keys</strong> on <span class="No-Break">the server.</span></li>
+				<li>Add the private key to GitHub Secrets to reuse it for the <span class="No-Break">SSH connection.</span></li>
+				<li>Register the username used on the OS of the EC2 instance, the IP address, and the SS<a id="_idTextAnchor321"/>H passphrase to <span class="No-Break">GitHub Secrets.</span></li>
+				<li>Add a deploying script on the server. Basically, the script will pull code from GitHub, check for changes, and eventually build and rerun <span class="No-Break">the containers.</span></li>
+				<li>Wrap everything and add the <span class="No-Break"><strong class="source-inline">deploy</strong></span><span class="No-Break"> job.</span></li>
+			</ul>
+			<p>This looks like a lot of steps, but here’s the good thing: you just need to do that once. Let’s start by generating <span class="No-Break">SSH credentials.</span></p>
+			<h3>Generating SSH credentials</h3>
+			<p>The best practice for generating SSH keys is to generate the keys on the local machine and not the <a id="_idIndexMarker817"/>remote machine. In the next lines, we will use terminal commands. If you are working on a Windows machine, make sure you have the OpenSSH client installed. The following commands are executed on a Linux machine. Let’s get started with <span class="No-Break">the steps:</span></p>
+			<ol>
+				<li value="1">Open the terminal and enter the following command to generate an RSA <span class="No-Break">key pair:</span><pre class="source-code">
+<strong class="bold">ssh-keygen -t rsa -b 4096 -C "your_email@example.com"</strong></pre></li>
+			</ol>
+			<div>
+				<div id="_idContainer158" class="IMG---Figure">
+					<img src="image/Figure_14.05_B18221.jpg" alt="Figure 14.5 – Generating SSH keys"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 14.5 – Generating SSH keys</p>
+			<ol>
+				<li value="2">Next, copy the content of the public key and add it to the <strong class="source-inline">.ssh/authorized_keys</strong> file <a id="_idIndexMarker818"/>of the remote EC2 instance. You can just do a copy and paste using the mouse, or you can type the <span class="No-Break">following command:</span><pre class="source-code">
+<strong class="bold">cat .ssh/postagramapi.pub | ssh username@hostname_or_ipaddress 'cat &gt;&gt; .ssh/authorized_keys'</strong></pre></li>
+				<li>Then, copy the content of the private key and add it to <span class="No-Break">GitHub Secrets:</span></li>
+			</ol>
+			<div>
+				<div id="_idContainer159" class="IMG---Figure">
+					<img src="image/Figure_14.06_B18221.jpg" alt="Figure 14.6 – Registering ﻿the private key into GitHub ﻿Secrets"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 14.6 – Registering the private key into GitHub Secrets</p>
+			<p>You also need to do the same for the passphrase, EC2 server IP address, and username for the OS of the <span class="No-Break">EC2 machine:</span></p>
+			<div>
+				<div id="_idContainer160" class="IMG---Figure">
+					<img src="image/Figure_14.07_B18221.jpg" alt="Figure 14.7 – Repository secrets"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 14.7 – Repository secrets</p>
+			<p>Great! We have <a id="_idIndexMarker819"/>the secrets co<a id="_idTextAnchor322"/>nfigured on the repository; we can now write the <strong class="source-inline">deploy</strong> job on the <span class="No-Break">GitHub action.</span></p>
+			<h3>Adding a deploying script</h3>
+			<p>The benefit of using GitHub Actions is that you can already find preconfigured GitHub Actions on GitHub <a id="_idIndexMarker820"/>Marketplace and just use them instead of reinventing the wheel. For the deployment, we will use the <strong class="source-inline">ssh-action</strong> GitHub action, which is developed to allow developers to execute remote commands via SSH. This perfectly fits <span class="No-Break">our needs.</span></p>
+			<p>Let’s write the <strong class="source-inline">deploy</strong> job inside our GitHub action workflow and write a deployment script on the <span class="No-Break">EC2 instance:</span></p>
+			<ol>
+				<li value="1">Inside the <strong class="source-inline">.github/workflows/ci-cd.yml</strong> file, add the following code at the end of <span class="No-Break">the file:</span></li>
+			</ol>
+			<p class="SC---Heading" lang="en-US" xml:lang="en-US">.github/workflows/ci-cd.yml</p>
+			<pre class="source-code">
+deploy:
+  name: Deploying on EC2 via SSH
+  if: ${{ github.event_name == 'push' }}
+  needs: [build-test]
+  runs-on: ubuntu-latest
+  steps:
+  - name: Deploying Application on EC2
+    uses: appleboy/ssh-action@master
+    with:
+      host: ${{ secrets.SSH_EC2_IP }}
+      username: ${{ secrets.SSH_EC2_USER }}
+      key: ${{ secrets.SSH_PRIVATE_KEY }}
+      passphrase: ${{ secrets.SSH_PASSPHRASE }}
+      script: |
+        cd ~/.scripts
+        ./docker-ec2-deploy.sh</pre>
+			<p>The script run on the EC2 instance is the execution of a file called <strong class="source-inline">docker-ec2-deploy.sh</strong>. This file will contain Bash code for pulling code from the GitHub repository and building <span class="No-Break">the containers.</span></p>
+			<p>Let’s connect to the EC2 instance and add the <span class="No-Break"><strong class="source-inline">docker-ec2-deploy.sh</strong></span><span class="No-Break"> code.</span></p>
+			<ol>
+				<li value="2">In the home directory, create a file called <strong class="source-inline">docker-ec2-deploy.sh</strong>. The process for deployment using Git and Docker will follow <a id="_idTextAnchor323"/><span class="No-Break">these steps:</span><ol><li>We must <a id="_idIndexMarker821"/>ensure that there are effective changes in the GitHub repository to continue with building and running the containers. It will be a waste of resources and memory to rebuild the containers if the Git pull hasn’t brought new changes. Here’s how we can <span class="No-Break">check this:</span></li></ol><pre class="source-code">
+#!/usr/bin/env bash</pre><pre class="source-code">
+TARGET='main'</pre><pre class="source-code">
+cd ~/api || exit</pre><pre class="source-code">
+ACTION_COLOR='\033[1;90m'</pre><pre class="source-code">
+NO_COLOR='\033[0m'</pre><pre class="source-code">
+echo -e ${ACTION_COLOR} Checking if we are on the target branch</pre><pre class="source-code">
+BRANCH=$(git rev-parse --abbrev-ref HEAD)</pre><pre class="source-code">
+if [ "$BRANCH" != ${TARGET} ]</pre><pre class="source-code">
+then</pre><pre class="source-code">
+   exit 0</pre><pre class="source-code">
+fi</pre><ol><li value="2">Next step, we will do a <strong class="source-inline">git fetch</strong> command to download<a id="_idTextAnchor324"/> content from the <span class="No-Break">GitHub repository:</span></li></ol><pre class="source-code">
+# Checking if the repository is up to date.</pre><pre class="source-code">
+git fetch</pre><pre class="source-code">
+HEAD_HASH=$(git rev-parse HEAD)</pre><pre class="source-code">
+UPSTREAM_HASH=$(git rev-parse ${TARGET}@{upstream})</pre><pre class="source-code">
+if [ "$HEAD_HASH" == "$UPSTREAM_HASH" ]</pre><pre class="source-code">
+then</pre><pre class="source-code">
+   echo -e "${FINISHED}"The current branch is up to date with origin/${TARGET}."${NO_COLOR}"</pre><pre class="source-code">
+     exit 0</pre><pre class="source-code">
+fi</pre></li>
+			</ol>
+			<p>Once this is done, we will <a id="_idIndexMarker822"/>then check the repository is up to date by comparing the <strong class="source-inline">HEAD</strong> hash and the <strong class="source-inline">UPSTREAM</strong> hash. If they are the same, then the repository is up <span class="No-Break">to date.</span></p>
+			<ol>
+				<li value="3">If the <strong class="source-inline">HEAD</strong> and the <strong class="source-inline">UPSTREAM</strong> hashes are not the same, we pull the latest changes, build the containers, and run <span class="No-Break">the containers:</span></li>
+			</ol>
+			<pre class="source-code">
+# If there are new changes, we pull these changes.
+git pull origin main;
+# We can now build and start the containers
+docker compose up -d --build
+exit 0;</pre>
+			<p>Great! We can now give execution permission to <span class="No-Break">the script:</span></p>
+			<pre class="console">
+chmod +x docker-ec2-deploy.sh</pre>
+			<p>And we are done. You can push the changes made on the GitHub workflow and the au<a id="_idTextAnchor325"/>tomatic deployment job <span class="No-Break">will start.</span></p>
+			<p class="callout-heading">Important note</p>
+			<p class="callout">Depending on the type of repository (private or public), you might need to enter your GitHub credentials on every remote git command executed such as <strong class="source-inline">git push</strong> or <strong class="source-inline">git pull</strong> for example. Ensure you have your credentials configured using SSH or HTTPS. You can check how to do <span class="No-Break">it </span><a href="https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token"><span class="No-Break">https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token</span></a></p>
+			<p>Ensure to have a <strong class="source-inline">.env</strong> file at the root of the project in the AWS server. Here is an example of a <strong class="source-inline">.env</strong> file you <a id="_idIndexMarker823"/>can use for deployment. Don’t forget to change the values of database credentials or <span class="No-Break">secret keys:</span></p>
+			<pre class="source-code">
+SECRET_KEY=foo
+DATABASE_NAME=coredb
+DATABASE_USER=core
+DATABASE_PASSWORD=wCh29&amp;HE&amp;T83
+DATABASE_HOST=localhost
+DATABASE_PORT=5432
+POSTGRES_USER=core
+POSTGRES_PASSWORD=wCh29&amp;HE&amp;T83
+POSTGRES_DB=coredb
+ENV=PROD
+DJANGO_ALLOWED_HOSTS=EC2_IP_ADDRESS,EC2_INSTANCE_URL</pre>
+			<p>Ensure to replace the <strong class="source-inline">EC2_IP_ADDRESS</strong> and the <strong class="source-inline">EC2_INSTANCE_URL</strong> with the values of your EC2 instance. You will also need to allow TCP connections on port <strong class="bold">80</strong> to allow HTTP requests on the EC2 instances for the whole configuration <span class="No-Break">to work.</span></p>
+			<p class="IMG---Figure"> </p>
+			<div>
+				<div id="_idContainer161" class="IMG---Figure">
+					<img src="image/Figure_14.08_B18221.jpg" alt="Figure 14.8 – Allowing HTTP requests"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 14.8 – Allowing HTTP requests</p>
+			<p>You can also remove the <strong class="bold">8000</strong> configurations as NGINX handles the redirection of HTTP requests to <span class="No-Break"><strong class="bold">0.0.0.0:8000</strong></span><span class="No-Break"> automatically.</span></p>
+			<p>With the concept of C<a id="_idTextAnchor326"/>I/CD understood and GitHub Actions explained and written, you have all the tools <a id="_idIndexMarker824"/>you need now to automate deployment <a id="_idIndexMarker825"/>on EC2 instances and any server. Now that the backend is deployed, we can move on to deploying the React frontend, not on an EC2 instance but on AWS <strong class="bold">Simple Storage </strong><span class="No-Break"><strong class="bold">Service</strong></span><span class="No-Break"> (</span><span class="No-Break"><strong class="bold">S3</strong></span><span class="No-Break">).</span></p>
+			<h1 id="_idParaDest-263"><a id="_idTextAnchor327"/>Summary</h1>
+			<p>In this chapter, we have finally automated the deployment of the Django application on AWS using GitHub Actions. We have explored the concepts<a id="_idTextAnchor328"/> of CI and CD and how GitHub Actions allow the configuration of <span class="No-Break">such concepts.</span></p>
+			<p>We have written a GitHub action file with jobs to build and run the test suites, and if these steps are successful, we run the <strong class="source-inline">deploy</strong> job, which is just connecting to the EC2 instance, and run a script to pull changes, build new images, and run <span class="No-Break">the containers.</span></p>
+			<p>In the next chapter, we will learn how to deploy the React application using a service such as <span class="No-Break">AWS S3.</span></p>
+			<h1 id="_idParaDest-264"><a id="_idTextAnchor329"/>Questions</h1>
+			<ol>
+				<li value="1">What is the difference between CI <span class="No-Break">and CD?</span></li>
+				<li>What are <span class="No-Break">GitHub Actions?</span></li>
+				<li>What is <span class="No-Break">continuous delivery?</span></li>
+			</ol>
+		</div>
+		<div>
+			<div id="_idContainer163" class="IMG---Figure">
+			</div>
+		</div>
+	</body></html>
