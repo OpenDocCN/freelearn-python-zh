@@ -1,0 +1,603 @@
+<html><head></head><body>
+<div id="sbo-rt-content"><div id="_idContainer014">
+<h1 class="chapter-number" id="_idParaDest-49"><a id="_idTextAnchor053"/>2</h1>
+<h1 id="_idParaDest-50"><a id="_idTextAnchor054"/>Creating a Reusable Backend with Quart</h1>
+<p>In the preceding chapter, we installed the tooling we need to develop our app, which means we can start building the backend. The backend runs on the server as opposed to the frontend, which runs in the client’s web browser. In our setup, the backend will need to be the interface between the database and the frontend, providing an API to access and edit the to-dos (see <em class="italic">Figure 2.1</em>):</p>
+<div>
+<div class="IMG---Figure" id="_idContainer010">
+<img alt="Figure 2.1: A schematic overview of the desired setup " height="164" src="image/B18727_02_01.jpg" width="722"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 2.1: A schematic overview of the desired setup</p>
+<p>Alongside providing an API, the backend will also need to connect to the database, manage user sessions, protect itself against heavy and incorrect usage, and send emails to users. In this chapter, we will build a backend with these features. At the end of the chapter, we will have built a reusable backend that any API can be built with. Alternatively, the features can be taken in parts to add to your own app.</p>
+<p>So, in this chapter, we will cover the following topics:</p>
+<ul>
+<li>Creating a basic Quart app</li>
+<li>Including user accounts</li>
+<li>Protecting the app</li>
+<li>Connecting to the database</li>
+<li>Sending emails</li>
+</ul>
+<h1 id="_idParaDest-51"><a id="_idTextAnchor055"/>Technical requirements</h1>
+<p>The following additional folders are required in this chapter and should be created:</p>
+<pre class="source-code">
+tozo
+└── backend
+    ├── src
+    │   └── backend
+    │       ├── blueprints
+    │       ├── lib
+    │       └── templates
+    └── tests
+        ├── blueprints
+        └── lib</pre>
+<p>Empty <em class="italic">backend/src/backend/__init__.py</em>, <em class="italic">backend/src/backend/blueprints/__init__.py</em>, <em class="italic">backend/src/backend/lib/__init__.py</em>, <em class="italic">backend/tests/__init__.py</em>, <em class="italic">backend/tests/blueprints/__init__.py</em>, and <em class="italic">backend/tests/lib/__init__.py</em> files should be created.</p>
+<p>To follow the development in this chapter, use the companion repository at <a href="https://github.com/pgjones/tozo">https://github.com/pgjones/tozo</a> and see the commits between the tags <strong class="source-inline">r1-ch2-start</strong> and <strong class="source-inline">r1-ch2-end</strong>.</p>
+<h1 id="_idParaDest-52"><a id="_idTextAnchor056"/>Creating a basic Quart app</h1>
+<p>To begin, we can <a id="_idIndexMarker103"/>make a basic API that responds to requests with a simple response. This is something I like to term a ping-pong route as the request is the ping and the response is the pong. To do this, I’ve chosen to use the Quart framework. <strong class="bold">Quart</strong> is a web <a id="_idIndexMarker104"/>microframework with an ecosystem of extensions that we will use to add additional functionality. </p>
+<p class="callout-heading">Using Flask as an alternative</p>
+<p class="callout">Quart is the async version of the very popular Flask framework, which allows us to use modern async libraries. However, if you are already familiar with Flask, you can adapt the code in <a id="_idIndexMarker105"/>this book without too much difficulty; see <a href="https://quart.palletsprojects.com/en/latest/how_to_guides/flask_migration.xhtml">https://quart.palletsprojects.com/en/latest/how_to_guides/flask_migration.xhtml</a> for more information.</p>
+<p>To use Quart, we must first add it with <strong class="source-inline">pdm</strong> by running the following command in the <em class="italic">backend</em> directory:</p>
+<p class="source-code">pdm add quart</p>
+<p>We can now create a Quart app by adding the following code to <em class="italic">backend/src/backend/run.py</em>:</p>
+<pre class="source-code">
+from quart import Quart
+app = Quart(__name__)</pre>
+<p>This allows <a id="_idIndexMarker106"/>us to add functions, called route handlers, which are called when <a id="_idIndexMarker107"/>a request matches the given HTTP method and path and returns the response. For our basic app, we want requests to <em class="italic">GET /control/ping/</em> to be responded to. This is achieved by adding the following code to <em class="italic">backend/src/backend/run.py</em>:</p>
+<pre class="source-code">
+from quart import ResponseReturnValue
+@app.get("/control/ping/")
+async def ping() -&gt; ResponseReturnValue:
+    return {"ping": "pong"}</pre>
+<p>Now that there is code to create the app with a ping route, we should set up the tooling so that the server starts locally and serves requests. As with the backend tooling, we need to add a new script name to <em class="italic">backend/pyproject.toml</em> as follows:</p>
+<pre class="source-code">
+[tool.pdm.scripts]
+start = "quart --app src/backend/run.py run --port 5050"</pre>
+<p>The preceding code allows the following command to start the backend app when it is run in the <em class="italic">backend</em> directory, as follows:</p>
+<pre class="source-code">
+pdm run start</pre>
+<p>With this <a id="_idIndexMarker108"/>command running, we can check whether the ping route works by running the following command in any directory:</p>
+<p class="source-code">curl localhost:5050/control/ping/</p>
+<p>Alternatively, you could enter <a href="http://localhost:5050/control/ping/">http://localhost:5050/control/ping/</a> in your browser, as shown in <em class="italic">Figure 2.2</em>:</p>
+<div>
+<div class="IMG---Figure" id="_idContainer011">
+<img alt="Figure 2.2: The control ping route when visited in the browser " height="631" src="image/B18727_02_02.jpg" width="918"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 2.2: The control ping route when visited in the browser</p>
+<p class="callout-heading">Using curl</p>
+<p class="callout"><strong class="source-inline">curl</strong> (<a href="https://curl.se/docs/manpage.xhtml">https://curl.se/docs/manpage.xhtml</a>) is an <a id="_idIndexMarker109"/>excellent command-line tool to make HTTP requests. <strong class="source-inline">curl</strong> is installed on most systems by default, but if you find that you don’t have it, you can use the system package manager to install it (<strong class="source-inline">brew install curl</strong> or <strong class="source-inline">scoop install curl</strong>). </p>
+<p class="callout">Without any options, <strong class="source-inline">curl</strong> makes a <strong class="source-inline">GET</strong> request, and you can switch to a <strong class="source-inline">POST</strong> request using the <strong class="source-inline">-X POST</strong> option, or you can send JSON data using the <strong class="source-inline">--json ‘{“tool”: “curl”}’</strong> option.</p>
+<p>This is all <a id="_idIndexMarker110"/>that is required for a basic backend; however, we need more functionality and more certainty that the code works. We’ll achieve this by adding testing, using blueprints, adding configuration, and ensuring a consistent JSON error response.</p>
+<h2 id="_idParaDest-53"><a id="_idTextAnchor057"/>Testing the ping route</h2>
+<p>It is good <a id="_idIndexMarker111"/>practice to test whether the route works as expected. To do <a id="_idIndexMarker112"/>this, we can add the following test to <em class="italic">backend/tests/test_run.py</em>:</p>
+<pre class="source-code">
+from backend.run import app
+async def test_control() -&gt; None:
+    test_client = app.test_client()
+    response = await test_client.get("/control/ping/")
+    assert (await response.get_json())["ping"] == "pong"</pre>
+<p>With the test code in place, we can run <strong class="source-inline">pdm run test</strong> and see whether it both runs and passes.</p>
+<p class="callout-heading">Warning about a common await error</p>
+<p class="callout">I’ve found it common to incorrectly await the wrong thing in Python, and it seems common with others as well. The issue is often seen with code such as: </p>
+<p class="callout"><strong class="source-inline">await response.get_json()[“ping”]</strong>. </p>
+<p class="callout">This will fail with the <strong class="source-inline">couroutine cannot be indexed</strong> error, as the coroutine returned by <strong class="source-inline">response.get_json()</strong> must be awaited before it is indexed. This issue is fixed by adding parenthesis in the right place, which in this case is as follows:</p>
+<p class="callout"><strong class="source-inline">(await response.get_json())[“ping”]</strong>.</p>
+<p>Now that <a id="_idIndexMarker113"/>we have a working ping-pong route, we need to consider <a id="_idIndexMarker114"/>how to add many more routes, which, for clarity, is best done using blueprints.</p>
+<h2 id="_idParaDest-54"><a id="_idTextAnchor058"/>Using blueprints for clearer code</h2>
+<p>We added the ping route handler to the same file as the app (<em class="italic">backend/src/backend/run.py</em>) as it is the easiest way to start; however, as we add more route handlers, the file will quickly become unclear and difficult to update. Quart provides <a id="_idIndexMarker115"/>blueprints to help structure code as <a id="_idIndexMarker116"/>the app gets bigger. As we will be adding more route handlers, we’ll convert what we have so far into blueprints. </p>
+<p>We can now move the ping route handler to a control blueprint by adding the following code to <em class="italic">backend/src/backend/blueprints/control.py</em>:</p>
+<pre class="source-code">
+from quart import Blueprint, ResponseReturnValue
+ 
+blueprint = Blueprint("control", __name__)
+@blueprint.get("/control/ping/")
+async def ping() -&gt; ResponseReturnValue:
+    return {"ping": "pong"}</pre>
+<p>We can then register it with the app by changing <em class="italic">backend/src/backend/run.py</em> to the following:</p>
+<pre class="source-code">
+from quart import Quart
+from backend.blueprints.control import blueprint as control_blueprint
+ 
+app = Quart(__name__)
+app.register_blueprint(control_blueprint)</pre>
+<p>The existing <a id="_idIndexMarker117"/>tests will continue to work; however, I think the location of the test should shadow the location of the code it is testing. This <a id="_idIndexMarker118"/>makes it easier to understand where the tests are, and what the tests should be testing. Therefore, we need to move <em class="italic">backend/tests/test_run.py</em> to <em class="italic">backend/tests/blueprints/test_control.py</em>. </p>
+<p>You should now have the following backend files and structure:</p>
+<pre class="source-code">
+tozo
+└── backend
+    ├── pdm.lock
+    ├── pyproject.toml
+    ├── setup.cfg
+    ├── src
+    │   └── backend
+    │       ├── blueprints
+    │       │   ├── __init__.py
+    │       │   └── control.py
+    │       ├── __init__.py
+    │       └── run.py
+    └── tests
+        ├── blueprints
+        │   ├── __init__.py
+        │   └── test_control.py
+        └── __init__.py</pre>
+<p>We’ll use <a id="_idIndexMarker119"/>a blueprint for each logical collection <a id="_idIndexMarker120"/>of features in our app and follow this structure throughout. We can now focus on configuring the app to run in the various environments we will use.</p>
+<h2 id="_idParaDest-55"><a id="_idTextAnchor059"/>Configuring the app</h2>
+<p>We need to run our app in multiple environments, notably development, testing, CI, and production. To do so, we’ll need to change some settings in each; for example, the database <a id="_idIndexMarker121"/>connection. Configuration allows us to change these settings without having to alter the code. It also allows secrets to be managed separately from the code, and hence more securely.</p>
+<p>I find environment variables to be the best way to provide configuration, with each environment having different values for the same variable. We can instruct Quart to load the configuration from prefixed environment variables. The prefix ensures that only relevant environment variables are considered; by default, the prefix is <strong class="source-inline">QUART_</strong>, but we’ll change it to <strong class="source-inline">TOZO_</strong>. To do so, we’ll need to add the following change to <em class="italic">backend/src/backend/run.py</em> so that the config is loaded immediately after the app is created:</p>
+<pre class="source-code">
+<strong class="bold">app = Quart(__name__)</strong>
+app.config.from_prefixed_env(prefix="TOZO")</pre>
+<p>The highlighted line of code should already be present.</p>
+<p>In production, we’ll define the environment variables using a Terraform script, whereas locally, we will load environment variables from a file. First, for development, we need to add the following to <em class="italic">backend/development.env</em>:</p>
+<pre class="source-code">
+TOZO_BASE_URL="localhost:5050" 
+TOZO_DEBUG=true
+TOZO_SECRET_KEY="secret key"</pre>
+<p>Second, for testing, we need to add the following to <em class="italic">backend/testing.env</em>:</p>
+<pre class="source-code">
+TOZO_BASE_URL="localhost:5050" 
+TOZO_DEBUG=true
+TOZO_SECRET_KEY="secret key" 
+TOZO_TESTING=true</pre>
+<p>Now that the files exist, we can adapt the PDM scripts to load them when starting the app or running tests by making the following change to <em class="italic">backend/pyproject.toml</em>:</p>
+<pre class="source-code">
+[tool.pdm.scripts]
+start = {cmd = "quart --app src/backend/run.py run --port   5050", env_file = "development.env"}
+test = {cmd = "pytest tests/", env_file = "testing.env"}</pre>
+<p>These small <a id="_idIndexMarker122"/>modifications to the scripts will ensure that the environment is automatically loaded when using the <strong class="source-inline">pdm run start</strong> and <strong class="source-inline">pdm run test</strong> commands. We’ll now look at an often-overlooked feature, which is consistent error responses.</p>
+<h2 id="_idParaDest-56"><a id="_idTextAnchor060"/>Ensuring error responses are JSON</h2>
+<p>As we are writing a backend API that serves JSON, it is important that all responses use JSON, including <a id="_idIndexMarker123"/>error responses. Therefore, rather than using the Quart built-in error responses, we will use our own that explicitly result in a JSON response. </p>
+<p>Error responses are usually signified by a status code in the 400-500 range. However, the status code alone cannot always convey enough information. For example, when registering a new member, a status code of 400 is expected for a request with an invalid email address and a request with a weak password. Hence, there is a need to return an additional code to separate these cases. We can do so by adding the following code to <em class="italic">backend/src/backend/lib/api_error.py</em>:</p>
+<pre class="source-code">
+class APIError(Exception):
+    def __init__(self, status_code: int, code: str) -&gt; None:
+        self.status_code = status_code
+        self.code = code</pre>
+<p>With <strong class="source-inline">APIError</strong> available, we <a id="_idIndexMarker124"/>can now inform Quart how to handle it by adding the following code to <em class="italic">backend/src/backend/run.py</em>:</p>
+<pre class="source-code">
+from quart import ResponseReturnValue
+from backend.lib.api_error import APIError
+ 
+@app.errorhandler(APIError)  # type: ignore
+async def handle_api_error(error: APIError) -&gt; ResponseReturnValue:
+    return {"code": error.code}, error.status_code</pre>
+<p>We should also inform Quart how to handle any other unexpected errors, such as those that would result in a 500 “Internal Server Error” response, as follows:</p>
+<pre class="source-code">
+@app.errorhandler(500)
+async def handle_generic_error(
+    error: Exception
+) -&gt; ResponseReturnValue:
+    return {"code": "INTERNAL_SERVER_ERROR"}, 500</pre>
+<p>We now have a basic Quart app setup to allow us to add all of the features we need for our actual app, starting with the ability to manage user accounts.</p>
+<h1 id="_idParaDest-57"><a id="_idTextAnchor061"/>Including user accounts</h1>
+<p>As we want <a id="_idIndexMarker125"/>users to be able to log into our app, we will need to <strong class="bold">authenticate</strong> that the client is who they claim to be. Thereafter, we need to ensure that each user only gets to see their own to-dos. This is typically achieved by the user entering a username and password, which are then checked against stored versions.</p>
+<p>We will need to authenticate every request the user makes to the backend; however, we ideally only want the user to enter their username and password once (until they log out). We can achieve this by saving information to a cookie when the user logs in, as the browser will then send us the cookie with every request.</p>
+<p>We will need to save a piece of identifying information to the cookie when the user logs in and starts the session; for example, their user ID. We can then read the cookie on every request and identify which user it is. However, cookies can be edited, or faked, by the client so we need to ensure that the information in the cookie hasn’t been tampered with.</p>
+<p>We can prevent <a id="_idIndexMarker126"/>tampering by signing the information in the cookie. Signing is where a cryptographic function is applied to the data using a secret key to create a signature. This signature is then stored with the data, allowing the stored signature to be checked against a recalculated version.</p>
+<p>Quart-Auth is a Quart extension that does this for us by managing cookies and the data stored in them. Quart-Auth is installed by running the following command in the <em class="italic">backend</em> directory:</p>
+<p class="source-code">pdm add quart-auth</p>
+<p>Then, you need to activate <strong class="source-inline">AuthManager</strong> when creating the app in <em class="italic">backend/src/backend/run.py,</em> as follows:</p>
+<pre class="source-code">
+from quart_auth import AuthManager
+auth_manager = AuthManager(app)</pre>
+<p>While Quart-Auth comes with a sensible set of defaults for securing the cookie, our usage allows us to be more secure. Specifically, we can utilize the Strict SameSite setting, rather than the Lax setting that Quart-Auth defaults to. This is because we only need to authenticate non-navigation requests to the API routes. </p>
+<p class="callout-heading">SameSite</p>
+<p class="callout">The SameSite setting ensures that cookie data is only sent with requests that originate from the given domain. This prevents other websites from initiating requests with the cookie data. To find out <a id="_idIndexMarker127"/>more information about SameSite, you can follow this link: <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite">https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite</a>.</p>
+<p>To add the Strict SameSite setting, add the following to <em class="italic">backend/development.env</em> and <em class="italic">backend/testing.env</em>:</p>
+<p class="source-code">TOZO_QUART_AUTH_COOKIE_SAMESITE="Strict"</p>
+<p>However, we will <a id="_idIndexMarker128"/>need to disable the secure cookie flag in development as we aren’t using HTTPS. This is done by adding the following to <em class="italic">backend/development.env</em> and <em class="italic">backend/testing.env</em>:</p>
+<p class="source-code">TOZO_QUART_AUTH_COOKIE_SECURE=false</p>
+<p>With Quart-Auth managing the session, we now need to store the passwords, ensure that they are strong, and allow for passwordless authentication.</p>
+<h2 id="_idParaDest-58"><a id="_idTextAnchor062"/>Securely storing passwords</h2>
+<p>While we can now manage a user’s session, in order to start it, the user needs to log in by providing <a id="_idIndexMarker129"/>an email and password. While the emails are fine to store directly in the database, extra care must be taken with the passwords. This is because users often use the same password across many websites/services, and if it were to leak from our app, we could have potentially leaked access to many other websites as well. Therefore, instead of storing the password directly, we will hash the password and store that.</p>
+<p>A <strong class="bold">password hash</strong> is the <a id="_idIndexMarker130"/>result of applying a hashing operation to the plain-text password. A good hashing operation should ensure that the resultant hash cannot be turned back into the plain-text password and that each distinct plain-text password produces a different hash result. </p>
+<p>I like to use <strong class="source-inline">bcrypt</strong> as the hashing operation as it meets both of these requirements and is easy to use. <strong class="source-inline">bcrypt</strong> is installed by running the following command in the <em class="italic">backend</em> directory:</p>
+<p class="source-code">pdm add bcrypt</p>
+<p>With <strong class="source-inline">bcrypt</strong> installed, we can hash passwords with generated salt per password as follows:</p>
+<pre class="source-code">
+import bcrypt
+hashed = bcrypt.hashpw(password, bcrypt.gensalt(rounds=14))</pre>
+<p>Checking whether <a id="_idIndexMarker131"/>a supplied password matches the hashed password is then done via the following code:</p>
+<p class="source-code">match = bcrypt.checkpw(password, hashed)</p>
+<p>We will use <strong class="source-inline">bcrypt</strong> in the login and registration functionality we’ll add in <a href="B18727_03.xhtml#_idTextAnchor076"><em class="italic">Chapter 3</em></a><em class="italic">, Building the API</em>. Next, we need to check whether the passwords are strong enough.</p>
+<p class="callout-heading">Salting the password </p>
+<p class="callout">When hashing passwords, it is best practice to <strong class="bold">salt</strong> them as well. This means that an additional string (<strong class="source-inline">salt</strong>) is added to the password before the hash is calculated. As the salt is meant to be different for every stored password, it ensures that the same password hashed in two different implementations has a different hash. Hence, adding salt is an additional security measure that we do via the <strong class="source-inline">bcrypt.gensalt</strong> function.</p>
+<h2 id="_idParaDest-59"><a id="_idTextAnchor063"/>Ensuring passwords are strong</h2>
+<p>Users often <a id="_idIndexMarker132"/>choose weak passwords, which leave their account vulnerable. To protect against this, we should ensure that our users choose strong passwords. To do this, I like to use <strong class="source-inline">zxcvbn</strong> as it gives a score indicating the strength of the password. It is installed by running the following command in the <em class="italic">backend</em> directory:</p>
+<p class="source-code">pdm add zxcvbn</p>
+<p>It is then used to give a score, as follows:</p>
+<pre class="source-code">
+from zxcvbn import zxcvbn
+score = zxcvbn(password).score</pre>
+<p>The score is a value between 0 and 4, of which I usually consider scores of 3 or 4 good. Therefore, we will prevent passwords with lower scores from being used.</p>
+<p>We will <a id="_idIndexMarker133"/>make use of <strong class="source-inline">zxcvbn</strong> when adding registration and change password functionality in the following chapter. Next, we need to consider how the user authenticates without a password; for example, when they have forgotten it.</p>
+<h2 id="_idParaDest-60"><a id="_idTextAnchor064"/>Allowing password-less authentication</h2>
+<p>There are a few circumstances where users are unable to provide a password but can prove that <a id="_idIndexMarker134"/>they have access to the account’s email address. A prime example of this is when a user forgets their password and wishes to reset it. In these situations, we need to email the user a token that they can provide back to us, thereby authenticating them as the user in charge of the email. For this to work, the token must identify the user, and malicious users must not be able to tamper with the token or create their own tokens.</p>
+<p>To create a <a id="_idIndexMarker135"/>token, we can sign the user’s ID using a cryptographic <strong class="bold">hash function</strong>, secret key, and salt. This will ensure that a malicious user cannot alter the token without generating a correct signature, which requires our secret key. To do this, we can use <strong class="source-inline">itsdangerous</strong>, which is also what Quart-Auth uses for the cookies. <strong class="source-inline">itsdangerous</strong> is installed by running the following command in the <em class="italic">backend</em> directory:</p>
+<p class="source-code">pdm add itsdangerous</p>
+<p>As this approach does not encrypt the signed data, it is important to remember that users will be able to read anything we place in the token. Therefore, we must not put anything sensitive in the token (the user ID is not sensitive).</p>
+<p>We will also add a timestamp to our tokens; this way we can ensure that they expire after a specific period of time. In addition, as we want to be able to use the token in links, we need to use the <strong class="source-inline">URLSafeTimedSerializer</strong>. We can create a token with the user's ID as follows:</p>
+<pre class="source-code">
+from itsdangerous import URLSafeTimedSerializer
+from quart import current_app
+serializer = URLSafeTimedSerializer(
+    current_app.secret_key, salt="salt"
+)
+token = serializer.dumps(user_id)</pre>
+<p>The <a id="_idIndexMarker136"/>token can then be read and checked as follows:</p>
+<pre class="source-code">
+from itsdangerous import BadSignature, SignatureExpired
+from backend.lib.api_error import APIError
+signer = URLSafeTimedSerializer(
+    current_app.secret_key, salt="salt"
+)
+try:
+    user_id = signer.loads(token, max_age=ONE_DAY)
+except (SignatureExpired):
+    raise APIError(403, "TOKEN_EXPIRED")
+except (BadSignature):
+    raise APIError(400, "TOKEN_INVALID")
+else:
+    # Use the user_id safely</pre>
+<p>As we are using timed tokens, we will need to control time when we are testing. For example, if we want to test an expired token, we will need to create the token at a time whereby it will be expired when checked. To do this, we can use <strong class="source-inline">freezegun</strong>, which is installed by running the following command in the <em class="italic">backend</em> directory:</p>
+<p class="source-code">pdm add --dev freezegun</p>
+<p>Then, we can use the following code in our tests to create an old token:</p>
+<pre class="source-code">
+from freezegun import freeze_time
+with freeze_time("2020-01-01"):
+    signer = URLSafeTimedSerializer(        app.secret_key, salt="salt"    )
+    token = signer.dumps(1)</pre>
+<p>This <a id="_idIndexMarker137"/>token can then be used to test how a route handler responds to a token that is out of date.</p>
+<p>We will use <strong class="source-inline">itsdangerous</strong> and <strong class="source-inline">freezegun</strong> in the forgotten password functionality we’ll add in the following chapter. </p>
+<p>Next, as there are malicious users that will attempt to attack our app, we’ll need to protect it.</p>
+<h1 id="_idParaDest-61"><a id="_idTextAnchor065"/>Protecting the app</h1>
+<p>Shortly after you deploy your app in production, users will at best, misuse it, and at worst, attack it. It is <a id="_idIndexMarker138"/>therefore worthwhile being defensive from the outset by adding rate limiting and request validation. </p>
+<p>Rate limiting limits the rate at which a remote client can make requests to the app. This prevents a user from overloading the app with their requests, thereby preventing other users from using the app.</p>
+<p>Validation ensures that the JSON data received (or replied) matches an expected structure. This is helpful as it means an error message is displayed if the JSON data is structurally incorrect. It also mitigates against users sending structures that result in errors or issues in the app.</p>
+<h2 id="_idParaDest-62"><a id="_idTextAnchor066"/>Adding rate limiting</h2>
+<p>We’ll use <a id="_idIndexMarker139"/>the Quart extension called Quart-Rate-Limiter to <a id="_idIndexMarker140"/>enforce rate limits, which is installed by running the following command in the <em class="italic">backend</em> directory:</p>
+<p class="source-code">pdm add quart-rate-limiter</p>
+<p>We can now activate <strong class="source-inline">RateLimiter</strong> by adding the following code to <em class="italic">backend/src/backend/run.py</em>:</p>
+<pre class="source-code">
+from quart_rate_limiter import RateLimiter
+rate_limiter = RateLimiter(app)</pre>
+<p>With the <strong class="source-inline">RateLimiter</strong> activated, any route in the app can be given <strong class="bold">rate limit</strong> protection, for example, to limit to six requests per minute, as follows:</p>
+<pre class="source-code">
+from datetime import timedelta
+ 
+from quart_rate_limiter import rate_limit
+ 
+@app.get("/")
+@rate_limit(6, timedelta(minutes=1))
+async def handler():
+    ...</pre>
+<p>As with other errors, it is important to provide a JSON response if the client exceeds the rate limit; we can do this by adding the following code to <em class="italic">backend/src/backend/run.py</em>:</p>
+<pre class="source-code">
+from quart_rate_limiter import RateLimitExceeded
+ 
+@app.errorhandler(RateLimitExceeded)  # type: ignore
+async def handle_rate_limit_exceeded_error(
+    error: RateLimitExceeded,
+) -&gt; ResponseReturnValue:
+    return {}, error.get_headers(), 429</pre>
+<p>Now that <a id="_idIndexMarker141"/>we can add rate limits, it is best practice to add them to all of the routes. To ensure that we do so, let’s add a test that checks for us.</p>
+<h2 id="_idParaDest-63"><a id="_idTextAnchor067"/>Ensuring all routes have rate limits</h2>
+<p>Malicious attackers often search for paths with missing rate limits as a weakness they can then <a id="_idIndexMarker142"/>attack. To mitigate against this, I like to check that all routes have rate limits or are marked as exempt using the <strong class="source-inline">rate_exempt</strong> decorator. To do this, I add the following code to <em class="italic">tests/test_rate_limits.py</em>:</p>
+<pre class="source-code">
+from quart_rate_limiter import (
+    QUART_RATE_LIMITER_EXEMPT_ATTRIBUTE,
+    QUART_RATE_LIMITER_LIMITS_ATTRIBUTE,
+)
+from backend.run import app
+IGNORED_ENDPOINTS = {"static"}
+ 
+def test_routes_have_rate_limits() -&gt; None:
+    for rule in app.url_map.iter_rules():
+        endpoint = rule.endpoint
+ 
+        exempt = getattr(
+            app.view_functions[endpoint],
+            QUART_RATE_LIMITER_EXEMPT_ATTRIBUTE,
+            False,
+        )
+        if not exempt and endpoint not in IGNORED_ENDPOINTS:
+            rate_limits = getattr(
+                app.view_functions[endpoint],
+                QUART_RATE_LIMITER_LIMITS_ATTRIBUTE,
+                [],
+            )
+            assert rate_limits != []</pre>
+<p>In a Quart app, the rules are the method-path combinations that the app will respond to. Each <a id="_idIndexMarker143"/>rule has an endpoint that indicates which function should handle the request. The static endpoint is added by Quart, and hence we ignore it in this test.</p>
+<p>This test will check that all of the routes in the app have a rate limit or are exempt. This means that we also need to add the <strong class="source-inline">rate_exempt</strong> decorator to the control ping endpoint we added when setting up the basic app. This is done by adding the highlighted decorator to the ping route handler in <em class="italic">backend/src/backend/blueprints/control.py</em> as follows: </p>
+<pre class="source-code">
+from quart_rate_limiter import rate_exempt
+@blueprint.get("/control/ping/")
+<strong class="bold">@rate_exempt</strong>
+async def ping() -&gt; ResponseReturnValue:
+    return {"ping": "pong"}</pre>
+<p>Alongside rate limiting routes, we can also protect the routes by validating the request and response data.</p>
+<h2 id="_idParaDest-64"><a id="_idTextAnchor068"/>Adding request and response validation</h2>
+<p>Malicious users will often try to send malformed and invalid data in order to find mistakes <a id="_idIndexMarker144"/>in our code. To mitigate against this, we’ll use the Quart extension called Quart-Schema to validate requests and responses. It is installed by running the following command in the <em class="italic">backend</em> directory:</p>
+<p class="source-code">pdm add "pydantic[email]" </p>
+<p class="source-code">pdm add quart-schema</p>
+<p>By convention, JSON (Javascript/TypeScript) and Python use different naming conventions, with the former using <em class="italic">camelCase</em> and the latter <em class="italic">snake_case.</em> This means that we will need to convert between the two when receiving or replying. Fortunately, Quart-Schema can do this automatically for us, without any additional thought, via the <strong class="source-inline">convert_casing</strong> option.</p>
+<p>We can activate <strong class="source-inline">QuartSchema</strong>, including setting the <strong class="source-inline">convert_casing</strong> option, by adding the following code to  <em class="italic">backend/src/backend/run.py</em>:</p>
+<pre class="source-code">
+from quart_schema import QuartSchema
+schema = QuartSchema(app, convert_casing=True) </pre>
+<p>With this setup, we can use <strong class="source-inline">dataclass</strong> to define and validate the data the route expects to receive and to validate that it sends the correct data back, as follows:</p>
+<pre class="source-code">
+from quart_schema import validate_request, validate_response
+@dataclass
+class Todo:
+    task: str
+    due: Optional[datetime]
+@app.post("/")
+@validate_request(Todo)
+@validate_response(Todo)
+async def create_todo(data: Todo) -&gt; Todo:
+    ... 
+    return data</pre>
+<p>As with <a id="_idIndexMarker145"/>other errors, it is important to provide a JSON response to the client with an informative message if the client sends the wrong data. We can do this by adding the following error handler to <em class="italic">backend/src/backend/run.py</em>:</p>
+<pre class="source-code">
+from quart_schema import RequestSchemaValidationError
+@app.errorhandler(RequestSchemaValidationError)  # type: ignore
+async def handle_request_validation_error(
+    error: RequestSchemaValidationError,
+) -&gt; ResponseReturnValue:
+    if isinstance(error.validation_error, TypeError):
+        return {"errors": str(error.validation_error)}, 400
+    else:
+        return {"errors": error.validation_error.json()}, 400</pre>
+<p>Checking the type of <strong class="source-inline">validation_error</strong> allows for useful information to be returned in the response, thereby helping correct the issue.</p>
+<p>As Quart-Schema adds routes to our app that are not rate limited, we will need to change the <strong class="source-inline">IGNORED_ENDPOINTS</strong> line in <em class="italic">backend/tests/test_rate_limits.py</em> as follows:</p>
+<p class="source-code">IGNORED_ENDPOINTS = {"static", "openapi", "redoc_ui", "swagger_ui"}</p>
+<p>As we can validate the structure of the data sent and received by the backend, we can now turn <a id="_idIndexMarker146"/>to how we store the data in the database. For that, we will need to be able to connect to it and execute queries.</p>
+<h1 id="_idParaDest-65"><a id="_idTextAnchor069"/>Connecting to the database</h1>
+<p>We have chosen to store the data the app needs in a PostgreSQL database, which we will need <a id="_idIndexMarker147"/>to connect to. To do this, I like to use the Quart extension called Quart-DB, which is a great wrapper around fast lower-level PostgreSQL drivers. It is installed by running the following command in the <em class="italic">backend</em> directory:</p>
+<p class="source-code">pdm add quart-db</p>
+<p>We can activate <strong class="source-inline">QuartDB</strong> by adding the following code to <em class="italic">backend/src/backend/run.py</em>: </p>
+<pre class="source-code">
+from quart_db import QuartDB
+quart_db = QuartDB(app)</pre>
+<p>We also need to configure which database <strong class="source-inline">QuartDB</strong> should connect to. This is achieved by adding a <strong class="source-inline">TOZO_QUART_DB_DATABASE_URL</strong> environment variable, the value of which is constructed as follows, with the highlighted parts being configurable:</p>
+<pre class="source-code">
+postgresql://<strong class="bold">username</strong>:<strong class="bold">password</strong>@0.0.0.0:5432/<strong class="bold">db_name</strong></pre>
+<p>We’ll use <strong class="source-inline">tozo</strong> for the username, password, and database name in development as they are very obvious and easy to remember. To do this, add the following to <em class="italic">backend/development.env</em>:</p>
+<p class="source-code">TOZO_QUART_DB_DATABASE_URL="postgresql://tozo:tozo@0.0.0.0:5432/tozo"</p>
+<p>When testing, we’ll use <strong class="source-inline">tozo_test</strong> for the username, password, and database name so that test and development data are kept separate. To do this, add the following to <em class="italic">backend/testing.env</em>:</p>
+<p class="source-code">TOZO_QUART_DB_DATABASE_URL="postgresql://tozo_test:tozo_test@0.0.0.0:5432/tozo_test"</p>
+<p>As we develop, we will need to reset the database to a known state after making and testing changes. We’ll also want to reset the database before running the tests to ensure the <a id="_idIndexMarker148"/>tests don’t fail because the database is in a different state. To do this, we’ll start by adding a Quart CLI command to recreate the database by adding the following code to <em class="italic">backend/src/backend/run.py</em>:</p>
+<pre class="source-code">
+import os
+from subprocess import call  # nosec
+from urllib.parse import urlparse 
+@app.cli.command("recreate_db")
+def recreate_db() -&gt; None:
+    db_url = urlparse(os.environ["TOZO_QUART_DB_DATABASE_URL"])
+    call(  # nosec
+        ["psql", "-U", "postgres", "-c", f"DROP DATABASE IF           EXISTS {db_url.path.removeprefix('/')}"],
+    )
+    call(  # nosec
+        ["psql", "-U", "postgres", "-c", f"DROP USER IF EXISTS           {db_url.username}"],
+    )
+    call(  # nosec
+        ["psql", "-U", "postgres", "-c", f"CREATE USER {db_url.       username} LOGIN PASSWORD '{db_url.password}' CREATEDB"],
+    )
+    call(  # nosec
+        ["psql", "-U", "postgres", "-c", f"CREATE DATABASE {db_          url.path.removeprefix('/')}"],
+    )</pre>
+<p>This command calls out to <strong class="source-inline">psql</strong> using the <strong class="source-inline">call</strong> function. The first two calls will drop the database and user if they already exist using the <strong class="source-inline">DROP DATABASE</strong> and <strong class="source-inline">DROP USER</strong> SQL commands. After they’ve been dropped, the next calls create the user and then the database using the <strong class="source-inline">CREATE USER</strong> and <strong class="source-inline">CREATE DATABASE</strong> SQL commands.</p>
+<p>We can now utilize this command in the <strong class="source-inline">pdm run test</strong> script and add a new <strong class="source-inline">pdm run recreate-db</strong> script to reset the database on demand by making the following change to <em class="italic">backend/pyproject.toml</em>:</p>
+<pre class="source-code">
+[tool.pdm.scripts]
+recreate-db-base = "quart --app src/backend/run.py recreate_db"
+recreate-db = {composite = ["recreate-db-base"], env_file =  "development.env"}
+<strong class="bold">test = {composite = ["recreate-db-base", "pytest tests/"], env_  file = "testing.env"}</strong></pre>
+<p>The highlighted <a id="_idIndexMarker149"/>line indicates that the <strong class="source-inline">test</strong> script has been changed, whereas the <strong class="source-inline">recreate-db</strong> and <strong class="source-inline">recreate-db-base</strong> scripts have been added.</p>
+<p>To check whether this works, we can now create the development database by running the following command in the <em class="italic">backend</em> directory:</p>
+<p class="source-code">pdm run recreate-db</p>
+<p>Then, to check that it has worked, we can open a <strong class="source-inline">psql</strong> shell to the database with the following command:</p>
+<p class="source-code">psql –U tozo</p>
+<p>The preceding command should give an output similar to that in <em class="italic">Figure 2.3</em>:</p>
+<div>
+<div class="IMG---Figure" id="_idContainer012">
+<img alt="Figure 2.3: The output from psql when running the \dt command to describe the empty database " height="181" src="image/B18727_02_04.jpg" width="896"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 2.3: The output from psql when running the \dt command to describe the empty database</p>
+<p class="callout-heading">PSQL</p>
+<p class="callout">PSQL is a command-line tool that can connect to a PostgreSQL database and allows queries and other commands to be run. This means you can test SQL queries from the command line and inspect the structure of the database. I’d recommend you try the <strong class="source-inline">\dt</strong> command that lists all of the tables in the database, and the <strong class="source-inline">\d tbl</strong> command that describes the structure of the table called <em class="italic">tbl</em>. </p>
+<p>When testing, we’ll need to run our tests in the Quart test app context as this ensures that the <a id="_idIndexMarker150"/>database connection is established. To do so, we need to add the following code to <em class="italic">backend/tests/conftest.py</em>:</p>
+<pre class="source-code">
+from typing import AsyncGenerator
+ 
+import pytest
+from quart import Quart
+ 
+from backend.run import app
+ 
+@pytest.fixture(name="app", scope="function")
+async def _app() -&gt; AsyncGenerator[Quart, None]:
+    async with app.test_app():
+        yield app</pre>
+<p>The <strong class="source-inline">pytest</strong> fixtures can be injected into tests, which means that we can use this fixture in our tests by declaring it as an argument. This means that <em class="italic">backend/tests/blueprints/test_control.py</em> must be rewritten as follows:</p>
+<pre class="source-code">
+from quart import Quart
+async def test_control(app: Quart) -&gt; None:
+    test_client = app.test_client()
+    response = await test_client.get("/control/ping/")
+    assert (await response.get_json())["ping"] == "pong"</pre>
+<p>Another <a id="_idIndexMarker151"/>useful feature would be a direct connection to the database to use in the tests. This fixture is provided by adding the following code to <em class="italic">backend/conftest.py</em>:</p>
+<pre class="source-code">
+from quart_db import Connection
+from backend.run import quart_db
+@pytest.fixture(name="connection", scope="function")
+async def _connection(app: Quart) -&gt; AsyncGenerator[Connection, None]:
+    async with quart_db.connection() as connection:
+        async with connection.transaction():
+            yield connection</pre>
+<p>With this in place, all of our tests can use the app fixture and run tests against the testing database.</p>
+<p>Alongside connecting to the database, we will also need the backend to connect to an email server to send emails to the users.</p>
+<h1 id="_idParaDest-66"><a id="_idTextAnchor070"/>Sending emails</h1>
+<p>We will want <a id="_idIndexMarker152"/>to send users of our app emails, with the first being a confirmation email when they register. Another will be sent if the user forgets their password, as we can send them a password reset email. These targeted emails are transactional rather than marketing in nature, which is an important distinction as marketing emails are rarely sent via the app code.</p>
+<p>With <strong class="bold">transactional emails</strong>, the <a id="_idIndexMarker153"/>aim is usually to convey a task to the user as clearly as possible. For this reason, the emails are usually text-based with minimal imagery. However, we should ensure the email is branded and has space for any required legal text. This means <a id="_idIndexMarker154"/>that we need to render the emails so that the transactional text is clear and surrounded by relevant branding and text.</p>
+<h2 id="_idParaDest-67"><a id="_idTextAnchor071"/>Rendering emails</h2>
+<p>We will consider an email as consisting of a header where we will place branding (such as a logo), content <a id="_idIndexMarker155"/>where the specifics of the email (for example, a link to our app’s password reset page) are placed, and a footer where any legal information is placed. As only the content changes between emails, we can consider rendering the header and footer separately to the content.</p>
+<p>As most email clients support HTML, we can style our emails to make them more engaging and pleasant to read. This means that we will need a HTML header/footer into which we can render the content of the specific email. This is best done using Quart’s built-in <strong class="source-inline">render_template</strong> function, which utilizes Jinja2 to render template documents. </p>
+<p>To start with the header and footer, we need to place the following code in <em class="italic">backend/src/backend/templates/email.xhtml</em>:</p>
+<pre class="source-code">
+&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+  &lt;head&gt;
+    &lt;title&gt;Tozo - email&lt;/title&gt;
+    &lt;meta http-equiv="Content-Type" content="text/html;      charset=UTF-8"&gt;
+    &lt;meta name="viewport" content="width=device-width, initial-      scale=1.0"&gt;
+  &lt;/head&gt;
+  &lt;body style="font-family: Arial, 'Helvetica Neue', Helvetica,    sans-serif; font-size: 14px; font-style: normal; margin: 0"&gt;
+    &lt;table width="100%" height="100%" cellpadding="0"       cellspacing="0" border="0"&gt;
+      &lt;tr&gt;
+        &lt;td align="center"&gt;
+          &lt;table height="100%" cellpadding="20" cellspacing="0"            border="0" style="max-width: 540px;"&gt;
+            &lt;tr&gt;
+              &lt;td align="left" width="540"&gt;
+<strong class="bold">                {% block welcome %}</strong>
+<strong class="bold">                  Hello,</strong>
+<strong class="bold">                {% endblock %}</strong>
+              &lt;/td&gt;
+            &lt;/tr&gt;
+            &lt;tr&gt;
+              &lt;td align="left" width="540"&gt;
+<strong class="bold">                {% block content %}</strong>
+<strong class="bold">                  Example content</strong>
+<strong class="bold">                {% endblock %}</strong>
+              &lt;/td&gt;
+            &lt;/tr&gt;
+            &lt;tr&gt;
+              &lt;td align="center" width="540"&gt;
+                The Tozo team
+              &lt;/td&gt;
+            &lt;/tr&gt;
+          &lt;/table&gt;
+        &lt;/td&gt;
+      &lt;/tr&gt;
+    &lt;/table&gt;
+  &lt;/body&gt;
+&lt;/html&gt;</pre>
+<p>As email <a id="_idIndexMarker156"/>clients only support limited parts of HTML and CSS, we are using a table to lay out the email. The layout we are aiming for is where the content is kept within a width of 540 px in the center of the viewport. This should support the majority of email clients while still looking good. </p>
+<p>The highlighted <strong class="source-inline">block</strong> directives show only the contents within them when rendered, as shown in <em class="italic">Figure 2.4</em>. It allows any template that extends this base email to replace the contents of the blocks, hence we’ll use this as a base for all our emails.</p>
+<div>
+<div class="IMG---Figure" id="_idContainer013">
+<img alt="Figure 2.4: The rendered email when viewed in a browser " height="248" src="image/Figure_2.4_NEW.jpg" width="1088"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 2.4: The rendered email when viewed in a browser</p>
+<p class="callout-heading">caniemail.com</p>
+<p class="callout">The <a href="http://caniemail.com">caniemail.com</a> website is an invaluable resource for checking which HTML and CSS features are supported by the various email clients in existence. I would recommend checking this site for any features added to the HTML email.</p>
+<p>Now that we have nice-looking emails, we can add code to send them to the user’s email address.</p>
+<h2 id="_idParaDest-68"><a id="_idTextAnchor072"/>Sending emails</h2>
+<p>While it is <a id="_idIndexMarker157"/>possible to send emails directly from the app using a SMTP server, I find that it is better practice to use a third-party service such as Postmark (<a href="https://postmarkapp.com">https://postmarkapp.com</a>). This is <a id="_idIndexMarker158"/>because Postmark will ensure that our emails are sent reliably from a setup that helps ensure a low spam score, which is hard to achieve from a new SMTP server.</p>
+<p>In development and testing, I prefer not to send emails but rather just log them out. I find this makes development easier and quicker (no checking any email inboxes). We can do this by starting with a <strong class="source-inline">send_email</strong> function that logs the email to the console by adding the following code to <em class="italic">backend/src/backend/lib/email.py</em>:</p>
+<pre class="source-code">
+import logging
+from typing import Any
+from quart import render_template
+ 
+log = logging.getLogger(__name__)
+async def send_email(
+    to: str, 
+    subject: str, 
+    template: str, 
+    ctx: dict[str, Any], 
+) -&gt; None:
+    content = await render_template(template, **ctx)
+    log.info("Sending %s to %s\n%s", template, to, content)</pre>
+<p>We’ll also need to configure the logging, which we can do with a basic setup by adding the following code to <em class="italic">backend/src/backend/run.py</em>:</p>
+<pre class="source-code">
+import logging
+ 
+logging.basicConfig(level=logging.INFO)</pre>
+<p>To send <a id="_idIndexMarker159"/>emails with the third-party Postmark, we will need to send HTTP requests to their API. To do so, we can use <strong class="source-inline">httpx</strong>, which is installed by running the following command in the <em class="italic">backend</em> directory:</p>
+<p class="source-code">pdm add httpx</p>
+<p>We can then adjust the <strong class="source-inline">send_email</strong> function to send via Postmark if a token is available in the configuration by changing the code in <em class="italic">backend/src/backend/lib/email.py</em> as follows:</p>
+<pre class="source-code">
+import logging
+from typing import Any, cast
+ 
+import httpx
+from quart import current_app, render_template
+log = logging.getLogger(__name__)
+ 
+class PostmarkError(Exception):
+    def __init__(self, error_code: int, message: str) -&gt; None:
+        self.error_code = error_code
+        self.message = message
+async def send_email(
+    to: str, 
+    subject: str, 
+    template: str, 
+    ctx: dict[str, Any], 
+) -&gt; None:
+    content = await render_template(template, **ctx)
+    log.info("Sending %s to %s\n%s", template, to, content)
+    token = current_app.config.get("POSTMARK_TOKEN")
+    if token is not None:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://api.postmarkapp.com/email",
+                json={
+                    "From": "Tozo &lt;help@tozo.dev&gt;",
+                    "To": to,
+                    "Subject": subject,
+                    "Tag": template,
+                    "HtmlBody": content,
+                },
+                headers={"X-Postmark-Server-Token": token},
+            )
+        data = cast(dict, response.json())
+        if response.status_code != 200:
+            raise PostmarkError(                data["ErrorCode"], data["Message"]            )</pre>
+<p>The <strong class="source-inline">send_email</strong> function now uses <strong class="source-inline">httpx</strong> to send a post request to Postmark, including the <a id="_idIndexMarker160"/>required token as a header and the email content in the request JSON body. Any errors returned by Postmark are raised as an easily identified <strong class="source-inline">PostmarkError</strong>. We can now focus on how we can use emails in the tests. </p>
+<h2 id="_idParaDest-69"><a id="_idTextAnchor073"/>Testing that emails are sent</h2>
+<p>When testing <a id="_idIndexMarker161"/>functionality in the backend, we’ll often want to check that an email was sent. We can do this by testing the <strong class="source-inline">send_email</strong> function by adding the following code to <em class="italic">backend/tests/lib/test_email.py</em>:</p>
+<pre class="source-code">
+from pytest import LogCaptureFixture
+from quart import Quart
+from backend.lib.email import send_email
+async def test_send_email(
+    app: Quart, caplog: LogCaptureFixture
+) -&gt; None:
+    async with app.app_context():
+        await send_email(
+            "member@tozo.dev", "Welcome", "email.xhtml", {}
+        )  
+    assert "Sending email.xhtml to member@tozo.dev" in caplog.text</pre>
+<p><strong class="source-inline">caplog</strong> is a <strong class="source-inline">pytest</strong> fixture that captures everything that is logged during the test. This allows us to check that our email was logged by looking for the specific text.</p>
+<p>With the backend now set up, we have everything we need in place to start developing our app’s API. The folder structure at this stage is as follows:</p>
+<pre class="source-code">
+tozo
+├── .github
+│   └── workflows
+├── backend
+│   ├── src
+│   │   └── backend
+│   │       └── blueprints
+│   │       └── lib
+│   │       └── templates
+│   └── tests
+│       └── backend
+│           └── blueprints
+│           └── lib
+├── frontend
+│   ├── public
+│   └── src
+└── infrastructure</pre>
+<h1 id="_idParaDest-70"><a id="_idTextAnchor074"/>Summary</h1>
+<p>In this chapter, we’ve built a backend app in Quart that we can build our specific API on. It can connect to the database, manage user sessions, protect itself against heavy and incorrect usage, and send emails to the users. </p>
+<p>The features we’ve built in this chapter are common to many apps, and hence they will be useful for the app you are trying to build. In addition, the backend built in this chapter is generic and can be adapted for your specific use.</p>
+<p>In the following chapter, we’ll add an API to manage the users, allow users to log in, and support the to-do functionality we are building in this book.</p>
+<h1 id="_idParaDest-71"><a id="_idTextAnchor075"/>Further reading</h1>
+<p>We’ve chosen to send only HTML emails for simplicity in this book; however, it is better practice to send multipart emails with HTML and plain-text parts. You can read an advocacy for this at <a href="https://useplaintext.email">https://useplaintext.email</a>.</p>
+</div>
+</div></body></html>
