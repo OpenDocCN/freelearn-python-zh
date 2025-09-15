@@ -1,0 +1,823 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="en-US">
+<head>
+<meta charset="utf-8"/>
+<meta name="generator" content="packt"/>
+<title>4 Ingesting HTTP Data</title>
+<link rel="stylesheet" type="text/css" href="../styles/stylesheet1.css"/>
+<link rel="stylesheet" type="text/css" href="../styles/stylesheet2.css"/>
+
+</head>
+<body>
+<section id="ingesting-http-data" class="level1 pkt" data-number="5">
+<h1 data-number="5">4 Ingesting HTTP Data</h1>
+<p>The next building block in application development involves <strong>data</strong>. Without data, the Web has little utility. I do not mean to get too philosophical here, but it is axiomatic that the purpose of the Internet is the facilitation of the transfer of data and knowledge from one location to another. It is therefore critical to our development as web professionals to learn how data can be transferred not just <em>from</em> our applications (which we deal with in <em>Chapter 5,</em> <em>Handling and Responding Views</em>), but also <em>to</em> our applications (which is the purpose of this chapter). The simplest applications we can build simply provide data. But to become interactive web applications participating in the global exchange of knowledge, even simple applications must be capable of extracting data from web requests.</p>
+<p>A web application that receives no data is like a screencast. Viewers can come to watch the presentation, but the presenter has no <em>personal</em> connection to the people watching. During the COVID-19 global pandemic, I was fortunate enough to still be able to participate in several Python conventions. Much applause is due the volunteers that pushed forward to present the community with a continuation of the sharing and learning atmosphere that exists with technology conferences. However, I would be remiss to point out that as a presenter, I had zero connection to my audience. It was not until after the presentation was done that I even knew how many people watched my content.</p>
+<p>This model can be useful to disperse information to those that need to intake information from it. However, the transaction is entirely one-sided. My presentations could not adjust based upon cues from the audience, and even during chat or Q&amp;A sessions, there was an interpersonal experience that was missing. In much the same way, a web application that receives no data operates under a similar principal. The server has no knowledge about who is listening and cannot alter its behavior or content based upon user input. These types of applications are purely for dissemination of data and resources only.</p>
+<p>Web APIs of this kind generally only have <code>GET</code> methods since they exist entirely to spit back information. They can be useful for relaying information about weather, flight details, or other centralized repositories of information that many people might want to access.</p>
+<p>To build a truly interactive API, we need it to operate not like a screencast, but more like a video chat. Both sides of the conversation will participate in the passing of information back and forth. And it is this bi-directional communication that we will explore in this chapter.</p>
+<p>If you will recall from our earlier discussions, there are three main sections in the raw HTTP request: <strong>the first line</strong>, <strong>the HTTP headers</strong>, and <strong>the body</strong>. So far, we have focused on intaking HTTP requests as they relate to the HTTP method and the path: information that both appear in that first line of the HTTP request.</p>
+<p>In this chapter, we will learn about how we can get data from the client from all three sections. Data can be passed to a web server in query arguments, headers, and of course the body itself. Therefore, in this chapter we will explore:</p>
+<ul>
+<li>Extracting data from cookies and headers</li>
+<li>Using data from query arguments, uploaded files, and JSON data</li>
+<li>Validating the data is received as expected</li>
+</ul>
+<section id="technical-requirements-3" class="level2" data-number="5.1">
+<h2 data-number="5.1">Technical requirements</h2>
+<p>In this chapter you should have the same tools available as in the previous Chapters at your disposal in order to be able to follow along with the examples (IDE, modern Python, and curl). You can access source code for this chapter on GitHub: <a href="https://github.com/PacktPublishing/Web-Development-with-Sanic/tree/main/chapters/04">https://github.com/PacktPublishing/Web-Development-with-Sanic/tree/main/chapters/04</a>.</p>
+</section>
+<section id="reading-cookies-and-headers" class="level2" data-number="5.2">
+<h2 data-number="5.2">Reading cookies and headers</h2>
+<p>As we have seen throughout the earlier chapters of this book, when any HTTP client sends a request to a web server, it includes one or more headers that are in a key/value pair. These headers are meant to be part of a meta-conversation between the client and the server. And since a HTTP connection is a two-sided transaction with both a request and a response, we must keep in mind that there is a distinction between request headers and response headers.</p>
+<p>This chapter still focuses on the HTTP request only. Therefore, we will only be covering material as related to request headers. This is worth pointing out because there are some headers that are commonly found in both the request and the response. One such example is <em>Content-Type</em>, which can be used by both HTTP requests and HTTP responses. So, for example, keep in mind when we talk about <em>Content-Type</em> in this section, it relates to HTTP requests only. There is a time and a place for discussing response headers. Feel free to skip ahead, or to read this section in conjunction with <em>Chapter 5, Handling and Responding Views</em> where we will discuss the other side of the same coin.</p>
+<section id="headers-are-flexible" class="level3" data-number="5.2.1">
+<h3 data-number="5.2.1">Headers are flexible</h3>
+<p>HTTP headers are not magic. There is no predefined, finite list of header names. Furthermore, deviating from what is considered <em>standard</em> will have no impact on your application. Remember back when we discussed HTTP methods, we said that you could invent your own methods? Well, you have that control and ability to create your own <em>headers</em> as well.</p>
+<p>This practice is actually encouraged and commonplace. Are you familiar with <strong>Cloudflare</strong>? In short, Cloudflare is a popular tool used as a proxy for web applications. We will discuss proxies further in <em>Chapter 8, Running a Server</em>. The idea is simple: Cloudflare runs a web server, a request comes into their server, they do <em>something</em> to it, and then bundle that up and send the request on to your server. When they do that, they include their own set of non-standard headers. For example, they will forward the request to you with <code>CF-Connection-IP</code> and <code>CF-IPCountry</code> headers to give you some helpful information about the IP address and the location of its origin.</p>
+<p>Let’s imagine that we are building an API to be used by a farmer’s market. They want to setup a web API that will help coordinate among the various participants in the market: farmers, restaurant owners, and consumers. The first endpoint we want to build will be used to provide information about the market stalls for a given day:</p>
+<pre><code>@app.get(&quot;/stalls/&lt;market_date:ymd&gt;&quot;)
+async def market_stalls(request: Request, market_date: date):
+    info = await fetch_stall_info(market_date)
+    return json({&quot;stalls&quot;: info})</code></pre>
+<p>The response content from this endpoint does not require authentication (more on that later), but really ought to be tailored to each of the types of users. A farmer might want to know how many stalls are available. Consumers and restaurant owners instead might be more interested in knowing the kinds of products that will be available. We, therefore, have identified at least two different use cases for the same endpoint.</p>
+<p>One option might be to split this single endpoint into two: <code>/stalls/&lt;market_date:ymd&gt;/availability</code> <code>/stalls/&lt;market_date:ymd&gt;/products</code></p>
+<p>However, this does add some complexity to the overall API design. Furthermore, <code>availability</code> and <code>products</code> as used in this context are not really resources in and of themselves. To give them their own endpoint sort of muddies the water of the structure of our API so far.</p>
+<p>What we are really saying is that we have a single resource—the collection of market stalls for a given day of the year—and we simply want to present those resources in different ways based upon the participant type. It really is only one endpoint with two different ways of displaying the same information.</p>
+<p>Perhaps instead of two different endpoints, a second option might be to use query parameters (more on those later in this Chapter in the section on <em>Query arguments</em>). That would look like this: <code>/stalls/&lt;market_date:ymd&gt;?participant=farmer</code> and <code>/stalls/&lt;market_date:ymd&gt;?participant=consumer</code>. This also sort of breaks the paradigm of query parameters—or at least the way I like to use them—which are typically meant to be used for filtering and sorting results.</p>
+<p>Instead, we will opt for creating a custom header for our use case: <code>Participant-Type: farmer</code>. We will also create an Enum to help us validate and limit the acceptable participants:</p>
+<pre><code>from enum import Enum, auto
+class ParticipantType(Enum):
+    UNKNOWN = auto()
+    FARMER = auto()
+    RESTAURANT = auto()
+    CONSUMER = auto()
+@app.get(&quot;/stalls/&lt;market_date:ymd&gt;&quot;)
+async def market_stalls(request: Request, market_date: date):
+    header = request.headers.get(&quot;participant-type&quot;, &quot;unknown&quot;)
+    try:
+        paticipant_type = ParticipantType[header.upper()]
+    except KeyError:
+        paticipant_type = ParticipantType.UNKNOWN
+    info = await fetch_stall_info(market_date, paticipant_type)
+    return json(
+        {
+            &quot;meta&quot;: {
+                &quot;market_date&quot;: market_date.isoformat(),
+                &quot;paticipant_type&quot;: paticipant_type.name.lower(),
+            },
+            &quot;stalls&quot;: info,
+        }
+    )</code></pre>
+<p>When the request comes in, the handler will try and read the header expecting there to be a valid <code>ParticipantType</code> object. If there is no <code>Participant-Type</code> header, or the passed value is an unknown type, we will simply fall back to<code> ParticipantType.UNKNOWN</code>.</p>
+<blockquote>
+<p><strong>IMPORTANT NOTE</strong></p>
+<p>As you can see in this example, the <code>request.headers.get("participant-type")</code> is in lower case. It really does not matter. It could be upper case, lower case, or a mix. All headers will be read as case-insensitive keys. So, even though the <code>request.headers</code> object is a <code>dict</code>, it is a special kind of dictionary that does not care about case. It is a convention only to use lowercase letters when retrieving headers from Sanic. Feel free to do what makes sense to you. I would, however, just caution you to try and stay consistent throughout a project. It can be confusing if sometimes you see <code>headers.get("Content-Type")</code> and other times <code>headers.get("content-type")</code>.</p>
+</blockquote>
+<blockquote>
+<p><strong>TIP</strong></p>
+<p>Enums are great. You should really use them everywhere you can. While using them for validation like here may not be their most obvious use case, they are super helpful when needing to pass around some types of constants. Imagine needing to remember deep inside the bowels of your application: is it <em>restaurant-owner</em>, <em>restaurant_owner</em>, or <em>restaurant</em>? Using enums helps reduce bugs, provides a single place to maintain and update, and can provide you with code completion if your IDE supports it. You will see me use enums in a variety of ways in this book. Next to <code>asyncio</code>, the standard library <code>enum</code> package might just be one of my favorites.</p>
+</blockquote>
+<p>Getting back to our example, we will now try and hit our endpoint with a few different examples to see how it responds with different headers.</p>
+<ol>
+<li><p>We will access the information with a known type pretending to be a farmer:</p>
+<pre><code>$ curl localhost:8000/stalls/2021-06-24 -H &quot;Participant-Type: farmer&quot;
+{
+  &quot;meta&quot;: {
+    &quot;market_date&quot;: &quot;2021-06-24&quot;,
+    &quot;paticipant_type&quot;: &quot;farmer&quot;
+  },
+  &quot;stalls&quot;: [...]
+}</code></pre></li>
+<li><p>Now, we will leave out the header to see how the endpoint will respond to the absence of any type:</p>
+<pre><code>$ curl localhost:8000/stalls/2021-06-24 
+{
+  &quot;meta&quot;: {
+    &quot;market_date&quot;: &quot;2021-06-24&quot;,
+    &quot;paticipant_type&quot;: &quot;unknown&quot;
+  },
+  &quot;stalls&quot;: [...]
+}</code></pre></li>
+<li><p>Finally, we will hit the endpoint with some type we have not anticipated:</p>
+<pre><code>$ curl localhost:9898/stalls/2021-06-24 -H &quot;Participant-Type: organizer&quot;
+{
+  &quot;meta&quot;: {
+    &quot;market_date&quot;: &quot;2021-06-24&quot;,
+    &quot;paticipant_type&quot;: &quot;unknown&quot;
+  },
+  &quot;stalls&quot;: [...]
+}</code></pre></li>
+</ol>
+<p>We have successfully implemented a custom HTTP header that can be used by our endpoint to decide how it will display and customize the output. This may be getting ahead of ourselves since we will cover middleware in <em>Chapter 6, Outside the response cycle</em>, but what if we want to reuse the <code>Participant-Type</code> header on other endpoints? Here is a quick showcase to make this universal to our entire application.</p>
+<pre><code>@app.on_request
+async def determine_participant_type(request: Request):
+    header = request.headers.get(&quot;participant-type&quot;, &quot;unknown&quot;)
+    try:
+        paticipant_type = ParticipantType[header.upper()]
+    except KeyError:
+        paticipant_type = ParticipantType.UNKNOWN
+    request.ctx.paticipant_type = paticipant_type
+@app.get(&quot;/stalls/&lt;market_date:ymd&gt;&quot;)
+async def market_stalls(request: Request, market_date: date):
+    info = await fetch_stall_info(market_date, request.ctx.paticipant_type)
+    return json(
+        {
+            &quot;meta&quot;: {
+                &quot;market_date&quot;: market_date.isoformat(),
+                &quot;paticipant_type&quot;: request.ctx.paticipant_type.name.lower(),
+            },
+            &quot;stalls&quot;: info,
+        }
+    )</code></pre>
+<p>By evaluating the header inside middleware, we can now place <code>participant_type</code> on the request object for easy access.</p>
+<p>The last thing that I would like to point out about this development example is the mindset towards testability. Notice how we identified three different potential uses of the endpoint: a known type, a lack of a type, and an unknown type. We will talk about testing in <em>Chapter 9</em>, <em>Best practices to improve your web applications</em>. As we continue working through this book, however, it is good to be reminded not only of how to work with Sanic, but the types of things we should be thinking about when we uncover a problem. Thinking ahead about how the application could be used helped us understand the types of use cases we might want to test for, and therefore the types of use cases that our application needs to handle.</p>
+<blockquote>
+<p><strong>TIP</strong></p>
+<p>It is also worth pointing out that the <code>request.ctx</code> object is there for you to attach any information you want to it. This is really powerful to help pass information around and to abstract some logic to middleware as shown above. Keep in mind that this lasts only as long as the request lasts. After there is a response, anything on that <code>request.ctx</code> will be disposed of. There is also similar context for the entire lifespan of the application, and the lifespan of a single client connection. These are respectively: <code>app.ctx</code> and <code>request.conn_info.ctx</code>. Please see <em>Chapter 6, Outside the response cycle</em> for more information on these <code>ctx </code>objects.</p>
+</blockquote>
+<p>Even though it is entirely possible to create your own set of headers—and indeed, I highly encourage it—there does exist a set of common headers that are standard among clients and servers. In the next sections, we will explore what some of those are.</p>
+<section id="common-headers" class="level4" data-number="5.2.1.1">
+<h4 data-number="5.2.1.1">Common headers</h4>
+<p>There is a set of predefined standard headers in RFC 2731, section 5. <a href="https://datatracker.ietf.org/doc/html/rfc7231#section-5">https://datatracker.ietf.org/doc/html/rfc7231#section-5</a>. If you are so inclined, put the book down and go read that section. We’ll be waiting for you. If not, let’s try and pull out some highlights and some of the more important request headers that you should probably know about.</p>
+</section>
+</section>
+<section id="authentication-headers" class="level3" data-number="5.2.2">
+<h3 data-number="5.2.2">Authentication headers</h3>
+<p>One of the primary mechanisms for authenticating web requests is through the use of headers. The other basic method is with cookies (which is technically also a header, but more on that later in the <em>Getting information from cookies (yum!)</em> section.) While there are certainly different types of authentication schemes (basic auth, JWT, and session tokens to name a few), they generally share the same construct: the use of the Authorization header.</p>
+<p>You may have just noticed something peculiar. We are talking about <em>authentication</em>, at least, that’s what the title of this section is called. But, we just said that the primary <em>authentication</em> header is called <em>Authorization</em>. How can this be?</p>
+<p>We will cover more details about this in <em>Chapter 7, Dealing with Security Concerns</em> when we discuss access control more thoroughly, but it is worth mentioning the distinction, and the fundamental questions that these two related concepts are trying to answer:</p>
+<ul>
+<li><strong>Authentication</strong>: Do I know who this person is?</li>
+<li><strong>Authorization</strong>: Should I let them in?</li>
+</ul>
+<p>A failure to authenticate results in a <em>401 Unauthorized</em> error message and a failure of authorization is a <em>403 Forbidden</em> error message. It is an unfortunate quirk of the history of the Internet that these terms are befuddled, and that they developed as they did. They are confusing and inconsistent.</p>
+<p>So, even though the header is called <em>Authorization</em>, and even though its failure should lead to an <em>Unauthorized</em> response, we are still exclusively talking about authentication and answering the question: <em>Do I know who this person is?</em></p>
+<p>Because Sanic does not take a stance about how you should build your application, we obviously have a lot of freedom in choosing how we want to consume the <em>Authorization</em> request header. Three main strategies come to mind here:</p>
+<ul>
+<li><strong>Decorators</strong></li>
+<li><strong>Middleware</strong></li>
+<li><strong>Blueprints</strong></li>
+</ul>
+<p>Let’s look at these individually:</p>
+<section id="decorators" class="level4" data-number="5.2.2.1">
+<h4 data-number="5.2.2.1">Decorators</h4>
+<p>Let’s first look at an example using decorators:</p>
+<pre><code>from functools import wraps
+from sanic.exceptions import Unauthorized
+def authenticated(handler=None):
+    def decorator(f):
+        @wraps(f)
+        async def decorated_function(request, *args, **kwargs):
+            auth_header = request.headers.get(&quot;authorization&quot;)
+            is_authenticated = await check_authentication(auth_header)
+            if is_authenticated:
+                return await f(request, *args, **kwargs)
+            else:
+                raise Unauthorized(&quot;who are you?&quot;)
+        return decorated_function
+    return decorator(handler) if handler else decorator
+@app.route(&quot;/&quot;)
+@authenticated
+async def handler(request):
+    return json({&quot;status&quot;: &quot;authenticated&quot;})</code></pre>
+<p>The core of this example is the inner <code>decorated_function</code>. This basically is saying: before running our actual handler (which is <code>f</code>), run <code>check_authentication</code>. This allows us the opportunity to execute code inside <em>the route</em> but before we get to the actual defined handler.</p>
+<p>This decorator pattern is extremely common in Sanic. Not only for running checks, but also to inject arguments into our handler. If you are not using some form of decorators in your application, you are leaving some real power on the table. It is a useful way to duplicate logic across endpoints, and I highly recommend you get familiar and comfortable with using them. There is a very helpful starter example that can be found in the Sanic User guide: <a href="https://sanicframework.org/en/guide/best-practices/decorators.html">https://sanicframework.org/en/guide/best-practices/decorators.html</a>.</p>
+<blockquote>
+<p><strong>TIP</strong></p>
+<p>Notice the <code>handler=None</code> and the last return line?</p>
+<p>def<code> authenticated(handler=None):</code></p>
+<p><code>    ...</code></p>
+<p><code> </code><strong>return</strong><code> decorator(handler) </code><strong>if</strong><code> handler </code><strong>else</strong><code> decorator</code></p>
+<p>The reason we do this is because we are allowing for our decorator to be used in one of two ways: either via <code>@authenticated </code>or <code>@authenticated()</code>. You will have to decide which one (or whether both) is appropriate for your needs.</p>
+</blockquote>
+</section>
+<section id="middleware-1" class="level4" data-number="5.2.2.2">
+<h4 data-number="5.2.2.2">Middleware</h4>
+<p>Now that we have seen how this works with decorators, how can we achieve the same logic with middleware? In the next example, we will try and achieve the same functionality that the decorator example provided, except using middleware:</p>
+<pre><code>@app.on_request
+async def do_check_authentication(request: Request):
+    is_authenticated = await check_authentication(auth_header)
+    if not is_authenticated:
+        raise Unauthorized(&quot;who are you?&quot;)</code></pre>
+<p>The downside of this method is that we just now locked up our <em>entire</em> API! What about our <code>/stalls/&lt;market_date:ymd&gt;</code> endpoint, or even endpoints that are meant for logging in? One way to fix this is to check if the request has a matched <code>Route</code> instance (it should, unless we are responding to a <em>404 Not Found</em>), and if it does, make sure it is not one of the exempt routes. We can see an example of how to do that here by cross-referencing the name of the matched route with an express list of exempt endpoints:</p>
+<pre><code>@app.on_request
+async def do_check_authentication(request: Request):
+    if request.route and request.route.name not in (
+        &quot;MyApp.login&quot;,
+        &quot;MyApp.market_stalls&quot;,
+    ):
+        is_authenticated = await check_authentication(auth_header)
+        if not is_authenticated:
+            raise Unauthorized(&quot;who are you?&quot;)</code></pre>
+<p>This time, in the middleware we are taking a look at the route’s name to see if it is one of the routes that we know should be safe.</p>
+<blockquote>
+<p><strong>IMPORTANT NOTE</strong></p>
+<p>As a quick aside—since we have not seen it before—all routes will have a <em>name</em>. You can of course name them manually:</p>
+</blockquote>
+<pre><code>@app.route(..., name=&quot;hello_world&quot;)</code></pre>
+<blockquote>
+<p>More likely than not, we can just let Sanic name our routes. It will by default use the handler function’s name, and then append it to our application name (and any blueprints) with dot notation. That is why we see <code>MyApp.login</code> and <code>MyApp.market_stalls</code>. They are presuming our application is called <code>MyApp</code>, and the handlers for our exempt endpoints are <code>login</code> and <code>market_stalls</code>, respectively.</p>
+</blockquote>
+<p><em>“Hang on a minute?! You want me to keep a list of names of exempt endpoints? That sounds like a nightmare to maintain!”</em> True. If you are handling only two items like this simple use case, it is probably manageable enough. But once we start really building out an application, this might start to get super unwieldy. Feel free to decide which of the two patterns makes more sense. Using decorators is much more explicit and clear. However, it does lead to more code repetition. The middleware alternative is much simpler to implement, and easier to audit to make sure that we are not forgetting to protect any routes. Its downside, however, is that it hides some functionality and would be harder to maintain if the list of <em>safe</em> endpoints grows. If you are in doubt about which makes sense for your needs, I would suggest the more explicit authentication decorators. This does, however, show that there usually are different ways to tackle the same problems. Coming back to the point of <em>Chapter 1</em>, <em>Introduction to Sanic and async frameworks</em>, if one of these solutions seems more <em>obviously</em> correct, then that likely is the one that you should use.</p>
+</section>
+<section id="blueprints-1" class="level4" data-number="5.2.2.3">
+<h4 data-number="5.2.2.3">Blueprints</h4>
+<p>And this is where our third solution comes in: our friend Blueprints again. This time, we are going to continue using middleware, but we are only going to apply the middleware to Blueprints that contain the protected endpoints.</p>
+<pre><code>protected = Blueprint(&quot;Protected&quot;)
+@protected.route(&quot;/&quot;)
+async def handler(request):
+    return json({&quot;status&quot;: &quot;authenticated&quot;})
+@protected.on_request
+async def do_check_authentication(request: Request):
+    auth_header = request.headers.get(&quot;authorization&quot;)
+    is_authenticated = await check_authentication(auth_header)
+    if not is_authenticated:
+        raise Unauthorized(&quot;who are you?&quot;)</code></pre>
+<p>Since we are placing the middleware on the <code>“protected” Blueprint</code>, it will only run on the routes that are attached to it. This leaves everything else open.</p>
+</section>
+</section>
+<section id="context-headers" class="level3" data-number="5.2.3">
+<h3 data-number="5.2.3">Context headers</h3>
+<p>These headers provide you with some information about the web browser where the request originated. Generally, they are useful in analytics and logging to provide some information about how your application is being used. We will examine some of the more common contextual headers.</p>
+<ul>
+<li><strong>Referer</strong> This header contains the name of the page that directed the user to the current request. It is really helpful if you want to know from which page on your application an API request came from. If your API is not meant to be used by a browser, perhaps it is less important. Yes, it is misspelled. The Internet is not perfect. And now for a bit of trivia knowledge: RFC 1945 was published in 1996 as a specification of the HTTP/1.0 protocol. The team that published it included none other than Tim Berners-Lee (aka, the inventor of the World Wide Web). Section 10.13 introduced the <code>Referer</code> header, but it was inadvertently misspelled in the specification! Subsequent specifications and implementations have adopted this misspelling, and it has stuck with us for almost 30 years. If nothing else, it is a certain warning about the use of spell check. <a href="https://datatracker.ietf.org/doc/html/rfc1945#section-10.13">https://datatracker.ietf.org/doc/html/rfc1945#section-10.13</a></li>
+<li><strong>Origin</strong> This header is similar to <code>Referer</code>. While the <code>Referer</code> will generally include the full path of where the request originated, the <code>Origin</code> header is just the URL usually in the form: <code>&lt;scheme&gt;://&lt;hostname&gt;:&lt;port&gt; </code>without the path. We will look into how we can use it to protect our application from CORS attacks in <em>Chapter 7</em>, <em>Dealing with Security Concerns</em>.</li>
+<li><strong>User-Agent</strong> This header is almost always sent by every HTTP client. It identifies the type of application that is accessing your API. Commonly it is a browser, but it could also be <code>curl</code>, a Python library, or a tool like Postman or Insomnia.</li>
+<li><strong>Host</strong> Back in <em>Chapter 3</em>, <em>Routing and Intaking HTTP Requests</em> we saw how we could do host-based routing with <em>virtual hosts</em>. This is accomplished by reading the <code>Host</code> header. While <code>Origin</code> is the domain where the request is coming from, <code>Host</code> is where it is going to. Usually, we know this information ahead of time. Except, sometimes we have either a dynamic host (like a wildcard subdomain), or multiple domain pointing to one application.</li>
+<li><strong>Forwarded headers</strong> This encompasses both <code>Forwarded</code> and a bunch of <code>X-Forwarded-* headers</code>. Generally, when you see a header that starts with <code>X-</code> it means that it is a header that has come into common practice and usage, but its implementation is not necessarily standard.</li>
+</ul>
+<p>What are these headers? They contain details about the web request and are used by the intermediary proxies (like Nginx or Cloudflare) to pass along relevant details about the request. The most common is <code>X-Forwarded-For</code>. This is a list of all of the IP addresses from the originating request to the current server that handled the request (this is not the same as a traceroute). This is incredibly helpful and important when trying to identify a request by IP address.</p>
+<blockquote>
+<p><strong>IMPORTANT NOTE</strong></p>
+<p>As with <em>all</em> headers and input data, you should <em>NEVER</em> assume that incoming user data is accurate and harmless. It is very simple for someone to spoof headers. Just as always, we need to be cautious when reading headers and not just take them at face value.</p>
+</blockquote>
+</section>
+<section id="sanic-extracts-some-header-data-for-us" class="level3" data-number="5.2.4">
+<h3 data-number="5.2.4">Sanic extracts some header data for us</h3>
+<p>Sanic will automatically extract some information about the request from headers and place them on easily accessible attributes on the <code>Request</code> object. It makes them very helpful to get when needed. Below is a reference for some of the common attributes you might encounter.</p>
+<table>
+<tbody>
+<tr class="odd">
+<td><strong>Request Property</strong></td>
+<td><strong>HTTP Header used to generate</strong></td>
+</tr>
+<tr class="even">
+<td><code>request.accept</code></td>
+<td>Accept</td>
+</tr>
+<tr class="odd">
+<td><code>request.forwarded </code></td>
+<td>Forwarded</td>
+</tr>
+<tr class="even">
+<td><code>request.host</code></td>
+<td>Host</td>
+</tr>
+<tr class="odd">
+<td><code>request.id</code></td>
+<td>X-Request-ID (can be configured</td>
+</tr>
+<tr class="even">
+<td><code>request.remote_addr</code></td>
+<td>Forwarded, or X-Forwarded-For (depends upon more configuration covered in <em>Chapter 11</em> , <em>A Complete Real-World Example</em> )</td>
+</tr>
+<tr class="odd">
+<td><code>request.token</code></td>
+<td>Authorization</td>
+</tr>
+</tbody>
+</table>
+Table 4.1 - Extracted header data
+<blockquote>
+<p><strong>TIP</strong></p>
+<p>It sometimes may be confusing to know when to use <code>request.ip</code> and when to use <code>request.remote_addr</code>. The former property will always be set and will always return the IP address of the client that is connecting to it. This might not actually be what you want. If your application is behind a proxy server, and you need to rely upon <code>X-Forwarded-For</code>, then most likely the attribute you want is <code>request.remote_addr</code>.</p>
+</blockquote>
+</section>
+<section id="headers-as-multi-dict" class="level3" data-number="5.2.5">
+<h3 data-number="5.2.5">Headers as multi-dict</h3>
+<p>Headers are stored in Sanic as a multi-dict. This is a special data type that will operate both as a one-to-one key-to-value dictionary, and a one-to-many key-to-value dictionary. To illustrate the point, here are what those would typically look like:</p>
+<pre><code>one_to_one = {
+  &quot;fruit&quot;: &quot;apples&quot;
+}
+one_to_many = {
+  &quot;Fruit&quot;: [&quot;apples&quot;, &quot;bananas&quot;]
+}</code></pre>
+<p>The Header object in Sanic functions as both of those simultaneously. Moreover, it looks at the keys as case insensitive. Did you notice in the last example that the keys are different cases? Using standard dictionaries, the following would be False.</p>
+<pre><code>&quot;fruit&quot; in one_to_one and &quot;fruit&quot; in one_to_many</code></pre>
+<p>However, because the HTTP specification allows for HTTP headers to be case-insensitive, the Sanic <code>Header</code> object is also case-insensitive. But how does it handle the issue between one-to-one and one-to-many?</p>
+<p>Again, the HTTP specification allows for multiple identical headers to be concatenated without overriding one another. Sanic opts for this special data type to be standards compliant. If you do nothing special and merely treat the <code>Header</code> object as a regular Python <code>dict </code>in your application, it will work just fine. You might not ever even notice that it is not a regular dictionary. However, you will only ever access the first value passed to it for each header. If you need to support multiple values for the same header, you are able to access the full <em>list</em> of values.</p>
+<p>Consider the following example:</p>
+<pre><code>@app.route(&quot;/&quot;)
+async def handler(request):
+    return json(
+        {
+            &quot;fruit_brackets&quot;: request.headers[&quot;fruit&quot;],
+            &quot;fruit_get&quot;: request.headers.get(&quot;fruit&quot;),
+            &quot;fruit_getone&quot;: request.headers.getone(&quot;fruit&quot;),
+            &quot;fruit_getall&quot;: request.headers.getall(&quot;fruit&quot;),
+        }
+    )</code></pre>
+<p>Let’s now hit this endpoint with multiple <code>Fruit</code> headers.</p>
+<pre><code>$ curl localhost:7777/ -H &quot;Fruit: apples&quot; -H &quot;Fruit: Bananas&quot;
+{
+  &quot;fruit_brackets&quot;: &quot;apples&quot;,
+  &quot;fruit_get&quot;: &quot;apples&quot;,
+  &quot;fruit_getone&quot;: &quot;apples&quot;,
+  &quot;fruit_getall&quot;: [
+    &quot;apples&quot;,
+    &quot;Bananas&quot;
+  ]
+}</code></pre>
+<p>Using either square brackets or <code>.get()</code> method provides us with <code>apples</code> because that was the first <code>Fruit</code> header that was sent. A more explicit usage would be to use <code>.getone()</code>. Alternatively, we can use <code>.getall()</code> to return the full list of <code>Fruit</code> header values. Again, case does <em>not</em> matter for header keys. For values, however, it does. Notice how in our example <code>Fruit</code> became <code>fruit</code>, but <code>Bananas</code> did not change case at all.</p>
+</section>
+<section id="getting-information-from-cookies-yum" class="level3" data-number="5.2.6">
+<h3 data-number="5.2.6">Getting information from cookies (yum!)</h3>
+<p>Building a web application without cookies is like ending a meal without cookies. Sure, it could be done. But why would you want to? Given a choice, pick the cookies.</p>
+<p>Jokes aside, cookies are obviously an extremely important topic to consider. They are the backbone of many of the rich user experiences of web applications. Cookies also are inherently full of potential security pitfalls. The security issues are generally more of a concern when we talk about setting cookies (<em>Chapter 5</em>, <em>Handling and Responding Views</em>), and securing our web applications (<em>Chapter 7</em>, <em>Dealing with Security Concerns</em>). Here, we are mainly interested in how to access cookies so that we can read the data from them.</p>
+<p>A web cookie is a specialized HTTP header: <code>Cookie</code>. This header contains a structured set of data defined by RFC 6265, § 5.4. <a href="https://tools.ietf.org/html/rfc6265#section-5.4">https://tools.ietf.org/html/rfc6265#section-5.4</a>. The incoming cookie from a request is treated in Sanic like a regular dictionary.</p>
+<ol>
+<li><p>In order to get an explicit look at how cookies are structured, setup a debug handler like this</p>
+<pre><code>@app.route(&quot;/cookies&quot;)
+async def cookies(request):
+    return json(request.cookies)</code></pre></li>
+<li><p>Now, we will send some cookies using curl:</p>
+<pre><code>$ curl localhost:7777/cookie -H &quot;Cookie: name=value; name2=value2; name3=value3&quot;
+{
+  &quot;name&quot;: &quot;value&quot;,
+  &quot;name2&quot;: &quot;value2&quot;,
+  &quot;name3&quot;: &quot;value3&quot;
+}</code></pre></li>
+</ol>
+<p>As you can see, the data is just a simple key/value dictionary. Accessing cookies should therefore be very straightforward. Like other forms of data, it is, of course, advisable to treat them with suspect. These values are not immune to tampering and can easily be spoofed. Nonetheless, they are an important part of the web, especially if your application needs to support a frontend UI.</p>
+<p>While using cookies will be an invaluable source of data for your applications, the primary method for users to pass information will come in other forms. Next up, we look at those other methods for passing data from web client to web server.</p>
+</section>
+</section>
+<section id="reading-forms-query-arguments-files-json-and-more" class="level2" data-number="5.3">
+<h2 data-number="5.3">Reading forms, query arguments, files, JSON, and more</h2>
+<p>Now that we know about pulling input from the path and from the headers, we will turn our attention to more classic types of passing input values. Typically, we think of request data as being those bits of information that come from the request body. Before we turn to the request body, however, we still have one more item in the first line of the HTTP request to examine: <strong>Query arguments</strong>.</p>
+<section id="query-arguments" class="level3" data-number="5.3.1">
+<h3 data-number="5.3.1">Query arguments</h3>
+<p>As a reminder, the first line of a HTTP request looks like this:</p>
+<pre><code>GET /stalls/2021-07-01?type=fruit HTTP/1.1</code></pre>
+<p>If you have previous web experience, you may know that a URL can have a section of arbitrary parameters separated from the rest of the path by a question mark (<code>?</code>). These are known as query arguments (or parameters), follow in the form <code>key=value</code>, and are concatenated with an ampersand (<code>&amp;</code>). Sometimes they are called parameters, sometimes arguments. We will call them arguments here, since this is what Sanic opts for to be able to distinguish them from path parameters.</p>
+<p>Query arguments are very simple to use, and we can get access to them on our request instance:</p>
+<pre><code>@app.route(&quot;/&quot;)
+async def handler(request: Request):
+    print(request.args)
+    return text(request.args.get(&quot;fruit&quot;))
+$ curl localhost:7777\?fruit=apples
+apples</code></pre>
+<blockquote>
+<p><strong>IMPORTANT INFO</strong></p>
+<p>You may have noticed my <code>curl</code> command included <code>\?</code> instead of just <code>?</code>. This is a necessary pattern in some command line applications since <code>?</code> itself could have a different meaning. It just as well could have been wrapped in quotes: <code>curl "localhost:7777?fruit=apples"</code>, but I prefer to leave off the quotes and opt for the character escaping.</p>
+</blockquote>
+<p>Usage seems simple enough, right? Well, not so fast. The obvious next question is what happens when the key is repeated? Or, what happens when we want to past an array of data?</p>
+<p>There is <em>no</em> single standard way to pass array data on the Internet inside query arguments. Several methods do exist:</p>
+<ul>
+<li><code>?fruit[]=apples&amp;fruit[]=bananas</code></li>
+<li><code>?fruit=apples,bananas</code></li>
+<li><code>?fruit=[apples,bananas]</code></li>
+<li><code>?fruit=apples&amp;fruit=bananas</code></li>
+</ul>
+<p>The first three approaches were rejected by Sanic, which has instead opted to implement the fourth option. A quick look at the three rejected models will explain why the chosen model makes sense, and how we can use it going forward.</p>
+<p>First, <code>fruit[]</code> is a strange construct that is not obvious to newcomers, and actually is a hijacking and alteration of the key. Yuck, no thank you.</p>
+<p>Second, <code>fruit=apples,bananas</code> seems nice, but what if we wanted to just pass a string <code>apples,bananas</code> and not actually separate them? Hmm, this does not seem possible. Pass.</p>
+<p>Third, <code>fruit=[apples,bananas]</code> seems better, but it is again somewhat awkward and not intuitive. It also suffers the same ambiguity problem. Is <code>apples,bananas</code> a single string, or two items?</p>
+<p>Furthermore, the second and third options suffer another problem about how to handle duplicate keys. Take the first? The last? Merge? Error? Again, there is no consensus and different servers handle this differently.</p>
+<p>The most reasonable approach seems to be the fourth, which can handle all of these problems. Keep it simple: we have a key and a value. Nothing more. If there are duplicate keys, we treat it as a list append. There are no surprising losses of data, no errors, and data integrity is maintained.</p>
+<p>In our last example, we printed to the console the value of <code>request.args</code>. Here is the output:</p>
+<pre><code>{&#39;fruit&#39;: [&#39;apples&#39;]}
+[INFO][127.0.0.1:53842]: GET http://localhost:7777/?fruit=apples  200 6</code></pre>
+<p>Wait?! A <code>list</code>? I thought it was a single value: <code>apples</code>. At least that is what the response gave us. Query arguments are a special dictionary that contains lists, but has a unique <code>.get()</code> that will fetch only the first value from that list. If you want all of the elements, use <code>.getlist().</code></p>
+<pre><code>@app.route(&quot;/&quot;)
+async def handler(request: Request):
+    return json(
+        {
+            &quot;fruit_brackets&quot;: request.args[&quot;fruit&quot;],
+            &quot;fruit_get&quot;: request.args.get(&quot;fruit&quot;),
+            &quot;fruit_getlist&quot;: request.args.getlist(&quot;fruit&quot;),
+        }
+    )</code></pre>
+<p>When we hit this endpoint now, we can see what these values are:</p>
+<pre><code>$ curl localhost:7777\?fruit=apples\&amp;fruit=bananas
+{
+  &quot;fruit_brackets&quot;: [&quot;apples&quot;,&quot;bananas&quot;],
+  &quot;fruit_get&quot;: &quot;apples&quot;,
+  &quot;fruit_getlist&quot;: [&quot;apples&quot;,&quot;bananas&quot;]
+}</code></pre>
+<p>Another point worth mentioning is that <code>request.args</code> is not the only way to look at these key/value pairs. We also have <code>request.query_args</code>, which is just a list of tuples of all the pairs that were passed. The above request would look something like this:</p>
+<pre><code>request.query_args == [(&#39;fruit&#39;, &#39;apples&#39;), (&#39;fruit&#39;, &#39;bananas&#39;)]</code></pre>
+<p>A data structure such as this can, of course, easily be turned into a standard dictionary if desired. Just be careful because you will lose out on duplicate key data; being left only with the last of each duplicated key:</p>
+<pre><code>&gt;&gt;&gt; dict( [(&#39;fruit&#39;, &#39;apples&#39;), (&#39;fruit&#39;, &#39;bananas&#39;)])
+{&#39;fruit&#39;: &#39;bananas&#39;}</code></pre>
+</section>
+<section id="forms-and-files" class="level3" data-number="5.3.2">
+<h3 data-number="5.3.2">Forms and files</h3>
+<p>By learning how we can pull data from the query arguments, we have inadvertently also learned how to get both form data and uploaded file data! That is because query arguments, forms, and files all operate identically. To prove it, we will setup a couple of endpoints like we have before and see what happens.</p>
+<pre><code>@app.post(&quot;/form&quot;)
+async def form_handler(request: Request):
+    return json(request.form)
+@app.post(&quot;/files&quot;)
+async def file_handler(request: Request):
+    return json(request.files)</code></pre>
+<p>Next, we will test the form handler.</p>
+<pre><code>$ curl localhost:7777/form -F &#39;fruit=apples&#39;                   
+{&quot;fruit&quot;:[&quot;apples&quot;]}
+$ curl localhost:7777/form -F &#39;fruit=apples&#39; -F &#39;fruit=bananas&#39;
+{&quot;fruit&quot;:[&quot;apples&quot;,&quot;bananas&quot;]}</code></pre>
+<p>Just like before, we see that it looks like a dict with a list. Well, that’s because it is. But it will still behave like request.args. We can use .get() for a the first item, and .getlist() for all of them in a list.</p>
+<pre><code>assert request.form.get(&quot;fruit&quot;) == &quot;apples&quot;
+assert request.form.getlist(&quot;fruit&quot;) == [&quot;apples&quot;,&quot;bananas&quot;]</code></pre>
+<p>And, of course, we will see the same result with files.</p>
+<pre><code>$ curl localhost:7777/files -F &#39;po=@/tmp/purchase_order.txt&#39;
+{
+&quot;po&quot;: [
+[&quot;text\/plain&quot;,&quot;product,qty\napples,99\n&quot;,&quot;purchase_order.txt&quot;]
+]
+}</code></pre>
+<p>We might want to take a closer look at this one to see what it is doing.</p>
+<p>When you upload a file to Sanic, it will convert that into a File object. The <code>File</code> object is really just a namedtuple containing the basic information about the file. If we do a <code>print(request.files.get("po"))</code>, we should see an object that looks like this:</p>
+<pre><code>File(
+    type=&#39;text/plain&#39;,
+    body=b&#39;product,qty\napples,99\n&#39;,
+    name=&#39;purchase_order.txt&#39;
+)</code></pre>
+<blockquote>
+<p><strong>TIP</strong></p>
+<p>Are you unfamiliar with namedtuples? They are a really great tool for modelling concise objects. I highly recommend using them since they behave as tuples, but have the convenience of having dot notation to access specific properties. They are great in place of dictionaries, as long as you do not need to modify their contents. This is why Sanic uses them here as file objects. It is a convenient small structure that is easy for us as developers to work with, while keeping some safety around the data so that it is not accidentally corrupted.</p>
+</blockquote>
+</section>
+<section id="consuming-json-data" class="level3" data-number="5.3.3">
+<h3 data-number="5.3.3">Consuming JSON data</h3>
+<p>Arguably the most important type of request data is JSON. Modern web applications have embraced and clung to serializing and transmitting data with JSON because of its simplicity. It supports basic types of scalar values, is easy for humans to read, and easy to implement and widely supported in many programming languages. It is no wonder that it is the default methodology.</p>
+<p>It should therefore come as no surprise that Sanic makes it very easy:</p>
+<pre><code>@app.post(&quot;/&quot;)
+async def handler(request: Request):
+return json(request.json)
+Our request JSON is converted to a Python dictionary.
+$ curl localhost:7777 -d &#39;{&quot;foo&quot;: &quot;bar&quot;}&#39;     
+{&quot;foo&quot;:&quot;bar&quot;}</code></pre>
+<p>We have now seen all of the typical ways to access data in a single request. Next up, we will learn about how data could alternatively be streamed to Sanic in multiple chunks.</p>
+</section>
+</section>
+<section id="getting-streaming-data" class="level2" data-number="5.4">
+<h2 data-number="5.4">Getting streaming data</h2>
+<p>The term <strong>streaming</strong> has become somewhat of a buzzword. Many people even outside the tech industry use it all the time. The word—and more specifically the actual technological concept that it represents—has become an important part of society as consumption of media content continues its march to the cloud. What exactly is streaming? For those that are not entirely clear what this term means, we will take a brief moment to understand it before moving on.</p>
+<p>Streaming is the act of sending data in multiple, consecutive chunks from one side of an open connection to the other. One of the core foundations of the HTTP model is that there is a request followed by a response after a connection is established between the client and server. The client sends a complete HTTP request message and then waits for the server to send back a complete HTTP response message. It looks like this:</p>
+<figure>
+<img src="../media/file1.png" alt="Figure 4.1 - Normal HTTP request/response cycle" /><figcaption aria-hidden="true">Figure 4.1 - Normal HTTP request/response cycle</figcaption>
+</figure>
+<p>I like to think of these as <em>finite</em> transactions. Both the request and the response have a definite and known endpoint. These finite requests are what we have been looking at up until now. A request comes in, the server does something to process it, and a response goes out. What is important to note is that both the request and the response are sent in whole in a single block.</p>
+<p>One header that we did not discuss earlier is the <code>Content-Length</code> header. This header can be found on both requests and responses. The actual specification on when it <em>should</em> be sent versus when it <em>must</em> be sent is really beyond the scope of this discussion. Sanic will take care of providing this for us when necessary. I bring it up here because this header is exactly what it purports to be: the length of the content in a HTTP message. This tells the recipient that there is a message of a certain length that is being transmitted. And, it is important here because the known length of a message cannot necessarily be computed when the request headers are sent.</p>
+<p>What happens if there is a large amount of data to be sent that might overwhelm a single connection, or the data being sent is not 100% available when the connection opens? Streaming is a methodology for one side of the connection to tell the other that it is transmitting some bytes, but it is not yet done. The connection should be held open so that more data can be sent. The way that this interaction happens is by replacing the <code>Content-Length</code> header with a <code>Transfer-Encoding: chunked</code> header. This is the way that one side of the connection can tell the other that it should continue to receive data until notified that the stream of data is closed.</p>
+<p>When most laypeople hear the term <em>streaming</em>, the immediate thought goes to streaming media, like movies or music. They might describe the concept as the consumption of the media before it is fully downloaded. And, this is correct. Streaming is the sending of data in multiple <em>chunks</em> instead of sending it all at once. This is extremely efficient and can reduce overall resource overhead. When supported, it allows the receiving side to start processing that data if it desires instead of blocking and waiting for it to be complete. So, when you go to watch your favorite movie, you can start watching it without waiting for the entire file to be downloaded.</p>
+<p>Streaming does not, however, only apply to media, and also is not only done by a server. There are two basic flavors we are concerned about: request streaming and response streaming. Here is what those flows look like:</p>
+<figure>
+<img src="../media/file2.png" alt="Figure 4.2 - HTTP streaming request" /><figcaption aria-hidden="true">Figure 4.2 - HTTP streaming request</figcaption>
+</figure>
+<p>In <em>Figure 4.2,</em> we see what a streaming request looks like. Once the HTTP connection is opened, the client starts sending data. But, it does not send the message all at once. Instead, it breaks the message up into chunks, sending each chunk of bytes on its own.</p>
+<figure>
+<img src="../media/file3.png" alt="Figure 4.3 - HTTP streaming response" /><figcaption aria-hidden="true">Figure 4.3 - HTTP streaming response</figcaption>
+</figure>
+<p>The streaming response in <em>Figure 4.3</em> is basically the reverse of the streaming request. The request is sent in its entirety, but the server decides to send the response in chunks until it is complete. When someone talks about streaming media, they are referring to the response stream. We will look more at this option in <em>Chapter 5</em>, <em>Handling and Responding Views</em> when we talk about different types of responses.</p>
+<p>We currently are concerned with learning about request streaming as depicted in <em>Figure 4.2</em>. It should definitely be noted that between the two, this is by far the lesser utilized feature. When you search for <em>streaming HTTP</em> on the internet, you are likely to find less information on it. Nonetheless, it can be a powerful tool in the right situation.</p>
+<p>So, first we will ask, when should we think about using request streaming? One potential use case is if a client wants to <em>warm up</em> the HTTP connection. Let’s say you are building a stock trading platform. Latency between the frontend UI and the backend server is critically important. The difference in milliseconds having potential financial impacts. Your task is to get the data from the frontend as fast as possible. The solution is to initiate the <code>POST</code> request as soon as the user clicks on the input box. Simultaneously, the frontend UI opens the HTTP connection with a <code>Transfer-Encoding: chunked</code> header signaling that more data is coming. So, while the user is typing their values, we have already performed the operations and suffered any overhead that is related to the opening of a connection. The server now is on alert waiting for data to come as soon as the user hits the <em>Enter</em> button.</p>
+<p>What might this endpoint look like?</p>
+<pre><code>async def read_full_body(request: Request):
+    result = &quot;&quot;
+    while True:
+        body = await request.stream.read()
+        if body is None:
+            break
+        result += body.decode(&quot;utf-8&quot;)
+    return result
+@app.post(&quot;/transaction&quot;, stream=True)
+async def transaction(request: Request):
+    body = await read_full_body(request)
+    data = ujson.loads(body)
+    await do_transaction(data)
+    return text(&quot;Transaction recorded&quot;, status=201)</code></pre>
+<p>Let’s point out a few important parts one at a time.</p>
+<ol>
+<li><p>We need to tell Sanic that we are going to be streaming the response here. There are two options: passing <code>stream=True</code> in the route definition, or using the <code>@stream</code> decorator. They work the same, so it is more a matter of personal choice.</p>
+<pre><code>from sanic.views import stream
+@app.post(&quot;/transaction&quot;, stream=True)
+async def transaction(request: Request):
+    ...
+# OR
+@app.post(&quot;/transaction&quot;)
+@stream
+async def transaction(request: Request):
+    ...</code></pre></li>
+<li><p>There should be some sort of a loop that continues to read from the stream until it is complete. How do we know it is complete? There will be an empty read from the stream. If you skip the <code>if body is None</code> line, you could end up crashing your server as it gets stuck in an infinite loop.The data when read is a <code>bytes</code> string, so you may want to convert that to a regular <code>str</code> as we do here.</p>
+<pre><code>result = &quot;&quot;
+while True:
+    body = await request.stream.read()
+    if body is None:
+        break
+    result += body.decode(&quot;utf-8&quot;)</code></pre>
+<p>It is important to note that in this example, we are reading the body completely down before continuing on with processing the request. Another alternative might be to take those bytes and write them to something else that can consume and act upon them immediately. In just a moment we will see an example that does this.</p></li>
+<li>You need to decode the body yourself. On regular requests, if you send JSON data, Sanic will decode it for you. But here, all we have are the raw bytes (converted to a string). If we need further processing, we should do it ourselves. We use <code>ujson.loads </code>in our example, which ships with Sanic as a speedy way to convert the JSON to a Python <code>dict</code>.</li>
+</ol>
+<p>Our example works because we are expecting a single <em>delayed</em> input from the client. The other important place you might use this is with file uploads. If you are expecting large file uploads, you may want to start reading and writing the bytes as soon as they are received.</p>
+<p>The following is an example to do that:</p>
+<pre><code>@app.post(&quot;/upload&quot;)
+@stream
+async def upload(request: Request):
+    filename = await request.stream.read()
+    async with aiofiles.open(filename.decode(&quot;utf-8&quot;), mode=&quot;w&quot;) as f:
+        while True:
+            body = await request.stream.read()
+            if body is None:
+                break
+            await f.write(body.decode(&quot;utf-8&quot;))
+    return text(&quot;Done&quot;, status=201)</code></pre>
+<p>We should notice that the loop here looks very similar to the last one. The concept is the same: loop until there is nothing left to read. The difference is that instead of writing the data to a local variable, we are using the <code>aiofiles</code> library to asynchronously write bytes to the file.</p>
+<p>Why would you want to do this? The biggest reason would be efficiency and memory utilization. If you use the regular <code>request.files</code> accessor to read file data, then you are effectively reading the entire contents before doing anything with them. This could be a lot of memory usage if there are large files at play. By reading and writing in chunks, we keep the buffers small.</p>
+<p>This chapter has focused entirely upon different methods of reading data. We know we can access it from the body, files, form data, streams, and query arguments. All of these mechanisms on their own lack one critical component: validation.</p>
+</section>
+<section id="validating-data" class="level2" data-number="5.5">
+<h2 data-number="5.5">Validating data</h2>
+<p>What we are about to get into next is the first glimpse of security related topics in this book. We cover some more concepts later in <em>Chapter 7</em>, <em>Dealing with Security Concerns</em>. This is, however, not a security book. There is unfortunately too much material to be able cover it all in this book. There are too many risks and too many potential mitigation measures for our one chapter dedicated to security. We will, therefore, instead touch upon the concepts in general for those that are unfamiliar, and then show some ways to combat the issue in Sanic.</p>
+<p>The first of those topics is data validation. If you have been around the web, then you know what I am saying and the <em>why</em> is obvious to you. You are concerned with SQL injection attacks, or XSS attacks. You know the potential threats posed by blindly accepting data and acting upon it. I trust that you already know this is a big no-no, and are here to learn <em>how</em> to implement standard practices in Sanic. If the concept of data validation is completely foreign to you, I suggest you spend some time searching other online materials about the security issues posed by attacks like those mentioned above.</p>
+<p>Web API security is not a singular approach. Data validation is only a small part of a much larger plan that you will need to protect your application, resources, and users. Our focus in this section will primarily be upon the most common scenario in modern web applications: making sure that JSON data conforms to expectations. These techniques alone will not make your application secure from attacks. See <em>Chapter 7</em>, <em>Dealing with Security Concerns</em> for more on this. Our goal here is much more modest: when we expect a number, we get a number, when expect a UUID, we get a UUID.</p>
+<p>If you recall in <em>Chapter 3</em>, <em>Routing and Intaking HTTP Requests</em>, we actually had our first brush with data validation. We were trying to make sure that the data received was one of a known list of ice cream flavors. We are going to expand this concept here. There are <em>many</em> libraries out there that do this for us. Some popular choices include marshmallow, attrs, and pydantic. Before we try and leverage an existing package, we are going to try to build our own validation library using Python’s dataclasses.</p>
+<p>It is good to remember why we are doing this. Sanic, as we know, tries hard to not make decisions for developers. Data validation is one of the most critical components of an application, and it can vary wildly from one use case to the next. Therefore, the core Sanic project does not have a single method for doing this and leaves the choice to you: the developer. Of course, there are a number of plugins out there that add validation, but we are going to take a crack at building one ourselves that will fit our needs. Ultimately, I hope this inspires some ideas in your own projects for you to take principles and apply them to your own unique situations. This next section will deviate from Sanic, and is more about Python programming in general. Ultimately, however, I think it is illustrative to see how Sanic tries to get out of your way to allow you to implement your own solutions and business logic, and only involve itself where needed.</p>
+<p>With that said, let’s get started.</p>
+<section id="step-one-getting-started-and-making-a-decorator" class="level3" data-number="5.5.1">
+<h3 data-number="5.5.1">Step one: getting started and making a decorator</h3>
+<p>The first thing we need to do is create a framework that we are going to work in. To accomplish our goals, we are going to rely heavily upon decorators. This is a fantastic approach because it lets us create per route definitions, but also easily repeat our logic across the application as needed. What we are after is something that looks like this:</p>
+<pre><code>@app.post(&quot;/stalls&quot;)
+@validate
+async def book_a_stall(request: Request, body: BookStallBody):
+    ...</code></pre>
+<p>This looks like a super clean interface. What will this achieve?</p>
+<ul>
+<li>No repetition: Rather than explicitly telling the <code>validate</code> function what to do, we are going to use some Python tricks to read <code>body: BookStallBody</code> from the handler signature.</li>
+<li>Dependency injection: Out <code>validate</code> function will need to inject a <code>body</code> argument. This means that we should have a clean data structure with exactly the information that we want and cast as the types of data we expect them to be. If something is missing, it should raise an exception and cause a failure response.</li>
+<li>Type annotations: By annotating the <code>body</code> argument, we will have helpful features from <code>mypy</code> and our IDE to make sure our code is clean, consistent, and bug-free.</li>
+</ul>
+<p>To begin, we want to make a decorator that will be capable of being callable, or not callable. This will give us both <code>@validate</code> and <code>@validate()</code>, which will make our experience more flexible and easier as we expand our usage. We already saw an example of this earlier in <em>Chapter 3</em>, <em>Routing and Intaking HTTP Requests</em>. Let’s see what the minimal decorator looks like:</p>
+<pre><code>def validate(wrapped=None):
+    def decorator(handler):
+        @wraps(handler)
+        async def decorated_function(request, *args, **kwargs):
+            return await handler(request, *args, **kwargs)
+        return decorated_function
+    return decorator if wrapped is None else decorator(wrapped)</code></pre>
+<p>With this in place, we have a minimally viable decorator. Obviously, it does not do anything useful yet, but we can begin to build our validation logic off of this.</p>
+</section>
+<section id="step-two-reading-the-handler-signature" class="level3" data-number="5.5.2">
+<h3 data-number="5.5.2">Step two: reading the handler signature</h3>
+<p>The next thing we want to do is determine which parts of the request we want to validate. We are going to start off with the JSON body. In our target implementation, we want to control this with the handler signature. We do, however, have an alternative approach. We could try for this for example:</p>
+<pre><code>@app.post(&quot;/stalls&quot;)
+@validate(model=BookStallBody, location=&quot;body&quot;)
+async def book_a_stall(request: Request, body: BookStallBody):
+    ...</code></pre>
+<p>Arguably, this is a <em>much</em> easier decorator to build. In this version, we are explicitly telling the <code>validate</code> function that we want it to look in the request body and validate against a model called <code>BookStallBody</code>. But, if we also want type annotations, we end up with duplicated code since we need to put the model in a typed function argument. We are not going to let the difficulty scare us away! After all, we know this decorator will be used all over our application. Building a better version up front will help us down the road as we reuse and expand the implementation.</p>
+<p>So, how do we get the model and the location information? We are going to use Python’s <code>typing</code> module that comes with the standard library. We need to be very careful here. When dealing with decorators, we need to remember there are different layers that get executed at different times. Since we are evaluating the handler, we only want to do this <em>once</em>. If we set this up wrong, we might end up executing the setup code on <em>every single request</em>! We will try to avoid that.</p>
+<p>Here is where we are at now:</p>
+<pre><code>import typing
+def validate(wrapped=None):
+    def decorator(handler):
+        annotations = typing.get_type_hints(handler)
+        body_model = None
+        for param_name, annotation in annotations.items():
+            if param_name == &quot;body&quot;:
+                body_model = annotation
+        # Remainder of decorator skipped</code></pre>
+<p>We inspect the handler and loop over the parameters that are defined inside of it. If there is a parameter that is called <code>body</code>, then we grab its annotation and save it for later use.</p>
+<p>One potential downside to this approach is we are boxing ourselves in by <em>only</em> allowing our validations to be on a parameter called <code>body</code>. What if we had a URL that needed to be: <code>/path/to/&lt;body&gt;</code>? Or, we just plain want to call the variable something else? Let’s make the decorator slightly more flexible.</p>
+<pre><code>def validate(wrapped=None, body_arg=&quot;body&quot;):
+    def decorator(handler):
+        annotations = typing.get_type_hints(handler)
+        body_model = None
+        for param_name, annotation in annotations.items():
+            if param_name == body_arg:
+                body_model = annotation
+        @wraps(handler)
+        async def decorated_function(request, *args, **kwargs):
+            nonlocal body_model
+            
+            return await handler(request, *args, **kwargs)
+        return decorated_function
+    return decorator if wrapped is None else decorator(wrapped)</code></pre>
+<p>There, by moving the name of the body argument to <code>body_arg</code>, we have the flexibility to rename it if we want to.</p>
+</section>
+<section id="step-three-modeling" class="level3" data-number="5.5.3">
+<h3 data-number="5.5.3">Step three: modeling</h3>
+<p>The next critical piece is our model. This could be a place where we add in a pre-built library; for example, one of the packages mentioned earlier. I, of course, suggest you take a look at them. There are many devoted contributors that have spent a lot of time building, testing, and supporting these packages that will cover far more use cases than our simple example. But, since we are still learning here, we will continue on building our own validation logic on top of dataclasses.</p>
+<p>Let’s create a basic payload that we might expect on our endpoint.</p>
+<pre><code>from dataclasses import dataclass
+from enum import Enum, auto
+class ProductType(Enum):
+    def _generate_next_value_(name, *_):
+        return name.lower()
+    FRUIT = auto()
+    VEGETABLES = auto()
+    FISH = auto()
+    MEAT = auto()
+class ValidatorModel:
+    def __post_init__(self):
+        ...
+@dataclass
+class Product(ValidatorModel):
+    name: str
+    product_type: ProductType
+@dataclass
+class BookStallBody(ValidatorModel):
+    name: str
+    vendor_id: UUID
+    description: str
+    employees: int
+    products: List[Product]</code></pre>
+<p>Okay, so there is not too much new here. We are defining some models using Python’s dataclasses. I encourage you to go look them up if you are unfamiliar with them. In brief, they are type-annotated data structures that will be super easy for us to work with. One problem with them is that the type annotations are <em>not</em> enforced at runtime. Even though we say that <code>BookStallBody.vendor_id</code> is a <code>UUID</code>, Python will happily inject a boolean or any other kind of value there. This is where the <code>ValidatorModel</code> comes in. We are going to add some simple logic to the <code>dataclass</code> to make sure it is populating with the correct data type.</p>
+<p>Another nice trick added to this simple structure is that we are defining <code>ProductType</code> as an <code>Enum</code>. By defining <code>_generate_next_value_,</code> we are forcing the values of each enum to be a lowercase string value of the key. As an example:</p>
+<pre><code>assert ProductType.FRUIT.value == &quot;fruit&quot;</code></pre>
+<blockquote>
+<p><strong>TIP</strong></p>
+<p>Whenever your application is dealing with an ID of any kind, you should try and avoid passing it the sequential ID record from your database. Many common databases increment the row number every time you insert a record. If your API relies upon that ID, you are inadvertently broadcasting information about the state of your application to the world. Stick with UUIDs or some other form that will add some obscurity for client facing applications. Do not let your database IDs leave your server.</p>
+</blockquote>
+</section>
+<section id="step-four-model-hydration" class="level3" data-number="5.5.4">
+<h3 data-number="5.5.4">Step four: model hydration</h3>
+<p>Ultimately, we want to be able to send a JSON request to our endpoint that looks like this:</p>
+<pre><code>{
+    &quot;name&quot;: &quot;Adam&#39;s Fruit Stand&quot;,
+    &quot;vendor_id&quot;: &quot;b716337f-98a9-4426-8809-2b52fbb807b3&quot;,
+    &quot;employees&quot;: 1,
+    &quot;description&quot;: &quot;The best fruit you&#39;ve ever tasted&quot;,
+    &quot;products&quot;: [
+        {
+            &quot;name&quot;: &quot;bananas&quot;,
+            &quot;product_type&quot;: &quot;fruit&quot;
+        }
+    ]
+}</code></pre>
+<p>Therefore, our goal is to turn this nested structure into Python objects. Dataclasses can get us part of the way there. What is missing is the specific type-casting, and nesting. This is what our <code>ValidatorModel</code> class will provide for us:</p>
+<pre><code>class ValidatorModel:
+    def __post_init__(self):
+        for field in fields(self.__class__):
+            existing = getattr(self, field.name)
+            hydrated = self._hydrate(field.type, existing)
+            
+            if hydrated:
+                setattr(self, field.name, hydrated)
+            elif type(existing) is not field.type:
+                setattr(self, field.name, field.type(existing))
+    
+    def _hydrate(self, field_type, value):
+        args = get_args(field_type)
+        check_type = field_type
+        if args:
+            check_type = args[0]
+        if is_dataclass(check_type):
+            if isinstance(value, list):
+                return [self._hydrate(check_type, item) for item in value]
+            elif isinstance(value, dict):
+                return field_type(**value)
+        return None</code></pre>
+<p>It may look like a lot going on here, but it is really quite simple. After a model instance is created, we loop through all of its fields. There are really now two options: either the field annotation is another dataclass, or it’s something else. If it is something else, then we just want to make sure that we cast it to the new type.</p>
+<p>If we are dealing with a dataclass, then we have two more options we need to determine. Either it is a single item or a list of items. If it is a list, then we simply need to make sure we loop over all values and try to hydrate each individual item.</p>
+<p>Admittedly, this will not cover all use cases. But since we are creating our own solution, we only care that it covers the cases we need, and that it is relatively simple to maintain if we need to add more complexity in the future.</p>
+<p>This solution will do that for us.</p>
+</section>
+<section id="step-five-performing-validations" class="level3" data-number="5.5.5">
+<h3 data-number="5.5.5">Step five: performing validations</h3>
+<p>Now that our models are capable of handling nested logic and converting all of our values to their desired types, we need to hook it back up to our decorator.</p>
+<p>Here is where we stand now:</p>
+<pre><code>def validate(wrapped=None, body_arg=&quot;body&quot;):
+    def decorator(handler):
+        annotations = get_type_hints(handler)
+        body_model = None
+        for param_name, annotation in annotations.items():
+            if param_name == body_arg:
+                body_model = annotation
+        @wraps(handler)
+        async def decorated_function(request, *args, **kwargs):
+            nonlocal body_model
+            nonlocal body_arg
+            if body_model:
+                kwargs[body_arg] = do_validation(body_model, request.json)
+            return await handler(request, *args, **kwargs)
+        return decorated_function
+    return decorator if wrapped is None else decorator(wrapped)</code></pre>
+<p>The important changes are these lines:</p>
+<pre><code>if body_model:
+    kwargs[body_arg] = do_validation(body_model, request.json)</code></pre>
+<p>This will convert our raw JSON request data into usable (and well annotated) data structures. If there is a failure on a data type, an exception should be raised. So, what would that look like?</p>
+<pre><code>from sanic.exceptions import SanicException
+class ValidationError(SanicException):
+    status_code = 400
+def do_validation(model, data):
+    try:
+        instance = model(**data)
+    except (ValueError, TypeError) as e:
+        raise ValidationError(
+            f&quot;There was a problem validating {model} &quot;
+            f&quot;with the raw data: {data}.\n&quot;
+            f&quot;The encountered exception: {e}&quot;
+        ) from e
+    return instance</code></pre>
+<p>If our dataclass models cannot cast a value into the expected type, then it should raise a <code>ValueError</code> or a <code>TypeError</code>. We want to catch either one of them and convert it into our own <code>ValidationError</code> for two reason. First, by subclassing <code>SanicException</code>, we can give the exception a <code>status_code</code> and when that exception is raised, Sanic will automatically know to return a <code>400</code> response. <em>Chapter 9</em>, <em>Best Practices to Improve your Web Applications</em> discusses more about exception handling, which is another important consideration. For now, just know that Sanic will give us some exception handling out of the box in both debug, and regular mode.</p>
+</section>
+<section id="taking-it-to-the-next-level-with-third-party-packages" class="level3" data-number="5.5.6">
+<h3 data-number="5.5.6">Taking it to the next level with third-party packages</h3>
+<p>The input validation from the last section was admittedly a bit thin. It works well for our very limited use cases, but lacks some of the richness that can be achieved from a proper package. If your projects in the future require some customized validation logic, then, by all means use what was started to launch your project.</p>
+<p>We are, however, going to switch our mode here. Instead of using plain vanilla dataclasses and our custom <code>ValidatorModel</code>, we are going to use a third-party package. We will keep the rest of what we built, so we are not entirely grabbing an off-the-shelf solution.</p>
+<p>Let’s see what it would be like if we used Pydantic.</p>
+<section id="validation-with-pydantic" class="level4" data-number="5.5.6.1">
+<h4 data-number="5.5.6.1">Validation with Pydantic</h4>
+<p>Pydantic is a popular package for creating models in Python. It generally plays very nicely with type annotations, and even has a drop-in replacement for dataclasses. Therefore, we can take our previous example, change the <code>dataclass</code> import line, and remove <code>ValidatorModel</code> and we upgraded our capabilities!</p>
+<ol>
+<li><p>We change our models to use the <code>Pydantic dataclass</code>:</p>
+<pre><code>from pydantic.dataclasses import dataclass</code></pre></li>
+<li><p>Remove the <code>ValidatorModel</code>, since it is no longer needed.</p>
+<pre><code>@dataclass
+class Product:
+name: str
+product_type: ProductType
+@dataclass
+class BookStallBody:
+name: str
+vendor_id: UUID
+description: str
+employees: int
+products: List[Product]
+@dataclass
+class PaginationQuery:
+limit: int = field(default=0)
+offset: int = field(default=0)</code></pre></li>
+<li><p>The only other change is to make sure that <code>do_validation</code> will raise the appropriate error message (more on exception handling in <em>Chapter 6</em>, <em>Outside the Response Cycle</em>)</p>
+<pre><code>def do_validation(model, data):
+    try:
+        instance = model(**data)
+    except PydanticValidationError as e:
+        raise ValidationError(
+            f&quot;There was a problem validating {model} &quot;
+            f&quot;with the raw data: {data}.\n&quot;
+            f&quot;The encountered exception: {e}&quot;
+        ) from e
+    return instance</code></pre>
+<p>It is an almost identical solution. Please take a look at the full example in the GitHub repository. We now have the full power of a proper library to handle much more complicated validation logic. Perhaps we should build out our decorator just a bit more to handle other types of input validation.</p></li>
+<li><p>First a model for what our expected query parameters will look like.</p>
+<pre><code>from dataclasses import field
+@dataclass
+class PaginationQuery:
+    limit: int = field(default=0)
+    offset: int = field(default=0)</code></pre></li>
+<li><p>Then, we extend the decorator to handle both body and query parameters:</p>
+<pre><code>def validate(
+    wrapped=None,
+    body_arg=&quot;body&quot;,
+    query_arg=&quot;query&quot;,
+):
+    def decorator(handler):
+        annotations = get_type_hints(handler)
+        body_model = None
+        query_model = None
+        for param_name, annotation in annotations.items():
+            if param_name == body_arg:
+                body_model = annotation
+            elif param_name == query_arg:
+                query_model = annotation
+        @wraps(handler)
+        async def decorated_function(request: Request, *args, **kwargs):
+            nonlocal body_arg
+            nonlocal body_model
+            nonlocal query_arg
+            nonlocal query_model
+            if body_model:
+                kwargs[body_arg] = do_validation(body_model, request.json)
+            if query_model:
+                kwargs[query_arg] = do_validation(query_model, dict(request.query_args))
+            return await handler(request, *args, **kwargs)
+        return decorated_function
+    return decorator if wrapped is None else decorator(wrapped)</code></pre>
+<p>In this example, instead of only looking for the body argument, we are also looking for query. The implementation between them looks remarkably similar. We can now reuse our decorator in other situations:</p>
+<pre><code>@app.get(&quot;/stalls/&lt;market_date:ymd&gt;&quot;)
+@validate
+async def check_stalls(
+    request: Request,
+    query: PaginationQuery,
+    market_date: date,
+):
+    ...</code></pre></li>
+</ol>
+<p>Now it is time for a little experiment. We started off by validating against the request JSON. This was validated and injected as the <code>body</code> argument. We then saw that it was super easy to extend this to <code>query</code> arguments with the query argument. Your challenge now is to put the book down and see if you can make a similar implementation for both regular forms and for file upload validation. Take a look at the approaches here, and also reference the <code>request.files</code> and <code>request.form</code> objects we talked about earlier in the book.</p>
+</section>
+</section>
+</section>
+<section id="summary-3" class="level2" data-number="5.6">
+<h2 data-number="5.6">Summary</h2>
+<p>It is a fairly safe assumption that all web APIs need some input from users at some point. Even APIs that are read-only often might allow for filtering, searching, or paginating data. Therefore, to become proficient at building web applications in general, and Sanic applicaitons specifically, you must learn the data tools at your disposal.</p>
+<p>In this chapter, we covered a great deal of material. We learned about how to pull data from headers, cookies, and the request body. When using headers, form data, query arguments, and file data, we saw that these objects could operate as regular dictionaries, or dictionaries of lists to be both compliant with HTTP standards and also usable for most regular use cases. We also saw that the request body itself could be sent as a single chunk, or in multiple chunks.</p>
+<p>However, perhaps the biggest takeaway is that reading data cannot and does not take a single path. As a reminder, Sanic provides the tools to build the most obvious solution for your needs. Whereas many other projects could fill a similar discussion with the minutiae of how to implement form data retrieval in their specific API, much of our focus was on how to build solutions <em>with</em> Sanic, not <em>from</em> Sanic. It is a framework that tries not to get in the way.</p>
+<p>For example, we saw that it was super simple to add both custom and off-the-shelf validation logic. Sanic did not tell us how to do it. Instead, it provided some conveniences to help make our business logic easier to build. Decorator logic gave us the flexibility to have reusable code across the application. Exception definitions can automatically catch and handle responses. Building applications with Sanic is much more about building well-structured Python applications.</p>
+<p>Once information is gathered and validated, it is time to do something with it. This is the purpose of the next chapter where we explore how to handle and ultimately respond to web requests.</p>
+</section>
+</section>
+</body>
+</html>

@@ -1,0 +1,1005 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="en-US">
+<head>
+<meta charset="utf-8"/>
+<meta name="generator" content="packt"/>
+<title>3 Routing and Intaking HTTP Requests</title>
+<link rel="stylesheet" type="text/css" href="../styles/stylesheet1.css"/>
+<link rel="stylesheet" type="text/css" href="../styles/stylesheet2.css"/>
+
+</head>
+<body>
+<section id="routing-and-intaking-http-requests" class="level1 pkt" data-number="4">
+<h1 data-number="4">3 Routing and Intaking HTTP Requests</h1>
+<p>Back in <em>Chapter 1, Introduction to Sanic and Async Frameworks,</em> we looked at a raw HTTP request to see what kind of information it includes. In this chapter, we are going to take a closer look at that first line that contains the HTTP Method and the URI path. As we learned, the most basic function of a web framework is to translate the raw HTTP request into an actionable handler. Before we see how we can implement this, it is good to keep in mind what the raw requests look like:</p>
+<pre><code>POST /path/to/endpoint HTTP/1.1
+Host: localhost:7777
+User-Agent: curl/7.76.1
+Accept: */*
+Content-Length: 14
+Content-Type: application/json
+{&quot;foo&quot;: &quot;bar&quot;}</code></pre>
+<p>Looking at the request, we see the following:</p>
+<ul>
+<li>The first line (sometimes called the <em>start line</em>) contains three subparts: <strong>HTTP Method</strong>, <strong>request target</strong>, and <strong>HTTP</strong> protocol</li>
+<li>The second section contains zero or more lines of HTTP headers in <code>key: value</code> form, with each pair separated by a line break</li>
+<li>Then, we have a blank line separating the head from the body</li>
+<li>Lastly, we have the <em>optional</em> body</li>
+</ul>
+<p>The exact specification is covered by RFC 7230, 3. <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-3">https://datatracker.ietf.org/doc/html/rfc7230#section-3</a></p>
+<p>One of the goals of this book is to learn strategies to design API endpoints that will be easily consumable, keeping in mind the needs and limitations of the application we are building. The goal is to understand the first interactions that the server has with an incoming web request, and how to design our application around that. We will learn about: how requests are structured; what choices Sanic makes for us and what choices it leaves; and other issues involved in turning an HTTP request into actionable code. Remember, the purpose of this book is not just to learn how to use a fancy new tool, but also to level-up web development skills and knowledge. To become more informed developers, we seek to not only understand <em>how</em> to build with Sanic, but <em>why</em> we might build something in a particular way. We will learn to ask better questions and to make better decisions by understanding some of the mechanics. This does not mean we need to be experts on the HTTP protocol and specification. By being familiar with, however, with what Sanic is doing with the raw request, we will ultimately be armed with a greater set of tools for building web applications.</p>
+<p>In particular, we’ll cover these topics:</p>
+<ul>
+<li>Understanding HTTP Methods</li>
+<li>Paths, slashes, and why they matter</li>
+<li>Advanced path parameters</li>
+<li>API versioning</li>
+<li>Virtual hosts</li>
+<li>Serving static content</li>
+</ul>
+<section id="technical-requirements-2" class="level2" data-number="4.1">
+<h2 data-number="4.1">Technical requirements</h2>
+<p>In addition to what we have been building before, in this chapter you should have the following tools at your disposal in order to be able to follow along with the examples:</p>
+<ul>
+<li>Docker Compose</li>
+<li>Curl</li>
+<li>You can access source code for this chapter on GitHub: <a href="https://github.com/PacktPublishing/Web-Development-with-Sanic/tree/main/chapters/03">https://github.com/PacktPublishing/Web-Development-with-Sanic/tree/main/chapters/03</a></li>
+</ul>
+</section>
+<section id="understanding-http-methods" class="level2" data-number="4.2">
+<h2 data-number="4.2">Understanding HTTP Methods</h2>
+<p>If you have built any kind of a website before, you probably have an understanding of the concept of <strong>HTTP Methods</strong>; or at least the basic <code>GET </code>and <code>POST </code>methods. However, did you know that there are nine standard HTTP Methods? In this section, we will learn about these different methods and how we <em>could</em> take advantage of them.</p>
+<p>In the same way that an IP address or a web domain is a <em>place</em> on the Internet, an HTTP Method is an <em>action</em> on the Internet. They are the collection of verbs in the language of the web. These HTTP Methods have a shared understanding and meaning. Web applications will commonly use these methods in similar use cases. That does not mean that you must follow the conventions, or that your application will break if you venture away from the standards. We should learn the rules so that we know when it may be appropriate to break them. These standards exist to create a common language that web developers and consumers can use to communicate:</p>
+<table>
+<tbody>
+<tr class="odd">
+<td>Method</td>
+<td>Description</td>
+<td>Has body</td>
+<td>Safe</td>
+<td>Sanic support</td>
+</tr>
+<tr class="even">
+<td><code>CONNECT</code></td>
+<td>Open two-way communication, like a tunnel to the resource</td>
+<td>No</td>
+<td>Yes</td>
+<td>No</td>
+</tr>
+<tr class="odd">
+<td><code>DELETE</code></td>
+<td>Delete the resource</td>
+<td>No (usually)</td>
+<td>No</td>
+<td>Yes</td>
+</tr>
+<tr class="even">
+<td><code>GET</code></td>
+<td>Fetch the resource</td>
+<td>No</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr class="odd">
+<td><code>HEAD</code></td>
+<td>Fetch the meta-data <em>only</em> for the resource</td>
+<td>No</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr class="even">
+<td><code>OPTIONS</code></td>
+<td>Request permitted communication options</td>
+<td>No</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr class="odd">
+<td><code>PATCH</code></td>
+<td>Partially modify the resource</td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes</td>
+</tr>
+<tr class="even">
+<td><code>POST</code></td>
+<td>Send data to the server</td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes</td>
+</tr>
+<tr class="odd">
+<td><code>PUT</code></td>
+<td>Create a new resource or update completely if existing</td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes</td>
+</tr>
+<tr class="even">
+<td><code>TRACE</code></td>
+<td>Perform message loopback used for debugging</td>
+<td>No</td>
+<td>Yes</td>
+<td>No</td>
+</tr>
+</tbody>
+</table>
+Table 3.1 - HTTP Method Overview
+<p>When we talk about a method being <em>safe</em>, what we mean is that it should not be state-changing. That is not to say that a <code>GET </code>method cannot have side effects. Of course, it can. For example, someone hitting the endpoint will trigger logs or some sort of a resource counter. These are technically what the industry might refer to as side-effects. “<em>The important distinction here is that the user did not request the side-effects, so therefore cannot be held accountable for them.”</em> RFC 2616, 9.1.1 (<a href="https://datatracker.ietf.org/doc/html/rfc2616#section-9">https://datatracker.ietf.org/doc/html/rfc2616#section-9</a>). This means that from the perspective of the user accessing the resource, the determination of whether an endpoint is <em>safe</em> is a matter of intent. If the user intends to retrieve profile information, it is safe. If the user intends to update profile information, it is not safe.</p>
+<p>While it is certainly helpful to try and stick to the descriptions of the methods in <em>Table 3.1</em>, undoubtedly you will come across use cases that do not fit nicely into these categories. When that happens, I encourage you to reexamine your application design. Sometimes the problem can be solved with new endpoint paths. Sometimes we need to create our own definitions. This is okay. I would, however, caution against changing a <em>safe</em> method to <em>unsafe.</em> Performing stateful changes with a <code>GET </code>request is considered poor form, and a <em>rookie mistake</em>.</p>
+<p>After deciding what our HTTP Methods should be, we will venture into the next section to learn about how we can implement them and attach them to routes.</p>
+<section id="using-http-methods-on-route-handlers" class="level3" data-number="4.2.1">
+<h3 data-number="4.2.1">Using HTTP Methods on route handlers</h3>
+<p>We are finally ready to learn and see what frameworks are all about! If you have used Flask in the paste, this will look familiar. If not, what we are about to do is create a route definition that is a set of instructions to tell Sanic to send any incoming HTTP requests to our route handler. A route definition must have two parts: a URI path and one or more HTTP Methods.</p>
+<p>Matching on the URI path alone is not enough. HTTP Methods are also used by Sanic to get your incoming request to the correct handler. Even when we implement the most basic form of a route definition, both parts must exist. Let’s look at the simplest use case and see what default choices Sanic will make:</p>
+<pre><code>@app.route(&quot;/my/stuff&quot;)
+async def stuff_handler(...):
+    ...</code></pre>
+<p>In this example, we defined a route at <code>/my/stuff</code>. Usually we inject the <code>route() </code>call with an optional <code>methods </code>argument to tell it what HTTP Methods we want that handler to respond to. We have not here, so it will default to just <code>GET</code>. We have the option of telling the route that it should also handle other HTTP Methods:</p>
+<pre><code>@app.route(&quot;/my/stuff&quot;, methods=[&quot;GET&quot;, &quot;HEAD&quot;])
+async def stuff_handler(...):
+    return text(&quot;Hello&quot;)</code></pre>
+<blockquote>
+<p><strong>IMPORTANT NOTE</strong></p>
+<p>We will look at <code>HEAD </code>method a little later in this chapter. But it is important to know that a <code>HEAD </code>request should not have any response body. This is enforced by Sanic for us. Even though technically this endpoint is responding with the text <code>Hello</code>, Sanic removes the body from the response and only sends the meta data.</p>
+</blockquote>
+<p>Now that we have a single endpoint setup with multiple methods, we can access it with both methods.</p>
+<p>First, with a <code>GET </code>request (it should be noted that when using <code>curl</code>, if you do not specify a method, it will default to <code>GET</code>):</p>
+<pre><code>$ curl localhost:7777/my/stuff -i
+HTTP/1.1 200 OK
+content-length: 5
+connection: keep-alive
+content-type: text/plain; charset=utf-8
+Hello
+Then, with a HEAD request.
+$ curl localhost:7777/my/stuff -i --head
+HTTP/1.1 200 OK
+content-length: 5
+connection: keep-alive
+content-type: text/plain; charset=utf-8</code></pre>
+<p>As a convenience, Sanic provides shortcut decorators to all of its supported HTTP Methods on both the app instance and any Blueprint instance:</p>
+<pre><code>@app.get(&quot;/&quot;)
+def get_handler(...):
+    ...
+@app.post(&quot;/&quot;)
+def post_handler(...):
+    ...
+@app.put(&quot;/&quot;)
+def put_handler(...):
+    ...
+@app.patch(&quot;/&quot;)
+def patch_handler(...):
+    ...
+@app.delete(&quot;/&quot;)
+def delete_handler(...):
+    ...
+@app.head(&quot;/&quot;)
+def head_handler(...):
+    ...
+@app.options(&quot;/&quot;)
+def options_handler(...):
+    ...</code></pre>
+<p>These decorators can also be stacked. The last example that we saw could also be written like this:</p>
+<pre><code>@app.head(&quot;/my/stuff&quot;)
+@app.get(&quot;/my/stuff&quot;)
+async def stuff_handler(...):
+    return text(&quot;Hello&quot;)</code></pre>
+<p>One more fundamental thing to know about HTTP Methods is that you can access the incoming method on the HTTP request object. This is very helpful if you are handling different types of methods on the same handler, but need to treat them differently. Here is an example where we look at the HTTP Method to change the behavior of the handler</p>
+<pre><code>from sanic.response import text, empty
+from sanic.constants import HTTPMethod
+@app.options(&quot;/do/stuff&quot;)
+@app.post(&quot;/do/stuff&quot;)
+async def stuff_handler(request: Request):
+    if request.method == HTTPMethod.OPTIONS:
+        return empty()
+    else:
+        return text(&quot;Hello&quot;)</code></pre>
+<p>Before moving on to advanced method routing, there is some Sanic syntax we should mention. All of the examples here use the decorator syntax to define routes. This is by far the most common way to achieve this because of its convenience. There is, however, an alternative. All route definitions could be converted to functional definitions as shown below:</p>
+<pre><code>@app.get(&quot;/foo&quot;)
+async def handler_1(request: Request):
+    ...
+async def handler_2(request: Request):
+    ...
+app.add_route(handler_2, &quot;/bar&quot;)</code></pre>
+<p>In some circumstances this may be a more attractive pattern to use. We will see it again when we encounter Class-Based Views later in this chapter.</p>
+</section>
+<section id="advanced-method-routing" class="level3" data-number="4.2.2">
+<h3 data-number="4.2.2">Advanced method routing</h3>
+<p>Sanic does not out-of-the-box support <code>CONNECT </code>and <code>TRACE</code>, two standard HTTP Methods. But let’s imagine that you want to build an HTTP proxy or some other system that needs to have the <code>CONNECT </code>method available in your route handler. Even though Sanic does not out-of-the-box allow it, you have two potential approaches:</p>
+<p>First, we could create a piece of middleware that is on the lookout for <code>CONNECT </code>and hijacks the request to provide a custom response. This <em>trick</em> of responding from middleware is a feature that allows you to halt the execution of the request/response lifecycle before the handlers would take over and otherwise fail as a <code>404 Not Found</code>:</p>
+<pre><code>async def connect_handler(request: Request):
+    return text(&quot;connecting...&quot;)
+@app.on_request
+async def method_hijack(request: Request):
+    if request.method == &quot;CONNECT&quot;:
+        return await connect_handler(request)</code></pre>
+<p>You can see that a potential downside to this approach is that we need to implement our own routing system if we wanted to send different endpoints to different handlers.</p>
+<p>A second approach might be to tell the Sanic router that <code>CONNECT </code>is a valid HTTP Method. Once we do this, we can add it to a normal request handler:</p>
+<pre><code>app.router.ALLOWED_METHODS = [*app.router.ALLOWED_METHODS, &quot;CONNECT&quot;]
+@app.route(&quot;/&quot;, methods=[&quot;CONNECT&quot;])
+async def connect_handler(request: Request):
+    return text(&quot;connecting...&quot;)</code></pre>
+<p>One important consideration for this strategy is that you will need to redefine <code>app.router.ALLOWED_METHODS </code>as early as possible before registering the new handlers. For this reason, it might be best for it to come directly after <code>app = Sanic(...)</code>.</p>
+<p>A side benefit that this strategy provides is the ability to create your own ecosystem of HTTP Methods with your own definitions. This may not necessarily be advisable if you intend for your API to be used for public consumption. However, it may be useful, practical, or just plain fun for your own purposes. There may only be nine standard methods, but there are infinite possibilities. Do you want to create your own verbs? You are certainly free to do so.</p>
+<p><code>ATTACK /path/to/the/dragon HTTP/1.1</code></p>
+</section>
+<section id="method-safety-and-request-body" class="level3" data-number="4.2.3">
+<h3 data-number="4.2.3">Method safety and request body</h3>
+<p>As we have learned, there are generally two types of HTTP Methods: <strong>safe</strong> and <strong>unsafe</strong>. The unsafe methods are <code>POST</code>, <code>PUT</code>, <code>PATCH</code>, and <code>DELETE</code>. These methods are generally understood to mean that they are state-changing. That is to say that by hitting these endpoints, the user is intending to change or alter the resource in some way.</p>
+<p>The converse of this are safe methods: <code>GET</code>, <code>HEAD</code>, and <code>OPTIONS</code>. The purpose of these endpoints is to request information from the application, not change state.</p>
+<p>It is considered good practice to follow this practice. If an endpoint will make a change on the server, do not use <code>GET</code>.</p>
+<p>Lining up with this division is the concept of request body. Let’s revisit the raw HTTP request one more time:</p>
+<pre><code>POST /path/to/endpoint HTTP/1.1
+Host: localhost:7777
+User-Agent: curl/7.76.1
+Accept: */*
+Content-Length: 14
+Content-Type: application/json
+{&quot;foo&quot;: &quot;bar&quot;}</code></pre>
+<p>HTTP request can optionally include a body. In the above example, the request body is the last line: <code>{"foo": "bar"}</code>.</p>
+<p>It is important to note that Sanic will only take the time to read the message body for <code>POST</code>, <code>PUT</code>, and <code>PATCH </code>requests. It will stop reading the HTTP message after the headers if it is an HTTP request using any other HTTP Method. This is a performance optimization since we generally do not expect there to be a message body on the <em>safe</em> HTTP requests.</p>
+<p>You may have noticed this list did not include <code>DELETE</code>. Why? In general, the HTTP specification says that there <em>may</em> be a request body (<a href="https://datatracker.ietf.org/doc/html/rfc7231#section-4.3.5">https://datatracker.ietf.org/doc/html/rfc7231#section-4.3.5</a>). Sanic assumes that it will not have one unless you tell it that it does. To do this, we simply set <code>ignore_body=False</code>:</p>
+<pre><code>@app.delete(&quot;/&quot;, ignore_body=False)
+async delete_something(request: Request):
+    await delete_something_using_request(request.body)</code></pre>
+<p>If we do not set <code>ignore_body=False</code>, and we send a body with our <code>DELETE </code>requests, Sanic will raise a warning in the logs to let us know that part of the HTTP message was not consumed. If you intend to use <code>DELETE </code>methods, you should be on the lookout for this since Sanic makes the assumption. It should also be noted that if you are in the habit of receiving GET requests with a body, you will also need to use <code>ignore_body=False</code>. However, I hope you have a very good reason for doing that since it breaks most web standards.</p>
+<p>One helpful takeaway from this is that out of the box, the following two endpoints are <em>not</em> equal.</p>
+<pre><code>@app.route(&quot;/one&quot;, methods=[&quot;GET&quot;])
+async def one(request: Request):
+    return text(&quot;one&quot;)
+@app.get(&quot;/two&quot;)
+async def two(request: Request):
+    return text(&quot;two&quot;)</code></pre>
+<p>Both <code>/one</code> and <code>/two</code> will behave similarly. Without further customization, however, the first request will spend time trying to read the request body even if it does not exist, while the second just assumes that it is the case that there is no body. While the performance difference will be small, it is generally preferred to use <code>@app.get("/two") </code>over <code>@app.route("/one", methods=["GET"])</code>. The reason that these two endpoints differ is that they have different default values for <code>ignore_body</code>.</p>
+<blockquote>
+<p><strong>IMPORTANT NOTE</strong></p>
+<p>If you are building a GraphQL application, then usually <code>POST </code>is used by the endpoint even for informational requests. This is because it is generally much more acceptable to pass a body on a <code>POST </code>request than a <code>GET </code>request. However, it is worth mentioning that we could consume a message body from a <code>GET </code>request if we really wanted to by setting <code>ignore_body=False</code>.</p>
+</blockquote>
+<p>When deciding what method you should use, another factor to consider is <strong>idempotency</strong>. In short, idempotence means that you can perform the same action over and over again, and the result should be the same every time. The HTTP Methods that are considered idempotent are: <code>GET</code>, <code>HEAD</code>, <code>PUT</code>, <code>DELETE</code>, <code>OPTIONS</code>, and <code>TRACE</code>. Keep this in mind when designing your API.</p>
+</section>
+<section id="restful-api-design" class="level3" data-number="4.2.4">
+<h3 data-number="4.2.4">RESTful API design</h3>
+<p>HTTP Methods are often used in <strong>RESTful API design</strong>. There is a wealth of literature already written on building RESTful APIs, so we will not dive deeply into <em>what</em> it is, but more <em>how</em> we can practically implement it. We shall, however, first have a quick refresher of the basic premise.</p>
+<p>Web API endpoints have a target. That target is <em>something</em> that either the user would like to fetch information about, or manipulate by adding or changing it. Based upon a shared understanding, the HTTP Method tells the server how you would like to interact with that target. The <em>target</em> is often called a <em>resource</em>, and we may use the terms interchangeably here.</p>
+<p>To grasp this concept, I like to think back to the adventure computer games I played as a child. My swashbuckling character would happen upon an object: let’s say a rubber chicken. When I clicked on that object, a menu would appear with different verbs that told me what I could do with that object: pick up, look at, use, talk to, and so on. There was a target (the rubber chicken), and methods (the verbs or actions).</p>
+<p>Putting this together with the HTTP Methods we defined above, let’s look at a concrete example. In our hypothetical situation, we will be building an API to manage a social media platform for people that love adventure computer games. Users need to be able to create a profile, view other profiles, and update their own. We might design the following endpoints:</p>
+<table>
+<tbody>
+<tr class="odd">
+<td><strong>METHOD</strong></td>
+<td><strong>URI PATH</strong></td>
+<td><strong>DESCRIPTION</strong></td>
+</tr>
+<tr class="even">
+<td><code>GET </code></td>
+<td><code>/profiles</code></td>
+<td>A list of all of the member profiles</td>
+</tr>
+<tr class="odd">
+<td><code>POST </code></td>
+<td><code>/profiles</code></td>
+<td>Create a new profile</td>
+</tr>
+<tr class="even">
+<td><code>GET </code></td>
+<td><code>/profiles/&lt;username&gt;</code></td>
+<td>Retrieve profile for a single user</td>
+</tr>
+<tr class="odd">
+<td><code>PUT </code></td>
+<td><code>/profiles/&lt;username&gt;</code></td>
+<td>Remove the old profile and replace with a complete profile</td>
+</tr>
+<tr class="even">
+<td><code>PATCH </code></td>
+<td><code>/profiles/&lt;username&gt;</code></td>
+<td>Make a change to only a part of a profile</td>
+</tr>
+<tr class="odd">
+<td><code>DELETE </code></td>
+<td><code>/profiles/&lt;username&gt;</code></td>
+<td>Remove a profile–but why would anyone want to remove their swashbuckling adventure gamer profile?</td>
+</tr>
+</tbody>
+</table>
+Table 3.2 - Example HTTP Methods and endpoints
+<p>Before we go further, if you are unfamiliar with how routing works in Sanic (and what the <code>&lt;username&gt;</code> syntax means), you can get more information in the User Guide here: <a href="https://sanicframework.org/en/guide/basics/routing.html">https://sanicframework.org/en/guide/basics/routing.html</a>, and we will also look at it more closely later in this chapter in the section titled <em>Extracting information from the path</em>. Feel free to skip ahead and come back.</p>
+<p>As you can see, there really are only two URI paths: <code>/profiles</code> and <code>/profiles/&lt;username&gt;</code>. Using the HTTP Methods, however, we have been able to define six different interactions with our API! What might the profile blueprint look like?</p>
+<pre><code>from sanic import Blueprint, Request
+bp = Blueprint(&quot;MemberProfiles&quot;, url_prefix=&quot;/profile&quot;)
+@bp.get(&quot;&quot;)
+async def fetch_all_profiles(request: Request):
+    ...
+@bp.post(&quot;&quot;)
+async def create_new_profile(request: Request):
+    ...
+@bp.get(&quot;/&lt;username&gt;&quot;)
+async def fetch_single_profile(request: Request, username: str):
+    ...
+@bp.put(&quot;/&lt;username&gt;&quot;)
+async def replace_profile(request: Request, username: str):
+    ...
+@bp.patch(&quot;/&lt;username&gt;&quot;)
+async def update_profile(request: Request, username: str):
+    ...
+@bp.delete(&quot;/&lt;username&gt;&quot;)
+async def delete_profile(request: Request, username: str):
+    ...</code></pre>
+<p>Using HTTP Methods to define our use cases seems helpful and having decorators that map them seems convenient. But, it seems like there is a lot of boilerplate there, and repetition. We will next look at Class-Based Views and how we can simplify our code.</p>
+</section>
+<section id="simplifying-your-endpoints-with-class-based-views" class="level3" data-number="4.2.5">
+<h3 data-number="4.2.5">Simplifying your endpoints with Class-Based Views</h3>
+<p>The previous example exposes a weakness with using functions and decorators alone to design your API. What happens when we want to add endpoint handlers for <code>/profile/&lt;user_id:uuid&gt;</code>? Or when we want to make some other change to the existing endpoint? We now have multiple places to make the same change, leading to a higher chance that we do not maintain parity among all our route definitions. This is a violation of the <strong>DRY</strong> (<strong>don’t repeat yourself</strong>) principle, and could lead to bugs. Maintaining these endpoints over the long term therefore might be more difficult than necessary.</p>
+<p>This is one of the compelling reasons to use <strong>Class-Based Views</strong> (<strong>CBVs</strong>). This pattern will give us the opportunity to link together the first two endpoints, and the last four endpoints so they become easier to manage. They are being grouped together because they share the same URI path. Instead of standalone functions, each HTTP Method will be a functional method on a class. And, that class will be assigned a common URI path. A bit of code should make this easy to understand:</p>
+<pre><code>from sanic import Blueprint, Request, HttpMethodView
+bp = Blueprint(&quot;MemberProfiles&quot;, url_prefix=&quot;/profile&quot;)
+class AllProfilesView(HttpMethodView):
+    async def get(request: Request):
+        &quot;&quot;&quot;same as fetch_all_profiles() from before&quot;&quot;&quot;
+    async def post(request: Request):
+        &quot;&quot;&quot;same as create_new_profile() from before&quot;&quot;&quot;
+class SingleProfileView(HttpMethodView):
+    async def get(request: Request, username: str):
+        &quot;&quot;&quot;same as fetch_single_profile() from before&quot;&quot;&quot;
+    async def put(request: Request, username: str):
+        &quot;&quot;&quot;same as replace_profile() from before&quot;&quot;&quot;
+    async def patch(request: Request, username: str):
+        &quot;&quot;&quot;same as update_profile() from before&quot;&quot;&quot;
+    async def delete(request: Request, username: str):
+        &quot;&quot;&quot;same as delete_profile() from before&quot;&quot;&quot;
+app.add_route(AllProfilesView.as_view(), &quot;&quot;)
+app.add_route(SingleProfileView.as_view(), &quot;/&lt;username&gt;&quot;)</code></pre>
+<blockquote>
+<p><strong>IMPORTANT NOTE</strong></p>
+<p>Later in this book we may see more and more use of custom decorators to add shared functionality. It is worth mentioning that we can also add them easily to CBVs, and I highly suggest you take a moment to refer to the User Guide to see it in action: <a href="https://sanicframework.org/en/guide/advanced/class-based-views.html#decorators">https://sanicframework.org/en/guide/advanced/class-based-views.html#decorators</a></p>
+<p>One thing to be on the lookout for when adding decorators to CBV methods is the <code>self </code>argument on instance methods. You may need to adjust your decorator, or use a <code>staticmethod </code>to get it to work as expected. The above mentioned documentation explains how to do that.</p>
+</blockquote>
+<p>Earlier, we saw how <code>add_route </code>could be used as an alternative approach to attaching a single function as a handler to a route definition. It looked like this:</p>
+<pre><code>async def handler(request: Request):
+...
+app.add_route(handler, &quot;/path&quot;)</code></pre>
+<p>This pattern is one of the main ways to attach a CBV to a Sanic or Blueprint instance. The caveat is that you need to call it using the class method: <code>as_view()</code>. In our previous example, we saw what this looked like:</p>
+<pre><code>app.add_route(SingleProfileView.as_view(), &quot;/&lt;username&gt;&quot;)</code></pre>
+<p>This could also be achieved by attaching the CBV when it is declared. This is option will only work if you already have a known Blueprint or Application instance. We will rewrite <code>SingleProfileView </code>to take advantage of this alternative syntax.</p>
+<pre><code>class SingleProfileView(
+HttpMethodView,
+attach=app,
+uri=&quot;/&lt;username&gt;&quot;
+):
+async def get(request: Request, username: str):
+        &quot;&quot;&quot;same as fetch_single_profile() from before&quot;&quot;&quot;
+    async def put(request: Request, username: str):
+        &quot;&quot;&quot;same as replace_profile() from before&quot;&quot;&quot;
+    async def patch(request: Request, username: str):
+        &quot;&quot;&quot;same as update_profile() from before&quot;&quot;&quot;
+    async def delete(request: Request, username: str):
+        &quot;&quot;&quot;same as delete_profile() from before&quot;&quot;&quot;</code></pre>
+<p>How should you decide which to use? Personally, I find this second version to be easier and cleaner. The big downside is that you cannot lazily create the CBV and attach it later since it needs to be known up front.</p>
+</section>
+<section id="blanket-support-for-options-and-head" class="level3" data-number="4.2.6">
+<h3 data-number="4.2.6">Blanket support for OPTIONS and HEAD</h3>
+<p>It is generally best practice to support <code>OPTIONS </code>and <code>HEAD </code>methods on all of your endpoints, where it is appropriate. This could become tedious and include a lot of repetitive boilerplate. To achieve this with standard route definitions alone would require a lot of code duplication as seen below. Below, we see that we need for route definitions where two would be sufficient. Now imagine if every endpoint needed to also have <code>OPTIONS </code>and <code>HEAD</code>!</p>
+<pre><code>@app.get(&quot;/path/to/something&quot;)
+async def do_something(request: Request):
+    ...
+@app.post(&quot;/path/to/something&quot;)
+async def do_something(request: Request):
+    ...
+@app.options(&quot;/path/to/something&quot;)
+async def do_something_options(request: Request):
+    ...
+@app.head(&quot;/path/to/something&quot;)
+async def do_something_head(request: Request):
+    ...</code></pre>
+<p>We can use Sanic’s router to our advantage to add on a handler for these requests to each and every route. The idea will be to loop over all of the routes defined in our application and dynamically add handlers for <code>OPTIONS </code>and <code>HEAD </code>if needed. Later on in <em>Chapter 7</em>, we will use this strategy for creating our customized CORS policy. For now, however, all we need to keep in mind is that we want to be able to handle ANY request to a valid endpoint using one of these HTTP Methods:</p>
+<pre><code>async def options_handler(request: Request):
+    ...
+async def head_handler(request: Request):
+    ...
+@app.before_server_start
+def add_info_handlers(app: Sanic, _):
+    app.router.reset()
+    for group in app.router.groups.values():
+        if &quot;OPTIONS&quot; not in group.methods:
+            app.add_route(
+                handler=options_handler,
+                uri=group.uri,
+                methods=[&quot;OPTIONS&quot;],
+                strict_slashes=group.strict,
+            )
+    app.router.finalize()</code></pre>
+<p>Let’s take a closer look at this code.</p>
+<p>First, we create route handlers: the functions that will do the work when the endpoint is hit. For now, they do not do anything. If you want to know what this endpoint <em>could</em> do, jump ahead to the CORS discussion in <em>Setting up an effective CORS policy</em> located in <em>Chapter 7</em>.</p>
+<pre><code>async def options_handler(request: Request):
+    ...
+async def head_handler(request: Request):
+    ...</code></pre>
+<p>The next part needs to be done after we register all of our endpoints. In <em>Chapter 11</em>, we accomplish this by running the code inside of a factory. Feel free to take a look ahead to the example there to be able to compare it with our current implementation.</p>
+<p>In our current example, we do not have a factory, and are adding the routes inside an event listener. Normally, this would not be possible since we cannot change our routes after the application is running. When a Sanic application starts up, one of the first things it does internally is call <code>app.router.finalize()</code>. But, it will not let us call that method twice. Therefore, we need to run <code>app.router.reset()</code>, add our routes, and finally call <code>app.router.finalize() </code> after all of our dynamic route generation is complete. You can use this same strategy anywhere that you might want to dynamically add routes. Is this a good idea? In general, I would say that dynamically adding routes is a bad idea. Having changing endpoints might lead to unpredictability, or weird bugs across a distributed application. However, the benefit we are gaining through dynamic route generation in this instance is great, and the risk is very low.</p>
+<p>There are a few different properties that the Sanic router provides us with that we could loop over to see what routes are registered. The two most commonly used for public consumption are <code>app.router.routes</code> and <code>app.router.groups</code>. It is helpful to understand what they are and how they differ. We will put our discussion on <code>OPTIONS </code>and <code>HEAD </code>on pause for a brief moment to look at these two properties to see how:</p>
+<pre><code>@app.before_server_start
+def display(app: Sanic, _):
+    for route in app.router.routes:
+        print(route)
+    for group in app.router.groups.values():
+        print(group)
+@app.patch(&quot;/two&quot;)
+@app.post(&quot;/two&quot;)
+def two_groups(request: Request):
+    return text(&quot;index&quot;)
+@app.route(&quot;/one&quot;, methods=[&quot;PATCH&quot;, &quot;POST&quot;])
+def one_groups(request: Request):
+    return text(&quot;index&quot;)</code></pre>
+<p>The first thing to notice is that one of them is producing <code>Route </code>objects, and the other <code>RouteGroup </code>objects. The second obvious takeaway is that one is a list and the other a dictionary. But what are <code>Route </code>and <code>RouteGroup</code>?</p>
+<p>In our console, we will see that there are three <code>Route </code>objects, but only two <code>RouteGroup </code>objects. This is because Sanic has grouped together similar looking routes to more efficiently match them later. A <code>Route </code>is a single definition. Every time we call <code>@app.route</code>, we are creating a new <code>Route</code>. Here, we can see that they have been grouped by the URI path:</p>
+<pre><code>&lt;Route: name=__main__.two_groups path=two&gt;
+&lt;Route: name=__main__.two_groups path=two&gt;
+&lt;Route: name=__main__.one_groups path=one&gt;
+&lt;RouteGroup: path=two len=2&gt;
+&lt;RouteGroup: path=one len=1&gt;</code></pre>
+<p>Getting back to our discussion of automation, we are going to use <code>app.router.groups</code>. This is because we want to know which methods have and have not been assigned to a given path. The quickest way to figure that out is to look at the groups that Sanic has already provided for us. All we need to do is check if the group already includes a handler for the HTTP Method (so we do not overwrite anything that already exists), and call <code>add_route</code>.</p>
+<pre><code>for group in app.router.groups.values():
+    if &quot;OPTIONS&quot; not in group.methods:
+        app.add_route(
+            handler=options_handler,
+            uri=group.uri,
+            methods=[&quot;OPTIONS&quot;],
+            strict_slashes=group.strict,
+        )
+    if &quot;GET&quot; in group.methods and &quot;HEAD&quot; not in group.methods:
+        app.add_route(
+            handler=head_handler,
+            uri=group.uri,
+            methods=[&quot;HEAD&quot;],
+            strict_slashes=group.strict,
+        )</code></pre>
+<p>Although we will not look at <code>options_handler </code>right now, we can look more closely at <code>head_handler</code>. A <code>HEAD </code>request is defined in RFC 2616 as being identical to a <code>GET </code>request: “<em>The HEAD method is identical to GET except that the server MUST NOT return a message-body in the response”</em> (<a href="https://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html#sec9.4">https://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html#sec9.4</a>).</p>
+<p>This is pretty easy to implement in Sanic. Really what we want to do is retrieve the response from the <code>GET </code>handler for the same endpoint, but only return the metadata, <em>not</em> the request body. We will use <code>functools.partial</code> to pass the <code>GET </code>handler to our <code>head_handler</code>. Then, all it needs to do is run the <code>get_handler</code> and return the response. As we saw earlier in the chapter, Sanic will do the work for us of removing the body before it sends the response to the client:</p>
+<pre><code>from functools import partial
+for group in app.router.groups.values():
+    if &quot;GET&quot; in group.methods and &quot;HEAD&quot; not in group.methods:
+        get_route = group.methods_index[&quot;GET&quot;]
+        app.add_route(
+            handler=partial(
+                head_handler,
+                get_handler=get_route.handler
+            ),
+            uri=group.uri,
+            methods=[&quot;HEAD&quot;],
+            strict_slashes=group.strict,
+            name=f&quot;{get_route.name}_head&quot;,
+        )
+async def head_handler(request: Request, get_handler, *args, **kwargs):
+    return await get_handler(request: Request, *args, **kwargs)</code></pre>
+<blockquote>
+<p><strong>IMPORTANT NOTE</strong></p>
+<p>In the above example we added <code>name=f"{get_route.name}_head"</code> to our <code>add_route</code> method. This is because all routes in Sanic get a “name”. If you do not manually supply one, then Sanic will attempt to generate a name for you using <code>handler.__name__.</code> In this case, we are passing a <code>partial </code>function as a route handler, and Sanic does not know how to generate a name for that since partial functions in Python have no <code>__name__</code> property.</p>
+</blockquote>
+<p>Now that we know about how to use HTTP Methods to our advantage, we will look at the next big area in routing: <strong>paths</strong>.</p>
+</section>
+</section>
+<section id="paths-slashes-and-why-they-matter" class="level2" data-number="4.3">
+<h2 data-number="4.3">Paths, slashes, and why they matter</h2>
+<p>Way back in the stone-age when the Internet was invented, if you navigated to a URL, you were literally being delivered a file that existed on a computer somewhere. If you asked for <code>/path/to/something.html</code>, the server would look in the <code>/path/to</code> directory for a file called <code>something.html</code>. If that file existed, it would send it to you.</p>
+<p>While this does still exist, times have certainly changed for many applications. The Internet is still largely based upon this premise, but often a generated document is sent instead of a static document. It is helpful to still keep this mental model in your head though. Thinking that a path on your API should lead to a resource of some kind will keep you away from certain API design flaws. For example:</p>
+<pre><code>/path/to/create_something  &lt;&lt; BAD
+/path/to/something         &lt;&lt; GOOD</code></pre>
+<p>Your URI paths should use nouns, not verbs. If we want to perform an action and tell the server to do something, we should manipulate the HTTP Method as we learned, not the path of the URI. Going down this path—believe me, I’ve done it—will lead to some messy looking applications. Very likely you will wake up one day and look at a mess of disjointed and incoherent paths and ask yourself: what have I done? There might, however, be a time and place for this, so we will revisit it shortly.</p>
+<p>Knowing that our paths should contain nouns, the obvious next question is whether they should be singular or plural. I do not think there is a single consensus on the Internet about what is right here. Many people always use plural; many people always use singular; and some wild hooligans decide to mix and match. While the decision itself may seem small, it is nevertheless important to establish consistency. Picking a system and applying consistency is itself more important than the actual decision.</p>
+<p>With that out of the way, I will give you my opinion. Use plural nouns. Why? It makes for very nice nesting of paths, which could translate nicely to nesting of Blueprints:</p>
+<pre><code>/users      &lt;&lt; to get all users
+/users/123  &lt;&lt; to get user ID 123</code></pre>
+<p>I do encourage you to use singular nouns if it makes sense to you. But if you do, you must do it everywhere. As long as you stay consistent and logical about your choice, your API will feel polished. Mixing plural and singular paths will make your API feel haphazard and amateurish. A really nice resource that explains how to <em>consistently</em> break the two rules I just laid out (use nouns, use plural) is found here: <a href="https://restfulapi.net/resource-naming/.">https://restfulapi.net/resource-naming/.</a> Again, it is important and helpful for us to not only learn the <em>rules</em> or the <em>right way</em> to do something but to also learn when to break them, or when to make our own set of rules. Sometimes following standards makes sense, sometimes not. This is how we go from someone that merely is capable of making a web application, to someone that knows how to design and build one. The difference is expertise.</p>
+<p>It is also encouraged when designing paths to favor hyphens (<code>-</code>) over spaces, capitalization, or underscores. This increases the human readability of your API. Consider the difference between these:</p>
+<pre><code>/users/AdamHopkins        &lt;&lt; BAD
+/users/adam_hopkins       &lt;&lt; BAD
+/users/adam%20hopkins     &lt;&lt; BAD
+/users/adam-hopkins       &lt;&lt; GOOD</code></pre>
+<p>Most people would consider the last option to be the easiest to read.</p>
+<section id="strict-slashes" class="level3" data-number="4.3.1">
+<h3 data-number="4.3.1">Strict slashes</h3>
+<p>Because of the legacy paradigm where endpoints were equivalent to the file structure of a server, the trailing slash in a path took on a specific meaning. It is widely accepted that paths with and without trailing slashes are not the same and are not interchangeable.</p>
+<p>If you navigated to <code>/characters</code>, you might expect to receive a list of all the characters in our fictitious social media application. However, <code>/characters/ </code>technically means <em>show me a list of everything that is in the</em> <code>characters</code> <em>directory</em>. Because this could be confusing, you are encouraged to avoid using trailing slashes.</p>
+<p>On the other hand, it is also widely accepted that these <em>are</em> the same thing. In fact, a lot of browsers (and websites) treat them the same. I’ll show you how you can test this for yourself:</p>
+<p>Open your web browser and go to: <a href="https://sanic.readthedocs.io/en/stable/">https://sanic.readthedocs.io/en/stable/</a></p>
+<p>Now open a second tab and go to: <a href="https://sanic.readthedocs.io/en/stable">https://sanic.readthedocs.io/en/stable</a></p>
+<p>It is the same page. In fact, it seems that this web server breaks the rule that I just mentioned and prefers the trailing slash to not having it at all. So, where does this leave us, and what should we implement? It is really up to you to determine, so let’s see how we can control it in Sanic.</p>
+<p>If you do nothing, Sanic will drop the trailing slash for you. Sanic does, however, provide you with the ability to control whether that trailing slash should have meaning or not by setting the <code>strict_slashes </code>argument. Consider an application setup with and without trailing slashes, and with and without <code>strict_slashes</code>:</p>
+<pre><code>@app.route(&quot;/characters&quot;)
+@app.route(&quot;/characters/&quot;)
+@app.route(&quot;/characters&quot;, strict_slashes=True)
+@app.route(&quot;/characters/&quot;, strict_slashes=True)
+async def handler(request: Request):
+    ...</code></pre>
+<p>The above definitions will fail. Why? When Sanic sees a trailing slash on a path definition it will remove it, <em>unless</em> <code>strict_slashes=True</code>. Therefore, the first and second routes are considered identical. Furthermore, the third route is also the same, therefore causing a conflict.</p>
+<p>While the generally accepted rule is that a trailing slash <em>should</em> have meaning, this is not the case for a trailing slash that is the only part of a path. RFC 2616, Section 3.2.3 states that an empty path (<code>""</code>) is the same thing as a single slash path (<code>"/"</code>). (<a href="https://datatracker.ietf.org/doc/html/rfc2616#section-3.2.3">https://datatracker.ietf.org/doc/html/rfc2616#section-3.2.3</a>)</p>
+<p>I put together a deeper discussion about how Sanic handles the possible scenarios of trailing slashes. If this is something you are considering to use, I suggest you take a look here: <a href="https://community.sanicframework.org/t/route-paths-how-do-they-work/825.">https://community.sanicframework.org/t/route-paths-how-do-they-work/825.</a></p>
+<p>If you were to ask me my opinion, I would say do not use them. It is much more forgiving to allow <code>/characters </code>and <code>/characters/</code> to have the same meaning. Therefore, I personally would define the above route as follows:</p>
+<pre><code>@app.route(&quot;/characters&quot;)
+async def handler(request: Request):
+    ...</code></pre>
+</section>
+<section id="extracting-information-from-the-path" class="level3" data-number="4.3.2">
+<h3 data-number="4.3.2">Extracting information from the path</h3>
+<p>The last thing we need to consider in this section is extracting usable information from our request. The first place we often look is the URI path. Sanic provides a simple syntax for extracting parameters from the path:</p>
+<pre><code>@app.get(&quot;/characters/&lt;name&gt;&quot;)
+async def profile(request: Request, name: str):
+    print text(f&quot;Hello {name}&quot;)</code></pre>
+<p>We have declared the second segment in our path to contain a variable. The Sanic router extracts that and injects it as an argument in our handler. It is important to note that if we do nothing else, that injection will be a <code>str </code>type value.</p>
+<p>Sanic also provides an easy mechanism for converting the type. Suppose we want to retrieve a single message from a message feed, query it in the DB, and return the message. In this case, our call to the DB requires the <code>message_id</code> to be an <code>int</code>.</p>
+<pre><code>@app.get(&quot;/messages/&lt;message_id:int&gt;&quot;)
+async def message_details(request: Request, message_id: int):
+    ...</code></pre>
+<p>This route definition will tell Sanic to convert the second segment into an <code>int </code>before injecting it. It is also important to note that if the value is something that cannot be cast as an <code>int</code>, it will raise a <code>404 Not Found</code>. Therefore, the parameter type does more than just type casting. It is also involved in route handling.</p>
+<p>You can refer to the next section, and the User Guide to learn what all of the allowed parameter types are. <a href="https://sanicframework.org/en/guide/basics/routing.html#path-parameters">https://sanicframework.org/en/guide/basics/routing.html#path-parameters</a></p>
+<p>Besides extracting information from the path itself, the two other places we may want to look for user data are the query parameters, and the request body. Query parameters is the part of the URL that comes after a <code>?</code>:</p>
+<p><code>/characters?count=10&amp;name=george</code></p>
+<p>How should we decide if information should be passed in the path, the query arguments, or as a part of form or JSON body? Best practices dictate that information should be accessed as follows:</p>
+<ul>
+<li><strong>path parameters</strong>: Information to describe <em>what</em> the resource is we are looking for</li>
+<li><strong>query parameters</strong>: Information that can be used to filter, search, or sort the response</li>
+<li><strong>request body</strong>: Everything else</li>
+</ul>
+<p>It is a good habit to get into very early on in your application development to learn where different usable bits of information can come from. Chapter 4 dives much further into passing data through query patameters and the request body. Just as valuable is of course the HTTP path itself. We just looked at how important crafting purposeful paths might be. Next, we will take a deeper look at extracting data from the HTTP path.</p>
+</section>
+</section>
+<section id="advanced-path-parameters" class="level2" data-number="4.4">
+<h2 data-number="4.4">Advanced path parameters</h2>
+<p>In the last section, we learned the basics of extracting information from a dynamic URL path to something we can code with. This is truly a fundamental feature of all web frameworks. It is also extremely common among many frameworks to allow you to specify what that path parameter should be. We learned that <code>/messages/&lt;message_id:int&gt;</code> would match <code>/messages/123</code> but not <code>/messages/abc</code>. We also learned about the convenience that Sanic provides in converting the match path segment to an integer.</p>
+<p>But, what about more complex types? Or what if we need to modify the matched value before using it in our application? In this section, we will explore a couple helpful patterns to achieve these goals.</p>
+<section id="custom-parameter-matching" class="level3" data-number="4.4.1">
+<h3 data-number="4.4.1">Custom parameter matching</h3>
+<p>Out of the box, Sanic provides eight path parameter types that can be matched:</p>
+<ul>
+<li><code>str</code>: matches any valid string</li>
+<li><code>slug</code>: matches standard path slugs</li>
+<li><code>int</code>: matches any integer</li>
+<li><code>float</code>: matches any number</li>
+<li><code>alpha</code>: matches only alphabetic characters</li>
+<li><code>path</code>: matches any expandable path</li>
+<li><code>ymd</code>: matches <code>YYYY-MM-DD</code></li>
+<li><code>uuid</code>: matches a <code>UUID</code></li>
+</ul>
+<p>Each of these provides a type that corresponds to the matched parameter. For example, if you have this path: <code>/report/&lt;report_date:ymd&gt;</code>, the <code>date </code>object in your handler will be a <code>datetime.date</code> instance:</p>
+<pre><code>from datetime import date
+@app.get(&quot;/report/&lt;report_date:ymd&gt;&quot;)
+async def get_report(request: Request, report_date: date):
+    assert isinstance(report_date, date)</code></pre>
+<p>This is a very helpful pattern because it accomplishes two things for us. First, it makes sure that the incoming request is in the correct format. A request that is <code>/report/20210101</code> would receive a <code>404 Not Found</code> response. Second, when we go to work with that <code>report_date</code> instance in our handler, it has already been cast into a usable data type: <code>date</code>.</p>
+<p>What happens when we need routing for types outside of the standard types? Sanic does of course allow us to achieve the first part by defining a custom regular expression for a path segment. Let’s imagine that we have an endpoint that we want to match on a valid IPv4 address: <code>/ip/1.2.3.4</code>.</p>
+<p>The simplest approach here would be to find a relevant regular expression and add it to our path segment definition:</p>
+<pre><code>IP_ADDRESS_PATTERN = (
+    r&quot;(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}&quot;
+    r&quot;(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)&quot;
+)
+@app.get(f&quot;/&lt;ip:{IP_ADDRESS_PATTERN}&gt;&quot;)
+async def get_ip_details(request: Request, ip: str):
+    return text(f&quot;type={type(ip)} {ip=}&quot;)</code></pre>
+<p>Now, when we access our endpoint we should have a valid match:</p>
+<pre><code>$ curl localhost:7777/1.2.3.4  
+type=&lt;class &#39;str&#39;&gt; ip=&#39;1.2.3.4&#39;</code></pre>
+<p>Using regular expression matching also allows us to narrowly define an endpoint between a limited number of options:</p>
+<pre><code>@app.get(&quot;/icecream/&lt;flavor:vanilla|chocolate&gt;&quot;)
+async def get_flavor(request: Request, flavor: str):
+    return text(f&quot;You chose {flavor}&quot;)</code></pre>
+<p>We now have routing based upon our two available choices:</p>
+<pre><code>$ curl localhost:7777/icecream/mint
+️ 404 — Not Found
+==================
+Requested URL /icecream/mint not found
+$ curl localhost:7777/icecream/vanilla
+You chose vanilla</code></pre>
+<p>While regular expression matching is incredibly helpful sometimes, the problem is that the output is still a <code>str</code>. Going back to our first IPv4 example, we would need to manually cast the matched value into a <code>ipaddress.IPv4Address</code> if we wanted an instance of that class to work with.</p>
+<p>While this might not seem like a big deal if you have one or two handlers, if you have a dozen endpoints that needed a dynamic IP address as a path parameter, it could become cumbersome. Sanic’s solution to this is custom pattern matching. We can tell Sanic that we want to create our own parameter type. To do this we need three things:</p>
+<ul>
+<li>A short descriptor that we will use to name our type</li>
+<li>A function that will return the value we want or raise <code>ValueError </code>if there is no match</li>
+<li>A fallback regular expression that also matches our value</li>
+</ul>
+<p>In the IP address example:</p>
+<ol>
+<li>We will name the parameter <code>ipv4</code></li>
+<li>We can use the standard library’s <code>ipaddress.ip_address</code> constructor</li>
+<li><p>We already have our fallback regular expression from earlier. We can proceed to registering the custom parameter type:</p>
+<pre><code>import ipaddress
+app.router.register_pattern(
+    &quot;ipv4&quot;,
+    ipaddress.ip_address,
+    IP_ADDRESS_PATTERN,
+)
+@app.get(&quot;/&lt;ip:ipv4&gt;&quot;)
+async def get_ip_details(request: Request, ip: ipaddress.IPv4Address):
+    return text(f&quot;type={type(ip)} {ip=}&quot;)</code></pre></li>
+</ol>
+<p>Now, we have a more usable object in the handler (<code>ipaddress.IPv4Address</code>), and we also have a very easy to reuse path parameter (<code>&lt;ip:ipv4&gt;</code>).</p>
+<p>What about our second example with ice cream flavors? Instead of having a <code>str </code>type, what if we wanted to have an <code>Enum </code>or some other custom model? There is unfortunately no function in Python’s standard library for parsing ice cream flavors (maybe someone should build that), so we will need to create our own:</p>
+<ol>
+<li><p>To start, we will create our model using an <code>Enum</code>. Why an Enum? It is a fantastic tool to keep our code nice and consistent. If our environment is setup right—which it is because we took care in <em>Chapter 2</em> to use good tools—we have a single place where we can maintain our flavors with code completion:</p>
+<pre><code>from enum import Enum, auto
+class Flavor(Enum):
+    VANILLA = auto()
+    CHOCOLATE = auto()</code></pre></li>
+<li><p>Next, we need a regular expression that we can later use in our route definition for matching incoming requests:</p>
+<pre><code>flavor_pattern = &quot;|&quot;.join(
+    f.lower() for f in Flavor.__members__.keys()
+)</code></pre>
+<p>The resulting pattern should be: <code>vanilla|chocolate</code>.</p></li>
+<li><p>We also need to create a function that will act as our parser. Its job is to either return our target type or raise <code>ValueError</code>:</p>
+<pre><code>def parse_flavor(flavor: str) -&gt; Flavor:
+try:
+    return Flavor[flavor.upper()]
+except KeyError:
+    raise ValueError(f&quot;Invalid ice cream flavor: {flavor}&quot;)</code></pre></li>
+<li><p>We can now proceed to register that pattern with Sanic. Just like the IP address example before, we have the name of our parameter type, a function to check the match, and a fallback regular expression.</p>
+<pre><code>app.router.register_pattern(
+&quot;ice_cream_flavor&quot;,
+parse_flavor,
+flavor_pattern,
+)</code></pre></li>
+<li><p>With our pattern now registered, we can proceed to use it in all of our ice cream endpoints:</p>
+<pre><code>@app.get(&quot;/icecream/&lt;flavor:ice_cream_flavor&gt;&quot;)
+async def get_flavor(request: Request, flavor: Flavor):
+return text(f&quot;You chose {flavor}&quot;)</code></pre>
+<p>When we access the endpoint now, we should have an <code>Enum </code>instance, but still only accept requests that match one of our two defined flavors. Yum!</p>
+<pre><code>$ curl localhost:7777/icecream/mint
+404 — Not Found
+===============
+Requested URL /icecream/mint not found
+$ curl localhost:7777/icecream/vanilla
+You chose Flavor.VANILLA</code></pre></li>
+</ol>
+<p>The key to this example is having a good parse function. In our example, we know that if a bad flavor is entered into the <code>Enum </code>constructor it will raise <code>KeyError</code>. This is a problem. If our application cannot match <code>mint</code>, it will throw a <code>KeyError </code>and the application will respond with a <code>500 Internal Server Error</code>. This is not what we want. By catching the exception and casting it to <code>ValueError</code>, Sanic is able to understand that this is expected, and it should respond with a <code>404 Not Found</code>.</p>
+</section>
+<section id="modifying-matched-parameter-values" class="level3" data-number="4.4.2">
+<h3 data-number="4.4.2">Modifying matched parameter values</h3>
+<p>As we have learned, using path parameter types is extremely helpful in building our API to respond to intended requests and ignoring bad paths. As much as possible, it is best practice to be as specific as your endpoint needs to get the right data in. We just explored how we might also use parameter types to recast the matched value to a more useful data type. But what if we are not concerned about changing the <code>type </code>of the value, but the actual value itself?</p>
+<p>Returning to our character profile application example, imagine that we have some URLs that include <strong>slugs</strong>. If you are not familiar with a slug, it is basically a string that uses lower cases letters and hyphens to make human friendly content in URL paths. We saw an example of this earlier: <code>/users/adam-hopkins</code>.</p>
+<p>In our hypothetical application, we need to build an endpoint that returns details about a character instance.</p>
+<ol>
+<li><p>First, we will create a model for what the character object will look like.</p>
+<pre><code>@dataclass
+class Character:
+    name: str
+    super_powers: List[str]
+    favorite_foods: List[str]</code></pre></li>
+<li><p>We want to be able to return specific details about out character. For example, the endpoint <code>/characters/george/name</code> should return <code>George</code>. So, our next task is to define our route:</p>
+<pre><code>@app.get(&quot;/characters/&lt;name:alpha&gt;/&lt;attr:slug&gt;&quot;)
+async def character_property(request: Request, name: str, attr: str):
+    character = await get_character(name)
+    return json(getattr(character, attr))</code></pre></li>
+<li><p>It is a fairly simple route. It searches for the character, and then returns the requested attribute. Let’s check it out in action:</p>
+<pre><code>$ curl localhost:7777/characters/george/name
+&quot;George&quot;</code></pre></li>
+<li><p>Now, let’s try getting George’s super powers.</p>
+<figure>
+<img src="../media/file0.png" />
+</figure>
+<p>Uh oh, what happened? The property we are trying to access is <code>Character.super_powers</code>. But, our endpoint accepts slugs (because they are easier for people to read). So we need to convert the attribute. Just like in the previous section where we <em>could</em> cast our value inside of the handler, it becomes more difficult to scale that solution. We <em>could</em> run <code>attr.replace("-", "_")</code> inside of our handler, and perhaps this is a viable solution. It does make for extra code inside the handlers.Luckily, we also have another alternative. This is a good use case for middleware where we need to convert all slugs (eg. <code>this-is-a-slug</code>) to snake case (eg. <code>this_is_snake_case</code>) so that they can be used programatically down the road. By converting the slugs, we can look for <code>super_powers</code> instead of <code>super-powers</code>.</p></li>
+<li><p>Let’s make that middleware:</p>
+<pre><code>@app.on_request
+def convert_slugs(request: Request):
+    request.match_info = {
+        key: value.replace(&quot;-&quot;, &quot;_&quot;) 
+        for key, value in request.match_info.items()
+    }</code></pre>
+<p>What this will do is modify the <code>Request </code>instance before it gets executed by the route handler. For our use case, this means that every value that is matched will be converted from a slug to snake case. Note that we are <em>not</em> returning anything in this function. If we do, Sanic will think that we are trying to halt the request/response cycle by providing an early return. This is not the intention. All we want to do is modify the <code>Request</code>.</p></li>
+<li><p>Let’s test that endpoint again:</p>
+<pre><code>$ curl localhost:7777/characters/george/super-powers
+[&quot;whistling&quot;,&quot;hand stands&quot;]</code></pre></li>
+<li><p>Middleware is not the only solution to this problem though. Sanic makes use of signals to dispatch events that your application can listen to. Instead of the above middleware, we could do something similar like this with signals:</p>
+<pre><code>@app.signal(&quot;http.routing.after&quot;)
+def convert_slugs(request: Request, route: Route, handler, kwargs):
+    request.match_info = {
+        key: value.replace(&quot;-&quot;, &quot;_&quot;) 
+        for key, value in kwargs.items()
+    }</code></pre></li>
+</ol>
+<p>As you can see, it is a very similar implementation. Perhaps the biggest difference to us as developers is that the signal provides us with some more arguments to work with. Although, to be honest, the <code>route </code>, the <code>handler</code>, and the <code>kwargs </code>are all properties that could be accessed from the <code>Request </code>instance. Middleware and signals are discussed in greater depth in Chapter 6. For now, just know that these are two methods for altering the request/response cycle outside of the route handler. Later on we will learn more about the differences between them and when it might be preferable to choose one or the other.</p>
+</section>
+</section>
+<section id="api-versioning" class="level2" data-number="4.5">
+<h2 data-number="4.5">API versioning</h2>
+<p>Back in <em>Chapter 2,</em> <em>Organizing a project</em> we discussed how you could implement API versioning using Blueprints. If you recall, it was simply a matter of adding a keyword value to the Blueprint definition.</p>
+<p>Given the below Blueprint definition, we get the URL path: <code>/v1/characters</code>:</p>
+<pre><code>bp = Blueprint(&quot;characters&quot;, version=1, url_prefix=&quot;/characters&quot;)
+@bp.get(&quot;&quot;)
+async def get_all_characters(...):
+    ...</code></pre>
+<p>That <code>version </code>keyword argument is available at the route level as well. If the version is defined in multiple places (for example, on the route and also the Blueprint), priority is given to the narrowest scope. Let’s look at an example of different places where the version can be defined, and see what the result is. We will define it at the route level, the Blueprint level, and the Blueprint group level:</p>
+<pre><code>bp = Blueprint(&quot;Characters&quot;)
+bp_v2 = Blueprint(&quot;CharactersV2&quot;, version=2)
+group = Blueprint.group(bp, bp_v2, version=3)
+@bp.get(&quot;&quot;, version=1)
+async def version_1(...):
+    ...
+@bp_v2.get(&quot;&quot;)
+async def version_2(...):
+    ...
+@bp.get(&quot;&quot;)
+async def version_3(...):
+    ...
+app.blueprint(group, url_prefix=&quot;/characters&quot;)</code></pre>
+<p>We now have the following routes. Take a closer look at the example to see how we manipulate the Blueprints and the <code>version </code>argument to control the handler that each path is delivered to:</p>
+<ul>
+<li><code>/v1/characters &lt;Route: name=main.Characters.version_1 path=v1/characters&gt;</code></li>
+<li><code>/v3/characters &lt;Route: name=main.Characters.version_3 path=v3/characters&gt;</code></li>
+<li><code>/v2/characters &lt;Route: name=main.CharactersV2.version_2 path=v2/characters&gt;</code></li>
+</ul>
+<p>Adding versions to endpoint paths is fairly simple. But why should we do it? It is a good practice because it keeps your API flexible, but also consistent and stable for your users. By allowing endpoints to be versioned, you maintain the ability to make changes to them and still allow for legacy requests to not be denied. It is incredibly beneficial as over time as you transition your API to add, remove, or enhance features.</p>
+<p>Even if the only consumer of your API is your own website, it is still a good practice to version your APIs so that you have an easier path towards upgrades without potentially causing application regressions.</p>
+<p>It is a common practice to “lock-in” features with a version. This is a form of creating what is known as an API contract. Think of an API contract as a promise by the developer that the API will continue to work. In other words, once you put an API into usage—and especially if you publish documentation—you are creating a promise to the user that the API will continue to function as is. You are free to add new features, but any breaking changes that are not backwards compatible violate that contract. Therefore, when you do need to add breaking changes, versions might be the right trick in your tool bag to accomplish your goal.</p>
+<p>Here is an example. We’re building out our database of character profiles. The first version of our API has an endpoint to create a new profile and it looks something like this:</p>
+<pre><code>@bp.post(&quot;&quot;)
+async def create_character_profile(request: Request):
+    async create_character(name=request.json[&quot;name&quot;], ...)
+    ...</code></pre>
+<p>This endpoint is built upon the assumption that the incoming JSON body will be fairly simple like this:</p>
+<pre><code>{
+    &quot;name&quot;: &quot;Alice&quot;
+}</code></pre>
+<p>What happens when we want to handle some more complex use cases?</p>
+<pre><code>{
+    &quot;meta&quot;: {
+        &quot;pseudonuym&quot;: &quot;The Fantastic Coder&quot;,
+        &quot;real_name&quot;: &quot;Alice&quot;
+    },
+    &quot;superpowers&quot;: [
+        {
+            &quot;skill&quot;: &quot;Blazing fast typing skills&quot;
+        }
+    ]
+}</code></pre>
+<p>It might start getting complicated, messy, and overall difficult to maintain our route handler if we put too much logic into it. As a general practice, I like to keep my route handlers very concise. If I see my code creeping up to 50 lines of code inside a view handler, I know there is probably some refactoring that needs to be done. Ideally, I like to keep them to about 20 lines or less.</p>
+<p>One way we can keep our code clean is to split these use cases. Version 1 of the API will still be able to create characters using the simpler data structure, and version 2 has the capability of the more complex structure.</p>
+<section id="should-all-of-my-routes-bump-versions" class="level3" data-number="4.5.1">
+<h3 data-number="4.5.1">Should all of my routes bump versions?</h3>
+<p>You may be curious to know why you would want to</p>
+<p>Often, you will have a need to increase a version on a single endpoint, but not all of them. This raises the question: what version do I use on the unchanged endpoints? Ultimately, this is going to be a question that can only be dictated by the application. It might be helpful to keep in mind how the API is being used.</p>
+<p>Very often you will see APIs bumping versions when there is a complete break or some major overhaul in the API structure. This could accompany a new technology stack, or a new API structure or design pattern. An example of this is when GitHub changed their API from v3 to v4. The older version of their API (v3) is RESTful, similar to what we discussed earlier in this chapter. The newer version (v4) is based upon GraphQL (see Chapter 10 for more on GraphQL). This is a complete redesign of the API. Because v3 and v4 are completely incompatible, they changed the version number.</p>
+<p>In GitHub’s case, it was clear all endpoints needed to change as it was effectively a brand new API. Drastic changes like this are not the only catalyst for version changing, however. What if we are only changing compatibility on a smaller portion of our API and keeping the rest intact?</p>
+<p>Some people may find that it makes sense to implement the new version number on all of their endpoints. One way to accomplish this is to add multiple route definitions to an endpoint:</p>
+<pre><code>v1 = Blueprint(&quot;v1&quot;, version=1)
+v2 = Blueprint(&quot;v2&quot;, version=2)
+@v1.route(...)
+@v2.route(...)
+async def unchanged_route(...):
+    ...</code></pre>
+<p>The downside of this approach is that could become very cumbersome to maintain. If you needed to add a new route definition to <em>every</em> handler when you want to change a version, you might be discouraged from adding versions in the first place. Take this into consideration.</p>
+<p>How about nesting blueprints? How about a function that dynamically adds routes at startup? Can you think of a solution? We have already seen various tools and strategies earlier in this book that might help us out. This might be a good time to put the book down and jump into your code editor on your computer. I encourage you to play around with versions and nesting to see what is and is not possible.</p>
+<p>Remember <code>app.router.routes</code> and <code>app.router.groups</code>? Try adding a single handler to multiple Blueprints. Or try adding the same Blueprints to different groups. I challenge you to come up with a pattern to have the same handler be on different versions without multiple definitions like the above example. Start with this, and see what you can come up with, without doubling up the route definition as above:</p>
+<pre><code>v1 = Blueprint(&quot;v1&quot;, version=1)
+v2 = Blueprint(&quot;v2&quot;, version=2)
+@v1.route(...)
+async def unchanged_route(...):
+    ...</code></pre>
+<p>Here is a handy snippet you can use while developing to see which paths are defined:</p>
+<pre><code>from sanic.log import logger
+@app.before_server_start
+def display(app: Sanic, _):
+    routes = sorted(app.router.routes, key=lambda route: route.uri)
+    for route in routes:
+        logger.debug(f&quot;{route.uri} [{route.name}]&quot;)</code></pre>
+<p>Getting back to our question: should all of my routes bump versions? Some people will say yes, but it seems artificially complex to bump the version of all routes when only one has changed. By all means, if it makes sense, bump everything simultaneously.</p>
+<p>If we only want to bump the routes that are changing, it causes another problem. What should we bump it to? Many people will tell you that versions should <em>only</em> ever be integers: <code>v1</code>, <code>v2</code>, <code>v99</code>, etc. I find this limiting, and it really makes the following set of endpoints feel unnatural:</p>
+<ul>
+<li><code>/v1/characters</code></li>
+<li><code>/v1/characters/puppets</code></li>
+<li><code>/v1/characters/super_heroes</code></li>
+<li><code>/v1/characters/historical</code></li>
+<li><code>/v2/characters</code></li>
+</ul>
+<p>While I am not discounting this approach, it does seem like there <em>should</em> be a <code>v2</code> for all of the routes, even if they did not change. We are trying to avoid that. Why not use minor versions like semantic versioning? It seems more natural and accepting to have a single <code>/v1.1</code> endpoint than a single <code>/v2</code>. Again, this is going to be a matter of what works for your application needs, and what is reasonable given the types of users that will be consuming your API. Should you decided that semantic versioning style will work for your application needs, you can add it by using a float for the version argument as seen here:</p>
+<pre><code>@bp.post(&quot;&quot;, version=1.1)
+async def create_character_profile_enhanced(request: Request):
+    async create_character_enhanced(data=request.json)</code></pre>
+<blockquote>
+<p><strong>IMPORTANT NOTE</strong></p>
+<p>Semantic versioning is an important concept in software development, but beyond the scope here. In brief, the concept is to create a version by declaring a major, minor and patch numer that are connected by a period. Example: 1.2.3. Generally speaking, semantic versioning states that an increment of the major version corresponds to a backwards-incompatible change, the minor version to a new feature, and the patch version to a bug fix. If you are unfamiliar with it, I suggest taking some time to read through the documentation for it since it is widely used throughout software development: <a href="https://semver.org/">https://semver.org/</a></p>
+</blockquote>
+<blockquote>
+<p><strong>TIP</strong></p>
+<p>It is highly recommended that you use version with your endpoints if you intend for there to be third-party integration with your API. If the API is only meant to be used by your own application, perhaps this is less important. Nevertheless, it may still be a useful pattern. Therefore, I recommend using <code>version=1</code> for new projects or <code>version=2 </code>for projects that are replacing an existing API even if the legacy application did not have a version scheme.</p>
+</blockquote>
+</section>
+<section id="version-prefixing" class="level3" data-number="4.5.2">
+<h3 data-number="4.5.2">Version prefixing</h3>
+<p>The standard way to use versions in Sanic is <code>version=&lt;int&gt;</code> or <code>version=&lt;float&gt;</code>. The version will <em>ALWAYS</em> be inserted into your path at the very beginning. It does not matter how deeply nested and how many layers of <code>url_prefix </code>you may have. Even a deeply nested route definition can have a single version and it will be the first segment in the path: <code>/v1/some/deeply/nested/path/to/handler</code>.</p>
+<p>This does, however, impose a problem when you are trying to build multiple layers on your application. What if you want to have some HTML pages and an API and keep them separate based upon their path? Consider the following paths that we might like to have in our application:</p>
+<ul>
+<li><code>/page/profile.html</code></li>
+<li><code>/api/v1/characters/&lt;name&gt;</code></li>
+</ul>
+<p>Notice how the versioned API route starts with <code>/api</code>? This is impossible to control only with URIs and Blueprint URI prefixes since Sanic <em>always</em> puts the version before the rest of the path. However, Sanic provides a <code>version_prefix</code> argument in all of the same places that <code>version </code>can be used. The default value is <code>/v</code>, but feel free to update it as needed. In the following example, we can nest our entire API design in a single blueprint group to automatically add <code>/api </code>to the front of every endpoint:</p>
+<pre><code>group = Blueprint.group(bp1, bp2, bp3, version_prefix=&quot;/api/v&quot;)</code></pre>
+<blockquote>
+<p><strong>TIP</strong></p>
+<p>The same path parameters are available here. You could, for example, do something like this: <code>version_prefix=/&lt;section&gt;/v</code>. Just make sure you remember that <code>section </code>will now be an injected keyword argument into every route handler.</p>
+</blockquote>
+<p>You should now have a good grasp of how and when to use versions. They are a powerful tool in making your API more professional and maintainable since they allow for more flexible development patterns. Next, we will explore another tool for creating flexibility and reusability of your application code: virtual hosts.</p>
+</section>
+</section>
+<section id="virtual-hosts" class="level2" data-number="4.6">
+<h2 data-number="4.6">Virtual hosts</h2>
+<p>Some applications can be accessed from multiple domains. This gives the benefit of having a single application deployment to manage, but the ability to service multiple domains. In our example, we will imagine that we completed the computer adventure game social media site. The API is truly something amazing.</p>
+<p>It is so incredible in fact that both Alice and Bob have approached us about the opportunity to be resellers and to <em>white label</em> our application, or reuse the API for their own social media sites. This is a somewhat common practice in the Internet world where once provider builds an application, and other providers simply point their domain to the same application and operate as if it is their own. To achieve this, we need to have distinct URLs.</p>
+<ul>
+<li><code>mine.com</code></li>
+<li><code>alice.com</code></li>
+<li><code>bob.com</code></li>
+</ul>
+<p>All of these domains will be setup with their DNS records pointing to our application. This can work without any further changes inside the application. But what if we need to know which domain a request is serving, and do something slightly different for each one? This information should be available to us in the request headers. It should simply be a matter of checking the headers:</p>
+<pre><code>@bp.route(&quot;&quot;)
+async def do_something(request: Request):
+    if request.headers[&quot;host&quot;] == &quot;alice.com&quot;:
+        await do_something_for_alice(request)
+    elif request.headers[&quot;host&quot;] == &quot;bob.com&quot;:
+        await do_something_for_bob(request)
+    else:
+        await do_something_for_me(request)</code></pre>
+<p>This example may seem small and simple, but you can probably imagine how the complexity could increase. Remember earlier I stated how I like to keep the lines of code per handler to a minimum? This is certainly a use case where you can imagine the handlers could get very lengthy.</p>
+<p>Essentially, what we are doing in this endpoint is host-based routing. Depending upon the incoming request host, we are routing the endpoint to a different location.</p>
+<p>Sanic already does that for us. All we need to do is break the logic into separate route handlers and give each one a <code>host </code>argument. This achieves the routing that we need, but keeps it out of our response handlers.</p>
+<pre><code>@bp.route(&quot;&quot;, host=&quot;alice.com&quot;)
+async def do_something_for_alice(request: Request)::
+    await do_something_for_alice(request: Request)
+@bp.route(&quot;&quot;, host=&quot;bob.com&quot;)
+async def do_something_for_bob(request: Request):
+    await do_something_for_bob(request: Request)
+@bp.route(&quot;&quot;, host=&quot;mine.com&quot;)
+async def do_something_for_me(request: Request):
+    await do_something_for_me(request: Request)</code></pre>
+<p>If you find yourself in this situation, you do not need to define a <code>host </code>for every endpoint. Only the endpoints where you would want to have host-based routing. Following this pattern, we can reuse the same application across multiple domains, and still have some endpoints capable of distinguishing between them, and others ignorant to the fact that multiple domains are reaching it.</p>
+<p>One thing that is important to keep in mind: if you create an endpoint that has host level routing, then all routes on that same path must also have it. You cannot, for example, do the following. Notice how the third route does <em>not</em> define the <code>host </code>argument.</p>
+<p>The following example will <em>not</em> work, and will raise an exception at startup:</p>
+<pre><code>@bp.route(&quot;&quot;, host=&quot;alice.com&quot;)
+async def do_something_for_alice(request: Request)::
+    await do_something_for_alice(request: Request)
+@bp.route(&quot;&quot;, host=&quot;bob.com&quot;)
+async def do_something_for_bob(request: Request):
+    await do_something_for_bob(request: Request)
+@bp.route(&quot;&quot;)
+async def do_something_for_me(request: Request):
+    await do_something_for_me(request: Request)</code></pre>
+<p>To solve this, make sure that all routes that could be grouped together have a <code>host</code> value. This way they can be distinguished. If one of them has a <code>host</code>, they all need to have one.</p>
+<p>We have generally now discussed all of the considerations to make when routing web requests to our response handlers. But, we have not yet looked at how Sanic delivers requests to static content (that is, actual files on your webserver that you want to send like images and stylesheets). Next, we will discuss some options both with and without using Sanic.</p>
+</section>
+<section id="serving-static-content" class="level2" data-number="4.7">
+<h2 data-number="4.7">Serving static content</h2>
+<p>So far all of our discussion in this chapter has been about dynamically generating content for responses. We did, however, discuss that passing files that exist inside of a directory structure is a valid use case that Sanic supports. This is because most web applications have a need for serving some static content. The most common use cases would be for delivering Javascript files, images, and style sheets to be rendered by the browser. Now, we are going to dive into static content to see how that works, and we can deliver this type of content. After learning how Sanic does it, we will see another very common pattern to serve the content outside of Sanic with a proxy.</p>
+<section id="serving-static-content-from-sanic" class="level3" data-number="4.7.1">
+<h3 data-number="4.7.1">Serving static content from Sanic</h3>
+<p>Our <code>app </code>instance has a method on it called <code>app.static()</code>. That method requires two arguments:</p>
+<ul>
+<li>A URI path for our application</li>
+<li>A path to tell Sanic where it can access that resource</li>
+</ul>
+<p>That second argument can either be a single file, or a directory. If it is a directory, everything inside of it will be accessible like the old school web servers we talked about at the beginning of the chapter.</p>
+<p>This is very helpful if you plan to serve all of your web assets. What if you have a folder structure like this?</p>
+<pre><code>.
+├── server.py
+└── assets
+    ├── index.html
+    ├── css
+    │   └── styles.css
+    ├── img
+    │   └── logo.png
+    └── js
+        └── bundle.js</code></pre>
+<p>We can use Sanic to serve all of those assets and make them accessible like this:</p>
+<p><code>app.static("/static", "./assets")</code></p>
+<p>Those assets are now accessible:</p>
+<p><code>$ curl localhost:7777/static/css/styles.css</code></p>
+</section>
+<section id="serving-static-content-with-nginx" class="level3" data-number="4.7.2">
+<h3 data-number="4.7.2">Serving static content with Nginx</h3>
+<p>Now that we have seen how to serve static files with Sanic, a good next question is: should you?</p>
+<p>Sanic is very fast at creating the sort of dynamic endpoints that are required by most web APIs. It even does a pretty good job serving static content, keeps all of your endpoint logic in one application, and even allows for manipulating those endpoints or renaming files. As we discussed in <em>Chapter 1</em>, <em>Introduction to Sanic and async frameworks</em> Sanic applications are also meant to be fast to build.</p>
+<p>There is however a potentially faster method for delivering static content. For a single-page application that is meant to be consumed by a browser that requests data through your API, one of your biggest stumbling blocks will be reducing the time to your first page render. This means that you must package up all of your JS, CSS, image, or other files as quick as possible to the browser to reduce rendering latency.</p>
+<p>For this reason, you might want to consider using a proxy layer like Nginx in front of Sanic. The purpose of the proxy would be to (1) send any requests to the API through to Sanic, and (2) handle serving static content itself. You may want to consider this option especially if you intend to serve a lot of static content. Nginx has a caching engine built in to be able to deliver static content much faster than any Python application could.</p>
+<p><em>Chapter 8</em>, <em>Running a server</em> discusses deployment strategies and considerations to make when deciding whether to use tools like Nginx and Docker. For now, we will use Docker Compose to really quickly and easily stand up Nginx.</p>
+<ol>
+<li><p>We need to make our <code>docker-compose.yml </code>manifest:</p>
+<pre><code>version: &quot;3&quot;
+services:
+  client:
+    image: nginx:alpine
+    ports:
+      - 8888:80
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - ./static:/var/www</code></pre>
+<p>If you are not familiar with Docker Compose or how to install and run it, you should be able to find a wealth of tutorials and information online.This simple setup we are going for in our example will require that you set the path for <code>./static</code> in our <code>docker-compose.yml</code> file to whatever directory you have your static assets in.</p>
+<blockquote>
+<p><strong>TIP</strong></p>
+<p>This is intentionally a super simple implementation. You should make sure that a real Nginx deployment includes things like TLS encyption and proxy secrets. Checkout the User Guide for more details and a helpful walkthrough. <a href="https://sanicframework.org/en/guide/deployment/nginx.html#nginx-configuration">https://sanicframework.org/en/guide/deployment/nginx.html#nginx-configuration</a></p>
+</blockquote></li>
+<li><p>Next, we will create the .<code>/nginx/default.conf</code> file needed to control Nginx.</p>
+<pre><code>upstream example.com {
+    keepalive 100;
+    server 1.2.3.4:8000;
+}
+server {
+    server_name example.com;
+    root /var/www;
+    location / {
+        try_files $uri @sanic;
+    }
+    location @sanic {
+        proxy_pass http://$server_name;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+    location ~* \.(jpg|jpeg|png|gif|ico|css|js|txt)$ {
+        expires max;
+        log_not_found off;
+        access_log off;
+    }
+}</code></pre>
+<p>We start it using the following command:<code>$ docker-compose up</code>The most important thing to change here is the server address. You should change <code>1.2.3.4:8000</code> to whatever address and port your application can be accessed at. Keep in mind that this will <em>NOT</em> be <code>127.0.0.1</code> or <code>localhost</code>. Since Nginx will be running inside of a Docker container, that local address would point to the container itself, and not your computer’s local network address. Instead, for development purposes, you should consider setting it to your local IP address.</p></li>
+<li><p>Step 3, you will need to make sure that Sanic knows to serve on that network address. Do you remember how we said we are running Sanic back in Chapter 2 Like this:</p>
+<pre><code>$ sanic server:app -p 7777 --debug --workers=2</code></pre>
+<p>For this example, we will change that to:</p>
+<pre><code>$ sanic server:app -H 0.0.0.0 -p 7777 --debug --workers=2</code></pre>
+<p>My local IP address is <code>192.168.1.7</code>, therefore I will set the <code>upstream </code>block in my Nginx configuration to: <code>server 192.168.1.7:7777;</code>.</p></li>
+<li><p>Step 4, you should now be able to access any static files in your <code>./static</code> directory. I have a file called <code>foo.txt.</code> I am using the <code>-i</code> flag with <code>curl </code>to be able to see the headers. The important header to see is the <code>Expires </code>and <code>Cache-Control</code>. These help your browser to cache the file instead of re-requesting it.</p>
+<pre><code>$ curl localhost:8888/foo.txt -i
+HTTP/1.1 200 OK
+Server: nginx/1.21.0
+Date: Tue, 15 Jun 2021 18:42:20 GMT
+Content-Type: text/plain
+Content-Length: 9
+Last-Modified: Tue, 15 Jun 2021 18:39:01 GMT
+Connection: keep-alive
+ETag: &quot;60c8f3c5-9&quot;
+Expires: Thu, 31 Dec 2037 23:55:55 GMT
+Cache-Control: max-age=315360000
+Accept-Ranges: bytes
+hello...</code></pre></li>
+</ol>
+<p>If you try to send a request to a file that does not exist, Nginx will send that route on to your Sanic application. This setup really just touches the tip of the iceberg when it comes to proxying and Nginx. It is, however, very common for Python web applications to use a strategy like this. As mentioned earlier, we will dig in deeper to this topic when we discuss deployment options in Chapter 8.</p>
+</section>
+<section id="streaming-static-content" class="level3" data-number="4.7.3">
+<h3 data-number="4.7.3">Streaming Static Content</h3>
+<p>It is also worth reiterating that the Sanic server is built and intended to be a front line server. That means that it can certainly stand as your point of ingress without a proxy server in front of it, including serving static content. The decision about whether to proxy or not—at least as it relates to delivering static files—is likely a question of how much traffic, and how many files your application may need to deliver.</p>
+<p>Another important factor to consider is whether your application needs to stream files. Streaming will be discussed in depth in Chapter 5. Let’s create a real simple web page to stream a video and see what that might look like.</p>
+<ol>
+<li><p>First the HTML. Store this as <code>index.html</code>.</p>
+<pre><code>&lt;html&gt;
+    &lt;head&gt;
+        &lt;title&gt;Sample Stream&lt;/title&gt;
+    &lt;/head&gt;
+    &lt;body&gt;
+        &lt;video width=&quot;1280&quot; height=&quot;720&quot; controls&gt;
+            &lt;source src=&quot;/mp4&quot; type=&quot;video/mp4&quot; /&gt;
+        &lt;/video&gt;
+    &lt;/body&gt;
+&lt;/html&gt;</code></pre></li>
+<li>Next, find an <code>mp4 </code>file that you want to stream. It can be any video file. If you do not have one, you can download a sample file for free from a website like this: <a href="https://samplelib.com/sample-mp4.html">https://samplelib.com/sample-mp4.html</a>.</li>
+<li><p>We will now create a small Sanic app to stream that video.</p>
+<pre><code>from sanic import Sanic, response
+@app.route(&quot;/mp4&quot;)
+async def handler_file_stream(request: Request):
+    return await response.file_stream(&quot;/path/to/sample.mp4&quot;)
+app.static(&quot;/index.html&quot;, &quot;/path/to/index.html&quot;)
+@app.route(&quot;/&quot;)
+def redirect(request: Request):
+    return response.redirect(&quot;/index.html&quot;)</code></pre></li>
+<li>Run the server as normal and visit it in your web browser: <a href="http://localhost:7777">http://localhost:7777</a></li>
+</ol>
+<p>You should notice that the root URI (<code>/</code>) redirected you to <code>/index.html</code>. Using <code>app.static</code>, the application tells Sanic that it should accept any requests to <code>/index.html</code> and serve back the static content that is located on the server at <code>/path/to/index.html</code> . This should be your delivered content from above. Hopefully you have a play button, and you can now stream your video to your browser. Enjoy!</p>
+</section>
+</section>
+<section id="summary-2" class="level2" data-number="4.8">
+<h2 data-number="4.8">Summary</h2>
+<p>This Chapter covers a lot of material on taking an HTTP request and turning it into something usable. At the core of a web framework is its ability to translate the raw request into an actionable handler. We have learned about how Sanic does this and how we can use HTTP Methods, good API design principles paths, path parameter extraction, and static content to build useful applications. As we learned earlier in this book, a little bit of up front planning goes a long way. Before putting too much code together, it is really helpful to think about the tools HTTP offers, and how Sanic allows us to take advantage of those features.</p>
+<p>If we did a good job in Chapter 2 of setting up directories, it should be very easy for us to loosely mirror that structure and nest Blueprints to match our intended API design.</p>
+<p>There are some key takeaways from this Chapter. You should purposely, and thoughtfully design your API endpoint paths—using nouns—that point to an intended target or resource. Then, HTTP Methods should be used as the verbs that tell your application and users <em>what</em> to do with that target or resource. Finally, you should extract helpful information from those paths to be used in your handlers.</p>
+<p>We mainly focused our attention on that first line of the raw HTTP request: the HTTP Method and URI path. In the next chapter, we will dive into extracting more data from the request including the headers and the request body.</p>
+</section>
+</section>
+</body>
+</html>
