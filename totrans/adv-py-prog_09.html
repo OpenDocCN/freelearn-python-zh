@@ -1,0 +1,670 @@
+<html><head></head><body>
+<div id="book-content">
+<div id="sbo-rt-content"><div id="_idContainer136">
+			<h1 id="_idParaDest-131"><em class="italic"><a id="_idTextAnchor122"/>Chapter 7</em>: Implementing Concurrency</h1>
+			<p>So far, we have explored how to measure and improve the performance of programs by reducing the number of operations performed by the <strong class="bold">central processing unit</strong> (<strong class="bold">CPU</strong>) through clever algorithms and more efficient machine code. In this chapter, we will shift our focus to programs where most of the time is spent waiting for resources that are much slower than the CPU, such as persistent storage and network resources.</p>
+			<p><strong class="bold">Asynchronous programming</strong> is a programming paradigm that helps to deal with slow and unpredictable resources (such as users) and is widely used to build responsive services and <strong class="bold">user interfaces</strong> (<strong class="bold">UIs</strong>). In this chapter, we will show you how to program asynchronously in Python using techniques such as coroutines and reactive programming. As we will see, the successful application of these techniques will allow us to speed up our programs without the use of specialized data structures or algorithms.</p>
+			<p>In this chapter, we will cover the following topics:</p>
+			<ul>
+				<li>Asynchronous programming</li>
+				<li>The <strong class="source-inline">asyncio</strong> framework</li>
+				<li>Reactive programming</li>
+			</ul>
+			<h1 id="_idParaDest-132"><a id="_idTextAnchor123"/>Technical requirements</h1>
+			<p>The code for this chapter can be found at <a href="https://github.com/PacktPublishing/Advanced-Python-Programming-Second-Edition/tree/main/Chapter07">https://github.com/PacktPublishing/Advanced-Python-Programming-Second-Edition/tree/main/Chapter07</a>.</p>
+			<h1 id="_idParaDest-133"><a id="_idTextAnchor124"/>Asynchronous programming</h1>
+			<p>Asynchronous programming<a id="_idIndexMarker478"/> is a way of dealing with slow and unpredictable resources. Rather than waiting idly for resources to become available, asynchronous programs can handle multiple resources concurrently and efficiently. Programming in an asynchronous way can be challenging because it is necessary to deal with external requests that can arrive in any order, may take a variable amount of time, or may fail unpredictably. In this section, we will introduce the topic by explaining<a id="_idIndexMarker479"/> the main concepts and terminology as well as by giving an idea of how asynchronous programs work.</p>
+			<h2 id="_idParaDest-134"><a id="_idTextAnchor125"/>Waiting for input/output</h2>
+			<p>A modern <a id="_idIndexMarker480"/>computer employs different kinds of memory to store data and perform operations. In general, a computer possesses a combination of expensive memory that is capable of operating efficiently and cheaply and more abundant memory that is slower and is used to store a larger amount of data.</p>
+			<p>The memory hierarchy is shown in the following diagram:</p>
+			<div>
+				<div id="_idContainer128" class="IMG---Figure">
+					<img src="image/Figure_7.1_B17499.jpg" alt="Figure 7.1 – Illustration of the memory hierarchy " width="733" height="132"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 7.1 – Illustration of the memory hierarchy</p>
+			<p>At the top of the<a id="_idIndexMarker481"/> memory hierarchy, are the CPU <strong class="bold">registers</strong>. Those <a id="_idIndexMarker482"/>are integrated with the CPU and are used<a id="_idIndexMarker483"/> to store and execute machine instructions. Accessing data in a register generally takes one clock cycle. This means that if the CPU operates at 3 <strong class="bold">gigahertz</strong> (<strong class="bold">GHz</strong>), the time it takes to access one element in a CPU register is in the order of 0.3 nanoseconds.</p>
+			<p>At the layer just below the registers, you<a id="_idIndexMarker484"/> can find the CPU <strong class="bold">cache</strong>, which <a id="_idIndexMarker485"/>comprise multiple levels and is integrated with the processor. The cache operates at a slightly slower speed than the registers but within the <a id="_idIndexMarker486"/>same <strong class="bold">order of magnitude</strong> (<strong class="bold">OOM</strong>).</p>
+			<p>The next item in the hierarchy is the main memory (<strong class="bold">random-access memory</strong>, or <strong class="bold">RAM</strong>), which <a id="_idIndexMarker487"/>holds <a id="_idIndexMarker488"/>much more data but is slower than the cache. Fetching an item from memory can take a few hundred clock cycles.</p>
+			<p>At the bottom layer, you can find<a id="_idIndexMarker489"/> persistent <strong class="bold">storage</strong>, such as<a id="_idIndexMarker490"/> rotating<a id="_idIndexMarker491"/> disks (<strong class="bold">hard disk drives</strong> (<strong class="bold">HDDs</strong>)) and <strong class="bold">solid-state drives</strong> (<strong class="bold">SSDs</strong>). These <a id="_idIndexMarker492"/>devices hold the most data and are OOMs slower than the main memory. An HDD may take a few milliseconds to seek and retrieve an item, while an SSD<a id="_idIndexMarker493"/> is substantially faster and takes only a fraction of a millisecond.</p>
+			<p>To put<a id="_idIndexMarker494"/> the relative speed of each memory type into perspective, if you were to have the CPU with a clock speed of about 1 second, a register access would be equivalent to picking up a pen from a table. A cache access would be equivalent to picking up a book from a shelf. Moving higher up the hierarchy, a RAM access would be equivalent to loading up the laundry (about 20 times slower than the cache). When we move to persistent storage, things are quite different. Retrieving an element from an SSD will be equivalent to going on a 4-day road trip while retrieving an element from an HDD can take up to 6 months! The duration can stretch even further if we move on to access resources over the network.</p>
+			<p>Overall, accessing data from storage and other <strong class="bold">input/output</strong> (<strong class="bold">I/O</strong>) devices is much slower compared to the CPU; therefore, it is very important to handle those resources so that the CPU is never stuck waiting aimlessly. This can be accomplished by carefully designed software capable of managing multiple ongoing requests at the same time. This is the idea of concurrency or concurrent programming.</p>
+			<h2 id="_idParaDest-135"><a id="_idTextAnchor126"/>Concurrency</h2>
+			<p><strong class="bold">Concurrency</strong> is a <a id="_idIndexMarker495"/>way to implement a system that can deal with multiple requests at the same time. The idea is that we can move on and start handling other resources while we wait for a resource to become available. Concurrency works<a id="_idIndexMarker496"/> by splitting a task into smaller subtasks that can be executed out of order so that multiple tasks can be partially advanced without waiting for the previous tasks to finish.</p>
+			<p>As a first example, we will <a id="_idIndexMarker497"/>describe how to implement concurrent access to a slow network resource; the code for this example is included in <strong class="source-inline">Chapter07/example1.py</strong>. Let's say we have a web service that takes the square of a number, and the time between our request and the response will be approximately 1 second. We can implement the <strong class="source-inline">network_request</strong> function that takes a number and returns a dictionary that contains information about the success of the operation and the result. We can simulate such services using the <strong class="source-inline">time.sleep</strong> function, as follows:</p>
+			<p class="source-code">    import time</p>
+			<p class="source-code">    def network_request(number):</p>
+			<p class="source-code">        time.sleep(1.0)</p>
+			<p class="source-code">        return {"success": True, "result": number ** 2}</p>
+			<p>We will<a id="_idIndexMarker498"/> also write some additional code that <a id="_idIndexMarker499"/>performs the request, verifies that the request was successful, and prints the result. In the following code snippet, we define the <strong class="source-inline">fetch_square</strong> function and use it to calculate the square of the number 2 using a call to <strong class="source-inline">network_request</strong>:</p>
+			<p class="source-code">    def fetch_square(number):</p>
+			<p class="source-code">        response = network_request(number)</p>
+			<p class="source-code">        if response["success"]:</p>
+			<p class="source-code">            print("Result is: \</p>
+			<p class="source-code">              {}".format(response["result"]))</p>
+			<p class="source-code">    fetch_square(2)</p>
+			<p class="source-code">    # Output:</p>
+			<p class="source-code">    # Result is: 4</p>
+			<p>Fetching a number from the network will take 1 second because of the slow network. What if we want to calculate the square of multiple numbers? We can call <strong class="source-inline">fetch_square</strong>, which will start a network request as soon as the previous one is done. Its use is illustrated in the following code snippet:</p>
+			<p class="source-code">    fetch_square(2)</p>
+			<p class="source-code">    fetch_square(3)</p>
+			<p class="source-code">    fetch_square(4)</p>
+			<p class="source-code">    # Output:</p>
+			<p class="source-code">    # Result is: 4</p>
+			<p class="source-code">    # Result is: 9</p>
+			<p class="source-code">    # Result is: 16</p>
+			<p>This code as-is will take roughly 3 seconds to run, but it's not the best we can do. Notice that the calculation of the square of 2 is independent of that of the square of 3, and both are in<a id="_idIndexMarker500"/> turn independent of calculating the square of 4. As such, waiting for a previous result to finish before moving on to the next number is unnecessary, if we can technically submit multiple requests and wait for them at the same time.</p>
+			<p>In the<a id="_idIndexMarker501"/> following diagram, the three tasks are represented as boxes. The time spent by the CPU processing and submitting the request is in orange, while the waiting times are in blue. You can see how most of the time is spent waiting for the resources while our machine sits idle without doing anything else:</p>
+			<div>
+				<div id="_idContainer129" class="IMG---Figure">
+					<img src="image/Figure_7.2_B17499.jpg" alt="Figure 7.2 – Illustration of the execution time of independent calculations " width="990" height="146"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 7.2 – Illustration of the execution time of independent calculations</p>
+			<p>Ideally, we would like to start another new task while we are waiting for the already submitted tasks to finish. In the following screenshot, you can see that as soon as we submit our request in <strong class="source-inline">fetch_square(2)</strong>, we can start preparing for <strong class="source-inline">fetch_square(3)</strong>, and so on. This allows us to reduce the CPU waiting time and to start processing the results as soon as they become available:</p>
+			<div>
+				<div id="_idContainer130" class="IMG---Figure">
+					<img src="image/Figure_7.3_B17499.jpg" alt="Figure 7.3 – A more efficient way of performing independent calculations " width="973" height="234"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 7.3 – A more efficient way of performing independent calculations</p>
+			<p>Again, this strategy is made possible by the fact that the three requests are completely independent, and we don't need to wait for the completion of a previous task to start the next one. Also, note<a id="_idIndexMarker502"/> how a single CPU can comfortably handle this scenario. While distributing the <a id="_idIndexMarker503"/>work on multiple CPUs can further speed up the execution, if the waiting time is large compared to the processing times, the speedup will be minimal.</p>
+			<p>To implement concurrency, it is necessary to think about our programs and their design differently; in the following sections, we'll demonstrate techniques and best practices to implement robust concurrent applications, starting with a new concept: callbacks.</p>
+			<h2 id="_idParaDest-136"><a id="_idTextAnchor127"/>Callbacks</h2>
+			<p>The code <a id="_idIndexMarker504"/>we have seen so far blocks the execution of the program until the resource is available. The call responsible for the waiting is <strong class="source-inline">time.sleep</strong>. To make the code start working on other tasks, we need to find a way to avoid blocking the program flow so that the rest of the program can move on to these other tasks.</p>
+			<p>One of the simplest ways to<a id="_idIndexMarker505"/> accomplish this behavior is through callbacks. The strategy is quite similar to what we do when we request a cab. Imagine that you are at a restaurant and you've had a few drinks. It's raining outside, and you'd rather not take the bus; therefore, you request a taxi and ask them to call when they're outside so that you can come out and you don't have to wait in the rain. What you did, in this case, is request a taxi (that is, the slow resource), but instead of waiting outside until the taxi arrives, you provide your number and instructions (callback) so that you can come outside when they're ready and go home.</p>
+			<p>We will now show how this <a id="_idIndexMarker506"/>mechanism can work in code. We will compare the blocking code of <strong class="source-inline">time.sleep</strong> with the equivalent non-blocking code of <strong class="source-inline">threading.Timer</strong>.</p>
+			<p>For this example, which is implemented in <strong class="source-inline">example2.py</strong>, we will write a function, <strong class="source-inline">wait_and_print</strong>, that will block the program execution for 1 second and then print a message, as follows:</p>
+			<p class="source-code">    def wait_and_print(msg):</p>
+			<p class="source-code">        time.sleep(1.0)</p>
+			<p class="source-code">        print(msg)</p>
+			<p>If we want to write the same function in a non-blocking way, we can use the <strong class="source-inline">threading.Timer</strong> class. We can initialize a <strong class="source-inline">threading.Timer</strong> instance by passing the amount of time we want to wait and a <strong class="bold">callback</strong>. A callback is simply a function that <a id="_idIndexMarker507"/>will be called when the timer expires. Note in the following code snippet that we also must call the <strong class="source-inline">Timer.start</strong> method to activate the timer:</p>
+			<p class="source-code">    import threading</p>
+			<p class="source-code">    def wait_and_print_async(msg):</p>
+			<p class="source-code">        def callback():</p>
+			<p class="source-code">            print(msg)</p>
+			<p class="source-code">        timer = threading.Timer(1.0, callback)</p>
+			<p class="source-code">        timer.start()</p>
+			<p>An<a id="_idIndexMarker508"/> important feature of the <strong class="source-inline">wait_and_print_async</strong> function is that none of the statements is blocking the execution flow of the program.</p>
+			<p class="callout-heading">How Is threading.Timer Capable of Waiting without Blocking?</p>
+			<p class="callout">The strategy used <a id="_idIndexMarker509"/>by <strong class="source-inline">threading.Timer</strong> involves starting a new thread that can execute code in parallel. If this is confusing, don't worry, as we will explore threading and parallel programming in detail in the following chapters.</p>
+			<p>This technique of registering callbacks for execution in response to certain events is commonly called the <em class="italic">Hollywood principle</em>. This is because, after auditioning for a movie or TV role at Hollywood, you may be told <em class="italic">Don't call us, we'll call you</em>, meaning that they won't tell you if they chose you for the role immediately, but they'll call you if they do.</p>
+			<p>To highlight the difference between the blocking and non-blocking versions of <strong class="source-inline">wait_and_print</strong>, we can test and compare the execution of the two versions. In the output comments, the <a id="_idIndexMarker510"/>waiting periods are indicated by <strong class="source-inline">&lt;wait...&gt;</strong>, as illustrated in the following code snippet:</p>
+			<p class="source-code">    # Synchronous</p>
+			<p class="source-code">    wait_and_print("First call")</p>
+			<p class="source-code">    wait_and_print("Second call")</p>
+			<p class="source-code">    print("After call")</p>
+			<p class="source-code">    # Output:</p>
+			<p class="source-code">    # &lt;wait...&gt;</p>
+			<p class="source-code">    # First call  </p>
+			<p class="source-code">    # &lt;wait...&gt;</p>
+			<p class="source-code">    # Second call</p>
+			<p class="source-code">    # After call</p>
+			<p class="source-code">    # Asynchronous</p>
+			<p class="source-code">    wait_and_print_async("First call async")</p>
+			<p class="source-code">    wait_and_print_async("Second call async")</p>
+			<p class="source-code">    print("After submission")</p>
+			<p class="source-code">    # Output:</p>
+			<p class="source-code">    # After submission </p>
+			<p class="source-code">    # &lt;wait...&gt;</p>
+			<p class="source-code">    # First call</p>
+			<p class="source-code">    # Second call</p>
+			<p>The<a id="_idIndexMarker511"/> synchronous version behaves in a very familiar, expected way. The code waits for a second, prints <strong class="source-inline">First call</strong>, waits for another second, and then prints <strong class="source-inline">Second call</strong> and <strong class="source-inline">After call</strong> messages.</p>
+			<p>In the asynchronous version, <strong class="source-inline">wait_and_print_async</strong> <em class="italic">submits</em> (rather than <em class="italic">executes</em>) those calls and moves on <em class="italic">immediately</em>. You can see this mechanism in action by noticing that the <strong class="source-inline">"After submission"</strong> message is printed immediately.</p>
+			<p>With this in mind, we can explore a slightly more complex situation by rewriting our <strong class="source-inline">network_request</strong> function <a id="_idIndexMarker512"/>using callbacks. In <strong class="source-inline">example3.py</strong>, we define a <strong class="source-inline">network_request_async</strong> function, as follows:</p>
+			<p class="source-code">    def network_request_async(number, on_done):</p>
+			<p class="source-code">        def timer_done():</p>
+			<p class="source-code">            on_done({"success": True, \</p>
+			<p class="source-code">                     "result": number ** 2})</p>
+			<p class="source-code">        timer = threading.Timer(1.0, timer_done)</p>
+			<p class="source-code">        timer.start()</p>
+			<p>The biggest difference between <strong class="source-inline">network_request_async</strong> and its blocking counterpart is that <strong class="source-inline">network_request_async</strong> <em class="italic">doesn't return anything</em>. This is because we are merely submitting the request when <strong class="source-inline">network_request_async</strong> is called, but the value is available only when the request is completed.</p>
+			<p>If we<a id="_idIndexMarker513"/> can't return anything, how do we pass the result of the request? Rather than returning the value, we will pass the result as an argument to the <strong class="source-inline">on_done</strong> callback. The rest of the function consists of submitting a callback (called <strong class="source-inline">timer_done</strong>) to the <strong class="source-inline">threading.Timer</strong> class that will call <strong class="source-inline">on_done</strong> when it's ready.</p>
+			<p>The usage of <strong class="source-inline">network_request_async</strong> is quite similar to <strong class="source-inline">threading.Timer</strong>; all we have to do is pass the number we want to square and a callback that will receive the result <em class="italic">when it's ready</em>. This is demonstrated in the following code snippet:</p>
+			<p class="source-code">    def on_done(result):</p>
+			<p class="source-code">        print(result)</p>
+			<p class="source-code">    network_request_async(2, on_done)</p>
+			<p>Now, if we submit multiple network requests, we note that the calls get executed concurrently <a id="_idIndexMarker514"/>and do not block the code, as illustrated in the following code snippet:</p>
+			<p class="source-code">    network_request_async(2, on_done)</p>
+			<p class="source-code">    network_request_async(3, on_done)</p>
+			<p class="source-code">    network_request_async(4, on_done)</p>
+			<p class="source-code">    print("After submission")</p>
+			<p>In order to use <strong class="source-inline">network_request_async</strong> in <strong class="source-inline">fetch_square</strong>, we need to adapt the code to take advantage of asynchronous constructs. In the following code snippet, we modify <strong class="source-inline">fetch_square</strong> by defining and passing the <strong class="source-inline">on_done</strong> callback to <strong class="source-inline">network_request_async</strong>:</p>
+			<p class="source-code">    def fetch_square(number):</p>
+			<p class="source-code">        def on_done(response):</p>
+			<p class="source-code">            if response["success"]:</p>
+			<p class="source-code">                print("Result is: \</p>
+			<p class="source-code">                  {}".format(response["result"]))</p>
+			<p class="source-code">        network_request_async(number, on_done)</p>
+			<p>You<a id="_idIndexMarker515"/> may have noted that the asynchronous code is significantly more convoluted than its synchronous counterpart. This is due to the fact that we are required to write and pass a callback every time we need to retrieve a certain result, causing the code to become nested and hard to follow.</p>
+			<p>Fortunately, a concept that is essential to concurrent programming that we are examining next, futures, will help simplify matters.</p>
+			<h2 id="_idParaDest-137"><a id="_idTextAnchor128"/>Futures</h2>
+			<p>Futures<a id="_idIndexMarker516"/> are a <a id="_idIndexMarker517"/>more convenient pattern that can be used to keep track of the results of asynchronous calls. In the preceding code snippet, we saw that rather than returning values, we accept callbacks and pass the results when they are ready. It is interesting to note that, so far, there is no easy way to track the status of the resource.</p>
+			<p>A <strong class="bold">future</strong> is an<a id="_idIndexMarker518"/> abstraction that helps us keep track of the requested resources that we are waiting to become available. In Python, you can find a future implementation in the <strong class="source-inline">concurrent.futures.Future</strong> class. A <strong class="source-inline">Future</strong> instance can be created by calling its constructor with no arguments, as in the following IPython snippet:</p>
+			<p class="source-code">    from concurrent.futures import Future</p>
+			<p class="source-code">    fut = Future()</p>
+			<p class="source-code">    # Result:</p>
+			<p class="source-code">    # &lt;Future at 0x7f03e41599e8 state=pending&gt;</p>
+			<p>A future represents a value that is not yet available. You can see that its string representation reports the current status of the result, which, in our case, is still pending. In order to make a result available, we can use the <strong class="source-inline">fut.set_result</strong> method, as follows:</p>
+			<p class="source-code">    fut.set_result("Hello")</p>
+			<p class="source-code">    # Result:</p>
+			<p class="source-code">    # &lt;Future at 0x7f03e41599e8 state=finished returned </p>
+			<p class="source-code">      str&gt;</p>
+			<p class="source-code">    fut.result()</p>
+			<p class="source-code">    # Result:</p>
+			<p class="source-code">    # "Hello"</p>
+			<p>You can <a id="_idIndexMarker519"/>see that once we set the result, the <strong class="source-inline">Future</strong> instance will report that the task is finished and can be accessed using the <strong class="source-inline">fut.result</strong> method. It is also possible to subscribe a callback to a future so that, as soon as the result is available, the callback is executed. To attach a callback, it is sufficient to pass a function to the <strong class="source-inline">fut.add_done_callback</strong> method. When the task is completed, the function will be called with the <strong class="source-inline">Future</strong> instance as its first argument and the result can be retrieved using the <strong class="source-inline">future.result()</strong> method, as illustrated in the following code snippet:</p>
+			<p class="source-code">    fut = Future()</p>
+			<p class="source-code">    fut.add_done_callback(lambda future: </p>
+			<p class="source-code">      print(future.result(), flush=True))</p>
+			<p class="source-code">    fut.set_result("Hello")</p>
+			<p class="source-code">    # Output:</p>
+			<p class="source-code">    # Hello</p>
+			<p>To understand how futures<a id="_idIndexMarker520"/> can be used in practice, we will adapt the <strong class="source-inline">network_request_async</strong> function to use futures in <strong class="source-inline">example4.py</strong>. The idea is that this time, instead of returning nothing, we return a <strong class="source-inline">Future</strong> instance that will keep track of the result for us. Note the following two things:</p>
+			<ul>
+				<li>We don't need to accept an <strong class="source-inline">on_done callback</strong> as callbacks can be connected later using the <strong class="source-inline">fut.add_done_callback</strong> method. Also, we pass the generic <strong class="source-inline">fut.set_result</strong> method as the callback for <strong class="source-inline">threading.Timer</strong>.</li>
+				<li>This time, we<a id="_idIndexMarker521"/> are able to return a value, thus making the code a bit more similar to the blocking version we saw in the preceding section, as illustrated here:<p class="source-code">    from concurrent.futures import Future</p><p class="source-code">    def network_request_async(number):</p><p class="source-code">        future = Future()</p><p class="source-code">        result = {"success": True, "result": number  \</p><p class="source-code">          ** 2}</p><p class="source-code">        timer = threading.Timer(1.0, lambda:  \</p><p class="source-code">          future.set_result(result))</p><p class="source-code">        timer.start()</p><p class="source-code">        return future</p><p class="source-code">    fut = network_request_async(2)</p><p class="callout-heading">Note</p><p class="callout">Even though we instantiate and manage futures directly in these examples, in practical applications, futures are handled by frameworks. </p></li>
+			</ul>
+			<p>If you <a id="_idIndexMarker522"/>execute the preceding code, nothing will happen as the code only consists of preparing and returning a <strong class="source-inline">Future</strong> instance. To enable further operation of the future results, we need to use the <strong class="source-inline">fut.add_done_callback</strong> method. In the following code snippet, we adapt the <strong class="source-inline">fetch_square</strong> function to use futures:</p>
+			<p class="source-code">    def fetch_square(number):</p>
+			<p class="source-code">        fut = network_request_async(number)</p>
+			<p class="source-code">        def on_done_future(future):</p>
+			<p class="source-code">            response = future.result()</p>
+			<p class="source-code">            if response["success"]:</p>
+			<p class="source-code">                print("Result is: \</p>
+			<p class="source-code">                  {}".format(response["result"]))</p>
+			<p class="source-code">        </p>
+			<p class="source-code">        fut.add_done_callback(on_done_future)</p>
+			<p>As you <a id="_idIndexMarker523"/>can see, the code still looks quite similar to the callback version, but when <strong class="source-inline">fetch_square</strong> is called, the corresponding future will be processed, and the result string will be printed out.</p>
+			<p>Overall, futures are a different and slightly more convenient way of working with callbacks. Futures are also advantageous in the sense that they can keep track of the resource status, cancel (unschedule) scheduled tasks, and handle exceptions more naturally.</p>
+			<h2 id="_idParaDest-138"><a id="_idTextAnchor129"/>Event loops</h2>
+			<p>So far, we<a id="_idIndexMarker524"/> have implemented parallelism using <strong class="bold">operating system</strong> (<strong class="bold">OS</strong>) threads. However, in many asynchronous frameworks, the coordination of concurrent tasks is <a id="_idIndexMarker525"/>managed by an <strong class="bold">event loop</strong>.</p>
+			<p>The idea <a id="_idIndexMarker526"/>behind an event loop is to continuously monitor the status of the various resources (for example, network connections and database queries) and trigger the execution of callbacks when specific events take place (for example, when a resource is ready or when a timer expires).</p>
+			<p class="callout-heading">Why Not Just Stick to Threading?</p>
+			<p class="callout">Events loops are sometimes preferred as every unit of execution never runs at the same time as another, and this can simplify dealing with shared variables, data structures, and resources.</p>
+			<p>As the first example in <strong class="source-inline">example5.py</strong>, we will implement a thread-free version of <strong class="source-inline">threading.Timer</strong>. We can define a <strong class="source-inline">Timer</strong> class that will take a timeout and implement the <strong class="source-inline">Timer.done</strong> method, which returns <strong class="source-inline">True</strong> if the timer has expired. The code is illustrated in the following snippet:</p>
+			<p class="source-code">    class Timer:</p>
+			<p class="source-code">    </p>
+			<p class="source-code">        def __init__(self, timeout):</p>
+			<p class="source-code">            self.timeout = timeout</p>
+			<p class="source-code">            self.start = time.time()</p>
+			<p class="source-code">    </p>
+			<p class="source-code">        def done(self):</p>
+			<p class="source-code">            return time.time() - self.start &gt; self.timeout</p>
+			<p>To determine whether the timer has expired, we can write a loop that continuously checks the timer status by calling the <strong class="source-inline">Timer.done</strong> method. When the timer expires, we can print a message and exit the cycle. The code is illustrated in the following snippet:</p>
+			<p class="source-code">    timer = Timer(1.0)</p>
+			<p class="source-code">  </p>
+			<p class="source-code">    while True:</p>
+			<p class="source-code">        if timer.done():</p>
+			<p class="source-code">            print("Timer is done!")</p>
+			<p class="source-code">            break</p>
+			<p>By<a id="_idIndexMarker527"/> implementing the timer in this way, the flow of execution is never blocked, and we can, in principle, do other work inside the <strong class="source-inline">while</strong> loop.</p>
+			<p class="callout-heading">Busy-Waiting</p>
+			<p class="callout">Waiting for events to happen by continuously polling <a id="_idIndexMarker528"/>using a loop is commonly termed <strong class="bold">busy-waiting</strong>.</p>
+			<p>Ideally, we <a id="_idIndexMarker529"/>would like to attach a custom function that executes when the timer goes off, just as we did in <strong class="source-inline">threading.Timer</strong>. To do this, we can implement a <strong class="source-inline">Timer.on_timer_done</strong> method that will accept a callback to be executed when the timer goes off in <strong class="source-inline">example6.py</strong>, as follows:</p>
+			<p class="source-code">    class Timer:</p>
+			<p class="source-code">       # ... previous code </p>
+			<p class="source-code">       def on_timer_done(self, callback):</p>
+			<p class="source-code">            self.callback = callback</p>
+			<p>Note that <strong class="source-inline">on_timer_done</strong> merely stores a reference to the callback. The entity that monitors the event and executes the callback is the loop. This concept is demonstrated as follows. Rather than using the <strong class="source-inline">print</strong> function, the loop will call <strong class="source-inline">timer.callback</strong> when appropriate:</p>
+			<p class="source-code">    timer = Timer(1.0)</p>
+			<p class="source-code">    timer.on_timer_done(lambda: print("Timer is done!"))</p>
+			<p class="source-code">    while True:</p>
+			<p class="source-code">        if timer.done():</p>
+			<p class="source-code">            <strong class="bold">timer.callback()</strong></p>
+			<p class="source-code">            break</p>
+			<p>As you can see, an asynchronous framework is starting to take place. All we did outside the loop was define the timer and the callback, while the loop took care of monitoring the timer and executing the associated callback. We can further extend our code by implementing support for multiple timers.</p>
+			<p>A <a id="_idIndexMarker530"/>natural way to implement multiple timers is to add a few <strong class="source-inline">Timer</strong> instances to a list and modify our event loop to periodically check all the timers and dispatch the callbacks when required. In the following code snippet, we define two timers and attach a callback<a id="_idIndexMarker531"/> to each of them. Those timers are added to a list, <strong class="source-inline">timers</strong>, that is continuously monitored by our event loop. As soon as a timer is done, we execute the callback and remove the event from the list:</p>
+			<p class="source-code">    timers = []</p>
+			<p class="source-code">    timer1 = Timer(1.0)</p>
+			<p class="source-code">    timer1.on_timer_done(lambda: print("First timer is  \</p>
+			<p class="source-code">      done!"))</p>
+			<p class="source-code">    timer2 = Timer(2.0)</p>
+			<p class="source-code">    timer2.on_timer_done(lambda: print("Second timer is  \</p>
+			<p class="source-code">      done!"))</p>
+			<p class="source-code">    timers.append(timer1)</p>
+			<p class="source-code">    timers.append(timer2)</p>
+			<p class="source-code">    while True:</p>
+			<p class="source-code">        for timer in timers:</p>
+			<p class="source-code">            if timer.done():</p>
+			<p class="source-code">                timer.callback()</p>
+			<p class="source-code">                timers.remove(timer)</p>
+			<p class="source-code">        # If no more timers are left, we exit the loop </p>
+			<p class="source-code">        if len(timers) == 0:</p>
+			<p class="source-code">            break</p>
+			<p>The <a id="_idIndexMarker532"/>main restriction of an event loop is, since the flow of execution is managed by a continuously running loop, that it <strong class="bold">never uses blocking calls</strong>. If we use any blocking statement (such as <strong class="source-inline">time.sleep</strong>) inside the loop, you can imagine how the event monitoring and callback dispatching will stop until the blocking call is done.</p>
+			<p>To <a id="_idIndexMarker533"/>avoid this, rather than using a blocking call such as <strong class="source-inline">time.sleep</strong>, we let the event loop detect and execute the callback when the resource is ready. By not blocking the execution flow, the event loop is free to monitor multiple resources in a concurrent way.</p>
+			<p class="callout-heading">How Is the Event Loop Notified of Events?</p>
+			<p class="callout">Events notification is <a id="_idIndexMarker534"/>usually implemented through OS calls (such as the <strong class="source-inline">select</strong> Unix tool) that will resume the execution of the program whenever an event is ready (in contrast to busy-waiting).</p>
+			<p>The Python standard libraries include a very convenient event loop-based concurrency framework, <strong class="source-inline">asyncio</strong>, which will be the topic of the next section.</p>
+			<h1 id="_idParaDest-139"><a id="_idTextAnchor130"/>The asyncio framework</h1>
+			<p>At this point, we<a id="_idIndexMarker535"/> have seen how concurrency works and how to use callbacks and futures. We can now move on and learn how to use the <strong class="source-inline">asyncio</strong> package, which has been present in the standard Python library since version 3.4. We will also explore the <strong class="source-inline">async</strong>/<strong class="source-inline">await</strong> syntax to deal with asynchronous programming in a very natural way.</p>
+			<p>As a first example, we will see how to retrieve and execute a simple callback using <strong class="source-inline">asyncio</strong>. The <strong class="source-inline">asyncio</strong> loop can be retrieved by calling the <strong class="source-inline">asyncio.get_event_loop()</strong> function. We can schedule a callback for execution using <strong class="source-inline">loop.call_later</strong>, which takes a delay in seconds and a callback. We can also use the <strong class="source-inline">loop.stop</strong> method to halt the loop and exit the program. To start processing the scheduled call, it is necessary to start the loop, which can be done using <strong class="source-inline">loop.run_forever</strong>. The following example in <strong class="source-inline">example7.py</strong> demonstrates the usage of these basic methods by scheduling a callback that will print a message and halt the loop:</p>
+			<p class="source-code">    import asyncio</p>
+			<p class="source-code">    loop = asyncio.get_event_loop()</p>
+			<p class="source-code">    def callback():</p>
+			<p class="source-code">        print("Hello, asyncio")</p>
+			<p class="source-code">        loop.stop()</p>
+			<p class="source-code">    loop.call_later(1.0, callback)</p>
+			<p class="source-code">    loop.run_forever()</p>
+			<p>This code schedules a callback that will print out a message and then halt the loop. One of the main problems with callbacks is that they require you to break the program execution into small functions that will be invoked when a certain event takes place. As we saw in the earlier sections, callbacks can quickly become cumbersome. In the next section, we will see how to work with coroutines to, as with futures, simplify many aspects of concurrent programming.</p>
+			<h2 id="_idParaDest-140"><a id="_idTextAnchor131"/>Coroutines</h2>
+			<p><strong class="bold">Coroutines</strong> are <a id="_idIndexMarker536"/>another, perhaps more natural, way<a id="_idIndexMarker537"/> to break up the program execution into chunks. They allow the programmer to write code that resembles synchronous code but will execute asynchronously. You may think of a coroutine as a function that can be stopped and resumed. A basic example of coroutines is generators.</p>
+			<p>Generators <a id="_idIndexMarker538"/>can be defined in Python using the <strong class="source-inline">yield</strong> statement inside a function. In the following code example in <strong class="source-inline">example8.py</strong>, we implement the <strong class="source-inline">range_generator</strong> function, which produces and returns values from <strong class="source-inline">0</strong> to <strong class="source-inline">n</strong>. We also add a <strong class="source-inline">print</strong> statement to log the internal state of the generator:</p>
+			<p class="source-code">    def range_generator(n):</p>
+			<p class="source-code">        i = 0</p>
+			<p class="source-code">        while i &lt; n:</p>
+			<p class="source-code">            print("Generating value {}".format(i))</p>
+			<p class="source-code">            yield i</p>
+			<p class="source-code">            i += 1</p>
+			<p>When we call the <strong class="source-inline">range_generator</strong> function, the code is not executed immediately. Note that nothing is printed to output when the following snippet is executed. Instead, a <strong class="source-inline">generator</strong> object is returned:</p>
+			<p class="source-code">    generator = range_generator(3)</p>
+			<p class="source-code">    generator</p>
+			<p class="source-code">    # Result:</p>
+			<p class="source-code">    # &lt;generator object range_generator at 0x7f03e418ba40&gt;</p>
+			<p>In order to start pulling values from a generator, it is necessary to use the <strong class="source-inline">next</strong> function, as follows:</p>
+			<p class="source-code">    next(generator)</p>
+			<p class="source-code">    # Output:</p>
+			<p class="source-code">    # Generating value 0</p>
+			<p class="source-code">    next(generator)</p>
+			<p class="source-code">    # Output:</p>
+			<p class="source-code">    # Generating value 1</p>
+			<p>Note that <a id="_idIndexMarker539"/>every time we invoke <strong class="source-inline">next</strong>, the code runs until it encounters the next <strong class="source-inline">yield</strong> statement, and it is necessary to issue another <strong class="source-inline">next</strong> statement to resume the generator execution. You can think of a <strong class="source-inline">yield</strong> statement as a <a id="_idIndexMarker540"/>breakpoint where we can stop and resume execution (while also maintaining the internal state of the generator). This ability to stop and resume execution can be leveraged by the event loop to allow for and implement concurrency.</p>
+			<p>It is also possible to <em class="italic">inject</em> (rather than <em class="italic">extract</em>) values in the generator through the <strong class="source-inline">yield</strong> statement. In the following code example in <strong class="source-inline">example9.py</strong>, we declare a <strong class="source-inline">parrot</strong> function that will repeat each message that we send: </p>
+			<p class="source-code">    def parrot():</p>
+			<p class="source-code">        while True:</p>
+			<p class="source-code">            message = yield</p>
+			<p class="source-code">            print("Parrot says: {}".format(message))</p>
+			<p class="source-code">    generator = parrot()</p>
+			<p class="source-code">    generator.send(None)</p>
+			<p class="source-code">    generator.send("Hello")</p>
+			<p class="source-code">    generator.send("World")</p>
+			<p>To allow a generator to receive a value, you can assign <strong class="source-inline">yield</strong> to a variable (in our case, it is <strong class="source-inline">message = yield</strong>). To insert values in the generator, we can use the <strong class="source-inline">send</strong> method. In the Python world, a generator that can also receive <a id="_idIndexMarker541"/>values is<a id="_idIndexMarker542"/> called a <strong class="bold">generator-based coroutine</strong>.</p>
+			<p>Note that we also need to issue a <strong class="source-inline">generator.send(None)</strong> request before we can start sending messages; this is to bootstrap the function execution and bring us to the first <strong class="source-inline">yield</strong> statement. Also, note that there is an infinite loop inside <strong class="source-inline">parrot</strong>; if we implement this without using generators, we will get stuck running the loop forever!</p>
+			<p>With <a id="_idIndexMarker543"/>this in mind, you can<a id="_idIndexMarker544"/> imagine how an event loop can partially progress several of these generators without blocking the execution of the whole program, as well as how a generator can be advanced only when some resource is ready, therefore eliminating the need for a callback.</p>
+			<p>It is possible to implement coroutines in <strong class="source-inline">asyncio</strong> using the <strong class="source-inline">yield</strong> statement. However, Python supports the definition of powerful coroutines using a more intuitive syntax. To define a coroutine with <strong class="source-inline">asyncio</strong>, you can use the <strong class="source-inline">async def</strong> statement, as follows: </p>
+			<p class="source-code">    async def hello():</p>
+			<p class="source-code">        print("Hello, async!")</p>
+			<p class="source-code">    coro = hello()</p>
+			<p class="source-code">    coro</p>
+			<p class="source-code">    # Output:</p>
+			<p class="source-code">    # &lt;coroutine object hello at 0x7f314846bd58&gt;</p>
+			<p>As you can see, if we call the <strong class="source-inline">hello</strong> function, the function body is not executed immediately, but a <strong class="source-inline">coroutine object</strong> instance is returned. The <strong class="source-inline">asyncio</strong> coroutines do not support <strong class="source-inline">next</strong>, but they can be easily run in the <strong class="source-inline">asyncio</strong> event loop using the <strong class="source-inline">run_until_complete</strong> method, as follows:</p>
+			<p class="source-code">    import asyncio</p>
+			<p class="source-code">    loop = asyncio.get_event_loop()</p>
+			<p class="source-code">    loop.run_until_complete(coro)</p>
+			<p class="callout-heading">Native Coroutines</p>
+			<p class="callout">Coroutines defined with the <strong class="source-inline">async def</strong> statement <a id="_idIndexMarker545"/>are also <a id="_idIndexMarker546"/>called <em class="italic">native coroutines</em>.</p>
+			<p>The <strong class="source-inline">asyncio</strong> module <a id="_idIndexMarker547"/>provides resources (called <strong class="bold">awaitables</strong>) that <a id="_idIndexMarker548"/>can be requested inside <a id="_idIndexMarker549"/>coroutines through the <strong class="source-inline">await</strong> syntax. For example, in <strong class="source-inline">example10.py</strong>, if we want to wait for a certain time and then execute a statement, we can use the <strong class="source-inline">asyncio.sleep</strong> function, as follows:</p>
+			<p class="source-code">    async def wait_and_print(msg):</p>
+			<p class="source-code">        await asyncio.sleep(1)</p>
+			<p class="source-code">        print("Message: ", msg)</p>
+			<p class="source-code">    loop = asyncio.get_event_loop()</p>
+			<p class="source-code">    loop.run_until_complete(wait_and_print("Hello"))</p>
+			<p>The result is beautiful, clean code. We are writing perfectly functional asynchronous code without all the ugliness of callbacks!</p>
+			<p class="callout-heading">Breakpoints for Event Loops</p>
+			<p class="callout">You may have <a id="_idIndexMarker550"/>noted how <strong class="source-inline">await</strong> provides a breakpoint for the event loop so that, as it waits for the resource, the event loop can move on and concurrently manage other coroutines.</p>
+			<p>Even better, coroutines are also <strong class="source-inline">awaitable</strong>, and we can use the <strong class="source-inline">await</strong> statement to chain coroutines asynchronously. In the following example, we rewrite the <strong class="source-inline">network_request</strong> function, which we defined earlier, by replacing the call to <strong class="source-inline">time.sleep</strong> with <strong class="source-inline">asyncio.sleep</strong>:</p>
+			<p class="source-code">    async def network_request(number):</p>
+			<p class="source-code">         <strong class="bold">await asyncio.sleep(1.0)</strong></p>
+			<p class="source-code">         return {"success": True, "result": number ** 2}</p>
+			<p>We can follow up by reimplementing <strong class="source-inline">fetch_square</strong>, as illustrated in the following code snippet. As you can see, we await <strong class="source-inline">network_request</strong> directly without needing additional futures or callbacks:</p>
+			<p class="source-code">    async def fetch_square(number):</p>
+			<p class="source-code">         response = await network_request(number)</p>
+			<p class="source-code">         if response["success"]:</p>
+			<p class="source-code">             print("Result is: \</p>
+			<p class="source-code">              {}".format(response["result"]))</p>
+			<p>The coroutines can be executed individually using <strong class="source-inline">loop.run_until_complete</strong>, as follows:</p>
+			<p class="source-code">    loop.run_until_complete(fetch_square(2))</p>
+			<p class="source-code">    loop.run_until_complete(fetch_square(3))</p>
+			<p class="source-code">    loop.run_until_complete(fetch_square(4))</p>
+			<p>Running<a id="_idIndexMarker551"/> tasks using <strong class="source-inline">run_until_complete</strong> serves as a <a id="_idIndexMarker552"/>demonstration for testing and debugging. However, our program will be started with <strong class="source-inline">loop.run_forever</strong> most of the time, and we will need to submit our tasks while the loop is already running.</p>
+			<p><strong class="source-inline">asyncio</strong> provides<a id="_idIndexMarker553"/> the <strong class="source-inline">ensure_future</strong> function, which schedules coroutines (as well as futures) for execution. <strong class="source-inline">ensure_future</strong> can be used by simply passing the coroutine we want to schedule. The following code snippet in <strong class="source-inline">example11.py</strong> will schedule multiple calls to <strong class="source-inline">fetch_square</strong> that will be executed concurrently:</p>
+			<p class="source-code">    asyncio.ensure_future(fetch_square(2))</p>
+			<p class="source-code">    asyncio.ensure_future(fetch_square(3))</p>
+			<p class="source-code">    asyncio.ensure_future(fetch_square(4))</p>
+			<p class="source-code">    loop.run_forever()</p>
+			<p class="source-code">    # Hit Ctrl-C to stop the loop</p>
+			<p>As a bonus, when passing a coroutine, the <strong class="source-inline">asyncio.ensure_future</strong> function will return a <strong class="source-inline">Task</strong> instance (which is a subclass of <strong class="source-inline">Future</strong>) so that we can take advantage of the <strong class="source-inline">await</strong> syntax <a id="_idIndexMarker554"/>without<a id="_idIndexMarker555"/> having to give up the resource-tracking capabilities of regular futures.</p>
+			<h2 id="_idParaDest-141"><a id="_idTextAnchor132"/>Converting blocking code into non-blocking code</h2>
+			<p>While <strong class="source-inline">asyncio</strong> supports<a id="_idIndexMarker556"/> connecting to resources in an asynchronous way, it is required to use blocking <a id="_idIndexMarker557"/>calls in certain cases. This happens, for example, when third-party <strong class="bold">application programming interfaces</strong> (<strong class="bold">APIs</strong>) exclusively expose blocking calls (which is the case for many database libraries), but also when executing long-running computations. In this subsection, we will learn how to deal with blocking APIs and make them compatible with <strong class="source-inline">asyncio</strong>. Here are the steps:</p>
+			<ol>
+				<li>An<a id="_idIndexMarker558"/> effective strategy for dealing with blocking code is to run it in a separate thread. Threads are implemented at the OS level and allow parallel execution of blocking code. For this purpose, Python provides the <strong class="source-inline">Executor</strong> interface designed to run tasks in a separate thread and to monitor their progress using futures.</li>
+				<li>You can initialize a <strong class="source-inline">ThreadPoolExecutor</strong> instance by importing it from the <strong class="source-inline">concurrent.futures</strong> module. The executor will spawn a collection of threads (called workers) that will wait to execute whichever task we throw at them. Once a function is submitted, the executor will take care of dispatching its execution to an available worker thread and keep track of the result. The <strong class="source-inline">max_workers</strong> argument can be used to select the number of threads.</li>
+			</ol>
+			<p>Note that the executor will not destroy a thread once a task is completed. By doing so, it reduces the cost associated with the creation and destruction of threads. </p>
+			<ol>
+				<li value="3">In the following code example in <strong class="source-inline">example12.py</strong>, we create a <strong class="source-inline">ThreadPoolExecutor</strong> instance with three workers, and we submit a <strong class="source-inline">wait_and_return</strong> function that will block the program execution for 1 second and<a id="_idIndexMarker559"/> return a message string. We then use the <strong class="source-inline">submit</strong> method to schedule its execution:<p class="source-code">    import time</p><p class="source-code">    from concurrent.futures import ThreadPoolExecutor</p><p class="source-code">    executor = ThreadPoolExecutor(max_workers=3)</p><p class="source-code">    def wait_and_return(msg):</p><p class="source-code">        time.sleep(1)</p><p class="source-code">        return msg</p><p class="source-code">    print(executor.submit(wait_and_return, "Hello. \</p><p class="source-code">      executor"))</p><p class="source-code">    # Result:</p><p class="source-code">    # &lt;Future at 0x7ff616ff6748 state=running&gt;</p></li>
+				<li>The <strong class="source-inline">executor.submit</strong> method<a id="_idIndexMarker560"/> immediately schedules the function and returns a future. It is possible to manage the execution of tasks in <strong class="source-inline">asyncio</strong> using the <strong class="source-inline">loop.run_in_executor</strong> method, which works quite similarly to <strong class="source-inline">executor.submit</strong>. The code is illustrated in the following snippet:<p class="source-code">    fut = loop.run_in_executor(executor, \</p><p class="source-code">      wait_and_return, "Hello, asyncio executor")</p><p class="source-code">    # &lt;Future pending ...more info...&gt;</p></li>
+				<li>The <strong class="source-inline">run_in_executor</strong> method will also return an <strong class="source-inline">asyncio.Future</strong> instance that can be awaited from other code, the main difference being that the future will not be run until we start the loop. We can run and obtain the response using <strong class="source-inline">loop.run_until_complete</strong>, as illustrated in the following snippet:<p class="source-code">    loop.run_until_complete(fut)</p><p class="source-code">    # Result:</p><p class="source-code">    # 'Hello, executor'</p></li>
+				<li>As <a id="_idIndexMarker561"/>a practical example, we <a id="_idIndexMarker562"/>can use this technique to implement concurrent fetching of several web pages. To do this, we will import the popular (blocking) <strong class="source-inline">requests</strong> library and run the <strong class="source-inline">requests.get</strong> function in the executor in <strong class="source-inline">example13.py</strong>, as follows:<p class="source-code">    import requests</p><p class="source-code">    async def fetch_urls(urls):</p><p class="source-code">        responses = []</p><p class="source-code">        for url in urls:</p><p class="source-code">            responses.append(await \</p><p class="source-code">              loop.run_in_executor(executor, \</p><p class="source-code">                requests.get, url))</p><p class="source-code">        return responses</p><p class="source-code">    responses = loop.run_until_complete(</p><p class="source-code">      fetch_urls(</p><p class="source-code">        [</p><p class="source-code">      'http://www.google.com', </p><p class="source-code">      'http://www.example.com',</p><p class="source-code">      'http://www.facebook.com'</p><p class="source-code">        ]</p><p class="source-code">      )</p><p class="source-code">    )</p><p class="source-code">    print(response)</p><p class="source-code">    # Result</p><p class="source-code">    # [&lt;Response [200]&gt;, &lt;Response [200]&gt;, &lt;Response </p><p class="source-code">      [200]&gt;] </p></li>
+				<li>This <a id="_idIndexMarker563"/>version of <strong class="source-inline">fetch_url</strong> will <a id="_idIndexMarker564"/>not block the execution and allow other coroutines in <strong class="source-inline">asyncio</strong> to run; however, it is not optimal as the function will not fetch a <strong class="bold">Uniform Resource Locator</strong> (<strong class="bold">URL</strong>) in<a id="_idIndexMarker565"/> parallel. To do this, we can use <strong class="source-inline">asyncio.ensure_future</strong> or employ the <strong class="source-inline">asyncio.gather</strong> convenience function that will submit all the coroutines at once and gather the results as they come. The usage of <strong class="source-inline">asyncio.gather</strong> is demonstrated in <strong class="source-inline">example14.py</strong>, as follows:<p class="source-code">    def fetch_urls(urls):</p><p class="source-code">        return asyncio.gather(</p><p class="source-code">          *[loop.run_in_executor(executor, \</p><p class="source-code">             requests.get, url) for url in urls])</p><p class="callout-heading">Upper Bound for the Number of Threads</p><p class="callout">The number of URLs you can fetch in parallel with this method will be dependent on the number of <a id="_idIndexMarker566"/>worker threads you have. To avoid this limitation, you should use a natively non-blocking library, such as <strong class="source-inline">aiohttp</strong>.</p></li>
+			</ol>
+			<p>So far, we have seen how to work with concurrent programs in Python using core concepts such as callbacks, futures, and coroutines. For the remaining portion of this chapter, we will discuss a more streamlined programming paradigm for implementing concurrency.</p>
+			<h1 id="_idParaDest-142"><a id="_idTextAnchor133"/>Reactive programming</h1>
+			<p><strong class="bold">Reactive programming</strong> is a <a id="_idIndexMarker567"/>paradigm that aims at building better concurrent systems. Reactive applications are designed to comply with the following requirements exemplified by the reactive manifesto:</p>
+			<ul>
+				<li><strong class="bold">Responsive</strong>: The<a id="_idIndexMarker568"/> system responds immediately to the user.</li>
+				<li><strong class="bold">Elastic</strong>: The <a id="_idIndexMarker569"/>system is capable of handling different levels of load and can adapt to accommodate increasing demands.</li>
+				<li><strong class="bold">Resilient</strong>: The <a id="_idIndexMarker570"/>system deals with failure gracefully. This is achieved by modularity<a id="_idIndexMarker571"/> and avoiding having a <strong class="bold">single point of failure</strong> (<strong class="bold">SPOF</strong>).</li>
+				<li><strong class="bold">Message-driven</strong>: The <a id="_idIndexMarker572"/>system should not block and take advantage of events and messages. A message-driven application helps achieve all the previous requirements.</li>
+			</ul>
+			<p>The requirements for reactive systems are quite reasonable but abstract, which leads us to a natural question: how exactly does reactive programming work? In this section, we will learn about the principles of <a id="_idIndexMarker573"/>reactive programming using the <strong class="bold">Reactive Extensions for Python</strong> (<strong class="bold">RxPY</strong>) library.</p>
+			<p class="callout-heading">Additional Information</p>
+			<p class="callout">The <strong class="source-inline">RxPY</strong> library <a id="_idIndexMarker574"/>is part of<a id="_idIndexMarker575"/> ReactiveX (<a href="http://reactivex.io/">http://reactivex.io/</a>), which is a project that implements reactive programming tools for a large variety of languages.</p>
+			<p class="callout">To install the library, simply run <strong class="source-inline">pip install rx</strong>.</p>
+			<p class="callout">Note that the following code uses <strong class="source-inline">RxPY</strong> v3, the syntax of which is quite different from <strong class="source-inline">RxPY</strong> v1. If you are familiar with <strong class="source-inline">RxPY</strong> v1 and the discussion from this book's previous version, watch out for changes in syntax!</p>
+			<h2 id="_idParaDest-143"><a id="_idTextAnchor134"/>Observables</h2>
+			<p>As the <a id="_idIndexMarker576"/>name implies, the main idea of reactive programming is<a id="_idIndexMarker577"/> to <em class="italic">react</em> to events. In the preceding section, we saw some examples of this idea with callbacks; you subscribe to them and the callback is executed as soon as the event takes place.</p>
+			<p>In reactive programming, this idea is expanded if we think of events as streams of data. This can be exemplified by showing examples of such streams in <strong class="source-inline">RxPY</strong>. A data stream can be created from an iterator using the <strong class="source-inline">from_iterable</strong> method in IPython, as follows: </p>
+			<p class="source-code">    from rx import from_iterable</p>
+			<p class="source-code">    obs = from_iterable(range(4))</p>
+			<p>In order to receive data from <strong class="source-inline">obs</strong>, we can use the <strong class="source-inline">Observable.subscribe</strong> method, which will execute the function we pass for each value that the data source emits. This method is shown in the following code snippet:</p>
+			<p class="source-code">    obs.subscribe(print)</p>
+			<p class="source-code">    # Output:</p>
+			<p class="source-code">    # 0</p>
+			<p class="source-code">    # 1</p>
+			<p class="source-code">    # 2</p>
+			<p class="source-code">    # 3</p>
+			<p>You <a id="_idIndexMarker578"/>may have noticed that observables are ordered collections of items just like lists or, more generally, iterators. This is not a coincidence.</p>
+			<p>The term <em class="italic">observable</em> comes <a id="_idIndexMarker579"/>from the combination of observer and iterable. An <em class="italic">observer</em> is an <a id="_idIndexMarker580"/>object that reacts to changes of the variable it observes, while an <em class="italic">iterable</em> is an<a id="_idIndexMarker581"/> object that can produce and keep track of an iterator.</p>
+			<p>In Python, iterators are objects that define the <strong class="source-inline">__next__</strong> method, and whose elements can be extracted by calling <strong class="source-inline">next</strong>. An iterator can generally be obtained by a collection using <strong class="source-inline">iter</strong>; then, we can extract elements using <strong class="source-inline">next</strong> or a <strong class="source-inline">for</strong> loop. Once an element is consumed from the iterator, we can't go back. We can demonstrate its usage by creating an iterator from a list, as follows:</p>
+			<p class="source-code">    collection = list([1, 2, 3, 4, 5])</p>
+			<p class="source-code">    iterator = iter(collection)</p>
+			<p class="source-code">    print("Next")</p>
+			<p class="source-code">    print(next(iterator))</p>
+			<p class="source-code">    print(next(iterator))</p>
+			<p class="source-code">    print("For loop")</p>
+			<p class="source-code">    for i in iterator:</p>
+			<p class="source-code">         print(i)</p>
+			<p class="source-code">    # Output:</p>
+			<p class="source-code">    # Next</p>
+			<p class="source-code">    # 1</p>
+			<p class="source-code">    # 2</p>
+			<p class="source-code">    # For loop</p>
+			<p class="source-code">    # 3</p>
+			<p class="source-code">    # 4</p>
+			<p class="source-code">    # 5</p>
+			<p>You<a id="_idIndexMarker582"/> can see how, every time we call <strong class="source-inline">next</strong> or we iterate, the iterator <a id="_idIndexMarker583"/>produces a value and advances. In a sense, we are <em class="italic">pulling</em> results from the iterator.</p>
+			<p class="callout-heading">Iterators versus Generators</p>
+			<p class="callout">Iterators <a id="_idIndexMarker584"/>sound a lot like generators; however, they are more general. In Python, generators are returned by functions that use <strong class="source-inline">yield</strong> expressions. As<a id="_idIndexMarker585"/> we saw, generators support <strong class="source-inline">next</strong>; therefore, they are a special class of iterators.</p>
+			<p>Now, you can appreciate the contrast between an iterator and an observable. An observable <em class="italic">pushes</em> a stream of data to us whenever it's ready, but that's not everything. An observable can also tell us when there is an error and where there is no more data. In fact, it is possible to register further callbacks to the <strong class="source-inline">Observable.subscribe</strong> method.</p>
+			<p>In the following example in IPython, we create an observable and register callbacks to be called using <strong class="source-inline">on_next</strong> whenever the next item is available and using the <strong class="source-inline">on_completed</strong> argument when there is no more data:</p>
+			<p class="source-code">    obs = from_iterable(range(4))</p>
+			<p class="source-code">    obs.subscribe(on_next=lambda x: print("Next item:", x),</p>
+			<p class="source-code">                  on_completed=lambda: print("No more  \</p>
+			<p class="source-code">                    data"))</p>
+			<p class="source-code">    # Output:</p>
+			<p class="source-code">    # Next element: 0</p>
+			<p class="source-code">    # Next element: 1</p>
+			<p class="source-code">    # Next element: 2</p>
+			<p class="source-code">    # Next element: 3</p>
+			<p class="source-code">    # No more data</p>
+			<p>With that said, the <a id="_idIndexMarker586"/>similarity between observables and iterators is more important, because we can use the same techniques that can be used with iterators to handle streams of events.</p>
+			<p><strong class="source-inline">RxPy</strong> provides<a id="_idIndexMarker587"/> operators that can be used to create, transform, filter, and group observables. The power of reactive programming lies in the fact that those operations return other observables that can be conveniently chained and composed together. For a quick demonstration, we will examine the usage of the <strong class="source-inline">take</strong> operator next.</p>
+			<p>Given an observable, <strong class="source-inline">take</strong> will return a new observable that will stop after <strong class="source-inline">n</strong> items. Its usage is straightforward, as we can see here:</p>
+			<p class="source-code">    from rx.operators import take</p>
+			<p class="source-code">    </p>
+			<p class="source-code">    op = take(4)</p>
+			<p class="source-code">    obs = from_iterable(range(1000))</p>
+			<p class="source-code">    op(obs).subscribe(print)</p>
+			<p class="source-code">    # Output:</p>
+			<p class="source-code">    # 0</p>
+			<p class="source-code">    # 1</p>
+			<p class="source-code">    # 2</p>
+			<p class="source-code">    # 3</p>
+			<p>The collection of operations implemented in <strong class="source-inline">RxPy</strong> is varied and rich and can be used to build complex applications using these operators as building blocks.</p>
+			<h2 id="_idParaDest-144"><a id="_idTextAnchor135"/>Useful operators</h2>
+			<p>In this <a id="_idIndexMarker588"/>subsection, we will explore operators that transform the elements of a source observable in some way. The most prominent member of this family of<a id="_idIndexMarker589"/> operators is the familiar <strong class="source-inline">map</strong> operator, which<a id="_idIndexMarker590"/> emits the elements of the source observable after applying a function to them.</p>
+			<p>For example, we may use <strong class="source-inline">map</strong> to calculate the square of a sequence of numbers, as follows:</p>
+			<p class="source-code">    from rx.operators import map</p>
+			<p class="source-code">    map(lambda x: x**2)(from_iterable(range(4))). \</p>
+			<p class="source-code">        subscribe(print)</p>
+			<p class="source-code">    # Output:</p>
+			<p class="source-code">    # 0</p>
+			<p class="source-code">    # 1</p>
+			<p class="source-code">    # 4</p>
+			<p class="source-code">    # 9</p>
+			<p>Operators can be represented with marble diagrams that help us better understand how the operator works, especially when taking into account the fact that elements can be emitted over a region of time. In a marble diagram, a data stream (in our case, an observable) is represented by a solid line. A circle (or another shape) identifies a value emitted by the observable, an <em class="italic">X</em> symbol represents an error, and a vertical line represents the end of the stream.</p>
+			<p>Here, we can see a marble diagram of <strong class="source-inline">map</strong>:</p>
+			<div>
+				<div id="_idContainer131" class="IMG---Figure">
+					<img src="image/Figure_7.4_B17499.jpg" alt="Figure 7.4 – Marble diagram illustrating the procedure of squaring numbers " width="857" height="201"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 7.4 – Marble diagram illustrating the procedure of squaring numbers</p>
+			<p>The <a id="_idIndexMarker591"/>source <a id="_idIndexMarker592"/>observable is placed at the top of the diagram, the transformation is placed in the middle, and the resulting observable is placed at the bottom.</p>
+			<p>Another example of a transformation is <strong class="source-inline">group_by</strong>, which sorts items into groups based on a key. The <strong class="source-inline">group_by</strong> operator <a id="_idIndexMarker593"/>takes <a id="_idIndexMarker594"/>a function that extracts a key when given an element and produces an observable for each key with the elements associated with it.</p>
+			<p>The <strong class="source-inline">group_by</strong> operation can be expressed more clearly using a marble diagram. In the following diagram, you can see how <strong class="source-inline">group_by</strong> emits two observables. Additionally, the items are dynamically sorted into groups <em class="italic">as soon as they are emitted</em>:</p>
+			<div>
+				<div id="_idContainer132" class="IMG---Figure">
+					<img src="image/Figure_7.5_B17499.jpg" alt="Figure 7.5 – Marble diagram illustrating grouping " width="1000" height="292"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 7.5 – Marble diagram illustrating grouping</p>
+			<p>We can further understand how <strong class="source-inline">group_by</strong> works with a simple example. Let's say that we want to group a number according to the fact that it's even or odd. We can implement this<a id="_idIndexMarker595"/> using <strong class="source-inline">group_by</strong> by passing the <strong class="source-inline">lambda x: x % 2</strong> expression as a key function, which will return <strong class="source-inline">0</strong> if the number is even and <strong class="source-inline">1</strong> if the number is odd, as follows:</p>
+			<p class="source-code">    from rx.operators import group_by</p>
+			<p class="source-code">    obs = group_by(lambda x: x %  \</p>
+			<p class="source-code">      2)(from_iterable(range(4)))</p>
+			<p>At this point, if we <a id="_idIndexMarker596"/>subscribe and print the content of <strong class="source-inline">obs</strong>, two observables are actually printed, as illustrated in the following code snippet:</p>
+			<p class="source-code">    obs.subscribe(print)</p>
+			<p class="source-code">    # &lt;rx.linq.groupedobservable.GroupedObservable object </p>
+			<p class="source-code">      at 0x7f0fba51f9e8&gt;</p>
+			<p class="source-code">    # &lt;rx.linq.groupedobservable.GroupedObservable object </p>
+			<p class="source-code">      at 0x7f0fba51fa58&gt;</p>
+			<p>You can determine the group key using the <strong class="source-inline">key</strong> attribute. To extract all the even numbers, we can take the first observable (corresponding to a key equal to 0) and subscribe to it. In the following code snippet, we show how this works:</p>
+			<p class="source-code">    obs.subscribe(lambda x: print("group key: ", x.key))</p>
+			<p class="source-code">    # Output:</p>
+			<p class="source-code">    # group key:  0</p>
+			<p class="source-code">    # group key:  1</p>
+			<p class="source-code">    take(1)(obs).subscribe(lambda x: x.subscribe(print))</p>
+			<p class="source-code">    # Output:</p>
+			<p class="source-code">    # 0</p>
+			<p class="source-code">    # 2</p>
+			<p>With <strong class="source-inline">group_by</strong>, we introduced an observable that emits other observables. This turns out to be quite a common pattern in reactive programming, and there are functions that allow you to combine different observables.</p>
+			<p>A useful tool for<a id="_idIndexMarker597"/> combining observables is <strong class="source-inline">merge_all</strong> which<a id="_idIndexMarker598"/> takes multiple observables and produces a single observable that contains the element<a id="_idIndexMarker599"/> of the two observables in the order they are emitted. This is better illustrated using a marble diagram, as follows:</p>
+			<div>
+				<div id="_idContainer133" class="IMG---Figure">
+					<img src="image/Figure_7.6_B17499.jpg" alt="Figure 7.6 – Marble diagram illustrating merging " width="972" height="213"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 7.6 – Marble diagram illustrating merging</p>
+			<p>To demonstrate its usage, we can apply the operation to the observable of observables returned by <strong class="source-inline">group_by</strong>, as follows:</p>
+			<p class="source-code">    from rx.operators import merge_all</p>
+			<p class="source-code">    merge_all()(obs).subscribe(print)</p>
+			<p class="source-code">    # Output</p>
+			<p class="source-code">    # 0</p>
+			<p class="source-code">    # 1</p>
+			<p class="source-code">    # 2</p>
+			<p class="source-code">    # 3</p>
+			<p>With <strong class="source-inline">merge_all</strong>, the items are returned in the same order as they were initially (remember that <strong class="source-inline">group_by</strong> emits elements in the two groups as they come).</p>
+			<p class="callout-heading">Tip</p>
+			<p class="callout"><strong class="source-inline">RxPy</strong> also provides the <strong class="source-inline">merge</strong> operation, which can be used to combine individual observables.</p>
+			<h2 id="_idParaDest-145"><a id="_idTextAnchor136"/>Hot and cold observables</h2>
+			<p>In the <a id="_idIndexMarker600"/>preceding section, we learned how to create an observable using the <strong class="source-inline">from_iterable</strong> method. <strong class="source-inline">RxPy</strong> provides many other tools to create more interesting event sources.</p>
+			<p><strong class="source-inline">interval</strong> takes<a id="_idIndexMarker601"/> a time interval in seconds, <strong class="source-inline">period</strong>, and creates an observable that emits a value every time the period has passed. The following code can be used to define an observable, <strong class="source-inline">obs</strong>, that will emit a number, starting from zero, every second. We use the <strong class="source-inline">take</strong> operator to limit the timer to four events:</p>
+			<p class="source-code">    from rx import interval</p>
+			<p class="source-code">    from rx.operators import take</p>
+			<p class="source-code">    </p>
+			<p class="source-code">    take(4)(interval(1)).subscribe(print)</p>
+			<p class="source-code">    # Output:</p>
+			<p class="source-code">    # 0</p>
+			<p class="source-code">    # 1</p>
+			<p class="source-code">    # 2</p>
+			<p class="source-code">    # 3</p>
+			<p>A very important fact about <strong class="source-inline">interval</strong> is that the timer doesn't start until we subscribe. We can observe this by printing both the index and the delay from when the timer starts definition using <strong class="source-inline">time.time()</strong>, as follows:</p>
+			<p class="source-code">    import time</p>
+			<p class="source-code">    start = time.time()</p>
+			<p class="source-code">    obs = map(lambda a: (a, time.time() - \</p>
+			<p class="source-code">      start))(interval(1))</p>
+			<p class="source-code">    # Let's wait 2 seconds before starting the subscription</p>
+			<p class="source-code">    time.sleep(2)</p>
+			<p class="source-code">    take(4)(obs).subscribe(print)</p>
+			<p class="source-code">    # Output:</p>
+			<p class="source-code">    # (0, 3.003735303878784)</p>
+			<p class="source-code">    # (1, 4.004871129989624)</p>
+			<p class="source-code">    # (2, 5.005947589874268)</p>
+			<p class="source-code">    # (3, 6.00749135017395)</p>
+			<p>As you can see, the first element (corresponding to a <strong class="source-inline">0</strong> index) is produced after 3 seconds, which means that the timer started when we issue the <strong class="source-inline">subscribe(print)</strong> method.</p>
+			<p>Observables such as <strong class="source-inline">interval</strong> are called <em class="italic">lazy</em> because they start producing values only when requested (think of them as vending machines that won't dispense food unless we press the button). In Rx jargon, these kinds of observables<a id="_idIndexMarker602"/> are called <strong class="bold">cold</strong>. A property of cold observables is that, if we attach two subscribers, the interval timer will be started multiple<a id="_idIndexMarker603"/> times. This is quite evident from the following example. Here, we add a new subscription 0.5 seconds after the first, and you can see how the output of the two subscriptions comes at different times:</p>
+			<p class="source-code">    start = time.time()</p>
+			<p class="source-code">    obs = map(lambda a: (a, time.time() - \</p>
+			<p class="source-code">      start))(interval(1))</p>
+			<p class="source-code">    # Let's wait 2 seconds before starting the subscription</p>
+			<p class="source-code">    time.sleep(2)</p>
+			<p class="source-code">    take(4)(obs).subscribe(lambda x: print("First \</p>
+			<p class="source-code">      subscriber: {}".format(x)))</p>
+			<p class="source-code">    time.sleep(0.5)</p>
+			<p class="source-code">    take(4)(obs).subscribe(lambda x: print("Second  \</p>
+			<p class="source-code">      subscriber: {}".format(x)))</p>
+			<p class="source-code">    # Output:</p>
+			<p class="source-code">    # First subscriber: (0, 3.0036110877990723)</p>
+			<p class="source-code">    # Second subscriber: (0, 3.5052847862243652)</p>
+			<p class="source-code">    # First subscriber: (1, 4.004414081573486)</p>
+			<p class="source-code">    # Second subscriber: (1, 4.506155252456665)</p>
+			<p class="source-code">    # First subscriber: (2, 5.005316972732544)</p>
+			<p class="source-code">    # Second subscriber: (2, 5.506817102432251)</p>
+			<p class="source-code">    # First subscriber: (3, 6.0062034130096436)</p>
+			<p class="source-code">    # Second subscriber: (3, 6.508296489715576)</p>
+			<p>Sometimes, we<a id="_idIndexMarker604"/> may not want this behavior as we may want multiple subscribers to subscribe to the same data source. To make the observable produce the same data, we can delay the data production and ensure that all the subscribers will get the same data using the <strong class="source-inline">publish</strong> method.</p>
+			<p><strong class="source-inline">publish</strong> will transform our observable into <strong class="source-inline">ConnectableObservable</strong>, which won't start pushing data immediately, but only when we call the <strong class="source-inline">connect</strong> method. The usage of <strong class="source-inline">publish</strong> and <strong class="source-inline">connect</strong> is demonstrated in the following code snippet:</p>
+			<p class="source-code">    from rx.operators import publish</p>
+			<p class="source-code">    start = time.time()</p>
+			<p class="source-code">    obs = <strong class="bold">publish()</strong>(map(lambda a: (a, time.time() - \</p>
+			<p class="source-code">    start))(interval(1)))</p>
+			<p class="source-code">    take(4)(obs).subscribe(lambda x: print("First \</p>
+			<p class="source-code">      subscriber: {}".format(x)))</p>
+			<p class="source-code"><strong class="bold">    obs.connect() # Data production starts here</strong></p>
+			<p class="source-code">    time.sleep(2)</p>
+			<p class="source-code">    take(4)(obs).subscribe(lambda x: print("Second \</p>
+			<p class="source-code">      subscriber: {}".format(x)))</p>
+			<p class="source-code">    # Output:</p>
+			<p class="source-code">    # First subscriber: (0, 1.0016899108886719)</p>
+			<p class="source-code">    # First subscriber: (1, 2.0027990341186523)</p>
+			<p class="source-code">    # First subscriber: (2, 3.003532648086548)</p>
+			<p class="source-code">    # Second subscriber: (2, 3.003532648086548)</p>
+			<p class="source-code">    # First subscriber: (3, 4.004265308380127)</p>
+			<p class="source-code">    # Second subscriber: (3, 4.004265308380127)</p>
+			<p class="source-code">    # Second subscriber: (4, 5.005320310592651)</p>
+			<p class="source-code">    # Second subscriber: (5, 6.005795240402222)</p>
+			<p>In this example, you can see how we first issue <strong class="source-inline">publish</strong>, then we subscribe the first subscriber, and finally, we issue <strong class="source-inline">connect</strong>. When <strong class="source-inline">connect</strong> is issued, the timer will start producing<a id="_idIndexMarker605"/> data. The second subscriber joins the party late and, in fact, won't receive the first two messages but will start receiving data<a id="_idIndexMarker606"/> from the third, and so on. Note that, this time around, the subscribers share the exact same data. This kind of data source, where data is produced independently of the subscribers, is called <strong class="bold">hot</strong>.</p>
+			<p>Similar to <strong class="source-inline">publish</strong>, you can use the <strong class="source-inline">replay</strong> method that will produce the data <em class="italic">from the beginning</em> for each new subscriber. This is illustrated in the following example, which is identical to the preceding one except that we replaced <strong class="source-inline">publish</strong> with <strong class="source-inline">replay</strong>:</p>
+			<p class="source-code">    from rx.operators import replay</p>
+			<p class="source-code">    start = time.time()</p>
+			<p class="source-code">    obs = <strong class="bold">replay()</strong>(map(lambda a: (a, time.time() - start) \</p>
+			<p class="source-code">      ( interval(1)))</p>
+			<p class="source-code">    take(4)(obs).subscribe(lambda x: print("First  \</p>
+			<p class="source-code">     subscriber: {}".format(x)))</p>
+			<p class="source-code"><strong class="bold">    obs.connect()</strong></p>
+			<p class="source-code">    time.sleep(2)</p>
+			<p class="source-code">    take(4)(obs).subscribe(lambda x: print("Second  \</p>
+			<p class="source-code">      subscriber: {}".format(x)))</p>
+			<p class="source-code">    First subscriber: (0, 1.0008857250213623)</p>
+			<p class="source-code">    First subscriber: (1, 2.0019824504852295)</p>
+			<p class="source-code"><strong class="bold">    </strong><strong class="bold">Second subscriber: (0, 1.0008857250213623)</strong></p>
+			<p class="source-code"><strong class="bold">    Second subscriber: (1, 2.0019824504852295)</strong></p>
+			<p class="source-code">    First subscriber: (2, 3.0030810832977295)</p>
+			<p class="source-code">    Second subscriber: (2, 3.0030810832977295)</p>
+			<p class="source-code">    First subscriber: (3, 4.004604816436768)</p>
+			<p class="source-code">    Second subscriber: (3, 4.004604816436768)</p>
+			<p>Notice<a id="_idIndexMarker607"/> that even though the second subscriber arrives late to the party, it is still given all the items that have been given out so far.</p>
+			<p>Another way of creating <a id="_idIndexMarker608"/>hot observables is through the <strong class="source-inline">Subject</strong> class. <strong class="source-inline">Subject</strong> is interesting because it's capable of both receiving and pushing data, and thus it can be used to manually <em class="italic">push</em> items to an observable. Using <strong class="source-inline">Subject</strong> is very intuitive; in the following code snippet, we create a <strong class="source-inline">Subject</strong> instance and subscribe to it. Later, we push values to it using the <strong class="source-inline">on_next</strong> method; as soon as we do that, the subscriber is called:</p>
+			<p class="source-code">    from rx.subject import Subject</p>
+			<p class="source-code">    s = Subject()</p>
+			<p class="source-code">    s.subscribe(lambda x: print("Subject emitted value: \</p>
+			<p class="source-code">      {}".format(x)))</p>
+			<p class="source-code">    s.on_next(1)</p>
+			<p class="source-code">    # Subject emitted value: 1</p>
+			<p class="source-code">    s.on_next(2)</p>
+			<p class="source-code">    # Subject emitted value: 2</p>
+			<p>Note that <strong class="source-inline">Subject</strong> is another<a id="_idIndexMarker609"/> example of a hot observable.</p>
+			<h2 id="_idParaDest-146"><a id="_idTextAnchor137"/>Building a CPU monitor</h2>
+			<p>Now that we <a id="_idIndexMarker610"/>have a grasp of the main<a id="_idIndexMarker611"/> reactive programming concepts, we can implement an example application: a monitor that will give us real-time information about our CPU usage and that can detect spikes.</p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">The complete code for the CPU monitor can be found in the <strong class="source-inline">cpu_monitor.py</strong> file.</p>
+			<p>As a first step, let's implement a data source. We will use the <strong class="source-inline">psutil</strong> module that provides a function, <strong class="source-inline">psutil.cpu_percent</strong>, that returns the latest available CPU usage as a percentage (and doesn't block). The code is illustrated in the following snippet:</p>
+			<p class="source-code">    import psutil</p>
+			<p class="source-code">    psutil.cpu_percent()</p>
+			<p class="source-code">    # Result: 9.7</p>
+			<p>Since we are developing a monitor, we would like to sample this information over a few time intervals. To accomplish, this we can use the familiar <strong class="source-inline">interval</strong> observable, followed by <strong class="source-inline">map</strong>, just as we did in the previous section. Also, we would like to make this observable <em class="italic">hot</em> as, for this application, all subscribers should receive a single source of data; to make <strong class="source-inline">interval</strong> hot, we can use the <strong class="source-inline">publish</strong> and <strong class="source-inline">connect</strong> methods. The full code for the creation of a <strong class="source-inline">cpu_data</strong> observable is shown here:</p>
+			<p class="source-code">    cpu_data = publish()(map(lambda x: \</p>
+			<p class="source-code">      psutil.cpu_percent())(interval(0.1)))</p>
+			<p class="source-code">    cpu_data.connect() # Start producing data</p>
+			<p>We can test our monitor by printing a sample of four items, as follows:</p>
+			<p class="source-code">    take(4)(cpu_data).subscribe(print)</p>
+			<p class="source-code">    # Output:</p>
+			<p class="source-code">    # 12.5</p>
+			<p class="source-code">    # 5.6</p>
+			<p class="source-code">    # 4.5</p>
+			<p class="source-code">    # 9.6</p>
+			<p>Now that<a id="_idIndexMarker612"/> our main data source is in place, we can implement a monitor visualization using <strong class="source-inline">matplotlib</strong>. The idea is to create a plot<a id="_idIndexMarker613"/> that contains a fixed number of measurements and, as new data arrives, we include the newest measurement and remove the oldest one. This is commonly referred to<a id="_idIndexMarker614"/> as a <em class="italic">moving window</em> and is better understood with an illustration. In the following diagram, our <strong class="source-inline">cpu_data</strong> stream is represented as a list of numbers. The first plot is produced as soon as we have the first four numbers and, each time a new number arrives, we shift the window by one position and update the plot:</p>
+			<div>
+				<div id="_idContainer134" class="IMG---Figure">
+					<img src="image/Figure_7.7_B17499.jpg" alt="Figure 7.7 – Illustration of a moving window " width="896" height="314"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 7.7 – Illustration of a moving window</p>
+			<p>To implement this algorithm, we can write a function called <strong class="source-inline">monitor_cpu</strong> that will create and update our plotting window. The function will do the following things:</p>
+			<ul>
+				<li>Initialize an empty plot and set up the correct plot limits.</li>
+				<li>Transform our <strong class="source-inline">cpu_data</strong> observable to return a moving window over the data. This can be accomplished using the <strong class="source-inline">buffer_with_count</strong> operator, which will take the number of points in our window, <strong class="source-inline">npoints</strong>, as parameters and the shift as <strong class="source-inline">1</strong>.</li>
+				<li>Subscribe to this new data stream and update the plot with the incoming data.</li>
+			</ul>
+			<p>The <a id="_idIndexMarker615"/>complete code for the function is implemented in <strong class="source-inline">cpu_monitor.py</strong> and shown here and, as you can see, is extremely<a id="_idIndexMarker616"/> compact. Go ahead and install <strong class="source-inline">matplotlib</strong> if you don't have it in your environment already, using <strong class="source-inline">pip install matplotlib</strong>.</p>
+			<p>Take some time to run the function and play with the parameters. You can view the code here:</p>
+			<p class="source-code">    from rx.operators import buffer_with_count</p>
+			<p class="source-code">    import numpy as np</p>
+			<p class="source-code">    import pylab as plt</p>
+			<p class="source-code">    def monitor_cpu(npoints):</p>
+			<p class="source-code">        lines, = plt.plot([], [])</p>
+			<p class="source-code">        plt.xlim(0, npoints) </p>
+			<p class="source-code">        plt.ylim(0, 100) # 0 to 100 percent</p>
+			<p class="source-code">        <strong class="bold">cpu_data_window = buffer_with_count(npoints, \ </strong></p>
+			<p class="source-code"><strong class="bold">          1)(cpu_data)</strong></p>
+			<p class="source-code">        def update_plot(cpu_readings):</p>
+			<p class="source-code">            lines.set_xdata(np.arange(len(cpu_readings)))</p>
+			<p class="source-code">            lines.set_ydata(np.array(cpu_readings))</p>
+			<p class="source-code">            plt.draw()</p>
+			<p class="source-code">        <strong class="bold">cpu_data_window.subscribe(update_plot)</strong></p>
+			<p class="source-code">        plt.show()</p>
+			<p>Another<a id="_idIndexMarker617"/> feature we may want to develop is an alert that triggers when the CPU has been high for a certain amount of time, as <a id="_idIndexMarker618"/>this may indicate that some of the processes in our machine are working very hard. This can be accomplished by combining <strong class="source-inline">buffer_with_count</strong> and <strong class="source-inline">map</strong>. We can take the CPU stream and a window, and test whether all items have a value higher than 20% usage (in a quad-core CPU, that corresponds to about one processor working at 100%) in the <strong class="source-inline">map</strong> function. If all the points in the window have a higher-than-20% usage, we display a warning in our plot window.</p>
+			<p>The implementation of the new observable can be written as follows and will produce an observable that emits <strong class="source-inline">True</strong> if the CPU has high usage, and <strong class="source-inline">False</strong> otherwise:</p>
+			<p class="source-code">    alertpoints = 4    </p>
+			<p class="source-code">    high_cpu = map(lambda readings: all(r &gt; 20 for r in \</p>
+			<p class="source-code">      readings))(</p>
+			<p class="source-code">        buffer_with_count(alertpoints, 1)(cpu_data)</p>
+			<p class="source-code">    )</p>
+			<p>Now that the <strong class="source-inline">high_cpu</strong> observable is ready, we can create a <strong class="source-inline">matplotlib</strong> label and subscribe to it for updates, as follows:</p>
+			<p class="source-code">    label = plt.text(1, 1, "normal")</p>
+			<p class="source-code">    def update_warning(is_high):</p>
+			<p class="source-code">        if is_high:</p>
+			<p class="source-code">            label.set_text("high")</p>
+			<p class="source-code">        else:</p>
+			<p class="source-code">            label.set_text("normal")</p>
+			<p class="source-code">    high_cpu.subscribe(update_warning)</p>
+			<p>Run the program from your terminal, and an interactive window will open to display your CPU usage<a id="_idIndexMarker619"/> data in real time. Here is a <a id="_idIndexMarker620"/>screenshot showing the output of our program:</p>
+			<div>
+				<div id="_idContainer135" class="IMG---Figure">
+					<img src="image/Figure_7.8_B17499.jpg" alt="Figure 7.8 – Monitoring CPU usage " width="1147" height="1015"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 7.8 – Monitoring CPU usage</p>
+			<p>Here, the blue curve denotes the CPU usage, which stays below the normal threshold.</p>
+			<p>While this example is relatively simple, it possesses the core components of a reactive program, and more complex applications that fully utilize the power of <strong class="source-inline">RxPY</strong> may be built using this as a blueprint.</p>
+			<h1 id="_idParaDest-147"><a id="_idTextAnchor138"/>Summary</h1>
+			<p>Asynchronous programming is useful when our code deals with slow and unpredictable resources, such as I/O devices and networks. In this chapter, we explored the fundamental concepts of concurrency and asynchronous programming and how to write concurrent code with the <strong class="source-inline">asyncio</strong> and <strong class="source-inline">RxPy</strong> libraries.</p>
+			<p><strong class="source-inline">asyncio</strong> coroutines are an excellent choice when dealing with multiple, interconnected resources as they greatly simplify the code logic by cleverly avoiding callbacks. Reactive programming is also very good in these situations, but it truly shines when dealing with streams of data that are common in real-time applications and UIs.</p>
+			<h1 id="_idParaDest-148"><a id="_idTextAnchor139"/>Questions</h1>
+			<ol>
+				<li value="1">How does asynchronous programming help programs run at higher speed?</li>
+				<li>What are the main differences between callbacks and futures in asynchronous programming?</li>
+				<li>What are the core characteristics/requirements of a reactive application?</li>
+			</ol>
+			<h1 id="_idParaDest-149"><a id="_idTextAnchor140"/>Further reading</h1>
+			<ul>
+				<li>Migrating to <strong class="source-inline">RxPY</strong> v3: <a href="https://rxpy.readthedocs.io/en/latests/migration.html">https://rxpy.readthedocs.io/en/latests/migration.html</a></li>
+			</ul>
+		</div>
+	</div>
+</div>
+</body></html>
