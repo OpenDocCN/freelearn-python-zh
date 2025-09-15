@@ -1,6 +1,6 @@
-# Go 编程蓝图
+# 精通 Python 网络编程第四版
 
-> 原文：[`zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66`](https://zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66)
+> 原文：[`zh.annas-archive.org/md5/f88f06bb979fcbf490f1ef5b9be8c705`](https://zh.annas-archive.org/md5/f88f06bb979fcbf490f1ef5b9be8c705)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 

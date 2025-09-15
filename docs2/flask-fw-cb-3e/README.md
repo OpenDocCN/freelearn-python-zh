@@ -1,6 +1,6 @@
-# Go 编程蓝图
+# Flask 框架秘籍第三版
 
-> 原文：[`zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66`](https://zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66)
+> 原文：[`zh.annas-archive.org/md5/414c4d9bab5f024306f1ffe2cc266dc5`](https://zh.annas-archive.org/md5/414c4d9bab5f024306f1ffe2cc266dc5)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 

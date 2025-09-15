@@ -1,6 +1,6 @@
-# Go 编程蓝图
+# Python3 面向对象编程第三版
 
-> 原文：[`zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66`](https://zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66)
+> 原文：[`zh.annas-archive.org/md5/8550e014ce3150b910158e8b98786756`](https://zh.annas-archive.org/md5/8550e014ce3150b910158e8b98786756)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 
