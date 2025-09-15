@@ -1,0 +1,2970 @@
+- en: '9'
+  id: totrans-0
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+  zh: '9'
+- en: Managing Payments and Orders
+  id: totrans-1
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+  zh: 管理支付和订单
+- en: In the previous chapter, you created a basic online shop with a product catalog
+    and a shopping cart. You learned how to use Django sessions and built a custom
+    context processor. You also learned how to launch asynchronous tasks using Celery
+    and RabbitMQ.
+  id: totrans-2
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在上一章中，您创建了一个基本的在线商店，包括产品目录和购物车。您学习了如何使用 Django 会话并构建自定义上下文处理器。您还学习了如何使用 Celery
+    和 RabbitMQ 启动异步任务。
+- en: In this chapter, you will learn how to integrate a payment gateway into your
+    site to let users pay by credit card and manage order payments. You will also
+    extend the administration site with different features.
+  id: totrans-3
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在本章中，您将学习如何将支付网关集成到您的网站中，以便用户可以通过信用卡支付并管理订单支付。您还将扩展管理站点以添加不同的功能。
+- en: 'In this chapter, you will:'
+  id: totrans-4
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在本章中，您将：
+- en: Integrate the Stripe payment gateway into your project
+  id: totrans-5
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 将 Stripe 支付网关集成到您的项目中
+- en: Process credit card payments with Stripe
+  id: totrans-6
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 使用 Stripe 处理信用卡支付
+- en: Handle payment notifications and mark orders as paid
+  id: totrans-7
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 处理支付通知并将订单标记为已支付
+- en: Export orders to CSV files
+  id: totrans-8
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 将订单导出为 CSV 文件
+- en: Create custom views for the administration site
+  id: totrans-9
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 为管理站点创建自定义视图
+- en: Generate PDF invoices dynamically
+  id: totrans-10
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 动态生成 PDF 发票
+- en: Functional overview
+  id: totrans-11
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+  zh: 功能概述
+- en: '*Figure 9.1* shows a representation of the views, templates, and functionalities
+    that will be built in this chapter:'
+  id: totrans-12
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '*图 9.1* 展示了本章将构建的视图、模板和功能表示：'
+- en: '![](img/B21088_09_01.png)'
+  id: totrans-13
+  prefs: []
+  type: TYPE_IMG
+  zh: '![](img/B21088_09_01.png)'
+- en: 'Figure 9.1: Diagram of the functionalities built in Chapter 9'
+  id: totrans-14
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 图 9.1：第 9 章构建的功能图
+- en: In this chapter, you will create a new `payment` app, where you will implement
+    the `payment_process` view to initiate a checkout session to pay orders with Stripe.
+    You will build the `payment_completed` view to redirect users after successful
+    payments and the `payment_canceled` view to redirect users if the payment is canceled.
+    You will implement the `export_to_csv` admin action to export orders in CSV format
+    in the administration site. You will also build the admin view `admin_order_detail`
+    to display order details and the `admin_order_pdf` view to generate PDF invoices
+    dynamically. You will implement the `stripe_webhook` webhook to receive asynchronous
+    payment notifications from Stripe, and you will implement the `payment_completed`
+    asynchronous task to send invoices to clients when orders are paid.
+  id: totrans-15
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在本章中，您将创建一个新的 `payment` 应用程序，在该应用程序中，您将实现 `payment_process` 视图以启动结账会话并使用 Stripe
+    支付订单。您将构建 `payment_completed` 视图以在支付成功后重定向用户，以及 `payment_canceled` 视图以在支付取消时重定向用户。您将实现
+    `export_to_csv` 管理操作以在管理站点中以 CSV 格式导出订单。您还将构建管理视图 `admin_order_detail` 以显示订单详情和
+    `admin_order_pdf` 视图以动态生成 PDF 发票。您将实现 `stripe_webhook` webhook 以接收来自 Stripe 的异步支付通知，并且您将实现
+    `payment_completed` 异步任务以在订单支付时向客户发送发票。
+- en: The source code for this chapter can be found at [https://github.com/PacktPublishing/Django-5-by-example/tree/main/Chapter09](https://github.com/PacktPublishing/Django-5-by-example/tree/main/Chapter09).
+  id: totrans-16
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 本章的源代码可以在 [https://github.com/PacktPublishing/Django-5-by-example/tree/main/Chapter09](https://github.com/PacktPublishing/Django-5-by-example/tree/main/Chapter09)
+    找到。
+- en: All Python packages used in this chapter are included in the `requirements.txt`
+    file in the source code for the chapter. You can follow the instructions to install
+    each Python package in the following sections, or you can install all the requirements
+    at once with the command `python` `-m` `pip` `install` `-r` `requirements.txt`.
+  id: totrans-17
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 本章中使用的所有 Python 包都包含在章节源代码中的 `requirements.txt` 文件中。您可以根据以下部分中的说明安装每个 Python
+    包，或者您可以使用命令 `python -m pip install -r requirements.txt` 一次性安装所有依赖项。
+- en: Integrating a payment gateway
+  id: totrans-18
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+  zh: 集成支付网关
+- en: A payment gateway is a technology used by merchants to process payments from
+    customers online. Using a payment gateway, you can manage customers’ orders and
+    delegate payment processing to a reliable, secure third party. By using a trusted
+    payment gateway, you won’t have to worry about the technical, security, and regulatory
+    complexity of processing credit cards in your own system.
+  id: totrans-19
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 支付网关是一种由商家使用的在线处理客户支付的技术。使用支付网关，您可以管理客户的订单并将支付处理委托给可靠、安全的第三方。通过使用受信任的支付网关，您无需担心在自己的系统中处理信用卡的技术、安全和监管复杂性。
+- en: There are several payment gateway providers to choose from. We are going to
+    integrate Stripe, which is a very popular payment gateway used by online services
+    such as Shopify, Uber, Twitch, and GitHub, among others.
+  id: totrans-20
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 有多个支付网关提供商可供选择。我们将集成 Stripe，这是一个非常流行的支付网关，被 Shopify、Uber、Twitch 和 GitHub 等在线服务以及其他服务使用。
+- en: Stripe provides an **Application Programming Interface** (**API**) that allows
+    you to process online payments with multiple payment methods, such as credit card,
+    Google Pay, and Apple Pay. You can learn more about Stripe at [https://www.stripe.com/](https://www.stripe.com/).
+  id: totrans-21
+  prefs: []
+  type: TYPE_NORMAL
+  zh: Stripe 提供了一个 **应用程序编程接口** (**API**)，允许您使用多种支付方式（如信用卡、Google Pay 和 Apple Pay）处理在线支付。您可以在
+    [https://www.stripe.com/](https://www.stripe.com/) 上了解更多关于 Stripe 的信息。
+- en: Stripe provides different products related to payment processing. It can manage
+    one-off payments, recurring payments for subscription services, multiparty payments
+    for platforms and marketplaces, and more.
+  id: totrans-22
+  prefs: []
+  type: TYPE_NORMAL
+  zh: Stripe 提供与支付处理相关的不同产品。它可以管理一次性支付、订阅服务的定期支付、平台和市场的多方支付等。
+- en: Stripe offers different integration methods, from Stripe-hosted payment forms
+    to fully customizable checkout flows. We will integrate the *Stripe* *Checkout*
+    product, which consists of a payment page optimized for conversion. Users will
+    be able to easily pay with a credit card or other payment methods for the items
+    they order. We will receive payment notifications from Stripe. You can see the
+    *Stripe* *Checkout* documentation at [https://stripe.com/docs/payments/checkout](https://stripe.com/docs/payments/checkout).
+  id: totrans-23
+  prefs: []
+  type: TYPE_NORMAL
+  zh: Stripe 提供不同的集成方法，从 Stripe 托管的支付表单到完全可定制的结账流程。我们将集成 *Stripe* *Checkout* 产品，它由一个优化转换的支付页面组成。用户将能够轻松地使用信用卡或其他支付方式支付他们订购的商品。我们将从
+    Stripe 收到支付通知。您可以在 [https://stripe.com/docs/payments/checkout](https://stripe.com/docs/payments/checkout)
+    上查看 *Stripe* *Checkout* 文档。
+- en: By leveraging *Stripe* *Checkout* to process payments, you rely on a solution
+    that is secure and compliant with **Payment Card Industry** (**PCI**) requirements.
+    You will be able to collect payments from Google Pay, Apple Pay, Afterpay, Alipay,
+    SEPA direct debits, Bacs direct debits, BECS direct debits, iDEAL, Sofort, GrabPay,
+    FPX, and other payment methods.
+  id: totrans-24
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 通过利用 *Stripe* *Checkout* 处理支付，您依赖于一个既安全又符合 **支付卡行业** (**PCI**) 要求的解决方案。您将能够从
+    Google Pay、Apple Pay、Afterpay、Alipay、SEPA 直接借记、Bacs 直接借记、BECS 直接借记、iDEAL、Sofort、GrabPay、FPX
+    以及其他支付方式中收集款项。
+- en: Creating a Stripe account
+  id: totrans-25
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+  zh: 创建 Stripe 账户
+- en: You need a Stripe account to integrate the payment gateway into your site. Let’s
+    create an account to test the Stripe API. Open [https://dashboard.stripe.com/register](https://dashboard.stripe.com/register)
+    in your browser.
+  id: totrans-26
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 您需要一个 Stripe 账户才能将支付网关集成到您的网站上。让我们创建一个账户来测试 Stripe API。在您的浏览器中打开 [https://dashboard.stripe.com/register](https://dashboard.stripe.com/register)。
+- en: 'You will see a form like the following one:'
+  id: totrans-27
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 您将看到一个如下所示的形式：
+- en: '![](img/B21088_09_02.png)'
+  id: totrans-28
+  prefs: []
+  type: TYPE_IMG
+  zh: '![](img/B21088_09_02.png)'
+- en: 'Figure 9.2: The Stripe signup form'
+  id: totrans-29
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 图 9.2：Stripe 注册表单
+- en: 'Fill in the form with your own data and click on **Create account**. You will
+    receive an email from Stripe with a link to verify your email address. The email
+    will look like this:'
+  id: totrans-30
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 使用您自己的数据填写表格，并点击 **创建账户**。您将收到来自 Stripe 的电子邮件，其中包含一个用于验证电子邮件地址的链接。电子邮件将如下所示：
+- en: '![](img/B21088_09_03.png)'
+  id: totrans-31
+  prefs: []
+  type: TYPE_IMG
+  zh: '![](img/B21088_09_03.png)'
+- en: 'Figure 9.3: The verification email to verify your email address'
+  id: totrans-32
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 图 9.3：验证电子邮件地址的验证邮件
+- en: Open the email in your inbox and click on **Verify email**.
+  id: totrans-33
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 打开您的收件箱中的电子邮件并点击 **验证电子邮件**。
+- en: 'You will be redirected to the Stripe dashboard screen, which will look like
+    this:'
+  id: totrans-34
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 您将被重定向到 Stripe 控制台屏幕，其外观如下：
+- en: '![](img/B21088_09_04.png)'
+  id: totrans-35
+  prefs: []
+  type: TYPE_IMG
+  zh: '![](img/B21088_09_04.png)'
+- en: 'Figure 9.4: The Stripe dashboard after verifying the email address'
+  id: totrans-36
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 图 9.4：验证电子邮件地址后的 Stripe 控制台
+- en: At the top right of the screen, you can see that **Test mode** is activated.
+    Stripe provides you with a test environment and a production environment. If you
+    own a business or are a freelancer, you can add your business details to activate
+    the account and get access to process real payments. However, this is not necessary
+    to implement and test payments through Stripe, as we will be working in the test
+    environment.
+  id: totrans-37
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在屏幕右上角，您可以看到 **测试模式** 已激活。Stripe 为您提供了一个测试环境和生产环境。如果您是商人或自由职业者，您可以添加您的业务详情以激活账户并获取处理真实支付的权利。然而，这并不是通过
+    Stripe 实现和测试支付所必需的，因为我们将在测试环境中工作。
+- en: You need to add an account name to process payments. Open [https://dashboard.stripe.com/settings/account](https://dashboard.stripe.com/settings/account)
+    in your browser.
+  id: totrans-38
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 您需要添加一个账户名称来处理支付。在您的浏览器中打开 [https://dashboard.stripe.com/settings/account](https://dashboard.stripe.com/settings/account)。
+- en: 'You will see the following screen:'
+  id: totrans-39
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 您将看到以下屏幕：
+- en: '![](img/B21088_09_05.png)'
+  id: totrans-40
+  prefs: []
+  type: TYPE_IMG
+  zh: '![](img/B21088_09_05.png)'
+- en: 'Figure 9.5: The Stripe account settings'
+  id: totrans-41
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 图 9.5：Stripe 账户设置
+- en: 'Under **Account name**, enter the name of your choice and then click on **Save**.
+    Go back to the Stripe dashboard. You will see your account name displayed in the
+    header:'
+  id: totrans-42
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在**账户名称**下输入您选择的名称，然后点击**保存**。返回Stripe仪表板。您将在页眉中看到您的账户名称：
+- en: '![](img/B21088_09_06.png)'
+  id: totrans-43
+  prefs: []
+  type: TYPE_IMG
+  zh: '![](img/B21088_09_06.png)'
+- en: 'Figure 9.6: The Stripe dashboard header including the account name'
+  id: totrans-44
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 图9.6：包含账户名称的Stripe仪表板页眉
+- en: We will continue by installing the Stripe Python SDK and adding Stripe to our
+    Django project.
+  id: totrans-45
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们将继续通过安装Stripe Python SDK并将Stripe添加到我们的Django项目中。
+- en: Installing the Stripe Python library
+  id: totrans-46
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+  zh: 安装Stripe Python库
+- en: Stripe provides a Python library that simplifies dealing with its API. We are
+    going to integrate the payment gateway into the project using the `stripe` library.
+  id: totrans-47
+  prefs: []
+  type: TYPE_NORMAL
+  zh: Stripe提供了一个Python库，简化了处理其API的过程。我们将使用`stripe`库将支付网关集成到项目中。
+- en: You can find the source code for the Stripe Python library at [https://github.com/stripe/stripe-python](https://github.com/stripe/stripe-python).
+  id: totrans-48
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 您可以在[https://github.com/stripe/stripe-python](https://github.com/stripe/stripe-python)找到Stripe
+    Python库的源代码。
+- en: 'Install the `stripe` library from the shell using the following command:'
+  id: totrans-49
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 使用以下命令从shell中安装`stripe`库：
+- en: '[PRE0]'
+  id: totrans-50
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE0]'
+- en: Adding Stripe to your project
+  id: totrans-51
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+  zh: 将Stripe添加到您的项目中
+- en: 'Open [https://dashboard.stripe.com/test/apikeys](https://dashboard.stripe.com/test/apikeys)
+    in your browser. You can also access this page from the Stripe dashboard by clicking
+    on **Developers** and then clicking on **API keys**. You will see the following
+    screen:'
+  id: totrans-52
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在浏览器中打开[https://dashboard.stripe.com/test/apikeys](https://dashboard.stripe.com/test/apikeys)。您也可以通过点击Stripe仪表板上的**开发者**然后点击**API密钥**来访问此页面。您将看到以下屏幕：
+- en: '![](img/B21088_09_07.png)'
+  id: totrans-53
+  prefs: []
+  type: TYPE_IMG
+  zh: '![](img/B21088_09_07.png)'
+- en: 'Figure 9.7: The Stripe test API keys screen'
+  id: totrans-54
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 图9.7：Stripe测试API密钥屏幕
+- en: Stripe provides a key pair for the two different environments, test and production.
+    There is a **Publishable key** and a **Secret key** for each environment. Test
+    mode publishable keys have the prefix `pk_test_` and live mode publishable keys
+    have the prefix `pk_live_`. Test mode secret keys have the prefix `sk_test_` and
+    live mode secret keys have the prefix `sk_live_`.
+  id: totrans-55
+  prefs: []
+  type: TYPE_NORMAL
+  zh: Stripe为两个不同的环境提供了密钥对，即测试和生产环境。每个环境都有一个**发布密钥**和**密钥**。测试模式的发布密钥前缀为`pk_test_`，实时模式的发布密钥前缀为`pk_live_`。测试模式的密钥前缀为`sk_test_`，实时模式的密钥前缀为`sk_live_`。
+- en: You will need this information to authenticate requests to the Stripe API. You
+    should always keep your private key secret and store it securely. The publishable
+    key can be used in client-side code such as JavaScript scripts. You can read more
+    about Stripe API keys at [https://stripe.com/docs/keys](https://stripe.com/docs/keys).
+  id: totrans-56
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 您需要这些信息来验证对Stripe API的请求。您应该始终保密您的私钥并安全存储。发布密钥可用于客户端代码，如JavaScript脚本。您可以在[https://stripe.com/docs/keys](https://stripe.com/docs/keys)上了解更多关于Stripe
+    API密钥的信息。
+- en: To facilitate separating configuration from code, we are going to use `python-decouple`.
+    You already used this library in *Chapter 2*, *Enhancing Your Blog and Adding
+    Social Features*.
+  id: totrans-57
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 为了便于将配置与代码分离，我们将使用`python-decouple`。您已经在*第2章*，*增强您的博客并添加社交功能*中使用了这个库。
+- en: 'Create a new file inside your project’s root directory and name it `.env`.
+    The `.env` file will contain key-value pairs of environment variables. Add the
+    Stripe credentials to the new file, as follows:'
+  id: totrans-58
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在您的项目根目录内创建一个新文件，并将其命名为`.env`。`.env`文件将包含环境变量的键值对。将Stripe凭证添加到新文件中，如下所示：
+- en: '[PRE1]'
+  id: totrans-59
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE1]'
+- en: Replace the `STRIPE_PUBLISHABLE_KEY` and `STRIPE_SECRET_KEY` values with the
+    test **Publishable key** and **Secret key** values provided by Stripe.
+  id: totrans-60
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 将`STRIPE_PUBLISHABLE_KEY`和`STRIPE_SECRET_KEY`值替换为Stripe提供的测试**发布密钥**和**密钥**值。
+- en: If you are using a `git` repository for your code, make sure to include `.env`
+    in the `.gitignore` file of your repository. By doing so, you ensure that credentials
+    are excluded from the repository.
+  id: totrans-61
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 如果您使用`git`仓库存储代码，请确保将`.env`包含在您的仓库`.gitignore`文件中。这样做可以确保凭证不被包含在仓库中。
+- en: 'Install `python-decouple` via `pip` by running the following command:'
+  id: totrans-62
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 通过运行以下命令使用`pip`安装`python-decouple`：
+- en: '[PRE2]'
+  id: totrans-63
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE2]'
+- en: 'Edit the `settings.py` file of your project and add the following code to it:'
+  id: totrans-64
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 编辑您的项目`settings.py`文件，并向其中添加以下代码：
+- en: '[PRE3]'
+  id: totrans-65
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE3]'
+- en: You will use Stripe API version `2024-04-10`. You can see the release notes
+    for this API version at [https://stripe.com/docs/upgrades#2024-04-10](https://stripe.com/docs/api/events/types).
+  id: totrans-66
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 您将使用Stripe API版本`2024-04-10`。您可以在[https://stripe.com/docs/upgrades#2024-04-10](https://stripe.com/docs/api/events/types)上查看此API版本的发布说明。
+- en: You are using the test environment keys for the project. Once you go live and
+    validate your Stripe account, you will obtain the production environment keys.
+    In *Chapter 17*, *Going Live*, you will learn how to configure settings for multiple
+    environments.
+  id: totrans-67
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 您正在使用项目的测试环境密钥。一旦您上线并验证您的Stripe账户，您将获得生产环境的密钥。在*第17章*，*上线*中，您将学习如何配置多个环境的设置。
+- en: Let’s integrate the payment gateway into the checkout process. You can find
+    the Python documentation for Stripe at [https://stripe.com/docs/api?lang=python](https://stripe.com/docs/api/events/types).
+  id: totrans-68
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 让我们将支付网关集成到结账流程中。您可以在[https://stripe.com/docs/api?lang=python](https://stripe.com/docs/api/events/types)找到Stripe的Python文档。
+- en: Building the payment process
+  id: totrans-69
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+  zh: 构建支付流程
+- en: 'The checkout process will work as follows:'
+  id: totrans-70
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 结账流程将按以下方式工作：
+- en: Add items to the shopping cart.
+  id: totrans-71
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 将商品添加到购物车。
+- en: Check out the shopping cart.
+  id: totrans-72
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 检查购物车。
+- en: Enter credit card details and pay.
+  id: totrans-73
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 输入信用卡详情并支付。
+- en: 'We are going to create a new application to manage payments. Create a new application
+    in your project using the following command:'
+  id: totrans-74
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们将创建一个新的应用程序来管理支付。使用以下命令在您的项目中创建一个新的应用程序：
+- en: '[PRE4]'
+  id: totrans-75
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE4]'
+- en: 'Edit the `settings.py` file of the project and add the new application to the
+    `INSTALLED_APPS` setting, as follows. The new line is highlighted in bold:'
+  id: totrans-76
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 编辑项目的`settings.py`文件并将新应用程序添加到`INSTALLED_APPS`设置中，如下所示。新行以粗体突出显示：
+- en: '[PRE5]'
+  id: totrans-77
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE5]'
+- en: The `payment` application is now active in the project.
+  id: totrans-78
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '`payment`应用程序现在已在项目中激活。'
+- en: Currently, users are able to place orders but they cannot pay for them. After
+    clients place an order, we need to redirect them to the payment process.
+  id: totrans-79
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 目前，用户可以下订单但不能支付。在客户下单后，我们需要将他们重定向到支付流程。
+- en: 'Edit the `views.py` file of the `orders` application and include the following
+    import:'
+  id: totrans-80
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 编辑`orders`应用程序的`views.py`文件并包含以下导入：
+- en: '[PRE6]'
+  id: totrans-81
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE6]'
+- en: 'In the same file, find the following lines of the `order_create` view:'
+  id: totrans-82
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在同一文件中，找到以下`order_create`视图的行：
+- en: '[PRE7]'
+  id: totrans-83
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE7]'
+- en: 'Replace them with the following code:'
+  id: totrans-84
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 将它们替换为以下代码：
+- en: '[PRE8]'
+  id: totrans-85
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE8]'
+- en: 'The edited view should look as follows:'
+  id: totrans-86
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 编辑后的视图应如下所示：
+- en: '[PRE9]'
+  id: totrans-87
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE9]'
+- en: Instead of rendering the template `orders/order/created.html` when placing a
+    new order, the order ID is stored in the user session and the user is redirected
+    to the `payment:process` URL. We are going to implement this URL later. Remember
+    that Celery has to be running for the `order_created` task to be queued and executed.
+  id: totrans-88
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在放置新订单时，不是渲染模板`orders/order/created.html`，而是将订单ID存储在用户会话中，并将用户重定向到`payment:process`
+    URL。我们将在稍后实现此URL。请记住，Celery必须运行，以便`order_created`任务可以排队并执行。
+- en: Let’s integrate the payment gateway.
+  id: totrans-89
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 让我们将支付网关集成。
+- en: Integrating Stripe Checkout
+  id: totrans-90
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+  zh: 集成Stripe结账
+- en: The Stripe Checkout integration consists of a checkout page hosted by Stripe
+    that allows the user to enter the payment details, usually a credit card, and
+    then it collects the payment. If the payment is successful, Stripe redirects the
+    client to a success page. If the payment is canceled by the client, it redirects
+    the client to a cancel page.
+  id: totrans-91
+  prefs: []
+  type: TYPE_NORMAL
+  zh: Stripe结账集成包括由Stripe托管的结账页面，允许用户输入支付详情，通常是一张信用卡，然后它收集支付。如果支付成功，Stripe将客户端重定向到成功页面。如果客户端取消支付，它将客户端重定向到取消页面。
+- en: 'We will implement three views:'
+  id: totrans-92
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们将实现三个视图：
+- en: '`payment_process`: Creates a Stripe **Checkout Session** and redirects the
+    client to the Stripe-hosted payment form. A checkout session is a programmatic
+    representation of what the client sees when they are redirected to the payment
+    form, including the products, quantities, currency, and amount to charge.'
+  id: totrans-93
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: '`payment_process`：创建Stripe **结账会话**并将客户端重定向到由Stripe托管的支付表单。结账会话是客户端重定向到支付表单时看到的程序表示，包括产品、数量、货币和要收取的金额。'
+- en: '`payment_completed`: Displays a message for successful payments. The user is
+    redirected to this view if the payment is successful.'
+  id: totrans-94
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: '`payment_completed`：显示成功支付的提示信息。如果支付成功，用户将被重定向到此视图。'
+- en: '`payment_canceled`: Displays a message for canceled payments. The user is redirected
+    to this view if the payment is canceled.'
+  id: totrans-95
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: '`payment_canceled`：显示取消支付的提示信息。如果支付被取消，用户将被重定向到此视图。'
+- en: '*Figure 9.8* shows the checkout payment flow:'
+  id: totrans-96
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '*图9.8*显示了结账支付流程：'
+- en: '![Graphical user interface, application  Description automatically generated](img/B21088_09_08.png)'
+  id: totrans-97
+  prefs: []
+  type: TYPE_IMG
+  zh: '![图形用户界面，应用程序描述自动生成](img/B21088_09_08.png)'
+- en: 'Figure 9.8: The checkout payment flow'
+  id: totrans-98
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 图9.8：结账支付流程
+- en: 'The complete checkout process will work as follows:'
+  id: totrans-99
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 完整的结账流程将按以下方式工作：
+- en: After an order is created, the user is redirected to the `payment_process` view.
+    The user is presented with an order summary and a button to proceed with the payment.
+  id: totrans-100
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 创建订单后，用户将被重定向到`payment_process`视图。用户将看到订单摘要和继续付款的按钮。
+- en: When the user proceeds to pay, a Stripe checkout session is created. The checkout
+    session includes the list of items that the user will purchase, a URL to redirect
+    the user to after a successful payment, and a URL to redirect the user to if the
+    payment is canceled.
+  id: totrans-101
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 当用户继续付款时，将创建一个Stripe结账会话。结账会话包括用户将要购买的项目列表、成功付款后重定向用户的URL以及付款取消时重定向用户的URL。
+- en: The view redirects the user to the Stripe-hosted checkout page. This page includes
+    the payment form. The client enters their credit card details and submits the
+    form.
+  id: totrans-102
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 视图将用户重定向到由Stripe托管的结账页面。此页面包括付款表单。客户端输入他们的信用卡详情并提交表单。
+- en: Stripe processes the payment and redirects the client to the `payment_completed`
+    view. If the client doesn’t complete the payment, Stripe redirects the client
+    to the `payment_canceled` view instead.
+  id: totrans-103
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: Stripe处理付款并将客户端重定向到`payment_completed`视图。如果客户端未完成付款，Stripe将客户端重定向到`payment_canceled`视图。
+- en: 'Let’s start building the payment views. Edit the `views.py` file of the `payment`
+    application and add the following code to it:'
+  id: totrans-104
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 让我们开始构建付款视图。编辑`payment`应用的`views.py`文件，并向其中添加以下代码：
+- en: '[PRE10]'
+  id: totrans-105
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE10]'
+- en: In the previous code, the `stripe` module is imported and the Stripe API key
+    is set using the value of the `STRIPE_SECRET_KEY` setting. The API version to
+    use is also set using the value of the `STRIPE_API_VERSION` setting.
+  id: totrans-106
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在前面的代码中，导入了`stripe`模块，并使用`STRIPE_SECRET_KEY`设置的值设置Stripe API密钥。要使用的API版本也使用`STRIPE_API_VERSION`设置的值设置。
+- en: 'The `payment_process` view performs the following tasks:'
+  id: totrans-107
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '`payment_process`视图执行以下任务：'
+- en: The current `Order` object is retrieved from the database using the `order_id`
+    session key, which was stored previously in the session by the `order_create`
+    view.
+  id: totrans-108
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 使用`order_id`会话键从数据库检索当前的`Order`对象，该键之前由`order_create`视图存储在会话中。
+- en: The `Order` object for the given ID is retrieved. By using the shortcut function
+    `get_object_or_404()`, an `Http404` (page not found) exception is raised if no
+    order is found with the given ID.
+  id: totrans-109
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 对于给定的ID检索`Order`对象。通过使用快捷函数`get_object_or_404()`，如果没有找到具有给定ID的订单，将引发`Http404`（页面未找到）异常。
+- en: If the view is loaded with a `GET` request, the template `payment/process.html`
+    is rendered and returned. This template will include the order summary and a button
+    to proceed with the payment, which will generate a `POST` request to the view.
+  id: totrans-110
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 如果视图通过`GET`请求加载，则渲染并返回模板`payment/process.html`。此模板将包括订单摘要和继续付款的按钮，这将生成一个发送到视图的`POST`请求。
+- en: 'Alternatively, if the view is loaded with a `POST` request, a Stripe checkout
+    session is created with `stripe.checkout.Session.create()` using the following
+    parameters:'
+  id: totrans-111
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 或者，如果视图通过`POST`请求加载，则使用以下参数通过`stripe.checkout.Session.create()`创建带有`POST`请求的Stripe结账会话：
+- en: '`mode`: The mode of the checkout session. We use `payment` for a one-time payment.
+    You can see the different values accepted for this parameter at [https://stripe.com/docs/api/checkout/sessions/object#checkout_session_object-mode](https://stripe.com/docs/api/checkout/sessions/object#checkout_session_object-mode).'
+  id: totrans-112
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: '`mode`: 结账会话的模式。我们使用`payment`进行一次性付款。您可以在[https://stripe.com/docs/api/checkout/sessions/object#checkout_session_object-mode](https://stripe.com/docs/api/checkout/sessions/object#checkout_session_object-mode)查看此参数接受的不同值。'
+- en: '`client_reference_id`: The unique reference for this payment. We will use this
+    to reconcile the Stripe checkout session with our order. By passing the order
+    ID, we link Stripe payments to orders in our system and we will be able to receive
+    payment notifications from Stripe to mark the orders as paid.'
+  id: totrans-113
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: '`client_reference_id`: 这是此付款的唯一参考。我们将使用它来对冲Stripe结账会话与我们的订单。通过传递订单ID，我们将Stripe付款与系统中的订单链接起来，并能够从Stripe接收付款通知以标记订单为已支付。'
+- en: '`success_url`: The URL for Stripe to redirect the user to if the payment is
+    successful. We use `request.build_absolute_uri()` to generate an absolute URI
+    from the URL path. You can see the documentation for this method at [https://docs.djangoproject.com/en/5.0/ref/request-response/#django.http.HttpRequest.build_absolute_uri](https://docs.djangoproject.com/en/5.0/ref/request-response/#django.http.HttpRequest.build_absolute_uri).'
+  id: totrans-114
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: '`success_url`: 如果支付成功，Stripe将重定向用户到的URL。我们使用`request.build_absolute_uri()`从URL路径生成绝对URI。您可以在[https://docs.djangoproject.com/en/5.0/ref/request-response/#django.http.HttpRequest.build_absolute_uri](https://docs.djangoproject.com/en/5.0/ref/request-response/#django.http.HttpRequest.build_absolute_uri)查看此方法的文档。'
+- en: '`cancel_url`: The URL for Stripe to redirect the user to if the payment is
+    canceled.'
+  id: totrans-115
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: '`cancel_url`: 如果支付被取消，Stripe将重定向用户到的URL。'
+- en: '`line_items`: This is an empty list. We will next populate it with the order
+    items to be purchased.'
+  id: totrans-116
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: '`line_items`: 这是一个空列表。我们将接下来用要购买的商品订单填充它。'
+- en: After creating the checkout session, an HTTP redirect with status code `303`
+    is returned to redirect the user to Stripe. The status code `303` is recommended
+    to redirect web applications to a new URI after an HTTP `POST` has been performed.
+  id: totrans-117
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 创建结账会话后，返回HTTP重定向状态码`303`以将用户重定向到Stripe。建议在执行HTTP `POST`操作后，将Web应用程序重定向到新的URI时使用状态码`303`。
+- en: You can see all the parameters to create a Stripe `session` object at [https://stripe.com/docs/api/checkout/sessions/create](https://stripe.com/docs/api/checkout/sessions/create).
+  id: totrans-118
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 您可以在[https://stripe.com/docs/api/checkout/sessions/create](https://stripe.com/docs/api/checkout/sessions/create)查看创建Stripe
+    `session`对象的所有参数。
+- en: Let’s populate the `line_items` list with the order items to create the checkout
+    session. Each item will contain the name of the item, the amount to charge, the
+    currency to use, and the quantity purchased.
+  id: totrans-119
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 让我们用订单商品填充`line_items`列表以创建结账会话。每个项目将包含项目的名称、要收取的金额、使用的货币和购买的数量。
+- en: 'Add the following code highlighted in bold to the `payment_process` view:'
+  id: totrans-120
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 将以下加粗的代码添加到`payment_process`视图中：
+- en: '[PRE11]'
+  id: totrans-121
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE11]'
+- en: 'We use the following information for each item:'
+  id: totrans-122
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们为每个项目使用以下信息：
+- en: '`price_data`: Price-related information:'
+  id: totrans-123
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: '`price_data`: 与价格相关的信息：'
+- en: '`unit_amount`: The amount in cents to be collected by the payment. This is
+    a positive integer representing how much to charge in the smallest currency unit
+    with no decimal places. For example, to charge $10.00, this would be `1000` (that
+    is, 1,000 cents). The item price, `item.price`, is multiplied by `Decimal(''100'')`
+    to obtain the value in cents, and then it is converted into an integer.'
+  id: totrans-124
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: '`unit_amount`: 支付要收取的金额（以分计）。这是一个正整数，表示以最小货币单位（无小数位）收取的金额。例如，要收取10.00美元，这将表示`1000`（即1,000分）。项目价格`item.price`乘以`Decimal(''100'')`以获得分值，然后将其转换为整数。'
+- en: '`currency`: The currency to use in the three-letter ISO format. We use `usd`
+    for US dollars. You can see a list of supported currencies at [https://stripe.com/docs/currencies](https://stripe.com/docs/currencies).'
+  id: totrans-125
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: '`currency`: 在三个字母的ISO格式中使用的货币。我们使用`usd`表示美元。您可以在[https://stripe.com/docs/currencies](https://stripe.com/docs/currencies)查看支持的货币列表。'
+- en: '`product_data`: Product-related information:'
+  id: totrans-126
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: '`product_data`: 与产品相关的信息：'
+- en: '`name`: The name of the product'
+  id: totrans-127
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: '`name`: 产品的名称'
+- en: '`quantity`: The number of units to purchase'
+  id: totrans-128
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: '`quantity`: 购买单位的数量'
+- en: The `payment_process` view is now ready. Let’s create simple views for the payment
+    success and cancel pages.
+  id: totrans-129
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '`payment_process`视图现在已准备就绪。让我们为支付成功和取消页面创建简单的视图。'
+- en: 'Add the following code to the `views.py` file of the `payment` application:'
+  id: totrans-130
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 将以下代码添加到`payment`应用程序的`views.py`文件中：
+- en: '[PRE12]'
+  id: totrans-131
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE12]'
+- en: 'Create a new file inside the `payment` application directory and name it `urls.py`.
+    Add the following code to it:'
+  id: totrans-132
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在`payment`应用程序目录内创建一个新文件，并将其命名为`urls.py`。向其中添加以下代码：
+- en: '[PRE13]'
+  id: totrans-133
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE13]'
+- en: 'These are the URLs for the payment workflow. We have included the following
+    URL patterns:'
+  id: totrans-134
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 这些是支付工作流程的URL。我们包含了以下URL模式：
+- en: '`process`: The view that displays the order summary to the user, creates the
+    Stripe checkout session, and redirects the user to the Stripe-hosted payment form'
+  id: totrans-135
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: '`process`: 显示订单摘要给用户的视图，创建Stripe结账会话，并将用户重定向到由Stripe托管的支付表单'
+- en: '`completed`: The view for Stripe to redirect the user to if the payment is
+    successful'
+  id: totrans-136
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: '`completed`: 如果支付成功，Stripe将重定向用户到的视图'
+- en: '`canceled`: The view for Stripe to redirect the user to if the payment is canceled'
+  id: totrans-137
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: '`canceled`: 如果支付被取消，Stripe将重定向用户到的视图'
+- en: 'Edit the main `urls.py` file of the `myshop` project and include the URL patterns
+    for the `payment` application, as follows:'
+  id: totrans-138
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 编辑`myshop`项目的主体`urls.py`文件，并包含`payment`应用程序的URL模式，如下所示：
+- en: '[PRE14]'
+  id: totrans-139
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE14]'
+- en: We have placed the new path before the `shop.urls` pattern to avoid an unintended
+    pattern match with a pattern defined in `shop.urls`. Remember that Django runs
+    through each URL pattern in order and stops at the first one that matches the
+    requested URL.
+  id: totrans-140
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们在`shop.urls`模式之前放置了新的路径，以避免与`shop.urls`中定义的模式意外匹配。请记住，Django按顺序遍历每个URL模式，并在找到第一个与请求URL匹配的模式时停止。
+- en: 'Let’s build a template for each view. Create the following file structure inside
+    the `payment` application directory:'
+  id: totrans-141
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 让我们为每个视图构建一个模板。在`payment`应用程序目录内创建以下文件结构：
+- en: '[PRE15]'
+  id: totrans-142
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE15]'
+- en: 'Edit the `payment/process.html` template and add the following code to it:'
+  id: totrans-143
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 编辑`payment/process.html`模板，并向其中添加以下代码：
+- en: '[PRE16]'
+  id: totrans-144
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE16]'
+- en: This is the template to display the order summary to the user and allow the
+    client to proceed with the payment. It includes a form and a **Pay now** button
+    to submit it via `POST`. When the form is submitted, the `payment_process` view
+    creates the Stripe checkout session and redirects the user to the Stripe-hosted
+    payment form.
+  id: totrans-145
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 这是向用户显示订单摘要并允许客户端进行支付的模板。它包括一个表单和一个**立即支付**按钮，可以通过`POST`提交。当表单提交时，`payment_process`视图将创建Stripe结账会话，并将用户重定向到Stripe托管的支付表单。
+- en: 'Edit the `payment/completed.html` template and add the following code to it:'
+  id: totrans-146
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 编辑`payment/completed.html`模板，并向其中添加以下代码：
+- en: '[PRE17]'
+  id: totrans-147
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE17]'
+- en: This is the template for the page that the user is redirected to after a successful
+    payment.
+  id: totrans-148
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 这是用户在成功支付后被重定向到的页面模板。
+- en: 'Edit the `payment/canceled.html` template and add the following code to it:'
+  id: totrans-149
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 编辑`payment/canceled.html`模板，并向其中添加以下代码：
+- en: '[PRE18]'
+  id: totrans-150
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE18]'
+- en: This is the template for the page that the user is redirected to when the payment
+    is canceled.
+  id: totrans-151
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 这是当支付被取消时用户被重定向到的页面模板。
+- en: We have implemented the necessary views to process payments, including their
+    URL patterns and templates. It’s time to try out the checkout process.
+  id: totrans-152
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们已经实现了处理支付所需的所有视图，包括它们的URL模式和模板。现在是时候尝试结账流程了。
+- en: Testing the checkout process
+  id: totrans-153
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+  zh: 测试结账流程
+- en: 'Execute the following command in the shell to start the RabbitMQ server with
+    Docker:'
+  id: totrans-154
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在shell中执行以下命令以使用Docker启动RabbitMQ服务器：
+- en: '[PRE19]'
+  id: totrans-155
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE19]'
+- en: This will run RabbitMQ on port `5672` and the web-based management interface
+    on port `15672`.
+  id: totrans-156
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 这将在端口`5672`上运行RabbitMQ，并在端口`15672`上运行基于Web的管理界面。
+- en: 'Open another shell and start the Celery worker from your project directory
+    with the following command:'
+  id: totrans-157
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在另一个shell中，从你的项目目录使用以下命令启动Celery工作进程：
+- en: '[PRE20]'
+  id: totrans-158
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE20]'
+- en: 'Open one more shell and start the development server from your project directory
+    with this command:'
+  id: totrans-159
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在另一个shell中，使用以下命令从你的项目目录启动开发服务器：
+- en: '[PRE21]'
+  id: totrans-160
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE21]'
+- en: Open `http://127.0.0.1:8000/` in your browser, add some products to the shopping
+    cart, and fill in the checkout form. Click the **Place order** button. The order
+    will be persisted to the database, the order ID will be saved in the current session,
+    and you will be redirected to the payment process page.
+  id: totrans-161
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在你的浏览器中打开`http://127.0.0.1:8000/`，添加一些产品到购物车，并填写结账表单。点击**下单**按钮。订单将被持久化到数据库中，订单ID将被保存在当前会话中，你将被重定向到支付流程页面。
+- en: 'The payment process page will look as follows:'
+  id: totrans-162
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 支付流程页面将如下所示：
+- en: '![A picture containing graphical user interface  Description automatically
+    generated](img/B21088_09_09.png)'
+  id: totrans-163
+  prefs: []
+  type: TYPE_IMG
+  zh: '![包含图形用户界面的图片 描述自动生成](img/B21088_09_09.png)'
+- en: 'Figure 9.9: The payment process page including an order summary'
+  id: totrans-164
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 图9.9：包含订单摘要的支付流程页面
+- en: 'Images in this chapter:'
+  id: totrans-165
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 本章中的图片：
+- en: '*Green tea*: Photo by Jia Ye on Unsplash'
+  id: totrans-166
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: '*绿茶*：由Jia Ye在Unsplash上的照片'
+- en: '*Red tea*: Photo by Manki Kim on Unsplash'
+  id: totrans-167
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: '*红茶*：由Manki Kim在Unsplash上的照片'
+- en: On this page, you can see an order summary and a **Pay now** button. Click on
+    **Pay now**. The `payment_process` view will create a Stripe checkout session,
+    and you will be redirected to the Stripe-hosted payment form.
+  id: totrans-168
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在这个页面上，你可以看到一个订单摘要和一个**立即支付**按钮。点击**立即支付**。`payment_process`视图将创建Stripe结账会话，并将你重定向到Stripe托管支付表单。
+- en: 'You will see the following page:'
+  id: totrans-169
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 你将看到以下页面：
+- en: '![](img/B21088_09_10.png)'
+  id: totrans-170
+  prefs: []
+  type: TYPE_IMG
+  zh: '![图片](img/B21088_09_10.png)'
+- en: 'Figure 9.10: The Stripe checkout payment from'
+  id: totrans-171
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 图9.10：Stripe结账支付流程
+- en: Using test credit cards
+  id: totrans-172
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+  zh: 使用测试信用卡
+- en: 'Stripe provides different test credit cards from different card issuers and
+    countries, which allows you to simulate payments to test all possible scenarios
+    (successful payment, declined payment, etc.). The following table shows some of
+    the cards you can test for different scenarios:'
+  id: totrans-173
+  prefs: []
+  type: TYPE_NORMAL
+  zh: Stripe提供了来自不同发卡机构和国家的不同测试信用卡，这允许你模拟支付以测试所有可能的场景（成功支付、拒绝支付等）。以下表格显示了你可以测试的不同场景的一些卡片：
+- en: '| **Result** | **Test Credit Card** | **CVC** | **Expiry date** |'
+  id: totrans-174
+  prefs: []
+  type: TYPE_TB
+  zh: '| **结果** | **测试信用卡** | **CVC** | **到期日期** |'
+- en: '| Successful payment | `4242 4242 4242 4242` | Any 3 digits | Any future date
+    |'
+  id: totrans-175
+  prefs: []
+  type: TYPE_TB
+  zh: '| 成功支付 | `4242 4242 4242 4242` | 任意 3 位数字 | 任意未来日期 |'
+- en: '| Failed payment | `4000 0000 0000 0002` | Any 3 digits | Any future date |'
+  id: totrans-176
+  prefs: []
+  type: TYPE_TB
+  zh: '| 支付失败 | `4000 0000 0000 0002` | 任意 3 位数字 | 任意未来日期 |'
+- en: '| Requires 3D secure authentication | `4000 0025 0000 3155` | Any 3 digits
+    | Any future date |'
+  id: totrans-177
+  prefs: []
+  type: TYPE_TB
+  zh: '| 需要 3D 安全认证 | `4000 0025 0000 3155` | 任意 3 位数字 | 任意未来日期 |'
+- en: You can find the complete list of credit cards for testing at [https://stripe.com/docs/testing](https://stripe.com/docs/testing).
+  id: totrans-178
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 您可以在 [https://stripe.com/docs/testing](https://stripe.com/docs/testing) 找到用于测试的完整信用卡列表。
+- en: 'We are going to use the test card `4242 4242 4242 4242`, which is a Visa card
+    that returns a successful purchase. We will use the CVC `123` and any future expiration
+    date, such as `12/29`. Enter the credit card details in the payment form as follows:'
+  id: totrans-179
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们将使用测试卡 `4242 4242 4242 4242`，这是一张返回成功购买的 Visa 卡。我们将使用 CVC `123` 和任何未来的到期日期，例如
+    `12/29`。按照以下方式在支付表单中输入信用卡详情：
+- en: '![](img/B21088_09_11.png)'
+  id: totrans-180
+  prefs: []
+  type: TYPE_IMG
+  zh: '![](img/B21088_09_11.png)'
+- en: 'Figure 9.11: The payment form with the valid test credit card details'
+  id: totrans-181
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 图 9.11：带有有效测试信用卡详情的支付表单
+- en: 'Click the **Pay**button. The button text will change to **Processing…**, as
+    shown in *Figure 9.12*:'
+  id: totrans-182
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 点击 **支付** 按钮。按钮文本将变为 **处理中…**，如图 *9.12* 所示：
+- en: '![](img/B21088_09_12.png)'
+  id: totrans-183
+  prefs: []
+  type: TYPE_IMG
+  zh: '![](img/B21088_09_12.png)'
+- en: 'Figure 9.12: The payment form being processed'
+  id: totrans-184
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 图 9.12：正在处理的支付表单
+- en: 'After a couple of seconds, you will see the button turn green, as in *Figure
+    9.13*:'
+  id: totrans-185
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 几秒钟后，您将看到按钮变为绿色，如图 *9.13* 所示：
+- en: '![](img/B21088_09_13.png)'
+  id: totrans-186
+  prefs: []
+  type: TYPE_IMG
+  zh: '![](img/B21088_09_13.png)'
+- en: 'Figure 9.13: The payment form after the payment is successful'
+  id: totrans-187
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 图 9.13：支付成功后的支付表单
+- en: 'Then, Stripe redirects your browser to the payment completed URL you provided
+    when creating the checkout session. You will see the following page:'
+  id: totrans-188
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 然后，Stripe 将您的浏览器重定向到您在创建结账会话时提供的支付完成 URL。您将看到以下页面：
+- en: '![Graphical user interface, text, application  Description automatically generated](img/B21088_09_14.png)'
+  id: totrans-189
+  prefs: []
+  type: TYPE_IMG
+  zh: '![图形用户界面，文本，应用程序  自动生成的描述](img/B21088_09_14.png)'
+- en: 'Figure 9.14: The successful payment page'
+  id: totrans-190
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 图 9.14：成功支付页面
+- en: Checking the payment information in the Stripe dashboard
+  id: totrans-191
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+  zh: 检查 Stripe 控制台中的支付信息
+- en: 'Access the Stripe dashboard at [https://dashboard.stripe.com/test/payments](https://dashboard.stripe.com/test/payments).
+    Under **Payments**, you will be able to see the payment, as in *Figure 9.15*:'
+  id: totrans-192
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 访问 Stripe 控制台 [https://dashboard.stripe.com/test/payments](https://dashboard.stripe.com/test/payments)。在
+    **支付** 选项下，您将能够看到支付信息，如图 *9.15* 所示：
+- en: '![](img/B21088_09_15.png)'
+  id: totrans-193
+  prefs: []
+  type: TYPE_IMG
+  zh: '![](img/B21088_09_15.png)'
+- en: 'Figure 9.15: The payment object with the status Succeeded in the Stripe dashboard'
+  id: totrans-194
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 图 9.15：Stripe 控制台中状态为成功的支付对象
+- en: The payment status is **Succeeded**. The payment description includes the **payment
+    intent** ID that starts with `pi_`. When a checkout session is confirmed, Stripe
+    creates a payment intent associated with the session. A payment intent is used
+    to collect a payment from the user. Stripe records all attempted payments as payment
+    intents. Each payment intent has a unique ID, and it encapsulates the details
+    of the transaction, such as the supported payment methods, the amount to collect,
+    and the desired currency. Click on the transaction to access the payment details.
+  id: totrans-195
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 支付状态为 **成功**。支付描述包括以 `pi_` 开头的 **支付意图** ID。当结账会话被确认时，Stripe 会创建与该会话关联的支付意图。支付意图用于从用户那里收集支付。Stripe
+    记录所有尝试的支付作为支付意图。每个支付意图都有一个唯一的 ID，并封装了交易详情，例如支持的支付方式、要收集的金额和期望的货币。点击交易以访问支付详情。
+- en: 'You will see the following screen:'
+  id: totrans-196
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 您将看到以下屏幕：
+- en: '![](img/B21088_09_16.png)'
+  id: totrans-197
+  prefs: []
+  type: TYPE_IMG
+  zh: '![](img/B21088_09_16.png)'
+- en: 'Figure 9.16: Payment details for a Stripe transaction'
+  id: totrans-198
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 图 9.16：Stripe 交易的支付详情
+- en: Here, you can see the payment information and the payment timeline, including
+    payment changes. Under **Checkout summary**, you can find the line items purchased,
+    including the name, quantity, unit price, and amount.
+  id: totrans-199
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在这里，您可以查看支付信息和支付时间线，包括支付变更。在 **结账摘要** 选项下，您可以找到购买的行项目，包括名称、数量、单价和金额。
+- en: Under **Payment details**, you can see a breakdown of the amount paid and the
+    Stripe fee for processing the payment.
+  id: totrans-200
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在 **支付详情** 选项下，您可以查看已支付金额和 Stripe 处理支付的费用详情。
+- en: 'Under this section, you will find a **Payment method** section, including details
+    about the payment method and the credit card checks performed by Stripe, as in
+    *Figure 9.17*:'
+  id: totrans-201
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在此部分下，您将找到一个 **支付方式** 部分，包括支付方式的详细信息以及 Stripe 执行的信用卡检查，如图 *9.17* 所示：
+- en: '![](img/B21088_09_17.png)'
+  id: totrans-202
+  prefs: []
+  type: TYPE_IMG
+  zh: '![](img/B21088_09_17.png)'
+- en: 'Figure 9.17: Payment method used in the Stripe transaction'
+  id: totrans-203
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 图9.17：Stripe交易中使用的支付方式
+- en: 'Under this section, you will find another section named **Events and logs**,
+    as in *Figure 9.18*:'
+  id: totrans-204
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在本节下，您将找到另一个名为**事件和日志**的节，如图9.18所示：
+- en: '![](img/B21088_09_18.png)'
+  id: totrans-205
+  prefs: []
+  type: TYPE_IMG
+  zh: '![](img/B21088_09_18.png)'
+- en: 'Figure 9.18: Events and logs for a Stripe transaction'
+  id: totrans-206
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 图9.18：Stripe交易的日志和事件
+- en: This section contains all the activity related to the transaction, including
+    requests to the Stripe API. You can click on any request to see the HTTP request
+    to the Stripe API and the response in the JSON format.
+  id: totrans-207
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 本节包含与交易相关的所有活动，包括对Stripe API的请求。您可以通过点击任何请求来查看对Stripe API的HTTP请求和JSON格式的响应。
+- en: 'Let’s review the activity events in chronological order, from bottom to top:'
+  id: totrans-208
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 让我们按时间顺序回顾活动事件，从下到上：
+- en: First, a new checkout session is created by sending a `POST` request to the
+    Stripe API endpoint `/v1/checkout/sessions`. The Stripe SDK method `stripe.checkout.Session.create()`
+    that is used in the `payment_process` view builds and sends the request to the
+    Stripe API, handling the response to return a `session` object.
+  id: totrans-209
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 首先，通过向Stripe API端点`/v1/checkout/sessions`发送`POST`请求创建一个新的结账会话。在`payment_process`视图中使用的Stripe
+    SDK方法`stripe.checkout.Session.create()`构建并发送请求到Stripe API，处理响应以返回一个`session`对象。
+- en: The user is redirected to the checkout page where they submit the payment form.
+    A request to confirm the checkout session is sent by the Stripe checkout page.
+  id: totrans-210
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 用户被重定向到结账页面，在该页面他们提交支付表单。Stripe结账页面发送一个确认结账会话的请求。
+- en: A new payment intent is created.
+  id: totrans-211
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 创建了一个新的支付意向。
+- en: A charge related to the payment intent is created.
+  id: totrans-212
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 创建了一个与支付意向相关的费用。
+- en: The payment intent is now completed with a successful payment.
+  id: totrans-213
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 支付意向现在已完成，并成功支付。
+- en: The checkout session is completed.
+  id: totrans-214
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 结账会话已完成。
+- en: Congratulations! You have successfully integrated Stripe Checkout into your
+    project. Next, you will learn how to receive payment notifications from Stripe
+    and how to reference Stripe payments in your shop orders.
+  id: totrans-215
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 恭喜！您已成功将Stripe Checkout集成到您的项目中。接下来，您将学习如何从Stripe接收支付通知以及如何在您的商店订单中引用Stripe支付。
+- en: Using webhooks to receive payment notifications
+  id: totrans-216
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+  zh: 使用webhooks接收支付通知
+- en: Stripe can push real-time events to our application by using webhooks. A **webhook**,
+    also called a callback, can be thought of as an event-driven API instead of a
+    request-driven API. Instead of polling the Stripe API frequently to know when
+    a new payment is completed, Stripe can send an HTTP request to a URL of our application
+    to notify us of successful payments in real time. The notification of these events
+    will be asynchronous, when the event occurs, regardless of our synchronous calls
+    to the Stripe API.
+  id: totrans-217
+  prefs: []
+  type: TYPE_NORMAL
+  zh: Stripe可以通过使用webhooks将实时事件推送到我们的应用程序。**webhook**，也称为回调，可以被视为一个事件驱动的API，而不是请求驱动的API。我们不必频繁轮询Stripe
+    API以了解何时完成新的支付，Stripe可以向我们的应用程序的URL发送HTTP请求，以实时通知我们成功的支付。这些事件的通知将是异步的，当事件发生时，无论我们是否同步调用Stripe
+    API。
+- en: We will build a webhook endpoint to receive Stripe events. The webhook will
+    consist of a view that will receive a JSON payload, with the event information
+    to process it. We will use the event information to mark orders as paid when the
+    checkout session is successfully completed.
+  id: totrans-218
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们将构建一个webhook端点以接收Stripe事件。该webhook将包含一个视图，该视图将接收一个JSON有效负载，其中包含事件信息以进行处理。我们将使用事件信息在结账会话成功完成后标记订单为已支付。
+- en: Creating a webhook endpoint
+  id: totrans-219
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+  zh: 创建webhook端点
+- en: You can add webhook endpoint URLs to your Stripe account to receive events.
+    Since we are using webhooks and we don’t have a hosted website accessible through
+    a public URL, we will use the Stripe **Command-Line Interface** (**CLI**) to listen
+    to events and forward them to our local environment.
+  id: totrans-220
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 您可以将webhook端点URL添加到您的Stripe账户以接收事件。由于我们正在使用webhooks，我们没有可以通过公共URL访问的托管网站，我们将使用Stripe
+    **命令行界面**（**CLI**）来监听事件并将它们转发到我们的本地环境。
+- en: 'Open [https://dashboard.stripe.com/test/webhooks](https://dashboard.stripe.com/test/webhooks)
+    in your browser. You will see the following screen:'
+  id: totrans-221
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在您的浏览器中打开[https://dashboard.stripe.com/test/webhooks](https://dashboard.stripe.com/test/webhooks)。您将看到以下屏幕：
+- en: '![Graphical user interface, text, application, chat or text message  Description
+    automatically generated](img/B21088_09_19.png)'
+  id: totrans-222
+  prefs: []
+  type: TYPE_IMG
+  zh: '![图形用户界面，文本，应用程序，聊天或文本消息  自动生成的描述](img/B21088_09_19.png)'
+- en: 'Figure 9.19: The Stripe webhooks default screen'
+  id: totrans-223
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 图9.19：Stripe webhooks默认屏幕
+- en: Here, you can see a schema of how Stripe notifies your integration asynchronously.
+    You will get Stripe notifications in real time whenever an event happens. Stripe
+    sends different types of events, like checkout session created, payment intent
+    created, payment intent updated, or checkout session completed. You can find a
+    list of all the types of events that Stripe sends at [https://stripe.com/docs/api/events/types](https://stripe.com/docs/api/events/types).
+  id: totrans-224
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在这里，您可以查看 Stripe 如何异步通知您的集成的架构。每当发生事件时，您将实时收到 Stripe 通知。Stripe 发送不同类型的事件，如结账会话创建、支付意图创建、支付意图更新或结账会话完成。您可以在
+    [https://stripe.com/docs/api/events/types](https://stripe.com/docs/api/events/types)
+    找到 Stripe 发送的所有事件类型的列表。
+- en: 'Click on **Test in a local environment**. You will see the following screen:'
+  id: totrans-225
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 点击 **在本地环境中测试**。您将看到以下屏幕：
+- en: '![Graphical user interface, text, application  Description automatically generated](img/B21088_09_20.png)'
+  id: totrans-226
+  prefs: []
+  type: TYPE_IMG
+  zh: '![图形用户界面，文本，应用程序  自动生成的描述](img/B21088_09_20.png)'
+- en: 'Figure 9.20: The Stripe webhook setup screen'
+  id: totrans-227
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 图 9.20：Stripe webhook 设置屏幕
+- en: This screen shows the steps to listen to Stripe events from your local environment.
+    It also includes a sample Python webhook endpoint. Copy just the `endpoint_secret`
+    value.
+  id: totrans-228
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 此屏幕显示了从您的本地环境监听 Stripe 事件的步骤。它还包括一个示例 Python webhook 端点。仅复制 `endpoint_secret`
+    值。
+- en: 'Edit the `.env` file of your project and add the following environment variable
+    highlighted in bold:'
+  id: totrans-229
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 编辑您项目的 `.env` 文件，并向其中添加以下加粗的环境变量：
+- en: '[PRE22]'
+  id: totrans-230
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE22]'
+- en: Replace the `STRIPE_WEBHOOK_SECRET` value with the `endpoint_secret` value provided
+    by Stripe.
+  id: totrans-231
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 将 `STRIPE_WEBHOOK_SECRET` 值替换为 Stripe 提供的 `endpoint_secret` 值。
+- en: 'Edit the `settings.py` file of the `myshop` project and add the following setting
+    to it:'
+  id: totrans-232
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 编辑 `myshop` 项目的 `settings.py` 文件，并向其中添加以下设置：
+- en: '[PRE23]'
+  id: totrans-233
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE23]'
+- en: To build a webhook endpoint, we will create a view that receives a JSON payload
+    with the event details. We will check the event details to identify when a checkout
+    session is completed and mark the related order as paid.
+  id: totrans-234
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 要构建 webhook 端点，我们将创建一个视图来接收包含事件详细信息的 JSON 负载。我们将检查事件详细信息以确定何时完成结账会话，并将相关订单标记为已支付。
+- en: Stripe signs the webhook events it sends to your endpoints by including a `Stripe-Signature`
+    header, with a signature in each event. By checking the Stripe signature, you
+    can verify that events were sent by Stripe and not by a third party. If you don’t
+    check the signature, an attacker could send fake events to your webhooks intentionally.
+    The Stripe SDK provides a method to verify signatures. We will use it to create
+    a webhook that verifies the signature.
+  id: totrans-235
+  prefs: []
+  type: TYPE_NORMAL
+  zh: Stripe 通过在每个事件中包含一个 `Stripe-Signature` 标头来对其发送到您的端点的 webhook 事件进行签名，每个事件都有一个签名。通过检查
+    Stripe 签名，您可以验证事件是由 Stripe 发送的，而不是由第三方发送的。如果您不检查签名，攻击者可能会故意向您的 webhook 发送伪造的事件。Stripe
+    SDK 提供了一种验证签名的方法。我们将使用它来创建一个验证签名的 webhook。
+- en: 'Add a new file to the `payment/` application directory and name it `webhooks.py`.
+    Add the following code to the new `webhooks.py` file:'
+  id: totrans-236
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 向 `payment/` 应用程序目录添加一个新文件，并将其命名为 `webhooks.py`。将以下代码添加到新的 `webhooks.py` 文件中：
+- en: '[PRE24]'
+  id: totrans-237
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE24]'
+- en: The `@csrf_exempt` decorator is used to prevent Django from performing the **cross-site
+    request forgery** (**CSRF**) validation that is done by default for all `POST`
+    requests. We use the method `stripe.Webhook.construct_event()` of the `stripe`
+    library to verify the event’s signature header. If the event’s payload or the
+    signature is invalid, we return an HTTP `400 Bad Request` response. Otherwise,
+    we return an HTTP `200 OK` response.
+  id: totrans-238
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '`@csrf_exempt` 装饰器用于防止 Django 对所有默认的 `POST` 请求执行 **跨站请求伪造**（**CSRF**）验证。我们使用
+    `stripe` 库的 `stripe.Webhook.construct_event()` 方法来验证事件的签名标头。如果事件的负载或签名无效，我们返回
+    HTTP `400 Bad Request` 响应。否则，我们返回 HTTP `200 OK` 响应。'
+- en: This is the basic functionality required to verify the signature and construct
+    the event from the JSON payload. Now, we can implement the actions of the webhook
+    endpoint.
+  id: totrans-239
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 这是验证签名并从 JSON 负载中构建事件的必要基本功能。现在，我们可以实现 webhook 端点的操作。
+- en: 'Add the following code highlighted in bold to the `stripe_webhook` view:'
+  id: totrans-240
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 将以下加粗的代码添加到 `stripe_webhook` 视图中：
+- en: '[PRE25]'
+  id: totrans-241
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE25]'
+- en: In the new code, we check whether the event received is `checkout.session.completed`.
+    This event indicates that the checkout session has been successfully completed.
+    If we receive this event, we retrieve the `session` object and check whether the
+    session `mode` is `payment` because this is the expected mode for one-off payments.
+  id: totrans-242
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在新代码中，我们检查接收到的事件是否为 `checkout.session.completed`。此事件表示结账会话已成功完成。如果我们收到此事件，我们将检索
+    `session` 对象并检查会话 `mode` 是否为 `payment`，因为这是单次付款的预期模式。
+- en: Then, we get the `client_reference_id` attribute that we used when we created
+    the checkout session and use the Django ORM to retrieve the `Order` object with
+    the given `id`. If the order does not exist, we raise an HTTP `404` exception.
+    Otherwise, we mark the order as paid with `order.paid = True`, and we save the
+    order in the database.
+  id: totrans-243
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 然后，我们获取我们在创建结账会话时使用的`client_reference_id`属性，并使用Django ORM检索具有给定`id`的`Order`对象。如果订单不存在，我们抛出HTTP
+    `404`异常。否则，我们将订单标记为已支付，通过`order.paid = True`，并将订单保存在数据库中。
+- en: 'Edit the `urls.py` file of the `payment` application and add the following
+    code highlighted in bold:'
+  id: totrans-244
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 编辑`payment`应用程序的`urls.py`文件，并添加以下加粗代码：
+- en: '[PRE26]'
+  id: totrans-245
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE26]'
+- en: We have imported the `webhooks` module and added the URL pattern for the Stripe
+    webhook.
+  id: totrans-246
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们已导入`webhooks`模块，并添加了Stripe webhook的URL模式。
+- en: Testing webhook notifications
+  id: totrans-247
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+  zh: 测试webhook通知
+- en: To test webhooks, you need to install the Stripe CLI. The Stripe CLI is a developer
+    tool that allows you to test and manage your integration with Stripe directly
+    from your shell. You will find installation instructions at [https://stripe.com/docs/stripe-cli#install](https://stripe.com/docs/stripe-cli#install).
+  id: totrans-248
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 要测试webhooks，您需要安装Stripe CLI。Stripe CLI是一个开发者工具，允许您直接从您的shell测试和管理与Stripe的集成。您可以在[https://stripe.com/docs/stripe-cli#install](https://stripe.com/docs/stripe-cli#install)找到安装说明。
+- en: 'If you are using macOS or Linux, you can install the Stripe CLI with Homebrew
+    using the following command:'
+  id: totrans-249
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 如果您使用macOS或Linux，可以使用以下命令使用Homebrew安装Stripe CLI：
+- en: '[PRE27]'
+  id: totrans-250
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE27]'
+- en: If you are using Windows, or you are using macOS or Linux without Homebrew,
+    download the latest Stripe CLI release for macOS, Linux, or Windows from [https://github.com/stripe/stripe-cli/releases/latest](https://github.com/stripe/stripe-cli/releases/latest)
+    and unzip the file. If you are using Windows, run the unzipped `.exe` file.
+  id: totrans-251
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 如果您使用Windows，或者您使用没有Homebrew的macOS或Linux，可以从[https://github.com/stripe/stripe-cli/releases/latest](https://github.com/stripe/stripe-cli/releases/latest)下载最新的macOS、Linux或Windows
+    Stripe CLI版本，并解压文件。如果您使用Windows，运行解压后的`.exe`文件。
+- en: 'After installing the Stripe CLI, run the following command from a shell:'
+  id: totrans-252
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 安装Stripe CLI后，从shell运行以下命令：
+- en: '[PRE28]'
+  id: totrans-253
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE28]'
+- en: 'You will see the following output:'
+  id: totrans-254
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 您将看到以下输出：
+- en: '[PRE29]'
+  id: totrans-255
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE29]'
+- en: 'Press *Enter* or open the URL in your browser. You will see the following screen:'
+  id: totrans-256
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 按下*Enter*或打开浏览器中的URL。您将看到以下屏幕：
+- en: '![Graphical user interface, text, application  Description automatically generated](img/B21088_09_21.png)'
+  id: totrans-257
+  prefs: []
+  type: TYPE_IMG
+  zh: '![图形用户界面、文本、应用程序 描述自动生成](img/B21088_09_21.png)'
+- en: 'Figure 9.21: The Stripe CLI pairing screen'
+  id: totrans-258
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 图9.21：Stripe CLI配对屏幕
+- en: 'Verify that the pairing code in the Stripe CLI matches the one shown on the
+    website and click on **Allow access**. You will see the following message:'
+  id: totrans-259
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 确认Stripe CLI中的配对代码与网站上显示的代码匹配，然后点击**允许访问**。您将看到以下消息：
+- en: '![Graphical user interface, application, Teams  Description automatically generated](img/B21088_09_22.png)'
+  id: totrans-260
+  prefs: []
+  type: TYPE_IMG
+  zh: '![图形用户界面、应用程序、团队 描述自动生成](img/B21088_09_22.png)'
+- en: 'Figure 9.22: The Stripe CLI pairing confirmation'
+  id: totrans-261
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 图9.22：Stripe CLI配对确认
+- en: 'Now, run the following command from your shell:'
+  id: totrans-262
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 现在，从您的shell运行以下命令：
+- en: '[PRE30]'
+  id: totrans-263
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE30]'
+- en: We use this command to tell Stripe to listen to events and forward them to our
+    localhost. We use port `8000`, where the Django development server is running,
+    and the path `/payment/webhook/`, which matches the URL pattern of our webhook.
+  id: totrans-264
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们使用此命令告诉Stripe监听事件并将它们转发到我们的localhost。我们使用Django开发服务器运行的端口`8000`，以及与我们的webhook
+    URL模式匹配的路径`/payment/webhook/`。
+- en: 'You will see the following output:'
+  id: totrans-265
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 您将看到以下输出：
+- en: '[PRE31]'
+  id: totrans-266
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE31]'
+- en: Here, you can see the webhook secret. Check that the webhook signing secret
+    matches the `STRIPE_WEBHOOK_SECRET` setting in the `settings.py` file of your
+    project.
+  id: totrans-267
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在这里，您可以看到webhook密钥。检查webhook签名密钥是否与项目`settings.py`文件中的`STRIPE_WEBHOOK_SECRET`设置匹配。
+- en: 'Open [https://dashboard.stripe.com/test/webhooks](https://dashboard.stripe.com/test/webhooks)
+    in your browser. You will see the following screen:'
+  id: totrans-268
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在您的浏览器中打开[https://dashboard.stripe.com/test/webhooks](https://dashboard.stripe.com/test/webhooks)。您将看到以下屏幕：
+- en: '![](img/B21088_09_23.png)'
+  id: totrans-269
+  prefs: []
+  type: TYPE_IMG
+  zh: '![](img/B21088_09_23.png)'
+- en: 'Figure 9.23: The Stripe Webhooks page'
+  id: totrans-270
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 图9.23：Stripe Webhooks页面
+- en: Under **Local listeners**, you will see the local listener that we created.
+  id: totrans-271
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在**本地监听器**下，您将看到我们创建的本地监听器。
+- en: In a production environment, the Stripe CLI is not needed. Instead, you would
+    need to add a hosted webhook endpoint using the URL of your hosted application.
+  id: totrans-272
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在生产环境中，不需要Stripe CLI。相反，您需要使用托管应用程序的URL添加一个托管webhook端点。
+- en: Open `http://127.0.0.1:8000/` in your browser, add some products to the shopping
+    cart, and complete the checkout process.
+  id: totrans-273
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在您的浏览器中打开`http://127.0.0.1:8000/`，向购物车添加一些产品，并完成结账流程。
+- en: 'Check the shell where you are running the Stripe CLI:'
+  id: totrans-274
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 检查您运行Stripe CLI的shell：
+- en: '[PRE32]'
+  id: totrans-275
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE32]'
+- en: 'You can see the different events that have been sent by Stripe to the local
+    webhook endpoint. The events might be in a different order than above. Stripe
+    doesn’t guarantee the delivery of events in the order in which they are generated.
+    Let’s review the events:'
+  id: totrans-276
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 您可以看到Stripe已发送到本地webhook端点的不同事件。事件的顺序可能与上面不同。Stripe不保证按事件生成顺序交付事件。让我们回顾一下事件：
+- en: '`payment_intent.created`: The payment intent has been created.'
+  id: totrans-277
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: '`payment_intent.created`：支付意向已创建。'
+- en: '`payment_intent.succeeded`: The payment intent succeeded.'
+  id: totrans-278
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: '`payment_intent.succeeded`：支付意向成功。'
+- en: '`charge.succeeded`: The charge associated with the payment intent succeeded.'
+  id: totrans-279
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: '`charge.succeeded`：与支付意向关联的扣款成功。'
+- en: '`checkout.session.completed`: The checkout session has been completed. This
+    is the event that we use to mark the order as paid.'
+  id: totrans-280
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: '`checkout.session.completed`：结账会话已完成。这是我们用来标记订单已付款的事件。'
+- en: The `stripe_webhook` webhook returns an HTTP `200 OK` response to all of the
+    requests sent by Stripe. However, we only process the event `checkout.session.completed`
+    to mark the order related to the payment as paid.
+  id: totrans-281
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '`stripe_webhook` webhook对所有由Stripe发送的请求返回HTTP `200 OK`响应。然而，我们只处理`checkout.session.completed`事件来标记与支付相关的订单为已付款。'
+- en: 'Next, open `http://127.0.0.1:8000/admin/orders/order/` in your browser. The
+    order should now be marked as paid:'
+  id: totrans-282
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 接下来，在浏览器中打开`http://127.0.0.1:8000/admin/orders/order/`。现在订单应标记为已付款：
+- en: '![](img/B21088_09_24.png)'
+  id: totrans-283
+  prefs: []
+  type: TYPE_IMG
+  zh: '![图片](img/B21088_09_24.png)'
+- en: 'Figure 9.24: An order marked as paid in the order list of the administration
+    site'
+  id: totrans-284
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 图9.24：在管理网站订单列表中标记为已付款的订单
+- en: Now, orders get automatically marked as paid with Stripe payment notifications.
+    Next, you are going to learn how to reference Stripe payments in your shop orders.
+  id: totrans-285
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 现在，订单会自动通过Stripe支付通知标记为已付款。接下来，您将学习如何在您的商店订单中引用Stripe支付。
+- en: Referencing Stripe payments in orders
+  id: totrans-286
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+  zh: 在订单中引用Stripe支付
+- en: Each Stripe payment has a unique identifier. We can use the payment ID to associate
+    each order with its corresponding Stripe payment. We will add a new field to the
+    `Order` model of the `orders` application so that we can reference the related
+    payment by its ID. This will allow us to link each order with the related Stripe
+    transaction.
+  id: totrans-287
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 每一笔Stripe支付都有一个唯一的标识符。我们可以使用支付ID将每个订单与其对应的Stripe支付关联起来。我们将在`orders`应用的`Order`模型中添加一个新字段，以便我们可以通过其ID引用相关的支付。这将允许我们将每个订单与相关的Stripe交易链接起来。
+- en: 'Edit the `models.py` file of the `orders` application and add the following
+    field to the `Order` model. The new field is highlighted in bold:'
+  id: totrans-288
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 编辑`orders`应用的`models.py`文件，并在`Order`模型中添加以下字段。新字段以粗体显示：
+- en: '[PRE33]'
+  id: totrans-289
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE33]'
+- en: 'Let’s sync this field with the database. Use the following command to generate
+    the database migrations for the project:'
+  id: totrans-290
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 让我们将此字段与数据库同步。使用以下命令为项目生成数据库迁移：
+- en: '[PRE34]'
+  id: totrans-291
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE34]'
+- en: 'You will see the following output:'
+  id: totrans-292
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 您将看到以下输出：
+- en: '[PRE35]'
+  id: totrans-293
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE35]'
+- en: 'Apply the migration to the database with the following command:'
+  id: totrans-294
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 使用以下命令将迁移应用到数据库：
+- en: '[PRE36]'
+  id: totrans-295
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE36]'
+- en: 'You will see output that ends with the following line:'
+  id: totrans-296
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 您将看到以下行结束的输出：
+- en: '[PRE37]'
+  id: totrans-297
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE37]'
+- en: The model changes are now synced with the database. Now, you will be able to
+    store the Stripe payment ID for each order.
+  id: totrans-298
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 模型更改现在已与数据库同步。现在，您将能够为每个订单存储Stripe支付ID。
+- en: 'Edit the `stripe_webhook` function in the `webhooks.py` file of the payment
+    application and add the following lines highlighted in bold:'
+  id: totrans-299
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在支付应用的`webhooks.py`文件中编辑`stripe_webhook`函数，并添加以下以粗体显示的行：
+- en: '[PRE38]'
+  id: totrans-300
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE38]'
+- en: With this change, when receiving a webhook notification for a completed checkout
+    session, the payment intent ID is stored in the `stripe_id` field of the `Order`
+    object.
+  id: totrans-301
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 通过这个更改，当收到完成结账会话的webhook通知时，支付意向ID将存储在`Order`对象的`stripe_id`字段中。
+- en: 'Open `http://127.0.0.1:8000/` in your browser, add some products to the shopping
+    cart, and complete the checkout process. Then, access `http://127.0.0.1:8000/admin/orders/order/`
+    in your browser and click on the latest order ID to edit it. The `stripe_id` field
+    should contain the payment intent ID, as shown in *Figure 9.25*:'
+  id: totrans-302
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在您的浏览器中打开`http://127.0.0.1:8000/`，向购物车添加一些产品，并完成结账流程。然后，在浏览器中访问`http://127.0.0.1:8000/admin/orders/order/`并点击最新的订单ID进行编辑。`stripe_id`字段应包含支付意向ID，如图9.25所示：
+- en: '![](img/B21088_09_25.png)'
+  id: totrans-303
+  prefs: []
+  type: TYPE_IMG
+  zh: '![图片](img/B21088_09_25.png)'
+- en: 'Figure 9.25: The Stripe id field with the payment intent ID'
+  id: totrans-304
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 图9.25：包含支付意向ID的Stripe id字段
+- en: Great! We have successfully referenced Stripe payments in orders. Now, we can
+    add Stripe payment IDs to the order list on the administration site. We can also
+    include a link to each payment ID to see the payment details in the Stripe dashboard.
+  id: totrans-305
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 太好了！我们已经成功在订单中引用了Stripe支付。现在，我们可以在管理网站的订单列表中添加Stripe支付ID。我们还可以为每个支付ID添加一个链接，以便在Stripe仪表板中查看支付详情。
+- en: 'Edit the `models.py` file of the `orders` application and add the following
+    code highlighted in bold:'
+  id: totrans-306
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 编辑`orders`应用的`models.py`文件，并添加以下粗体显示的代码：
+- en: '[PRE39]'
+  id: totrans-307
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE39]'
+- en: We have added the new `get_stripe_url()` method to the `Order` model. This method
+    is used to return the Stripe dashboard’s URL for the payment associated with the
+    order. If no payment ID is stored in the `stripe_id` field of the `Order` object,
+    an empty string is returned. Otherwise, the URL for the payment in the Stripe
+    dashboard is returned. We check if the string `_test_` is present in the `STRIPE_SECRET_KEY`
+    setting to discriminate the production environment from the test environment.
+    Payments in the production environment follow the pattern `https://dashboard.stripe.com/payments/{id}`,
+    whereas test payments follow the pattern `https://dashboard.stripe.com/payments/test/{id}`.
+  id: totrans-308
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们已经将新的`get_stripe_url()`方法添加到`Order`模型中。此方法用于返回与订单关联的Stripe仪表板的URL。如果`Order`对象的`stripe_id`字段中没有存储支付ID，则返回空字符串。否则，返回Stripe仪表板中支付的URL。我们检查`STRIPE_SECRET_KEY`设置中是否包含字符串`_test_`，以区分生产环境和测试环境。生产环境中的支付遵循模式`https://dashboard.stripe.com/payments/{id}`，而测试支付遵循模式`https://dashboard.stripe.com/payments/test/{id}`。
+- en: Let’s add a link to each `Order` object on the list display page of the administration
+    site.
+  id: totrans-309
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 让我们在管理网站的列表显示页面上为每个`Order`对象添加一个链接。
+- en: 'Edit the `admin.py` file of the `orders` application and add the following
+    code highlighted in bold:'
+  id: totrans-310
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 编辑`orders`应用的`admin.py`文件，并添加以下粗体显示的代码：
+- en: '[PRE40]'
+  id: totrans-311
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE40]'
+- en: The `order_stripe_payment()` function takes an `Order` object as an argument
+    and returns an HTML link with the payment URL in Stripe. Django escapes HTML output
+    by default. We use the `mark_safe` function to avoid auto-escaping.
+  id: totrans-312
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '`order_stripe_payment()`函数接受一个`Order`对象作为参数，并返回一个包含Stripe支付URL的HTML链接。Django默认会转义HTML输出。我们使用`mark_safe`函数来避免自动转义。'
+- en: Avoid using `mark_safe` on input that has come from the user to avoid **Cross-Site
+    Scripting** (**XSS**). XSS enables attackers to inject client-side scripts into
+    web content viewed by other users.
+  id: totrans-313
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 避免在来自用户的输入上使用`mark_safe`，以避免**跨站脚本攻击**（**XSS**）。XSS允许攻击者向其他用户查看的网页内容中注入客户端脚本。
+- en: Open `http://127.0.0.1:8000/admin/orders/order/` in your browser. You will see
+    a new column named **STRIPE PAYMENT**. You will see the related Stripe payment
+    ID for the latest order. If you click on the payment ID, you will be taken to
+    the payment URL in Stripe, where you can find the additional payment details.
+  id: totrans-314
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在你的浏览器中打开`http://127.0.0.1:8000/admin/orders/order/`。你会看到一个名为**STRIPE PAYMENT**的新列。你可以看到最新订单的相关Stripe支付ID。如果你点击支付ID，你将被带到Stripe中的支付URL，在那里你可以找到额外的支付详情。
+- en: '![](img/B21088_09_26.png)'
+  id: totrans-315
+  prefs: []
+  type: TYPE_IMG
+  zh: '![](img/B21088_09_26.png)'
+- en: 'Figure 9.26: The Stripe payment ID for an Order object in the administration
+    site'
+  id: totrans-316
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 图9.26：管理网站中Order对象的Stripe支付ID
+- en: Now, you automatically store Stripe payment IDs in orders when receiving payment
+    notifications. You have successfully integrated Stripe into your project.
+  id: totrans-317
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 现在，当收到支付通知时，你将自动在订单中存储Stripe支付ID。你已经成功将Stripe集成到你的项目中。
+- en: Going live
+  id: totrans-318
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+  zh: 上线
+- en: Once you have tested your integration, you can apply for a production Stripe
+    account. When you are ready to move into production, remember to replace your
+    test Stripe credentials with the live ones in the `settings.py` file. You will
+    also need to add a webhook endpoint for your hosted website at [https://dashboard.stripe.com/webhooks](https://dashboard.stripe.com/webhooks)
+    instead of using the Stripe CLI. *Chapter 17*, *Going Live*, will teach you how
+    to configure project settings for multiple environments.
+  id: totrans-319
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 一旦你测试了你的集成，你可以申请一个生产Stripe账户。当你准备好进入生产环境时，记得在`settings.py`文件中将测试Stripe凭据替换为实时凭据。你还需要在你的托管网站上添加一个webhook端点，而不是使用Stripe
+    CLI。[https://dashboard.stripe.com/webhooks](https://dashboard.stripe.com/webhooks)。第17章，*上线*，将教你如何为多个环境配置项目设置。
+- en: Exporting orders to CSV files
+  id: totrans-320
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+  zh: 将订单导出到CSV文件
+- en: Sometimes, you might want to export the information contained in a model to
+    a file so that you can import it into another system. One of the most widely used
+    formats to export/import data is the **Comma-Separated Values** (**CSV**) format.
+    A CSV file is a plain text file consisting of a number of records. There is usually
+    one record per line and some delimiter character, usually a literal comma, separating
+    the record fields. We are going to customize the administration site to be able
+    to export orders to CSV files.
+  id: totrans-321
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 有时，您可能希望将模型中包含的信息导出到文件中，以便您可以将其导入到另一个系统中。最广泛使用的导出/导入数据格式之一是**逗号分隔值**（**CSV**）格式。CSV文件是一个由多个记录组成的纯文本文件。通常每行有一个记录，并且有一些分隔符字符，通常是字面意义上的逗号，用于分隔记录字段。我们将自定义管理网站以能够导出订单到CSV文件。
+- en: Adding custom actions to the administration site
+  id: totrans-322
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+  zh: 向管理网站添加自定义操作。
+- en: Django offers a wide range of options to customize the administration site.
+    You are going to modify the object list view to include a custom administration
+    action. You can implement custom administration actions to allow staff users to
+    apply actions to multiple elements at once in the change list view.
+  id: totrans-323
+  prefs: []
+  type: TYPE_NORMAL
+  zh: Django提供了广泛的选择来自定义管理网站。您将修改对象列表视图以包括自定义管理操作。您可以通过实现自定义管理操作来允许工作人员用户在更改列表视图中一次性应用操作。
+- en: 'An administration action works as follows: a user selects objects from the
+    administration object list page with checkboxes, selects an action to perform
+    on all of the selected items, and then executes the actions. *Figure 9.27* shows
+    where the actions are located on the administration site:'
+  id: totrans-324
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 管理操作的工作方式如下：用户通过复选框从管理对象列表页面选择对象，选择要对所有选中项执行的操作，然后执行操作。*图9.27*显示了操作在管理网站上的位置：
+- en: '![Graphical user interface, text, application, chat or text message  Description
+    automatically generated](img/B21088_09_27.png)'
+  id: totrans-325
+  prefs: []
+  type: TYPE_IMG
+  zh: '![图形用户界面、文本、应用程序、聊天或文本消息  自动生成的描述](img/B21088_09_27.png)'
+- en: 'Figure 9.27: The drop-down menu for Django administration actions'
+  id: totrans-326
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 图9.27：Django管理操作的下拉菜单
+- en: 'You can create a custom action by writing a regular function that receives
+    the following parameters:'
+  id: totrans-327
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 您可以通过编写一个接收以下参数的常规函数来创建自定义操作：
+- en: The current `ModelAdmin` being displayed
+  id: totrans-328
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 当前显示的`ModelAdmin`。
+- en: The current request object as an `HttpRequest` instance
+  id: totrans-329
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 当前请求对象作为`HttpRequest`实例。
+- en: A QuerySet for the objects selected by the user
+  id: totrans-330
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 用户选择的对象查询集。
+- en: This function will be executed when the action is triggered from the administration
+    site.
+  id: totrans-331
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 当从管理网站触发操作时，将执行此函数。
+- en: You are going to create a custom administration action to download a list of
+    orders as a CSV file.
+  id: totrans-332
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 您将创建一个自定义管理操作，以将订单列表下载为CSV文件。
+- en: 'Edit the `admin.py` file of the `orders` application and add the following
+    code before the `OrderAdmin` class:'
+  id: totrans-333
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 编辑`orders`应用的`admin.py`文件，并在`OrderAdmin`类之前添加以下代码：
+- en: '[PRE41]'
+  id: totrans-334
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE41]'
+- en: 'In this code, you perform the following tasks:'
+  id: totrans-335
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在此代码中，您执行以下任务：
+- en: You create an instance of `HttpResponse`, specifying the `text/csv` content
+    type, to tell the browser that the response has to be treated as a CSV file. You
+    also add a `Content-Disposition` header to indicate that the HTTP response contains
+    an attached file.
+  id: totrans-336
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 您创建一个`HttpResponse`实例，指定`text/csv`内容类型，以告诉浏览器响应必须被处理为CSV文件。您还添加一个`Content-Disposition`头，以指示HTTP响应包含一个附加文件。
+- en: You create a CSV `writer` object that will write to the `response` object.
+  id: totrans-337
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 您创建一个将写入`response`对象的CSV `writer`对象。
+- en: You get the `model` fields dynamically using the `get_fields()` method of the
+    model’s `_meta` options. You exclude many-to-many and one-to-many relationships.
+  id: totrans-338
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 您使用模型的`_meta`选项的`get_fields()`方法动态获取`model`字段。您排除了多对多和一对多关系。
+- en: You write a header row, including the field names.
+  id: totrans-339
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 您写入一个包含字段名称的标题行。
+- en: You iterate over the given QuerySet and write a row for each object returned
+    by the QuerySet. You take care of formatting `datetime` objects because the output
+    value for CSV has to be a string.
+  id: totrans-340
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 您遍历给定的QuerySet，并为QuerySet返回的每个对象写入一行。您会注意格式化`datetime`对象，因为CSV的输出值必须是字符串。
+- en: You customize the display name for the action in the action’s drop-down element
+    of the administration site by setting a `short_description` attribute on the function.
+  id: totrans-341
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 您可以通过在函数上设置`short_description`属性来在管理网站的“操作”下拉元素中自定义操作的显示名称。
+- en: You have created a generic administration action that can be added to any `ModelAdmin`
+    class.
+  id: totrans-342
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 您已创建一个通用的管理操作，可以添加到任何`ModelAdmin`类中。
+- en: 'Finally, add the new `export_to_csv` administration action to the `OrderAdmin`
+    class, as follows. The new code is highlighted in bold:'
+  id: totrans-343
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 最后，将新的`export_to_csv`管理操作添加到`OrderAdmin`类中，如下所示。新的代码加粗显示：
+- en: '[PRE42]'
+  id: totrans-344
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE42]'
+- en: 'Start the development server with the following command:'
+  id: totrans-345
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 使用以下命令启动开发服务器：
+- en: '[PRE43]'
+  id: totrans-346
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE43]'
+- en: 'Open `http://127.0.0.1:8000/admin/orders/order/` in your browser. The resulting
+    administration action should look like this:'
+  id: totrans-347
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在你的浏览器中打开`http://127.0.0.1:8000/admin/orders/order/`。生成的管理操作应该看起来像这样：
+- en: '![](img/B21088_09_28.png)'
+  id: totrans-348
+  prefs: []
+  type: TYPE_IMG
+  zh: '![图片](img/B21088_09_28.png)'
+- en: 'Figure 9.28: Using the custom Export to CSV administration action'
+  id: totrans-349
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 图9.28：使用自定义导出到CSV管理操作
+- en: 'Select some orders, choose the **Export to CSV** action from the select box,
+    and then click the **Go** button. Your browser will download the generated CSV
+    file named `order.csv`. Open the downloaded file using a text editor. You should
+    see content with the following format, including a header row and a row for each
+    `Order` object you selected:'
+  id: totrans-350
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 选择一些订单，从选择框中选择**导出到CSV**操作，然后点击**Go**按钮。你的浏览器将下载名为`order.csv`的生成CSV文件。使用文本编辑器打开下载的文件。你应该看到以下格式的内容，包括标题行和每个所选`Order`对象的行：
+- en: '[PRE44]'
+  id: totrans-351
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE44]'
+- en: As you can see, creating administration actions is pretty straightforward. You
+    can learn more about generating CSV files with Django at [https://docs.djangoproject.com/en/5.0/howto/outputting-csv/](https://docs.djangoproject.com/en/5.0/howto/outputting-csv/).
+  id: totrans-352
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 如你所见，创建管理操作相当简单。你可以在[https://docs.djangoproject.com/en/5.0/howto/outputting-csv/](https://docs.djangoproject.com/en/5.0/howto/outputting-csv/)了解更多关于使用Django生成CSV文件的信息。
+- en: If you want to add more advanced import/export functionalities to your administration
+    site, you can use the third-party application `django-import-export`. You can
+    find its documentation at [https://django-import-export.readthedocs.io/en/latest/](https://django-import-export.readthedocs.io/en/latest/).
+  id: totrans-353
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 如果你想要向你的管理站点添加更高级的导入/导出功能，你可以使用第三方应用`django-import-export`。你可以在[https://django-import-export.readthedocs.io/en/latest/](https://django-import-export.readthedocs.io/en/latest/)找到它的文档。
+- en: The example we have implemented works well for small to medium datasets. Given
+    that the export occurs within an HTTP request, very large datasets could lead
+    to server timeouts if the server closes the connection before the export process
+    concludes. To circumvent this, you can generate exports asynchronously using Celery,
+    with the `django-import-export-celery` application. This project is available
+    at [https://github.com/auto-mat/django-import-export-celery](https://github.com/auto-mat/django-import-export-celery).
+  id: totrans-354
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们实现的示例对于小型到中型数据集效果良好。鉴于导出发生在HTTP请求中，如果服务器在导出过程完成之前关闭连接，非常大的数据集可能会导致服务器超时。为了避免这种情况，你可以使用Celery异步生成导出，使用`django-import-export-celery`应用。该项目可在[https://github.com/auto-mat/django-import-export-celery](https://github.com/auto-mat/django-import-export-celery)找到。
+- en: Next, you are going to customize the administration site further by creating
+    a custom administration view.
+  id: totrans-355
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 接下来，你将通过创建自定义管理视图进一步自定义管理站点。
+- en: Extending the administration site with custom views
+  id: totrans-356
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+  zh: 通过自定义视图扩展管理站点
+- en: Sometimes, you may want to customize the administration site beyond what is
+    possible by configuring `ModelAdmin`, creating administration actions, and overriding
+    administration templates. You might want to implement additional functionalities
+    that are not available in existing administration views or templates. If this
+    is the case, you need to create a custom administration view. With a custom view,
+    you can build any functionality you want; you just have to make sure that only
+    staff users can access your view and that you maintain the administration look
+    and feel by making your template extend an administration template.
+  id: totrans-357
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 有时候，你可能想要自定义管理站点，超出通过配置`ModelAdmin`、创建管理操作和覆盖管理模板所能实现的范围。你可能想要实现现有管理视图或模板中不可用的附加功能。如果是这种情况，你需要创建一个自定义管理视图。使用自定义视图，你可以构建任何你想要的功能；你只需确保只有工作人员用户可以访问你的视图，并且通过使你的模板扩展管理模板来保持管理的外观和感觉。
+- en: 'Let’s create a custom view to display information about an order. Edit the
+    `views.py` file of the `orders` application and add the following code highlighted
+    in bold:'
+  id: totrans-358
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 让我们创建一个自定义视图来显示关于订单的信息。编辑`orders`应用的`views.py`文件，并添加以下加粗的代码：
+- en: '[PRE45]'
+  id: totrans-359
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE45]'
+- en: The `staff_member_required` decorator checks that both the `is_active` and `is_staff`
+    fields of the user requesting the page are set to `True`. In this view, you get
+    the `Order` object with the given ID and render a template to display the order.
+  id: totrans-360
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '`staff_member_required`装饰器检查请求页面的用户`is_active`和`is_staff`字段是否都设置为`True`。在这个视图中，你获取具有给定ID的`Order`对象并渲染一个模板来显示订单。'
+- en: 'Next, edit the `urls.py` file of the `orders` application and add the following
+    URL pattern highlighted in bold:'
+  id: totrans-361
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 接下来，编辑`orders`应用的`urls.py`文件，并添加以下突出显示的URL模式：
+- en: '[PRE46]'
+  id: totrans-362
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE46]'
+- en: 'Create the following file structure inside the `templates/` directory of the
+    `orders` application:'
+  id: totrans-363
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在`orders`应用的`templates/`目录内创建以下文件结构：
+- en: '[PRE47]'
+  id: totrans-364
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE47]'
+- en: 'Edit the `detail.html` template and add the following content to it:'
+  id: totrans-365
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 编辑`detail.html`模板，并向其中添加以下内容：
+- en: '[PRE48]'
+  id: totrans-366
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE48]'
+- en: Make sure that no template tag is split across multiple lines.
+  id: totrans-367
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 确保没有模板标签被拆分到多行中。
+- en: This is the template to display the details of an order on the administration
+    site. This template extends the `admin/base_site.html` template of Django’s administration
+    site, which contains the main HTML structure and CSS styles. You use the blocks
+    defined in the parent template to include your own content. You display information
+    about the order and the items bought.
+  id: totrans-368
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 这是用于在管理网站上显示订单详情的模板。该模板扩展了Django管理网站的`admin/base_site.html`模板，其中包含主要的HTML结构和CSS样式。你使用父模板中定义的块来包含你自己的内容。你显示关于订单和购买项目的信息。
+- en: When you want to extend an administration template, you need to know its structure
+    and identify existing blocks. You can find all administration templates at [https://github.com/django/django/tree/5.0/django/contrib/admin/templates/admin](https://github.com/django/django/tree/5.0/django/contrib/admin/templates/admin).
+  id: totrans-369
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 当你想扩展管理模板时，你需要了解其结构并识别现有块。你可以在[https://github.com/django/django/tree/5.0/django/contrib/admin/templates/admin](https://github.com/django/django/tree/5.0/django/contrib/admin/templates/admin)找到所有管理模板。
+- en: You can also override an administration template if you need to. To do so, copy
+    a template into your `templates/` directory, keeping the same relative path and
+    filename. Django’s administration site will use your custom template instead of
+    the default one.
+  id: totrans-370
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 如果需要，你也可以覆盖管理模板。为此，将一个模板复制到你的`templates/`目录中，保持相同的相对路径和文件名。Django的管理网站将使用你的自定义模板而不是默认模板。
+- en: 'Finally, let’s add a link to each `Order` object on the list display page of
+    the administration site. Edit the `admin.py` file of the `orders` application
+    and add the following code to it, above the `OrderAdmin` class:'
+  id: totrans-371
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 最后，让我们在管理网站列表显示页面的每个`Order`对象上添加一个链接。编辑`orders`应用的`admin.py`文件，并在`OrderAdmin`类之上添加以下代码：
+- en: '[PRE49]'
+  id: totrans-372
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE49]'
+- en: This is a function that takes an `Order` object as an argument and returns an
+    HTML link for the `admin_order_detail` URL. Django escapes HTML output by default.
+    You have to use the `mark_safe` function to avoid auto-escaping.
+  id: totrans-373
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 这是一个接受`Order`对象作为参数的函数，并返回`admin_order_detail` URL的HTML链接。Django默认会转义HTML输出。你必须使用`mark_safe`函数来避免自动转义。
+- en: 'Then, edit the `OrderAdmin` class to display the link, as follows. The new
+    code is highlighted in bold:'
+  id: totrans-374
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 然后，编辑`OrderAdmin`类以显示链接，如下所示。新的代码以粗体突出显示：
+- en: '[PRE50]'
+  id: totrans-375
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE50]'
+- en: 'Start the development server with the following command:'
+  id: totrans-376
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 使用以下命令启动开发服务器：
+- en: '[PRE51]'
+  id: totrans-377
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE51]'
+- en: 'Open `http://127.0.0.1:8000/admin/orders/order/` in your browser. Each row
+    includes a **View**link, as follows:'
+  id: totrans-378
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在你的浏览器中打开`http://127.0.0.1:8000/admin/orders/order/`。每一行都包含一个**视图**链接，如下所示：
+- en: '![](img/B21088_09_29.png)'
+  id: totrans-379
+  prefs: []
+  type: TYPE_IMG
+  zh: '![图片](img/B21088_09_29.png)'
+- en: 'Figure 9.29: The View link included in each order row'
+  id: totrans-380
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 图9.29：每个订单行中包含的视图链接
+- en: 'Click on the **View** link for any order to load the custom order detail page.
+    You should see a page like the following one:'
+  id: totrans-381
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 点击任何订单的**视图**链接以加载自定义订单详情页面。你应该看到如下页面：
+- en: '![](img/B21088_09_30.png)'
+  id: totrans-382
+  prefs: []
+  type: TYPE_IMG
+  zh: '![图片](img/B21088_09_30.png)'
+- en: 'Figure 9.30: The custom order detail page on the administration site'
+  id: totrans-383
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '![图片](img/B21088_09_30.png)'
+- en: Now that you have created the product detail page, you will learn how to generate
+    order invoices in the PDF format dynamically.
+  id: totrans-384
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 现在你已经创建了产品详情页面，你将学习如何动态生成PDF格式的订单发票。
+- en: Generating PDF invoices dynamically
+  id: totrans-385
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+  zh: 动态生成PDF发票
+- en: Now that you have a complete checkout and payment system, you can generate a
+    PDF invoice for each order. There are several Python libraries to generate PDF
+    files. One popular library to generate PDFs with Python code is ReportLab. You
+    can find information about how to output PDF files with ReportLab at [https://docs.djangoproject.com/en/5.0/howto/outputting-pdf/](https://docs.djangoproject.com/en/5.0/howto/outputting-pdf/).
+  id: totrans-386
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 现在你已经有一个完整的结账和支付系统，你可以为每个订单生成 PDF 发票。有几个 Python 库可以生成 PDF 文件。一个流行的使用 Python
+    代码生成 PDF 的库是 ReportLab。你可以在 [https://docs.djangoproject.com/en/5.0/howto/outputting-pdf/](https://docs.djangoproject.com/en/5.0/howto/outputting-pdf/)
+    找到有关如何使用 ReportLab 输出 PDF 文件的信息。
+- en: In most cases, you will have to add custom styles and formatting to your PDF
+    files. You will find it more convenient to render an HTML template and convert
+    it into a PDF file, keeping Python away from the presentation layer. You are going
+    to follow this approach and use a module to generate PDF files with Django. You
+    will use WeasyPrint, which is a Python library that can generate PDF files from
+    HTML templates.
+  id: totrans-387
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在大多数情况下，你将不得不向你的 PDF 文件添加自定义样式和格式。你会发现渲染 HTML 模板并将其转换为 PDF 文件，同时将 Python 从表示层中移开，会更加方便。你将遵循这种方法，并使用一个模块来使用
+    Django 生成 PDF 文件。你将使用 WeasyPrint，这是一个可以从 HTML 模板生成 PDF 文件的 Python 库。
+- en: Installing WeasyPrint
+  id: totrans-388
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+  zh: 安装 WeasyPrint
+- en: 'First, install WeasyPrint’s dependencies for your operating system from [https://doc.courtbouillon.org/weasyprint/stable/first_steps.html](https://doc.courtbouillon.org/weasyprint/stable/first_steps.html).
+    Then, install WeasyPrint via `pip` using the following command:'
+  id: totrans-389
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 首先，从 [https://doc.courtbouillon.org/weasyprint/stable/first_steps.html](https://doc.courtbouillon.org/weasyprint/stable/first_steps.html)
+    安装适用于你的操作系统的 WeasyPrint 依赖项。然后，使用以下命令通过 `pip` 安装 WeasyPrint：
+- en: '[PRE52]'
+  id: totrans-390
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE52]'
+- en: Creating a PDF template
+  id: totrans-391
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+  zh: 创建 PDF 模板
+- en: You need an HTML document as input for WeasyPrint. You are going to create an
+    HTML template, render it using Django, and pass it to WeasyPrint to generate the
+    PDF file.
+  id: totrans-392
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 你需要一个 HTML 文档作为 WeasyPrint 的输入。你将创建一个 HTML 模板，使用 Django 进行渲染，并将其传递给 WeasyPrint
+    以生成 PDF 文件。
+- en: 'Create a new template file inside the `templates/orders/order/` directory of
+    the `orders` application and name it `pdf.html`. Add the following code to it:'
+  id: totrans-393
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在 `orders` 应用的 `templates/orders/order/` 目录中创建一个新的模板文件，并将其命名为 `pdf.html`。向其中添加以下代码：
+- en: '[PRE53]'
+  id: totrans-394
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE53]'
+- en: This is the template for the PDF invoice. In this template, you display all
+    order details and an HTML `<table>` element, including the products. You also
+    include a message to display whether the order has been paid.
+  id: totrans-395
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 这是 PDF 发票的模板。在这个模板中，你显示所有订单详情和一个包含产品的 HTML `<table>` 元素。你还包括一个消息来显示订单是否已支付。
+- en: Rendering PDF files
+  id: totrans-396
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+  zh: 渲染 PDF 文件
+- en: 'You are going to create a view to generate PDF invoices for existing orders
+    using the administration site. Edit the `views.py` file inside the `orders` application
+    directory and add the following code to it:'
+  id: totrans-397
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 你将创建一个视图来使用管理站点生成现有订单的 PDF 发票。编辑 `orders` 应用程序目录内的 `views.py` 文件，并向其中添加以下代码：
+- en: '[PRE54]'
+  id: totrans-398
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE54]'
+- en: This is the view to generate a PDF invoice for an order. You use the `staff_member_required`
+    decorator to make sure only staff users can access this view.
+  id: totrans-399
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 这是生成订单 PDF 发票的视图。你使用 `staff_member_required` 装饰器确保只有工作人员用户可以访问此视图。
+- en: You get the `Order` object with the given ID and use the `render_to_string()`
+    function provided by Django to render `orders/order/pdf.html`. The rendered HTML
+    is saved in the `html` variable.
+  id: totrans-400
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 你获取具有给定 ID 的 `Order` 对象，并使用 Django 提供的 `render_to_string()` 函数渲染 `orders/order/pdf.html`。渲染后的
+    HTML 保存到 `html` 变量中。
+- en: Then, you generate a new `HttpResponse` object, specifying the `application/pdf`
+    content type and including the `Content-Disposition` header to specify the filename.
+    You use WeasyPrint to generate a PDF file from the rendered HTML code and write
+    the file to the `HttpResponse` object.
+  id: totrans-401
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 然后，你生成一个新的 `HttpResponse` 对象，指定 `application/pdf` 内容类型，并包含 `Content-Disposition`
+    头来指定文件名。你使用 WeasyPrint 从渲染的 HTML 代码生成 PDF 文件，并将文件写入 `HttpResponse` 对象。
+- en: You use the static file `css/pdf.css` to add CSS styles to the generated PDF
+    file. To locate the file, you use the `finders()` function of the `staticfiles`
+    module. Finally, you return the generated response.
+  id: totrans-402
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 你使用静态文件 `css/pdf.css` 向生成的 PDF 文件添加 CSS 样式。为了定位文件，你使用 `staticfiles` 模块的 `finders()`
+    函数。最后，你返回生成的响应。
+- en: If you are missing the CSS styles, remember to copy the static files located
+    in the `static/` directory of the `shop` application to the same location of your
+    project.
+  id: totrans-403
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 如果你缺少 CSS 样式，请记住将位于 `shop` 应用程序 `static/` 目录中的静态文件复制到你的项目相同的位置。
+- en: You can find the contents of the directory at [https://github.com/PacktPublishing/Django-5-by-Example/tree/main/Chapter09/myshop/shop/static](https://github.com/PacktPublishing/Django-5-by-Example/tree/main/Chapter09/myshop/shop/static).
+  id: totrans-404
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 您可以在[https://github.com/PacktPublishing/Django-5-by-Example/tree/main/Chapter09/myshop/shop/static](https://github.com/PacktPublishing/Django-5-by-Example/tree/main/Chapter09/myshop/shop/static)找到目录内容。
+- en: 'Since you need to use the `STATIC_ROOT` setting, you have to add it to your
+    project. This is the project’s path where static files reside. Edit the `settings.py`
+    file of the `myshop` project and add the following setting:'
+  id: totrans-405
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 由于您需要使用`STATIC_ROOT`设置，您必须将其添加到您的项目中。这是静态文件所在的项目路径。编辑`myshop`项目的`settings.py`文件，并添加以下设置：
+- en: '[PRE55]'
+  id: totrans-406
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE55]'
+- en: 'Then, run the following command:'
+  id: totrans-407
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 然后，运行以下命令：
+- en: '[PRE56]'
+  id: totrans-408
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE56]'
+- en: 'You should see output that ends like this:'
+  id: totrans-409
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 您应该看到以下结尾的输出：
+- en: '[PRE57]'
+  id: totrans-410
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE57]'
+- en: The `collectstatic` command copies all static files from your applications into
+    the directory defined in the `STATIC_ROOT` setting. This allows each application
+    to provide its own static files using a `static/` directory containing them. You
+    can also provide additional static file sources in the `STATICFILES_DIRS` setting.
+    All of the directories specified in the `STATICFILES_DIRS` list will also be copied
+    to the `STATIC_ROOT` directory when `collectstatic` is executed. Whenever you
+    execute `collectstatic` again, you will be asked if you want to override the existing
+    static files.
+  id: totrans-411
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '`collectstatic`命令会将所有静态文件从您的应用复制到`STATIC_ROOT`设置中定义的目录。这允许每个应用通过包含它们的`static/`目录来提供自己的静态文件。您还可以在`STATICFILES_DIRS`设置中提供额外的静态文件源。当执行`collectstatic`时，所有在`STATICFILES_DIRS`列表中指定的目录也将被复制到`STATIC_ROOT`目录。每次您再次执行`collectstatic`时，都会询问您是否要覆盖现有的静态文件。'
+- en: 'Edit the `urls.py` file inside the `orders` application directory and add the
+    following URL pattern highlighted in bold:'
+  id: totrans-412
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 编辑`orders`应用目录内的`urls.py`文件，并添加以下加粗的URL模式：
+- en: '[PRE58]'
+  id: totrans-413
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE58]'
+- en: 'Now, you can edit the administration list display page for the `Order` model
+    to add a link to the PDF file for each result. Edit the `admin.py` file inside
+    the `orders` application and add the following code above the `OrderAdmin` class:'
+  id: totrans-414
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 现在，您可以编辑`Order`模型的行政列表显示页面，为每个结果添加一个指向PDF文件的链接。编辑`orders`应用内的`admin.py`文件，并在`OrderAdmin`类上方添加以下代码：
+- en: '[PRE59]'
+  id: totrans-415
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE59]'
+- en: If you specify a `short_description` attribute for your callable, Django will
+    use it for the name of the column.
+  id: totrans-416
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 如果您为您的可调用对象指定了`short_description`属性，Django将使用它作为列的名称。
+- en: 'Add `order_pdf` to the `list_display` attribute of the `OrderAdmin` class,
+    as follows:'
+  id: totrans-417
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 将`order_pdf`添加到`OrderAdmin`类的`list_display`属性中，如下所示：
+- en: '[PRE60]'
+  id: totrans-418
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE60]'
+- en: 'Make sure the development server is running. Open `http://127.0.0.1:8000/admin/orders/order/`
+    in your browser. Each row should now include a **PDF** link, like this:'
+  id: totrans-419
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 确保开发服务器正在运行。在您的浏览器中打开`http://127.0.0.1:8000/admin/orders/order/`。现在，每一行都应该包括一个**PDF**链接，如下所示：
+- en: '![](img/B21088_09_31.png)'
+  id: totrans-420
+  prefs: []
+  type: TYPE_IMG
+  zh: '![](img/B21088_09_31.png)'
+- en: 'Figure 9.31: The PDF link included in each order row'
+  id: totrans-421
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 图9.31：包含在每个订单行中的PDF链接
+- en: 'Click on the **PDF** link for any order. You should see a generated PDF file
+    like the following one for orders that have not been paid yet:'
+  id: totrans-422
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 点击任何订单的**PDF**链接。您应该看到一个生成的PDF文件，如下所示（对于尚未付款的订单）：
+- en: '![](img/B21088_09_32.png)'
+  id: totrans-423
+  prefs: []
+  type: TYPE_IMG
+  zh: '![](img/B21088_09_32.png)'
+- en: 'Figure 9.32: The PDF invoice for an unpaid order'
+  id: totrans-424
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 图9.32：未付款订单的PDF发票
+- en: 'For paid orders, you will see the following PDF file:'
+  id: totrans-425
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 对于已付款订单，您将看到以下PDF文件：
+- en: '![](img/B21088_09_33.png)'
+  id: totrans-426
+  prefs: []
+  type: TYPE_IMG
+  zh: '![](img/B21088_09_33.png)'
+- en: 'Figure 9.33: The PDF invoice for a paid order'
+  id: totrans-427
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 图9.33：已付款订单的PDF发票
+- en: Sending PDF files by email
+  id: totrans-428
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+  zh: 通过电子邮件发送PDF文件
+- en: When a payment is successful, you will send an automatic email to your customer
+    including the generated PDF invoice. You will create an asynchronous task to perform
+    this action.
+  id: totrans-429
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 当支付成功时，您将向您的客户发送包含生成的PDF发票的自动电子邮件。您将创建一个异步任务来执行此操作。
+- en: 'Create a new file inside the `payment` application directory and name it `tasks.py`.
+    Add the following code to it:'
+  id: totrans-430
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在`payment`应用目录内创建一个新文件，命名为`tasks.py`。向其中添加以下代码：
+- en: '[PRE61]'
+  id: totrans-431
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE61]'
+- en: You define the `payment_completed` task by using the `@shared_task` decorator.
+    In this task, you use the `EmailMessage` class provided by Django to create an
+    `email` object. Then, you render the template in the `html` variable. You generate
+    the PDF file from the rendered template and output it to a `BytesIO` instance,
+    which is an in-memory bytes buffer. Then, you attach the generated PDF file to
+    the `EmailMessage` object using the `attach()` method, including the contents
+    of the `out` buffer. Finally, you send the email.
+  id: totrans-432
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 你通过使用 `@shared_task` 装饰器来定义 `payment_completed` 任务。在这个任务中，你使用 Django 提供的 `EmailMessage`
+    类创建一个 `email` 对象。然后，你在 `html` 变量中渲染模板。从渲染的模板生成 PDF 文件并将其输出到 `BytesIO` 实例，这是一个内存中的字节缓冲区。然后，使用
+    `attach()` 方法将生成的 PDF 文件附加到 `EmailMessage` 对象上，包括 `out` 缓冲区的内容。最后，发送电子邮件。
+- en: 'Remember to set up your **Simple Mail Transfer Protocol** (**SMTP**) settings
+    in the `settings.py` file of the project to send emails. You can refer to *Chapter
+    2*, *Enhancing Your Blog with Advanced Features*, to see a working example of
+    an SMTP configuration. If you don’t want to set up email settings, you can tell
+    Django to write emails to the console by adding the following setting to the `settings.py`
+    file:'
+  id: totrans-433
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 记得在项目的 `settings.py` 文件中设置你的 **简单邮件传输协议** (**SMTP**) 设置以发送电子邮件。你可以参考 *第 2 章*，*通过高级功能增强你的博客*，以查看
+    SMTP 配置的工作示例。如果你不想设置电子邮件设置，你可以通过在 `settings.py` 文件中添加以下设置来告诉 Django 将电子邮件写入控制台：
+- en: '[PRE62]'
+  id: totrans-434
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE62]'
+- en: Let’s add the `payment_completed` task to the webhook endpoint that handles
+    payment completion events.
+  id: totrans-435
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 让我们将 `payment_completed` 任务添加到处理支付完成事件的 webhook 端点。
+- en: 'Edit the `webhooks.py` file of the `payment` application and modify it to make
+    it look like this:'
+  id: totrans-436
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 编辑 `payment` 应用程序的 `webhooks.py` 文件，并修改它使其看起来像这样：
+- en: '[PRE63]'
+  id: totrans-437
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE63]'
+- en: The `payment_completed` task is queued by calling its `delay()` method. The
+    task will be added to the queue and executed asynchronously by a Celery worker
+    as soon as possible.
+  id: totrans-438
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 通过调用其 `delay()` 方法，将 `payment_completed` 任务排队。该任务将被添加到队列中，并由 Celery 工作器尽快异步执行。
+- en: 'Now, you can complete a new checkout process in order to receive the PDF invoice
+    in your email. If you are using the `console.EmailBackend` for your email backend,
+    in the shell where you are running Celery, you will be able to see the following
+    output:'
+  id: totrans-439
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 现在，你可以完成一个新的结账过程，以便在您的电子邮件中接收 PDF 发票。如果您正在使用 `console.EmailBackend` 作为您的电子邮件后端，在您运行
+    Celery 的 shell 中，您将能够看到以下输出：
+- en: '[PRE64]'
+  id: totrans-440
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE64]'
+- en: This output shows that the email contains an attachment. You have learned how
+    to attach files to emails and send them programmatically.
+  id: totrans-441
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 此输出显示电子邮件包含附件。你已经学会了如何将文件附加到电子邮件并程序化地发送它们。
+- en: Congratulations! You have completed the Stripe integration and have added valuable
+    functionality to your shop.
+  id: totrans-442
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 恭喜！你已经完成了 Stripe 集成，并为你的商店添加了有价值的功能。
+- en: Summary
+  id: totrans-443
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+  zh: 摘要
+- en: In this chapter, you integrated the Stripe payment gateway into your project
+    and created a webhook endpoint to receive payment notifications. You built a custom
+    administration action to export orders to CSV. You also customized the Django
+    administration site using custom views and templates. Finally, you learned how
+    to generate PDF files with WeasyPrint and how to attach them to emails.
+  id: totrans-444
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在本章中，你将 Stripe 支付网关集成到你的项目中，并创建了一个 webhook 端点以接收支付通知。你构建了一个自定义管理操作来导出订单到 CSV
+    文件。你还使用自定义视图和模板自定义了 Django 管理站点。最后，你学习了如何使用 WeasyPrint 生成 PDF 文件并将它们附加到电子邮件中。
+- en: The next chapter will teach you how to create a coupon system using Django sessions,
+    and you will build a product recommendation engine with Redis.
+  id: totrans-445
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 下一章将教你如何使用 Django 会话创建优惠券系统，并且你将使用 Redis 构建一个产品推荐引擎。
+- en: Additional resources
+  id: totrans-446
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+  zh: 其他资源
+- en: 'The following resources provide additional information related to the topics
+    covered in this chapter:'
+  id: totrans-447
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 以下资源提供了与本章涵盖的主题相关的额外信息：
+- en: 'Source code for this chapter: [https://github.com/PacktPublishing/Django-5-by-example/tree/main/Chapter09](https://github.com/PacktPublishing/Django-5-by-example/tree/main/Chapter09)'
+  id: totrans-448
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 本章的源代码：[https://github.com/PacktPublishing/Django-5-by-example/tree/main/Chapter09](https://github.com/PacktPublishing/Django-5-by-example/tree/main/Chapter09)
+- en: 'Stripe website: [https://www.stripe.com/](https://www.stripe.com/)'
+  id: totrans-449
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: Stripe 网站：[https://www.stripe.com/](https://www.stripe.com/)
+- en: 'Stripe Checkout documentation: [https://stripe.com/docs/payments/checkout](https://stripe.com/docs/payments/checkout)'
+  id: totrans-450
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: Stripe Checkout 文档：[https://stripe.com/docs/payments/checkout](https://stripe.com/docs/payments/checkout)
+- en: 'Creating a Stripe account: [https://dashboard.stripe.com/register](https://dashboard.stripe.com/register)'
+  id: totrans-451
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 创建 Stripe 账户：[https://dashboard.stripe.com/register](https://dashboard.stripe.com/register)
+- en: 'Stripe account settings: [https://dashboard.stripe.com/settings/account](https://dashboard.stripe.com/settings/account)'
+  id: totrans-452
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: Stripe账户设置：[https://dashboard.stripe.com/settings/account](https://dashboard.stripe.com/settings/account)
+- en: 'Stripe Python library: [https://github.com/stripe/stripe-python](https://github.com/stripe/stripe-python)'
+  id: totrans-453
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: Stripe Python库：[https://github.com/stripe/stripe-python](https://github.com/stripe/stripe-python)
+- en: 'Stripe test API keys: [https://dashboard.stripe.com/test/apikeys](https://dashboard.stripe.com/test/apikeys)'
+  id: totrans-454
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: Stripe测试API密钥：[https://dashboard.stripe.com/test/apikeys](https://dashboard.stripe.com/test/apikeys)
+- en: 'Stripe API keys documentation: [https://stripe.com/docs/keys](https://stripe.com/docs/keys)'
+  id: totrans-455
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: Stripe API密钥文档：[https://stripe.com/docs/keys](https://stripe.com/docs/keys)
+- en: 'Stripe API version 2024-04-10 release: [https://stripe.com/docs/upgrades#2024-04-10](https://stripe.com/docs/api/events/types)'
+  id: totrans-456
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: Stripe API版本2024-04-10发布：[https://stripe.com/docs/upgrades#2024-04-10](https://stripe.com/docs/api/events/types)
+- en: 'Stripe checkout session modes: [https://stripe.com/docs/api/checkout/sessions/object#checkout_session_object-mode](https://stripe.com/docs/api/checkout/sessions/object#checkout_session_object-mode)'
+  id: totrans-457
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: Stripe会话模式：[https://stripe.com/docs/api/checkout/sessions/object#checkout_session_object-mode](https://stripe.com/docs/api/checkout/sessions/object#checkout_session_object-mode)
+- en: 'Building absolute URIs with Django: [https://docs.djangoproject.com/en/5.0/ref/request-response/#django.http.HttpRequest.build_absolute_uri](https://docs.djangoproject.com/en/5.0/ref/request-response/#django.http.HttpRequest.build_absolute_uri)'
+  id: totrans-458
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 使用Django构建绝对URI：[https://docs.djangoproject.com/en/5.0/ref/request-response/#django.http.HttpRequest.build_absolute_uri](https://docs.djangoproject.com/en/5.0/ref/request-response/#django.http.HttpRequest.build_absolute_uri)
+- en: 'Creating Stripe sessions: [https://stripe.com/docs/api/checkout/sessions/create](https://stripe.com/docs/api/checkout/sessions/create)'
+  id: totrans-459
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 创建Stripe会话：[https://stripe.com/docs/api/checkout/sessions/create](https://stripe.com/docs/api/checkout/sessions/create)
+- en: 'Stripe-supported currencies: [https://stripe.com/docs/currencies](https://stripe.com/docs/currencies)'
+  id: totrans-460
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: Stripe支持货币：[https://stripe.com/docs/currencies](https://stripe.com/docs/currencies)
+- en: 'Stripe Payments dashboard: [https://dashboard.stripe.com/test/payments](https://dashboard.stripe.com/test/payments)'
+  id: totrans-461
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: Stripe支付仪表板：[https://dashboard.stripe.com/test/payments](https://dashboard.stripe.com/test/payments)
+- en: 'Credit cards for testing payments with Stripe: [https://stripe.com/docs/testing](https://stripe.com/docs/testing)'
+  id: totrans-462
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 用于测试与Stripe支付测试的信用卡：[https://stripe.com/docs/testing](https://stripe.com/docs/testing)
+- en: 'Stripe webhooks: [https://dashboard.stripe.com/test/webhooks](https://dashboard.stripe.com/test/webhooks)'
+  id: totrans-463
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: Stripe网络钩子：[https://dashboard.stripe.com/test/webhooks](https://dashboard.stripe.com/test/webhooks)
+- en: 'Types of events sent by Stripe: [https://stripe.com/docs/api/events/types](https://stripe.com/docs/api/events/types)'
+  id: totrans-464
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: Stripe发送的事件类型：[https://stripe.com/docs/api/events/types](https://stripe.com/docs/api/events/types)
+- en: 'Installing the Stripe CLI: [https://stripe.com/docs/stripe-cli#install](https://stripe.com/docs/stripe-cli#install
+    )'
+  id: totrans-465
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 安装Stripe CLI：[https://stripe.com/docs/stripe-cli#install](https://stripe.com/docs/stripe-cli#install
+    )
+- en: 'Latest Stripe CLI release: [https://github.com/stripe/stripe-cli/releases/latest](https://github.com/stripe/stripe-cli/releases/latest)'
+  id: totrans-466
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 最新Stripe CLI版本发布：[https://github.com/stripe/stripe-cli/releases/latest](https://github.com/stripe/stripe-cli/releases/latest)
+- en: 'Generating CSV files with Django: [https://docs.djangoproject.com/en/5.0/howto/outputting-csv/](https://docs.djangoproject.com/en/5.0/howto/outputting-csv/)'
+  id: totrans-467
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 使用Django生成CSV文件：[https://docs.djangoproject.com/en/5.0/howto/outputting-csv/](https://docs.djangoproject.com/en/5.0/howto/outputting-csv/)
+- en: '`django-import-export` application: [https://django-import-export.readthedocs.io/en/latest/](https://django-import-export.readthedocs.io/en/latest/)'
+  id: totrans-468
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: '`django-import-export`应用程序：[https://django-import-export.readthedocs.io/en/latest/](https://django-import-export.readthedocs.io/en/latest/)'
+- en: '`django-import-export-celery` application: [https://github.com/auto-mat/django-import-export-celery](https://github.com/auto-mat/django-import-export-celery)'
+  id: totrans-469
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: '`django-import-export-celery`应用程序：[https://github.com/auto-mat/django-import-export-celery](https://github.com/auto-mat/django-import-export-celery)'
+- en: 'Django administration templates: [https://github.com/django/django/tree/5.0/django/contrib/admin/templates/admin](https://github.com/django/django/tree/5.0/django/contrib/admin/templates/admin)'
+  id: totrans-470
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: Django管理模板：[https://github.com/django/django/tree/5.0/django/contrib/admin/templates/admin](https://github.com/django/django/tree/5.0/django/contrib/admin/templates/admin)
+- en: 'Outputting PDF files with ReportLab: [https://docs.djangoproject.com/en/5.0/howto/outputting-pdf/](https://docs.djangoproject.com/en/5.0/howto/outputting-pdf/)'
+  id: totrans-471
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 使用ReportLab输出PDF文件：[https://docs.djangoproject.com/en/5.0/howto/outputting-pdf/](https://docs.djangoproject.com/en/5.0/howto/outputting-pdf/)
+- en: 'Installing WeasyPrint: [https://doc.courtbouillon.org/weasyprint/stable/first_steps.html](https://doc.courtbouillon.org/weasyprint/stable/first_steps.html)'
+  id: totrans-472
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 安装WeasyPrint：[https://doc.courtbouillon.org/weasyprint/stable/first_steps.html](https://doc.courtbouillon.org/weasyprint/stable/first_steps.html)
+- en: 'Static files for this chapter: [https://github.com/PacktPublishing/Django-5-by-Example/tree/main/Chapter09/myshop/shop/static](https://github.com/PacktPublishing/Django-5-by-Example/tree/main/Chapter09/myshop/shop/static)'
+  id: totrans-473
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 本章节的静态文件：[https://github.com/PacktPublishing/Django-5-by-Example/tree/main/Chapter09/myshop/shop/static](https://github.com/PacktPublishing/Django-5-by-Example/tree/main/Chapter09/myshop/shop/static)
