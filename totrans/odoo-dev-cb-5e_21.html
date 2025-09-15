@@ -1,0 +1,407 @@
+<html><head></head><body>
+		<div id="_idContainer202">
+			<h1 id="_idParaDest-905" class="chapter-number"><a id="_idTextAnchor1117"/>21</h1>
+			<h1 id="_idParaDest-906"><a id="_idTextAnchor1118"/>Performance Optimization</h1>
+			<p>With the help of the Odoo framework, you can develop large and complex applications. Good performance is key to the success of any project. In this chapter, we will explore the patterns and tools you need to optimize performance. You will also learn about the debugging techniques used to find the root cause of a <span class="No-Break">performance issue.</span></p>
+			<p>In this chapter, we will cover the <span class="No-Break">following recipes:</span></p>
+			<ul>
+				<li>The prefetching pattern <span class="No-Break">for recordsets</span></li>
+				<li>The in-memory cache – <span class="No-Break"><strong class="source-inline">ormcache</strong></span></li>
+				<li>Generating differently <span class="No-Break">sized images</span></li>
+				<li>Accessing <span class="No-Break">grouped data</span></li>
+				<li>Creating or writing <span class="No-Break">multiple records</span></li>
+				<li>Accessing records through <span class="No-Break">database queries</span></li>
+				<li>Profiling <span class="No-Break">Python code</span></li>
+			</ul>
+			<h1 id="_idParaDest-907"><a id="_idTextAnchor1119"/>The prefetching pattern for recordsets</h1>
+			<p>When you <a id="_idIndexMarker1515"/>access data from a recordset, it makes a <a id="_idIndexMarker1516"/>query in the database. If you have a recordset with multiple records, fetching records on it can make a system slow because of the multiple SQL queries. In this recipe, we will explore how you can use the prefetching pattern to solve this issue. By following the prefetching pattern, you can reduce the number of queries needed, which will improve performance and make your <span class="No-Break">system faster.</span></p>
+			<h2 id="_idParaDest-908"><a id="_idTextAnchor1120"/>How to do it…</h2>
+			<p>Take a look at the following code; it is a normal <strong class="source-inline">compute</strong> method. In this method, <strong class="source-inline">self</strong> is a recordset of multiple records. When you iterate directly on the recordset, prefetching <span class="No-Break">works perfectly:</span></p>
+			<pre class="source-code">
+# Correct prefetching
+def compute_method(self):
+    for rec in self:
+        print(rec.name)</pre>			<p>However, in some <a id="_idIndexMarker1517"/>cases, prefetching becomes more complex, such as when fetching data with the <strong class="source-inline">browse</strong> method. In the following example, we browse <a id="_idIndexMarker1518"/>records one by one in the <strong class="source-inline">for</strong> loop. This will not use prefetching efficiently, and it will execute more queries <span class="No-Break">than usual:</span></p>
+			<pre class="source-code">
+# Incorrect prefetching
+def some_action(self):
+    record_ids = []
+    self.env.cr.execute("some query to fetch record id")
+    for rec in self.env.cr.fetchall():
+        record = self.env['res.partner'].browse(rec[0])
+        print(record.name)</pre>			<p>By passing a list of IDs to the <strong class="source-inline">browse</strong> method, you can create a recordset of multiple records. If you perform operations on this recordset, prefetching works <span class="No-Break">perfectly fine:</span></p>
+			<pre class="source-code">
+# Correct prefetching
+def some_action(self):
+    record_ids = []
+    self.env.cr.execute("some query to fetch record id")
+    record_ids = [ rec[0] for rec in self.env.cr.fetchall() ]
+    recordset = self.env['res.partner'].browse(record_ids)
+    for record_id in recordset:
+        print(record.name)</pre>			<p>This way, you will not lose the prefetching feature, and data will be fetched in a single <span class="No-Break">SQL query.</span></p>
+			<h2 id="_idParaDest-909"><a id="_idTextAnchor1121"/>How it works...</h2>
+			<p>When you work with multiple recordsets, prefetching helps reduce the number of SQL queries. It does <a id="_idIndexMarker1519"/>this by fetching all of the data at once. Usually, prefetching <a id="_idIndexMarker1520"/>works automatically in Odoo, but you lose this feature in certain circumstances, such as when you split records, as depicted in the <span class="No-Break">following example:</span></p>
+			<pre class="source-code">
+recs = [r for r in recordset r.id not in [1,2,4,10]]</pre>			<p>The preceding code given will split the recordset into parts, so you cannot take advantage <span class="No-Break">of prefetching.</span></p>
+			<p>Using prefetching correctly <a id="_idIndexMarker1521"/>can significantly improve the performance of <strong class="bold">Object-Relational Mapping</strong> (<strong class="bold">ORM</strong>). Let’s explore how prefetching works under <span class="No-Break">the hood.</span></p>
+			<p>When you iterate on a recordset through a <strong class="source-inline">for</strong> loop and access the value of a field in the first iteration, the prefetching process starts its magic. Instead of fetching data for the current record in the iteration, prefetching will fetch the data for all of the records. The logic behind this is that if you access a field in a <strong class="source-inline">for</strong> loop, you are likely to fetch that data for the next record in the iteration as well. In the first iteration of the <strong class="source-inline">for</strong> loop, prefetching will fetch the data for all of the recordsets and keep it in the cache. In the next iteration of the <strong class="source-inline">for</strong> loop, data will be served from this cache, instead of making a new SQL query. This will reduce the query count from <strong class="source-inline">O(n)</strong> <span class="No-Break">to </span><span class="No-Break"><strong class="source-inline">O(1)</strong></span><span class="No-Break">.</span></p>
+			<p>Let’s suppose the recordset has 10 records. When you are in the first loop and access the <strong class="source-inline">name</strong> field of the record, it will fetch the data for all 10 records. This is not only the case for the <strong class="source-inline">name</strong> field; it will also fetch all the fields for those 10 records. In the subsequent <strong class="source-inline">for</strong> loop iterations, the data will be served from the cache. This will reduce the number of queries from 10 <span class="No-Break">to 1:</span></p>
+			<pre class="source-code">
+for record in recordset: # recordset with 10 records
+    record.name # Prefetch data of all 10 records in the first loop
+    record.email # data of email will be served from the cache.</pre>			<p>Note that the prefetching will fetch the value of all of the fields (except the <strong class="source-inline">*2many</strong> fields), even if those fields are not used in the body of the <strong class="source-inline">for</strong> loop. This is because the extra columns only have a minor impact on performance compared to the extra queries for <span class="No-Break">each column.</span></p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">Sometimes, prefetched fields could reduce performance. In these cases, you can disable prefetching by passing <strong class="source-inline">False</strong> into the <strong class="source-inline">prefetch_fields</strong> context, as <span class="No-Break">follows: </span><span class="No-Break"><strong class="source-inline">recordset.with_context(prefetch_fields=False)</strong></span><span class="No-Break">.</span></p>
+			<p>The prefetch <a id="_idIndexMarker1522"/>mechanism uses the environment cache to <a id="_idIndexMarker1523"/>store and retrieve record values. This means that once the records are fetched from the database, all subsequent calls for fields will be served from the environment cache. You can access the environment cache using the <strong class="source-inline">env.cache</strong> attribute. To invalidate the cache, you can use the <strong class="source-inline">invalidate_cache()</strong> method of <span class="No-Break">the environment.</span></p>
+			<h2 id="_idParaDest-910"><a id="_idTextAnchor1122"/>There’s more...</h2>
+			<p>If you split recordsets, the ORM will generate a new recordset with a new prefetch context. Performing operations on such recordsets will only prefetch the data for the respective records. If you want to prefetch all the records after <strong class="source-inline">prefetch</strong>, you can do this by passing the <a id="_idIndexMarker1524"/>prefetch record IDs to the <strong class="source-inline">with_prefetch()</strong> method. In the following example, we split the recordset into two parts. Here, we passed a common prefetch context in both recordsets, so when you fetch the data from one of them, ORM will fetch the data for the other and put the data in the cache for <span class="No-Break">future use:</span></p>
+			<pre class="source-code">
+recordset = ... # assume recordset has 10 records.
+recordset1 = recordset[:5].with_prefetch(recordset._ids)
+recordset2 = recordset[5:].with_prefetch(recordset._ids)
+self.env.cr.execute("select id from sale_order limit 10")
+record_ids = [rec[0] for rec in self.env.cr.fetchall()]
+recordset = self.env['sale.order'].browse(record_ids)
+recordset1 = recordset[:5]
+for rec in recordset1:
+   print(rec.name)  # Prefetch name of all 5 records in the first loop
+   print(rec.attention)  # Prefetch attention of all 5 records in the first loop
+recordset2 = recordset[5:].with_prefetch(recordset._ids)
+for rec in recordset1:
+   print(rec.name)  # Prefetch name of all 10 records in the first loop
+   print(rec.attention)  # Prefetch attention of all 10 records in the first loop</pre>			<p>The prefetch <a id="_idIndexMarker1525"/>context is not limited to splitting recordsets. You can also use the <strong class="source-inline">with_prefetch()</strong> method to have a common prefetch context between multiple recordsets. This means that when you fetch data from one record, it will fetch data for all other <span class="No-Break">recordsets, too.</span></p>
+			<h1 id="_idParaDest-911"><a id="_idTextAnchor1123"/>The in-memory cache – ormcache</h1>
+			<p>The Odoo framework <a id="_idIndexMarker1526"/>provides the <strong class="source-inline">ormcache</strong> decorator to manage the in-memory cache. In this recipe, we will explore how you can manage the cache for <span class="No-Break">your functions.</span></p>
+			<h2 id="_idParaDest-912"><a id="_idTextAnchor1124"/>How to do it...</h2>
+			<p>The classes of this ORM cache are available at <strong class="source-inline">/odoo/tools/cache.py</strong>. In order to use these in any file, you will need to import them <span class="No-Break">as follows:</span></p>
+			<pre class="source-code">
+from odoo import tools</pre>			<p>After importing the classes, you can use the ORM cache decorators. Odoo provides different types of in-memory cache decorators. We’ll take a look at each of these in the <span class="No-Break">following subsections.</span></p>
+			<h3>ormcache</h3>
+			<p>This one is the simplest <a id="_idIndexMarker1527"/>and most used cache decorator. You need to pass the parameter name upon which the method’s output depends. The following is an example method with the <span class="No-Break"><strong class="source-inline">ormcache</strong></span><span class="No-Break"> decorator:</span></p>
+			<pre class="source-code">
+@tools.ormcache('mode')
+def fetch_mode_data(self, mode):
+    # some calculations
+    return result</pre>			<p>When you call this method for the first time, it will be executed, and the result will be returned. <strong class="source-inline">ormcache</strong> will store this result based on the value of the <strong class="source-inline">mode</strong> parameter. When you call the method again with the same <strong class="source-inline">mode</strong> value, the result will be served from the cache without executing the <span class="No-Break">actual method.</span></p>
+			<p>Sometimes, your method’s result depends on the environment attributes. In these cases, you can declare the method <span class="No-Break">as follows:</span></p>
+			<pre class="source-code">
+@tools.ormcache('self.env.uid', 'mode')
+def fetch_data(self, mode):
+    # some calculations
+    return result</pre>			<p>The method given in this example will store the cache based on the environment user and the value of the <span class="No-Break"><strong class="source-inline">mode</strong></span><span class="No-Break"> parameter.</span></p>
+			<h3>ormcache_context</h3>
+			<p>This cache <a id="_idIndexMarker1528"/>works similarly to <strong class="source-inline">ormcache</strong>, except that it depends on the parameters plus the value in the context. In this cache’s decorator, you need to pass the parameter name and a list of context keys. For example, if your method’s output depends on the <strong class="source-inline">lang</strong> and <strong class="source-inline">website_id</strong> keys in the context, you can <span class="No-Break">use </span><span class="No-Break"><strong class="source-inline">ormcache_context</strong></span><span class="No-Break">:</span></p>
+			<pre class="source-code">
+@tools.ormcache_context('mode', keys=('website_id','lang'))
+def fetch_data(self, mode):
+    # some calculations
+    return result</pre>			<p>The cache in <a id="_idIndexMarker1529"/>the preceding example will depend on the <strong class="source-inline">mode</strong> argument and the values <span class="No-Break">of </span><span class="No-Break"><strong class="source-inline">context</strong></span><span class="No-Break">.</span></p>
+			<h3>ormcache_multi</h3>
+			<p>Some methods carry out an operation on multiple records or IDs. If you want to add a cache to these <a id="_idIndexMarker1530"/>kinds of methods, you can use the <strong class="source-inline">ormcache_multi</strong> decorator. You need to pass the <strong class="source-inline">multi</strong> parameter, and during the method call, ORM will generate the cache keys by iterating on this parameter. In this method, you will need to return the result in the dictionary format with an element of the <strong class="source-inline">multi</strong> parameter as a key. Take a look at the <span class="No-Break">following example:</span></p>
+			<pre class="source-code">
+@tools.ormcache_multi('mode', multi='ids')
+def fetch_data(self, mode, ids):
+    result = {}
+    for i in ids:
+        data = ... # some calculation based on ids
+        result[i] = data
+    return result</pre>			<p>Suppose we called the preceding method with <strong class="source-inline">[1,2,3]</strong> as the IDs. The method will return a result in the <strong class="source-inline">{1:... , 2:..., 3:... }</strong> format. ORM will cache the result based on these keys. If you make another call with <strong class="source-inline">[1,2,3,4,5]</strong> as the IDs, your method will receive <strong class="source-inline">[4, 5]</strong> as the <strong class="source-inline">ID</strong> parameter, so the method will carry out the operations for the <strong class="source-inline">4</strong> and <strong class="source-inline">5</strong> IDs, and the rest of the result will be served from <span class="No-Break">the cache.</span></p>
+			<h2 id="_idParaDest-913"><a id="_idTextAnchor1125"/>How it works...</h2>
+			<p>The ORM cache keeps the cache in the dictionary format (the cache lookup). The keys of this cache will be generated based on the signature of the decorated method, and the values will be <a id="_idIndexMarker1531"/>the result. Put simply, when you call the method with the <strong class="source-inline">x, y</strong> parameters and the result of the method is <strong class="source-inline">x+y</strong>, the cache lookup will be <strong class="source-inline">{(x, y): x+y}</strong>. This means that the next time you call this method with the same parameters, the result will be served directly from this cache. This saves computation time and makes the <span class="No-Break">response faster.</span></p>
+			<p>The ORM cache is an in-memory cache, so it is stored in RAM and occupies memory. Do not use <strong class="source-inline">ormcache</strong> to serve large data, such as images <span class="No-Break">or files.</span></p>
+			<p class="callout-heading">Warning</p>
+			<p class="callout">Methods using this decorator should never return a recordset. If they do, they will generate <strong class="source-inline">psycopg2.OperationalError</strong> because the underlying cursor of the recordset <span class="No-Break">is closed.</span></p>
+			<p>You should use the ORM cache on pure functions. A pure function is a method that always returns the same result for the same arguments. The output of these methods only depends on the arguments, so they return the same result. If this is not the case, you need to manually clear the cache when you perform operations that make the cache’s state invalid. To clear the cache, call the <span class="No-Break"><strong class="source-inline">clear_caches()</strong></span><span class="No-Break"> method:</span></p>
+			<pre class="source-code">
+self.env[model_name].clear_caches()</pre>			<p>Once you have cleared the cache, the next call to the method will execute the method and store the result in the cache, and all subsequent method calls with the same parameter will be served from <span class="No-Break">the cache.</span></p>
+			<h2 id="_idParaDest-914"><a id="_idTextAnchor1126"/>There’s more...</h2>
+			<p>The ORM <a id="_idIndexMarker1532"/>cache is the <strong class="bold">Least Recently Used</strong> (<strong class="bold">LRU</strong>) cache, meaning that if a key in the cache is not used frequently, it will be removed. If you don’t use the ORM cache properly, it might do more harm than good. For instance, if the argument passed in a method is always different, then each time, Odoo will look in the cache first and then call the method to compute. If you want to learn how your cache is performing, you can pass the <strong class="source-inline">SIGUSR1</strong> signal to the <span class="No-Break">Odoo process:</span></p>
+			<pre class="console">
+kill -SIGUSR1 &lt;pid&gt;
+kill -SIGUSR1 496</pre>			<p>Here, <strong class="source-inline">496</strong> is the process ID. After executing the command, you will see the status of the ORM cache in <span class="No-Break">the logs:</span></p>
+			<pre class="console">
+&gt; 2023-10-18 09:22:49,350 496 INFO odoo-book-17.0 odoo.tools.cache:      1 entries,     31 hit,      1 miss,      0 err, 96.9% ratio, for ir.actions.act_window._existing
+&gt; 2023-10-18 09:22:49,350 496 INFO odoo-book-17.0 odoo.tools.cache:      1 entries,      1 hit,      1 miss,      0 err, 50.0% ratio, for ir.actions.actions.get_bindings
+&gt; 2023-10-18 09:22:49,350 496 INFO odoo-book-17.0 odoo.tools.cache:      4 entries,      1 hit,      9 miss,      0 err, 10.0% ratio, for ir.config_parameter._get_param</pre>			<p>The percentage <a id="_idIndexMarker1533"/>in the cache is the hit-to-miss ratio. It’s the success ratio of the result being found in the cache. If the cache’s hit-to-miss ratio is too low, you should remove the ORM cache from <span class="No-Break">the method.</span></p>
+			<h1 id="_idParaDest-915"><a id="_idTextAnchor1127"/>Generating images in different size</h1>
+			<p>Large images can be troublesome for any website. They increase the size of web pages and consequently make <a id="_idIndexMarker1534"/>them slower as a result. This leads to bad SEO rankings and visitor loss. In this recipe, we will explore how you can create images of different sizes; by using the right images, you can reduce the web page size and improve the page <span class="No-Break">loading time.</span></p>
+			<h2 id="_idParaDest-916"><a id="_idTextAnchor1128"/>How to do it...</h2>
+			<p>You will need to inherit <strong class="source-inline">image.mixin</strong> in your model. Here is how you can add <strong class="source-inline">image.mixin</strong> to <span class="No-Break">your model:</span></p>
+			<pre class="source-code">
+class HostelStudent(models.Model):
+    _name = "hostel.student"
+    _description = "Hostel Student Information"
+    _inherit = ["image.mixin"]</pre>			<p>The mixin will automatically add five new fields to the hostel student model to store images of different sizes. See the <em class="italic">How it works…</em> section to learn about all <span class="No-Break">five fields.</span></p>
+			<h2 id="_idParaDest-917"><a id="_idTextAnchor1129"/>How it works...</h2>
+			<p>The <strong class="source-inline">image.mixin</strong> instance will automatically add five new binary fields to the model. Each field <a id="_idIndexMarker1535"/>stores images with a different resolution. Here is a list of the fields and <span class="No-Break">their resolutions:</span></p>
+			<ul>
+				<li><span class="No-Break"><strong class="source-inline">image_1920</strong></span><span class="No-Break">: 1,920x1,920</span></li>
+				<li><span class="No-Break"><strong class="source-inline">image_1024</strong></span><span class="No-Break">: 1,024x1,024</span></li>
+				<li><span class="No-Break"><strong class="source-inline">image_512</strong></span><span class="No-Break">: 512x1,512</span></li>
+				<li><span class="No-Break"><strong class="source-inline">image_256</strong></span><span class="No-Break">: 256x256</span></li>
+				<li><span class="No-Break"><strong class="source-inline">image_128</strong></span><span class="No-Break">: 128x128</span></li>
+			</ul>
+			<p>Of all the fields given here, only <strong class="source-inline">image_1920</strong> is editable. The other image fields are read-only and update automatically when you change the <strong class="source-inline">image_1920</strong> field. So, in the backend form view of your model, you need to use the <strong class="source-inline">image_1920</strong> field to allow the user to upload images. However, by doing so, we load large <strong class="source-inline">image_1920</strong> images in the form view. However, there is a way to improve performance by using <strong class="source-inline">image_1920</strong> images in the form view but displaying smaller images. For instance, we can utilize the <strong class="source-inline">image_1920</strong> field but display an <strong class="source-inline">image_128</strong> field. To do this, you can use the <span class="No-Break">following syntax:</span></p>
+			<pre class="source-code">
+&lt;field name="image_1920" widget="image"
+       options="{'preview_image': 'image_128'}" /&gt;</pre>			<p>Once you have saved the image to the field, Odoo will automatically resize the image and store it in the respective field. The form view will display the converted <strong class="source-inline">image_128</strong>, as we use it <span class="No-Break">as </span><span class="No-Break"><strong class="source-inline">preview_image</strong></span><span class="No-Break">.</span></p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">The <strong class="source-inline">image.mixin</strong> model is <strong class="source-inline">AbstractModel</strong>, so its table is not present in the database. You need to inherit it in your model in order to <span class="No-Break">use it.</span></p>
+			<p>With this <strong class="source-inline">image.mixin</strong>, you can store an image with a maximum resolution of 1,920x1,920. If you <a id="_idIndexMarker1536"/>save an image with a resolution higher than 1,920x1,920, Odoo will reduce it to 1,920x1,920. While doing so, Odoo will also preserve the resolution of the image, avoiding any distortion. As an example, if you upload an image with a 2,400x1,600 resolution, the <strong class="source-inline">image_1920</strong> field will have a resolution <span class="No-Break">of 1,920x1,280.</span></p>
+			<h2 id="_idParaDest-918"><a id="_idTextAnchor1130"/>There’s more...</h2>
+			<p>With <strong class="source-inline">image.mixin</strong>, you can get <a id="_idIndexMarker1537"/>images with certain resolutions, but what if you want to use an image with another resolution? To do so, you can use a binary wrapper field image, as shown in the <span class="No-Break">following example:</span></p>
+			<pre class="source-code">
+image_1500 = fields.Image("Image 1500", max_width=1500, max_height=1500)</pre>			<p>This will create a new <strong class="source-inline">image_1500</strong> field, and storing the image will resize it to 1,500x1,500 resolution. Note that this is not part of <strong class="source-inline">image.mixin</strong>. It just reduces the image to 1,500x1,500, so you need to add this field in the form view; editing it will not make changes to the other image fields in <strong class="source-inline">image.mixin</strong>. If you want to link it with an existing <strong class="source-inline">image.mixin</strong> field, add the <strong class="source-inline">related="image_1920"</strong> attribute to the <span class="No-Break">field definition.</span></p>
+			<h1 id="_idParaDest-919"><a id="_idTextAnchor1131"/>Accessing grouped data</h1>
+			<p>When you want <a id="_idIndexMarker1538"/>data for statistics, you often need it in a grouped form, such as a monthly sales report, or a report that shows sales per customer. It is time-consuming to search records and group them manually. In this recipe, we will explore how you can use the <strong class="source-inline">read_group()</strong> method to access <span class="No-Break">grouped data.</span></p>
+			<h2 id="_idParaDest-920"><a id="_idTextAnchor1132"/>How to do it...</h2>
+			<p>Perform the <span class="No-Break">following steps.</span></p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">The <strong class="source-inline">read_group()</strong> method <a id="_idIndexMarker1539"/>is widely used for statistics and smart <span class="No-Break">stat buttons.</span></p>
+			<ol>
+				<li>Let’s assume <a id="_idIndexMarker1540"/>that you want to show the number of sales orders on the partner form. This can be done by searching sales orders for a customer and then counting <span class="No-Break">the length:</span><pre class="source-code">
+# in res.partner model
+so_count = fields.Integer(compute='_compute_so_count', string='Sale order count')
+def _compute_so_count(self):
+    sale_orders = self.env['sale.order'].search(domain=[('partner_id', 'in', self.ids)])
+    for partner in self:
+        partner.so_count = len(sale_orders.filtered(lambda so: so.partner_id.id == partner.id))</pre><p class="list-inset">The previous example will work, but not optimally. When you display the <strong class="source-inline">so_count</strong> field on the tree view, it will fetch and filter sales orders for all the partners in a list. With this small amount of data, the <strong class="source-inline">read_group()</strong> method won›t make much difference, but as the amount of data grows, it could be a problem. To fix this issue, you can use the <span class="No-Break"><strong class="source-inline">read_group</strong></span><span class="No-Break"> method.</span></p></li>				<li>The following example will do the same as the preceding one, but it only consumes one SQL query, even for <span class="No-Break">large datasets:</span><pre class="source-code">
+# in res.partner model
+so_count = fields.Integer(compute='_compute_so_count', string='Sale order count')
+def _compute_so_count(self):
+    sale_data = self.env['sale.order'].read_group(
+        domain=[('partner_id', 'in', self.ids)],
+        fields=['partner_id'], groupby=['partner_id'])
+    mapped_data = dict([(m['partner_id'][0], m['partner_id_count']) for m in sale_data])
+    for partner in self:
+        partner.so_count = mapped_data[partner.id]</pre></li>			</ol>
+			<p>The previous <a id="_idIndexMarker1541"/>code snippet is optimized, as it obtains the sales order count directly via SQL’s <strong class="source-inline">GROUP </strong><span class="No-Break"><strong class="source-inline">BY</strong></span><span class="No-Break"> feature.</span></p>
+			<h2 id="_idParaDest-921"><a id="_idTextAnchor1133"/>How it works...</h2>
+			<p>The <strong class="source-inline">read_group()</strong> method internally uses the <strong class="source-inline">GROUP BY</strong> feature of SQL. This makes the <strong class="source-inline">read_group</strong> method faster, even if you have large datasets. Internally, the Odoo web client uses this method in the charts and the grouped tree view. You can tweak the behavior of the <strong class="source-inline">read_group</strong> method by using <span class="No-Break">different arguments.</span></p>
+			<p>Let’s explore the signature of the <span class="No-Break"><strong class="source-inline">read_group</strong></span><span class="No-Break"> method:</span></p>
+			<pre class="source-code">
+def read_group(self, domain, fields, groupby, offset=0, limit=None, orderby=False, lazy=True):</pre>			<p>The different parameters available for the <strong class="source-inline">read_group</strong> method are <span class="No-Break">as follows:</span></p>
+			<ul>
+				<li><strong class="source-inline">domain</strong>: This is used <a id="_idIndexMarker1542"/>to filter records. This will be the search criteria for the <span class="No-Break"><strong class="source-inline">read_group</strong></span><span class="No-Break"> method.</span></li>
+				<li><strong class="source-inline">fields</strong>: This is a <a id="_idIndexMarker1543"/>list of the fields to fetch with the grouping. Note that the fields mentioned here should be in the <strong class="source-inline">groupby</strong> parameter, unless you use some aggregate functions. The <strong class="source-inline">read_group</strong> method supports the SQL aggregate functions. Let›s say you want to get the average order amount per customer. If so, you can use <strong class="source-inline">read_group</strong> <span class="No-Break">as follows:</span><pre class="source-code">
+self.env['sale.order'].read_group([], ['partner_id', 'amount_total:avg'], ['partner_id'])</pre><p class="list-inset">If you want <a id="_idIndexMarker1544"/>to access the same field twice but with a different aggregate function, the syntax is a little different. You need to pass the field name as <strong class="source-inline">alias:agg(field_name)</strong>. This example will give you the total and average number of orders <span class="No-Break">per customer:</span></p><pre class="source-code">self.env['sale.order'].read_group([], ['partner_id', 'total:sum(amount_total)', 'avg_total:avg(amount_total)'], ['partner_id'])</pre></li>				<li><strong class="source-inline">groupby</strong>: This parameter will be a list of fields by which the records are grouped. It lets you group records <a id="_idIndexMarker1545"/>based on multiple fields. To do this, you will need to pass a list of fields. For example, if you want to group the sales orders by customer and order state, you can pass <strong class="source-inline">['partner_id ', 'state']</strong> in <span class="No-Break">this parameter.</span></li>
+				<li><strong class="source-inline">offset</strong>: This parameter is used for pagination. If you want to skip a few records, you can use <span class="No-Break">this parameter.</span></li>
+				<li><strong class="source-inline">limit</strong>: This parameter is used for pagination; it indicates the maximum number of records <span class="No-Break">to fetch.</span></li>
+				<li><strong class="source-inline">lazy</strong>: This parameter accepts Boolean values. By default, its value is <strong class="source-inline">True</strong>. If this parameter is <strong class="source-inline">True</strong>, the results are grouped only by the first field in the <strong class="source-inline">groupby</strong> parameter. You will get the remaining <strong class="source-inline">groupby</strong> parameters and the domain in the <strong class="source-inline">__context</strong> and <strong class="source-inline">__domain</strong> keys in the result. If the value of this parameter is set to <strong class="source-inline">False</strong>, it will group the data by all fields in the <span class="No-Break"><strong class="source-inline">groupby</strong></span><span class="No-Break"> parameter.</span></li>
+			</ul>
+			<h2 id="_idParaDest-922"><a id="_idTextAnchor1134"/>There’s more...</h2>
+			<p>Grouping by date fields can be complicated because it is possible to group records based on days, weeks, quarters, months, or years. You can change the grouping behavior of the date field by passing <strong class="source-inline">groupby_function</strong> after <strong class="source-inline">:</strong> in the <strong class="source-inline">groupby</strong> parameter. If you want to group the monthly total of the sales orders, you can use the <span class="No-Break"><strong class="source-inline">read_group</strong></span><span class="No-Break"> method:</span></p>
+			<pre class="source-code">
+self.env['sale.order'].read_group([], ['total:sum(amount_total)'], ['order_date:month'])</pre>			<p>The possible options for date grouping are <strong class="source-inline">day</strong>, <strong class="source-inline">week</strong>, <strong class="source-inline">month</strong>, <strong class="source-inline">quarter</strong>, <span class="No-Break">and </span><span class="No-Break"><strong class="source-inline">year</strong></span><span class="No-Break">.</span></p>
+			<h2 id="_idParaDest-923"><a id="_idTextAnchor1135"/>See also</h2>
+			<p>Refer to the <a id="_idIndexMarker1546"/>documentation if you want to learn more about PostgreSQL aggregate <span class="No-Break">functions: </span><a href="https://www.postgresql.org/docs/current/functions-aggregate.html"><span class="No-Break">https://www.postgresql.org/docs/current/functions-aggregate.html</span></a><span class="No-Break">.</span></p>
+			<h1 id="_idParaDest-924"><a id="_idTextAnchor1136"/>Creating or writing multiple records</h1>
+			<p>If you are new <a id="_idIndexMarker1547"/>to Odoo development, you might execute <a id="_idIndexMarker1548"/>multiple queries to write or create multiple records. In this recipe, we will look at how to create and write records <span class="No-Break">in batches.</span></p>
+			<h2 id="_idParaDest-925"><a id="_idTextAnchor1137"/>How to do it...</h2>
+			<p>Creating multiple records and writing on multiple records work differently under the hood. Let’s see each of these records one <span class="No-Break">by one.</span></p>
+			<h3>Creating multiple records</h3>
+			<p>Odoo supports creating records in batches. If you are creating a single record, simply pass a dictionary with the field values. To create records in a batch, you just need to pass a list of these dictionaries instead of a single dictionary. The following example creates three room records in a single <span class="No-Break"><strong class="source-inline">create</strong></span><span class="No-Break"> call:</span></p>
+			<pre class="source-code">
+vals = [{
+    'name': "Room A-101",
+    'room_no': 101,
+    'floor_no': 1,
+    'student_per_room': 2,
+}, {
+    'name': "Room A-102",
+    'room_no': 102,
+    'floor_no': 1,
+    'student_per_room': 3,
+}, {
+    'name': "Room B-201",
+    'room_no': 201,
+    'floor_no': 2,
+    'student_per_room': 3,
+}]
+self.env['hostel.room'].create(vals)</pre>			<p>This code snippet <a id="_idIndexMarker1549"/>will create the records for three <span class="No-Break">new books.</span></p>
+			<h3>Writing on multiple records</h3>
+			<p>When working with multiple versions of Odoo, it’s important to understand how the write method <a id="_idIndexMarker1550"/>behaves. In this case, it adopts a delayed approach for updates, meaning it doesn’t immediately write data to the database. Instead, Odoo only writes the data to the database when necessary or when the <strong class="source-inline">flush()</strong> method <span class="No-Break">is called.</span></p>
+			<p>Here are two examples of the <span class="No-Break"><strong class="source-inline">write</strong></span><span class="No-Break"> method:</span></p>
+			<pre class="source-code">
+# Example 1
+data = {...}
+for record in recordset:
+    record.write(data)
+# Example 2
+data = {...}
+recordset.write(data)</pre>			<p>If you are using <a id="_idIndexMarker1551"/>Odoo v13 or above, then there will not be any issues regarding performance. However, if you are using an older version, the second example will be much faster than the first one because the first example will execute a SQL query in <span class="No-Break">each iteration.</span></p>
+			<h2 id="_idParaDest-926"><a id="_idTextAnchor1138"/>How it works...</h2>
+			<p>In order to create multiple records in a batch, you need to pass value dictionaries in the form of a list to create new records. This will automatically manage batch-creating the records. When you create records in a batch, doing so internally will insert a query for each record. This means that creating records in a batch is not done in a single query. However, this doesn’t mean that creating records in batches does not improve performance. The performance gain is achieved through batch-calculating <span class="No-Break">computing fields.</span></p>
+			<p>Things work differently for the <strong class="source-inline">write</strong> method. Most things are handled automatically by the framework. For instance, if you write the same data on all records, the database will be updated with only one <strong class="source-inline">UPDATE</strong> query. The framework will even handle it if you update the same record again and again in the same transaction, <span class="No-Break">as follows:</span></p>
+			<pre class="source-code">
+recordset.name= 'Admin'
+recordset.email= 'admin@example.com'
+recordset.name= 'Administrator'
+recordset.email= 'admin-2@example.com'</pre>			<p>In the previous code snippet, only one query will be executed for <strong class="source-inline">write</strong>, with the final values of <strong class="source-inline">name=Administrator</strong> and <strong class="source-inline">email=admin-2@example.com</strong>. This does not have a bad impact on performance, as the assigned values are in the cache and written later in a <span class="No-Break">single query.</span></p>
+			<p>Things are <a id="_idIndexMarker1552"/>different if you use the <strong class="source-inline">flush()</strong> method in between, as shown <a id="_idIndexMarker1553"/>in the <span class="No-Break">following example:</span></p>
+			<pre class="source-code">
+recordset.name= 'Admin'
+recordset.email= 'admin@example.com'
+recordset.flush()
+recordset.name= 'Administrator'
+recordset.email= 'admin-2@example.com'</pre>			<p>The <strong class="source-inline">flush()</strong> method updates <a id="_idIndexMarker1554"/>the values from the cache to the database. So, in the previous example, two <strong class="source-inline">UPDATE</strong> queries will be executed – one with data before the flush and another with data after <span class="No-Break">the flush.</span></p>
+			<h2 id="_idParaDest-927"><a id="_idTextAnchor1139"/>There’s more...</h2>
+			<p>If you are using an older version, then writing a single value will execute the <strong class="source-inline">UPDATE</strong> query immediately. Check the following examples to explore the correct usage of the <strong class="source-inline">write</strong> operation for an older version <span class="No-Break">of Odoo:</span></p>
+			<pre class="source-code">
+# incorrect usage
+recordset.name= 'Admin'
+recordset.email= 'admin@example.com'
+# correct usage
+recordset.write({'name': 'Admin', 'email'= 'admin@example.com'})</pre>			<p>Here, in the first example, we have two <strong class="source-inline">UPDATE</strong> queries, while the second example will only take one <span class="No-Break"><strong class="source-inline">UPDATE</strong></span><span class="No-Break"> query.</span></p>
+			<h1 id="_idParaDest-928"><a id="_idTextAnchor1140"/>Accessing records through database queries</h1>
+			<p>Odoo ORM has limited methods, and sometimes, it is difficult to fetch certain data from ORM. In <a id="_idIndexMarker1555"/>these cases, you can fetch data <a id="_idIndexMarker1556"/>in the desired format, and you need to perform an operation on the data to get a certain result. Due to this, it becomes slower. To handle these special cases, you can execute SQL queries in the database. In this recipe, we will explore how you can run SQL queries <span class="No-Break">from Odoo.</span></p>
+			<h2 id="_idParaDest-929"><a id="_idTextAnchor1141"/>How to do it...</h2>
+			<p>You can perform database queries using the <span class="No-Break"><strong class="source-inline">self._cr.execute</strong></span><span class="No-Break"> method:</span></p>
+			<ol>
+				<li>Add the <span class="No-Break">following code:</span><pre class="source-code">
+self.flush()
+self._cr.execute("SELECT id, name, room_no, floor_no  FROM hostel_room WHERE name ilike %s", ('%Room A-%',))
+data = self._cr.fetchall()
+print(data)</pre><p class="list-inset">Here is <span class="No-Break">the output:</span></p><pre class="source-code"><strong class="bold">[(4, 'Room A-101', '101', 1), (5, 'Room A-103', '103', 1), (6, 'Room A-201', '201', 2)]</strong></pre></li>				<li>The result of the query will be in the form of a list of tuples. The data in the tuples will be in the same sequence as the fields in the query. If you want to fetch data in dictionary format, you can use the <strong class="source-inline">dictfetchall()</strong> method. Take a look at the <span class="No-Break">following example:</span><pre class="source-code">
+self.flush()
+self._cr.execute("SELECT id, name, room_no, floor_no  FROM hostel_room WHERE name ilike %s", ('%Room A-%',))
+data = self._cr.dictfetchall()
+print(data)</pre><p class="list-inset">Here is <span class="No-Break">the output:</span></p><pre class="source-code"><strong class="bold">[{'id': 4, 'name': 'Room A-101', 'room_no': 101, 'floor_no': 1}, {'id': 5, 'name': 'Room A-103', 'room_no': 103, 'floor_no': 1}, {'id': 6, 'name': 'Room A-201', 'room_no': 201, 'floor_no': 2}]</strong></pre></li>			</ol>
+			<p>If you want to fetch only a single record, you can use the <strong class="source-inline">fetchone()</strong> and <strong class="source-inline">dictfetchone()</strong> methods. These methods work like <strong class="source-inline">fetchall()</strong> and <strong class="source-inline">dictfetchall()</strong>, but they only return a single record, and you need to call the <strong class="source-inline">fetchone()</strong> and <strong class="source-inline">dictfetchone()</strong> methods multiple times if you want to fetch <span class="No-Break">multiple records.</span></p>
+			<h2 id="_idParaDest-930"><a id="_idTextAnchor1142"/>How it works...</h2>
+			<p>There are <a id="_idIndexMarker1557"/>two ways to access the database cursor <a id="_idIndexMarker1558"/>from the recordset – one is from the recordset itself, such as <strong class="source-inline">self._cr</strong>, and the other is from the environment (in particular, <strong class="source-inline">self.env.cr</strong>). This cursor is used to execute database queries. In the preceding example, we saw how you can fetch data through raw queries. The table name is the name of the model after replacing <strong class="source-inline">.</strong> with <strong class="source-inline">_</strong>, so the <strong class="source-inline">hostel.room</strong> model <span class="No-Break">becomes </span><span class="No-Break"><strong class="source-inline">hostel_room</strong></span><span class="No-Break">.</span></p>
+			<p>Note that we used <strong class="source-inline">self.flush()</strong> before executing a query. The reason behind this is that Odoo uses the cache excessively, and the database might not have the correct values. <strong class="source-inline">self.flush()</strong> will push all the delayed updates to the database and conduct all the dependent computations as well, and you will then get correct values from the database. The <strong class="source-inline">flush()</strong> method also supports a few parameters that help you control what is flushed in the database. The parameters are <span class="No-Break">as follows:</span></p>
+			<ul>
+				<li>The <strong class="source-inline">fname</strong> parameter needs a list of fields that you want to flush to <span class="No-Break">the database</span></li>
+				<li>The <strong class="source-inline">records</strong> parameter needs a recordset, and it is used if you want to flush certain <span class="No-Break">records only</span></li>
+			</ul>
+			<p>If you are executing <strong class="source-inline">INSERT</strong> or <strong class="source-inline">UPDATE</strong> queries, you will also need to execute <strong class="source-inline">flush()</strong> after executing the query because the ORM might not be aware of the change you made, and it might have <span class="No-Break">cached records.</span></p>
+			<p>You need to consider a few things before you execute raw queries. Only use raw queries when you have no other choice. By executing raw queries, you bypass the ORM layers. Therefore, you also bypass security rules and the ORM’s performance advantages. Sometimes, wrongly built queries can introduce SQL injection vulnerabilities. Consider the following example, in which the queries could allow an attacker to perform <span class="No-Break">SQL injection:</span></p>
+			<pre class="source-code">
+# very bad, SQL injection possible
+self.env.cr.execute('SELECT id, name FROM hostel_room WHERE name ilike + search_keyword + ';')
+# good
+self.env.cr.execute('SELECT id, name FROM hostel_room WHERE name ilike %s ';', (search_keyword,))</pre>			<p>Don’t use the <a id="_idIndexMarker1559"/>string format function either; it will also <a id="_idIndexMarker1560"/>allow an attacker to perform SQL injection. Using SQL queries makes your code harder to read and understand for other developers, so avoid using them <span class="No-Break">wherever possible.</span></p>
+			<p class="callout-heading">Information</p>
+			<p class="callout">A lot of Odoo developers believe that executing SQL queries makes operations faster, as it bypasses the ORM layer. This is not completely true, however; it depends on the use case. In most operations, ORM performs better and faster than <strong class="source-inline">RAW</strong> queries because data is served from the <span class="No-Break">recordset cache.</span></p>
+			<h2 id="_idParaDest-931"><a id="_idTextAnchor1143"/>There’s more...</h2>
+			<p>Operations made in one transaction are only committed at the end of it. If an error occurs in the ORM, the transaction is rolled back. If you have made an <strong class="source-inline">INSERT</strong> or <strong class="source-inline">UPDATE</strong> query and you want to make it permanent, you can use <strong class="source-inline">self._cr.commit()</strong> to commit <span class="No-Break">the changes.</span></p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">Note that using <strong class="source-inline">commit()</strong> can be dangerous because it can put records in an inconsistent state. An error <a id="_idIndexMarker1561"/>in the ORM can cause incomplete rollbacks, so only use <strong class="source-inline">commit()</strong> if you are completely sure of what <span class="No-Break">you›re doing.</span></p>
+			<p>If you use the <strong class="source-inline">commit()</strong> method, then there›s no need to use <strong class="source-inline">flush()</strong> afterward. The <strong class="source-inline">commit()</strong> method flushes the <span class="No-Break">environment internally.</span></p>
+			<h1 id="_idParaDest-932"><a id="_idTextAnchor1144"/>Profiling</h1>
+			<p>Sometimes, you will be unable to pinpoint the cause of an issue. This is especially true of performance issues. Odoo provides some built-in profiling tools that help you find the real cause of <span class="No-Break">an issue.</span></p>
+			<p>Profiling is about <a id="_idIndexMarker1562"/>analyzing the execution of a program and measuring aggregated data. These data can be the elapsed time for each function, the executed SQL queries, and <span class="No-Break">so on.</span></p>
+			<p>While profiling does not improve the performance of a program by itself, it can prove very helpful in finding performance issues and identifying which part of the program is responsible <span class="No-Break">for them.</span></p>
+			<p>Code profiling in Odoo can help you identify performance and optimize your code. It is a technique used to analyze the code execution time, complexity of the program, and memory usage of <span class="No-Break">an application.</span></p>
+			<p>By using profiling techniques in Odoo, you can improve the overall performance and user experience of your ap<a id="_idTextAnchor1145"/>plication, making it faster and <span class="No-Break">more efficient.</span></p>
+			<h2 id="_idParaDest-933"><a id="_idTextAnchor1146"/>Enabling the profiler</h2>
+			<p>The profiler can <a id="_idIndexMarker1563"/>either be enabled from the user interface, which is the easiest way to do so but only allows you to profile web requests, or from <span class="No-Break">Python code:</span></p>
+			<ol>
+				<li>Enable <span class="No-Break">developer mode.</span></li>
+				<li>The profiler must be enabled globally on the database. This can be done in <span class="No-Break">two ways:</span><ul><li>Open the developer mode tools, and then toggle the <strong class="bold">Enable profiling</strong> button. A wizard <a id="_idIndexMarker1564"/>suggests a set of expiry times for the profiling. Click on <strong class="bold">Enable profiling</strong> to enable the <span class="No-Break">profiler globally.</span></li></ul></li>
+			</ol>
+			<div>
+				<div id="_idContainer196" class="IMG---Figure">
+					<img src="image/B20997_21_01.jpg" alt="Figure 21.1 – Enabling Profiling"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 21.1 – Enabling Profiling</p>
+			<div>
+				<div id="_idContainer197" class="IMG---Figure">
+					<img src="image/B20997_21_02.jpg" alt="Figure 21.2 – Disabling profiling"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 21.2 – Disabling profiling</p>
+			<ul>
+				<li>Go to <strong class="bold">Settings</strong> | <strong class="bold">General Settings</strong> | <strong class="bold">Performance</strong> and set the des<a id="_idTextAnchor1147"/>ired time for <a id="_idIndexMarker1565"/>the field Enable <span class="No-Break">profiling field.</span></li>
+			</ul>
+			<h3>Analyzing the results</h3>
+			<p>To browse <a id="_idIndexMarker1566"/>the profiling results, make sure that the profiler is enabled globally on the database, then open the developer mode tools, and click on the button in the top-right corner of the profiling section. A list view of the <strong class="source-inline">ir.profile</strong> records grouped by profiling session <span class="No-Break">will open.</span></p>
+			<div>
+				<div id="_idContainer198" class="IMG---Figure">
+					<img src="image/B20997_21_03.jpg" alt="" role="presentation"/>
+				</div>
+			</div>
+			<p>Each record <a id="_idIndexMarker1567"/>has a clickable link that opens the speedscope results in a <span class="No-Break">new tab.</span></p>
+			<div>
+				<div id="_idContainer199" class="IMG---Figure">
+					<img src="image/B20997_21_04.jpg" alt="" role="presentation"/>
+				</div>
+			</div>
+			<p>Speedscope falls out of the scope of this documentation, but there are a lot of tools to try out – search, highlight of similar frames, zoom on frame, timeline, left heavy, sandwich view, and <span class="No-Break">so on.</span></p>
+			<p>Depending on <a id="_idIndexMarker1568"/>the profiling options that were activated, Odoo generates different view modes that you can access from the <span class="No-Break">top menu.</span></p>
+			<div>
+				<div id="_idContainer200" class="IMG---Figure">
+					<img src="image/B20997_21_05.jpg" alt="" role="presentation"/>
+				</div>
+			</div>
+			<div>
+				<div id="_idContainer201" class="IMG---Figure">
+					<img src="image/B20997_21_06.jpg" alt="" role="presentation"/>
+				</div>
+			</div>
+			<ul>
+				<li><strong class="bold">Combined</strong>: The <strong class="bold">Combined</strong> view displays all of the SQL queries and traces that have been <span class="No-Break">integrated together.</span></li>
+				<li><strong class="bold">Combined no context</strong>: The <strong class="bold">Combined no context </strong>view produces the same results but disregards the stored execution <span class="No-Break">context, performance/profiling/enable&gt;.</span></li>
+				<li><strong class="bold">sql (no gap)</strong>: The <strong class="bold">sql (no gap)</strong> view displays all SQL queries as if they were done sequentially, without any Python logic. This is solely beneficial for <span class="No-Break">SQL optimization.</span></li>
+				<li><strong class="bold">sql (density)</strong>: Only  the SQL queries are displayed in the <strong class="bold">sql (no density)</strong> view, with space between them. This can help you discover areas where numerous tiny queries could be batch-processed <a id="_idIndexMarker1569"/>and determine whether the issue is with the Python or <span class="No-Break">SQL code.</span></li>
+				<li><strong class="bold">frames</strong>: Only the periodic collector’s results are displayed in the <span class="No-Break"><strong class="bold">frames</strong></span><span class="No-Break"> view.</span></li>
+			</ul>
+			<p class="callout-heading">Note</p>
+			<p class="callout">Despite the profiler’s lightweight design, it can still affect performance, particularly when utilizing the <strong class="source-inline">Sync</strong> collector. Rem<a id="_idTextAnchor1148"/>ember that when you examine the <span class="No-Break">speedscope data.</span></p>
+			<h3>Collectors</h3>
+			<p>Every collector <a id="_idIndexMarker1570"/>has a unique format and method to gather profiling data. Through their specific toggle button in the developer mode tools, or from Python code using their key or class, each can be independently enabled from the <span class="No-Break">user interface.</span></p>
+			<p>There are <a id="_idIndexMarker1571"/>currently four collectors available <span class="No-Break">in Odoo:</span></p>
+			<ul>
+				<li><span class="No-Break"><strong class="source-inline">SQLColle<a id="_idTextAnchor1149"/>ctor</strong></span></li>
+				<li><span class="No-Break"><strong class="source-inline">PeriodicCollector</strong></span></li>
+				<li><span class="No-Break"><strong class="source-inline">QwebCollector</strong></span></li>
+				<li><span class="No-Break"><strong class="source-inline">SyncCollector</strong></span></li>
+			</ul>
+			<h3>SQLCollector</h3>
+			<p>All SQL queries <a id="_idIndexMarker1572"/>made to the database in the current thread (for all cursors) are saved by the <strong class="source-inline">SQL</strong> collector, together with the stack trace. Using the collector on a <a id="_idIndexMarker1573"/>large number of tiny queries could affect execution time and other profilers, since the overhead of the collector is added to the thread that is examined for <span class="No-Break">each query.</span></p>
+			<p>Debugging query counts and adding data to the <strong class="source-inline">Periodic</strong> collector in the combined speedscope view are two particularly helpful uses <span class="No-Break">for it:</span></p>
+			<pre class="source-code">
+class SQLCollector(Collector):
+   """
+   Saves all executed queries in the curren<a id="_idTextAnchor1150"/>t thread with the call stack.
+   """
+   name = 'sql'</pre>			<h4>The Periodic collector</h4>
+			<p>This collector <a id="_idIndexMarker1574"/>runs in a separate thread and saves the stack <a id="_idIndexMarker1575"/>trace of the analyzed thread at every interval. The interval (by default, 10 ms) can be defined through the <strong class="bold">Interval</strong> option in the user interface or the interval parameter in <span class="No-Break">Python code.</span></p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">Memory problems will arise when profiling lengthy queries if the interval is set extremely low. The interval will lose information on brief function executions if it is set <span class="No-Break">extremely high.</span></p>
+			<p>Because of its <a id="_idIndexMarker1576"/>distinct thread, it should have relatively little effect on <a id="_idIndexMarker1577"/>execution time, making it one of the finest ways to <span class="No-Break">assess performance:</span></p>
+			<pre class="source-code">
+class PeriodicCollector(Collector):
+   """
+   Record execution frames asynchronously at most every `interval` seconds.
+   :param interval (float): time to wait in seco<a id="_idTextAnchor1151"/>nds between two samples.
+   """
+   name = 'traces_async'</pre>			<h4>The Qweb collector</h4>
+			<p>The Python <a id="_idIndexMarker1578"/>execution time and queries for each directive are reduced by this collector. With the SQL collector, the overhead may be significant <a id="_idIndexMarker1579"/>when a large number of tiny instructions are executed. In terms of data collected, the results differ from those of other collectors, and a custom widget can be used to examine them from the <strong class="source-inline">ir.profile</strong> <span class="No-Break">form view.</span></p>
+			<p>It is most helpful when trying to <span class="No-Break">maximize views:</span></p>
+			<pre class="source-code">
+class QwebCollector(Collector):
+   """
+   Record qw<a id="_idTextAnchor1152"/>eb execution with directive trace.
+   """
+   name = 'qweb'</pre>			<h4>The Sync collector</h4>
+			<p>Performance is <a id="_idIndexMarker1580"/>significantly impacted by this collector, since it operates on a single thread and saves the stack for each function call <span class="No-Break">and return.</span></p>
+			<p>Debugging and <a id="_idIndexMarker1581"/>comprehending intricate flows, as well as tracking their execution within the code, can be helpful. However, due to the significant overhead, performance analysis is not advised to <span class="No-Break">use it:</span></p>
+			<pre class="source-code">
+class SyncCollector(Collector):
+   """
+   Record complete execution synchronously.
+   Note that --limit-memory-hard may need to be i<a id="_idTextAnchor1153"/>ncreased when launching Odoo.
+   """
+   name = 'traces_sync'</pre>			<h3>Performance pitfalls</h3>
+			<ul>
+				<li>Be careful with randomness. Multiple executions may lead to different results – for example , a garbage collector being triggered <span class="No-Break">during execution.</span></li>
+				<li>Be careful <a id="_idIndexMarker1582"/>with blocking calls. In some cases, an external <strong class="source-inline">c_call</strong> may take some time before releasing the GIL, thus leading to unexpected long frames with the Periodic collector. This should be detected by the profiler and given a warning. It is possible to trigger the profiler manually before such calls <span class="No-Break">if needed.</span></li>
+				<li>Pay attention to the cache. Profiling before the view/assets/… are in a cache can lead to <span class="No-Break">different results.</span></li>
+				<li>Be aware of the profiler’s overhead. The SQL collector’s overhead can be important when many small queries are executed. Profiling is practical to spot a problem, but you may want to disable the profiler to measure a code change’s <span class="No-Break">real impact.</span></li>
+				<li>Profiling results can be memory-intensive. In some cases (e.g., profiling an install or a long request), you can <a id="_idIndexMarker1583"/>reach the memory limit, especially when rendering the speedscope results, which can lead to an HTTP 500 error. In this case, you may need to start the server with a higher memory limit – <strong class="source-inline">--</strong><span class="No-Break"><strong class="source-inline">limit-memory-hard $((8*1024**3)).</strong></span></li>
+			</ul>
+		</div>
+	</body></html>
