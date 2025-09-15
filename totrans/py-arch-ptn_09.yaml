@@ -1,0 +1,1249 @@
+- en: '7'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Event-Driven Structures
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Request-response is not the only software architecture that can be used in a
+    system. There can also be requests that don't require an immediate response. Perhaps
+    there's no interest in a response, as the task can be done without the caller
+    being required to wait, or perhaps it takes a long time and the caller doesn't
+    want to be waiting for it. In any case, there's the option to, from the point
+    of view of the caller, just send a message and proceed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This message is called an *event*, and there are multiple uses for this kind
+    of system. In this chapter, we will introduce the concept, and we will describe
+    in detail one of the most popular uses of it: creating asynchronous tasks that
+    are executed in the background while the caller of the task continues uninterrupted.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the chapter, we will describe the basics of asynchronous tasks, including
+    the details of queueing systems and how to generate automatically scheduled tasks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will use Celery as an example of a popular task manager in Python that has
+    multiple capabilities. We will show specific examples of how to perform common
+    tasks. We will also explore Celery Flower, a tool that creates a web interface
+    to monitor and control Celery and has an HTTP API that allows you to control that
+    interface, including sending new tasks to execute.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we''ll cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sending events
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Asynchronous tasks
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Subdividing tasks
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Scheduled tasks
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Queue effects
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Celery
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Let's start by describing the basics of event-driven systems.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sending events
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Event-driven structures are based on the fire-and-forget principle. Instead
+    of sending data and waiting until the other part returns a response, it just sends
+    data and continues executing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This makes it different from the request-response architecture that we saw in
+    the previous chapter. A request-response process will wait until an appropriate
+    response is generated. Meanwhile, the execution of more code will stop, as the
+    new data produced by the external system is required to continue.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In an event-driven system, there's no response data, at least not in the same
+    sense. Instead, an event containing the request will be sent, and the task will
+    just continue. Some minimal information could be returned to ensure that the event
+    can be tracked later.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Event-driven systems can be implemented with request-response servers. This
+    doesn't make them a pure request-response system. For example, a RESTful API that
+    creates an event and returns an event ID. Any work is not done yet, and the only
+    detail returned is an identifier to be able to check the status of any follow-up
+    tasks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is not the only option, as this event ID may be produced locally, or even
+    not be produced at all.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The difference is that the task itself won't be done in the same moment, so
+    getting back from generating the event will be very fast. The event, once generated,
+    will travel to a different system that will transmit it towards its destination.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This system is called a *bus* and works to make messages flow through the system.
+    An architecture can use a single bus that acts as a central place to send messages
+    across systems, or it can use multiple ones.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In general, it's advisable to use a single bus to communicate all the systems.
+    There are multiple tools that allow us to implement multiple logical partitions,
+    so the messages are routed to and from the right destinations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Each of the events will be inserted into a *queue*. A queue is a logical FIFO
+    system that will transmit the events from the entry point to the defined next
+    stage. At that point, another module will receive the event and process it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This new system is listening to the queue and extracts all the received events
+    to process them. This worker can't communicate directly with the sender of the
+    event through the same channel, but it can interact with other elements, like
+    shared databases or exposed endpoints, and can even send more events into queues
+    to further process the results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The systems at each end of the queue are called the *publisher* and the *subscriber*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Multiple subscribers can tend the same queue, and they'll be extracting events
+    in parallel. Multiple publishers can also produce events into the same queue.
+    The capacity of the queue will be described by the number of events that can be
+    processed, and enough subscribers should be provided so the queue can be processed
+    quickly enough.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Typical tools that can work as a bus are RabbitMQ, Redis, and Apache Kafka.
+    While it is possible to use a tool "as is," there are multiple libraries that
+    will help you work with these tools to create your own way of handling sending
+    messages.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Asynchronous tasks
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: A simple event-driven system is one that allows you to execute asynchronous
+    tasks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The events produced by an event-driven system describe a particular task to
+    execute. Normally, each task will require some time to execute, which makes it
+    impractical to be executed directly as part of the publisher code flow.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The typical example is a web server that needs to respond to the user in a reasonable
+    time. Some HTTP timeouts can produce errors if an HTTP request takes too long,
+    and generally it is not a great experience to respond in more than a second or
+    two.
+  prefs: []
+  type: TYPE_NORMAL
+- en: These operations that take a long time may involve tasks like encoding video
+    into a different resolution, analyzing images with a complex algorithm, sending
+    1,000 emails to customers, deleting a million registers in bulk, copying data
+    from an external database into a local one, generating reports, or pulling data
+    from multiple sources.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The solution is to send an event to handle this task, generate a task ID, and
+    return the task ID immediately. The event will be sent to a message queue that
+    will deliver it to a back-end system. The back-end system will then execute the
+    task, which can take as long as it needs to execute.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Meanwhile, the task ID can be used to monitor the progress of the execution.
+    The back-end task will update the status of the execution in shared storage, like
+    a database, so when it's completed, the web front-end can inform the user. This
+    shared storage can also store any produced results that may be interesting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Diagram'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Description automatically generated](img/B17580_07_01.png)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.1: The flow of an event'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Because the status of the task is stored in a database that's accessible by
+    the front-end web server, the user can ask for the status of the task at any point
+    by identifying it through the task ID.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Diagram, schematic'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Description automatically generated](img/B17580_07_02.png)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.2: Checking the progress of an async task with shared storage'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The back-end system can produce intermediate updates if necessary, showing when
+    25% or 50% of the task has been completed. This will need to be stored in the
+    same shared storage.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This process is a simplification, though. The queue is usually capable of returning
+    whether a task has been finished or not. The shared storage/database will be required
+    only if the task is required to return some data. A database works fine for small
+    results, but if big elements like documents are produced as part of the task,
+    this may not be a valid option and a different kind of storage may be required.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For example, if a task is to generate a report, the back-end will store it in
+    document storage like AWS S3 so it's available to be downloaded by the user later.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A shared database is not the only way to be sure that the web server front-end
+    is capable of receiving information. The web server can expose an internal API
+    that allows the back-end to send back information. This is, to all effects, the
+    same as sending the data to a different external service. The back-end will need
+    to access the API, configure it, and perhaps be authenticated. The API can be
+    created exclusively for the back-end or can be an API for general usage that also
+    accepts the specific data that the back-end system will produce.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sharing access to a database between two different systems can be difficult,
+    as the database will need to be in sync for both systems. We need to detach the
+    systems so they can be deployed independently and without breaking backward compatibility.
+    Any change in the schema will require extra care to ensure that the system can
+    perform at any point, without interruption. Exposing an API and keeping the database
+    under the full control of the front-end service is a good solution, but keep in
+    mind that requests originating from the back-end will compete with external requests,
+    so we need enough capacity for both.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this case, all the information, task IDs, statuses, and results can remain
+    inside the web server's internal storage.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Remember that the queue is likely to store the task ID and the status of the
+    task. This may be replicated for convenience in the internal storage.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Diagram'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Description automatically generated](img/B17580_07_03.png)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.3: Sending back information to the source service'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Remember that this API doesn't have to be directed to the same front-end. It
+    can also call any other service, internal or external, generating a complex flow
+    between elements. It even creates its own events that will be reintroduced into
+    the queue to produce other tasks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Subdividing tasks
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: It's entirely possible to generate more tasks from an initial one. This is done
+    by creating the right event inside a task and sending it to the right queue.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This allows a single task to distribute its load and parallelize its action.
+    For example, if a task generates a report and sends it by email to a group of
+    recipients, the task can first generate the report and then send the emails in
+    parallel by creating new tasks that will focus only on creating the emails and
+    attaching the report.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This spreads the load over multiple workers, speeding up the process. Another
+    advantage is that individual tasks will be shorter, which makes them easier to
+    control, monitor, and operate.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Some task managers may permit the creation of workflows where tasks are distributed,
+    and their results are returned and combined. This can be used in some cases, but
+    in practice it is less useful than it initially appears, as it introduces extra
+    waiting and we can end up with the task taking a longer time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: But easy wins are bulk tasks performing similar actions on multiple elements
+    without the need to combine the results, which are quite commonly encountered.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Keep in mind, though, that this will make the initial task finish quickly, making
+    the initial task's ID status a bad way to check whether the whole operation has
+    been completed. The initial task may return the IDs of the new tasks if they need
+    to be monitored.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The process can be repeated, if necessary, with subtasks creating their own
+    subtasks. Some tasks may require creating huge amounts of information in the background,
+    so subdividing them may make sense, but it will also increase the complexity of
+    following the flow of the code, so use this technique sparingly and only when
+    it creates a clear advantage.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scheduled tasks
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Asynchronous tasks don't need to be generated directly by a frontend and direct
+    action by a user, but can also be set to run at specific times, through a schedule.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Some examples of scheduled tasks include generating daily reports during night
+    hours, updating information hourly via an external API, precaching values so they
+    are quickly available later, generating a schedule for next week at the start
+    of the week, and sending reminder emails every hour.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Most task queues will allow the generation of scheduled tasks, indicating it
+    clearly in their definition, so they will be triggered automatically.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will see later in the chapter how to generate a scheduled task for Celery.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Some scheduled tasks can be quite big, such as each night sending emails to
+    thousands of recipients. It's very useful to divide a scheduled task, so a small
+    scheduled task is triggered just to add all the individual tasks to the queue
+    that will be processed later. This distributes the load and allows the task to
+    finish earlier, making full use of the system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the example of sending emails, a single task triggers every night, reading
+    the configuration and creating a new task for each email found. Then the new tasks
+    will receive the email, compose the body by pulling from external information,
+    and send it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Queue effects
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: An important element of asynchronous tasks is the effect that introducing a
+    queue may have. As we've seen, the background tasks are slow, meaning that any
+    worker running them will be busy for some time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Meanwhile, more tasks can be introduced, which may mean that the queue starts
+    building up.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Diagram'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Description automatically generated with low confidence](img/B17580_07_04.png)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.4: Single queue'
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the one hand, this can be a capacity problem. If the number of workers is
+    not sufficient to handle the average number of tasks introduced in the queue,
+    the queue will build up until it reaches its limit, and new tasks will be rejected.
+  prefs: []
+  type: TYPE_NORMAL
+- en: But typically, the load doesn't work like a constant influx of tasks. Instead,
+    there are times when there are no tasks to execute, and other times when there's
+    a sudden spike in the number of tasks to be executed, filling the queue. Also,
+    there's a need to calculate the right number of workers to keep running to be
+    sure that the waiting period for those spikes, where a task gets delayed because
+    all the workers are busy, is not causing problems.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Calculating the "right" amount of workers can be difficult, but with a bit of
+    trial and error a "good enough" number can be obtained. There's a mathematical
+    tool to deal with it, queueing theory, which calculates it based on several parameters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In any case, these days resources for each worker are cheap and it's not imperative
+    to generate the exact number of workers, as long as it's close enough so that
+    any possible spike can be processed in a reasonable amount of time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can learn more about queueing theory at [http://people.brunel.ac.uk/~mastjjb/jeb/or/queue.html](http://people.brunel.ac.uk/~mastjjb/jeb/or/queue.html).
+  prefs: []
+  type: TYPE_NORMAL
+- en: An extra difficulty, as we saw with scheduled tasks, is that at a specific time,
+    a considerable number of tasks can be triggered at the same time. This can saturate
+    the queue at a particular time, requiring perhaps an hour to digest all the tasks,
+    for example, creating daily reports, ingesting new updates in an external API
+    every 4 hours, or aggregating data for the week.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This means that, for example, if 100 tasks to create background reports are
+    added, they will block a task to generate a report sent by a user, which will
+    produce a bad experience. The user will have to wait for far too long if they
+    ask for the report a few minutes after the scheduled tasks were fired.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A possible solution is to use multiple queues, with different workers pulling
+    from them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Diagram'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Description automatically generated](img/B17580_07_05.png)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.5: Priority and background queue'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This makes those different tasks go to different workers, making it possible
+    to reserve capacity for certain tasks to run uninterrupted. In our example, the
+    background reports can go to their own dedicated workers, and the user reports
+    have their own workers as well. This, though, wastes capacity. If the background
+    reports run only once a day, once the 100 tasks are processed, the workers will
+    be idle for the rest of the day, even if there's a long queue in the worker serving
+    the user reports.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Instead of that, a mixed approach can be used.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Diagram'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Description automatically generated](img/B17580_07_06.png)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.6: Regular worker pulling from multiple queues'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this case, the user report worker will continue with the same approach, but
+    the background report worker will pull tasks from both queues. In this case, we
+    limit the capacity for background reports, but at the same time, we increase it
+    for the user report tasks when there's available capacity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We reserve capacity for the user report tasks, which are priority, and make
+    the rest of the workers pull from all available tasks, including priority and
+    non-priority tasks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To be able to divide work into these two queues, the tasks need to be divided
+    carefully:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Priority tasks*. They are started on behalf of the user. They are time sensitive.
+    They are fast to execute, so latency is important.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*Background tasks*. Normally started by automated systems and scheduled tasks.
+    They are less time sensitive. They can run for long periods, so higher latency
+    is easier to accept.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The balance between them should be maintained. If too many tasks are labeled
+    as priority, the queue will be quickly filled, rendering it pointless.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's always the temptation to generate multiple queues to set up different
+    priorities and reserve capacity for each of them. This is normally not a good
+    idea, as they will waste capacity. The most efficient system is one with a single
+    queue, as all capacity will be always used. There is a problem of priority, though,
+    as it makes some tasks take too long. More than two queues overcomplicates and
+    risks wasting capacity where many workers are idle most of the time, while other
+    queues are filled. The simplicity of two queues helps develop the discipline of
+    deciding between only two options and makes it easy to understand why we want
+    multiple queues.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The number of priority workers can be tweaked based on the number and frequency
+    of spikes and expected turnaround time. Only enough priority workers to cover
+    regular traffic at the times where there are big spikes in background tasks are
+    required, as long as those spikes are predictable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Good metrics are critical for monitoring and understanding the behavior of the
+    queue. We will talk more about metrics in *Chapter 13*,*Metrics*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: An alternative is to generate a priority system based on specific priorities,
+    like numbers. That way, a task with priority 3 will be executed before a task
+    with priority 2, and that before a task with priority 1, and so on. The great
+    advantage of having priorities is that the workers can be working all the time,
+    without wasting any capacity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'But this approach has some problems:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A lot of queue backends don't support it efficiently. To keep a queue sorted
+    by priority costs more than just assigning tasks to a plain queue. In practice,
+    it may not produce as good results as you expect, requiring many tweaks and adjustments.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It means you need to deal with priority inflation. It's very easy for teams
+    to start increasing the priority of tasks over time, especially if multiple teams
+    are involved. The decision on what task should return first could get complicated
+    and pressure can grow the priority numbers over time.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: While it can appear that a sorted queue is ideal, the simplicity of two levels
+    (priority and background) makes it very easy to understand the system and generates
+    easy expectations when developing and creating new tasks. It's way easier to tweak
+    and understand and will generate better results with less work.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Single code for all workers
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: When having different workers pulling from different queues, the worker could
+    have different codebases, making one with priority tasks and another with background
+    tasks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that for this to work, it will require strict separation of tasks. More
+    about this a bit later.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is generally not advisable, as it will differentiate the codebase and
+    require maintaining two code bases in parallel, with some problems:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: It's likely that some tasks or task parts will be either priority or background,
+    depending on what system or user triggers them. For example, reports that can
+    be either produced on the fly for a user, or daily as part of a batch process
+    to finally send them by mail. The report generation should remain common, so any
+    change is applied to both.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Handling two codebases instead of one is more inconvenient. A big part of the
+    general code is shared, so updates will need to be run independently.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A unique codebase can handle all kinds of tasks. That makes it possible to have
+    a worker that handles both priority and background tasks. Two codebases will require
+    strict task separation, not using the extra capacity available in the background
+    workers to help with priority tasks.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It is better to use a single worker when building, and through the configuration
+    decide to receive messages from one queue or both. This simplifies the architecture
+    for local development and testing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This may not be adequate when the nature of the tasks may create conflicts.
+    For example, if some of the tasks require big dependencies or specialized hardware
+    (as could be the case with some AI-related tasks) this may require that specific
+    tasks run in dedicated workers, making it impractical for them to share the same
+    codebase. These cases are rare, and unless they are encountered, it's better to
+    try to consolidate and use the same worker for all tasks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Cloud queues and workers
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The main characteristic of cloud computing is that services can be started and
+    stopped dynamically, allowing us to use only the resources required at a particular
+    moment. This allows the system to increase and decrease capacity quickly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In cloud environments, it's possible that the number of workers extracting events
+    from a queue can be modified. That alleviates the problems with resourcing that
+    we discussed above. Do we have a full queue? Increase the number of workers on
+    demand! Ideally, we could even spawn a single worker for each event that spawns
+    a task, making the system infinitely scalable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This, obviously, is easier said than done, as there are some issues with trying
+    to dynamically create workers on the spot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The start-up time can add significant time to the execution of the task, even
+    to the point of being longer than the execution time of the task itself. Depending
+    on how heavy the creation of a worker is, starting it can take a significant amount
+    of time.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In the traditional cloud setting, the lowest granularity required to start a
+    new virtual server, which is relatively heavy, takes at least a couple of minutes.
+    With newer tools, such as containers, this can be sped up sensibly, but the underlying
+    principle will remain, as at some point in time a new virtual server will need
+    to be spawned.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: A single new virtual worker may be too big for a single worker, making it inefficient
+    to spawn one for each task. Again, containerized solutions can help by making
+    it easier to separate between creating a new container and requiring spinning
+    up a new virtual server in the cloud service.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Any cloud service should have limits. Each new worker created costs money and
+    cloud services can get very expensive if scaled up without control. Without certain
+    control on the cost side of things, this can grow to be a problem due to high,
+    unexpected costs. Normally this can happen by accident, with some explosion of
+    workers due to some problem on the system, but there's also a security attack,
+    called Cash Overflow, aimed at making a service run as expensively as possible
+    to force the owner of the service to stop it or even bankrupt them.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Because of these problems, normally a solution will need to work in sort of
+    a batched way, allowing extra space to grow and generating extra virtual servers
+    only when they are required to reduce the queue. In the same way, when the extra
+    capacity is not required any more, it will be removed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Extra care should be taken to be sure that all the workers located in the same
+    virtual server are idle before stopping it. This is done automatically by stopping
+    the servers gracefully, so they'll finish any remaining tasks, start no new ones,
+    and finish when everything is done.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The process should be similar to this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Diagram'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Description automatically generated](img/B17580_07_07.png)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.7: Starting up a new server'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Knowing exactly when a new server should be spawned depends greatly on the requirements
+    for latency, traffic, and the speed of creating a new server (if the server starts
+    quickly, perhaps it can be less aggressive in scaling up).
+  prefs: []
+  type: TYPE_NORMAL
+- en: A good starting point is to create a new server each time the queue has a number
+    of tasks equal to or greater than the number of workers in a single server. That
+    triggers a new server that will be able to handle those tasks. If the creation
+    is triggered with fewer tasks than that, it will create a server that is not quite
+    filled. If the start-up time is very long, this can be reduced to ensure that
+    the new server is up before there's a significant queue building up. But this
+    will require experimentation and testing for a specific system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Celery
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Celery is the most popular task queue created in Python. It allows us to create
+    new tasks easily and can handle the creation of the events that trigger new tasks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Celery requires to work to set up a *broker*, which will be used as a queue
+    to handle the messages.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In Celery parlance, the broker is the message queue, while the *backend* is
+    reserved for interacting with a storage system to return information.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The code that creates the message will add it to the broker, and the broker
+    will pass it to one of the connected workers. When everything happens with Python
+    code, where the `celery` package can be installed, it's simple to operate. We'll
+    see later how to operate it in other cases.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Celery can use multiple systems as brokers. The most popular are Redis and RabbitMQ.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In our examples, we will use Redis as it can be used for the broker and the
+    backend, and it's widely available in cloud systems. It's also quite scalable
+    and handles big loads easily.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using a backend is optional, as tasks don't need to define a return value, and
+    it's very common that asynchronous tasks don't directly return response data other
+    than the status of the task. The key word here is "directly"; sometimes, a task
+    will generate an external result that can be accessible, but not through the Celery
+    system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Some examples of these values are reports that can be stored in other storage
+    facilities, emails sent during task processing, and pre-caching of values, where
+    there is not a direct result, but there's new data generated and stored in other
+    places.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The returning value needs also to be small enough that it can be stored in the
+    system working as the backend. Also, if strong persistence is used, it's recommended
+    that a database is used as the backend.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will use the example present on GitHub: [https://github.com/PacktPublishing/Python-Architecture-Patterns/tree/main/chapter_07_event_driven/celery_example](https://github.com/PacktPublishing/Python-Architecture-Patterns/tree/main/chapter_07_event_driven/celery_example).
+    We will use the example to create a task to retrieve, from an external API, pending
+    `TO DO` actions by some users, and generate an email to send as a reminder.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Remember to install the required dependencies by running `pip install -r requirements.txt`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's take a look at the code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Configuring Celery
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The code is divided into two files: `celery_tasks.py`, which describes the
+    tasks, and `start_task.py`, which connects with the queue and enqueues a task.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'At the start of each, we need to configure the broker to use. In this case,
+    we will use a Redis server running in the `localhost`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As a prerequisite, we need to set up a Redis server running in our expected
+    `localhost` address. An easy way of doing so, if you have Docker installed, is
+    to start a container:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: This starts the standard Redis container that will expose the service over the
+    standard port, 6379\. That will connect automatically with the previous broker
+    URL of `redis://localhost`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is all the configuration that's required, and it will allow both sides,
+    the publisher and the subscriber, to connect to the queue.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Celery worker
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We will use [https://jsonplaceholder.typicode.com/](https://jsonplaceholder.typicode.com/)
+    to simulate calling an external API. This testing site exposes an accessible REST
+    endpoint to retrieve some mock information. You can see their definition, but
+    basically, we will access the `/todos` and `/users` endpoints. The `/todos` endpoint
+    exposes actions stored by the users, so we will query them to retrieve pending
+    actions, and combine this with the information in the `/users` endpoint.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `celery_tasks.py` worker defines a main task, `obtain_info`, and a secondary
+    task, `send_email`. The first one pulls the information from the API and decides
+    what emails need to be sent. The second then sends the email.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The sending of the email is just mocked to avoid complicating the system and
+    needing to handle mocked email addresses. It's left as an exercise for the reader.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The file starts with the configuration of the queue and imports:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `logger` definition permits the use of native Celery logs that will be streamed
+    into the Celery configuration for logs. By default, this is the standard output.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s take a look at the `obtain_info` task. Note the `@app.task` that defines
+    the function as a Celery task:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: We wrap the function with `INFO` logs to provide context to the task execution.
+    First, it calls the `/todos` endpoint on this line, which then goes through each
+    task independently, skipping any completed task.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, it checks the information for the user and puts it into the `info` variable.
+    Because this information can be used multiple times in the same loop, it is cached
+    in the `users` dictionary. Once the info is cached, it''s not asked for again:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: The individual task data is added to a list created to store all the tasks for
+    a user. The `task_reminders` dictionary is created as a `defaultdict(list)`, meaning
+    that the first time a particular `user_id` is accessed, if it's not present, it
+    will be initialized as an empty list, allowing a new element to be appended.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, the stored elements in `task_reminders` are iterated to compose the
+    resulting email:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Two follow-up functions are called: `obtain_user_info` and `compose_email`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`obtain_user_info` retrieves the information directly from the `/users/{user_id}`
+    endpoint and returns it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: '`compose_email` takes the information in the task list, which includes a group
+    of `user_info, task_info`, extracts the title information for each `task_info`,
+    then the email from the matched `user_info`, and then calls the `send_email` task:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As you can see, the `send_email` task includes a `.delay` call, which enqueues
+    this task with the appropriate parameters. `send_email` is another Celery task.
+    It is very simple as we are just mocking the email delivery. It just logs its
+    parameters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: Triggering tasks
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The `start_task.py` script contains all the code to trigger the task. This is
+    a simple script that imports the task from the other file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note that it inherits all the configuration from `celery_tasks.py` when doing
+    the import.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Importantly, it calls the task with `.delay()`. This sends the task to the queue
+    so the worker can pull it out and execute it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that if you call the task directly with `obtain_info()`, you'll execute
+    the code directly, instead of submitting the task to the queue.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's see now how both files interact.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Connecting the dots
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'To be able to set both parts, the publisher and the consumer, first start the
+    worker calling style:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: '**Note**: Some of the modules used, such as Celery, might not be compatible
+    with Windows systems. More information can be found at [https://docs.celeryproject.org/en/stable/faq.html#does-celery-support-windows](https://docs.celeryproject.org/en/stable/faq.html#does-celery-support-windows).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This starts the `celery_tasks` module (the `celery_tasks.py` file) with the
+    `-A` parameter. It sets the log level to `INFO` and starts three workers with
+    the `-c 3` parameter. It will display a starting log similar to this one:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Note that it displays the two available tasks, `obtain_info` and `send_email`.
+    In another window, we can send tasks calling the `start_task.py` script:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: This will trigger the task in the Celery worker, producing logs (edited for
+    clarity and brevity). We will explain the logs in the next paragraphs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: Because we started three different workers, the logs are intertwined. Pay attention
+    to the first task, which corresponds to `obtain_info`. This task has been executed
+    in the worker `ForkPoolWorker-2` in our execution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: While this task is being executed, the `send_email` tasks are also being enqueued
+    and executed by the other workers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: At the end of the execution, there's a log showing the time it has taken, in
+    seconds.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If only one worker is involved, the tasks will be run consecutively, making
+    it easier to differentiate between tasks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can see how the `send_email` tasks start before the end of the `obtain_info`
+    task, and that there are still `send_email` tasks running after the end of the
+    `obtain_info` task, showing how the tasks are running independently.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scheduled tasks
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Inside Celery, we can also generate tasks with a certain schedule, so they can
+    be triggered automatically at the proper time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To do so, we need to define a task and a schedule. We defined them in the `celery_scheduled_tasks.py`
+    file. Let''s take a look:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: This file starts with the same configuration as the previous example, and we
+    define a small, simple task that just displays when it is executed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: The interesting bit comes later, as the schedule is configured in the `app.conf.beat_schedule`
+    parameter. We created two entries.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: The first one defines an execution of the proper task every 15 seconds. The
+    task needs to include the module name (`celery_scheduled_tasks`). The `schedule`
+    parameter is defined in seconds. The `args` parameter contains any parameter to
+    pass for the execution. Note that it's defined as a list of parameters. In this
+    case, we create a tuple with a single entry, as there's only one argument.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The second entry defines the schedule instead as a crontab entry.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: This `crontab` object, which is passed as the `schedule` parameter, executes
+    the task once every two minutes. Crontab entries are very flexible and allow for
+    a wide range of possible actions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Some examples are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Crontab entry | Description |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `crontab()` | Execute every minute, the lowest possible resolution |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `crontab(minute=0)` | Execute every hour, at minute 0 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `crontab(minute=15)` | Execute hourly, at minute 15 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `crontab(hour=0, minute=0)` | Execute daily, at midnight (in your time zone)
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `crontab(hour=6, minute=30, day_of_week=''monday'')` | Execute every Monday,
+    at 6:30 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `crontab(hour=''*/8'', minute=0)` | Execute every hour divisible by 8 (0,
+    8, 16). Three times a day, at minute 0 in each case |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `crontab(day_of_month=1, hour=0, minute=0)` | Execute on the first of each
+    month, at midnight |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `crontab(minute=''*/2'')` | Execute every minute divisible by 2\. Once every
+    two minutes |'
+  prefs: []
+  type: TYPE_TB
+- en: There are more options, including relating the time to solar times, like dawn
+    and dusk, or custom schedulers, but most use cases will be perfectly fine either
+    once every X seconds or with a crontab definition.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can check the full documentation here: [https://docs.celeryproject.org/en/stable/userguide/periodic-tasks.html#starting-the-scheduler](https://docs.celeryproject.org/en/stable/userguide/periodic-tasks.html#starting-the-scheduler).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To start the scheduler, we need to start a specific worker, the `beat` worker:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: We start the `celery_scheduled_tasks` worker in the usual way.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'But you can see that there''s still no incoming tasks. We need to start `celery
+    beat`, which is a specific worker that inserts the tasks in the queue:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Once `celery beat` is started, you''ll start seeing the tasks being scheduled
+    and executed as expected:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can see that both kinds of tasks are scheduled accordingly. In this log,
+    check the times and see that they are 15 seconds apart:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: The other task happens exactly every 2 minutes. Note that the first execution
+    may not be totally precise. In this case, the schedule was triggered in the later
+    seconds of 15:12 and still got executed later than that. In any case, it will
+    be within the 1-minute resolution window of the crontab.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: When creating periodic tasks, keep in mind the different priorities, as we described
+    previously in the chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is good practice to use a periodic task as a "heartbeat" to check that the
+    system is working correctly. This task can be used to monitor that the tasks in
+    the system are flowing as expected, with no big delays or problems.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This leads to the way of monitoring how the different tasks are being executed,
+    in a better way than just by checking the logs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Celery Flower
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Obtaining good monitoring in Celery is important if you want to understand the
+    executed tasks and find and fix problems. A good tool for that is Flower, which
+    enhances Celery by adding a real-time monitoring web page that allows you to control
+    Celery through the web page and through an HTTP API.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can check the whole documentation at [https://flower.readthedocs.io/en/latest/](https://flower.readthedocs.io/en/latest/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: It's also very easy to set up and integrate with Celery. First, we need to be
+    sure that the `flower` package is installed. The package is included in the `requirements.txt`
+    after the previous step, but if it's not, you can install it independently using
+    `pip3`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Once it is installed, you can start `flower` with the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: The command is very similar to starting the Celery workers, but includes the
+    definition of the broker using Redis, as we saw before, with `--broker=redis://localhost`,
+    and specifying the port to expose, `--port=5555`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The interface is exposed in `http://localhost:5555`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Graphical user interface, application'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Description automatically generated](img/B17580_07_08.png)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.8: Celery Flower interface'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The front page shows the different workers in the system. Note that it shows
+    the number of active tasks, as well as processed tasks. In this case, we have
+    11 tasks corresponding to a whole run of `start_task.py`. You can go to the **Tasks**
+    tab to see the details of each of the tasks executed, which looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Graphical user interface'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Description automatically generated](img/B17580_07_09.png)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.9: Tasks page'
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can see information such as the input parameters, the state of the task,
+    the name of the task, and how long it ran for.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Each Celery process will appear independently, even if it's capable of running
+    multiple workers. You can check its parameters on the **Worker** page. See the
+    **Max concurrency** parameter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Graphical user interface, application'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Description automatically generated](img/B17580_07_10.png)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.10: Worker page'
+  prefs: []
+  type: TYPE_NORMAL
+- en: From here, you can also review and change the configuration of the number of
+    workers per Celery process, set rate limits, and more.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Flower HTTP API
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: A great addition from Flower is the HTTP API, which allows us to control Flower
+    through HTTP calls. This enables the automatic control of the system and allows
+    us to trigger the tasks directly with an HTTP request. This can be used to call
+    the tasks in any programming language, and greatly increases the flexibility of
+    Celery.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The URL to call a task asynchronously is the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'It requires a POST, and the arguments of the call should be included in the
+    body. For example, make a call with `curl`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The task is executed in the worker:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Using the same API, the status of the task can be retrieved with a GET request:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'For example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note the `state` parameter, which here shows the task is finished successfully,
+    but it will return `PENDING` if it's not done yet.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This can be used to poll the status of the task until it's completed or it shows
+    an error, as we described earlier in the chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we have seen what event-driven structures are. We started with
+    a general discussion about how events can be used to create different flows than
+    the traditional request-response structure. We talked about how the events are
+    introduced into queues to be transmitted to other systems. We introduced the idea
+    of a publisher and a subscriber to introduce or extract events from that queue.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We described how this structure could be used to act on asynchronous tasks:
+    tasks that run in the background and allow other elements of the interface to
+    respond quickly. We described how dividing asynchronous tasks into smaller ones
+    can help increase throughput by taking advantage of having multiple subscribers
+    that can execute these smaller tasks. We described how tasks can be added automatically
+    at certain times to allow the execution of predetermined tasks periodically.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As the introduction of tasks can happen with great variability, we discussed
+    some important details of how queues work, the different problems that we can
+    encounter, and strategies to deal with them. We talked about how a simple strategy
+    for a background queue and a priority queue works in most scenarios and warned
+    about overcomplicating it. We also explained that, in the same spirit, it's better
+    to keep the code synchronized among all workers, even in cases when the queues
+    may be different. We also briefly touched on the capabilities of cloud computing
+    as applied to asynchronous workers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We explained how to use Celery, a popular task manager, to create asynchronous
+    tasks. We covered setting up the different elements, including the back-end broker,
+    how to define a proper worker, and how to generate tasks from a different service.
+    We included a section on how to create scheduled tasks in Celery as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We presented Celery Flower, a complement for Celery that includes a web interface
+    with which we can monitor and control Celery. It also includes an HTTP API that
+    allows us to create tasks by sending HTTP requests, allowing any programming language
+    to interact with our Celery system.
+  prefs: []
+  type: TYPE_NORMAL

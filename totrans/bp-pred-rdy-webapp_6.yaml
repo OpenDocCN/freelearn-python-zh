@@ -1,0 +1,1187 @@
+- en: '6'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Deploying and Monitoring Your Application
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapter, we built the frontend of our app, thereby completing
+    it as a useable tool. However, while we are able to use it locally, no other users
+    would be able to. Therefore, in this chapter, we’ll deploy our application and
+    make it available via a public domain name, [tozo.dev](http://tozo.dev). We’ll
+    also ensure that we are monitoring the app so that we can quickly fix any issues.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, in this chapter, you’ll learn how to build the infrastructure in AWS for
+    any Docker containerized app that needs a database; this infrastructure will be
+    able to scale to very high loads without major changes. You’ll also learn how
+    to set up a **domain name system** (**DNS**) and HTTPS for your domain, both of
+    which are applicable to any website or application. Finally, you’ll learn the
+    importance of monitoring and how to do so easily.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For our app to be accessible via a public domain name, it will need to be running
+    on a system that is always accessible via the internet. This could be any system,
+    including our local computer. However, the system needs to be continuously running
+    and accessible via a stable IP address. For this reason, it is much better to
+    pay for a dedicated system managed by AWS.
+  prefs: []
+  type: TYPE_NORMAL
+- en: AWS costs
+  prefs: []
+  type: TYPE_NORMAL
+- en: The AWS infrastructure built in this chapter will cost approximately $20 per
+    month to run without the free tier. It will be cheaper (but not free) if you are
+    able to use the free tier. Alternatively, AWS has a number of startup credit programs
+    you may be eligible for.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you want to stop paying, you will need to remove the infrastructure, which
+    can be done by deleting the `resource` definitions and running `terraform apply`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once we have paid for a remote system, we could configure it to run our app
+    directly, as we have our local system. However, we will use a containerized infrastructure
+    as it is easier to configure the container to run our app than to configure the
+    remote system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So, in this chapter, we will cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Making the app production-ready
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Deploying to AWS
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Serving on a domain
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Sending production emails
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Monitoring production
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: To follow the development in this chapter using the companion repository, [https://github.com/pgjones/tozo](https://github.com/pgjones/tozo),
+    see the commits between the `r1-ch6-start` and `r1-ch6-end` tags.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Making the app production-ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: As our production infrastructure will run containers, we need to containerize
+    our app. To do so, we’ll need to decide how to serve the frontend and backend,
+    and how to build the container image.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Serving the frontend
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: So far in development, we’ve used `npm run start` to run a server that serves
+    the frontend code. This is called **server-side rendering** (**SSR**), and we
+    could continue to do this in production. However, it is much easier to utilize
+    **client-side rendering** (**CSR**), as this does not require a dedicated frontend
+    server. CSR works by building a bundle of frontend files that can be served by
+    any server (rather than a dedicated frontend server), and we’ll use the backend
+    server.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To build the frontend bundle, we can use the `npm run build` command. This
+    command creates a single HTML file (*frontend/build/index.xhtml*) and multiple
+    static files (`css`, `js`, and `media`) in the following structure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: The static files, consisting of the files within the *frontend/build/static*
+    folder, can be served by moving the files and structure to the *backend/src/backend/static*
+    folder. Our backend will then serve these files automatically with paths matching
+    the folder structure.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The remaining part of the bundle (i.e., the HTML file) will need to be served
+    for any request that matches a page in the app. To do this, we first need a serving
+    blueprint, which is created by adding the following to *backend/src/backend/blueprints/serving.py*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The blueprint then needs to be registered with the app, by adding the following
+    to *backend/src/backend/run.py*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As the backend has no knowledge regarding which paths match the pages on the
+    frontend, it will have to serve the frontend for any paths that do not match backend
+    API paths. This is done in Quart by using a `<path:path>` URL variable; so, add
+    the following into *backend/src/backend/blueprints/serving.py*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: Finally, *frontend/build/index.xhtml* will need to be copied to *backend/src/backend/templates/index.xhtml*
+    for the production app, as we will do when containerizing the app.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As it is now possible to serve the frontend from the backend server, we can
+    now focus on using a production-ready backend server.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Serving the backend
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: So far in development, we’ve used `pdm run start` to run and serve the backend.
+    This, however, is unsuitable for production as it starts a Hypercorn server configured
+    for development (for example, it configures the server to output debugging information).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Hypercorn
+  prefs: []
+  type: TYPE_NORMAL
+- en: Quart is a framework that requires a server to work. So far in development,
+    we’ve been using Hypercorn as configured for development. Hypercorn is a Python
+    server that supports HTTP/1, HTTP/2, and HTTP/3 in a performant manner and is
+    recommended by Quart.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will configure Hypercorn for production usage using the following placed
+    in *hypercorn.toml*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `accesslog` and `errorlog` configuration ensure that Hypercorn logs every
+    request and error while it runs, which will help us understand what the server
+    is doing. The `bind` configures Hypercorn to listen on the `8080` port, which
+    we’ll direct network traffic to when we set up the production infrastructure in
+    the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The server can then be started in production via the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now we know how to serve the backend in a production environment, we need to
+    focus on how we install everything we need to do so.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Containerizing the app
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: To run the app in production, we need all the app’s dependencies and the app’s
+    code installed in the container. We will achieve this by building a container
+    image with the dependencies installed and the code included.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To build the image, we’ll use a Dockerfile as it is the clearest way to build
+    an image. Specifically, we will use a multistage Dockerfile, with the first stage
+    building the frontend, and the final stage installing and running the backend
+    server.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Docker terms
+  prefs: []
+  type: TYPE_NORMAL
+- en: A **Dockerfile** is used with Docker to build a container image. The Dockerfile
+    is an ordered list of commands, with each command producing a layer of the final
+    image, and with each layer building upon the previous. The final image will need
+    to include everything required to run the code contained within it. A running
+    instance of the image is known as a **container**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Building the frontend stage
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'To build the frontend, we will need a system with NodeJS installed. As this
+    is a common requirement, there are NodeJS base images we can use. Therefore, we
+    can start by adding the following to *Dockerfile* to create a NodeJS-based stage
+    called `frontend`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, we need to create a working directory and install the frontend dependencies
+    within it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is best done before the code is copied into the image as the dependencies
+    change less often than the code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Dockerfile caching
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Dockerfile is a sequence of commands with each command forming a layer in
+    the final image. These layers are built in the order given in the Dockerfile and
+    a change to any layer requires all the subsequent layers to be rebuilt with earlier
+    layers being cached. Hence, it is best to put layers that rarely change before
+    those that change often.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, we can copy the frontend code we’ve written for our app into the image
+    and build it with the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: We now have a complete frontend stage containing the built frontend. We’ll make
+    use of this in the production image.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Building the production image
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The production image will be built as the second stage of the *Dockerfile*.
+    This stage can also start from an existing base image, as systems with Python
+    installed are also a common requirement. To do so the following should be added
+    to the *Dockerfile*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, we need to add an `init` system to ensure that signals are correctly
+    sent to our backend server as it runs in the Docker container. `dumb-init` is
+    a popular solution and one I’ve used many times before. `dumb-init` is installed
+    and configured with the following additions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can then configure Hypercorn to start when the image is run:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, we need to install the backend dependencies, which first requires that
+    we install `pdm` and configure Python to work with it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This allows us to install the backend dependencies using `pdm`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, we can include the built frontend from the frontend stage:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, we can copy the backend code into the image:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: This gives us a complete image ready to use in production.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To make the image more secure, we can alter the user that will run the server.
+    By default, this is the `root` user that comes with admin privileges and access,
+    whereas changing to `nobody` removes these privileges. We can do this by adding
+    the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: As we’ve defined how to build a Docker image, we can now focus on building and
+    deploying it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Deploying to AWS
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: To deploy our app, we need to build an infrastructure that runs containers and
+    a database. The containers must be reachable from the public internet, and the
+    database from the containers. This infrastructure is easily buildable with **AWS**,
+    which we’ll use. However, in this book, we’ll use AWS services that have equivalents
+    on other cloud providers if you wish to use a different provider.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To start, we need to create an AWS account (through this link: [aws.amazon.com](http://aws.amazon.com))
+    using an email, password, and your card details. This account will be the root
+    or superuser account; therefore, we will create an additional **identity and access
+    management** (**IAM**) subaccount for Terraform to use. The IAM user is created
+    via the **Add users** button on the IAM **Users** dashboard shown in *Figure 6.1*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.1: The IAM dashboard (with the Add users button) ](img/B18727_06_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 6.1: The IAM dashboard (with the Add users button)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'I will name the user `terraform` to indicate what it is used for. It should
+    have programmatic access only and have the `AdministratorAccess` policy attached.
+    Once created, an access key ID and secret access key will be shown; both need
+    to be added as follows to *infrastructure/secrets.auto.tfvars*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: I am using `abcd` as examples, which you need to replace with your own values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'With your credentials in place, we can start configuring Terraform to work
+    with AWS. Firstly, add the AWS provider to Terraform by adding the following to
+    the existing Terraform `required_providers` section in *infrastructure/main.tf*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: After making this change, `terraform init` will need to be run for the change
+    to take effect.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can then configure the provider, which requires choosing a region to use.
+    As I’m based in London, UK, I’ll be using `eu-west-2`, however, I recommend that
+    you use whichever region is closest to your customers. This is done by adding
+    the following to *infrastructure/aws.tf*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can now use Terraform to manage the AWS infrastructure, which means we can
+    focus on what we want that infrastructure to be.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Designing the production system
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In [*Chapter 2*](B18727_02.xhtml#_idTextAnchor053), *Creating a Reusable Backend
+    with Quart*, we decided to build a three-tier architecture where there is a backend
+    API that communicates with the frontend and with a database. This means that in
+    AWS, we need to be running the database, the backend in a container, and a load
+    balancer to listen to incoming requests from the frontend. To do so, we can use
+    the services and setup shown in *Figure 6.2*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.2: The intended AWS architecture ](img/Figure_6.2_NEW.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 6.2: The intended AWS architecture'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This architecture uses the following AWS services:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Relational Database Service** (**RDS**) to run a PostgreSQ database'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Elastic Container Service** (**ECS**) to run the app container'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Application Load Balancer** (**ALB**) to accept connections from the internet
+    (frontend)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In addition, we’ll use the **Fargate** variant of ECS as this means that we
+    won’t need to manage the systems running the containers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: By using these managed services, we can pay AWS to do most of the work of managing
+    the servers, allowing us to focus on our app instead. We can now set up the networking
+    to support this architecture.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting up the networking
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: To build our architecture, we have to start at the foundation, which is the
+    network. We need to define how the systems can communicate with one another. In
+    *Figure 6.3*, you can see that we are aiming for a single **virtual private cloud**
+    (**VPC**) with public and private subnets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.3: The intended network setup ](img/B18727_06_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 6.3: The intended network setup'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Crucially, the private subnets can only communicate with the public subnets,
+    but not the internet directly. This means that we can place the database in the
+    private subnets, and the app and ALB in the public subnets, thereby adding an
+    additional layer of security that prevents unauthorized database access.
+  prefs: []
+  type: TYPE_NORMAL
+- en: VPC
+  prefs: []
+  type: TYPE_NORMAL
+- en: A VPC is a virtual network containing resources. We’ll use a single VPC for
+    all our resources.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To build the network, we first need to create an AWS VPC for our systems by
+    adding the following to *infrastructure/aws_network.tf*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: CIDR notation
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'AWS uses `/`). IPv4 addresses consist of 4 bytes (each byte is 8 bits) with
+    each byte written as a number separated by dots (`.`). The netmask number indicates
+    how many leading bits of the trial address must match the given address to be
+    considered part of the given range. The following examples show CIDR ranges:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '- `10.0.0.0/16` indicates that the first 16 bits (or the first two bytes) must
+    match within this range (i.e., any address starting with `10.0` is in the range)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '- `10.0.0.64/26` indicates that the first 26 bits or the first 3 bytes and
+    then the first 2 bits of the final byte must match (i.e., any address between
+    `10.0.0.64` and `10.0.0.128` (excluding `10.0.0.128`)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '- `0.0.0.0/0` means that any IP address matches'
+  prefs: []
+  type: TYPE_NORMAL
+- en: With this VPC setup, all the IP addresses we will use will be in the `10.0.0.0/16`
+    CIDR block and hence will begin with `10.0`. This block is a conventional choice
+    for AWS VPCs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can now divide the VPC into subnets or subnetworks, as this allows us to
+    restrict which subnets can communicate with each other and the public internet.
+    Firstly, we’ll divide the VPC into public subnets in the CIDR block `10.0.0.0/24`
+    and private subnets in `10.0.1.0/24`. I’ve chosen these as blocks as it makes
+    the distinction very clear that any IP that starts with `10.0.0` will be public,
+    and `10.0.1` will be private.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As an AWS region is split into availability zones, we’ll create a public and
+    a private subnet for each zone, with up to a total of four subnets. Four is the
+    best number as it is represented by 2 bits and hence makes the CIDR ranges easier
+    to express. The netmask for these subnets is therefore 26, as it is 24 plus the
+    2 bits required. This is done by adding the following to *infrastructure/aws_network.tf*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: Availability zones
+  prefs: []
+  type: TYPE_NORMAL
+- en: AWS Regions are split into multiple (usually three) **availability zones** (often
+    called **AZs**). Each zone is a physical data center separated from the others
+    such that if there was a failure of one zone (e.g., a fire), it would not affect
+    the others. Placing our systems in multiple zones, therefore, gives more robustness
+    against failures.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As the *public* name suggests, we want systems in the public subnets to be
+    able to communicate with the internet. This means that we need to add an internet
+    gateway to the VPC and allow network traffic to route between it and the public
+    subnets. This is done by adding the following to *infrastructure/aws_network.tf*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, in terms of networking, we need a load balancer to accept connections
+    from the internet and route them to the app containers. To begin, let’s add a
+    security group for the load balancer that allows inbound (ingress) connections
+    on ports `80` and `443` and any outbound (egress) connection; we do this in *infrastructure/aws_network.tf*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: Protocols and ports
+  prefs: []
+  type: TYPE_NORMAL
+- en: By default, websites serve requests using TCP (the protocol) on port `80` for
+    HTTP and port `443` for HTTPS. The ports can be changed, but this isn’t recommended
+    as most users won’t understand how to do the matching change in their browser.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The next version of HTTP, HTTP/3, will use QUIC over UDP as the protocol, with
+    potentially any port the server defines. This technology is in its infancy at
+    the moment though, and hence won’t be used in this book.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The load balancer itself can now be added by adding the following to *infrastructure/aws_network.tf*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: Load balancing
+  prefs: []
+  type: TYPE_NORMAL
+- en: A load balancer will distribute requests across the target group in an attempt
+    to balance the load experienced by each target in the target group. Therefore,
+    it is possible to use multiple machines to serve the requests behind a single
+    load balancer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: With the load balancer in place and ready, we can now start adding systems to
+    the network, starting with the database.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Adding a database
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can now add a PostgreSQL database to the private subnets, and then via a
+    security group, we can ensure that the database can only communicate with systems
+    in the public subnets. This makes it harder for an attacker to gain access to
+    the database as they are unable to access it directly. So, to do this, the following
+    should be added to *infrastructure/aws_network.tf*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The database itself is created using the `aws_db_instance` Terraform resource,
+    which requires quite a lot of configuration variables to be defined. What is given
+    in the following code is a safe set of variables to run a database that counts
+    in the AWS free tier. The following should be added to *infrastructure/aws.tf*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `db_password` should be added to *infrastructure/secrets.auto.tfvars* with
+    a value ideally created by a password generator on a very strong setting (this
+    password will never need to be memorized or typed).
+  prefs: []
+  type: TYPE_NORMAL
+- en: As your app usage grows, I recommend that you change the value of `instance_class`
+    to a larger machine, enable `multi_az` to ensure robustness in the case of an
+    availability zone failure, and enable `storage_encrypted`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: AWS web interface
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this book, we are intentionally defining all the infrastructure as code and
+    ignoring the AWS web interface. This is best as it ensures that we can always
+    restore the infrastructure to a known working state (by running `terraform apply`)
+    and as it means we have an auditable history of changes. However, it is still
+    very useful to use the web interface to inspect the infrastructure and check everything
+    is as expected.
+  prefs: []
+  type: TYPE_NORMAL
+- en: After running `terraform apply`, you should see a database running in RDS, which
+    means we can create a cluster to run the app in.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Running the cluster
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We will use an ECS cluster to run our Docker images in, and furthermore, we
+    will run the ECS cluster with Fargate as this means we won’t have to manage the
+    servers or the cluster itself. While Fargate is not part of the AWS free tier
+    and will sadly cost more, it is worth it to avoid having to manage things ourselves.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Before we can set ECS up though, we first need a repository to place the Docker
+    images in and where ECS will pull and run the images from. We can use the **elastic
+    container register** (**ECR**) for this by adding the following to *infrastructure/aws_cluster.tf*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: Alongside creating the repository itself, this ensures that old images are deleted,
+    which is crucial to reducing storage costs over time. Images tagged with `prod`
+    are kept, as these are applied to the image that should be running (`latest` is
+    added by Docker to the most recently built image).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Docker image tagging
+  prefs: []
+  type: TYPE_NORMAL
+- en: When a Docker image is built, it can be given tags to identify it. By default,
+    it will be tagged as `latest` until a newer image is built and takes the tag.
+    It is therefore best to tag images in a useful way to know what they represent.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can now create the ECS cluster, which requires a task definition and then
+    a service to run the task in the cluster. Starting with the task, we need an IAM
+    role to execute, which we’ll call `ecs_task_execution`, and an IAM role for the
+    task to exist, which we’ll call `ecs_task`. These are created by adding the following
+    to *infrastructure/aws_cluster.tf*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: The policy attachment is used to attach an existing execution policy to the
+    IAM role.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'With the roles created, we can now define the ECS task itself. This needs to
+    include all of the environment variables required for the code to run correctly
+    in production. Therefore, an `app_secret_key` variable should be created in the
+    same way as for `db_password` and added to the *infrastructure/secrets.auto.tfvars*
+    file first. Then, the following can be added to *infrastructure/aws_cluster.tf*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: Like with the database, as you gain customers and the app scales up, the `cpu`
+    and `memory` values can be increased to meet the demand.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We have now created the task the service will run; however, before we can create
+    the service, we need to allow connections between the load balancer and the running
+    containers (which are exposing port `8080`), by adding the following to *infrastructure/aws_network.tf*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This finally allows the service and cluster to be defined by using the following
+    code in *infrastructure/aws_cluster.tf*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `desired_count` refers to the number of running containers and should be
+    increased as your app handles more requests; a minimum of three should mean that
+    there are containers running in different availability zones and hence is more
+    robust.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Autoscaling
+  prefs: []
+  type: TYPE_NORMAL
+- en: As the traffic to your app grows, you can scale the infrastructure by allocating
+    larger machines and by increasing `desired_count`. You should be able to scale
+    to very heavy traffic this way (and many congratulations to you when you do).
+    However, if your traffic is periodic (for example, you have more traffic during
+    the day than the night), then using autoscaling can save costs. Autoscaling is
+    where more resources are allocated automatically as the traffic increases.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We now have the cluster ready to go; all we need now is for the Docker images
+    to be built and placed into the repository.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Adding continuous deployment
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: With everything ready to run, we can now deploy changes by building the container
+    image, uploading it to the ECR registry, and informing ECS to deploy the new image.
+    This is something that is best done whenever a change is made to the main branch
+    of the GitHub repository. We can do this using a GitHub action, much like in the
+    *Adopting a collaborative development process using GitHub* section in [*Chapter
+    1*](B18727_01.xhtml#_idTextAnchor015)*, Setting Up Our System for Development*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To start, we need to create an IAM user that has permission to push Docker
+    images to the ECR registry and to inform ECS to deploy a new image. This user
+    will also need an access key, as we’ll use this to authenticate the `push` and
+    `deploy` commands. The following code creates this user and should be placed in
+    *infrastructure/aws.tf*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As the continuous deployment will run as a GitHub action, we need to make this
+    access key and the repository URL available as a `github_actions_secret`; this
+    is done by adding the following to *infrastructure/github.tf*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'These secrets can now be used in the continuous deployment action. This action
+    consists of two jobs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first job builds the Docker image and pushes it to the ECR registry
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The second instructs ECS to deploy it (by replacing the currently running image)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Starting with the first job, the following should be added to *.github/workflows/cd.yml*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: To save on build time, the last built image, tagged as `latest`, is pulled and
+    used as a cache. The built image is then identified by being tagged with the commit
+    hash.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can now add a `deploy` job that should instruct ECS to deploy the image
+    built for this commit. This is done by adding a `prod` tag to the image already
+    tagged with the commit hash and then informing ECS to run it. This is done by
+    adding the following to *.github/workflows/cd.yml*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: This job is idempotent and rerunning it will deploy the specific commit it is
+    associated with. This means it can be rerun to **roll back** a deployment as needed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Deployment issues and rollbacks
+  prefs: []
+  type: TYPE_NORMAL
+- en: Not every deployment will go well, and the failure could be during the deployment
+    or after deployment. If the deployment itself fails, ECS will automatically keep
+    the previous deployment running. If the failure is after deployment, you can roll
+    back to a safe previous version by rerunning an old `deploy` job.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, on every change to the main branch, you should see that change automatically
+    goes live in the production environment. In addition, you can rerun an old `deploy`
+    job if there is a bug or issue with the running job. This is a very productive
+    way of developing an app.
+  prefs: []
+  type: TYPE_NORMAL
+- en: While we can visit the app via the ALB URL, our users will expect to use a nice
+    domain name, which is what we’ll focus on next.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Serving on a domain
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'We’ll want a memorable domain name for users to find and identify our app,
+    which means we’ll need to buy one from a domain name registrar. I like to use
+    Gandi ([gandi.net](http://gandi.net)) or AWS as they are trustworthy, however,
+    I like to separate the domain name from the hosting provider in case something
+    goes wrong; for that reason, I’ll be using Gandi in this book and have used it
+    to register [tozo.dev](http://tozo.dev) for the next few years, as shown in *Figure
+    6.4*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.4: The Gandi home page for registering a domain ](img/B18727_06_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 6.4: The Gandi home page for registering a domain'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The domain name registrar will allow for the relevant DNS records for a domain
+    name to be specified; to do so with Gandi, we need to add the `gandi` provider
+    to `terraform` by adding the following highlighted code to the existing `terraform`
+    section in *infrastructure/main.tf*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: DNS
+  prefs: []
+  type: TYPE_NORMAL
+- en: While the domain name is memorable for humans, the browser will need a corresponding
+    IP address in order to make the request. This is the purpose of DNS, which will
+    resolve a domain name into the correct IP address. This is done automatically
+    by the browser, but if you’d like to try it manually, you can use the `dig` tool
+    (e.g., `dig tozo.dev`).A single domain will have multiple DNS records. So far,
+    we’ve discussed the `A` record, which contains the IPv4 address for the domain.
+    There is also an `AAA` record for an IPv6 address, an `ALIAS` record that points
+    to another domain’s `A` or `AAA` record, an `MX` record for mail server information
+    (which we’ll use in the *Sending production emails* section of this chapter),
+    a `CNAME` record to alias a subdomain to another domain name, and various others.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once initialized via `terraform init`, we can start to use `terraform apply`
+    to make these changes. First, we need to retrieve a production API key from Gandi,
+    which is found in the **Security** section as shown in *Figure 6.5*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.5: The Gandi Security section; note the Production API key section
+    ](img/B18727_06_05.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 6.5: The Gandi Security section; note the Production API key section'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The API key needs to be added as follows to *infrastructure/secrets.auto.tfvars*
+    (your key will differ from my `abcd` example):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, the key is used to configure the `gandi` provider by adding the following
+    to *infrastructure/dns.tf*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `gandi` provider is now set up and can be used to set DNS records. We need
+    two records: an `ALIAS` record for the domain, and a `CNAME` record for the [www.tozo.dev](http://www.tozo.dev)
+    subdomain. The following should be added to *infrastructure/dns.tf*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: With the DNS records in place, we can now focus on adding HTTPS (SSL).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Securing the connection
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: It is best practice to ensure that communication between the user and the app
+    is encrypted; however, this becomes essential when the communication consists
+    of sensitive information, such as the user’s password. As such, we’ll only use
+    encrypted communication for our app.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To secure this connection, we can utilize HTTPS using SSL (or TLS), which is
+    widely supported and easy to use. To do so, we need to be issued an encryption
+    certificate that browsers will recognize. Fortunately, Let’s Encrypt will issue
+    us a certificate for free. Let’s Encrypt is usable with Terraform via the `acme`
+    provider, which is activated by adding the following highlighted code to the existing
+    `terraform` section in *infrastructure/main.tf* and then running `terraform init`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: Certificate authorities
+  prefs: []
+  type: TYPE_NORMAL
+- en: To enable HTTPS, we could create our own self-signed certificate; this would
+    work, but browsers will display a warning. This warning will state that the browser
+    does not trust that the given certificate belongs to the domain. To avoid this
+    warning, we need a recognized certificate authority to sign our certificate. To
+    do so, the certificate authority must confirm that the owner of the domain is
+    the one asking for the certificate. There are many other certificate authorities
+    that charge for this service, but Let’s Encrypt does it for free!
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To acquire a certificate for a domain name, we’ll need to prove to Let’s Encrypt
+    that we control the domain name. We can do this via the `acme` provider by adding
+    the following to *infrastructure/certs.tf*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: Remember to change the email address, so that reminders and updates from Let’s
+    Encrypt go to you rather than to my email!
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The certificates we’ve just created can now be added to the ALB, as doing so
+    will enable users to connect to the ALB, and hence our app, via HTTPS. To ensure
+    only HTTPS is used, let’s redirect any visitors that connect via HTTP (port `80`)
+    to do so via HTTPS (port `443`) by adding the following to *infrastructure/aws_network.tf*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can then accept HTTPS connections and forward them to the target group containing
+    our running app by adding the following code to *infrastruture/aws_network.tf*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'With these changes, you can run the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: This should create all the infrastructure. You will then need to push your local
+    code to the GitHub repository for the CD job to run and deploy the app. Once that
+    completes, you should be able to visit [tozo.dev](http://tozo.dev) (or whatever
+    your domain is) and see the running app. We can now focus on how we can send emails,
+    such as a welcome email, to the app’s users.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sending production emails
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the *Sending emails* section of [*Chapter 2*](B18727_02.xhtml#_idTextAnchor053)*,
+    Creating a Reusable Backend with Quart,* we configured our app to send emails
+    via Postmark if a `POSTMARK_TOKEN` configuration value was present. We can now
+    set up production so that there is a `POSTMARK_TOKEN` in the app’s configuration.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To do so, we first need approval from Postmark; this is done to ensure that
+    we don’t intend to misuse their service. As we are using Postmark for transactional
+    emails (e.g., password reset tokens), we should get permission. This is gained
+    via the request approval button or by talking directly to their support.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'With permission granted, we can add the relevant DNS records to prove to Postmark
+    that we control the [tozo.dev](http://tozo.dev) domain. These are available from
+    your Postmark account and should be added as follows to *infrastructure/dns.tf*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note the highlighted `abcd` DKIM value is a placeholder and should be replaced
+    with your own value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The Postmark token we need is also available in your account and should be
+    added to *infrastructure/secrets.auto.tfvars* (your key will differ from my `abcd`
+    example):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE46]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To make this token available to our app, we need it to be an environment variable
+    in the running container. This is achieved by adding the following to the existing
+    `aws_ecs_task_definition` section in *infrastructure/aws_cluster.tf*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE47]'
+  prefs: []
+  type: TYPE_PRE
+- en: The highlighted lines should be added to the file. Note that the environment
+    variable name is `TOZO_POSTMARK_TOKEN` as only environment variables prefixed
+    with `TOZO_` are loaded into the app’s configuration. See the *Creating a basic
+    Quart app* section in [*Chapter 2*](B18727_02.xhtml#_idTextAnchor053)*, Creating
+    a Reusable Backend with Quart*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Our app should now send the welcome, reset password, and other emails using
+    Postmark. We can monitor this by logging into Postmark and checking the activity.
+    Next, we can focus on monitoring the app itself.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Monitoring production
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Now that our app is running in production, we need to keep it working. This
+    means we need to monitor for issues, notably errors and slow performance, as both
+    lead to a poor user experience. To do so, I find it easiest to use Sentry ([sentry.io](http://sentry.io)),
+    which can monitor errors and performance in the frontend and backend code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Monitoring the backend
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: To monitor the backend, we should create a new project in Sentry and call it
+    `backend`. This is where we’ll see any errors and can monitor the performance.
+    The project will have its own **data source name** (**DSN**) value, which we’ll
+    need to provide to the app in production. The DSN is found on the project’s configuration
+    page on [sentry.io](http://sentry.io).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To make the DSN available to our app, we need it to be an environment variable
+    in the running container. This is achieved by adding the following to the existing
+    `aws_ecs_task_definition` section in *infrastructure/aws_cluster.tf*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE48]'
+  prefs: []
+  type: TYPE_PRE
+- en: The highlighted value will be different for your setup, as the value used here
+    is Sentry’s example DSN.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We next need to install `sentry-sdk` by running the following in the *backend*
+    folder:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE49]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This allows us to activate the Sentry monitoring for Quart using Sentry’s `QuartIntegration`;
+    we can do this by adding the following to *backend/src/backend/run.py*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE50]'
+  prefs: []
+  type: TYPE_PRE
+- en: It is important that `sentry_sdk.init` is before `app = Quart(__name__)`, as
+    highlighted in the previous code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Expected performance
+  prefs: []
+  type: TYPE_NORMAL
+- en: As a rule of thumb, if an action takes more than 100 milliseconds to return
+    a response, the user will notice the slowdown and have a bad experience. Therefore,
+    I aim to have routes completed within 40 milliseconds, as this gives time for
+    the network transmission and any UI updates to take place within the 100 millisecond
+    target. There is an exception though, which is that any route that hashes the
+    password should take in excess of 100 milliseconds – otherwise, the hash is too
+    weak and liable to be broken.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is all we need to monitor the backend, so now we can do the same for the
+    frontend.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Monitoring the frontend
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'To monitor the frontend, we first need to create a `frontend` project in Sentry.
+    Next, we need to install the Sentry SDK by running the following in the *frontend*
+    folder:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE51]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This allows us to activate the Sentry monitoring using Sentry’s browser integration
+    by adding the following to *frontend/src/index.tsx*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE52]'
+  prefs: []
+  type: TYPE_PRE
+- en: The highlighted DSN value provided is an example, and yours is available in
+    the project settings on [sentry.io](http://sentry.io). As this value isn’t sensitive,
+    it is safe for us to place it directly in the frontend code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To work correctly, it is important that `Sentry.init` is before the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE53]'
+  prefs: []
+  type: TYPE_PRE
+- en: And that is all we need to monitor the frontend. Next, we can show the user
+    a friendly error page when an error occurs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Displaying an error page
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'It is likely, despite our best efforts, that users will encounter bugs and
+    errors as they use the app. When this happens, we should show the user a helpful
+    error page that acknowledges the issue and encourages the user to try again, as
+    shown in *Figure 6.6*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.6: The Error page ](img/B18727_06_06.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 6.6: The Error page'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This page is implemented by adding the following code to *frontend/src/pages/Error.tsx*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE54]'
+  prefs: []
+  type: TYPE_PRE
+- en: Error tolerance
+  prefs: []
+  type: TYPE_NORMAL
+- en: In my experience, users are very tolerant of bugs that are acknowledged and
+    fixed quickly, with the inconvenience being quickly forgotten. However, bugs that
+    are not acknowledged or affect the user multiple times are not forgiven and result
+    in the user using a different app. This is why it is vital to monitor the app
+    for errors and fix them first, before adding any new features.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To display this error page when an error occurs, we can use Sentry’s `ErrorBoundary`
+    by making the following changes to *frontend/src/index.tsx*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE55]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To check that everything is set up and works correctly, we can create a route
+    that errors when visited by adding the following to *frontend/src/Router.tsx*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE56]'
+  prefs: []
+  type: TYPE_PRE
+- en: In the code block, `...` represents code that has been omitted for brevity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, any visit to `/test-error/` will result in an error and the error page
+    being displayed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: With a friendly error page and Sentry installed, we are able to monitor for
+    errors and performance issues.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we’ve deployed our app to the cloud and served it on our own
+    memorable domain name, thereby allowing any user to use our app. We also learned
+    how to monitor it for any issues, and so are ready to fix bugs as quickly as possible.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The infrastructure we’ve built in this chapter can be used for any containerized
+    app that needs a database and will scale to very high loads.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we’ll add some advanced features to our app and turn it
+    into a progressive web app.
+  prefs: []
+  type: TYPE_NORMAL

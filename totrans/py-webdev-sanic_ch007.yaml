@@ -1,0 +1,2309 @@
+- en: 6 Operating outside the Request Handler
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The basic building block of application development within Sanic is the request
+    handler, which is sometimes known as a “route handler”. Those terms can be used
+    interchangeably and mean the same thing. It is the function that Sanic runs when
+    a request has been routed to your application to be handled and responded to.
+    This is where business logic and HTTP logic combine to allow the developer to
+    dictate how responses should be delivered back to the client. It is the obvious
+    place to start when learning how to build with Sanic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, request handlers alone do not provide enough power to create a polished
+    application experience. In order to build out an application that is polished
+    and professional, we must break outside the handler to see what other tools Sanic
+    has to offer. It is time to think about the HTTP request/response cycle as not
+    being confined to a single function. We will broaden our scope so that responding
+    to a request is not the responsibility of just the handler, but of the entire
+    application. We have already gotten a taste of this when we caught a glimpse of
+    middleware.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we are going to cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Making use of ctx
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Altering requests and responses with middleware
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Leveraging signals for intra-worker communication
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Mastering HTTP connections
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Implementing Exception handling
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Background task processing
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Of course, not all projects will need features like these, but when used in
+    the right place they can be extremely powerful. Have you ever worked on a DIY
+    project around your home and not quite had the right tools for the job? It can
+    be super frustrating and inefficient when you need a Phillips-head screwdriver,
+    but all you have are flat head screwdrivers. Not having the right tool for the
+    job can make your task harder, but it also sometimes decreases the quality of
+    the work that you can perform.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Think of the features that we explore in this Chapter as tools. There is a
+    common saying you may have heard that says: “*If you are holding a hammer, then
+    every problem looks like a nail*.” Lucky for us, we have a bunch of tools and
+    our job now is to learn how to use them. We are about to go explore the Sanic
+    tool belt and see what kinds of problems we can solve.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this chapter, you should have the same tools available as in the previous
+    Chapters at your disposal in order to be able to follow along with the examples
+    (IDE, modern Python, and curl).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can access source code for this chapter on GitHub: [https://github.com/PacktPublishing/Web-Development-with-Sanic/tree/main/chapters/06](https://github.com/PacktPublishing/Web-Development-with-Sanic/tree/main/chapters/06).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Making use of ctx
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Before we begin with the tool belt, there is one more concept that we must
+    become familiar with. It is fairly ubiquitous in Sanic, and you will see it in
+    a lot of places. I am talking about: `ctx`. What is it?'
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is stands for *context*. These `ctx` objects can be found in a number of
+    places, and it is impractical to build without making good use of them. What they
+    enable is the passing of state from one location in your application to another.
+    They exist for your own usage as a developer, and you should feel free to use
+    them however you wish. That is to say that the `ctx` objects are yours to add
+    information to without worrying about name collisions or otherwise impacting the
+    operation of Sanic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The most common example that comes to mind is your database connection object.
+    You create it once, but you want to have access to it in many places. How does
+    this work?
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, anywhere you can access the application instance, you can access the db
+    instance. For example, you can access it inside a function somewhere:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here is a list of all of the locations that have a `ctx` object:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Object** | **Description** | **Example** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Sanic | Available during the entire lifetime of your worker instance. It
+    is worker specific, meaning that if you run multiple workers, it will *not* keep
+    them synchronized. Best used for connection management, or other things that need
+    to be made available throughout the lifetime of the application instance. | `app.ctx`
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Blueprint | Available on a Blueprint instance as long as the blueprint exists.
+    This might be helpful if you have some specific data that needs to be available
+    for the entire worker lifetime, but you want to control its access to anything
+    attached to that particular Blueprint. | `bp.ctx` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Request | Available for the duration of a single HTTP request. Helpful for
+    adding details in middleware, and then making it available in the handler or other
+    middleware. Common uses include session IDs and user instances. | `request.ctx`
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: '| ConnInfo | Available for the duration of an entire HTTP connection (potentially
+    multiple requests). Be careful with this one particularly if you use a proxy.
+    It usually should not be used for sensitive information. | `request.conn_info.ctx`
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Route | Available on the Route and Signal instances. This is the one exception
+    where Sanic actually does store some details on the ctx object. | `request.route.ctx`
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: Table 6.1 - Sanic features with a `ctx` object
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will continue to come back to `ctx` objects often. They are a very important
+    concept in Sanic to allow the passing of arbitrary data and objects. Not all of
+    them are created equal, and you will likely find yourself using `app.ctx` and
+    `request.ctx` much more often than any of the others.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have this basic building block behind us, we will see what it actually
+    looks like to pass these objects around. In the next section regarding middleware,
+    we will see how the Request object—and therefor also the `request.ctx`—can be
+    accessed in multiple places from your application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Altering requests and responses with middleware
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: If you have been following along with the book up until now, the concept of
+    middleware should be familiar. This is the first tool in the tool belt that you
+    should become familiar with.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Middleware are snippets of code that can be run before and after route handlers.
+    Middleware comes in two varieties: request and response.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Request middleware
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The request middleware executes in the order in which it was declared, before
+    the route handler.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'When we try and reach this endpoint, we should see the following in the terminal:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'But, this only tells part of the story. Sometimes we may need to add some additional
+    logic to only *parts* of our application. Let’s pretend we are working on building
+    an e-commerce application. Like other online stores, we will need to build a shopping
+    cart that holds products that are going to be purchased. For the sake of our example,
+    we will imagine that when the user logs in, we create the cart in our database
+    and store a reference to it in a cookie. Something like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: Do not get too tied up in the details here. The point is that on every subsequent
+    request, there will be a cookie called cart that we can use to fetch data from
+    our database.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, suppose that we want all endpoints on our `/cart` path to have access to
+    the shopping cart. We might have endpoints for adding items, removing items, changing
+    quantities, and so on. However, we will always need access to the cart. Rather
+    than repeating the logic in every handler, we can do it once on the Blueprint.
+    Adding middleware to all the routes on a single Blueprint looks and functions
+    similarly to application wide middleware.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As we would expect, every endpoint that is attached to the `ShoppingCart` Blueprint
+    will fetch the cart before it runs the handler. I am sure you can see the value
+    in this sort of pattern. Where you can identify a group of routes that need a
+    similar functionality, sometimes it is best to pull that out into middleware.
+    This is a good time to also point out that this works also with Blueprint Groups.
+    We could change the middleware to this and have the same impact:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: Just as we would expect, endpoints that are within that Blueprint Group will
+    now have the shopping cart accessible to them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Knowing that we can execute middleware both application-wide and blueprint-specific
+    leads to an interesting question: in what order are they applied? No matter the
+    order in which they are declared, all application-wide middleware will *always*
+    run before the blueprint-specific middleware. To illustrate this point, we will
+    use an example that mixes the two types.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As you can see in this example, we interspersed declaring application and blueprint
+    middleware by alternating between them: first application, then blueprint, etc.
+    While the code lists the functions in sequential order (1, 2, 3, 4, 5, 6), our
+    output will not be. You should be able to anticipate how our endpoints will respond
+    with the application numbers appended before the blueprint numbers. Sure enough,
+    that is the case:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: It is also really helpful to point out that since middleware is just passing
+    along the `Request` object, subsequent middleware has access to whatever changes
+    earlier middleware performed. In this example, we created the list of numbers
+    in one, which was then available to all of the middleware.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Response middleware
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'On the other side of the HTTP lifecycle, we have response middleware. The same
+    rules for request middleware apply:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is executed based upon the order of declaration, *although, it is reverse
+    order!*
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Response middleware can be both application-wide or blueprint-specific
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: All application-wide middleware will run before any blueprint-specific middleware
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'In the last section, we counted from 1 through 6 using middleware. We will
+    take the exact same code (order is important!), but change from request to response:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, when we hit our endpoint, we will see a different order:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: Uh oh, what happened? Well, since we did not define our `ctx.numbers` container
+    until the response middleware, it was not available inside the handlers. Let’s
+    make a quick change. We will create that object inside of a request middleware.
+    For the sake of our example, we also will return None from the request handler,
+    and instead create our response from our last middleware. In this example, the
+    last middleware to respond will be the first Blueprint response middleware declared.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Take a close look at the above. We still have a mixture of application and
+    blueprint middleware. We create the numbers container inside of the handler. Also,
+    it is important to note that we are using the exact same ordering that we used
+    for the request middleware that yielded: 1, 3, 5, 2, 4, 6\. The changes here are
+    merely to show us how response middleware reverses its order. Can you guess what
+    order our numbers will be in? Let’s check:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: First, all of the application-wide response middleware runs (in reverse order
+    of declaration). Second, all of the blueprint-specific middleware runs (in reverse
+    order of declaration). Keep this distinction in mind when you are creating your
+    response middleware if they are interconnected.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Whereas a common use-case for request middleware is to add some data to the
+    request object for further processing, this is not so practical for response middleware.
+    Our above example is a bit odd and impractical. What then is response middleware
+    good for? The most common use case is probably setting headers and cookies.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is a simple (and very common) use case:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: Why would you want to do this? Many web APIs use what is known as a *correlation
+    ID* to help identify individual requests. This is helpful for logging purposes,
+    for tracking a request as it trickles through various systems in your stack, and
+    also for clients that are consuming your API to keep track of what is happening.
+    Sanic latches onto this principal and will set the `request.id` automatically
+    for you. This value will either be the incoming correlation ID from the incoming
+    request headers, or a unique value generated per request. By default, Sanic will
+    generate a UUID for this value. You usually will not need to worry about this
+    unless you want to use something other than a UUID for correlating web requests.
+    If you are interested in how you can override Sanic’s logic for generating these,
+    checkout *Chapter 11*, *A complete real-world example*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Coming back to our above example, we see that we are simply grabbing that value
+    and appending it to our response headers. We can now see it in action:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: This small snippet is something I would highly encourage you to add to all of
+    your applications. It is extremely beneficial when you pair it with request ID
+    logging. This is also something we will add into our application in *Chapter 11*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Responding early (or late) with middleware
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'When we explored the response middleware ordering example from the last section,
+    did you notice something peculiar happening with our responses? Did you see this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We had a non-sensical response from the handler, but it was not returned. That
+    is because in our middleware we returned an `HTTPResponse` object. Whenever you
+    return a value from middleware–whether request or response–Sanic will assume that
+    you are trying to end HTTP lifecycle and return immediately. Therefore, you should
+    *never* return anything from middleware that is:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Not an `HTTPResponse` object
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Not intended to interrupt the HTTP lifecycle
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: This rule, however, does not apply to None values. You can still use return
+    `None` if you simply want to halt execution of the middleware.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Let’s see how this plays out now:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the second request, it was allowed to proceed because it had the correct
+    header. Therefore, we can see that returning `None` is also acceptable from middleware.
+    If you are familiar with using continue inside of a Python loop, it has roughly
+    the same impact: halt execution, and move onto the next step.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Important note**'
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: ''
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: Even though we were looking for the value `please` in the request headers, we
+    were able to pass `Please` and for it to still work since headers are always case-insensitive.
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: Middleware and streaming responses
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: There is one more *gotcha* that you should know about middleware. Remember how
+    we simply said that the middleware basically wraps before and after the route
+    handler? This is not entirely true.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Truthfully, the middleware wraps the generation of the response. Since this
+    *usually* happens in the return statement of a handler, that is why we take the
+    simplistic approach.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This point can be easily seen if we revisit our Chapter 5 example with our
+    streaming handler. Here is where we started:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: Let’s add some print statements and some middleware so we can examine the order
+    of execution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now we will hit the endpoint, and look at our terminal logs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As we would expect, the request middleware runs first, and then we begin the
+    route handler. But, the response middleware runs immediately after we call: `request.respond()`.
+    For most use cases of response middleware (like adding headers), this should not
+    matter. It will, however, pose a problem if you absolutely must execute some bit
+    of code *after* the route handler is complete. If this is the case, then your
+    solution is to use signals, which we will explore later in this Chapter.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: But first, we are going to explore signals, which sometimes are a great replacement
+    for middleware. While middleware essentially is a tool that allows us to extend
+    business logic outside the confines of the route handler, and to share it among
+    different endpoints, we will learn that signals are more like breakpoints that
+    allow us to interject code into Sanic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Leveraging signals for intra-worker communication
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In general, Sanic tries to make it possible for developers to extend its capabilities
+    to create custom solutions. This is the reason that when interfacing with Sanic,
+    there are a number of options to inject custom classes to overtake, change, or
+    otherwise extend its functionality. For example, did you know that you could swap
+    out its HTTP protocol to essentially turn Sanic into an FTP server (or any other
+    TCP-based protocol)? Or, maybe you want to extend the router capabilities?
+  prefs: []
+  type: TYPE_NORMAL
+- en: These sorts of customizations are rather quite advanced. We will not cover them
+    in this book since for most use cases it is the equivalent of hanging a picture
+    nail on your wall with a sledgehammer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The Sanic team introduced signals as a method to extend the functionality of
+    the platform in a more user-friendly format. Very intentionally, setting up a
+    signal handler looks and feels like a route handler:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You may be asking: what exactly is this, and how can I use it? In this example,
+    we learn that `http.lifecycle.begin` is an event name. When Sanic opens an HTTP
+    connection to a client, it dispatches this signal. Sanic will then look to see
+    if there are any handlers waiting for it and run them. Therefore, all we did was
+    setup a handler to attach to that event. We will dig a little more into the pre-defined
+    events in this Chapter. But first, let’s take a closer examination at the structure
+    and operation of signals.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Signal definitions
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'All signals are defined by their event name, which is composed of three segments.
+    We just saw a signal event called: `http.lifecycle.begin`. Obviously, the three
+    segments are `http`, `lifecycle`, and `begin`. An event will *only* ever have
+    three segments.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is important to know because even though Sanic ships with a bunch of signals
+    out of the box, it also allows us to create our own signals along the way. Therefore,
+    we will need to follow the pattern. It is helpful to think of the first segment
+    as a namespace, the middle as a reference, and the last as an action. Sort of
+    like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: Thinking in these terms helps me conceptualize them. I like to think of them
+    like routes. In fact, they actually are! Under the hood, Sanic deals with signal
+    handlers the same way as it does with route handlers because they inherit from
+    the same base class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If a signal is essentially a route, does that mean it can look for dynamic
+    path parameters too? Yes! Check this out:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Go hit any route in your application now, and we should see the following in
+    our terminal:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Before continuing on to see what signals are available, there is one more thing
+    we need to be aware of: condition. The `app.signal()` method accepts a keyword
+    argument called condition that can help in limiting the events that match on it.
+    Only an event that is dispatched with the same condition will be executed.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will look at a concrete example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Start by adding some request middleware.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Then add a signal to attach to our middleware (this is a built-in as we will
+    see later).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Now, let’s go take a look at our terminal after we hit an endpoint:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Hmmm, we see that the signal was dispatched, and that our middleware ran, but
+    our signal handlers did not. Why? The `http.middleware.*` events are special in
+    that they will only match when a specific **condition** is met. Therefore, we
+    need to amend our signal definition to include the required condition.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Change your signal to add the condition like this:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Hit the endpoint again. We should now see the text as anticipated.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Conditions are something that you can also add to your custom signal dispatches
+    (keep reading ahead to the *Custom signals* section to learn more). It would look
+    like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: Most signal use cases will not need this approach. However, if you find the
+    need for additional control on signal dispatching, it might just be the right
+    tool for the job. Let’s turn our attention back to Sanic’s built-in signals and
+    see what other events we can attach signals to.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using built-in signals
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: There are a number of built-in signals that we can use. Take a look at the tables
+    below and dog-ear this page in the book. I highly encourage you to come back to
+    this table often and look at your options when trying to solve a problem. While
+    the implementations and usages we come up with in this book may be small, it is
+    your job to learn the process so you can more effectively solve your own application
+    needs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: First, are the signals related to routing. They will execute on every request.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Event name** | **Arguments** | **Description** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `http.routing.before` | `request` | When Sanic is ready to resolve the incoming
+    path to a route |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `http.routing.after` | `request, route, kwargs, handler` | Immediately after
+    a route has been found |'
+  prefs: []
+  type: TYPE_TB
+- en: Table 6.2 - Available built-in routing signals
+  prefs: []
+  type: TYPE_NORMAL
+- en: Second, we have the signals that are specifically related to the request/response
+    lifecycle.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Event name** | **Arguments** | **Description** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `http.lifecycle.begin` | `conn_info` | When an HTTP connection is established
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `http.lifecycle.read_head` | `head` | After an HTTP head is read, but before
+    it is parsed |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `http.lifecycle.request` | `request` | Immediately upon the creation of a
+    Request object |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `http.lifecycle.handle` | `request` | Before Sanic begins to handle a request
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `http.lifecycle.read_body` | `body` | Every time bytes are read from a request
+    body |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `http.lifecycle.exception` | `request, exception` | When an exception is
+    raised in a route handler or middleware |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `http.lifecycle.response` | `request, response` | Just before a response
+    is sent |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `http.lifecycle.send` | `data` | Everytime date is sent to an HTTP transport
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `http.lifecycle.complete` | `conn_info` | When an HTTP connection is closed
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: Table 6.3 - Available built-in request/response lifecycle signals
+  prefs: []
+  type: TYPE_NORMAL
+- en: Third, we have the events that wrap around each middleware handler. These are
+    not likely signals that you will use often. Instead, they primarily exist for
+    the benefit of Sanic plugin developers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Event name** | **Arguments** | **Conditions** | **Description** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `http.middleware.before` | `request, response` | `{"attach_to": "request"}
+    or {"attach_to": "response"}` | Before each middleware runs |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `http.middleware.after` | `request, response` | `{"attach_to": "request"}
+    or {"attach_to": "response"}` | After each middleware runs |'
+  prefs: []
+  type: TYPE_TB
+- en: Table 6.4 - Available built-in middleware signals
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, we have the server events. These signals are a one-to-one match with
+    the listener events. Although you can call them as a signal, there is a convenient
+    decorator for each of them as indicated in the descriptions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Event name** | **Arguments** | **Description** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `server.init.before` | `app, loop` | Before a server starts up (equivalent
+    to `app.before_server_start` ) |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `server.init.after` | `app, loop` | After a server starts up (equivalent
+    to `app.after_server_start` ) |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `server.shutdown.before` | `app, loop` | Before a server shuts down (equivalent
+    to `app.before_server_stop` ) |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `server.shutdown.after` | `app, loop` | After a server shuts down (equivalent
+    to `app.after_server_stop` ) |'
+  prefs: []
+  type: TYPE_TB
+- en: Table 6.5 - Available built-in server lifecycle signals
+  prefs: []
+  type: TYPE_NORMAL
+- en: I want to share an anecdote that exemplifies the power of signals. I do a lot
+    of support for Sanic users. If you have spent any time looking over the community
+    resources (either the Forums or the Discord server), you likely have seen me helping
+    developers solve their problems. I really do enjoy this aspect of being involved
+    in OSS.
+  prefs: []
+  type: TYPE_NORMAL
+- en: On one occasion I was asked by someone who was having trouble with middleware.
+    The goal was to use response middleware to log out helpful information about responses
+    as they were being delivered from the server. The problem is that when an exception
+    is raised in middleware, it will halt the rest of the middleware from running.
+    Therefore, this individual was not able to log every response. The requests that
+    raised an exception in other response middleware never made it to the logger.
+    The solution—as you have probably guessed—was to use signals. In particular, the
+    `http.lifecycle.response` event worked perfectly for this use case.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To show the point, here is some code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Setup two middleware, one for logging and one for causing an exception. Remember,
+    they need to be in reverse order from how you want them to run:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: When we hit any endpoint, `log_response` will *NEVER* be run.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'To solve, change `log_response` from middleware into a signal (which is as
+    easy as changing the decorator):'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Now, when we access the endpoint and experience the exception, we still get
+    our logs as expected:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: We can also use this exact same signal to solve one of our earlier problems.
+    Remember when we were examining response middleware and had somewhat surprising
+    results with a streaming handler? If you go back to earlier in this Chapter, we
+    noticed that response middleware actually was called when the response object
+    was created, not after the handler completed. We could use `http.lifecycle.response`
+    to wrap up after our lyrics are done streaming.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: This might be another good time for you to put the book down and do some exploration.
+    Go back to that earlier example with the streaming handler and play around with
+    some of these signals. Take a look at the arguments they receive and think about
+    how you might make usage of them. It is also, of course, important to understand
+    the order in which they are dispatched.
+  prefs: []
+  type: TYPE_NORMAL
+- en: After you complete that, we will take a look at creating custom signals and
+    events.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Custom signals
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: So far, we have been looking specifically at the built-in signals. They are
+    sort of a narrow implementation of what Sanic signals have to offer. While it
+    is helpful to think of them as breakpoints that allow us to insert functionality
+    into Sanic itself, in truth there is a more general concept at play.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Signals allow for intra-application communication. Because they can be dispatched
+    asynchronously as background tasks, it can become a convenient method for one
+    part of your application to inform another that something has happened. This introduces
+    another important concept of signals: they can be dispatched as inline or as tasks.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: So far, every single example we have seen with the built-in signals is inline.
+    That is to say that Sanic will halt the processing of a request until the signals
+    complete. This is how we are able to add functionality into the lifecycle while
+    maintaining a consistent flow.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This might not always be desirable. In fact, often times when you want to implement
+    your own solution with custom signals, having them run as a background task gives
+    the application the ability to continue responding to the request, while it goes
+    and does something else.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s take logging for example. Imagine that we are back in our example where
+    we are building an ecommerce application. We want to augment our access logs to
+    include information about the authenticated use (if any), and the number of items
+    they have in their shopping cart. Let’s take our earlier middleware example and
+    convert it to signals:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We need to create a signal to pull the user and shopping cart information onto
+    our request object. Again, we just need to change the first line.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'For the sake of our example, we want to throw together some quick models and
+    fake getters like this:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'This will be enough to get our example operational, but we want to be able
+    to see it. For now, we will add a route handler that just outputs our `request.ctx`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We should now see our fake user and cart are available as expected:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Since we want to use our own access logs, we should turn off Sanic’s access
+    logs. Back in Chapter 2, we decided we were going to run all of our examples like
+    this:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We are going to change that now. Add `--no-access-logs`:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Now, we are going to add our own request logger. But, to illustrate the point
+    we are trying to make, we will manually make our signal take a while to respond:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: When you access the endpoint, you will see the following in your logs. You also
+    should experience a delay before the logging appears, and also before your response
+    is delivered.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'To fix this, we will create a custom signal for our logger, and dispatch the
+    event from `fetch_user_and_cart`. Let’s make the following changes:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This time when we go and access the endpoint, there are two things you need
+    to pay attention to. First, your response should return almost immediately. The
+    delayed response we experienced earlier should be gone. Second, the delay in the
+    access log should remain.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: What we have effectively done here is taken any IO wait time in the logging
+    away from the request cycle. To do this we created a custom signal. That signal
+    was called `olives.request.incoming`. There is nothing special about this. It
+    is entirely arbitrary. The only requirements, as we discussed, is that it has
+    three parts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To execute the signal, we just need to call `app.dispatch` with the same name:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: Because we wanted to have access to the Request object in `access_log`, we used
+    the optional argument context to pass the object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, why did the `http.lifecycle.handle` signal delay the response, but `olives.request.incoming`
+    did not? Because the former was executed *inline* and the latter as a background
+    task. Under the hood, Sanic calls dispatch with `inline=True`. Go ahead and add
+    that to the custom dispatch to see how that impacts the response. Once again,
+    both the logging and the response are now delayed. You should use this when you
+    want your application to pause on the dispatch until all signals attached to it
+    are done running. If that order is not important, you will achieve more performance
+    if you leave it out.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There are a few more arguments that dispatch takes that might be helpful for
+    you. Here is the function signature:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The arguments that this function accepts are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`condition`: Used as seen with the middleware signals to control additional
+    matching (we saw this as used by the `http.middleware.*` signals)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`context`: Arguments that should be passed to the signal'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`fail_not_found`: What if you dispatch an event that does not exist? Should
+    it raise an exception or fail silently?'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`inline`: Run in a task or not as discussed already'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`reverse`: When there are multiple signals on an event, what order should they
+    run in?'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Waiting on events
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The last helpful thing about dispatching a signal event is that they also can
+    be used like asyncio events to block until it is dispatched. The use case for
+    this is different than dispatching. When you dispatch a signal, you are causing
+    some other operation to occur, usually in a background task. You should wait on
+    a signal event when you want to pause an existing task until that event happens.
+    This means that it will block the currently existing task, whether that is a background
+    task or the actual request that is being handled.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The easiest way to show this is with a super simple loop that runs constantly
+    in your application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setup your loop like this. Notice that we are using `app.event` with our event
+    name. For simplicity, we are using a built-in signal event, but it could also
+    be a custom. In order to work, we would just need an app.signal to be registered
+    with the same name.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE46]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Now, when we hit our endpoint, we should see this in the logs:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE47]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This might be a helpful tool especially if your application uses websockets.
+    You might, for example, want to keep track of the number of open sockets. Feel
+    free to turn back to the websockets example and see if you can integrate some
+    events and signals into your implementation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One more helpful use case is where you have a number of things that need to
+    happen in your endpoint before you respond. You want to push off some work to
+    a signal, but ultimately it does need to be complete before responding.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We could do something like this. Setup the following handlers and signals.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE48]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now when we look at the terminal, we should see this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE49]'
+  prefs: []
+  type: TYPE_PRE
+- en: Since we know that sending the email will be an expensive operation, we send
+    that off to the background while continue processing the request. By using app.event,
+    we were able to wait for the `registration.email.done` event to be dispatched
+    before responding that the email in fact had been sent.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One thing that you should make note of, in this example there is not actually
+    a signal attached to `registration.email.done`. Out of the box, Sanic will complain
+    and raise an exception. If you would like to use this pattern, you have three
+    options.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Register a signal.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE50]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Since we do not need to actually execute anything, we do not actually need
+    a handler:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE51]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Tell Sanic to automatically create all events when there is a dispatch, regardless
+    of whether there is a registered signal:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE52]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Now that we know there are a number of ways to control the execution of business
+    logic within an HTTP lifecycle, we will next explore some other things we can
+    do to exploit our new found tools.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Mastering HTTP connections
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Earlier in Chapter 4, we discussed how the HTTP lifecycle represented a conversation
+    between a client and a server. The client requests information, and the server
+    responds. In particular, we likened it to a video chat with bi-directional communication.
+    Let’s dig into this analogy a little deeper to expand our understanding of HTTP
+    and Sanic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Rather than thinking about an HTTP request as the video chat, it is better
+    to think of it as an individual conversation, or better yet, a single question
+    and answer. Something like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Client**: Hi, my session ID is 123456, and my shopping cart ID is 987654\.
+    Can you tell me what other items I can buy?'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Server**: Hi Adam, you have pure olive oil, and extra virgin olive oil in
+    your cart already. You can add: balsamic vinegar or red wine vinegar.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Sanic is a “performant” web framework because it is capable of having these
+    conversations with multiple clients at the same time. While it is fetching the
+    results for one client, it can begin conversations with other clients:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Client 1**: What products do you sell?'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Client 2**: How much does a barrel of olive oil cost?'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Client 3**: What is the meaning of life?'
+  prefs: []
+  type: TYPE_NORMAL
+- en: By being capable of corresponding within multiple video chat sessions simultaneously,
+    the server has become more efficient at responding. But, what happens when one
+    client has multiple questions? To start and stop the video chat for each “conversation”
+    would be time consuming and costly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Start video chat*'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Client**: Here are my credentials, can I login?'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Server**: Hi Adam, nice to see you again, here is a session ID: 123456\.
+    Goodbye.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Stop video chat*'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Start video chat*'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Client**: Hi, my session ID is 123456\. Can I update my profile information?'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Server**: Oops, Bad Request. Looks like you did not send me the right data.
+    Goodbye.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Stop video chat*'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Every time that the video chat starts and stops we are wasting time and resources.
+    HTTP/1.1 sought to solve this problem by introducing persistent connections. This
+    is accomplished with the Keep-Alive header. We do not need to worry specifically
+    about how this header works from the client or server. Sanic will take care of
+    responding appropriately.
+  prefs: []
+  type: TYPE_NORMAL
+- en: What we do need to understand is that it exists, and that it includes a timeout.
+    This means that Sanic will not close the connection to the client if another request
+    comes within some timeout period.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Start video chat*'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Client**: Here are my credentials, can I login?'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Server**: Hi Adam, nice to see you again, here is a session ID: 123456.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Server**: *waiting…*'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Server**: *waiting…*'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Server**: *waiting…*'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Server**: Goodbye.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Stop video chat*'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We have now created an efficiency within a single video chat to allow for multiple
+    conversations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There are two practical concerns we need to think about here: (1) how long
+    should the server wait? And, (2) can we make the connection more efficient?'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Keep-Alive within Sanic
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Sanic will keep HTTP connections alive by default. This makes operations more
+    performant as we saw earlier. There may, however, be instances where this is undesirable.
+    Perhaps you *never* want to keep the connections open. If you know that your application
+    will never handle more than one request per client, then perhaps it is wasteful
+    to use precious memory to keep open a connection that will never be reused. To
+    turn it off, just set a configuration value on your application instance:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE53]'
+  prefs: []
+  type: TYPE_PRE
+- en: As you can probably guess, even the most basic web applications will never fall
+    into this category. Therefore, even though we have the ability to turn off keep-alive,
+    you probably should not.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'What you are more likely going to want to change is the timeout. By default,
+    Sanic will keep connections open for five seconds. This may not seem long, but
+    it should be long enough for most use cases without being wasteful. This is, however,
+    Sanic just making a complete guess. You are more likely to know and understand
+    the needs of your application, and you should feel free to tune this number to
+    your needs. How? Again, with a simple configuration value:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE54]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To give you some context, here is a snippet from the Sanic User Guide that
+    provides some insight how other systems operate:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*“Apache httpd server default keepalive timeout = 5 seconds*'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Nginx server default keepalive timeout = 75 seconds*'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Nginx performance tuning guidelines uses keepalive = 15 seconds*'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*IE (5-9) client hard keepalive limit = 60 seconds*'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Firefox client hard keepalive limit = 115 seconds*'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Opera 11 client hard keepalive limit = 120 seconds*'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Chrome 13+ client keepalive limit > 300+ seconds”*'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://sanicframework.org/en/guide/deployment/configuration.html#keep-alive-timeout](https://sanicframework.org/en/guide/deployment/configuration.html#keep-alive-timeout)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: How do you know if you should increase the timeout? If you are building a single-page
+    application where your API is meant to power a JS frontend, there is a high likelihood
+    that your browser will make a lot of requests. This is generally the nature of
+    how these frontend applications work. This would be especially true if you expect
+    users to click a button, browse through some content, and click some more. The
+    first thing that comes to my mind would be a web portal type application where
+    a single user might need to make dozens of calls within a minute, but they might
+    be spaced out by some interval of browsing time. In this case, increasing the
+    timeout to reflect the expected usage might make sense.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This does not mean that you should increase it too far. First, as we see above
+    browsers generally have a limit to the maximum they will hold a connection open.
+    Second, going too far with connection length can be wasteful and harmful to your
+    memory performance. It is a balance that you are after. There is no one good answer,
+    so you may need to experiment to see what works.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Caching data per connection
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: If you are thinking about ways that you might exploit some of these tools for
+    your applications needs, you might have noticed a potential efficiency you can
+    create. Back at the beginning of this Chapter there is a table that lists all
+    of the context (`ctx`) objects that are available to you in Sanic. One of them
+    is connection specific.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This means that not only are you able to create stateful requests, but you can
+    also add state into a single connection. Our simple example will be a counter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Start by creating a counter when connection is established. We will use a signal
+    for this:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE55]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Next, we will increment the counter on every request using middleware:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE56]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Then we will output that in our request body so we can see what this looks
+    like:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE57]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Now, we will issue multiple requests using curl. To do that, we just give it
+    the URL multiple times:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE58]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'This is of course a trivial example, and we could get that information from
+    Sanic easily enough:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE59]'
+  prefs: []
+  type: TYPE_PRE
+- en: This could be extremely useful if you have some data that might be expensive
+    to obtain, but want it available for all requests. Coming back to our earlier
+    roleplay model, it would be as if your server fetched some details when the video
+    chat started. Now, every time the client asks a question, the server already has
+    the details on hand in cache.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Important note**'
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: ''
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: This does come with a warning. If your application is exposed through a proxy,
+    it could be connection pooling. That is to say that the proxy could be taking
+    requests from differing clients and bundling them together in one connection.
+    Think of this as if your video chat session was not in someone’s private home,
+    but were instead in the foyer of a large university dormitory. Anyone could walk
+    up to the single video chat session and ask a question. You might not be guaranteed
+    to have the same person all the time. Therefore, before you expose any sort of
+    sensitive details on this object, you must know that it will be safe. Your best
+    practice might just be to keep the sensitive details on `request.ctx`.
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: Handling exceptions like a pro
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In an ideal world, our applications would never fail and users would never
+    submit bad information. All endpoints would return a `200 OK` response all the
+    time. This is, of course, pure fantasy, and no web application could be complete
+    if it did not address the possibility of failures. In real life, our code will
+    have bugs, there will be edge cases not addressed, and users will send us bad
+    data and misuse the application. In short: our application will fail. Therefore,
+    we must think about this constantly.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sanic does, of course, provide some default handling for us. It includes a few
+    different styles of exception handlers (HTML, JSON, and text), and can be used
+    both in production and development. It is of course unopinionated, and therefore
+    likely inadequate for a decently sized application. We will talk more about the
+    fallback error handling in the *Fallback handling* section later. As we just learned,
+    handling exceptions in an application is critical to the quality (and ultimately
+    security) of a web application. We will now learn more about how to do that in
+    Sanic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing proper Exception handling
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Before we look at how to handle exceptions with Sanic, it is important to consider
+    that a failure to properly address this could become a security problem. The obvious
+    way would be through an inadvertent disclosure of sensitive information. This
+    is known as *leaking*. This occurs when an exception is raised (by mistake of
+    on purpose by the user) and your application reports back exposing details about
+    how the application is built, or the data stored.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In a real-world worst-case scenario, I once had an old forgotten endpoint that
+    no longer worked in one of my web applications. No one used it anymore and I simply
+    forgot that it existed or was even still live. The problem was that the endpoint
+    did not have proper exception handling and errors were directly reported as they
+    occurred. That means even “*Failure to connect to database XYZ using username
+    ABC and password EFG*”messages were flowing right to anyone that accessed the
+    endpoint. Oops.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Therefore, even though we do not discuss security concerns in general until
+    Chapter 7, it does extend into the current exploration into exception handling.
+    There are two main concerns here: providing exception messages with tracebacks
+    or other implementation details, and incorrectly using 400 series responses.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Bad exception messages
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: While developing, it is super helpful to have as much information about your
+    request as possible. This is why it would be desirable to have exception messages
+    and tracebacks in your responses. When you are building your applications in debug
+    mode, you will get all of these details. But make sure you turn it off in production!
+    Just like I wish my applications only served `200 OK` response all the time, I
+    wish I never stumbled onto a website that accidentally leaked debug information
+    to me. It happens out there in the wild, so be careful not to fall into that mistake.
+  prefs: []
+  type: TYPE_NORMAL
+- en: What is perhaps more common is failing to properly consider the content of the
+    errors when responding. When writing messages that will reach the end user, keep
+    in mind that you do not want to accidentally disclose implementation details.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Misusing statuses
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Closely related to bad exceptions are exceptions that leak information about
+    your application. Imagine if your bank website had an endpoint that was: `/accounts/id/123456789`.
+    They do their due diligence and properly protect the endpoint so that only you
+    can access it. That is not a problem. But, what happens to someone that cannot
+    access it? What happens when I try to access your bank account? Obviously I would
+    get a 401 Unauthorized because it is not my account. However, as soon as you do
+    that, the bank is now acknowledging that 123456789 is a legitimate account number.
+    Therefore, I *highly* encourage you to use the below chart and commit it to memory.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Status** | **Description** | **Sanic Exception** | **When to use** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 400 | Bad Request | `InvalidUsage` | When any user submits data in an unexpected
+    form or they otherwise did something your application does not intend to handle
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 401 | Unauthorized | `Unauthorized` | When an unknown user has not been authenticated.
+    In other words, you do not know who the user is. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 403 | Forbidden | `Forbidden` | When a known user does not have permissions
+    to do something on a *KNOWN* resource |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 404 | Not Found | `NotFound` | When any user attempts access on a hidden
+    resource |'
+  prefs: []
+  type: TYPE_TB
+- en: '|  |  |  |  |'
+  prefs: []
+  type: TYPE_TB
+- en: Table 6.6 - Sanic exceptions for common 400 series HTTP responses
+  prefs: []
+  type: TYPE_NORMAL
+- en: Perhaps the biggest failure here is when people inadvertently expose the existence
+    of a hidden resource with a 401 or 403\. Your bank should have instead sent me
+    a 404 and directed me to a “page not found” response. This is not to say that
+    you should always favor a 404\. But it is to your benefit from a security perspective
+    to think about who could be accessing the information, and what they should or
+    should not know about it. Then, you can decide which error response is appropriate.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Responses through raising an exception
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: One of the most convenient things about exception handling in Sanic is that
+    it is relatively trivial to get started. Remember, we are just coding a Python
+    script here, and you should treat it like you might anything else. What should
+    you do when something goes wrong? Raise an exception! Here is an example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Make a simple handler, we will ignore the return value here since we do not
+    need it to prove our point. Use your imagination for what could be beyond the
+    `...`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE60]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Next, we will submit some JSON to the endpoint leaving out the name property.
+    Make sure to use `-i` so we can inspect the response headers.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE61]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Take note how we received a 400 response but did not actually return a response
+    from the handler. This is because if you raise any exception from `sanic.exceptions`
+    they *could* be used to return an appropriate status code. Furthermore, you will
+    find that many of the exceptions in that module (like `InvalidUsage`) have a default
+    `status_code`. This is why when you raise `InvalidUsage` Sanic will respond with
+    a 400\. You could of course override the status code by passing a different on.
+    Let’s see how that would work:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Setup this endpoint and change `status_code` to something other than 400:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE62]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Now, let’s access it:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE63]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'As you can see, we passed the 418 status code to the exception. Sanic took
+    that code and properly converted it to the appropriate HTTP response: `418 I''m
+    a teapot`. Yes, that is a real HTTP response. Don’t believe me? Look it up in
+    RFC 7168 § 2.3.3\. [https://datatracker.ietf.org/doc/html/rfc7168#section-2.3.3](https://datatracker.ietf.org/doc/html/rfc7168#section-2.3.3)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is a reference of all of the built-in exceptions and their associated
+    response codes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Exception** | **Status** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `HeaderNotFound` | 400 Bad Request |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `InvalidUsage` | 400 Bad Request |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `Unauthorized` | 401 Unauthorized |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `Forbidden` | 403 Forbidden |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `FileNotFound` | 404 Not Found |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `NotFound` | 404 Not Found |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `MethodNotSupported` | 405 Method Not Allowed |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `RequestTimeout` | 408 Request Timeout |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `PayloadTooLarge` | 413 Request Entity Too Large |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `ContentRangeError` | 416 Request Range Not Satisfiable |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `InvalidRangeType` | 416 Request Range Not Satisfiable |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `HeaderExpectationFailed` | 417 Expectation Failed |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `ServerError` | 500 Internal Server Error |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `URLBuildError` | 500 Internal Server Error |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `ServiceUnavailable` | 503 Service Unavailable |'
+  prefs: []
+  type: TYPE_TB
+- en: Table 6.4 Sanic exceptions with built in HTTP responses
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It is therefore a really good practice to make usage of these status codes.
+    An obvious example might be when you are looking up something in your database
+    that does not exist:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE64]'
+  prefs: []
+  type: TYPE_PRE
+- en: Using the Sanic exceptions is perhaps one of the easiest solutions to getting
+    appropriate responses back to the users.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We could of course go one step further. We can make our own custom exceptions
+    that subclass from the Sanic exceptions to leverage the same capability.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Create an exception that subclasses one of the existing Sanic exceptions:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE65]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Raise it when appropriate:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE66]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'See the error when we have a bad request (less than 5 items):'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE67]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Using and reusing exceptions that inherit from `SanicException` is highly encouraged.
+    It not only is a good practice because it provides a consistent and clean mechanism
+    for organizing your code, it makes it easy to provide the appropriate HTTP responses.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So far throughout this book, when we have hit an exception with our client (like
+    in the last example), we have received a nice textual representation of that error.
+    In the next section, we will learn about the other types of exception output,
+    and how we can control it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Fallback handling
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Let’s face it: formatting exceptions is mundane. There is little doubt that
+    using our skills we have learned so far that we could build our own set of exception
+    handlers. We know how to use templates, catch exceptions, and return HTTP responses
+    with an error status. But creating those take time and a lot of boilerplate code.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Which is why it is nice that Sanic offers three (3) different exception handlers:
+    HTML, JSON, and plain text. For the most part, the examples in this book have
+    used the plain text handlers only because it has been a more suitable form for
+    presenting information in a book. Let’s go back to our example where we raised
+    a `NotFound` error and see what it might look like with each of the three types
+    of handlers.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: HTML
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'Setup our endpoint to raise the exception:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE68]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Tell Sanic to use HTML formatting. We will look more into configurations in
+    Chapter 8\. For now, we will just set the value right after our Sanic instance:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE69]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Open up a web browser and go to our endpoint. You should see something like
+    this:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.1 - Example 404 page showing what the default 404 Not Found HTML
+    page looks like in Sanic](img/file7.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.1 - Example 404 page showing what the default 404 Not Found HTML page
+    looks like in Sanic
+  prefs: []
+  type: TYPE_NORMAL
+- en: JSON
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: Use the same setup as before, but change the fallback format to `json`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE70]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'This time we will access the endpoint with curl:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE71]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Instead of nicely formatted HTML that we saw with the previous example, our
+    exception has been formatted into JSON. This is more appropriate if your endpoint
+    will—for example—be used by a Javascript browser application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Text
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: Again using the same setup, we will change the fallback format to `text`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE72]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We will again use curl to access the endpoint:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE73]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: As you can see, there are three convenient formatters for our exceptions that
+    may be appropriate in different circumstances.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Auto
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'The previous three examples used `FALLBACK_ERROR_FORMAT` to show that there
+    are three types of built-in error formats. There is a fourth option for setting
+    FALLBACK_ERROR_FORMAT: `auto`. It would look like this.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE74]'
+  prefs: []
+  type: TYPE_PRE
+- en: When the format is set to `auto`, Sanic will look at the the routing handler
+    and the incoming request to determine what is likely to be the most appropriate
+    handler to use. For example, if a route handler always uses the `text()` response
+    object, then Sanic will assume that you want the exceptions to also be formatted
+    in `text` format. The same applies to `html()` and `json()` responses.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sanic will even go one step further than that when in `auto` mode. It will analyze
+    the incoming request to look at the headers to make sure that what it *thinks*
+    is correct and matches with what the client said that it wants to receive.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Manual override per route
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: The last option we have is to set the error format on an individual route inside
+    of the route definition. This would allow us to be specific and deviate from the
+    fallback option if needed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Consider the example where we set the fallback to `html`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE75]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Let’s now change our route definition from the beginning of this section to
+    look like the following with a specific defined `error_format`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE76]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: As you might already be able to guess, we will *not* see a formatted HTML page,
+    but instead will see the plain text from earlier.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE77]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Catching exceptions
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Although Sanic conveniently handles a lot of exceptions for us, it goes without
+    saying that it cannot anticipate every error that could be raised in an application.
+    We therefore need to think about how we want to handle exceptions that come from
+    outside of Sanic. Or, rather, how to handle exceptions that are not manually raised
+    by our application using one of the Sanic exceptions that conveniently adds a
+    response code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Returning to our ecommerce example, let’s imagine that we are using a third-party
+    vendor for handling our credit card transactions. They have conveniently provided
+    us with a module that we can use to process credit cards. When something goes
+    wrong, their module will raise a `CreditCardError`. Our job now is to make sure
+    that our application is ready to handle this error.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before we do that, however, let’s see why this is important.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Imagine that this is our endpoint:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE78]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Now, we access the endpoint, and if there is an error we get this response:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE79]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'That is not a very helpful message. If we look at our logs, however, we might
+    see this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE80]'
+  prefs: []
+  type: TYPE_PRE
+- en: That error looks potentially far more helpful to our users.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'One solution could, of course, just be to catch the exception and return the
+    response that we want:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE81]'
+  prefs: []
+  type: TYPE_PRE
+- en: This pattern is not ideal, however. It would require a lot of extra code when
+    we need to catch every potential exception in various locations in the application
+    to cast them to responses. This also would turn our code into a giant mess of
+    try/except blocks and make things harder to read, and ultimately maintain. In
+    short, it would go against some of the development principles we established early
+    on in this book.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A better solution would be to add an application-wide exception handler. This
+    tells Sanic that anytime this exception bubbles up, it should catch it and respond
+    in a certain way. It looks very much like a route handler:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE82]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Sanic has now registered this as an exception handler, and will use it anytime
+    that the `CreditCardError` is raised. Of course, this handler is super simplistic,
+    but you might imagine that it could be used for: extra logging, providing request
+    context, sending out an emergency alert notification to your devops team at 3am,
+    and so on.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**TIP**'
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: ''
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: Error handlers are not limited to your application instance. Just like other
+    regular route handlers, they can be registered on your Blueprint instances to
+    be able to customize error handling for a specific subset of your application.
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: Exception handling is an incredibly important part of application development.
+    It is an immediate differentiator between amateur applications and professional
+    application. We now know how we can use exceptions to provide not only helpful
+    messages to our users, but also to provide proper HTTP response codes. We now
+    move on to another topic (background processing) that can really help to take
+    your applications to the next level.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Background processing
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: There comes a time in the development of most applications where the developers
+    or users start to notice the application is feeling a bit slow. There are some
+    operations that seem to take a long time and it is harming the usability of the
+    rest of the application. It could be computationally expensive, or it could be
+    because of a network operation reaching out to another system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s imagine that you are in this scenario. You have built a great application
+    and an endpoint that allows users to generate a PDF report with the click of a
+    button showing all kinds of fancy data and graphs. The problem is that to retrieve
+    all the data and then crunch the numbers seems to take twenty (20) seconds. That’s
+    an eternity for a HTTP request! After spending time to squeeze as much performance
+    out of the report generator as you can, you are finally at the conclusion that
+    it runs as fast as it can. What can you do?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Push it to the background.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When we say “background processing” what we really mean is a solution that allows
+    the current request to complete without having finalized whatever it needs to
+    be done. In this example, it would mean completing the request that *starts* the
+    report generation before it is actually finished. Whenever and wherever you can,
+    I recommend pushing work to the background. Earlier in the *Waiting on events*
+    section of this Chapter we saw a use case for sending out registration emails
+    in the background. Indeed the usage of signals as described earlier is a form
+    of background processing. It is, however, not the only tool Sanic provides.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Adding tasks to the loop
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: As you may already know, one of the cornerstones of the `asyncio` library are
+    tasks. They are essentially the unit of processing that is responsible for running
+    asynchronous work on the loop. If the concept of a task or the task loop are still
+    foreign to you, it might be a good time to do a little research on the Internet
+    before continuing on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the typical scenario, you can generate a task by getting access to the event
+    loop, and then calling `create_task` as seen here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE83]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is probably not new to you, but what this does is start running `something`
+    in a task outside of the current one.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Sanic adds a simple interface for creating tasks, as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE84]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This is probably the simplest form of background processing, and is a pattern
+    that you should get comfortable using. Why use this over `create_task`? There
+    are three reasons:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is easier since you do not need to fetch the loop
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It can be used in the global scope before the loop has started
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It can be called or not called, and also with or without the application instance
+    as an argument
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'To illustrate the flexibility, contrast the previous example with this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE85]'
+  prefs: []
+  type: TYPE_PRE
+- en: '**TIP**'
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: ''
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: If the task is not called like the first example, Sanic will introspect the
+    function to see if it expects the `app` instance as an argument, and inject it.
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: Asyncio tasks are very helpful, but sometimes you need a more robust solution.
+    Let’s see what our other options are.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Integrating with an outside service
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: If there is work to be done by your application, but it is outside of the scope
+    of your API for whatever reason, you might want to turn to an off-the-shelf solution.
+    This comes in the form of another service that is running somewhere else. The
+    job of your web API now is to feed work into that service.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the Python world, the classic framework for this kind of work is Celery.
+    It is of course not the only option, but since this book is not about deciding
+    what to use, we will show Celery as an example because it is widely used and known.
+    In short, Celery is a platform with workers that read messages from a queue. Some
+    client is responsible for pushing work to the queue, and when a worker receives
+    the message, it executes the work.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For Celery to operate, it runs a process on a machine somewhere. It has a set
+    of known operations that it can perform (that are also called “tasks”). To initiate
+    a task, an outside client needs to connect to it through a broker, and send instructions
+    to run the task. A basic implementation might look like this.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We setup a client to be able to communicate with the process. A common place
+    to put this is on the `application.ctx` to make it usable anywhere in the application.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE86]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: To use it, we simply call the client from the route handler to push some work
+    to Celery.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE87]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: An important thing to point out here is that we are using a `202 Accepted` status
+    to tell whoever made the request that the operation has been accepted for processing.
+    No guarantee is being made that it is done, or will be done.
+  prefs: []
+  type: TYPE_NORMAL
+- en: After examining Celery, you may be thinking that it is overkill for your needs.
+    But, `app.add_task` does not seem like enough. Next we look at how you could develop
+    your own in-process queue system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Designing an in-process task queue
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Sometimes the *obvious* goldilocks solution for your needs is to build something
+    entirely confined to Sanic. It will be easier to manage if you have only one service
+    to worry about instead of multiples. You may still want to keep the idea of “workers”
+    and a “task queue” without the overhead required in implementing a service like
+    Celery. So, let’s build something that hopefully you can use as a launching point
+    for something even more amazing in your applications. Before we get started, you
+    can checkout the final code product in the GitHub repo at: ___.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before we go any further, let’s change the name from “task queue” to “job queue”.
+    We do not want to confuse ourselves with asyncio tasks for example. For the rest
+    of this section, the word “task” will relate to an asyncio task.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To begin, we will develop a set of needs for our job queue.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There should be one or more “workers” that are capable of executing jobs outside
+    of the request/response cycle.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: They should execute jobs in a first-in-first-out order.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Completion order of jobs is not important (for example, job A starts before
+    job B, but it does not matter which one finishes first).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We should be able to check on the state of a job.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Our strategy to achieve this will be to build out a framework where we have
+    a “worker” that that is itself a background task. Its job will be to look for
+    jobs inside of a common queue and execute them. The concept is very similar to
+    Celery, except we are handling it all within our Sanic application with asyncio
+    tasks. We are going to walk through the source to accomplish this, but not all
+    of it. Implementation details not relevant to this discussion will be skipped
+    here. For full details, please refer to the source code in the GitHub repository:
+    ____.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: To begin, let’s setup a very simple application with a single blueprint.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE88]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: That blueprint will be the location where we will attach some listeners and
+    our endpoints.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE89]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'As you can see, we have three listeners that we need to run: `setup_job fetch`,
+    `setup_task_executor`, and `register_operations`. We also have two views: one
+    is a list view and the other a detail view. Let’s take each of these items in
+    turn to see what they are.'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Since we want to store the state of our tasks, we need some sort of a datastore.
+    To keep things really simple, I created a file-based database called `FileBackend`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE90]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The functionality of this job management system will be driven from our job
+    queue, which will be implemented with `asyncio.Queue`. So, we next need to setup
+    our queue and workers.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE91]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: After creating our queue, we create one or more background tasks. As you can
+    see, we are simply using Sanic’s `add_task` method to create a task from the `worker`
+    function. We will see that function in just a moment.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: The last listener we need will setup an object that will be used to hold all
+    of our potential operations.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE92]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'To remind you, and `Operation` will be something that we want to run in the
+    background. In this example, we have one operation: `Hello`. Before looking at
+    an operation, let’s look at the two views.'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'The list view will have a POST call that is responsible for pushing a new job
+    into the Queue. You can also imagine that this would be an appropriate place to
+    make an endpoint that listed all of the existing jobs (paginated of course). First,
+    it will need to get some data from the request:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE93]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Here, we perform some very simple data validation. In a real-world scenario,
+    you might want to do some more to make sure that the request JSON conforms to
+    what you are expecting.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: After validating the data, we can push information about the job to the queue.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE94]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: We created a UUID. This unique identifier will be used both in storing the job
+    in our database, and retrieving information about it later. Also, it is important
+    to point out that we are using the `202 Accepted` response since it is the most
+    appropriate form.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: The detail view is very simple. Using the unique identifier, we simply look
+    it up in the database and return it.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE95]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Coming back to our `Hello` operation, we will build it now:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE96]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: As you can see, it is a simple object that has a `run` method. That method will
+    be called by the worker when running a `Job`.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: The worker is really nothing more than an async function. Its job will be to
+    run a never ending loop. Inside that loop it will wait until there is a job in
+    the queue.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE97]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Once it has the information about how to run a job, it needs to create a job
+    instance, and execute it.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE98]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'A couple final things to say about this solution: one of its biggest faults
+    is that it has no recovery. If your application crashes or restarts, there is
+    no way to continue processing a job that had already begun. In a true task management
+    process, this is usually an important feature. Therefore, in the GitHub repository
+    in addition to the source used to build this solution, you will find source code
+    for a “subprocess” task queue. I will not walk you through the steps to build
+    it since it is largely a similar exercise with a lot of the same code. However,
+    it differs from this solution in two important ways: it does have the ability
+    to recover and restart an unfinished job, and instead of running in asyncio tasks,
+    it leverages Sanic’s process management listeners to create a subprocess using
+    multiprocessing techniques. Please take some time to look through the source code
+    there as you continue to learn and work your way through this book.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In my opinion, one of the biggest leaps that you can make as an application
+    developer is devising strategies to abstract a solution to a problem, and to reuse
+    that solution in multiple places. If you have ever heard of the DRY (Don’t Repeat
+    Yourself) principle, this is what I mean. Applications are seldom ever “complete.”
+    We develop them, maintain them, and change them. If we have too much repetitive
+    code, or code that is too tightly coupled to a single use case, then it becomes
+    more difficult to change it or adapt it to different use cases. Learning to generalize
+    our solutions mitigates this problem.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In Sanic, this means taking logic out of the route handlers. It is best if we
+    can minimize the amount of code in the individual handlers, and instead place
+    that code in other locations where it can be reused by other endpoints. Did you
+    notice how the route handlers in the final example in *Designing an in-process
+    task queue* had not more than a dozen lines? While the exact length is not important,
+    it is helpful to keep these clean and short and place your logic somewhere else.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Perhaps one of the biggest takeaways from this Chapter should be that there
+    is usually not a single way to do something. Often we can use a mixture of these
+    methodologies to achieve our goal. It is then the job of the application developer
+    to look at the tool belt and decide which tool is best for any given situation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For this reason, as a Sanic developer you should learn how to devise strategies
+    to respond to web requests outside of the route handler. In this chapter, we learned
+    about some tools to help you accomplish this using middleware; built-in and custom
+    signals; connection management; exception handling; and background processing.
+    Again, think of these as your core tools in your toolbelt. Got a screw that needs
+    tightening? Pull out your middleware. Need to drill a hole in some wood? Time
+    to grab the drill off the shelf. The more familiar you become with basic building
+    blocks like these in Sanic, the greater your understanding will be in how to piece
+    together a professional grade application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is your job now to play with these and internalize them on your way to becoming
+    a better developer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We have scratched the surface of security-related issues. In the next Chapter,
+    we will take a closer look at how we can protect our Sanic applications.h
+  prefs: []
+  type: TYPE_NORMAL

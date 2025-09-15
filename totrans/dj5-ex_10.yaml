@@ -1,0 +1,1238 @@
+- en: '10'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Extending Your Shop
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapter, you learned how to integrate a payment gateway into
+    your shop. You also learned how to generate CSV and PDF files.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, you will add a coupon system to your shop and create a product
+    recommendation engine.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This chapter will cover the following points:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a coupon system
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Applying coupons to the shopping cart
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Applying coupons to orders
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating coupons for Stripe Checkout
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Storing products that are usually bought together
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Building a product recommendation engine with Redis
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Functional overview
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '*Figure 10.1* shows a representation of the views, templates, and functionalities
+    that will be built in this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21088_10_01.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.1: Diagram of functionalities built in Chapter 10'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, you will build a new `coupons` application and create the `coupon_apply`
+    view to apply discount coupons to the cart session. You will add the discount
+    applied to the template of the `cart_detail` view of the `cart` application. When
+    an order is created with the `order_create` view of the `orders` application,
+    you will save the coupon to the order created. Then, when you create the Stripe
+    session in the `payment_process` view of the `payment` application, you will add
+    the coupon to the Stripe checkout session before redirecting the user to Stripe
+    to complete the payment. You will add the discount applied to the templates of
+    the admin views `admin_order_detail` and `admin_order_pdf` of the `order` application.
+    In addition to the coupon system, you will also implement a recommendation system.
+    When the `checkout.session.completed` Stripe event is received by the `stripe_webhook`
+    view, you will save the products that have been bought together in Redis. You
+    will add product recommendations to the `product_detail` and `cart_detail` views
+    by retrieving from Redis the items that are frequently bought together.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The source code for this chapter can be found at [https://github.com/PacktPublishing/Django-5-by-example/tree/main/Chapter10](https://github.com/PacktPublishing/Django-5-by-example/tree/main/Chapter10).
+  prefs: []
+  type: TYPE_NORMAL
+- en: All the Python packages used in this chapter are included in the `requirements.txt`
+    file in the source code for the chapter. You can follow the instructions to install
+    each Python package in the following sections, or you can install all the requirements
+    at once with the command `python -m pip install -r requirements.txt`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a coupon system
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Many online shops give out coupons to customers that can be redeemed for discounts
+    on their purchases. An online coupon usually consists of a code that is given
+    to users and is valid for a specific time frame.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You are going to create a coupon system for your shop. Your coupons will be
+    valid for customers during a certain time frame. The coupons will not have any
+    limitations in terms of the number of times they can be redeemed, and they will
+    be applied to the total value of the shopping cart.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For this functionality, you will need to create a model to store the coupon
+    code, a valid time frame, and the discount to apply.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Create a new application inside the `myshop` project using the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Edit the `settings.py` file of `myshop` and add the application to the `INSTALLED_APPS`
+    setting, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: The new application is now active in your Django project.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Building the coupon model
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Let’s start by creating the `Coupon` model. Edit the `models.py` file of the
+    `coupons` application and add the following code to it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This is the model that you are going to use to store coupons. The `Coupon`
+    model contains the following fields:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`code`: The code that users have to enter in order to apply the coupon to their
+    purchase.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`valid_from`: The datetime value that indicates when the coupon becomes valid.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`valid_to`: The datetime value that indicates when the coupon becomes invalid.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`discount`: The discount rate to apply (this is a percentage, so it takes values
+    from `0` to `100`). You use validators for this field to limit the minimum and
+    maximum accepted values.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`active`: A Boolean that indicates whether the coupon is active.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Run the following command to generate the initial migration for the `coupons`
+    application:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output should include the following lines:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, execute the next command to apply migrations:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You should see an output that includes the following line:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The migrations have now been applied to the database. Let’s add the `Coupon`
+    model to the administration site. Edit the `admin.py` file of the `coupons` application
+    and add the following code to it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `Coupon` model is now registered on the administration site. Ensure that
+    your local server is running with the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: Open `http://127.0.0.1:8000/admin/coupons/coupon/add/` in your browser.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You should see the following form:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21088_10_02.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.2: The Add coupon form on the Django administration site'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Fill in the form to create a new coupon that is valid for the current date.
+    Make sure that you check the **Active** checkbox, and click the **SAVE** button.
+    *Figure 10.3* shows an example of creating a coupon:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21088_10_03.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.3: The Add coupon form with sample data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'After creating the coupon, the coupon change list page on the administration
+    site will look similar to *Figure 10.4*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21088_10_04.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.4: The coupon change list page on the Django administration site'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we will implement the functionality to apply coupons to the shopping cart.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Applying a coupon to the shopping cart
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'You can store new coupons and make queries to retrieve existing coupons. Now
+    you need a way for customers to apply coupons to their purchases. The functionality
+    to apply a coupon would be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The user adds products to the shopping cart.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The user can enter a coupon code in a form displayed on the shopping cart details
+    page.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: When the user enters a coupon code and submits the form, you look for an existing
+    coupon with the given code that is currently valid. You have to check that the
+    coupon code matches the one entered by the user, that the `active` attribute is
+    `True`, and that the current datetime is between the `valid_from` and `valid_to`
+    values.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: If a coupon is found, you save it in the user’s session and display the cart,
+    including the discount applied to it and the updated total amount.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: When the user places an order, you save the coupon to the given order.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Create a new file inside the `coupons` application directory and name it `forms.py`.
+    Add the following code to it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This is the form that you are going to use for the user to enter a coupon code.
+    Edit the `views.py` file inside the `coupons` application and add the following
+    code to it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `coupon_apply` view validates the coupon and stores it in the user’s session.
+    You apply the `require_POST` decorator to this view to restrict it to `POST` requests.
+    In the view, you perform the following tasks:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: You instantiate the `CouponApplyForm` form using the posted data and check that
+    the form is valid.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: If the form is valid, you get the `code` entered by the user from the form’s
+    `cleaned_data` dictionary. You try to retrieve the `Coupon` object with the given
+    code. You use the `iexact` field lookup to perform a case-insensitive exact match.
+    The coupon has to be currently active (`active=True`) and valid for the current
+    datetime. You use Django’s `timezone.now()` function to get the current timezone-aware
+    datetime, and you compare it with the `valid_from` and `valid_to` fields by performing
+    the `lte` (less than or equal to) and `gte` (greater than or equal to) field lookups,
+    respectively.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: You store the coupon ID in the user’s session.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: You redirect the user to the `cart_detail` URL to display the cart with the
+    coupon applied.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'You need a URL pattern for the `coupon_apply` view. Create a new file inside
+    the `coupons` application directory and name it `urls.py`. Add the following code
+    to it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, edit the main `urls.py` of the `myshop` project and include the `coupons`
+    URL patterns with the following line highlighted in bold:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: Remember to place this pattern before the `shop.urls` pattern.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, edit the `cart.py` file of the `cart` application. Include the following
+    import:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Add the following code highlighted in bold to the end of the `__init__()` method
+    of the `Cart` class to initialize the coupon from the current session:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In this code, you try to get the `coupon_id` session key from the current session
+    and store its value in the `Cart` object. Add the following methods highlighted
+    in bold to the `Cart` object:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'These methods are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`coupon()`: You define this method as a `property`. If the cart contains a
+    `coupon_id` attribute, the `Coupon` object with the given ID is returned.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`get_discount()`: If the cart contains a coupon, you retrieve its discount
+    rate and return the amount to be deducted from the total amount of the cart.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`get_total_price_after_discount()`: You return the total amount of the cart
+    after deducting the amount returned by the `get_discount()` method.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `Cart` class is now prepared to handle a coupon applied to the current session
+    and apply the corresponding discount.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s include the coupon system in the cart’s detail view. Edit the `views.py`
+    file of the `cart` application and add the following import to the top of the
+    file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Further down, edit the `cart_detail` view and add the new form to it, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Edit the `cart/detail.html` template of the `cart` application and locate the
+    following lines:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Replace them with the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is the code for displaying an optional coupon and its discount rate. If
+    the cart contains a coupon, you display the first row, including the total amount
+    of the cart as the subtotal. Then, you use a second row to display the current
+    coupon applied to the cart. Finally, you display the total price, including any
+    discount, by calling the `get_total_price_after_discount()` method of the `cart`
+    object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the same file, include the following code after the `</table>` HTML tag:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: This will display the form to enter a coupon code and apply it to the current
+    cart.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Open `http://127.0.0.1:8000/` in your browser and add a product to the cart.
+    You will see that the shopping cart page now includes a form to apply a coupon:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21088_10_05.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.5: The cart detail page, including a form to apply a coupon'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Image of *Tea powder*: Photo by Phuong Nguyen on Unsplash'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the **Code** field, enter the coupon code you created using the administration
+    site:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21088_10_06.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.6: The cart detail page, including a coupon code on the form'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Click the **Apply** button. The coupon will be applied, and the cart will display
+    the coupon discount as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21088_10_07.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.7: The cart detail page, including the coupon applied'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s add the coupon to the next step of the purchase process. Edit the `orders/order/create.html`
+    template of the `orders` application and locate the following lines:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Replace them with the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The order summary should now include the coupon applied, if there is one. Now
+    find the following line:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Replace it with the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: By doing this, the total price will also be calculated by applying the discount
+    of the coupon.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Open `http://127.0.0.1:8000/orders/create/` in your browser. You should see
+    that the order summary includes the applied coupon, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21088_10_08.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.8: The order summary, including the coupon applied to the cart'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Users can now apply coupons to their shopping carts. However, you still need
+    to store coupon information in the order that it is created when users check out
+    the cart.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Applying coupons to orders
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: You are going to store the coupon that was applied to each order. First, you
+    need to modify the `Order` model to store the related `Coupon` object, if there
+    is one.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Edit the `models.py` file of the `orders` application and add the following
+    imports to it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, add the following fields to the `Order` model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: These fields allow you to store an optional coupon for the order and the discount
+    percentage applied with the coupon. The discount is stored in the related `Coupon`
+    object, but you can include it in the `Order` model to preserve it if the coupon
+    has been modified or deleted. You set `on_delete` to `models.SET_NULL` so that
+    if the coupon gets deleted, the `coupon` field is set to `Null`, but the discount
+    is preserved.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You need to create a migration to include the new fields of the `Order` model.
+    Run the following command from the command line:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You should see an output like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Apply the new migration with the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You should see the following confirmation indicating that the new migration
+    has been applied:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `Order` model field changes are now synced with the database.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Edit the `models.py` file, and add two new methods, `get_total_cost_before_discount()`
+    and `get_discount()`, to the `Order` model like this. The new code is highlighted
+    in bold:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, edit the `get_total_cost()` method of the `Order` model as follows. The
+    new code is highlighted in bold:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `get_total_cost()` method of the `Order` model will now take into account
+    the discount applied, if there is one.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Edit the `views.py` file of the `orders` application and modify the `order_create`
+    view to save the related coupon and its discount when creating a new order. Add
+    the following code highlighted in bold to the `order_create` view:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: In the new code, you create an `Order` object using the `save()` method of the
+    `OrderCreateForm` form. You avoid saving it to the database yet by using `commit=False`.
+    If the cart contains a coupon, you store the related coupon and the discount that
+    was applied. Then, you save the `order` object to the database.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Edit the `payment/process.html` template of the `payment` application and locate
+    the following lines:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Replace them with the following code. New lines are highlighted in bold:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: We have updated the order summary before payment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Make sure that the development server is running with the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Make sure Docker is running, and execute the following command in another shell
+    to start the RabbitMQ server with Docker:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Open another shell and start the Celery worker from your project directory
+    with the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Open an additional shell and execute the following command to forward Stripe
+    events to your local webhook URL:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Open `http://127.0.0.1:8000/` in your browser and create an order using the
+    coupon you created. After validating the items in the shopping cart, on the **Order
+    summary** page, you will see the coupon applied to the order:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21088_10_09.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.9: The Order summary page, including the coupon applied to the order'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you click on **Pay now**, you will see that Stripe is not aware of the discount
+    applied, as displayed in *Figure 10.10*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21088_10_10.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.10: The item details of the Stripe Checkout page, including no discount
+    coupon'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Stripe shows the full amount to be paid without any deduction. This is because
+    we are not passing on the discount to Stripe. Remember that in the `payment_process`
+    view, we pass the order items as `line_items` to Stripe, including the cost and
+    quantity of each order item.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating coupons for Stripe Checkout
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Stripe allows you to define discount coupons and link them to one-time payments.
+    You can find more information about creating discounts for Stripe Checkout at
+    [https://stripe.com/docs/payments/checkout/discounts](https://stripe.com/docs/payments/checkout/discounts).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s edit the `payment_process` view to create a coupon for Stripe Checkout.
+    Edit the `views.py` file of the `payment` application and add the following code
+    highlighted in bold to the `payment_process` view:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the new code, you check if the order has a related coupon. In that case,
+    you use the Stripe SDK to create a Stripe coupon using `stripe.Coupon.create()`.
+    You use the following attributes for the coupon:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`name`: The `code` of the coupon related to the `order` object is used.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`percent_off`: The `discount` of the `order` object is issued.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`duration`: The value `once` is used. This indicates to Stripe that this is
+    a coupon for a one-time payment.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: After creating the coupon, its `id` is added to the `session_data` dictionary
+    used to create the Stripe Checkout session. This links the coupon to the checkout
+    session.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Open `http://127.0.0.1:8000/` in your browser and complete a purchase using
+    the coupon you created. When redirected to the Stripe Checkout page, you will
+    see the coupon applied:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21088_10_11.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.11: The item details of the Stripe Checkout page, including a discount
+    coupon named SUMMER'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Stripe Checkout page now includes the order coupon, and the total amount
+    to pay now includes the amount deducted using the coupon.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Complete the purchase and then open `http://127.0.0.1:8000/admin/orders/order/`
+    in your browser. Click on the `order` object for which the coupon was used. The
+    edit form will display the discount applied, as shown in *Figure 10.12*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21088_10_12.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.12: The order edit form, including the coupon and discount applied'
+  prefs: []
+  type: TYPE_NORMAL
+- en: You have successfully stored coupons for orders and processed payments with
+    discounts. Next, you will add coupons to the order detail view of the administration
+    site and to PDF invoices for orders.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Adding coupons to orders on the administration site and to PDF invoices
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Let’s add the coupon to the order detail page on the administration site. Edit
+    the `admin/orders/order/detail.html` template of the `orders` application and
+    add the following code highlighted in bold:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Access `http://127.0.0.1:8000/admin/orders/order/` with your browser, and click
+    on the **View** link of the latest order. The **Items bought** table will now
+    include the coupon used, as shown in *Figure 10.13*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21088_10_13.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.13: The product detail page on the administration site, including
+    the coupon used'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, let’s modify the order invoice template to include the coupon used for
+    the order. Edit the `orders/order/pdf.html` template of the `orders` application
+    and add the following code highlighted in bold:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Access `http://127.0.0.1:8000/admin/orders/order/` with your browser, and click
+    on the **PDF** link of the latest order. The **Items bought** table will now include
+    the coupon used, as shown in *Figure 10.14*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21088_10_14.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.14: The PDF order invoice, including the coupon used'
+  prefs: []
+  type: TYPE_NORMAL
+- en: You successfully added a coupon system to your shop. Next, you are going to
+    build a product recommendation engine.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Building a recommendation engine
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: A recommendation engine is a system that predicts the preference or rating that
+    a user would give to an item. The system selects relevant items for a user based
+    on their behavior and the knowledge it has about them. Nowadays, recommendation
+    systems are used in many online services. They help users by selecting the stuff
+    they might be interested in from the vast amount of available data that is irrelevant
+    to them. Offering good recommendations enhances user engagement. E-commerce sites
+    also benefit from offering relevant product recommendations by increasing their
+    average revenue per user.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You are going to create a simple yet powerful recommendation engine that suggests
+    products that are usually bought together. You will suggest products based on
+    historical sales, thus identifying products that are usually bought together.
+    You are going to suggest complementary products in two different scenarios:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Product detail page**: You will display a list of products that are usually
+    bought with the given product. This will be displayed as *users who bought this
+    also bought X, Y, and Z*. You need a data structure that allows you to store the
+    number of times each product has been bought together with the product being displayed.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Cart detail page**: Based on the products that users add to the cart, you
+    are going to suggest products that are usually bought together with these ones.
+    In this case, the score you calculate to obtain related products has to be aggregated.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: You are going to use Redis to store products that are usually purchased together.
+    Remember that you already used Redis in *Chapter 7*, *Tracking User Actions*.
+    If you haven’t installed Redis yet, you can find installation instructions in
+    that chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Recommending products based on previous purchases
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We will recommend products to users based on items that are frequently bought
+    together. For that, we are going to use Redis sorted sets. Remember that you used
+    sorted sets in *Chapter 7*, *Tracking User Actions*, to create a ranking of the
+    most viewed images on your site.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Figure 10.15* shows a representation of a sorted set, where set members are
+    strings associated with a score:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21088_10_15.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.15: Redis sorted set representation'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We are going to store a key in Redis for each product bought on the site. The
+    product key will contain a Redis sorted set with scores. Every time a new purchase
+    is completed, we will increment the score by 1 for each product bought together.
+    The sorted set will allow you to give scores to products that are bought together.
+    We will use the number of times the product is bought with another product as
+    the score for that item.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Remember to install `redis-py` in your environment using the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Edit the `settings.py` file of your project and add the following settings
+    to it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'These are the settings required to establish a connection with the Redis server.
+    Create a new file inside the `shop` application directory and name it `recommender.py`.
+    Add the following code to it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is the `Recommender` class, which will allow you to store product purchases
+    and retrieve product suggestions for a given product or products.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `get_product_key()` method receives the ID of a `Product` object and builds
+    the Redis key for the sorted set where related products are stored, which looks
+    like `product:[id]:purchased_with`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `products_bought()` method receives a list of `Product` objects that have
+    been bought together (that is, belong to the same order).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this method, you perform the following tasks:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: You get the product IDs for the given `Product` objects.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: You iterate over the product IDs. For each ID, you iterate again over the product
+    IDs and skip the same product so that you get the products that are bought together
+    with each product.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: You get the Redis product key for each product bought using the `get_product_id()`
+    method. For a product with an ID of `33`, this method returns the key `product:33:purchased_with`.
+    This is the key for the sorted set that contains the product IDs of products that
+    were bought together with this one.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: You increment the score of each product ID contained in the sorted set by 1
+    using the Redis `ZINCRBY` operation. The score represents the number of times
+    another product has been bought together with the given product.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '*Figure 10.16* shows an example of five different products with IDs 1 to 5
+    and five purchase orders of different combinations of products:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21088_10_16.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.16: Five products with respective IDs and purchase order combinations'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the figure, you can see a sorted set created in Redis for each product, with
+    the key `product:<id>:purchased_with`, where `<id>` is the product’s unique identifier.
+    The sorted set members are the IDs of the products that have been purchased alongside
+    the principal product. The score for each member reflects the cumulative count
+    of joint purchases. The figure shows the `ZINCRBY` Redis operation to increment
+    by 1 the score of products purchased together in one order.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You now have a method to store and score the products that were bought together.
+    Next, you need a method to retrieve the products that were bought together for
+    a list of given products. Add the following `suggest_products_for()` method to
+    the `Recommender` class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE46]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `suggest_products_for()` method receives the following parameters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`products`: This is a list of `Product` objects to get recommendations for.
+    It can contain one or more products.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`max_results`: This is an integer that represents the maximum number of recommendations
+    to return.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'In this method, you perform the following actions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: You get the product IDs for the given `Product` objects.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: If only one product is given, you retrieve the ID of the products that were
+    bought together with the given product, ordered by the total number of times that
+    they were bought together. To do so, you use Redis’ `ZRANGE` command. You limit
+    the number of results to the number specified in the `max_results` attribute (`6`
+    by default). You can read more about the `ZRANGE` command at [https://redis.io/commands/zrange/](https://redis.io/commands/zrange/).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: If more than one product is given, you generate a temporary Redis key built
+    with the IDs of the products.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Combine and sum all scores for the items contained in the sorted set of each
+    of the given products. This is done using the Redis `ZUNIONSTORE` command. The
+    `ZUNIONSTORE` command performs a union of the sorted sets with the given keys
+    and stores the aggregated sum of scores of the elements in a new Redis key. You
+    can read more about this command at [https://redis.io/commands/zunionstore/](https://redis.io/commands/zunionstore/).
+    You save the aggregated scores in the temporary key.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Since you are aggregating scores, you might obtain the same products you are
+    getting recommendations for. You remove them from the generated sorted set using
+    the `ZREM` command. You can read more about the `ZREM` command at [https://redis.io/commands/zrem/](https://redis.io/commands/zrem/).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: You retrieve the IDs of the products from the temporary key, ordered by their
+    scores using the `ZRANGE` command. You limit the number of results to the number
+    specified in the `max_results` attribute.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Then, you remove the temporary key using the `redis-py delete()` method that
+    executes the Redis `DEL` command. You can read more about the `DEL` command at
+    [https://redis.io/commands/del/](https://redis.io/commands/del/).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Finally, you get the `Product` objects with the given IDs, and you order the
+    products in the same order as the sorted set members.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '*Figure 10.17* shows an example of a session where two products have been added
+    to the shopping cart and the Redis operations performed to obtain related product
+    recommendations:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21088_10_17.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.17: Product recommendation system'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the figure, you can see the four steps to generate product recommendations
+    for the items in the cart:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `ZUNIONSTORE` Redis command is used to aggregate the scores of products
+    purchased frequently with the products in the shopping cart. The resulting sorted
+    set of this operation is stored in a new Redis key named after the IDs of the
+    products in the shopping cart, `tmp_34` for IDs `3` and `4`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The `ZREM` command is used to remove the products being purchased from the sorted
+    set, to avoid recommending products that are already in the shopping cart.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The `ZRANGE` command is used to return the `tmp_34` sorted set members ordered
+    by score.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Finally, the `DEL` command is used to delete the Redis key `tmp_34`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'For practical purposes, let’s also add a method to clear the recommendations.
+    Add the following method to the `Recommender` class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE47]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Let’s try the recommendation engine. Make sure you include several `Product`
+    objects in the database and initialize the Redis Docker container using the following
+    command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE48]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Open another shell and run the following command to open the Python shell:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE49]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Make sure that you have at least four different products in your database.
+    Retrieve four different products by their names:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE50]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, add some test purchases to the recommendation engine:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE51]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You have stored the following scores:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE52]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is a representation of products that have been bought together with each
+    of the products, including how many times they have been bought together.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s retrieve product recommendations for a single product:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE53]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can see that the order for recommended products is based on their score.
+    Let’s get recommendations for multiple products with aggregated scores:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE54]'
+  prefs: []
+  type: TYPE_PRE
+- en: You can see that the order of the suggested products matches the aggregated
+    scores. For example, products suggested for `black_tea` and `red_tea` are `tea_powder`
+    (`2+1`) and `green_tea` (`1+1`).
+  prefs: []
+  type: TYPE_NORMAL
+- en: You have verified that your recommendation algorithm works as expected.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s store the products that are bought together every time a payment is confirmed.
+    Edit the `webhooks.py` file of the `payment` application and add the following
+    code highlighted in bold:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE55]'
+  prefs: []
+  type: TYPE_PRE
+- en: In the new code, when a new order payment is confirmed, you retrieve the `Product`
+    objects associated with the order items. Then, you create an instance of the `Recommender`
+    class and call the `products_bought()` method to store the products bought together
+    in Redis.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You are now storing the related products that are bought together when orders
+    are paid. Let’s now display recommendations for products on your site.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Edit the `views.py` file of the `shop` application. Add the functionality to
+    retrieve a maximum of four recommended products into the `product_detail` view,
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE56]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Edit the `shop/product/detail.html` template of the `shop` application and
+    add the following code after `{{ product.description|linebreaks }}`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE57]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Run the development server, and open `http://127.0.0.1:8000/` in your browser.
+    Click on any product to view its details. You should see that recommended products
+    are displayed below the product, as shown in *Figure 10.18*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21088_10_18.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.18: The product detail page, including recommended products'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Images in this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Green tea*: Photo by Jia Ye on Unsplash'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*Red tea*: Photo by Manki Kim on Unsplash'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*Tea powder*: Photo by Phuong Nguyen on Unsplash'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: You are also going to include product recommendations in the cart. The recommendations
+    will be based on the products that the user has added to the cart.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Edit `views.py` inside the `cart` application, import the `Recommender` class,
+    and edit the `cart_detail` view to make it look like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE58]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Edit the `cart/detail.html` template of the `cart` application and add the
+    following code just after the `</table>` HTML tag:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE59]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Open `http://127.0.0.1:8000/en/` in your browser and add a couple of products
+    to your cart. When you navigate to `http://127.0.0.1:8000/en/cart/`, you should
+    see the aggregated product recommendations for the items in the cart, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21088_10_19.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.19: The shopping cart details page, including recommended products'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Congratulations! You have built a complete recommendation engine using Django
+    and Redis.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, you created a coupon system using Django sessions and integrated
+    it with Stripe. You also built a recommendation engine using Redis to recommend
+    products that are usually purchased together.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The next chapter will give you an insight into the internationalization and
+    localization of Django projects. You will learn how to translate code and manage
+    translations with Rosetta. You will implement URLs for translations and build
+    a language selector. You will also implement model translations using `django-parler`
+    and you will validate localized form fields using `django-localflavor`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Additional resources
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The following resources provide additional information related to the topics
+    covered in this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Source code for this chapter: [https://github.com/PacktPublishing/Django-5-by-example/tree/main/Chapter10](https://github.com/PacktPublishing/Django-5-by-example/tree/main/Chapter10)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Discounts for Stripe Checkout: [https://stripe.com/docs/payments/checkout/discounts](https://stripe.com/docs/payments/checkout/discounts)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The Redis `ZRANGE` command: [https://redis.io/commands/zrange/](https://redis.io/commands/zrange/)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The Redis `ZUNIONSTORE` command: [https://redis.io/commands/zunionstore/](https://redis.io/commands/zunionstore/)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The Redis `ZREM` command: [https://redis.io/commands/zrem/](https://redis.io/commands/zrem/)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The Redis `DEL` command: [https://redis.io/commands/del/](https://redis.io/commands/del/)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL

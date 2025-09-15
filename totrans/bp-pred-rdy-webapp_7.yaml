@@ -1,0 +1,888 @@
+- en: '7'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Securing and Packaging the App
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapter, we deployed our app to [tozo.dev](http://tozo.dev),
+    allowing users to use our web app via a browser on any device, and added monitoring
+    so that we know when things go wrong.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we will focus on how we can keep our app secure, both in terms
+    of the code we use and the methods users use to authenticate. We’ll also package
+    our app so that users can use our app via the app stores.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is important to view the app’s security as a continual process, whereby the
+    practices and packages must be continually updated and improved. In this chapter,
+    I’ll demonstrate my process for managing package updates, which you can adopt
+    and improve upon. We’ll also adopt current best practices to secure the app.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We’ll also make a major change to support multifactor authentication. While
+    this will allow users to opt-in for greater security, it will also show how to
+    make large changes to the app; specifically, it will show how to alter the database
+    via a migration.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, by packaging our app, we can allow our users to find our app in the
+    app stores and use it as they would any other app on their phone.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So, in this chapter, we will cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Securing the app
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Updating packages
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Adding multifactor authentication
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Converting to a progressive web app
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: To follow the development in this chapter using the companion repository, [https://github.com/pgjones/tozo](https://github.com/pgjones/tozo),
+    see the commits between the `r1-ch7-start` and `r1-ch7-end` tags.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Securing the app
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Much of what we’ve done so far uses secure defaults (for example, the Strict
+    SameSite setting used in [*Chapter 2*](B18727_02.xhtml#_idTextAnchor053)*, Creating
+    a Reusable Backend with Quart*), however, there is always more than can be done
+    to secure an app. Specifically, we can utilize secure headers to limit what the
+    browser will allow the page to do, further protect against account enumeration,
+    and limit the accounts that can register to limit spam. Let’s look at those security
+    options now.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Adding secure headers
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'To further secure our app, we can utilize additional secure headers to limit
+    what the browser will allow the app to do. These headers should be added to every
+    response the app sends; we can do this by adding the following to *backend/src/backend/run.py*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: The highlighted value of `report_uri` given as `“https://ingest.sentry.io”`
+    is a placeholder, and the correct value for your usage can be found in the CSP
+    section of the Sentry dashboard for the backend project.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The secure headers added are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`Content-Security-Policy` (`CSP`): This is used to limit how the content can
+    interact with the page and other domains. As used, it restricts the content such
+    that it must have been served by our domain (called `self`) with the exception
+    of any styling content that can also be added inline (called `unsafe-inline`)
+    as required for MUI to work correctly. The setup also allows connections to [sentry.io](http://sentry.io)
+    so that our monitoring can work. Finally, it has a reporting URI so that we can
+    monitor any errors with the CSP itself.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Cross-Origin-Opener-Policy` (`COOP`): This isolates our app from other domains
+    (origins).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Referrer-Policy`: This restricts how the browser can populate the `Referer`
+    header when following links and is used to protect the user’s privacy.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`X-Content-Type-Options`: This ensures that the browser respects the `content`
+    type we return from the server.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`X-Frame-Options`: This improves protection against clickjacking and ensures
+    that our app is only displayed on our domain.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Strict-Transport-Security`: This informs the browser that all subsequent connections
+    to our app must be done over HTTPS.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: OWASP
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The authoritative source for web application security best practices is the
+    **OWASP** foundation, which can be found here: [owasp.org](http://owasp.org).
+    The header recommendations in this book are based on their recommendations.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: With the secure headers in place, we can look in more detail at how we log users
+    in while protecting against account enumeration.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Protecting against account enumeration
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Account enumeration is where an attacker attempts to learn what email addresses
+    are used as registered accounts. By doing so, the attacker can learn who uses
+    a sensitive app (e.g., a dating app) and can learn which accounts they can try
+    to force access to. Protecting against this requires compromises in the user experience,
+    as we discussed in the *Adding user authentication pages* section of [*Chapter
+    5*](B18727_05.xhtml#_idTextAnchor138)*, Building the Single-Page App*, in reference
+    to auto logins on registration.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this book, we’ll adopt the most secure practices possible, which means we
+    need to revisit the login functionality implemented in the *Building the session
+    API* section of [*Chapter 3*](B18727_03.xhtml#_idTextAnchor076)*, Building the
+    API*, as it is susceptible to account enumeration attacks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The weakness in the login functionality is due to the code only checking the
+    password hash if the given email belongs to a registered member. This means that
+    the route takes significantly longer to respond to emails belonging to registered
+    members than for emails that don’t; this allows an attacker to time the response
+    to understand whether the email is registered or not. Therefore, the mitigation
+    is to always check a password hash, by changing the route in *backend/src/backend/blueprints/sessions.py*
+    to the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: '`REFERENCE_HASH` is set to a very long random string of characters that is
+    extremely unlikely to be matched by chance.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: With the additional protection against account enumeration, we can focus on
+    the accounts themselves by adding protection against spam accounts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Protecting against spam accounts
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'If you allow users to register and interact with your app, it is inevitable
+    that you will have users that will use it to spam you or other users. An easy
+    initial mitigation against this is to prevent users from registering to your app
+    with disposable email addresses (these are free short-lived email addresses that
+    are perfect for spammers). Fortunately, the `disposable-email-domains` project
+    keeps a track of these domains and is installed by running the following in the
+    *backend* directory:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following can then be added to the start of the `register` route in *backend/src/backend/blueprints/members.py*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: In the previous code block, `...` represents the existing `register` code. This
+    will block registrations from the blocked email domains by returning an appropriate
+    error code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, we need to handle this error in the `useRegister` hook found in *frontend/src/pages/Register.tsx*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: The highlighted lines are the existing code in the `useRegister` hook. It is
+    important that the check is added as an `else if` clause to the existing `if`
+    clause (as shown in this snippet), otherwise the user may get multiple confusing
+    error messages.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Keeping an app secure is in practice an arms race against attackers, and I recommend
+    you continue to follow OWASP and adopt the latest guidance. Likewise, we’ll need
+    to keep updating our packages, which we’ll focus on next.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Updating packages
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: A very common source of vulnerabilities in web applications is vulnerable dependent
+    packages. This is especially true if the application is using an older version
+    of a package when a new, more secure version is available. To mitigate against
+    this, we can periodically check for known vulnerabilities and, crucially, update
+    the packages as often as possible.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Importance of lockfiles
+  prefs: []
+  type: TYPE_NORMAL
+- en: By using npm and PDM, we are using lockfiles; this means that we’ll always install
+    the same package version on any system until we change the lockfile. Without a
+    lockfile, we would quickly be in a position where different systems run with different
+    package versions and potentially different packages. This would make it hard to
+    diagnose bugs, as it may depend on a version we aren’t testing. Crucially though,
+    it would make our app less secure as we would have no control over what was installed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Periodically checking for vulnerabilities
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In our app, we are using many third-party dependencies, each of which is likely
+    to be using additional third-party dependencies. This means there is a large number
+    of libraries that we need to check for vulnerabilities – too many to do ourselves!
+    Fortunately, when others find vulnerabilities, they are published, and tools exist
+    to check the version installed against the published list of issues.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We’ll use these tools to check our code, allowing us to switch to a fixed version
+    if they find anything. This is something I recommend to be done periodically and
+    automatically, specifically every week, via a GitHub workflow.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To start, we can create a workflow that is scheduled to run at 9 a.m. UTC on
+    a Tuesday by adding the following to *.github/workflows/audit.yml*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: Tuesday patches
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tuesday is typically the day to apply patches as it’s early in the week, almost
+    always a workday (Mondays may not be workdays during holidays), and crucially,
+    gives time on Monday to respond to weekend issues, leaving Tuesday free for patch
+    issues.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To check the frontend code, we can use `npm audit`, which is built into the
+    `npm` package manager. This tool will check the installed frontend dependencies
+    and alert if any insecure package versions are found. To run it on the schedule,
+    the following job should be added to *.github/workflows/audit.yml*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, to check the backend code, we can use `pip-audit`, which is installed
+    by running the following command in the *backend* directory:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We’ll add a `pdm` script so that we can use `pdm run audit` to audit the code,
+    as we did in the *Installing Python for backend development* section of [*Chapter
+    1*](B18727_01.xhtml#_idTextAnchor015)*, Setting Up Our System for Development;*
+    so, add the following to *backend/pyproject.toml*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'With this in place, we can add the following job to *.github/workflows/audit.yml*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: This workflow will fail if either the `frontend-audit` or `backend-audit` job
+    finds packages with security issues, and will alert us. However, it is best to
+    be proactive and keep our dependencies up to date.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A system for monthly updates
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: To ensure the dependencies are up to date, I recommend updating all the packages
+    every month. This ensures that the app never has dependencies that are more than
+    a month old and makes it easier to utilize the dependencies’ latest features.
+    This may seem like a lot of work, however, in my experience, it takes much more
+    effort to do all the upgrades at once than to do them in smaller batches.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To make this process easier, we must unpin the dependencies in the *frontend/package.json*
+    and *backend/pyproject.toml* files. This doesn’t mean we’ve unpinned the dependencies
+    though, as both *frontend/package-lock.json* and *backend/pdm.lock* will fully
+    define the exact versions to install. It instead means that we will allow our
+    app to work with any library version if directed – and we will direct it to always
+    use the latest.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The *frontend/package.json* file should look like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note that each dependency is now unpinned, with `*` meaning any version is allowed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'With these changes made, we can run the following command in the *frontend*
+    directory to update the frontend dependencies:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can also run a similar command in the *backend* directory to update the
+    backend dependencies:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, to upgrade the infrastructure dependencies, the following should be
+    run in the *infrastructure* directory:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: These updates will likely result in small changes needing to be made to support
+    the latest versions. It is likely that the CI checks, especially the type checking
+    we’ve used throughout, will warn if these changes are not made.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have a system for keeping our app up to date, we can add multifactor
+    authentication to help our users secure their accounts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Adding multifactor authentication
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Our app allows users to log in by providing an email and a password. This means
+    we allow them to authenticate with something they know (i.e., the password). We
+    could also allow them to use other factors of authentication such as using their
+    fingerprint (i.e., something they are), or a specific mobile device (i.e., something
+    they have). Requiring a user to authenticate using multiple factors makes it much
+    harder for an attacker to gain access to their account, however, it also makes
+    it harder for the user to authenticate themselves. Therefore, it is best to allow
+    users to opt into multifactor authentication.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Users are most familiar with using their phones as an additional factor, which
+    we will implement using **time-based one-time passcode** (**TOTP**) tokens based
+    on a shared secret. The shared secret, on the user’s phone, is an additional factor.
+    It is also common to use SMS messages sent to the user’s phone; however, this
+    method is increasingly easy to attack and should not be considered secure.
+  prefs: []
+  type: TYPE_NORMAL
+- en: TOTP
+  prefs: []
+  type: TYPE_NORMAL
+- en: The TOTP algorithm makes use of a shared secret and the current time to generate
+    a code that is valid for a certain period of time (usually about 60 seconds).
+    Any two systems should calculate the same code for the same time and shared secret,
+    hence the user can provide a code that our app should match.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Multifactor Authentication** (**MFA**) using TOTP works by first sharing
+    a secret with the user. This is typically done by showing a QR code in our app,
+    which the user scans using an authentication app. The user’s authentication app
+    will then display a code that the user can enter in our app to confirm that MFA
+    has been set up. Then, on any subsequent logins, the user will need to enter the
+    current code as displayed by their authentication app.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: To support MFA in our app, we will need to update the database and associated
+    models, add the functionality to activate it in the backend and frontend, and
+    then, finally, utilize MFA when logging in.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Updating the database and models
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'To support MFA, we need to store two pieces of information for each member:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first is the shared secret, which can be `NULL` if the user hasn’t activated
+    MFA.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The second is the last code they used, which can also be `NULL`. The last code
+    is required to prevent replay attacks whereby an attacker simply resends the previous
+    MFA code.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'To add this information, we need to create a new database migration by adding
+    the following code to *backend/src/backend/migrations/1.py*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: Good migrations
+  prefs: []
+  type: TYPE_NORMAL
+- en: Database migrations must be written with care, as the migration will change
+    the database state while the code is accessing it. For this reason, it is best
+    to write migrations that add functionality while allowing older code to continue
+    to run. For example, it is best not to delete or rename columns in one migration;
+    instead, a new column should be added, then used for a while before the old column
+    is removed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We also need to update the backend model to account for these two new columns,
+    by changing the `Member` model in *backend/src/backend/models/member.py* to the
+    following (changes are highlighted):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We now also need to update the following model functions in *backend/src/backend/models/member.py*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note that the only change (as highlighted) is to add the new columns to the
+    SQL query.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To be able to change the values of the `last_totp` and `totp_secret` columns,
+    we’ll need to add the following functions to *backend/src/backend/models/member.py*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: With the database and backend models updated, we can add the functionality to
+    activate MFA.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Activating MFA
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'To activate MFA, we will need a page in our app that follows the process shown
+    in *Figure 7.1*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.1: MFA activation process ](img/B18787_07_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.1: MFA activation process'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The secret itself will need to be generated and managed on the backend, which
+    we can do using the `pyotp` library; the library is installed by running the following
+    in the *backend* directory:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can now start adding the backend routes, beginning with a route that returns
+    the member’s MFA status. This will either be `active` where MFA is in use, `inactive`
+    where MFA is not in use, or `partial` where the member is in the process of activating
+    MFA; it will also need to return the shared secret. We’ll return the secret as
+    a URI from which we can generate a QR code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The code for this route is as follows and should be added to *backend/src/backend/blueprints/members.py*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note that `totp_uri` is only returned for a partial state (highlighted), as
+    the secret it contains should only be shared when it is needed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The next route we need is to allow a member to initiate MFA, by creating a
+    shared secret. This should be added to *backend/src/backend/blueprints/members.py*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The final route we need is to confirm the setup by allowing the user to put
+    a TOTP code, which should be added to *backend/src/backend/blueprints/members.py*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can now build the frontend page to handle the interface, which will need
+    to display a QR code. We can do that via `qrcode.react`, which is installed by
+    running the following command in the *frontend* directory:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The page we need to build should look like *Figure 7.2*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.2: The MFA setup page ](img/B18787_07_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.2: The MFA setup page'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To build the MFA page, we first need to add a specific field for the user to
+    enter one-time codes, by adding the following to *frontend/src/components/TotpField.tsx*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Before we use `TotpField`, we need to add the functionality required to activate
+    MFA to *frontend/src/pages/MFA.tsx*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: The mutation invalidates the `mfa` queries, as this is the key that we’ll use
+    for the query that determines the user’s MFA state.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We also need functionality to confirm the MFA activation, which can be added
+    to *frontend/src/pages/MFA.tsx*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'With the functionality in place, we can add the UI elements, as follows, which
+    should be added to *frontend/src/pages/MFA.tsx*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: The displayed UI code is dependent on the MFA state, including initially when
+    a `Skeleton` is shown while the MFA state is being fetched from the backend. It
+    then shows a `LoadingButton` to activate MFA, a QR code and `TotpField` to confirm
+    MFA activation, and finally confirmation text if MFA is active.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, the MFA page needs to be added to the routing by adding the following
+    to *frontend/src/Router.tsx*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: In the code block, `...` represents code that has been omitted for brevity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To allow the user to find the MFA page, we can add the following `MenuItem`
+    to the `AccountMenu` component in *frontend/src/components/AccountMenu.tsx*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now that the user can activate MFA, we can utilize it in the login process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Logging in with MFA
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The login process must also change to ask the user for a one-time code if they
+    have activated MFA. To do this, the backend must indicate to the frontend that
+    an additional token is required for users that have activated MFA. The following
+    code should replace the login route in *backend/src/backend/blueprints/sessions.py*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: This code will return a `400` error response if the user has activated MFA,
+    but the login data doesn’t include a one-time code (`token`); this allows the
+    frontend login page to then ask the user for the one-time code and then retry
+    logging in. In addition, the code will return a `401` invalid credentials message
+    if the one-time code is invalid – noting that it checks the previously used code
+    to prevent replay attacks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can now alter the existing login page so that it looks like *Figure 7.3*
+    for accounts that have activated MFA:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.3: The Login page with the additional One time code field ](img/B18787_07_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.3: The Login page with the additional One time code field'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To begin, we need to alter the `useLogin` logic in *frontend/src/pages/Login.tsx*
+    to be the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `useLogin` hook returns the login functionality and a flag indicating whether
+    a one-time code is required. This flag is set when a login is attempted, and a
+    `400` response is returned by the backend.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can use the flag from the `useLogin` hook to show `TotpField` in the login
+    form by making the highlighted changes to *frontend/src/pages/Login.tsx*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: This will allow the user to type in a one-time code and complete the login.
+    We can now consider how to handle the user losing the shared secret.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Recovering and inactivating MFA
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Users will inevitably lose the shared secret and need to recover access to their
+    accounts. This is something that is often done via recovery codes that the user
+    is given when activating MFA. These recovery codes are additional single-use secrets
+    stored in the backend and can be used once to regain access. While this works,
+    any recovery system needs to consider how and what form your customer service
+    will take, as users typically reach out for help.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'OWASP provides additional guidance for this, which you can see here: [cheatsheetseries.owasp.org/cheatsheets/Multifactor_Authentication_Cheat_Sheet.xhtml#resetting-mfa](http://cheatsheetseries.owasp.org/cheatsheets/Multifactor_Authentication_Cheat_Sheet.xhtml#resetting-mfa).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We’ve successfully made a major change to our app, which you can use as a template
+    for further major changes you’ll need to make for your app. Next, we package our
+    app for the app stores by converting it into a progressive web app.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Converting to a Progressive Web App
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We can make our app more user-friendly, especially on mobile devices, by converting
+    it into a **progressive web app** (**PWA**). PWAs can be installed on a mobile,
+    like all other apps, either via the app stores or directly from a prompt in the
+    browser. PWAs can also work offline and use other advanced features such as push
+    notifications. However, PWAs are more complicated to develop, and service workers
+    (a key feature) can be very difficult to get right.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Service workers
+  prefs: []
+  type: TYPE_NORMAL
+- en: Service workers are custom JavaScript scripts that act as a proxy between the
+    web page and the server. This allows the service worker to add offline-frst functionality,
+    such as caching pages for performance or accepting push notifications.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A PWA must have a service worker and a manifest file to work; these are available
+    via the `create-react-app` tool we used in [*Chapter 1*](B18727_01.xhtml#_idTextAnchor015),
+    *Setting Up Our System for Development*. To do so, let’s create a new `react`
+    app using the PWA template in a temporary directory:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can then copy the service worker code from this temporary project into ours
+    by copying the following files:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Copy *temp/src/service-worker.ts* to *frontend/src/service-worker.ts*
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Copy *temp/src/serviceWorkerRegistration.ts* to *frontend/src/serviceWorkerRegistration.ts*
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The *temp* directory can now be deleted or kept for reference if you prefer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To activate the service worker, the following should be added to *frontend/src/index.tsx*
+    to register the service worker:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This service worker needs a large number of dependencies from the workbox toolkit
+    ([web.dev/workbox/](http://web.dev/workbox/)) to work; these dependencies are
+    developed by Google to make service workers easier to use. These dependencies
+    can be installed by running the following in the *frontend* directory:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The service worker isn’t active while we develop the app using the frontend
+    development server with `npm run start`, so to test it, we need to serve it locally
+    by the backend development server. First, we must build the frontend, by running
+    the following in the *frontend* directory:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This will have created files in the *frontend/build* directory, which we need
+    to copy over to the backend. This requires the following file movements:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Copy the entire *frontend/build/static* directory to *backend/src/backend/static*
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Copy the *frontend/build/index.xhtml* file to *backend/src/backend/templates/index.xhtml*
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Copy the remaining files in *frontend/build* to *backend/src/backend/static*
+    (e.g., *frontend/build/service-worker.js* to *backend/src/backend/static/service-worker.js*)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The remaining files also need to be included in *Dockerfile*, and the following
+    should be added next to the existing `COPY --from=frontend` commands:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'With the backend running (via `pdm run start`), the service worker-enabled
+    app is reachable at `localhost:5050`. You can check the service worker is working
+    via the dev tools console as seen in *Figure 7.4*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.4: The service worker output in the browser dev tools ](img/B18787_07_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.4: The service worker output in the browser dev tools'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The service worker will now start caching the content, and you should be able
+    to refresh the app while the backend is not running.
+  prefs: []
+  type: TYPE_NORMAL
+- en: App icons
+  prefs: []
+  type: TYPE_NORMAL
+- en: Web pages in the browser have an icon associated with them, typically shown
+    next to the title in the tab. This icon is called the favicon. A PWA has additional
+    icons used for the app on the mobile home screen (and elsewhere); these icons
+    are defined in the manifest file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can now turn our attention to the manifest file, which describes the app
+    and the logo that should be associated with it. Once you have designed a logo,
+    I’d recommend that it be saved as a favicon in the SVG format placed in *frontend/public/favicon.svg*.
+    As we are using an SVG format rather than ICO, the following should replace the
+    existing code in *frontend/public/index.xhtml* (note the file extension):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The same logo then needs to be saved in the PNG format as a 192x192 pixel square
+    in *frontend/public/logo192.png* and as a 512x512 pixel square in *frontend/public/logo512.png*.
+    The manifest should include the following, which should be placed in *frontend/public/manifest.json*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As with the service worker, we also need to copy the logos to the backend.
+    For development, copy all the logos to the *backend/src/backend/static/* folder.
+    For production, the following should be added to the *Dockerfile*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We now need to serve these new files from the backend, which we can do by adding
+    the following code to *backend/src/backend/blueprints/serving.py*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: With these changes made, our app is a PWA, which means that we can package it
+    for the app stores. The easiest way to do so is to use [pwabuilder.com](http://pwabuilder.com),
+    which will create iOS and Android packages. To do so, visit [pwabuilder.com](http://pwabuilder.com)
+    and enter your app’s domain. It will then present the packages that can be uploaded
+    to the Google Play store and iOS app stores.
+  prefs: []
+  type: TYPE_NORMAL
+- en: PWA Builder
+  prefs: []
+  type: TYPE_NORMAL
+- en: PWA Builder is a Microsoft-directed project to improve PWA adoption by making
+    it easier. PWAs are first-class apps on Windows and Android.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are limitations to this approach; first, while PWAs are first-class apps
+    on Windows and Android systems, they have limited support on Apple’s iOS. It may
+    be the case that your app as packaged by PWA Builder is not accepted on the app
+    store – with little explanation why. In addition, iOS does not support all the
+    features that PWAs can; the most notable being that push notifications will not
+    be supported till 2023.
+  prefs: []
+  type: TYPE_NORMAL
+- en: With the conversion to PWA complete, we can upload the PWA package to the various
+    app stores allowing users to install it on their phones from the store. Further
+    instructions on how to do so are given for Android (https://docs.pwabuilder.com/#/builder/android)
+    and iOS ([https://docs.pwabuilder.com/#/builder/app-store](https://docs.pwabuilder.com/#/builder/app-store)).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we’ve secured our app and adopted a process of continual updates
+    to keep it secure. We’ve also added a major feature, MFA, which will serve as
+    a guide for making future major changes to your app. Finally, we’ve packaged our
+    app ready to be added to the app stores.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is a great place to be, as you now have a blueprint for a web app that
+    is running in production using many industry best practices. This is a blueprint
+    you can adapt for your own needs with the to-do specific aspects serving as a
+    guide, and I hope that the best practices and tools I’ve introduced to you serve
+    you well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Further reading
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This isn’t the end; there is much more you can and should now do to improve
+    your app to make it more valuable to your users. I’d recommend you add more testing
+    to reduce bugs, specifically by adding end-to-end testing. I’d also recommend
+    you use tools such as Lighthouse, [pagespeed.web.dev](http://pagespeed.web.dev),
+    to identify common performance, accessibility, and general PWA issues.
+  prefs: []
+  type: TYPE_NORMAL

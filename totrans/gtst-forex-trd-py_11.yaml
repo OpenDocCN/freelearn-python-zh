@@ -1,0 +1,1768 @@
+- en: '11'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Backtesting and Theoretical Performance
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: It’s been a long and, hopefully, interesting – although difficult at times –
+    journey. It took us ten chapters to get familiar with all the essentials of market
+    structure and the key concepts that create the foundation of systematic and algo
+    trading. Now, we have approached the conclusion of this entire book. It’s time
+    to bring all the pieces together and start developing our first trading application
+    that can be used in both research and production.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We are going to develop a universal prototype that you will be able to use and
+    reuse by just re-writing some parts without modifying the entire structure. We
+    will trace all the paths from receiving a tick to placing an order – while checking
+    the consistency of all our actions. We will learn how to keep parts of the trading
+    application synchronized and see why it’s so important to do so. And finally,
+    we will collect some very basic statistics of a sample trading strategy and calculate
+    its theoretical performance – the most essential logical point in the entire research
+    and development process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Trading app architecture – revised and improved
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Multithreading – convenient but full of surprises
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Trading application with a live data feed
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Backtesting – speed up the research
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Trading app architecture – revised and improved
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In [*Chapter 1*](B19145_01.xhtml#_idTextAnchor014), *Developing Trading Strategies
+    – Why They Are Different*, we proposed a generalized architecture of a trading
+    application. In brief, it consists of the following components:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Data receiver**: Something that retrieves live data from the market or historical
+    data stored locally; see [*Chapter 5*](B19145_05.xhtml#_idTextAnchor086), *Retrieving
+    and Handling Market Data* *with Python*'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Data cleanup**: A component that eliminates non-market prices; see [*Chapter
+    1*](B19145_01.xhtml#_idTextAnchor014), *Developing Trading Strategies – Why They*
+    *Are Different*'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Trading logic**: The *brains* of the trading app that make trading decisions
+    (see [*Chapter 6*](B19145_06.xhtml#_idTextAnchor101), *Basics of Fundamental Analysis
+    and Its Possible Use in FX Trading*, [*Chapter 7*](B19145_07.xhtml#_idTextAnchor114),
+    *Technical Analysis and Its Implementation in Python*, and [*Chapter 9*](B19145_09.xhtml#_idTextAnchor152),
+    *Trading Strategies and Their Core Elements*), frequently with integrated pre-trade
+    risk management'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Ordering interface**: A component that receives trading signals from the
+    trading logic, converts them into orders, and keeps track of their execution;
+    see [*Chapter 10*](B19145_10.xhtml#_idTextAnchor171), *Types of Orders and Their
+    Simulation* *in Python*'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Post-trade risk management** and **open positions management**, such as keeping
+    track of the running loss and liquidating losing positions or all positions'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Anyway, this simplified architecture lists the essential components but does
+    not say anything about how they communicate with each other. Of course, it is
+    possible to use a linear architecture where all the components are implemented
+    as dependent pieces of code executed one after another in sequence. Such a solution
+    is simple, but has significant drawbacks:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: You won’t be able to add more trading logic components to run multiple strategies
+    in parallel
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: You won’t be able to send orders to multiple trading venues
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: You won’t be able to receive information about the actual consolidated market
+    position in the trading logic
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: You won’t be able to reuse the same code (at least in parts) for both development
+    and production
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Let’s stop for a while at these four disadvantages.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Regarding the first two points, you may probably say that you’re not going to
+    run multiple strategies and trade at multiple trading venues as we’re only making
+    our first steps into algo trading, and doing that cross-venue and cross-trading
+    logic is more of an institutional activity. I could argue that, in reality, it’s
+    more than normal for private traders to do all that, but these two points are
+    less important than the remaining two.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To understand the importance of the third point, we have to introduce a new
+    term: **consolidated** **market position**.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Imagine that you have several strategies and all of them trade in the same
+    market – say, EURUSD. The first one bought 100,000 euros, the second one sold
+    80,000, and the third one bought 50,000\. Why has this happened? It’s quite a
+    common situation: for example, you run a short-term mean reversion strategy, longer-term
+    breakout, and long-term trend following strategies (see [*Chapter 9*](B19145_09.xhtml#_idTextAnchor152),
+    *Trading Strategies and Their Core Elements*); they generate trading signals independently,
+    but so long as they all trade the same market, they all contribute to the amount
+    of the asset currently traded. This amount is called the consolidated market position.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In our example, the individual positions per strategy are 100,000 long, 80,000
+    short, and another 50,000 long, so the consolidated position is *70,000 long*.
+    This is your real market exposure and all position sizing calculations should
+    rely on this figure.
+  prefs: []
+  type: TYPE_NORMAL
+- en: But what about the entry price for such a consolidated position?
+  prefs: []
+  type: TYPE_NORMAL
+- en: In [*Chapter 10*](B19145_10.xhtml#_idTextAnchor171), *Types of Orders and Their
+    Simulation in Python*, we explored the average execution price for an order that
+    was executed in parts. The same approach can be used to calculate the average
+    entry price for the consolidated market position. Let’s do this simple math for
+    our example with three open positions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Suppose that the first (100,000 long) position was opened at 1.0552, the second
+    (80,000 short) at 1.0598, and the third (50,000 long) at 1.0471\. First, we calculate
+    the sum of these prices multiplied by the respective trading size. Don’t forget
+    that short positions (which effectively reduce the consolidated market position)
+    should be accounted for as negative numbers:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`S = 100000 * 1.0552 – 80000 * 1.0598 + 50000 * 1.0471 =` `73091`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, we divide the sum, *S*, by the actual consolidated market position, *MP*,
+    which equals *70,000*, and we get the average entry price:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/Formula_B19145_11_001.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: In our example, the consolidated average price is approximately 1.0442\. At
+    first glance, it looks ridiculous as it is way lower than the lowest of the actual
+    traded prices. But it’s really easy to make sure it’s correct.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Imagine that the current market price is 1.0523\. Let’s calculate the running
+    **profit or loss** (typically referred to as running **PnL** or running **P/L**;
+    see [*Chapter 3*](B19145_03.xhtml#_idTextAnchor044), *FX Market Overview from
+    a Developer’s Standpoint*, the *Trade mechanics – again some terminology* section)
+    for each position: it’s just the distance between the current price and the entry
+    price multiplied by the trading size. The first position running PnL at 1.0523
+    equals (1.0523 – 1.0552) * 100,000 = -$290, the second position running PnL equals
+    (1.0523 – 1.0598) * -80,000 = $600, and the third position running PnL equals
+    (1.0523 – 1.0471) * 50,000 = $260\. Thus, for the consolidated market position,
+    the running PnL equals $570.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, let’s do the same math with the price and the size of only one consolidated
+    market position. Given it was *opened* at 1.0442 and the current market price
+    is 1.0523, its running PnL is (1.0523 – 1.0442) * 70,000 = $567, which is not
+    exactly equal to $570 only because we rounded the average price to the 4th digit.
+    So, we can indeed use the average price and the resulting trading size of the
+    consolidated market position instead of calculating the PnL for each position
+    separately.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note for nerds
+  prefs: []
+  type: TYPE_NORMAL
+- en: Such a consolidated position calculated as the average of all orders with their
+    respective trade volume is often called the **Volume Weighted Average Price**
+    (**VWAP**). However, the VWAP is normally only used to evaluate a position that
+    was accumulated by multiple entries to the same direction, and so long as we are
+    discussing the net position as the result of trades taken to both sides, I prefer
+    using *consolidated*, although it’s not a regular term.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A consolidated market position is extremely important to correctly implement
+    risk management. If you don’t know this position, you have no idea about your
+    running profit or loss, so you don’t know when to liquidate a losing position
+    – which may end up with a disastrous loss. Moreover, you may not know even how
+    much to liquidate, and open a new position instead of only covering a loss.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Even if you run only one strategy in one market, it is no less important to
+    know the exact market position as it exists in the real market: don’t forget that
+    a certain order may not be executed or executed at a price different as expected
+    due to several reasons (see [*Chapter 10*](B19145_10.xhtml#_idTextAnchor171),
+    *Types of Orders and Their Simulation in Python*). So, if you don’t let your code
+    provide feedback from the broker to the trading logic, you may have a hard time
+    managing your positions.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The fourth disadvantage is hopefully more evident: if we can suggest an architecture
+    that is flexible, modular, and reusable, then it has an advantage over something
+    that should be modified entirely every time you want just to switch a data source.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, with all these considerations in mind, what can we suggest to make the architecture
+    of our trading app meet all the requirements mentioned?
+  prefs: []
+  type: TYPE_NORMAL
+- en: We already know the solution, and we used it quite successfully in [*Chapter
+    5*](B19145_05.xhtml#_idTextAnchor086), *Retrieving and Handling Market Data with
+    Python*. This solution is to use *threads* and *queues* to make the components
+    of the app work independently. I strongly recommend that you refresh your memory
+    regarding threads and queues by referring to the *Working with saved and live
+    data – keep your app universal* section of that chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, let’s redraw the app architecture diagram, this time at a bit lower level,
+    closer to the transport layer, not just business logic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As always, we will start from the beginning: receiving live (tick) market data.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Market data component
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'This component should be able to receive ticks from virtually any source, clean
+    it up, translate them into the single format used throughout our app, and put
+    them into the data queue:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.1 – Tick data receiving component](img/B19145_11_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.1 – Tick data receiving component
+  prefs: []
+  type: TYPE_NORMAL
+- en: The beauty of this approach is that as soon as the tick is sent to the tick
+    queue, we can forget about it. This process is now isolated from the rest of the
+    app, and should we need to change the data vendor or the broker, we can do that
+    by rewriting the respective module without making a single change in the rest
+    of the code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Many strategies require tick data. For example, arbitrage strategies (see [*Chapter
+    9*](B19145_09.xhtml#_idTextAnchor152), *Trading Strategies and Their Core Elements*)
+    can work using *only* tick data. However, the majority of trading strategies use
+    logic based on compressed data, not ticks. So, we need to add a component that
+    can aggregate ticks into bars (see [*Chapter 5*](B19145_05.xhtml#_idTextAnchor086),
+    *Retrieving and Handling Market Data with Python*, the *Data compression – keep
+    the amounts to the reasonable* *minimum* section).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Data aggregation component
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'This module should be able to not only aggregate live tick data into bars.
+    When we develop a strategy, we normally use historical market data stored locally
+    already in a compressed form, so there’s no need to waste time aggregating ticks
+    during a test run. Thus, we must add the following part to our app architecture:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.2 – Reading bars from storage or forming bars from ticks](img/B19145_11_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.2 – Reading bars from storage or forming bars from ticks
+  prefs: []
+  type: TYPE_NORMAL
+- en: Again, as in the previous case, this process is isolated from the rest of the
+    application, so we can implement it once and forget about it until we need to
+    modify something in the way we aggregate ticks into bars.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we should implement the trading logic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Trading logic component
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'This component may use both tick and bar data as input and produce orders as
+    output. This output should go into the order execution control component of our
+    trading app, so it’s quite natural to use another queue again: the ordering queue
+    that would isolate the order execution component from the rest of the application.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, besides just sending orders out, we need another connection between
+    the trading logic and the order execution components. This connection should provide
+    feedback from the execution of the order to the trading logic. How do we establish
+    such a connection?
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first idea that probably comes to mind at this point is to use yet another
+    queue. However, in this case, it’s not convenient. Queues are great when you want
+    to trigger a certain process as soon as data is in the queue – in other words,
+    they are ideal for event-driven processes. But market position or equity values
+    do not trigger any process by themselves: they are only used by various components
+    of the trading app as auxiliary values. Therefore, instead of a queue, we will
+    create an object that will store all the required data about the implemented trading
+    strategy and share this object across all components of our trading app.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This object can contain any strategy metadata, such as market position, equity
+    time series (see below), running PnL, realized profit or loss, various statistical
+    metrics, and so on:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.3 – Prototype of an object that stores trading strategy metadata](img/B19145_11_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.3 – Prototype of an object that stores trading strategy metadata
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Last price means the quote received with the previous tick (or bar) and it
+    serves to calculate the running PnL between two ticks (or bars): if the position
+    is *long* and the price has *increased*, then the running PnL has also *increased*,
+    if the position is *short* and the price has *decreased*, then the running PnL
+    nevertheless *increased*, and so on. If we sum all changes in the running PnL
+    on every tick or bar from the moment when the strategy started until the present,
+    then we will get the overall profit and loss, which is frequently referred to
+    by traders as **equity**. This is a bit of professional slang because formally,
+    the equity is the value attributable to the owners of a business (see, for example,
+    [https://corporatefinanceinstitute.com/resources/valuation/equity/](https://corporatefinanceinstitute.com/resources/valuation/equity/)
+    for details), but in algo trading, *equity* frequently means just the realized
+    profit and loss, plus the value of the open position.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can also save the equity value on each tick or bar, thus creating a time
+    series. This time series is normally referred to as the equity curve and works
+    as the most common illustration of the trading strategy’s performance: the way
+    the strategy behaved in the past and when and how much money it made (or lost).
+    This information can also be used by the trading logic, along with market price
+    data and market position.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We also included two money management-related parameters: **initial capital**
+    and **leverage**. These values can be used to check if we have sufficient funds
+    to trade and also to determine the actual trading size for our orders.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now that we’ve added such a universal object that transfers strategy metadata
+    between the trading logic and the order execution component, we can add the trading
+    logic component to our architectural diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.4 – Trading logic and common trading strategy parameters container](img/B19145_11_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.4 – Trading logic and common trading strategy parameters container
+  prefs: []
+  type: TYPE_NORMAL
+- en: The last mandatory component to be added is the order execution component.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Order execution component
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'This component not only implements an ordering interface with the broker or
+    emulates the execution of orders locally. It will also do some basic analysis
+    of the strategy’s performance – for the needs of the trading logic. It should
+    process the order, send it to a broker or emulate it locally, receive the execution
+    status, process this status (for example, if the order was rejected, decide what
+    to do: cancel or submit again), calculate the running PnL, and build the equity
+    curve. Let’s add it to our diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.5 – Order execution control module and its interaction with the
+    trading strategy properties object](img/B19145_11_05.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.5 – Order execution control module and its interaction with the trading
+    strategy properties object
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s see how it works. First, we receive an order or orders from the order
+    queue. These orders were generated and put into the queue by the trading logic.
+    Then, we send an order to the broker or emulate its execution locally and receive
+    the order status. If the order was executed, then we update the PnL and add another
+    data point to the equity time series. If the order was rejected, we return it
+    to the order queue and the whole process starts over automatically.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that the strategy metadata (market position, equity, and so on) is updated
+    with every processed order. This ensures the ultimate precision in making trading
+    decisions and controlling the actual market exposure.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Great! We now have a general view of the entire trading app architecture. And
+    the most pleasant thing is that it is split into small, relatively simple components.
+    We know how these components should communicate with each other, we know the data
+    formats, and we know the sequence in which they should operate, so it seems we
+    know everything we need to implement a trading application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: But before we start coding, I’d like to emphasize two advantages of the suggested
+    architecture that are very hard to overvalue.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Advantages of the modular architecture
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: First of all, this architecture makes sure that **your trading app will never
+    peek ahead** during the research phase (while using historical data). At this
+    point, I recommend that you refresh your memory regarding peeking ahead, which
+    was considered in detail in [*Chapter 4*](B19145_04.xhtml#_idTextAnchor073), *Trading
+    Application – What’s Inside?*, in the *Trading logic – this is where a small mistake
+    may cost a fortune* section – I am sure you will appreciate the suggested architecture
+    of our trading app.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Second, this architecture provides for a flexible modular code that conforms
+    to the concept of a universal trading application: you can quickly switch data
+    sources and trading venues and use the same application both for research and
+    production.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It seems like we have covered everything we need to start coding our first
+    trading application. However, there is one point of extreme importance that is
+    surprisingly too frequently missed by so many developers: the problem of thread
+    synchronization. To understand this problem and find out the right solutions to
+    it, let’s do a brief **lyrical digression** about multithreading.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Multithreading – convenient but full of surprises
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We already worked with multithreading (see [*Chapter 5*](B19145_05.xhtml#_idTextAnchor086),
+    *Retrieving and Handling Market Data with Python*, the *Universal data connector*
+    section), and we found that using multiple threads makes life way easier when
+    we develop modular scalable applications. However, we never explored how multithreading
+    is implemented in Python.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Two concepts are frequently confused: **multiprocessing** and **multithreading**.
+    The difference between them is that the former uses the concept of isolated processes,
+    each of them having a **global interpreter lock** (**GIL**), thus enabling parallel
+    execution using separate physical or logical processors or processor cores (so-called
+    **true parallelism**), whereas the latter runs a single process that doesn’t care
+    about the number of processors or cores: it executes threads in small portions,
+    allowing each thread to run for several milliseconds and then switching to another
+    one. Of course, from a human perspective, it does look like processes are running
+    in parallel. In most cases, we don’t even think about which thread is executed
+    at which moment. But when implementing event-driven processes, it becomes critical
+    to know what happens first: for example, if we try to generate an order before
+    market data is received, it may end with an error in the best case.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To learn how real multithreading works, let’s write some simple code with three
+    threads emulating the respective components of our trading application:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Since we start the threads one by one (1, 2, and then 3), we may expect to
+    see messages stating `Receive data`, `Trading logic`, and `Processing orders`
+    and repeating in this same order. However, when we run the code, we will see something
+    different:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can see that while on average the number of messages of each kind is more
+    or less the same, the order in which they appear is almost random, making the
+    output chaotic. This happens because, by default, no thread has any priority and
+    each runs a small portion as soon as it can.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Of course, such a behavior is not suitable for a trading app: we want to make
+    sure that we first receive a tick, then process it, then generate an order, and
+    finally send it for execution – in this very order and not any other!'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There are several solutions to this problem. We will use two: using data streams
+    as events for synching and using `threading.Event()` objects to switch between
+    threads. We will consider each approach in detail in the upcoming sections.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s start by implementing a version of the trading app that works with live
+    tick data, and then see how we can easily transform it into a powerful backtesting
+    tool (if you don’t clearly remember the meaning of backtesting, just jump back
+    to [*Chapter 2*](B19145_02.xhtml#_idTextAnchor028), *Using Python for Trading
+    Strategies*, the *What is paper trading and* *backtesting?* section).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Trading application with live data feed
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'As always, we start by doing some imports:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, we create a class that contains the strategy metadata (see the *Trading
+    logic* *component* section):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, we prepare three (!) tick data queues:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: Why three? This is one of the solutions to the thread synching problem explained
+    in the *Multithreading – convenient but full of* *surprises* section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first queue (`tick_feed_0`) connects the market data receiver with the ticks
+    aggregation component, which forms bars. This component is activated every time
+    a new tick is in the first queue. After the component has finished, it puts the
+    same tick into the second queue (`tick_feed_1`).
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`tick_feed_1` connects the ticks aggregator with the trading logic, and the
+    trading logic is invoked only when there’s a new tick in `tick_feed_1`. But it
+    may enter this queue only after the first component has finished working! So,
+    trading logic cannot be invoked earlier than a new tick is processed. Then, similarly,
+    the trading logic components put the same tick into the third queue (`tick_feed_2`).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`tick_feed_2` connects the trading logic with the order execution component,
+    and this component is invoked no earlier than there’s a new tick in `tick_feed_2`.
+    So, using three queues to connect components one to another ensures the correct
+    sequence of operations.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: This method of synching threads would work only if the interval between ticks
+    is greater than the round trip time for all threads triggered by it to finish
+    working. This is valid for most data feeds as normally, we receive no more than
+    10 ticks per second, and the round trip processing time is typically around 0.0001
+    seconds. This approach won’t work with heavy load exchange market data received
+    via the `ITCH` protocol, which sometimes receives over 10,000 ticks per second.
+    However, this is specific to institutional trading and we don’t consider solutions
+    of this kind in this book.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we must add a queue to process aggregated market data (`bar_feed`), a
+    queue to store orders (`orders_stream`), create an instance of the system metadata
+    class, and specify the parameters required to connect to a data feed (in our example,
+    we use `LMAX` as the source of market data):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, we can reuse the code that we developed in [*Chapter 8*](B19145_08.xhtml#_idTextAnchor130),
+    *Data Visualization in FX Trading with Python*, in the *Plotting live tick* *data*
+    section:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, we have to put the tick into the first tick queue. But before we do that,
+    we have to check the consistency of the received market data. We discussed non-market
+    prices in [*Chapter 1*](B19145_01.xhtml#_idTextAnchor014), *Developing Trading
+    Strategies – Why They Are Different*, so let’s just quickly refresh it: a non-market
+    price is *too far* from the market. Of course, sometimes, it’s difficult to judge
+    whether it is *too far* or *not so far*, but in essence, we can at least filter
+    out ticks in which the difference between the bid and ask (also known as spread)
+    is several times greater than normal. Events of this sort are quite infrequent,
+    but I was lucky to capture one of these moments while plotting tick charts (see
+    [*Chapter 8*](B19145_08.xhtml#_idTextAnchor130), *Data Visualization in FX Trading
+    with Python*). The following figure illustrates such a *bad tick* in which the
+    bid is way lower than it should be:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.6 – Non-market price](img/B19145_11_06.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.6 – Non-market price
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To filter out at least bad ticks of this sort, let’s add a simple check: if
+    the spread is greater than 10 pips, then skip this tick:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: Next, we need to implement the ticks aggregator. In our example, let’s form
+    10-second bars so that we can test our app and check if everything works correctly
+    faster (without waiting for 1 minute or 1-hour bars to complete).
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will use only bid data to form bars for simplicity. Why is this possible?
+    Because most of the time (except for the time around important news releases,
+    bank settlement time, and the end/beginning of the week), the spread (the difference
+    between the bid and ask) is more or less constant. So, if we want to emulate the
+    real execution of orders, then we can use real bid and ask in the tick data stream,
+    but for the trade logic, we can use bars built with only one price. Of course,
+    for strategies of a certain kind, such as arbitrage, both bid and ask data are
+    essential (and sometimes last trade along with the two), but now, we’re building
+    a prototype that you will be able to customize the way you want when you are familiar
+    with the approach in general.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For aggregating ticks into bars, we used almost the same code from [*Chapter
+    8*](B19145_08.xhtml#_idTextAnchor130), *Data Visualization in FX Trading with
+    Python*, in the *Plotting live tick data* section, so not much commenting is required
+    here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We created a bar, received a tick, and updated the bar’s high, low, and close
+    values. Now, as soon as the time since the bar’s open is greater than or equal
+    to 10 seconds, we start a new bar:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Note the last line of this function. It puts the same tick that’s received
+    into `tick_feed_1`. This is done to trigger the next component, the trading logic:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now, it’s time to add some trading logic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: For testing purposes, we don’t care whether our test strategy is profitable
+    or not – we only want to generate as many orders as possible to watch the emulated
+    execution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So, let’s implement the following simple logic:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: If the bar closes up (`close > open`), then sell
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: If the bar closes down (`close < open`), then buy
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'With this "*strategy"*, we may expect many orders to be generated quickly,
+    so we will be able to test our app without waiting for too long:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here, we are checking that the bar’s closing price is greater than `Open` and
+    also that the current consolidated market position is positive. We’re doing this
+    because we don’t want to open multiple positions in the same direction. In other
+    words, if we are already long in the market, we only wait for a short position
+    to open, and vice versa:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following `if...else` statement checks whether we are opening the position
+    for the first time. If we are, then we don’t have any current market position
+    at the time of order generation, so in our example, the trading size is 10,000\.
+    But if there is already an open position and we want to open a new position in
+    the opposite direction, then *we should first close the existing position* and
+    *then open the new one*, which effectively requires twice the trading size. We
+    have to use `10000` to close and `10000` to open a new position, which means a
+    trading size of 2 * 10,000 = 20,000:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, we must put the order into the order queue:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, we must do exactly the opposite for the buy order:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: Why do we use 10,000 base currency as the trading size?
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we trade EURUSD, a currency pair quoted with 4 or 5 digits, then buying or
+    selling 10,000 euro (see [*Chapter 3*](B19145_03.xhtml#_idTextAnchor044), *FX
+    Market Overview from a Developer’s Standpoint*, the *Naming conventions* section)
+    would mean that 1 pip costs $1\. Therefore, we can interpret the results of our
+    tests both as in money and in pips. Since the FX market is highly leveraged (see
+    the same in the *Trade mechanics – again some terminology* section in [*Chapter
+    3*](B19145_03.xhtml#_idTextAnchor044), *FX Market Overview from a Developer’s
+    Standpoint*), it’s more convenient to calculate all PnL in pips and then scale
+    it using leverage.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Note that this function uses a `try...except` statement. The reason is that
+    we use two queues: `tick_feed_1` to receive ticks and `bar_feed` to receive actual
+    bars. However, ticks are only used in this function to trigger its execution (see
+    the detailed explanation at the very beginning of this section), while bars are
+    used to make actual trading decisions. The problem is that bars normally arrive
+    far less frequently than ticks, so we can’t wait until there’s a bar in the `bar_feed`
+    queue; otherwise, the normal execution of our app would be interrupted. That’s
+    why we use the `block = False` attribute when reading from the `bar_feed` queue.
+    However, if there’s a new tick in `tick_feed_1`, but there’s no bar in `bar_feed`,
+    then the attempt to read from there would raise an exception. Therefore, we catch
+    this exception and – in our current implementation – just do nothing, waiting
+    for a new bar to arrive in the queue.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The final component of our trading app is order execution. We invoke this function
+    by a tick received in `tick_feed_2`, where it’s put by `tradeLogic()`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'With every received tick, we update the equity value of the trading system.
+    Remember that *equity* in traders’ slang means the sum of all PnL values calculated
+    on each tick or bar. If we have a long position and the current price is greater
+    than the previous price, then the equity value increases on this tick/bar. The
+    opposite is also true: if we have a short position and the current price is less
+    than the previous price, then the equity value also increases on this tick/bar.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'I believe you’ve got it: if we’re long and the price decreases or if we’re
+    short and the price increases, then the equity decreases on this tick or bar.
+    To calculate the actual equity value on the current tick, we multiply the difference
+    in price between the current and the previous ticks by the market position value:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, we start scanning the order queue and executing orders as they appear
+    there. Note that we again use the `block = False` attribute, so we never wait
+    for an order in the order queue: if there’s no order by the time a new tick is
+    received, we just go ahead and proceed with the main loop:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'After we’ve received an order, we should do the risk management check: whether
+    we have sufficient funds to execute this order. To calculate the available funds,
+    we should add the current equity (positive or negative) to the initial capital
+    and subtract the margin required for the currently open market position, which
+    is the value of this market position divided by the leverage:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: How to calculate available funds
+  prefs: []
+  type: TYPE_NORMAL
+- en: The calculation of available funds that we are using in our code is not 100%
+    correct. The problem is that it is possible to have a huge position in the market
+    with some positive running PnL. In this case, our formula would say we have sufficient
+    funds, but in reality, until this huge position is closed, we may not have enough
+    money in the trading account. So, to be perfectly precise with this calculation,
+    we should have introduced yet another variable to the system metadata that would
+    account only for realized PnL (calculated by closed positions). However, we are
+    not going to do this now, again for simplicity and transparency’s sake.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, if the order size is less than the available funds in the trading account,
+    we can execute the order. A bit later, we will write a separate function that
+    emulates the order execution. In production, this function can be replaced by
+    an actual call to the broker’s API:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'After attempting to execute the order, its status is changed either to `''Executed''`
+    or `''Rejected''` (or any other status returned by your broker), so let’s decide
+    what to do with it. Of course, if the order was successfully executed, we only
+    update the strategy metadata (and print the result for testing purposes):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If the order was rejected, we return it to the same order queue:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: Again, let me reiterate that, in reality, you may need more complex order handling,
+    but it will depend on both the type of strategy you’re going to run and the types
+    of order statuses provided by your broker.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, we will just add the `except` clause so that nothing happens if there’s
+    no order in the order queue:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We’re almost there! All we need to add now is the function that emulates the
+    order execution at the broker. For the first version of our emulator, we will
+    implement only the execution of market orders:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'It’s time for the final preflight check: making sure the market has sufficient
+    liquidity before sending the order!'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Don’t confuse bids and asks! If we buy, we check the liquidity at the offer
+    (ask) and execute at the ask price, while if we sell, we use bids:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, let’s review the components of the trading application we have added so
+    far:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Strategy metadata object (`class tradingSystemMetadata`)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Queues for price data and orders (`tick_feed_0`, `tick_feed_1`, `tick_feed_2`,
+    `bar_feed`, and `orders_stream`)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A function that connects to the data source (`LMAX_connect(url, subscription_msg)`)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A function that forms bars from ticks (`getBarRealtime()`)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A function that makes trading decisions (`tradeLogic()`)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A function that processes orders (`processOrders()`)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A function that emulates order execution at the broker (`emulateBrokerExecution(tick,
+    order)`)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'All we have to add to the very end of our code is a block that initializes
+    and starts all four threads:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We have just developed our first trading app! It’s time to run it and check
+    if it’s doing what we expect. I will run it and wait until the second order is
+    executed (because I want to make sure that I submit correct orders both in case
+    the strategy has an open position in the market and in case there’s no open position).
+    If you repeated all these steps correctly, you should see an output like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We started at `12:03:20`, so we received nine ticks (remember, LMAX doesn’t
+    send actual ticks, but 1-second snapshots of market data). At the 10th second,
+    we form a bar:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The bar’s close is greater than the bar’s open, so according to our test strategy
+    logic, it is a signal to sell – and indeed, there’s an order that immediately
+    follows the bar:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Note that the order size is `10000` because we opened the position for the
+    very first time and we don’t have open positions in the market yet. We check the
+    10th tick to make sure that its price equals the closing price of the bar and
+    the order price:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, we can see the execution report:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'So far, so good. Let’s wait for the next bar to form:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We’re lucky: the very next bar closed in the opposite direction (close is less
+    than open), so it’s time to generate a buy order:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Note that the order size this time is `20000`: we need to close the currently
+    open position of `10000` and then open a new one with the remaining `10000`. Let’s
+    check the tick price to make sure that the bar’s closing price and the order price
+    are correct:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: Great, everything looks good. Now, let’s proceed to order execution...
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: Stop. What’s that? The last tick’s price was `1.05665`, but the order is executed
+    at `1.05672`! Why?
+  prefs: []
+  type: TYPE_NORMAL
+- en: This happens because we form bars using only bid prices and execute orders at
+    actual market prices – bid for sell orders and ask for buy orders. The first order
+    was a sell, so we used the bid price and all prices (bar, tick, order, and execution)
+    coincided. But the second order was a buy, but we still used only the bid price
+    to form a bar – that’s why we had the execution price greater than the bar’s closing
+    price.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The importance of market spread
+  prefs: []
+  type: TYPE_NORMAL
+- en: This issue perfectly illustrates the importance of taking spread (the difference
+    between the bid and ask prices) into consideration when running tests. So many
+    developers forget about it and run their testing using only bid prices – for simplicity,
+    you know. These tests are not adequate for the real market, and quite frequently
+    generate trade logic that is profitable only when you can buy and sell at the
+    same price, effectively assuming the spread to be zero at all times. Now, you
+    know how to avoid this trap and make sure your tests are always realistic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Before we move on, let’s quickly review our code and see whether it meets the
+    requirements outlined in [*Chapter 1*](B19145_01.xhtml#_idTextAnchor014), *Developing
+    Trading Strategies – Why They* *Are Different*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: It filters the incoming tick data feed and excludes non-market prices
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It is event-driven – it generates and executes orders as soon as the trade logic
+    confirms a trade
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It does some basic risk management checks – position size, leverage, and available
+    funds
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It is capable of emulating bad order execution and handling these situations
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'And probably the main benefit: this code will never – never! – peek ahead,
+    neither in testing nor in production (see [*Chapter 4*](B19145_04.xhtml#_idTextAnchor073),
+    *Trading Application – What’s Inside?*, the *Trading logic – this is where a small
+    mistake may cost a* *fortune* section)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: So, we have developed a robust application suitable for serious production!
+    Of course, it can be improved further, but its core will remain almost unchanged.
+    However, we don’t have a tested strategy to run. How can we develop such a strategy?
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is when we can use the concept of backtesting, which we mentioned earlier,
+    almost at the beginning of this book.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Backtesting – speeding up the research
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The process of developing a trading strategy (I mean the trading logic, not
+    the application) is an infinite loop:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Suggest a hypothesis.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Code it.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Run a test.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: If the result is not satisfactory, tweak the parameters and repeat.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: If nothing helps, look for an alternative hypothesis.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'The question is: what kind of application shall we use for testing in *step
+    3*?'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Of course, we could use our existing trading app, draft some strategy logic,
+    and then run it in test mode, as we’ve just done, collecting orders and analyzing
+    the equity time series. But then a single test may take days, weeks, and even
+    months if we want to test the strategy under different market conditions. Do you
+    think it’s a bit too long? I agree. That’s why, for research and development purposes,
+    we use backtesting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We discussed backtesting in [*Chapter 2*](B19145_02.xhtml#_idTextAnchor028),
+    *Using Python for Trading Strategies*, in the *Paper trading, and backtesting
+    – an essential part of systemic trader’s risk management* section. In essence,
+    instead of emulating the execution of orders using live data streams, we emulate
+    the data stream itself using pre-saved historical market data. In this case, we
+    can dramatically speed up the testing because computers can process dozens of
+    thousands of ticks or bars per second, compressing months of live testing into
+    minutes or seconds of backtesting. Of course, due to its nature, backtesting cannot
+    guarantee the future performance of a strategy, just because it tests using past
+    data. But regardless, it helps us understand the strategy’s behavior under various
+    market conditions. Generally speaking, if a backtest shows that the emulated equity
+    was mostly growing in the past, then we may suppose that it continues growing
+    in the future, and vice versa: if we saw that the emulated equity was only decreasing
+    over time, or oscillating around zero at best, then we should be very cautious
+    with such a strategy as it’s hard to imagine why it would suddenly start making
+    money when put to production.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'I hope you got the idea: we are going to run our code using saved data, not
+    live, so we can process 1,000 or 10,000, or even more seconds of historical data
+    in 1 second.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, I believe you will appreciate the approach we followed when developing
+    our code: if you have pre-saved tick historical data, then *all you need to do
+    is modify the only function* – the one that receives ticks from the data provider
+    – and have it receive data from a local file.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: That’s it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Isn’t it impressive? Yes, you can use the same code for both research and production,
+    thus reducing the probability of making an error to almost zero.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'However, you can’t always get hold of historical tick data. Moreover, for strategies
+    that use bars with a higher time frame (such as 1 hour, 4 hours, 1 day, 1 week,
+    and so on), it would be a waste of time waiting until our application forms each
+    bar from ticks. So, we may want to make the following modifications to our code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: It should now be able to read data from a local file instead of receiving it
+    from a data vendor
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It should be able to process already compressed data (bars) without receiving
+    tick data at all
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It should be able to emulate order execution, which may happen within the duration
+    of a single bar (for example, if the strategy bases its logic on 1-hour bars,
+    then we should be able to emulate order execution between hh:00 and hh:59, where
+    hh stands for the hours’ value).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Looking at the architecture of our existing code, it seems like quite a straightforward
+    task. However, there is one caveat.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Do you remember how we used tick data in the existing code? Yes, we aggregated
+    it into bars, but besides that, ticks were served as a system clock that synchronized
+    the components of the entire application. How do we synchronize them in case we
+    don’t use tick data at all?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here, we can use another method of controlling the execution of threads – using
+    events.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Syncing threads using events
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Let’s quickly jump back to the code that we drafted in the *Multithreading –
+    convenient but full of surprises* section earlier in this chapter. The problem
+    with that code was that each thread was running *when possible*, thus producing
+    output at random to a certain degree. And we want all three threads to work one
+    by one – `t1`, `t2`, `t3`, and then again `t1`, and so on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The threading module in Python provides several very efficient methods to solve
+    the problem of controlling threads. One of them is using `Event()` objects.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A `threading.Event()` object is placed inside the thread’s code and it works
+    like a traffic light. It has two possible states: set or cleared. When the event
+    is set, the thread works as normal. When the event is cleared, the thread stops.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Besides just clearing and setting the events, it is possible to instruct the
+    thread to *wait* until the event is set. In this case, the thread waits for the
+    event and as soon as it’s set again, it resumes working.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we want threads to run in a particular order, then we should stick to the
+    following guidelines:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We need as many events as there are threads
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: An event controlling a specific thread should be cleared *inside* this thread
+    but set *outside* it
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Now, let’s make some modifications to the code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we need three events:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: In our example, `f1` will control the `t1` thread, `f2` will control `t2`, and
+    `f3` will control `t3`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, to the very end of the `t1()` function, we do the following actions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We clear the `f1` event (which controls the first thread)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We set the `f2` event (which gives the green light to the `t2` thread)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We set thread `t1` to wait for the `f1` event to be set again
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The modified code will look like follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We modify the `t2()` and `t3()` functions in the same way (so that each thread
+    controls its next neighbor) and run all three threads:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, we can enjoy the output in the perfectly correct order:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: '...and so on.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It is possible that for the first two execution loops, the output may still
+    go in an incorrect order: this may happen until two events are cleared and awaited,
+    and only one event is set.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we’re familiar with `threading.Event()` objects, it’s time to modify
+    our trading application for backtesting purposes. For clarity and ease of use,
+    I will reproduce its entire code here and point to the exact places where we made
+    any modifications.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Backtesting platform with a historical data feed
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'As always, we start with several imports:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, we reuse the same `tradingSystemMetadata` class and only add three events
+    to the control threads. We name them `F1`, `F2` and `F3` (flags):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, we need data and order queues. Since we no longer use tick data to sync
+    threads, there’s no need to have multiple tick data queues – we only need one
+    queue for bars and another one for orders:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: Next, we must create an instance of the system metadata object and read the
+    historical data from the file into `all_data`. We must also start the stopwatch
+    (the `time.perf_counter()` method) to keep track of time spent on various operations
+    – just out of curiosity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Note that we read the data using `csv.DictReader()` so that we receive each
+    bar as a dictionary – this ensures maximum compatibility with the production code
+    that we developed earlier in this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, we need a modified function that takes bars from the read data one by
+    one, converts necessary fields from `str` into `float`, and puts the bar into
+    the queue. We must also break the execution of this loop after the first 10 bars
+    for debugging purposes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Note the three flags (`System.F1`, `System.F2`, and `System.F3`) at the end
+    of the function: they control the execution of threads and make sure that first,
+    we read a bar, then we generate an order and, finally, we execute – or, rather,
+    emulate – the execution of this order.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Also, note that we do not check data consistency and do not exclude any data
+    points: when we work with saved historical data, we assume this data is already
+    clean.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next goes the `tradeLogic()` function. The best news here is that its main logical
+    part remains completely unchanged – no modification is required between the `trade
+    logic starts here` and `trade logic ends here` comments in the original code!
+    We only modify this function at its beginning and at its end.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'At its beginning, we must add a `try...except` statement that will terminate
+    the respective thread when all the data has been processed. To do that, we must
+    set the timeout attribute of the `get()` method to `1`. This means that `get()`
+    will wait for `1` second for a new bar to appear in the queue, and if no bar is
+    there after 1 second, then an exception is generated. On exception, we just break
+    the loop and effectively terminate the thread:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE46]'
+  prefs: []
+  type: TYPE_PRE
+- en: We omitted the entire trade logic because it is indeed identical to what we
+    used in our first version of the trading app.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Note that at end of the function code, we return the bar into the queue: its
+    data will be required by the orders processing component. And as in the case of
+    the previous function, we set the `F3` flag, giving the green light to the next
+    operation (orders processing), clear `F2`, and stop the trade logic thread until
+    the `F2` flag is set.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we must rewrite the order execution emulator quite substantially: the
+    difference between the production and backtesting versions is that while backtesting,
+    we only work with compressed data, so checking order execution on every tick no
+    longer makes sense.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Emulating order execution during backtesting
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Let’s start by emulating market orders since they’re the easiest to implement,
+    and stick to the following guidelines:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We assume that a market order can be generated by the trade logic only at the
+    bar’s closing time
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We emulate the execution of a market order only at the bar’s closing price
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We assume that the liquidity in the market is always sufficient and therefore
+    we don’t have to check it before executing an order
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We assume that the actual execution price was the same as the requested order
+    price as we don’t have real-time tick data to test the execution
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'With all these considerations in mind, the modified `emulateBrokerExecution`
+    function will now look much simpler:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE47]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We do not add any flags here as this function is called from inside the `processOrders`
+    function. Let’s add this function: you will see that its logic looks very much
+    like the one we used previously, with live tick data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE48]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We started with a similar `try...except` statement that terminates the execution
+    of the thread when there’s no more data in the bars queue. Next, we make the same
+    updates to the system metadata as we did previously; the only difference is that
+    we use the bar’s closing price instead of the last tick price:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE49]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The orders processing logic is again quite similar to the tick-driven code,
+    with the main difference being the absence of risk management checks (whether
+    we have sufficient funds to trade) and rejected orders handling: during backtesting,
+    we assume that all orders are executed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE50]'
+  prefs: []
+  type: TYPE_PRE
+- en: At the end of the function’s code, we again add the respective flags to control
+    the execution order of the threads.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Well, this is it! All we must do now is check the time spent on the backtest
+    (just for fun) and start the threads:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE51]'
+  prefs: []
+  type: TYPE_PRE
+- en: But how do we check that the code produces correct results?
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Of course, we could add several print statements, as we did with the live trading
+    application, but the goal of backtesting is different: we want to process as much
+    data as possible within as brief a period as possible, and then analyze the collected
+    data. 5 years’ worth of 1-minute bars of historical data makes over 2 million
+    data points, so if we just print the updated equity value on each bar, it would
+    make over 2 million prints – which would take forever because `print()` is one
+    of the slowest instructions. So, how do systematic traders analyze the strategy’s
+    performance?'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Equity curve and statistics
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'When running a backtest with the code we’ve just written, we save some basic
+    statistical data: the equity value updated on every tick or bar. If we plot the
+    equity time series, we get an **equity curve**: a visual representation of the
+    dynamics of the trading system’s profits and losses over time. Such a chart is
+    the first thing to check after the backtest is complete:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: If the equity curve shows growth over time, then there is a chance (but not
+    a guarantee!) that the strategy may also perform well in the future
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'If the equity curve exhibits steady systematical loss over time, it again may
+    not be really bad: consider inverting the rules of the trade logic'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: If the equity curve oscillates around zero, it’s probably the worst case as
+    this strategy logic is unlikely to make any money in the future
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Let’s add code for plotting the equity curve to our code after the backtest
+    is complete. We will use the techniques that we discussed in [*Chapter 8*](B19145_08.xhtml#_idTextAnchor130),
+    *Data Visualization in FX Trading with Python*, so I recommend refreshing your
+    memory about using `matplotlib` at this point.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `matplotlib` main loop cannot be run in a thread (at least easily), so
+    we must add charting in the main thread (like we did when plotting live bar charts
+    in [*Chapter 8*](B19145_08.xhtml#_idTextAnchor130), *Data Visualization in FX
+    Trading with Python*) and keep an eye on the `incoming_price_feed` thread: while
+    it’s alive, we just wait and do nothing, but as soon as it finishes working, we
+    plot the equity curve.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So, we just add `import matplotlib.pyplot as plt` to the `imports` section
+    at the beginning of the code and the following simple infinite loop to its end,
+    once all the threads have been started:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE52]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If you did everything correctly and used the same historical data file as I
+    did, you will see a chart like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.7 – Equity curve of the sample strategy, built on the first 10
+    bars](img/B19145_11_07.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.7 – Equity curve of the sample strategy, built on the first 10 bars
+  prefs: []
+  type: TYPE_NORMAL
+- en: This looks great, but how can we make sure that this result is correct? If a
+    backtester emulates the performance incorrectly, we can’t rely on the backtesting
+    results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Fortunately, it’s not difficult to check this result. As you may remember, we
+    intentionally used a very simplistic test strategy that generates orders on almost
+    every bar. So, we can rebuild a similar equity curve manually, for example using
+    MS Excel or OpenOffice, and compare it with the chart generated by our backtesting
+    app.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s open the data file and remove the unnecessary columns (`UpVolume`, `DownVolume`,
+    `TotalVolume`, `UpTicks`, `DownTicks`, and `TotalTicks`).
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.8 – First 10 bars of the source data file](img/B19145_11_08.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.8 – First 10 bars of the source data file
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we must reproduce the strategy logic: if the bar closes up (`close >
+    open`), then we buy; if the bar closes down, we sell. We will add a new column
+    that contains the direction of our trade:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.9 – Determining the direction of simulated trade](img/B19145_11_09.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.9 – Determining the direction of simulated trade
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Then, we must add a column where we calculate the actual PnL per bar by multiplying
+    the difference between the bars’ closing prices by the direction and the trading
+    size:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.10 – Calculating returns per bar](img/B19145_11_10.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.10 – Calculating returns per bar
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'And finally, we must calculate the cumulative sum of per-bar returns, which
+    is effectively the equity time series:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.11 – Calculating the equity time series](img/B19145_11_11.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.11 – Calculating the equity time series
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, if we plot the equity curve by creating a line chart based on data in
+    column I, we will see the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.12 – Manual reconstruction of the equity curve in LibreOffice](img/B19145_11_12.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.12 – Manual reconstruction of the equity curve in LibreOffice
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can see that the equity curve is identical to what was plotted by our code
+    – and this means that our backtest is reliable! Having checked it only once, we
+    can now trust its results any time we do a test.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'I bet you are dying to see a long-term performance report for our great strategy,
+    not limited to just 10 bars. Remember, 1 bar in our source data file is 1 minute,
+    so 10 minutes worth of a backtest is not representative. Let’s run the test for
+    the first 1 million bars, which would equate to approximately 32 months’ worth
+    of history. We only need to modify one line in the code: replace `10` with `1000000`
+    in `if counter == 1000000:` in the `getBar()` function.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, we also can estimate the backtesting speed as per the output in the console.
+    On my (by far not the latest) laptop (Macbook Pro 2012 with a quad-core Core i7
+    processor, SSD drive, and 16 GB of memory), it took 12 seconds to read the data
+    from the file and 93 seconds to process 1 million bars. Not bad: we can emulate
+    32 months in less than 2 minutes!'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'What about the equity curve from such a long-term perspective? Here you are:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.13 – Theoretical performance (equity curve) of the sample strategy
+    calculated using the first 1,000,000 data points](img/B19145_11_13.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.13 – Theoretical performance (equity curve) of the sample strategy
+    calculated using the first 1,000,000 data points
+  prefs: []
+  type: TYPE_NORMAL
+- en: Wow! Looks like the Holy Grail of trading! Is it possible that such a primitive
+    strategy can indeed generate such steady returns over such a long period?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Generally speaking, every time you get such an optimistic result, focus on finding
+    errors. In our case, it is doubtful that we made an error in the trading logic
+    – it’s too primitive and we tested it manually. So, what is it that we probably
+    missed in our backtesting that led to this unrealistically great result? Or maybe
+    this result is indeed realistic?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Of course and unfortunately, it is not.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s go back to the `emulateBrokerExecution` function again. We assume that
+    any order is executed on the bar’s close – which is fine as we don’t have tick
+    data for backtesting. But our code makes no difference between the execution of
+    buy and sell orders: they are both executed at the same price, in our example
+    – bid. But when testing the live trading application earlier in this chapter,
+    we saw that executing orders at actual prices (bid for sell orders and ask for
+    buy orders) may make quite a difference in PnL. So, as we don’t have ask prices
+    in our historical data, let’s emulate it: we will add a typical spread to the
+    bar’s closing price, thus accounting for the difference between the bid and ask:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE53]'
+  prefs: []
+  type: TYPE_PRE
+- en: In reality, the spread in EURUSD may vary from as low as 0 to as much as 0.0010
+    and even greater (usually before the release of important economic news; see [*Chapter
+    6*](B19145_06.xhtml#_idTextAnchor101), *Basics of Fundamental Analysis and Its
+    Possible Use in FX Trading*), but it’s safe to assume that 1/2 pip is more or
+    less adequate to emulate the average spread.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s run the backtest again and see the equity curve:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.14 – More realistic emulated equity curve of the test strategy](img/B19145_11_14.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.14 – More realistic emulated equity curve of the test strategy
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'What a radical difference! Now, instead of steadily gaining money, the strategy
+    is steadily losing money, and is doing so very, very quickly: it lost $100,000
+    in less than 3 years by trading only one so-called mini-lot (10,000 base currency).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: How has this happened?
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Although the strategy *made money* on paper without accounting for the spread,
+    on average, it produced a ridiculously small amount of paper money *per trade*:
+    it was *less than the spread*. As soon as we correctly emulated the execution
+    of orders at the bid and ask, the Holy Grail vanished into thin air and the sad
+    truth was revealed.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: This story should always be kept in mind when you do any market research and
+    develop any strategy. Always make sure that you emulate the real market conditions
+    to the best possible extent – to avoid getting too optimistic theoretical results
+    and quite painful disappointment in production.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The greatest news after all this is that you now have a tool you can rely on:
+    our backtesting platform.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary – where do we go now?
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Congratulations on getting so far in our studies! I know that this chapter was
+    very long, but hopefully not boring. We covered virtually all aspects of developing
+    live trading applications and backtesters, so now, you are well equipped with
+    powerful tools that should help you develop great trading strategies.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s quickly summarize what we learned in this chapter and outline some vistas.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We now fully understand all four essential components of any trading app: receiving
+    data, processing it, generating orders, and controlling their execution.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We are also familiar with the most typical technical issues, such as incorrectly
+    emulating order execution or processing non-market prices, and we also know how
+    to work around them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Then, we learned how to synchronize multiple threads by using queues and threading
+    event objects, and we know how to make sure that every component of the trading
+    app runs exactly at the expected moment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we learned how to rebuild parts of strategy performance manually to check
+    the correctness of a test or live orders generation and execution. Now, we can
+    be 100% sure that we can rely on the code we wrote.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We even created our first Holy Grail of trading – and immediately broke it
+    into pieces by critically reviewing the code, thus learning the main lesson of
+    systematic trading: not the tiniest detail can be missed, intentionally or occasionally,
+    and you should check your results twice before going to production to avoid very
+    unpleasant surprises when trading with real money.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, let’s point out where we can go further in our development.
+  prefs: []
+  type: TYPE_NORMAL
+- en: First, at the moment, our platform only supports market orders. Yes, from the
+    previous chapter, you may remember that in many cases, market orders are preferred
+    and that we can always emulate orders of all other types with market orders only.
+    However, at least for development purposes, it would be great to add emulation
+    for limit and stop orders.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In its present form, the code does not implement any risk management, neither
+    at the position nor the strategy level. It is essential to add at least basic
+    stop-loss orders that will protect the trading account from an unexpected catastrophic
+    scenario.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It would also be great to calculate at least some very basic statistics about
+    the strategy’s performance: at the moment, we can only analyze the equity time
+    series, but we want to know more about the average trade value, number of trades,
+    percent of profitable trades, and so on.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: And of course, we can complicate the platform further by adding multiple strategies,
+    grouping them into portfolios, and achieving the highest level of sophistication
+    by adding multiple incoming live data streams. Although this is definitely outside
+    the scope of this book, let me encourage you to be bold and curious, as any true
+    researcher should be, and play with the existing code and try improving it –you
+    will see that, in the long run, your efforts will be highly rewarded.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The remaining chapters of this book are dedicated to implementing trading strategies
+    of specific types. We will add a few components to the backtesting platform we
+    created in this chapter, but no significant changes will be made. Instead, we
+    will focus on developing the strategic logic and analyzing its theoretical performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Part 4: Strategies, Performance Analysis, and Vistas'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In previous parts, we gained sufficient knowledge to be able to develop a robust
+    trading platform suitable for both backtesting and – with minimal modifications
+    – live trading. We even coded a dummy strategy and as expected found that it could
+    not make money if not tested properly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Part 4* explains how to build a profitable trading strategy, from searching
+    for trading ideas to implementing them in code. We will also learn how to generate
+    the most important strategy performance data and analyze it to make the final
+    verdict on whether such a strategy can be used in real life or not. Then, we will
+    see how to correctly implement limit and stop orders and consider another trading
+    strategy, based on a completely different trading idea. Finally, the last chapter
+    suggests a few guidelines for further self-development in algorithm trading, with
+    links to useful and valuable resources.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This part comprises the following chapters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[*Chapter 12*](B19145_12.xhtml#_idTextAnchor203), *Sample Strategy – Trend-Following*'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[*Chapter 13*](B19145_13.xhtml#_idTextAnchor215), *To Trade or Not to Trade
+    – Performance Analysis*'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[*Chapter 14*](B19145_14.xhtml#_idTextAnchor231), *Where to Go Now?*'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
