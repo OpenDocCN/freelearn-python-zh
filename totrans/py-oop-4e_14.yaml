@@ -1,0 +1,2785 @@
+- en: '14'
+  id: totrans-0
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+  zh: '14'
+- en: Concurrency
+  id: totrans-1
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+  zh: 并发
+- en: Concurrency is the art of making a computer do (or appear to do) multiple things
+    at once. Historically, this meant inviting the processor to switch between different
+    tasks many times per second. In modern systems, it can also literally mean doing
+    two or more things simultaneously on separate processor cores.
+  id: totrans-2
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 并发是让计算机同时（或看似同时）做多项工作的艺术。从历史上看，这意味着邀请处理器每秒在多个任务之间切换多次。在现代系统中，这也可以字面意义上理解为在单独的处理器核心上同时做两件或多件事。
+- en: 'Concurrency is not inherently an object-oriented topic, but Python''s concurrent
+    systems provide object-oriented interfaces, as we''ve covered throughout the book.
+    This chapter will introduce you to the following topics:'
+  id: totrans-3
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 并发本身并不是一个面向对象的课题，但Python的并发系统提供了面向对象的接口，正如我们在整本书中所述。本章将向您介绍以下主题：
+- en: Threads
+  id: totrans-4
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 线程
+- en: Multiprocessing
+  id: totrans-5
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: Multiprocessing
+- en: Futures
+  id: totrans-6
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: Futures
+- en: AsyncIO
+  id: totrans-7
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: AsyncIO
+- en: The dining philosophers benchmark
+  id: totrans-8
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 餐饮哲学家基准
+- en: The case study for this chapter will address ways we can speed up model testing
+    and hyperparameter tuning. We can't make the computation go away, but we can leverage
+    a modern, multi-core computer to get it done in less time.
+  id: totrans-9
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 本章的案例研究将探讨我们如何加快模型测试和超参数调整的方法。我们无法消除计算，但我们可以利用现代的多核计算机来缩短完成时间。
+- en: Concurrent processes can become complicated. The basic concepts are fairly simple,
+    but the bugs that can occur are notoriously difficult to track down when the sequence
+    of state changes is unpredictable. However, for many projects, concurrency is
+    the only way to get the performance we need. Imagine if a web server couldn't
+    respond to a user's request until another user's request had been completed! We'll
+    see how to implement concurrency in Python, and some common pitfalls to avoid.
+  id: totrans-10
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 并发进程可能会变得复杂。基本概念相当简单，但当状态变化序列不可预测时，可能出现的错误却难以追踪。然而，对于许多项目来说，并发是获得所需性能的唯一途径。想象一下，如果网络服务器不能在另一个用户的请求完成之前响应用户的请求会怎样！我们将探讨如何在Python中实现并发，以及一些需要避免的常见陷阱。
+- en: The Python language explicitly executes statements in order. To consider concurrent
+    execution of statements, we'll need to take a step away from Python.
+  id: totrans-11
+  prefs: []
+  type: TYPE_NORMAL
+  zh: Python 语言明确地按顺序执行语句。为了考虑语句的并发执行，我们需要暂时离开 Python。
+- en: Background on concurrent processing
+  id: totrans-12
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+  zh: 并发处理背景
+- en: Conceptually, it can help to think of concurrent processing by imagining a group
+    of people who can't see each other and are trying to collaborate on a task. Perhaps
+    their vision is impaired or blocked by screens, or their workspace has awkward
+    doorways they can't quite see through. These people can, however, pass tokens,
+    notes, and work-in-process to each other.
+  id: totrans-13
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 从概念上讲，可以通过想象一群彼此看不见的人正在尝试协作完成一项任务来理解并发处理。或许他们的视力受损或被屏幕阻挡，或者他们的工作空间有难以看穿的尴尬门道。然而，这些人可以互相传递代币、笔记和正在进行中的工作。
+- en: Imagine a small delicatessen in an old seaside resort city (on the Atlantic
+    coast of the US) with an awkward countertop layout. The two sandwich chefs can't
+    see or hear each other. While the owner can afford to pay two fine chefs, the
+    owner can't afford more than one serving tray. Due to the awkward complications
+    of the ancient building, the chefs can't really see the tray, either. They're
+    forced to reach down below their counter to be sure the serving tray is in place.
+    Then, assured the tray is there, they carefully place their work of art – complete
+    with pickles and a few potato chips – onto the tray. (They can't see the tray,
+    but they're spectacular chefs who can place a sandwich, pickles, and chips flawlessly.)
+  id: totrans-14
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 想象一下在美国大西洋沿岸的一个古老海滨度假城市里的一家小熟食店，其柜台布局有些尴尬。两位三明治厨师彼此看不见也听不见对方。虽然店主可以支付得起两位优秀的厨师，但他却负担不起超过一个服务托盘的费用。由于古老建筑的尴尬复杂性，厨师们实际上也看不到托盘。他们被迫低头到柜台下面去确认服务托盘是否放置妥当。然后，确认托盘在位后，他们小心翼翼地将他们的艺术品——包括泡菜和一些薯片——放置到托盘上。（他们看不到托盘，但他们是非常出色的厨师，能够完美地放置三明治、泡菜和薯片。）
+- en: The owner, however, can see the chefs. Indeed, passers-by can watch the chefs
+    work. It's a great show. The owner typically deals the order tickets out to each
+    chef in strict alternation. And ordinarily, the one and only serving tray can
+    be placed so the sandwich arrives, and is presented at the table with a flourish.
+    The chefs, as we said, have to wait to feel the tray before their next creation
+    warms someone's palate.
+  id: totrans-15
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 然而，店主可以看见厨师们。确实，过路人可以观看厨师们的工作。这是一场精彩的表演。店主通常严格按照交替的方式将订单票分发到每位厨师手中。而且通常，唯一的服务托盘可以放置得恰到好处，使得三明治能够以优雅的姿态送达餐桌。正如我们所说，厨师们必须等待，直到他们的下一件作品温暖了某人的味蕾。
+- en: 'Then one day, one of the chefs (we''ll call him Michael, but his friends call
+    him Mo) is nearly done with an order, but has to run to the cooler for more of
+    those dill pickles everyone loves. This delays Mo''s prep time, and the owner
+    sees that the other chef, Constantine, looks like he''ll finish just a fraction
+    of a second before Mo. Even though Mo has returned with the pickles, and is ready
+    with the sandwich, the owner does something embarrassing. The rule is clear: check
+    first, then place the sandwich. Everyone in the shop knows this. When the owner
+    moves the tray from the opening below Mo''s station to the opening below Constantine''s,
+    then Mo placed their creation – what would have been a delightful Reuben sandwich
+    with extra sauerkraut – into the empty space where a tray should have been, where
+    it splashes onto the delicatessen floor, embarrassing everyone.'
+  id: totrans-16
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 然后，有一天，其中一位厨师（我们暂且称他为迈克尔，但他的朋友们叫他莫）几乎完成了订单，但不得不跑到冷却器那里去拿更多大家喜欢的酸黄瓜。这延误了莫的准备时间，店主看到另一位厨师康斯坦丁似乎会比莫早完成几秒钟。尽管莫已经拿回了酸黄瓜，并且准备好了三明治，但店主却做了件令人尴尬的事。规则很明确：先检查，然后放置三明治。店里每个人都清楚这一点。当店主把托盘从莫的工作站下面的开口移到康斯坦丁工作站下面的开口时，莫就把他们的作品——本应是一个加了额外泡菜的令人愉悦的鲁本三明治——放入本应放置托盘的空位，结果它溅到了熟食店的地上，让所有人都感到尴尬。
+- en: How could the foolproof method of checking for the tray, then depositing the
+    sandwich have failed to work? It had survived the test of many busy lunch hours,
+    and yet, a small disruption in the regular sequence of events, and a mess ensues.
+    The separation in time between testing for the tray and depositing the sandwich
+    is an opportunity for the owner to make a state change.
+  id: totrans-17
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 那个检查托盘、然后放置三明治的万无一失的方法怎么会失灵呢？它已经经受住了许多忙碌午餐时间的考验，然而，在常规事件顺序中的一次小小的干扰，就引发了一团糟。在检查托盘和放置三明治之间的时间间隔，是主人进行状态改变的机会。
+- en: There's a race between owner and chefs. Preventing unexpected state changes
+    is the essential design problem for concurrent programming.
+  id: totrans-18
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 老板和厨师之间有一场竞争。防止意外状态变化是并发编程的基本设计问题。
+- en: One solution could be to use a semaphore – a flag – to prevent unexpected changes
+    to the tray. This is a kind of shared lock. Each chef is forced to seize the flag
+    before plating; and once they have the flag, they can be confident the owner won't
+    move the tray until they return the flag to the little flag-stand between the
+    chef stations.
+  id: totrans-19
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 一种解决方案可能是使用一个信号量——一个标志——来防止对托盘的意外更改。这是一种共享锁。每位厨师在装盘前都必须抓住这个标志；一旦他们拿到标志，他们就可以确信主人不会移动托盘，直到他们把标志放回厨师站之间的那个小标志架上。
+- en: Concurrent work requires some method for synchronizing access to shared resources.
+    One essential power of large, modern computers is managing concurrency through
+    operating system features, collectively called the kernel.
+  id: totrans-20
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 并发工作需要一种方法来同步对共享资源的访问。大型现代计算机的一个基本功能是通过操作系统特性来管理并发，这些特性统称为内核。
+- en: Older and smaller computers, with a single core in a single CPU, had to interleave
+    everything. The clever coordination made things appear to be working at the same
+    time. Newer multi-core computers (and large multi-processor computers) can actually
+    perform operations concurrently, making the scheduling of work a bit more involved.
+  id: totrans-21
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 较老且体积较小的计算机，在单个CPU中只有一个核心，必须交错处理所有任务。巧妙的协调使得它们看起来像是在同一时间工作。较新的多核计算机（以及大型多处理器计算机）实际上可以并发执行操作，这使得工作调度变得更加复杂。
+- en: 'We have several ways to achieve concurrent processing:'
+  id: totrans-22
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们有几种方法来实现并发处理：
+- en: The operating system lets us run more than one program at a time. The Python
+    `subprocess` module gives us ready access to these capabilities. The `multiprocessing`
+    module provides a number of convenient ways to work. This is relatively easy to
+    start, but each program is carefully sequestered from all other programs. How
+    can they share data?
+  id: totrans-23
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 操作系统允许我们同时运行多个程序。Python 的 `subprocess` 模块为我们提供了对这些功能的便捷访问。`multiprocessing`
+    模块提供了一系列方便的工作方式。这相对容易启动，但每个程序都会被仔细隔离，与其他所有程序分开。它们如何共享数据呢？
+- en: Some clever software libraries allow a single program to have multiple concurrent
+    threads of operation. The Python `threading` module gives us access to multi-threading.
+    This is more complex to get started, and each thread has complete access to the
+    data in all other threads. How can we coordinate updates to shared data structures?
+  id: totrans-24
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 一些巧妙的软件库允许一个程序拥有多个并发操作线程。Python 的 `threading` 模块为我们提供了多线程的访问权限。这需要更复杂的入门步骤，并且每个线程都可以完全访问所有其他线程中的数据。我们如何协调对共享数据结构的更新呢？
+- en: Additionally, `concurrent.futures` and `asyncio` provide easier-to-use wrappers
+    around the underlying libraries. We'll start this chapter by looking at Python's
+    use of the `threading` library to allow many things to happen concurrently in
+    a single OS process. This is simple, but has some challenges when working with
+    shared data structures.
+  id: totrans-25
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 此外，`concurrent.futures` 和 `asyncio` 提供了对底层库更易于使用的包装器。我们将从本章开始，通过查看 Python 使用
+    `threading` 库来允许在单个操作系统进程中并发执行许多事情。这很简单，但在处理共享数据结构时有一些挑战。
+- en: Threads
+  id: totrans-26
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+  zh: 线程
+- en: A thread is a sequence of Python byte-code instructions that may be interrupted
+    and resumed. The idea is to create separate, concurrent threads to allow computation
+    to proceed while the program is waiting for I/O to happen.
+  id: totrans-27
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 线程是一系列可能被中断和恢复的 Python 字节码指令。其理念是创建独立的、并发的线程，以便在程序等待 I/O 操作完成时，计算可以继续进行。
+- en: For example, a server can start processing a new network request while it waits
+    for data from a previous request to arrive. Or an interactive program might render
+    an animation or perform a calculation while waiting for the user to press a key.
+    Bear in mind that while a person can type more than 500 characters per minute,
+    a computer can perform billions of instructions per second. Thus, a ton of processing
+    can happen between individual key presses, even when typing quickly.
+  id: totrans-28
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 例如，服务器可以在等待前一个请求的数据到达的同时开始处理一个新的网络请求。或者，一个交互式程序可能在等待用户按下键时渲染动画或执行计算。记住，虽然一个人每分钟可以输入超过500个字符，但计算机每秒可以执行数十亿条指令。因此，在快速输入时，即使在单个按键之间，也可能发生大量的处理。
+- en: 'It''s theoretically possible to manage all this switching between activities
+    within your program, but it would be virtually impossible to get right. Instead,
+    we can rely on Python and the operating system to take care of the tricky switching
+    part, while we create objects that appear to be running independently but simultaneously.
+    These objects are called **threads**. Let''s take a look at a basic example. We''ll
+    start with the essential definition of the thread''s processing, as shown in the
+    following class:'
+  id: totrans-29
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 从理论上讲，在程序内部管理所有这些活动之间的切换是可能的，但实际上要完全正确地做到这一点几乎是不可能的。相反，我们可以依赖Python和操作系统来处理那些棘手的切换部分，而我们在创建看起来可以独立但同时又同时运行的对象。这些对象被称为**线程**。让我们来看一个基本的例子。我们将从线程处理的本质定义开始，如下面的类所示：
+- en: '[PRE0]'
+  id: totrans-30
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE0]'
+- en: 'A thread in our running application must extend the `Thread` class and implement
+    the `run` method. Any code executed by the `run` method is a separate thread of
+    processing, scheduled independently. Our thread is relying on a global variable,
+    `THE_ORDERS`, which is a shared object:'
+  id: totrans-31
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们运行中的应用程序中的线程必须扩展`Thread`类并实现`run`方法。由`run`方法执行的任何代码都是一个独立的处理线程，独立调度。我们的线程依赖于一个全局变量`THE_ORDERS`，它是一个共享对象：
+- en: '[PRE1]'
+  id: totrans-32
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE1]'
+- en: 'In this case, we''ve defined the orders as a simple, fixed list of values.
+    In a larger application, we might be reading these from a socket or a queue object.
+    Here''s the top-level program that starts things running:'
+  id: totrans-33
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在这个例子中，我们定义了订单为一个简单的、固定的值列表。在一个更大的应用中，我们可能会从套接字或队列对象中读取这些值。下面是启动程序运行的顶层程序：
+- en: '[PRE2]'
+  id: totrans-34
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE2]'
+- en: This will create two threads. The new threads don't start running until we call
+    the `start()` method on the object. When the two threads have started, they both
+    pop a value from the list of orders and then commence to perform a large computation
+    and – eventually – report their status.
+  id: totrans-35
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 这将创建两个线程。新的线程不会开始运行，直到我们在对象上调用`start()`方法。当两个线程开始运行后，它们都会从订单列表中弹出一个值，然后开始执行大量计算，并最终报告它们的状态。
+- en: 'The output looks like this:'
+  id: totrans-36
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 输出看起来像这样：
+- en: '[PRE3]'
+  id: totrans-37
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE3]'
+- en: Note that the sandwiches aren't completed in the exact order that they were
+    presented in the `THE_ORDERS` list. Each chef works at their own (randomized)
+    pace. Changing the seed will change the times, and may adjust the order slightly.
+  id: totrans-38
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 注意，三明治并不是按照`THE_ORDERS`列表中呈现的顺序完成的。每位厨师都以自己的（随机化）速度工作。改变种子值将改变时间，并可能略微调整顺序。
+- en: What's important about this example is the threads are sharing data structures,
+    and the concurrency is an illusion created by clever scheduling of the threads
+    to interleave work from the two chef threads.
+  id: totrans-39
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 这个例子中重要的是线程正在共享数据结构，而并发性是由线程的巧妙调度所创造的，这种调度使得两个厨师线程的工作得以交错进行，从而产生并发的错觉。
+- en: The only update to a shared data structure in this small example is to pop from
+    a list. If we were to create our own class and implement more complex state changes,
+    we could uncover a number of interesting and confusing issues with using threads.
+  id: totrans-40
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在这个小例子中，对共享数据结构的唯一更新是从列表中弹出。如果我们创建自己的类并实现更复杂的状态变化，我们可能会发现使用线程时存在许多有趣且令人困惑的问题。
+- en: The many problems with threads
+  id: totrans-41
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+  zh: 线程的许多问题
+- en: Threads can be useful if appropriate care is taken to manage shared memory,
+    but modern Python programmers tend to avoid them for several reasons. As we'll
+    see, there are other ways to code concurrent programming that are receiving more
+    attention from the Python community. Let's discuss some of the pitfalls before
+    moving on to alternatives to multithreaded applications.
+  id: totrans-42
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 如果适当注意管理共享内存，线程可能是有用的，但现代的 Python 程序员由于几个原因往往避免使用它们。正如我们将看到的，还有其他方法可以编写并发编程，这些方法正在获得
+    Python 社区的更多关注。在转向多线程应用程序的替代方案之前，让我们先讨论一些潜在的问题。
+- en: Shared memory
+  id: totrans-43
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+  zh: 共享内存
+- en: The main problem with threads is also their primary advantage. Threads have
+    access to all the process memory and thus all the variables. A disregard for the
+    shared state can too easily cause inconsistencies.
+  id: totrans-44
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 线程的主要问题也是它们的最大优势。线程可以访问所有进程内存以及所有变量。对共享状态的忽视也容易导致不一致性。
+- en: Have you ever encountered a room where a single light has two switches and two
+    different people turn them on at the same time? Each person (thread) expects their
+    action to turn the lamp (a variable) on, but the resulting value (the lamp) is
+    off, which is inconsistent with those expectations. Now imagine if those two threads
+    were transferring funds between bank accounts or managing the cruise control for
+    a vehicle.
+  id: totrans-45
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 你是否遇到过一间房里只有一个开关，但有两个不同的人同时去打开它的情景？每个人（线程）都期望他们的行为能够将灯（一个变量）打开，但最终的结果（灯的状态）是关闭的，这与他们的期望不符。现在想象一下，如果这两个线程正在处理银行账户之间的资金转移或者管理车辆的巡航控制。
+- en: The solution to this problem in threaded programming is to *synchronize* access
+    to any code that reads or (especially) writes a shared variable. Python's `threading`
+    library offers the `Lock` class, which can be used via the `with` statement to
+    create a context where a single thread has access to update shared objects.
+  id: totrans-46
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在线程编程中，解决这个问题的方法是**同步**对任何读取或（尤其是）写入共享变量的代码的访问。Python的`threading`库提供了`Lock`类，可以通过`with`语句来创建一个上下文，在这个上下文中，单个线程可以访问更新共享对象。
+- en: The synchronization solution works in general, but it is way too easy to forget
+    to apply it to shared data in a specific application. Worse, bugs due to inappropriate
+    use of synchronization are really hard to track down because the order in which
+    threads perform operations is inconsistent. We can't easily reproduce the error.
+    Usually, it is safest to force communication between threads to happen using a
+    lightweight data structure that already uses locks appropriately. Python offers
+    the `queue.Queue` class to do this; a number of threads can write to a queue,
+    where a single thread consumes the results. This gives us a tidy, reusable, proven
+    technique for having multiple threads sharing a data structure. The `multiprocessing.Queue`
+    class is nearly identical; we will discuss this in the *Multiprocessing* section
+    of this chapter.
+  id: totrans-47
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 同步解决方案在一般情况下是有效的，但很容易忘记将其应用于特定应用程序中的共享数据。更糟糕的是，由于不当使用同步而导致的错误很难追踪，因为线程执行操作的顺序是不一致的。我们无法轻易地重现错误。通常，最安全的方法是强制线程之间通过使用已经适当使用锁的轻量级数据结构来进行通信。Python
+    提供了 `queue.Queue` 类来实现这一点；多个线程可以写入队列，而单个线程则消费结果。这为我们提供了一个整洁、可重用、经过验证的技术，用于多个线程共享数据结构。`multiprocessing.Queue`
+    类几乎相同；我们将在本章的 *多进程* 部分讨论这一点。
+- en: 'In some cases, these disadvantages might be outweighed by the one advantage
+    of allowing shared memory: it''s fast. If multiple threads need access to a huge
+    data structure, shared memory can provide that access quickly. However, this advantage
+    is usually nullified by the fact that, in Python, it is impossible for two threads
+    running on different CPU cores to be performing calculations at exactly the same
+    time. This brings us to our second problem with threads.'
+  id: totrans-48
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在某些情况下，这些缺点可能被允许共享内存的一个优点所抵消：它速度快。如果多个线程需要访问一个巨大的数据结构，共享内存可以快速提供这种访问。然而，在Python中，两个在不同的CPU核心上运行的线程同时进行计算是不可能的，这一点通常抵消了这一优势。这把我们带到了我们关于线程的第二个问题。
+- en: The global interpreter lock
+  id: totrans-49
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+  zh: 全局解释器锁
+- en: In order to efficiently manage memory, garbage collection, and calls to machine
+    code in native libraries, Python has a **global interpreter lock**, or **GIL**.
+    It's impossible to turn off, and it means that thread scheduling is constrained
+    by the GIL preventing any two threads from doing computations at the exact same
+    time; the work is interleaved artificially. When a thread makes an OS request
+    – for example, to access the disk or network – the GIL is released as soon as
+    the thread starts waiting for the OS request to complete.
+  id: totrans-50
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 为了高效管理内存、垃圾回收以及在本地库中对机器代码的调用，Python有一个**全局解释器锁**，或称为**GIL**。这个锁无法关闭，并且意味着线程调度受到GIL的限制，防止任何两个线程同时进行计算；工作被人为地交错。当一个线程发起操作系统请求——例如，访问磁盘或网络——一旦线程开始等待操作系统请求完成，GIL就会被释放。
+- en: The GIL is disparaged, mostly by people who don't understand what it is or the
+    benefits it brings to Python. While it can interfere with multithreaded compute-intensive
+    programming, the impact for other kinds of workloads is often minimal. When confronted
+    with a compute-intensive algorithm, it may help to switch to using the `dask`
+    package to manage the processing. See [https://dask.org](https://dask.org) for
+    more information on this alternative. The book *Scalable Data Analysis in Python
+    with Dask* can be informative, also.
+  id: totrans-51
+  prefs: []
+  type: TYPE_NORMAL
+  zh: GIL（全局解释器锁）常受到批评，主要是一些不了解其是什么或其对Python带来的好处的人。虽然它可能会干扰多线程计算密集型编程，但对于其他类型的工作负载的影响通常很小。当面对计算密集型算法时，切换到使用`dask`包来管理处理可能会有所帮助。有关此替代方案的更多信息，请参阅[https://dask.org](https://dask.org)。这本书《使用Dask在Python中进行可扩展数据分析》也可能很有参考价值。
+- en: While the GIL can be a problem in the reference implementation of Python that
+    most people use, it can be selectively disabled in IronPython. See *The IronPython
+    Cookbook* for details on how to release the GIL for compute-intensive processing
+    in IronPython.
+  id: totrans-52
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 虽然 GIL 可能是大多数人使用的 Python 参考实现中的一个问题，但在 IronPython 中可以选择性禁用。有关如何在 IronPython
+    中释放 GIL 以进行计算密集型处理的详细信息，请参阅 *《IronPython 烹饪书》*。
+- en: Thread overhead
+  id: totrans-53
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+  zh: 线程开销
+- en: One additional limitation of threads, as compared to other asynchronous approaches
+    we will be discussing later, is the cost of maintaining each thread. Each thread
+    takes up a certain amount of memory (both in the Python process and the operating
+    system kernel) to record the state of that thread. Switching between the threads
+    also uses a (small) amount of CPU time. This work happens seamlessly without any
+    extra coding (we just have to call `start()` and the rest is taken care of), but
+    the work still has to happen somewhere.
+  id: totrans-54
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 与我们稍后将要讨论的其他异步方法相比，线程的一个额外限制是维护每个线程的成本。每个线程都需要占用一定量的内存（在Python进程和操作系统内核中）来记录该线程的状态。在各个线程之间切换也会消耗（少量）CPU时间。这项工作在没有额外编码的情况下无缝进行（我们只需调用`start()`，其余的都会被处理），但这项工作仍然需要在某个地方发生。
+- en: These costs can be amortized over a larger workload by reusing threads to perform
+    multiple jobs. Python provides a `ThreadPool` feature to handle this. It behaves
+    identically to `ProcessPool`, which we will discuss shortly, so let's defer that
+    discussion until later in this chapter.
+  id: totrans-55
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 这些成本可以通过重用线程来执行多个任务，从而在更大的工作量中摊销。Python 提供了 `ThreadPool` 功能来处理这个问题。它的行为与我们将很快讨论的
+    `ProcessPool` 完全相同，所以让我们将这次讨论推迟到本章的后面部分。
+- en: In the next section, we'll look at the principal alternative to multi-threading.
+    The `multiprocessing` module lets us work with OS-level subprocesses.
+  id: totrans-56
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在下一节中，我们将探讨多线程的主要替代方案。`multiprocessing`模块使我们能够与操作系统级别的子进程进行工作。
+- en: Multiprocessing
+  id: totrans-57
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+  zh: 多进程
+- en: Threads exist within a single OS process; that's why they can share access to
+    common objects. We can do concurrent computing at the process level, also. Unlike
+    threads, separate processes cannot directly access variables set up by other processes.
+    This independence is helpful because each process has its own GIL and its own
+    private pool of resources. On a modern multi-core processor, a process may have
+    its own core, permitting concurrent work with other cores.
+  id: totrans-58
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在单个操作系统进程中存在线程；这就是它们可以共享访问公共对象的原因。我们也可以在进程级别进行并发计算。与线程不同，单独的进程不能直接访问其他进程设置的变量。这种独立性是有帮助的，因为每个进程都有自己的全局解释器锁（GIL）和自己的私有资源池。在现代的多核处理器上，一个进程可能有它自己的核心，允许与其他核心进行并发工作。
+- en: The `multiprocessing` API was originally designed to mimic the `threading` API.
+    However, the `multiprocessing` interface has evolved, and in recent versions of
+    Python, it supports more features more robustly. The `multiprocessing` library
+    is designed for when CPU-intensive jobs need to happen in parallel and multiple
+    cores are available. Multiprocessing is not as useful when the processes spend
+    a majority of their time waiting on I/O (for example, network, disk, database,
+    or keyboard), but it is the way to go for parallel computation.
+  id: totrans-59
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '`multiprocessing` API最初是为了模仿`threading` API而设计的。然而，`multiprocessing`接口已经发展演变，在Python的最近版本中，它更稳健地支持更多功能。`multiprocessing`库是为了在需要并行执行CPU密集型任务且可用多个核心时设计的。当进程的大部分时间都在等待I/O（例如，网络、磁盘、数据库或键盘）时，`multiprocessing`并不那么有用，但对于并行计算来说，这是可行的方法。'
+- en: 'The `multiprocessing` module spins up new operating system processes to do
+    the work. This means there is an entirely separate copy of the Python interpreter
+    running for each process. Let''s try to parallelize a compute-heavy operation
+    using similar constructs to those provided by the `threading` API, as follows:'
+  id: totrans-60
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '`multiprocessing`模块会启动新的操作系统进程来完成工作。这意味着每个进程都会运行一个独立的Python解释器副本。让我们尝试使用与`threading`
+    API提供的类似构造来并行化一个计算密集型操作，如下所示：'
+- en: '[PRE4]'
+  id: totrans-61
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE4]'
+- en: This example just ties up the CPU computing the sum of 100 million odd numbers.
+    You may not consider this to be useful work, but it can warm up your laptop on
+    a chilly day!
+  id: totrans-62
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 这个例子只是让CPU计算一亿个奇数的总和。你可能不会认为这是一项有用的工作，但它可以在寒冷的日子里为你的笔记本电脑预热！
+- en: The API should be familiar; we implement a subclass of `Process` (instead of `Thread`)
+    and implement a `run` method. This method prints out the OS **process ID** (**PID**),
+    a unique number assigned to each process on the machine, before doing some intense
+    (if misguided) work.
+  id: totrans-63
+  prefs: []
+  type: TYPE_NORMAL
+  zh: API 应该是熟悉的；我们实现了一个 `Process` 的子类（而不是 `Thread`），并实现了一个 `run` 方法。这个方法在执行一些激烈（尽管可能是错误的）工作之前，会打印出操作系统的
+    **进程 ID**（**PID**），这是分配给机器上每个进程的唯一数字。
+- en: Pay special attention to the `if __name__ == "__main__":` guard around the module-level
+    code that prevents it from running if the module is being imported, rather than
+    run as a program. This is good practice in general, but when using the `multiprocessing`
+    module, it is essential. Behind the scenes, the `multiprocessing` module may have
+    to reimport our application module inside each of the new processes in order to
+    create the class and execute the `run()` method. If we allowed the entire module
+    to execute at that point, it would start creating new processes recursively until
+    the operating system ran out of resources, crashing your computer.
+  id: totrans-64
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 请特别注意模块级代码周围的 `if __name__ == "__main__":` 保护措施，这可以防止在模块被导入时运行，而不是作为程序运行。这通常是一种良好的实践，但在使用
+    `multiprocessing` 模块时，这一点至关重要。在幕后，`multiprocessing` 模块可能需要在每个新进程中重新导入我们的应用程序模块，以便创建类并执行
+    `run()` 方法。如果我们允许整个模块在那个时刻执行，它将开始递归地创建新进程，直到操作系统耗尽资源，导致您的计算机崩溃。
+- en: 'This demo constructs one process for each processor core on our machine, then
+    starts and joins each of those processes. On a 2020-era MacBook Pro with a 2 GHz
+    Quad-Core Intel Core i5, the output looks as follows:'
+  id: totrans-65
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 这个演示为我们的机器上的每个处理器核心构建一个进程，然后启动并加入每个进程。在2020年的2 GHz四核英特尔酷睿i5的MacBook Pro上，输出如下：
+- en: '[PRE5]'
+  id: totrans-66
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE5]'
+- en: The first eight lines are the process ID that was printed inside each `MuchCPU` instance.
+    The last line shows that the 100 million summations can run in about 20 seconds.
+    During those 20 seconds, all eight cores were running at 100 percent, and the
+    fans were buzzing away trying to dissipate the heat.
+  id: totrans-67
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 前八行是打印在每个 `MuchCPU` 实例内部的进程 ID。最后一行显示，一亿次的求和运算大约需要 20 秒。在这 20 秒内，所有八个核心都运行在
+    100% 的负载，风扇嗡嗡作响，试图散发热量。
+- en: 'If we subclass `threading.Thread` instead of `multiprocessing.Process` in `MuchCPU`,
+    the output looks as follows:'
+  id: totrans-68
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 如果在`MuchCPU`中我们使用`threading.Thread`而不是`multiprocessing.Process`，输出将如下所示：
+- en: '[PRE6]'
+  id: totrans-69
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE6]'
+- en: This time, the threads are running inside the same OS process and take over
+    three times as long to run. The display showed that no core was particularly busy,
+    suggesting the work was being shunted around among the various cores. The general
+    slowdown is the cost of the GIL interleaving compute-intensive work.
+  id: totrans-70
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 这次，线程是在同一个操作系统进程中运行的，运行时间长达三倍。显示结果显示没有哪个核心特别繁忙，这表明工作正在各个核心之间被转移。总体上的减速是GIL（全局解释器锁）在处理密集型计算时的开销。
+- en: We might expect the single process version to be at least eight times as long
+    as the eight-process version. The lack of a simple multiplier suggests there are
+    a number of factors involved in how the low-level instructions are processed by
+    Python, the OS schedulers, and even the hardware itself. This suggests that predictions
+    are difficult, and it's best to plan on running multiple performance tests with
+    multiple software architectures.
+  id: totrans-71
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们可能预计单进程版本至少是八进程版本的八倍长。缺乏一个简单的乘数表明，在Python处理低级指令、操作系统调度程序以及硬件本身的过程中涉及了多个因素。这表明预测是困难的，最好计划运行多个性能测试，使用多种软件架构。
+- en: Starting and stopping individual `Process` instances involves a lot of overhead.
+    The most common use case is to have a pool of workers and assign tasks to them.
+    We'll look at this next.
+  id: totrans-72
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 启动和停止单个`进程`实例涉及很多开销。最常见的情况是拥有一个工作者池并将任务分配给它们。我们将在下一部分探讨这个问题。
+- en: Multiprocessing pools
+  id: totrans-73
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+  zh: 多进程池
+- en: Because each process is kept meticulously separate by the operating system,
+    interprocess communication becomes an important consideration. We need to pass
+    data between these separate processes. One really common example is having one
+    process write a file that another process can read. When the two processes are
+    reading and writing a file, and running concurrently, we have to be sure the reader
+    is waiting for the writer to produce data. The operating system *pipe* structure
+    can accomplish this. Within the shell, we can write `ps -ef | grep python` and
+    pass output from the `ps` command to the `grep` command. The two commands run
+    concurrently. For Windows PowerShell users, there are similar kinds of pipeline
+    processing, using different command names. (See [https://docs.microsoft.com/en-us/powershell/scripting/learn/ps101/04-pipelines?view=powershell-7.1](https://docs.microsoft.com/en-us/powershell/scripting/learn/ps101/04-pipelines?view=powershell-7.1)
+    for examples.)
+  id: totrans-74
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 因为操作系统会细致地将每个进程分开，所以进程间通信变得非常重要。我们需要在这些分开的进程之间传递数据。一个真正常见的例子是有一个进程写入一个文件，另一个进程可以读取这个文件。当两个进程同时读写文件时，我们必须确保读取者正在等待写入者生成数据。操作系统的*管道*结构可以完成这个任务。在shell中，我们可以写`ps
+    -ef | grep python`并将`ps`命令的输出传递给`grep`命令。这两个命令是并发运行的。对于Windows PowerShell用户，有类似类型的管道处理，使用不同的命令名称。（有关示例，请参阅[https://docs.microsoft.com/en-us/powershell/scripting/learn/ps101/04-pipelines?view=powershell-7.1](https://docs.microsoft.com/en-us/powershell/scripting/learn/ps101/04-pipelines?view=powershell-7.1)）
+- en: 'The `multiprocessing` package provides some additional ways to implement interprocess
+    communication. Pools can seamlessly hide the way data is moved between processes.
+    Using a pool looks much like a function call: you pass data into a function, it
+    is executed in another process or processes, and when the work is done, a value
+    is returned. It is important to understand how much work is being done to support
+    this: objects in one process are pickled and passed into an operating system process
+    pipe. Then, another process retrieves data from the pipe and unpickles it. The
+    requested work is done in the subprocess and a result is produced. The result
+    is pickled and passed back through the pipe. Eventually, the original process
+    unpickles and returns it. Collectively, we call this pickling, transferring, and
+    unpickling *serializing* the data. For more information, see *Chapter 9*, *Strings,
+    Serialization, and File Paths*.'
+  id: totrans-75
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '`multiprocessing` 包提供了一些实现进程间通信的额外方法。池可以无缝地隐藏数据在进程间移动的方式。使用池看起来就像是一个函数调用：你将数据传递给一个函数，它在另一个或多个进程中执行，当工作完成时，返回一个值。理解支持这一功能的工作量是很重要的：一个进程中的对象被序列化并通过操作系统进程管道传递。然后，另一个进程从管道中检索数据并反序列化它。所需的工作在子进程中完成，并产生一个结果。结果被序列化并通过管道传递回来。最终，原始进程反序列化并返回它。总的来说，我们将这种序列化、传输和反序列化称为数据的*序列化*。有关更多信息，请参阅*第9章*，*字符串、序列化和文件路径*。'
+- en: The serialization to communicate between processes takes time and memory. We
+    want to get as much useful computation done with the smallest serialization cost.
+    The ideal mix depends on the size and complexity of the objects being exchanged,
+    meaning that different data structure designs will have different performance
+    levels.
+  id: totrans-76
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 进程间通信的序列化需要时间和内存。我们希望以最小的序列化成本完成尽可能多的有用计算。理想的混合比例取决于交换的对象的大小和复杂性，这意味着不同的数据结构设计将具有不同的性能水平。
+- en: Performance predictions are difficult to make. It's essential to profile the
+    application to ensure the concurrency design is effective.
+  id: totrans-77
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 性能预测很难进行。确保并发设计有效，对分析应用程序至关重要。
+- en: Armed with this knowledge, the code to make all this machinery work is surprisingly
+    simple. Let's look at the problem of calculating all the prime factors of a list
+    of random numbers. This is a common part of a variety of cryptography algorithms
+    (not to mention attacks on those algorithms!).
+  id: totrans-78
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 拥有这些知识，让所有这些机器运作的代码竟然出奇地简单。让我们来看一下计算一组随机数的所有质因数的问题。这是各种密码学算法的常见部分（更不用说对这些算法的攻击了！）。
+- en: 'It requires months, possibly years of processing power to factor the 232-digit
+    numbers used by some encryption algorithms. The following implementation, while
+    readable, is not at all efficient; it would take years to factor even a 100-digit
+    number. That''s okay because we want to see it using lots of CPU time factoring
+    9-digit numbers:'
+  id: totrans-79
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 因数分解某些加密算法使用的232位数字需要数月甚至数年的处理能力。以下实现虽然可读，但效率极低；即使因数分解一个100位的数字也需要数年。这没关系，因为我们想看到它在因数分解9位数字时消耗大量的CPU时间：
+- en: '[PRE7]'
+  id: totrans-80
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE7]'
+- en: Let's focus on the parallel processing aspects, as the brute force recursive
+    algorithm for calculating factors is pretty clear. We create the `to_factor` list
+    of 40,960 individual numbers. Then we construct a multiprocessing `pool` instance.
+  id: totrans-81
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 让我们专注于并行处理方面，因为计算因子的暴力递归算法已经很清晰了。我们创建了一个包含40,960个单独数字的`to_factor`列表。然后我们构建了一个多进程`pool`实例。
+- en: By default, this pool creates a separate process for each of the CPU cores in
+    the machine it is running on.
+  id: totrans-82
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 默认情况下，此池为运行在其上的机器中的每个CPU核心创建一个单独的进程。
+- en: The `map()` method of the pool accepts a function and an iterable. The pool
+    pickles each of the values in the iterable and passes it to an available worker
+    process in the pool, which executes the function on it. When that process is finished
+    doing its work, it pickles the resulting list of factors and passes it back to
+    the pool. Then, if the pool has more work available, the worker takes on the next
+    job.
+  id: totrans-83
+  prefs: []
+  type: TYPE_NORMAL
+  zh: pool 的 `map()` 方法接受一个函数和一个可迭代对象。池将可迭代对象中的每个值序列化，并将其传递给池中可用的工作进程，该进程在该值上执行函数。当该进程完成其工作后，它将结果的因子列表序列化，并将其传递回池。然后，如果池中还有更多工作可用，工作进程将承担下一项工作。
+- en: Once all the workers in the pool are finished processing (which could take some
+    time), the `results` list is passed back to the original process, which has been
+    waiting patiently for all this work to complete. The results of `map()` will be
+    in the same order as the requests. This makes it sensible to use `zip()` to match
+    up the original value with the computed prime factors.
+  id: totrans-84
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 一旦池中的所有工作者完成处理（这可能需要一些时间），`results` 列表将被返回到原始进程，该进程一直在耐心地等待所有这些工作完成。`map()`
+    的结果将与请求的顺序相同。这使得使用 `zip()` 来匹配原始值与计算出的质因数变得合理。
+- en: It is often more useful to use the similar `map_async()` method, which returns
+    immediately even though the processes are still working. In that case, the `results`
+    variable would not be a list of values, but a contract (or a deal or an obligation)
+    to return a list of values in the future when the client calls `results.get()`.
+    This future object also has methods such as `ready()` and `wait()`, which allow
+    us to check whether all the results are in yet. This is suitable for processing
+    where the completion time is highly variable.
+  id: totrans-85
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 通常使用类似的 `map_async()` 方法更为有用，即使进程仍在运行，该方法也会立即返回。在这种情况下，`results` 变量不会是一个值的列表，而是一个在未来客户端调用
+    `results.get()` 时返回值列表的合约（或协议或义务）。这个未来对象还具有如 `ready()` 和 `wait()` 等方法，允许我们检查是否所有结果都已就绪。这适用于完成时间高度可变的过程处理。
+- en: Alternatively, if we don't know all the values we want to get results for in
+    advance, we can use the `apply_async()` method to queue up a single job. If the
+    pool has a process that isn't already working, it will start immediately; otherwise,
+    it will hold onto the task until there is a free worker process available.
+  id: totrans-86
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 或者，如果我们事先不知道所有想要得到结果的值，我们可以使用`apply_async()`方法来排队一个单独的任务。如果池中有一个进程尚未工作，它将立即启动；否则，它将保留该任务，直到有可用的空闲工作进程。
+- en: Pools can also be `closed`; they refuse to take any further tasks, but continue
+    to process everything currently in the queue. They can also be `terminated`, which
+    goes one step further and refuses to start any jobs still in the queue, although
+    any jobs currently running are still permitted to complete.
+  id: totrans-87
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 池也可以被`关闭`；它们拒绝接受任何进一步的任务，但会继续处理队列中当前的所有任务。它们还可以被`终止`，这比关闭更进一步，拒绝启动队列中仍然存在的任何任务，尽管当前正在运行的任务仍然被允许完成。
+- en: 'There are a number of constraints on how many workers make sense, including
+    the following:'
+  id: totrans-88
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 对工人数量的限制有很多，包括以下内容：
+- en: Only `cpu_count()` processes can be computing simultaneously; any number can
+    be waiting. If the workload is CPU-intensive, a larger pool of workers won't compute
+    any faster. If the workload involves a lot of input/output, however, a large pool
+    might improve the rate at which work is completed.
+  id: totrans-89
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 只有`cpu_count()`个进程可以同时进行计算；任何数量的进程都可以等待。如果工作负载是CPU密集型的，那么增加工作者池的大小并不会使计算更快。然而，如果工作负载涉及大量的输入/输出，那么一个较大的工作者池可能会提高完成工作的速度。
+- en: For very large data structures, the number of workers in the pool may need to
+    be reduced to make sure memory is used effectively.
+  id: totrans-90
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 对于非常大的数据结构，可能需要减少池中的工作者数量，以确保内存得到有效利用。
+- en: Communication between processes is expensive; easily serialized data is the
+    best policy.
+  id: totrans-91
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 进程间的通信代价高昂；易于序列化的数据是最好的策略。
+- en: Creating new processes takes a non-zero amount of time; a pool of a fixed size
+    helps minimize the impact of this cost.
+  id: totrans-92
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 创建新的流程需要一定的时间；一个固定大小的池子有助于最小化这种成本的影响。
+- en: The multiprocessing pool gives us a tremendous amount of computing power with
+    relatively little work on our part. We need to define a function that can perform
+    the parallelized computation, and we need to map arguments to that function using
+    an instance of the `multiprocessing.Pool` class.
+  id: totrans-93
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 多进程池为我们提供了巨大的计算能力，而我们只需做相对较少的工作。我们需要定义一个可以执行并行计算的函数，并且需要使用`multiprocessing.Pool`类的实例将参数映射到该函数上。
+- en: In many applications, we need to do more than a mapping from a parameter value
+    to a complex result. For these applications, the simple `poll.map()` may not be
+    enough. For more complicated data flows, we can make use of explicit queues of
+    pending work and computed results. We'll look at creating a network of queues
+    next.
+  id: totrans-94
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在许多应用中，我们需要做的不仅仅是将参数值映射到复杂的结果。对于这些应用，简单的 `poll.map()` 可能就不够用了。对于更复杂的数据流，我们可以利用显式的待处理工作和计算结果队列。接下来，我们将探讨如何创建队列网络。
+- en: Queues
+  id: totrans-95
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+  zh: 队列
+- en: If we need more control over communication between processes, the `queue`.`Queue`
+    data structure is useful. There are several variants offering ways to send messages
+    from one process to one or more other processes. Any picklable object can be sent
+    into a `Queue`, but remember that pickling can be a costly operation, so keep
+    such objects small. To illustrate queues, let's build a little search engine for
+    text content that stores all relevant entries in memory.
+  id: totrans-96
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 如果我们需要对进程间的通信有更多控制，`queue`.`Queue` 数据结构非常有用。它提供了从一个进程向一个或多个其他进程发送消息的几种变体。任何可序列化的对象都可以发送到`Queue`中，但请记住，序列化可能是一个昂贵的操作，因此请保持这些对象小巧。为了说明队列，让我们构建一个小型的文本内容搜索引擎，该搜索引擎将所有相关条目存储在内存中。
+- en: 'This particular search engine scans all files in the current directory in parallel.
+    A process is constructed for each core on the CPU. Each of these is instructed
+    to load some of the files into memory. Let''s look at the function that does the
+    loading and searching:'
+  id: totrans-97
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 这个特定的搜索引擎会并行扫描当前目录下的所有文件。为CPU上的每个核心构建一个进程。每个进程被指示将一些文件加载到内存中。让我们看看执行加载和搜索功能的函数：
+- en: '[PRE8]'
+  id: totrans-98
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE8]'
+- en: Remember, the `search()` function is run in a separate process (in fact, it
+    is run in `cpu_count()` separate processes) from the main process that created
+    the queues. Each of these processes is started with a list of `pathlib.Path` objects,
+    and two `multiprocessing.Queue` objects; one for incoming queries and one to send
+    outgoing results. These queues automatically pickle the data in the queue and
+    pass it into the subprocess over a pipe. These two queues are set up in the main
+    process and passed through the pipes into the search function inside the child
+    processes.
+  id: totrans-99
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 记住，`search()` 函数是在一个单独的进程中运行的（实际上，它是在 `cpu_count()` 个单独的进程中运行的），与创建队列的主进程是分开的。每个这些进程都是以一个
+    `pathlib.Path` 对象列表和一个 `multiprocessing.Queue` 对象列表启动的，一个用于接收查询，另一个用于发送输出结果。这些队列会自动将队列中的数据序列化，并通过管道传递给子进程。这两个队列在主进程中设置，并通过管道传递到子进程中的搜索函数内部。
+- en: The type hints reflect the way **mypy** wants details about the structure of
+    data in each queue. When `TYPE_CHECKING` is `True`, it means **mypy** is running,
+    and needs enough details to be sure the objects in the application match the descriptions
+    of the objects in each of the queues. When `TYPE_CHECKING` is `False`, this is
+    the ordinary runtime for the application, and the structural details of the queued
+    messages can't be provided.
+  id: totrans-100
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 类型提示反映了**mypy**希望了解每个队列中数据结构的方式。当`TYPE_CHECKING`为`True`时，意味着**mypy**正在运行，并且需要足够的细节来确保应用程序中的对象与每个队列中对象的描述相匹配。当`TYPE_CHECKING`为`False`时，这是应用程序的普通运行时，无法提供队列消息的结构细节。
+- en: 'The `search()` function does two separate things:'
+  id: totrans-101
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '`search()` 函数执行两个不同的操作：'
+- en: When it starts, it opens and reads all the supplied files in the list of `Path`
+    objects. Each line of text in those files is accumulated into the `lines` list.
+    This preparation is relatively expensive, but it's done exactly once.
+  id: totrans-102
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 当它启动时，它会打开并读取列表中的所有`Path`对象所提供的文件。这些文件中的每一行文本都会累积到`lines`列表中。这种准备相对昂贵，但它只执行一次。
+- en: The `while` statement is the main event processing loop for search. It uses
+    `query_q.get()` to get a request from its queue. It searches lines. It uses `results_q.put()`
+    to put a response into the results queue.
+  id: totrans-103
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: '`while`循环语句是搜索的主要事件处理循环。它使用`query_q.get()`从其队列中获取一个请求。它搜索行。它使用`results_q.put()`将响应放入结果队列。'
+- en: The `while` statement has the characteristic design pattern for queue-based
+    processing. The process will get a value from a queue of some work to perform,
+    perform the work, and then put the result into another queue. We can decompose
+    very large and complex problems into processing steps and queues so that the work
+    is done concurrently, producing more results in less time. This technique also
+    lets us tailor the processing steps and the number of workers to make best use
+    of a processor.
+  id: totrans-104
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '`while`循环语句具有基于队列处理的典型设计模式。该过程将从待执行工作的队列中获取一个值，执行工作，然后将结果放入另一个队列。我们可以将非常庞大和复杂的问题分解为处理步骤和队列，以便工作可以并行执行，从而在更短的时间内产生更多结果。这种技术还允许我们调整处理步骤和工人的数量，以最大限度地利用处理器。'
+- en: The main part of the application builds this pool of workers and their queues.
+    We'll follow the **Façade** design pattern (refer back to *Chapter 12*, *Advanced
+    Design Patterns* for more information). The idea here is to define a class, `DirectorySearch`,
+    to wrap the queues and the pool of worker processes into a single object.
+  id: totrans-105
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 应用程序的主要部分构建了这个工作者和他们的队列的池。我们将遵循**外观**设计模式（更多信息请参阅*第12章*，*高级设计模式*）。这里的想法是定义一个类，`DirectorySearch`，将队列和工作进程池封装成一个单一的对象。
+- en: This object can set up the queues and the workers, and an application can then
+    interact with them by posting a query and consuming the replies.
+  id: totrans-106
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 此对象可以设置队列和工作者，然后应用程序可以通过发布查询和消费回复与它们交互。
+- en: '[PRE9]'
+  id: totrans-107
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE9]'
+- en: The `setup_search()` method prepares the worker subprocesses. The `[i::cpus]`
+    slice operation lets us break this list into a number of equally-sized parts.
+    If the number of CPUs is 8, the step size will be 8, and we'll use 8 different
+    offset values from 0 to 7\. We also construct a list of `Queue` objects to send
+    data into each worker process. Finally, we construct a **single** results queue.
+    This is passed into all of the worker subprocesses. Each of them can put data
+    into the queue and it will be aggregated in the main process.
+  id: totrans-108
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '`setup_search()` 方法准备工作子进程。`[i::cpus]` 切片操作使我们能够将这个列表分成若干个大小相等的部分。如果 CPU 的数量是
+    8，步长将是 8，我们将使用从 0 到 7 的 8 个不同的偏移值。我们还构建了一个 `Queue` 对象列表，用于将数据发送到每个工作进程。最后，我们构建了一个
+    **单个** 的结果队列。这个队列被传递给所有的工作子进程。每个子进程都可以将数据放入队列，它将在主进程中汇总。'
+- en: Once the queues are created and the workers started, the `search()` method provides
+    the target to all the workers at one time. They can then all commence examining
+    their separate collections of data to emit answers.
+  id: totrans-109
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 一旦创建了队列并启动了工作者，`search()` 方法会一次性将目标提供给所有工作者。然后他们可以开始检查各自的数据集合以发出答案。
+- en: 'Since we''re searching a fairly large number of directories, we use a generator
+    function, `all_source()`, to locate all the `*.py` `Path` objects under the given
+    `base` directory. Here''s the function to find all the source files:'
+  id: totrans-110
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 由于我们需要搜索相当多的目录，我们使用生成器函数`all_source()`来定位给定`base`目录下所有的`*.py` `Path`对象。下面是查找所有源文件的函数：
+- en: '[PRE10]'
+  id: totrans-111
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE10]'
+- en: The `all_source()` function uses the `os.walk()` function to examine a directory
+    tree, rejecting file directories that are filled with files we don't want to look
+    at. This function uses the `fnmatch` module to match a file name against the kind
+    of wild-card patterns the Linux shell uses. We can use a pattern parameter of
+    `'*.py'`, for example, to find all files with names ending in `.py`. This seeds
+    the `setup_search()` method of the `DirectorySearch` class.
+  id: totrans-112
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '`all_source()` 函数使用 `os.walk()` 函数来检查目录树，拒绝包含我们不希望查看的文件的目录。此函数使用 `fnmatch`
+    模块将文件名与 Linux shell 使用的通配符模式进行匹配。例如，我们可以使用模式参数 `''*.py''` 来查找所有以 `.py` 结尾的文件。这为
+    `DirectorySearch` 类的 `setup_search()` 方法提供了种子。'
+- en: The `teardown_search()` method of the `DirectorySearch` class puts a special
+    termination value into each queue. Remember, each worker is a separate process,
+    executing the `while` statement inside the `search()` function and reading from
+    a queue of requests. When it reads a `None` object, it will break out of the `while`
+    statement and exit the function. We can then use the `join()` to collect all the
+    child processes, cleaning up politely. (If we don't do the `join()`, some Linux
+    distros can leave "zombie processes" – children not properly rejoined with their
+    parent because the parent crashed; these consume system resources and often require
+    a reboot.)
+  id: totrans-113
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '`DirectorySearch` 类的 `teardown_search()` 方法将一个特殊的终止值放入每个队列中。记住，每个工作进程是一个独立的过程，它在
+    `search()` 函数内部执行 `while` 语句并从请求队列中读取。当它读取到一个 `None` 对象时，它将退出 `while` 语句并退出函数。然后我们可以使用
+    `join()` 来收集所有子进程，礼貌地清理。（如果我们不执行 `join()`，一些 Linux 发行版可能会留下“僵尸进程”——因为父进程崩溃而没有正确重新连接到父进程的子进程；这些进程消耗系统资源，通常需要重启。）'
+- en: 'Now let''s look at the code that makes a search actually happen:'
+  id: totrans-114
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 现在让我们看看实现搜索功能的具体代码：
+- en: '[PRE11]'
+  id: totrans-115
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE11]'
+- en: 'This code creates a `DirectorySearch` object, `ds`, and provides all of the
+    source paths starting from the parent of the current working directory, via `base
+    = Path.cwd().parent`. Once the workers are prepared, the `ds` object performs
+    searches for a few common strings, `"import"`, `"class"`, and `"def"`. Note that
+    we''ve commented out the `print(line)` statement that shows the useful results.
+    For now, we''re interested in performance. The initial file reads take a fraction
+    of a second to get started. Once all the files are read, however, the time to
+    do the search is dramatic. On a MacBook Pro with 134 files of source code, the
+    output looks like this:'
+  id: totrans-116
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 此代码创建了一个`DirectorySearch`对象，命名为`ds`，并通过`base = Path.cwd().parent`从当前工作目录的父目录开始提供所有源路径。一旦工作者准备就绪，`ds`对象将执行对几个常见字符串的搜索，包括`"import"`、`"class"`和`"def"`。请注意，我们已注释掉显示有用结果的`print(line)`语句。目前，我们关注的是性能。初始文件读取只需几分之一秒即可开始。然而，一旦所有文件都读取完毕，搜索所需的时间将显著增加。在一台装有134个源代码文件的MacBook
+    Pro上，输出看起来如下：
+- en: '[PRE12]'
+  id: totrans-117
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE12]'
+- en: The search for `"import"` took about 111 milliseconds (0.111 seconds.) Why was
+    this so slow compared with the other two searches? It's because the `search()`
+    function was still reading the files when the first request was put in the queue.
+    The first request's performance reflects the one-time startup cost of loading
+    the file content into memory. The next two requests run in about 1 millisecond
+    each. That's amazing! Almost 1,000 searches per second on a laptop with only a
+    few lines of Python code.
+  id: totrans-118
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 搜索 `"import"` 花了大约 111 毫秒（0.111 秒）。为什么这个搜索速度比其他两个搜索慢这么多？这是因为当第一个请求被放入队列时，`search()`
+    函数仍在读取文件。第一个请求的性能反映了将文件内容加载到内存中的一次性启动成本。接下来的两个请求每个大约运行 1 毫秒。这太令人惊讶了！在只有几行 Python
+    代码的笔记本电脑上，几乎可以达到每秒 1,000 次搜索。
+- en: This example of queues to feed data among workers is a single-host version of
+    what could become a distributed system. Imagine the searches were being sent out
+    to multiple host computers and then recombined. Now imagine you had access to
+    the fleet of computers in Google's data centers and you might understand why they
+    can return search results so quickly!
+  id: totrans-119
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 这个在工作者之间传递数据的队列示例是一个单主机版本的分布式系统可能成为的样子。想象一下，搜索请求被发送到多个主机计算机，然后重新组合。现在，假设你能够访问谷歌数据中心中的计算机集群，你可能就会明白为什么它们能够如此快速地返回搜索结果了！
+- en: We won't discuss it here, but the `multiprocessing` module includes a manager
+    class that can take a lot of the boilerplate out of the preceding code. There
+    is even a version of `multiprocessing.Manager` that can manage subprocesses on
+    remote systems to construct a rudimentary distributed application. Check the Python
+    `multiprocessing` documentation if you are interested in pursuing this further.
+  id: totrans-120
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们在这里不会讨论它，但`multiprocessing`模块包含一个管理类，可以移除前面代码中的许多样板代码。甚至有一个版本的`multiprocessing.Manager`可以管理远程系统上的子进程，以构建一个基本的分布式应用程序。如果你对此感兴趣并想进一步了解，请查看Python的`multiprocessing`文档。
+- en: The problems with multiprocessing
+  id: totrans-121
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+  zh: 多进程的问题
+- en: As with threads, multiprocessing also has problems, some of which we have already
+    discussed. Sharing data between processes is costly. As we have discussed, all
+    communication between processes, whether by queues, OS pipes, or even shared memory,
+    requires serializing the objects. Excessive serialization can dominate processing
+    time. Shared memory objects can help by limiting the serialization to the initial
+    setup of the shared memory. Multiprocessing works best when relatively small objects
+    are passed between processes and a tremendous amount of work needs to be done
+    on each one.
+  id: totrans-122
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 与线程一样，多进程也有问题，其中一些我们已经讨论过了。进程间共享数据是昂贵的。正如我们讨论过的，所有进程间的通信，无论是通过队列、操作系统管道，甚至是共享内存，都需要序列化对象。过度的序列化可能会主导处理时间。通过限制序列化到共享内存的初始设置，共享内存对象可以有所帮助。当需要在进程间传递相对较小的对象，并且每个对象都需要完成大量工作时，多进程工作得最好。
+- en: Using shared memory can avoid the cost of repeated serialization and deserialization.
+    There are numerous limitations on the kinds of Python objects that can be shared.
+    Shared memory can help performance, but can also lead to somewhat more complex-looking
+    Python objects.
+  id: totrans-123
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 使用共享内存可以避免重复序列化和反序列化的成本。可以共享的Python对象类型存在许多限制。共享内存有助于提高性能，但也可能导致Python对象看起来更加复杂。
+- en: The other major problem with multiprocessing is that, like threads, it can be
+    hard to tell which process a variable or method is being accessed in. In multiprocessing,
+    the worker processes inherit a great deal of data from the parent process. This
+    isn't shared, it's a one-time copy. A child can be given a copy of a mapping or
+    a list and mutate the object. The parent won't see the effects of the child's
+    mutation.
+  id: totrans-124
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 多进程的另一个主要问题是，就像线程一样，很难确定变量或方法是在哪个进程中访问的。在多进程中，工作进程会从父进程继承大量数据。这不是共享的，而是一次性复制。子进程可以被赋予一个映射或列表的副本，并修改对象。父进程将看不到子进程修改的效果。
+- en: A big advantage of multiprocessing is the absolute independence of processes.
+    We don't need to carefully manage locks, because the data is not shared. Additionally,
+    the internal operating system limits on numbers of open files are allocated at
+    the process level; we can have a large number of resource-intensive processes.
+  id: totrans-125
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 多进程的一个大优点是进程之间的绝对独立性。我们不需要仔细管理锁，因为数据不共享。此外，内部操作系统对打开文件数量的限制是在进程级别分配的；我们可以拥有大量资源密集型进程。
+- en: When designing concurrent applications, the focus is on maximizing the use of
+    the CPU to do as much work in as short a time as possible. With so many choices,
+    we always need to examine the problem to figure out which of the many available
+    solutions is the best one for that problem.
+  id: totrans-126
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 当设计并发应用程序时，重点是最大化CPU的使用，尽可能在尽可能短的时间内完成更多工作。在如此多的选择面前，我们总是需要检查问题，以确定众多可用解决方案中哪一个最适合该问题。
+- en: The notion of concurrent processing is too broad for there to be one right way
+    to do it. Each distinct problem has a best solution. It's important to write code
+    in a way that permits adjustment, tuning, and optimization.
+  id: totrans-127
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 并行处理的概念过于宽泛，以至于没有一种正确的方式来执行它。每个独特的问题都有一个最佳解决方案。编写代码时，重要的是要使其能够调整、微调和优化。
+- en: 'We''ve looked at the two principal tools for concurrency in Python: threads
+    and processes. Threads exist within a single OS process, sharing memory and other
+    resources. Processes are independent of each other, which makes interprocess communication
+    a necessary overhead. Both of these approaches are amenable to the concept of
+    a pool of concurrent workers waiting to work and providing results at some unpredictable
+    time in the future. This abstraction of results becoming available in the future
+    is what shapes the `concurrent.futures` module. We''ll look at this next.'
+  id: totrans-128
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们已经探讨了 Python 中并行的两种主要工具：线程和进程。线程存在于单个操作系统进程中，共享内存和其他资源。进程之间是独立的，这使得进程间通信成为必要的开销。这两种方法都适用于概念上有一组并发的工作者等待工作并在未来的某个不可预测的时间提供结果。这种结果在未来可用的抽象正是塑造了
+    `concurrent.futures` 模块的基础。我们接下来将探讨这一点。
+- en: Futures
+  id: totrans-129
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+  zh: 期货
+- en: Let's start looking at a more asynchronous way of implementing concurrency.
+    The concept of a "future" or a "promise" is a handy abstraction for describing
+    concurrent work. A **future** is an object that wraps a function call. That function
+    call is run in the *background*, in a thread or a separate process. The `future`
+    object has methods to check whether the computation has completed and to get the
+    results. We can think of it as a computation where the results will arrive in
+    the future, and we can do something else while waiting for them.
+  id: totrans-130
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 让我们开始探讨一种更异步的实现并发的方式。一个“未来”或“承诺”的概念是描述并发工作的一个便捷的抽象。一个**未来**对象封装了一个函数调用。这个函数调用在*后台*，在一个线程或一个单独的进程中运行。`future`对象有方法来检查计算是否完成以及获取结果。我们可以将其视为一个结果将在未来到达的计算，同时我们可以等待结果的过程中做其他事情。
+- en: See [https://hub.packtpub.com/asynchronous-programming-futures-and-promises/](https://hub.packtpub.com/asynchronous-programming-futures-and-promises/)
+    for some additional background.
+  id: totrans-131
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 查看更多背景信息，请访问[https://hub.packtpub.com/asynchronous-programming-futures-and-promises/](https://hub.packtpub.com/asynchronous-programming-futures-and-promises/)。
+- en: In Python, the `concurrent.futures` module wraps either `multiprocessing` or
+    `threading` depending on what kind of concurrency we need. A future doesn't completely
+    solve the problem of accidentally altering shared state, but using futures allows
+    us to structure our code such that it can be easier to track down the cause of
+    the problem when we do so.
+  id: totrans-132
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在Python中，`concurrent.futures`模块根据我们需要哪种并发性来封装`multiprocessing`或`threading`。一个未来（future）并不能完全解决意外改变共享状态的问题，但使用未来（future）允许我们以这样的方式结构化我们的代码，使得在出现问题时更容易追踪问题的原因。
+- en: Futures can help manage boundaries between the different threads or processes.
+    Similar to the multiprocessing pool, they are useful for **call and answer** type
+    interactions, in which processing can happen in another thread (or process) and
+    then at some point in the future (they are aptly named, after all), you can ask
+    it for the result. It's a wrapper around multiprocessing pools and thread pools,
+    but it provides a cleaner API and encourages nicer code.
+  id: totrans-133
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 期货可以帮助管理不同线程或进程之间的边界。类似于多进程池，它们对于**调用和响应**类型的交互非常有用，在这种交互中，处理可以在另一个线程（或进程）中进行，然后在未来的某个时刻（毕竟，它们的名字很贴切），你可以请求结果。它是对多进程池和线程池的封装，但它提供了一个更干净的API，并鼓励编写更好的代码。
+- en: 'Let''s see another, more sophisticated file search and analyze example. In
+    the last section, we implemented a version of the Linux `grep` command. This time,
+    we''ll create a simple version of the `find` command that bundles in a clever
+    analysis of Python source code. We''ll start with the analytical part since it''s
+    central to the work we need done concurrently:'
+  id: totrans-134
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 让我们看看另一个更复杂的文件搜索和分析示例。在上一个部分，我们实现了一个Linux `grep`命令的版本。这次，我们将创建一个简单的`find`命令版本，其中包含对Python源代码的巧妙分析。我们将从分析部分开始，因为它是我们需要同时完成的工作的核心：
+- en: '[PRE13]'
+  id: totrans-135
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE13]'
+- en: We've defined a few things here. We started with a named tuple, `ImportResult`,
+    which binds a `Path` object and a set of strings together. It has a property,
+    `focus`, that looks for the specific string, `"typing"`, in the set of strings.
+    We'll see why this string is so important in a moment.
+  id: totrans-136
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们在这里定义了一些东西。我们从一个命名元组开始，`ImportResult`，它将一个`Path`对象和一组字符串绑定在一起。它有一个属性，`focus`，用于在字符串集中查找特定的字符串，`"typing"`。我们很快就会看到这个字符串为什么如此重要。
+- en: 'The `ImportVisitor` class is built using the `ast` module in the standard library.
+    An **Abstract Syntax Tree** (**AST**) is the parsed source code, usually from
+    a formal programming language. Python code, after all, is just a bunch of characters;
+    the AST for Python code groups the text into meaningful statements and expressions,
+    variable names, and operators, all of the syntactic components of the language.
+    A visitor has a method to examine the parsed code. We provided overrides for two
+    methods of the `NodeVisitor` class so we will visit only the two kinds of import
+    statements: `import x`, and `from x import y`. The details of how each `node`
+    data structure works are a bit beyond this example, but the `ast` module documentation
+    in the Standard Library describes the unique structure of each Python language
+    construct.'
+  id: totrans-137
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '`ImportVisitor` 类是使用标准库中的 `ast` 模块构建的。**抽象语法树**（**AST**）是解析后的源代码，通常来自一种正式的编程语言。毕竟，Python
+    代码只是一堆字符；Python 代码的 AST 将文本分组为有意义的语句和表达式、变量名和运算符，这些都是语言的语法组成部分。访问者有一个方法来检查解析后的代码。我们为
+    `NodeVisitor` 类的两个方法提供了覆盖，因此我们只会访问两种导入语句：`import x` 和 `from x import y`。每个 `node`
+    数据结构的工作细节略超出了这个示例的范围，但标准库中的 `ast` 模块文档描述了每个 Python 语言结构的独特结构。'
+- en: The `find_imports()` function reads some source, parses the Python code, visits
+    the `import` statements, and then returns an `ImportResult` with the original
+    `Path` and the set of names found by the visitor. This is – in many ways – a lot
+    better than a simple pattern match for `"import"`. For example, using an `ast.NodeVisitor`
+    will skip over comments and ignore the text inside character string literals,
+    two jobs that are hard with regular expressions.
+  id: totrans-138
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '`find_imports()` 函数读取一些源代码，解析 Python 代码，遍历 `import` 语句，然后返回一个包含原始 `Path` 和由访问者找到的名称集合的
+    `ImportResult`。这在许多方面——都比简单的 `"import"` 模式匹配要好得多。例如，使用 `ast.NodeVisitor` 将会跳过注释并忽略字符字符串字面量内的文本，这两项任务用正则表达式来做是比较困难的。'
+- en: There isn't anything particularly special about the `find_imports()` function,
+    but note how it does not access any global variables. All interaction with the
+    external environment is passed into the function or returned from it. This is
+    not a technical requirement, but it is the best way to keep your brain inside
+    your skull when programming with futures.
+  id: totrans-139
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '`find_imports()` 函数并没有什么特别之处，但请注意它并没有访问任何全局变量。所有与外部环境的交互都是传递给函数或从函数返回的。这并不是一个技术要求，但这是在用
+    futures 编程时保持你的大脑在头骨内的最佳方式。'
+- en: We want to process hundreds of files in dozens of directories, though. The best
+    approach is to have lots and lots of these running all at the same time, clogging
+    the cores of our CPU with lots and lots of computing.
+  id: totrans-140
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们虽然想要处理成百上千个文件，分布在几十个目录中。最佳的方法是同时运行大量这样的任务，让我们的CPU核心被大量的计算所堵塞。
+- en: '[PRE14]'
+  id: totrans-141
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE14]'
+- en: We're leveraging the same `all_source()` function shown in the *Queues* section
+    earlier in this chapter; this needs a base directory to start searching in, and
+    a pattern, like `"*.py"`, to find all the files with the `.py` extension. We've
+    created a `ThreadPoolExecutor`, assigned to the `pool` variable, with two dozen
+    worker threads, all waiting for something to do. We create a list of `Future`
+    objects in the `analyzers` object. This list is created by a list comprehension
+    applying the `pool.submit()` method to our search function, `find_imports()`,
+    and a `Path` from the output of `all_source()`.
+  id: totrans-142
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们正在利用本章前面“队列”部分展示的相同`all_source()`函数；这需要一个起始搜索的基础目录，以及一个模式，例如`"*.py"`，以找到所有具有`.py`扩展名的文件。我们创建了一个`ThreadPoolExecutor`，分配给`pool`变量，包含二十多个工作线程，都在等待任务。我们在`analyzers`对象中创建了一个`Future`对象列表。这个列表是通过列表推导式应用`pool.submit()`方法到我们的搜索函数`find_imports()`以及`all_source()`的输出中的`Path`创建的。
+- en: The threads in the pool will immediately start working on the submitted list
+    of tasks. As each thread finishes work, it saves the results in the `Future` object
+    and picks up some more work to do.
+  id: totrans-143
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 池中的线程将立即开始处理提交的任务列表。随着每个线程完成工作，它会在`Future`对象中保存结果，并继续取一些工作来做。
+- en: Meanwhile, in the foreground, the application uses a generator expression to
+    evaluate the `result()` method of each `Future` object. Note that the futures
+    are visited using the `futures.as_completed()` generator. The function starts
+    providing complete `Future` objects as they become available. This means the results
+    may not be in the order they were originally submitted. There are other ways to
+    visit the futures; we can, for example, wait until all are complete and then visit
+    them in the order they were submitted, in case that's important.
+  id: totrans-144
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 同时，在前景中，应用程序使用生成器表达式来评估每个 `Future` 对象的 `result()` 方法。请注意，这些 `Future` 对象是通过 `futures.as_completed()`
+    生成器进行访问的。该函数开始提供完整的 `Future` 对象，一旦它们可用。这意味着结果可能不会按照最初提交的顺序出现。还有其他访问 `Future` 对象的方法；例如，我们可以等待所有对象都完成，然后再按照提交的顺序访问它们，如果这是重要的。
+- en: We extract the result from each `Future`. From the type hints, we can see that
+    this will be an `ImportResult` object with a `Path` and a set of strings; these
+    are the names of the imported modules. We can sort the results, so the files show
+    up in some sensible order.
+  id: totrans-145
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们从每个 `Future` 中提取结果。从类型提示中，我们可以看到这将是一个带有 `Path` 和一系列字符串的 `ImportResult` 对象；这些是导入模块的名称。我们可以对结果进行排序，这样文件就会以某种合理的顺序显示。
+- en: On a MacBook Pro, this takes about 1.689 milliseconds (0.001689 seconds) to
+    process each file. The 24 individual threads easily fit in a single process without
+    stressing the operating system. Increasing the number of threads doesn't materially
+    affect the elapsed runtime, suggesting any remaining bottleneck is not concurrent
+    computation, but the initial scan of the directory tree and the creation of the
+    thread pool.
+  id: totrans-146
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在MacBook Pro上，处理每个文件大约需要1.689毫秒（0.001689秒）。24个独立的线程可以轻松地在一个进程中运行，而不会对操作系统造成压力。增加线程数量对运行时间的影响并不显著，这表明任何剩余的瓶颈不是并发计算，而是对目录树进行初始扫描和创建线程池的过程。
+- en: And the `focus` feature of the `ImportResult` class? Why is the `typing` module
+    special? We needed to review each chapter's type hints when a new release of **mypy**
+    came out during the development of this book. It was helpful to separate the modules
+    into those that required careful checking and those that didn't need to be revised.
+  id: totrans-147
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '`ImportResult` 类的 `focus` 功能是什么？为什么 `typing` 模块是特殊的？在本书的开发过程中，每当 **mypy** 发布新版本时，我们需要回顾每一章的类型提示。将模块分为那些需要仔细检查的和那些不需要修订的是很有帮助的。'
+- en: And that's all that is required to develop a futures-based I/O-bound application.
+    Under the hood, it's using the same thread or process APIs we've already discussed,
+    but it provides a more understandable interface and makes it easier to see the
+    boundaries between concurrently running functions (just don't try to access global
+    variables from inside the future!).
+  id: totrans-148
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 这就是开发基于未来的I/O密集型应用所需的所有内容。在底层，它使用的是我们之前已经讨论过的相同线程或进程API，但它提供了一个更易于理解的接口，并使得查看并发运行函数之间的边界变得更加容易（只是不要尝试在future内部访问全局变量！）。
+- en: Accessing outside variables without proper synchronization can result in a problem
+    called a **race** **condition**. For example, imagine two concurrent writes trying
+    to increment an integer counter. They start at the same time and both read the
+    current value of the shared variable as 5\. One thread is first in the race; it
+    increments the value and writes 6\. The other thread comes in second; it increments
+    what the variable was and also writes 6\. But if two processes are trying to increment
+    a variable, the expected result would be that it gets incremented by 2, so the
+    result should be 7.
+  id: totrans-149
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在没有适当同步的情况下访问外部变量可能会导致一个称为**竞态条件**的问题。例如，想象有两个并发写入尝试增加一个整数计数器。它们同时开始，并且两个线程都读取共享变量的当前值为5。一个线程在竞争中先到达；它增加值并写入6。另一个线程随后到达；它增加变量原来的值，也写入6。但如果两个进程都在尝试增加一个变量，预期的结果应该是它增加2，所以结果应该是7。
+- en: Modern wisdom is that the easiest way to avoid doing this is to keep as much
+    state as possible private and share them through known-safe constructs, such as
+    queues or futures.
+  id: totrans-150
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 现代智慧认为，避免这样做最简单的方法是尽可能将状态保持为私有，并通过已知安全的结构，如队列或未来对象，来共享它们。
+- en: For many applications, the `concurrent.futures` module is the place to start
+    with designing the Python code. The lower-level `threading` and `multiprocessing`
+    modules offer some additional constructs for very complex cases.
+  id: totrans-151
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 对于许多应用，`concurrent.futures`模块是设计Python代码时的起点。对于非常复杂的情况，较低级别的`threading`和`multiprocessing`模块提供了一些额外的结构。
+- en: Using `run_in_executor()` allows an application to leverage the `concurrent.futures`
+    module's `ProcessPoolExecutor` or `ThreadPoolExecutor` classes to farm work out
+    to multiple processes or multiple threads. This provides a lot of flexibility
+    within a tidy, ergonomic API.
+  id: totrans-152
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 使用 `run_in_executor()` 允许应用程序利用 `concurrent.futures` 模块的 `ProcessPoolExecutor`
+    或 `ThreadPoolExecutor` 类将工作分配给多个进程或多个线程。这为整洁、人性化的 API 提供了很大的灵活性。
+- en: In some cases, we don't really need concurrent processes. In some cases, we
+    simply need to be able to toggle back and forth between waiting for data and computing
+    when data becomes available. The `async` features of Python, including the `asyncio`
+    module, can interleave processing within a single thread. We'll look at this variation
+    on the theme of concurrency next.
+  id: totrans-153
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在某些情况下，我们并不真的需要并发进程。在某些情况下，我们只需要能够来回切换，在等待数据时进行等待，当数据可用时进行计算。Python 的 `async`
+    特性，包括 `asyncio` 模块，可以在单个线程内交错处理。我们将在下一节中探讨并发主题的这种变体。
+- en: AsyncIO
+  id: totrans-154
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+  zh: 异步IO
+- en: AsyncIO is the current state of the art in Python concurrent programming. It
+    combines the concept of futures and an event loop with coroutines. The result
+    is about as elegant and easy to understand as it is possible to get when writing
+    responsive applications that don't seem to waste time waiting for input.
+  id: totrans-155
+  prefs: []
+  type: TYPE_NORMAL
+  zh: AsyncIO 是 Python 并发编程的当前最佳实践。它结合了未来（futures）和事件循环（event loop）的概念与协程（coroutines）。结果是尽可能优雅且易于理解，尤其是在编写响应式应用程序时，这些应用程序似乎不会浪费时间等待输入。
+- en: For the purposes of working with Python's `async` features, a *coroutine* is
+    a function that is waiting for an event, and also can provide events to other
+    coroutines. In Python, we implement coroutines using `async def`. A function with
+    `async` must work in the context of an **event loop** which switches control among
+    the coroutines waiting for events. We'll see a few Python constructs using `await`
+    expressions to show where the event loop can switch to another `async` function.
+  id: totrans-156
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 为了使用 Python 的 `async` 功能，一个 *协程* 是一个等待事件发生的函数，同时也可以为其他协程提供事件。在 Python 中，我们使用
+    `async def` 来实现协程。带有 `async` 的函数必须在 **事件循环** 的上下文中工作，该循环在等待事件的协程之间切换控制。我们将看到一些使用
+    `await` 表达式的 Python 构造，以展示事件循环可以切换到另一个 `async` 函数的情况。
+- en: 'It''s crucial to recognize that `async` operations are interleaved, and not
+    – generally – parallel. At most one coroutine is in control and processing, and
+    all the others are waiting for an event. The idea of interleaving is described
+    as **cooperative multitasking**: an application can be processing data while also
+    waiting for the next request message to arrive. As data becomes available, the
+    event loop can transfer control to one of the waiting coroutines.'
+  id: totrans-157
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 认识到`异步`操作是交错进行的，而不是通常意义上的并行，这一点至关重要。最多只有一个协程处于控制状态并进行处理，而其他所有协程都在等待事件发生。交错的概念被描述为**协作多任务处理**：一个应用程序可以在处理数据的同时等待下一个请求消息的到来。当数据可用时，事件循环可以将控制权传递给其中一个等待的协程。
+- en: AsyncIO has a bias toward network I/O. Most networking applications, especially
+    on the server side, spend a lot of time waiting for data to come in from the network.
+    AsyncIO can be more efficient than handling each client in a separate thread;
+    then some threads can be working while others are waiting. The problem is the
+    threads use up memory and other resources. AsyncIO uses coroutines to interleave
+    processing cycles when the data becomes available.
+  id: totrans-158
+  prefs: []
+  type: TYPE_NORMAL
+  zh: AsyncIO 偏向于网络 I/O。大多数网络应用程序，尤其是在服务器端，花费大量时间等待从网络中接收数据。AsyncIO 可以比单独为每个客户端处理一个线程更高效；这样一些线程可以工作，而其他线程则等待。问题是这些线程会消耗内存和其他资源。当数据可用时，AsyncIO
+    使用协程来交错处理周期。
+- en: Thread scheduling depends on OS requests the thread makes (and to an extent,
+    the GIL's interleaving of threads). Process scheduling depends on the overall
+    scheduler for the operating system. Both thread and process scheduling are **preemptive**
+    – the thread (or process) can be interrupted to allow a different, higher-priority
+    thread or process to control the CPU. This means thread scheduling is unpredictable,
+    and locks are important if multiple threads are going to update a shared resource.
+    At the OS level, shared locks are required if two processes want to update a shared
+    OS resource like a file. Unlike threads and processes, AsyncIO coroutines are
+    **non-preemptive**; they explicitly hand control to each other at specific points
+    in the processing, removing the need for explicit locking of shared resources.
+  id: totrans-159
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 线程调度依赖于操作系统请求的线程（以及在某种程度上，全局解释器锁（GIL）对线程的交织）。进程调度依赖于操作系统的整体调度器。线程和进程调度都是**抢占式**的——线程（或进程）可以被中断，以便允许不同优先级的线程或进程控制CPU。这意味着线程调度是不可预测的，如果多个线程将要更新共享资源，那么锁就很重要。在操作系统层面，如果两个进程想要更新共享的操作系统资源，如文件，则需要共享锁。与线程和进程不同，AsyncIO协程是**非抢占式**的；它们在处理过程中的特定点明确地将控制权交给对方，从而消除了对共享资源显式锁定的需要。
+- en: 'The `asyncio` library provides a built-in *event loop*: this is the loop that
+    handles interleaving control among the running coroutines. However, the event
+    loop comes with a cost. When we run code in an `async` task on the event loop,
+    that code *must* return immediately, blocking neither on I/O nor on long-running
+    calculations. This is a minor thing when writing our own code, but it means that
+    any standard library or third-party functions that block on I/O must be wrapped
+    with an `async def` function that can handle the waiting politely.'
+  id: totrans-160
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '`asyncio` 库提供了一个内置的 *事件循环*：这是处理运行协程之间交错控制的循环。然而，事件循环也有其代价。当我们在一个事件循环上的 `async`
+    任务中运行代码时，该代码 *必须* 立即返回，既不能阻塞 I/O，也不能阻塞长时间的计算。在编写我们自己的代码时，这算是一件小事，但这意味着任何阻塞 I/O
+    的标准库或第三方函数都必须用可以礼貌等待的 `async def` 函数包装。'
+- en: When working with `asyncio`, we'll write our application as a set of coroutines
+    that use `async` and `await` syntax to interleave control via the event loop.
+    The top-level "main" program's job, then, is simplified to running the event loop
+    so the coroutines can then hand control back and forth, interleaving waiting and
+    working.
+  id: totrans-161
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 当使用 `asyncio` 时，我们将以一组协程的形式编写我们的应用程序，这些协程使用 `async` 和 `await` 语法通过事件循环来交错控制。因此，顶层“main”程序的任务简化为运行事件循环，这样协程就可以来回传递控制权，交错等待和工作。
+- en: AsyncIO in action
+  id: totrans-162
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+  zh: AsyncIO 实战
+- en: 'A canonical example of a blocking function is the `time.sleep()` call. We can''t
+    call the `time` module''s `sleep()` directly, because it would seize control,
+    stalling the event loop. We''ll use the version of `sleep()` in the `asyncio`
+    module. Used in an `await` expression, the event loop can interleave another coroutine
+    while waiting for the `sleep()` to finish. Let''s use the asynchronous version
+    of this call to illustrate the basics of an AsyncIO event loop, as follows:'
+  id: totrans-163
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 阻塞函数的一个典型例子是`time.sleep()`调用。我们不能直接调用`time`模块的`sleep()`函数，因为它会夺取控制权，使事件循环停滞。我们将使用`asyncio`模块中的`sleep()`版本。在`await`表达式中使用时，事件循环可以在等待`sleep()`完成的同时，交错执行另一个协程。以下我们将使用这个调用的异步版本来展示AsyncIO事件循环的基本原理，具体如下：
+- en: '[PRE15]'
+  id: totrans-164
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE15]'
+- en: This example covers several features of AsyncIO programming. The overall processing
+    is started by the `asyncio.run()` function. This starts the event loop, executing
+    the `sleepers()` coroutine. Within the `sleepers()` coroutine, we create a handful
+    of individual tasks; these are instances of the `random_sleep()` coroutine with a
+    given argument value. The `random_sleep()` uses `asyncio.sleep()` to simulate a
+    long-running request.
+  id: totrans-165
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 本例涵盖了 AsyncIO 编程的几个特性。整体处理过程由 `asyncio.run()` 函数启动。这启动了事件循环，执行 `sleepers()`
+    协程。在 `sleepers()` 协程中，我们创建了一些单独的任务；这些是带有给定参数值的 `random_sleep()` 协程的实例。`random_sleep()`
+    使用 `asyncio.sleep()` 来模拟长时间运行请求。
+- en: 'Because this is built using `async def` functions and an `await` expression
+    around `asyncio.sleep()`, execution of the `random_sleep()` functions and the
+    overall `sleepers()` function is interleaved. While the `random_sleep()` requests
+    are started in order of their `counter` parameter value, they finish in a completely
+    different order. Here''s an example:'
+  id: totrans-166
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 因为这是使用 `async def` 函数和围绕 `asyncio.sleep()` 的 `await` 表达式构建的，所以 `random_sleep()`
+    函数的执行和整个 `sleepers()` 函数的执行是交织在一起的。虽然 `random_sleep()` 请求是按照它们的 `counter` 参数值顺序启动的，但它们完成时的顺序却完全不同。以下是一个例子：
+- en: '[PRE16]'
+  id: totrans-167
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE16]'
+- en: We can see the `random_sleep()` function with a `counter` value of `4` had the
+    shortest sleep time, and was given control first when it finished the `await asyncio.sleep()`
+    expression. The order of waking is strictly based on the random sleep interval,
+    and the event loop's ability to hand control from coroutine to coroutine.
+  id: totrans-168
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们可以看到，`random_sleep()` 函数在 `counter` 值为 `4` 时具有最短的睡眠时间，并且在完成 `await asyncio.sleep()`
+    表达式后首先获得控制权。唤醒的顺序严格基于随机睡眠间隔，以及事件循环从协程到协程传递控制的能力。
+- en: As asynchronous programmers, we don't need to know too much about what happens
+    inside that `run()` function, but be aware that a lot is going on to track which
+    of the coroutines is waiting and which should have control at the current moment.
+  id: totrans-169
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 作为异步程序员，我们不需要过多了解`run()`函数内部发生的事情，但要注意，有很多操作正在进行，以追踪哪些协程正在等待，以及哪些协程在当前时刻应该拥有控制权。
+- en: 'A task, in this context, is an object that `asyncio` knows how to schedule
+    in the event loop. This includes the following:'
+  id: totrans-170
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在这个语境中，一个任务是一个`asyncio`知道如何在事件循环中安排的对象。这包括以下内容：
+- en: Coroutines defined with the `async def` statement.
+  id: totrans-171
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 使用 `async def` 语句定义的协程。
+- en: '`asyncio.Future` objects. These are almost identical to the `concurrent.futures`
+    you saw in the previous section, but for use with `asyncio`.'
+  id: totrans-172
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: '`asyncio.Future` 对象。这些与上一节中你看到的 `concurrent.futures` 几乎相同，但用于 `asyncio`。'
+- en: Any awaitable object, that is, one with an `__await__()` function.
+  id: totrans-173
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 任何可等待的对象，即具有`__await__()`函数的对象。
+- en: In this example, all the tasks are coroutines; we'll see some of the others
+    in later examples.
+  id: totrans-174
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在这个例子中，所有任务都是协程；我们将在后续的例子中看到其他一些。
+- en: Look a little more closely at that `sleepers()` coroutine. It first constructs
+    instances of the `random_sleep()` coroutine. These are each wrapped in an `asyncio.create_task()`
+    call, which adds these as futures to the loop's task queue so they can execute
+    and start immediately when control is returned to the loop.
+  id: totrans-175
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 仔细观察一下那个 `sleepers()` 协程。它首先构建了 `random_sleep()` 协程的实例。这些实例每个都被 `asyncio.create_task()`
+    调用所包装，这会将它们作为未来任务添加到循环的任务队列中，以便它们可以在控制权返回到循环时立即执行并启动。
+- en: Control is returned to the event loop whenever we call `await`. In this case,
+    we call `await asyncio.gather()` to yield control to other coroutines until all
+    the tasks are finished.
+  id: totrans-176
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 每当我们调用 `await` 时，控制权都会返回到事件循环。在这种情况下，我们调用 `await asyncio.gather()` 以将控制权交予其他协程，直到所有任务完成。
+- en: Each of the `random_sleep()` coroutines prints a starting message, then sends
+    control back to the event loop for a specific amount of time using its own `await`
+    calls. When the sleep has completed, the event loop passes control back to the
+    relevant `random_sleep()` task, which prints its awakening message before returning.
+  id: totrans-177
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 每个 `random_sleep()` 协程都会打印一条启动信息，然后通过自己的 `await` 调用将控制权返回给事件循环一段时间。当睡眠完成时，事件循环将控制权返回给相应的
+    `random_sleep()` 任务，该任务在返回之前会打印一条唤醒信息。
+- en: The `async` keyword acts as documentation notifying the Python interpreter (and
+    coder) that the coroutine contains the `await` calls. It also does some work to
+    prepare the coroutine to run on the event loop. It behaves much like a decorator;
+    in fact, back in Python 3.4, it used to be implemented as an `@asyncio.coroutine` decorator.
+  id: totrans-178
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '`async` 关键字充当文档说明，通知 Python 解释器（和程序员）协程包含 `await` 调用。它还做一些工作来准备协程在事件循环上运行。它的行为很像一个装饰器；实际上，在
+    Python 3.4 之前，它曾经被实现为一个 `@asyncio.coroutine` 装饰器。'
+- en: Reading an AsyncIO future
+  id: totrans-179
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+  zh: 阅读AsyncIO未来
+- en: An AsyncIO coroutine executes each line of code in order until it encounters
+    an `await` expression, at which point it returns control to the event loop. The
+    event loop then executes any other tasks that are ready to run, including the
+    one that the original coroutine was waiting on. Whenever that child task completes,
+    the event loop sends the result back into the coroutine so that it can pick up
+    execution until it encounters another `await` expression or returns.
+  id: totrans-180
+  prefs: []
+  type: TYPE_NORMAL
+  zh: AsyncIO 协程按顺序执行每行代码，直到遇到 `await` 表达式，此时它将控制权交还给事件循环。事件循环随后执行任何其他准备就绪的任务，包括原始协程所等待的任务。每当那个子任务完成时，事件循环将结果发送回协程，以便它可以继续执行，直到遇到另一个
+    `await` 表达式或返回。
+- en: This allows us to write code that executes synchronously until we explicitly
+    need to wait for something. As a result, there is no non-deterministic behavior
+    of threads, so we don't need to worry nearly so much about shared state.
+  id: totrans-181
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 这使得我们能够编写同步执行的代码，直到我们明确需要等待某事发生。因此，线程没有非确定性行为，所以我们不必如此担心共享状态。
+- en: 'It''s a good idea to limit shared state: a *share nothing* philosophy can prevent
+    a ton of difficult bugs stemming from sometimes hard-to-imagine timelines of interleaved
+    operations.'
+  id: totrans-182
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 限制共享状态是个好主意：一种*无共享*的哲学可以防止许多由有时难以想象的交错操作时间线引发的困难bug。
+- en: Think of the OS schedulers as intentionally and wickedly evil; they will maliciously
+    (somehow) find the worst possible sequence of operations among processes, threads,
+    or coroutines.
+  id: totrans-183
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 将操作系统调度器想象成故意且邪恶的；它们会恶意地（以某种方式）在进程、线程或协程中找到最糟糕的操作序列。
+- en: The real value of AsyncIO is the way it allows us to collect logical sections
+    of code together inside a single coroutine, even if we are waiting for other work
+    elsewhere. As a specific instance, even though the `await asyncio.sleep` call
+    in the `random_sleep()` coroutine is allowing a ton of stuff to happen inside
+    the event loop, the coroutine itself looks like it's doing everything in order.
+    This ability to read related pieces of asynchronous code without worrying about
+    the machinery that waits for tasks to complete is the primary benefit of the AsyncIO
+    module.
+  id: totrans-184
+  prefs: []
+  type: TYPE_NORMAL
+  zh: AsyncIO 的真正价值在于它允许我们将代码的逻辑部分集合在一个单独的协程中，即使我们在等待其他地方的工作。作为一个具体的例子，尽管在 `random_sleep()`
+    协程中调用的 `await asyncio.sleep` 允许在事件循环中发生大量的事情，但协程本身看起来像是在有序地进行所有操作。这种无需担心等待任务完成的机制就能阅读相关异步代码的能力，是
+    AsyncIO 模块的主要优势。
+- en: AsyncIO for networking
+  id: totrans-185
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+  zh: 异步IO网络编程
+- en: AsyncIO was specifically designed for use with network sockets, so let's implement
+    a server using the `asyncio` module. Looking back at *Chapter 13*, *Testing Object-Oriented
+    Programs*, we created a fairly complex server to catch log entries being sent
+    from one process to another process using sockets. At the time, we used it as
+    an example of a complex resource we didn't want to set up and tear down for each
+    test.
+  id: totrans-186
+  prefs: []
+  type: TYPE_NORMAL
+- en: We'll rewrite that example, creating an `asyncio`-based server that can handle
+    requests from a (large) number of clients. It can do this by having lots of coroutines,
+    all waiting for log records to arrive. When a record arrives, one coroutine can
+    save the record, doing some computation, while the remaining coroutines wait.
+  id: totrans-187
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们将重写那个示例，创建一个基于 `asyncio` 的服务器，能够处理来自（大量）客户端的请求。它可以通过拥有许多协程来实现，所有协程都在等待日志记录的到来。当记录到达时，一个协程可以保存记录，进行一些计算，而其他协程则等待。
+- en: 'In *Chapter 13*, we were interested in writing a test for the integration of
+    a log catcher process with separate log-writing client application processes.
+    Here''s an illustration of the relationships involved:'
+  id: totrans-188
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在*第13章*中，我们感兴趣的是编写一个测试，用于将日志捕获过程与独立的日志编写客户端应用程序过程进行集成。以下是涉及关系的说明：
+- en: '![Diagram  Description automatically generated](img/B17070_14_01.png)'
+  id: totrans-189
+  prefs: []
+  type: TYPE_IMG
+  zh: '![图表描述自动生成](img/B17070_14_01.png)'
+- en: 'Figure 14.1: The Log Catcher in the Sky'
+  id: totrans-190
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 图14.1：天空中日志捕捉器
+- en: The log catcher process creates a socket server to wait for connections from
+    all client applications. Each of the client applications uses `logging.SocketHandler`
+    to direct log messages to the waiting server. The server collects the messages
+    and writes them to a single, central log file.
+  id: totrans-191
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 日志捕获进程创建一个套接字服务器以等待来自所有客户端应用程序的连接。每个客户端应用程序都使用`logging.SocketHandler`将日志消息直接发送到等待的服务器。服务器收集这些消息并将它们写入一个单独的、集中的日志文件。
+- en: This test was based on an example back in *Chapter 12*, which suffered from
+    a weak implementation. To keep things simple in that chapter, the log server only
+    worked with one application client at a time. We want to revisit the idea of a
+    server that collects log messages. This improved implementation will handle a
+    very large number of concurrent clients because it uses AsyncIO techniques.
+  id: totrans-192
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 这次测试基于*第12章*中的一个示例，该示例的实现较弱。为了使该章节内容简单，日志服务器当时只能同时与一个应用程序客户端协同工作。我们希望重新审视收集日志消息的服务器这一想法。这种改进的实现将能够处理非常大量的并发客户端，因为它使用了AsyncIO技术。
+- en: 'The central part of this design is a coroutine that reads log entries from
+    a socket. This involves waiting for the bytes that comprise a header, then decoding
+    the header to compute the size of the payload. The coroutine can read the right
+    number of bytes for the log message payload, and then use a separate coroutine
+    to process the payload. Here''s the `log_catcher()` function:'
+  id: totrans-193
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 本设计的核心部分是一个协程，它从套接字中读取日志条目。这涉及到等待构成头部的字节，然后解码头部以计算有效负载的大小。协程可以读取日志消息有效负载所需的正确数量的字节，然后使用另一个协程来处理有效负载。下面是`log_catcher()`函数：
+- en: '[PRE17]'
+  id: totrans-194
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE17]'
+- en: This `log_catcher()` function implements the protocol used by the `logging`
+    module's `SocketHandler` class. Each log entry is a block of bytes we can decompose
+    into a header and a payload. We need to read the first few bytes, saved in `size_header`,
+    to get the size of the message which follows. Once we have the size, we can wait
+    for the payload bytes to arrive. Since the two reads are both `await` expressions,
+    other coroutines can work while this function is waiting for the header and payload bytes to
+    arrive.
+  id: totrans-195
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 这个 `log_catcher()` 函数实现了 `logging` 模块的 `SocketHandler` 类所使用的协议。每个日志条目都是一个我们可以分解为头部和有效负载的字节块。我们需要读取存储在
+    `size_header` 中的前几个字节，以获取随后消息的大小。一旦我们有了大小，我们就可以等待有效负载字节到达。由于这两个读取操作都是 `await`
+    表达式，因此当这个函数等待头部和有效负载字节到达时，其他协程可以工作。
+- en: The `log_catcher()` function is invoked by a server that provides the coroutine
+    with a `StreamReader` and `StreamWriter`. These two objects wrap the socket pair
+    that is created by the TCP/IP protocol. The stream reader (and the writer) are
+    properly async-aware objects, and we can use `await` when waiting to read bytes
+    from the client.
+  id: totrans-196
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '`log_catcher()` 函数由一个提供 `StreamReader` 和 `StreamWriter` 的服务器调用。这两个对象封装了由 TCP/IP
+    协议创建的套接字对。流读取器（以及写入器）是适当的异步感知对象，我们可以在等待从客户端读取字节时使用 `await`。'
+- en: This `log_catcher()` function waits for socket data, then provides data to another
+    coroutine, `log_writer()`, for conversion and writing. The `log_catcher()` function's
+    job is to do a lot of waiting, and then shuttle the data from reader to writer;
+    it also does an internal computation to count messages from a client. Incrementing
+    a counter is not much, but it is work that can be done while waiting for data
+    to arrive.
+  id: totrans-197
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 这个 `log_catcher()` 函数等待套接字数据，然后将数据提供给另一个协程 `log_writer()` 进行转换和写入。`log_catcher()`
+    函数的工作是进行大量的等待，然后将数据从读取器传输到写入器；它还进行内部计算以统计来自客户端的消息。增加计数器并不是什么大事，但这是在等待数据到达时可以完成的工作。
+- en: 'Here''s a function, `serialize()`, and a coroutine, `log_writer()`, to convert
+    log entries to JSON notation and write them to a file:'
+  id: totrans-198
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 这里有一个函数`serialize()`和一个协程`log_writer()`，用于将日志条目转换为JSON表示法并将其写入文件：
+- en: '[PRE18]'
+  id: totrans-199
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE18]'
+- en: The `serialize()` function needs to have an open file, `TARGET`, to which the
+    log messages are written. The file open (and close) needs to be taken care of
+    elsewhere in the application; we'll look at these operations below. The `serialize()`
+    function is used by the `log_writer()` coroutine. Because `log_writer()` is an
+    `async` coroutine, other coroutines will be waiting to read and decode input messages
+    while this coroutine is writing them.
+  id: totrans-200
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '`serialize()` 函数需要一个已打开的文件，名为 `TARGET`，日志消息将被写入该文件。文件的打开（和关闭）需要在应用程序的其他地方处理；我们将在下面查看这些操作。`serialize()`
+    函数被 `log_writer()` 协程使用。因为 `log_writer()` 是一个 `async` 协程，其他协程将等待读取和解码输入消息，而在此协程写入它们时。'
+- en: The `serialize()` function actually does a fair amount of computation. It also
+    harbors a profound problem. The file write operation can be blocked, that is,
+    stuck waiting for the operating system to finish the work. Writing to a disk means
+    handing the work to a disk device and waiting until the device responds that the
+    write operation is complete. While a microsecond to write a 1,000-character line
+    of data may seem fast, it's forever to a CPU. This means all file operations will
+    block their thread waiting for the operation to complete. To work politely with
+    the other coroutines in the main thread, we assign this blocking work to a separate
+    thread. This is why the `log_writer()` coroutine uses the `asyncio.to_thread()`
+    to allocate this work to a separate thread.
+  id: totrans-201
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '`serialize()` 函数实际上执行了相当多的计算。它还隐藏着一个深刻的问题。文件写入操作可能会被阻塞，也就是说，它会卡在等待操作系统完成工作的状态。向磁盘写入意味着将工作交给磁盘设备，并等待设备响应写入操作已完成。虽然写入包含1,000个字符的行数据可能只需要微秒级的时间，但对于CPU来说却是永恒的。这意味着所有文件操作都会阻塞它们的线程，等待操作完成。为了与主线程中的其他协程礼貌地协作，我们将这项阻塞工作分配给一个单独的线程。这就是为什么`log_writer()`协程使用`asyncio.to_thread()`将这项工作分配给一个单独的线程的原因。'
+- en: Because the `log_writer()` coroutine uses `await` on this separate thread, it
+    returns control to the event loop while the thread waits for the write to complete.
+    This polite `await` allows other coroutines to work while the `log_writer()` coroutine
+    is waiting for `serialize()` to complete.
+  id: totrans-202
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 因为`log_writer()`协程在这个单独的线程上使用了`await`，所以在等待写入完成时，它将控制权交回事件循环。这种礼貌的`await`允许其他协程在`log_writer()`协程等待`serialize()`完成时继续工作。
+- en: 'We''ve passed two kinds of work to a separate thread:'
+  id: totrans-203
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们已经将两种工作传递给了单独的线程：
+- en: A compute-intensive operation. These are the `pickle.loads()` and `json.dumps()`
+    operations.
+  id: totrans-204
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 一个计算密集型操作。这些是`pickle.loads()`和`json.dumps()`操作。
+- en: A blocking OS operation. This is `TARGET.write()`. These blocking operations
+    include most operating system requests, including file operations. They do not
+    include the various network streams that are already part of the `asyncio` module.
+    As we saw in the `log_catcher()` function above, the streams are already polite
+    users of the event loop.
+  id: totrans-205
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 一个阻塞的操作系统操作。这是 `TARGET.write()`。这些阻塞操作包括大多数操作系统请求，包括文件操作。它们不包括已经是 `asyncio`
+    模块一部分的各种网络流。正如我们在上面的 `log_catcher()` 函数中看到的，流已经是事件循环的礼貌用户。
+- en: This technique of passing work to a thread is how we can make sure the event
+    loop is spending as much time waiting as possible. If all the coroutines are waiting
+    for an event, then whatever happens next will be responded to as quickly as possible.
+    This principle of many waiters is the secret to a responsive service.
+  id: totrans-206
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 将工作传递给线程的这种技术是我们确保事件循环尽可能多地花费时间等待的方法。如果所有协程都在等待事件，那么接下来发生的事情将会尽可能快地得到响应。众多等待者的这一原则是响应式服务的秘密。
+- en: The `LINE_COUNT` global variable can raise some eyebrows. Recall from previous
+    sections, we raised dire warnings about the consequences of multiple threads updating
+    a shared variable concurrently. With `asyncio`, we don't have preemption among
+    threads. Because each coroutine uses explicit `await` requests to give control
+    to other coroutines via the event loop, we can update this variable in the `log_writer()`
+    coroutine knowing the state change will effectively be atomic – an indivisible
+    update – among all the coroutines.
+  id: totrans-207
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 全局变量 `LINE_COUNT` 可能会让人感到惊讶。回想一下前面的章节，我们曾对多个线程同时更新共享变量的后果发出过严重警告。在 `asyncio`
+    中，线程之间没有抢占。因为每个协程都通过事件循环使用显式的 `await` 请求将控制权交给其他协程，所以我们可以在 `log_writer()` 协程中更新这个变量，知道状态变化将有效地对所有协程是原子的——不可分割的更新。
+- en: 'To make this example complete, here are the imports:'
+  id: totrans-208
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 为了使这个示例完整，以下是所需的导入：
+- en: '[PRE19]'
+  id: totrans-209
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE19]'
+- en: 'Here''s the top-level dispatcher that starts this service:'
+  id: totrans-210
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 这是启动此服务的顶层调度器：
+- en: '[PRE20]'
+  id: totrans-211
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE20]'
+- en: The `main()` function contains an elegant way to automatically create new `asyncio.Task`
+    objects for each network connection. The `asyncio.start_server()` function listens
+    at the given host address and port number for incoming socket connections. For
+    each connection, it creates a new `Task` instance using the `log_catcher()` coroutine;
+    this is added to the event loop's collection of coroutines. Once the server is started,
+    the `main()` function lets it provide services forever using the server's `serve_forever()`
+    method.
+  id: totrans-212
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '`main()` 函数包含了一种优雅的方法来自动为每个网络连接创建新的 `asyncio.Task` 对象。`asyncio.start_server()`
+    函数在指定的主机地址和端口号上监听传入的套接字连接。对于每个连接，它使用 `log_catcher()` 协程创建一个新的 `Task` 实例；这个实例被添加到事件循环的协程集合中。一旦服务器启动，`main()`
+    函数就让它通过服务器的 `serve_forever()` 方法永久提供服务。'
+- en: The `add_signal_handler()` method of a loop deserves some explanation. For non-Windows
+    operating systems, a process is terminated via a signal from the operating system.
+    The signals have small numeric identifiers and symbolic names. For example, the
+    terminate signal has a numeric code of 15, and a name of `signal.SIGTERM`. When
+    a parent process terminates a child process, this signal is sent. If we do nothing
+    special, this signal will simply stop the Python interpreter. When we use the
+    Ctrl + C sequence on the keyboard, this becomes a `SIGINT` signal, which leads
+    Python to raise a `KeyboardInterrupt` exception.
+  id: totrans-213
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 循环中的 `add_signal_handler()` 方法值得一些解释。对于非Windows操作系统，进程是通过操作系统发出的信号来终止的。信号有小的数字标识符和符号名称。例如，终止信号有一个数字代码15，名称为
+    `signal.SIGTERM`。当一个父进程终止子进程时，会发送这个信号。如果我们不做任何特殊处理，这个信号将简单地停止Python解释器。当我们使用键盘上的Ctrl
+    + C序列时，这会变成一个 `SIGINT` 信号，导致Python抛出 `KeyboardInterrupt` 异常。
+- en: The `add_signal_handler()` method of the loop lets us examine incoming signals
+    and handle them as part of our AsyncIO processing loop. We don't want to simply
+    stop with an unhandled exception. We want to finish the various coroutines, and
+    allow any write threads executing the `serialize()` function to complete normally.
+    To make this happen, we connect the signal to the `server.close()` method. This
+    ends the `serve_forever()` process cleanly, letting all the coroutines finish.
+  id: totrans-214
+  prefs: []
+  type: TYPE_NORMAL
+  zh: loop中的`add_signal_handler()`方法允许我们检查传入的信号并将它们作为我们AsyncIO处理循环的一部分来处理。我们不想仅仅因为未处理的异常而停止。我们希望完成各种协程，并允许任何执行`serialize()`函数的写线程正常完成。为了实现这一点，我们将信号连接到`server.close()`方法。这干净地结束了`serve_forever()`进程，让所有协程完成。
+- en: For Windows, we have to work outside the AsyncIO processing loop. This additional
+    code is required to connect the low-level signals to a function that will close
+    down the server cleanly.
+  id: totrans-215
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 对于Windows系统，我们不得不在AsyncIO处理循环之外工作。这段额外的代码是必需的，以便将低级信号连接到将干净关闭服务器的函数。
+- en: '[PRE21]'
+  id: totrans-216
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE21]'
+- en: We've defined three standard signals, `SIGINT`, `SIGTERM`, and `SIGABRT`, as
+    well as a Windows-specific signal, `SIGBREAK`. These will all close the server,
+    ending the handling of requests and closing down the processing loop when all
+    of the pending coroutines have completed.
+  id: totrans-217
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们已定义了三个标准信号，`SIGINT`、`SIGTERM` 和 `SIGABRT`，以及一个针对 Windows 的特定信号 `SIGBREAK`。这些信号都将关闭服务器，结束请求的处理并关闭处理循环，当所有挂起的协程都完成后。
+- en: 'As we saw in the previous AsyncIO example, the main program is also a succinct
+    way to start the event loop:'
+  id: totrans-218
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 正如我们在之前的 AsyncIO 示例中看到的，主程序也是一种简洁启动事件循环的方式：
+- en: '[PRE22]'
+  id: totrans-219
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE22]'
+- en: This will open a file, setting the global `TARGET` variable used by the `serialize()`
+    function. It uses the `main()` function to create the server that waits for connections.
+    When the `serve_forever()` task is canceled with a `CancelledError` or `KeyboardInterrupt`
+    exception, we can put a final summary line onto the log file. This line confirms
+    that things completed normally, allowing us to verify that no lines were lost.
+  id: totrans-220
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 这将打开一个文件，设置由 `serialize()` 函数使用的全局 `TARGET` 变量。它使用 `main()` 函数创建等待连接的服务器。当 `serve_forever()`
+    任务因 `CancelledError` 或 `KeyboardInterrupt` 异常被取消时，我们可以在日志文件中添加一条最终总结行。这一行确认了事情正常完成，使我们能够验证没有丢失任何行。
+- en: For Windows, we need to use the `run_until_complete()` method, instead of the
+    more comprehensive `run()` method. We also need to put one more coroutine, `asyncio.sleep()`,
+    into the event loop to wait for the final processing from any other coroutines.
+  id: totrans-221
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 对于Windows系统，我们需要使用`run_until_complete()`方法，而不是更全面的`run()`方法。同时，我们还需要在事件循环中添加一个额外的协程`asyncio.sleep()`，以便等待其他任何协程的最终处理。
+- en: Pragmatically, we might want to use the `argparse` module to parse command-line
+    arguments. We might want to use a more sophisticated file-handling mechanism in
+    `log_writer()` so we can limit the size of log files.
+  id: totrans-222
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 从实用主义的角度来看，我们可能希望使用`argparse`模块来解析命令行参数。我们可能希望在`log_writer()`函数中使用更复杂的文件处理机制，以便我们可以限制日志文件的大小。
+- en: Design considerations
+  id: totrans-223
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+  zh: 设计考虑因素
+- en: Let's look at some of the features of this design. First, the `log_writer()`
+    coroutine passes bytes into and out of the external thread running the `serialize()`
+    function. This is better than decoding the JSON in a coroutine in the main thread
+    because the (relatively expensive) decoding can happen without stopping the main
+    thread's event loop.
+  id: totrans-224
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 让我们来看看这个设计的一些特性。首先，`log_writer()` 协程将字节传递到运行 `serialize()` 函数的外部线程中，并从中传出。这比在主线程中的协程中解码
+    JSON 更好，因为（相对昂贵的）解码可以在不停止主线程的事件循环的情况下进行。
+- en: This call to `serialize()` is, in effect, a future. In the *Futures* section,
+    earlier in this chapter, we saw there are a few lines of boilerplate for using
+    `concurrent.futures`. However, when we use futures with AsyncIO, there are almost
+    none at all! When we use `await asyncio.to_thread()`, the `log_writer()` coroutine
+    wraps the function call in a future and submits it to the internal thread pool
+    executor. Our code can then return to the event loop until the future completes,
+    allowing the main thread to process other connections, tasks, or futures. It is
+    particularly important to put blocking I/O requests into separate threads. When
+    the future is done, the `log_writer()` coroutine can finish waiting and can do
+    any follow-up processing.
+  id: totrans-225
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 调用 `serialize()` 的行为实际上是一个未来。在本章前面的 *Futures* 部分，我们看到了使用 `concurrent.futures`
+    时有一些样板代码。然而，当我们使用与 AsyncIO 一起的 futures 时，几乎没有任何样板代码！当我们使用 `await asyncio.to_thread()`
+    时，`log_writer()` 协程将函数调用包装在一个 future 中，并将其提交到内部线程池执行器。然后我们的代码可以返回到事件循环，直到 future
+    完成，允许主线程处理其他连接、任务或 futures。将阻塞 I/O 请求放入单独的线程尤为重要。当 future 完成，`log_writer()` 协程可以结束等待并进行任何后续处理。
+- en: The `main()` coroutine used `start_server()`; the server listens for connection
+    requests. It will provide client-specific AsyncIO read and write streams to each
+    task created to handle a distinct connection; the task will wrap the `log_catcher()`
+    coroutine. With the AsyncIO streams, reading from a stream is a potentially blocking
+    call so we can call it with `await`. This means politely returning to the event
+    loop until bytes start arriving.
+  id: totrans-226
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '`main()` 协程使用了 `start_server()`；服务器监听连接请求。它将为每个创建的任务提供客户端特定的 AsyncIO 读写流，以处理不同的连接；任务将包装
+    `log_catcher()` 协程。使用 AsyncIO 流，从流中读取是一个可能阻塞的调用，因此我们可以使用 `await` 来调用它。这意味着礼貌地返回到事件循环，直到字节开始到达。'
+- en: 'It can help to consider how the workload grows inside this server. Initially,
+    the `main()` function is the only coroutine. It creates the `server`, and now
+    both `main()` and the `server` are in the event loop''s collection of waiting
+    coroutines. When a connection is made, the server creates a new task, and the
+    event loop now contains `main()`, the `server`, and an instance of the `log_catcher()`
+    coroutine. Most of the time, all of these coroutines are waiting for something
+    to do: either a new connection for the server, or a message for the `log_catcher()`.
+    When a message arrives, it''s decoded and handed to `log_writer()`, and yet another
+    coroutine is available. No matter what happens next, the application is ready
+    to respond. The number of waiting coroutines is limited by available memory, so
+    a lot of individual coroutines can be patiently waiting for work to do.'
+  id: totrans-227
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 考虑一下在这个服务器内部工作负载是如何增长的。最初，`main()` 函数是唯一的协程。它创建了 `server`，现在 `main()` 和 `server`
+    都在事件循环等待协程的集合中。当一个连接建立时，服务器创建一个新的任务，事件循环现在包含 `main()`、`server` 和一个 `log_catcher()`
+    协程的实例。大多数时候，所有这些协程都在等待做某事：要么是服务器的新连接，要么是 `log_catcher()` 的消息。当消息到达时，它会被解码并交给 `log_writer()`，这时又有一个协程可用。无论接下来发生什么，应用程序都准备好做出响应。等待协程的数量受可用内存的限制，所以很多单独的协程可以耐心地等待工作来做。
+- en: Next, we'll take a quick look at a log-writing application that uses this log
+    catcher. The application doesn't do anything useful, but it can tie up a lot of
+    cores for a long period of time. This will show us how responsive AsyncIO applications
+    can be.
+  id: totrans-228
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 接下来，我们将快速浏览一个使用此日志捕获器的日志编写应用程序。该应用程序并没有什么实际用途，但它可以在很长的一段时间内占用大量的核心。这将展示异步IO应用程序的响应能力。
+- en: A log writing demonstration
+  id: totrans-229
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+  zh: 日志编写演示
+- en: To demonstrate how this log catching works, this client application writes a
+    bunch of messages and does an immense amount of computing. To see how responsive
+    the log catcher is, we can start a bunch of copies of this application to stress-test
+    the log catcher.
+  id: totrans-230
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 为了展示这种日志捕获的工作原理，这个客户端应用程序写入了一大批消息，并进行了大量的计算。为了查看日志捕获器的响应速度，我们可以启动这个应用程序的多个副本以对日志捕获器进行压力测试。
+- en: This client doesn't leverage `asyncio`; it's a contrived example of compute-intensive
+    work with a few I/O requests wrapped around it. Using coroutines to perform the
+    I/O requests concurrently with the computation is – by design – unhelpful in this
+    example.
+  id: totrans-231
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 这个客户端没有使用 `asyncio`；这是一个计算密集型工作与少量围绕其的 I/O 请求的虚构示例。在这个例子中，使用协程来与计算同时执行 I/O 请求——按设计——是无用的。
+- en: 'We''ve written an application that applies a variation on the bogosort algorithm
+    to some random data. Here''s some information on this sorting algorithm: [https://rosettacode.org/wiki/Sorting_algorithms/Bogosort](https://rosettacode.org/wiki/Sorting_algorithms/Bogosort).
+    This isn''t a practical algorithm, but it''s simple: it enumerates all possible
+    orderings, searching for one that is the desired, ascending order. Here are the
+    imports and an abstract superclass, `Sorter`, for sorting algorithms:'
+  id: totrans-232
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们编写了一个应用程序，它将bogosort算法的变体应用于一些随机数据。以下是关于这个排序算法的一些信息：[https://rosettacode.org/wiki/Sorting_algorithms/Bogosort](https://rosettacode.org/wiki/Sorting_algorithms/Bogosort)。这不是一个实用的算法，但它很简单：它枚举所有可能的排序方式，寻找一个符合期望的升序排列。以下是导入和抽象超类`Sorter`，用于排序算法：
+- en: '[PRE23]'
+  id: totrans-233
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE23]'
+- en: 'Next, we''ll define a concrete implementation of the abstract `Sorter` class:'
+  id: totrans-234
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 接下来，我们将定义一个抽象`Sorter`类的具体实现：
+- en: '[PRE24]'
+  id: totrans-235
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE24]'
+- en: The `is_ordered()` method of the `BogoSort` class checks to see if the list
+    of objects has been sorted properly. The `sort()` method generates all permutations
+    of the data, searching for a permutation that satisfies the constraint defined
+    by `is_sorted()`.
+  id: totrans-236
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '`BogoSort` 类的 `is_ordered()` 方法用于检查对象列表是否已正确排序。`sort()` 方法生成数据的所有排列，寻找一个满足由
+    `is_sorted()` 定义的约束条件的排列。'
+- en: Note that a set of *n* values has *n!* permutations, so this is a spectacularly
+    inefficient sort algorithm. There are over six billion permutations of 13 values;
+    on most computers, this algorithm can take years to sort 13 items into order.
+  id: totrans-237
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 注意，一组 *n* 个值的排列组合有 *n!* 种，因此这是一个效率极低的排序算法。13个值的排列组合超过六十亿种；在大多数计算机上，这个算法可能需要数年才能将13个元素排序。
+- en: 'A `main()` function handles the sorting and writes a few log messages. It does
+    a lot of computation, tying up CPU resources doing nothing particularly useful.
+    Here''s a `main` program we can use to make log requests while our inefficient
+    sort is grinding up processing time:'
+  id: totrans-238
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 一个 `main()` 函数处理排序并写入一些日志消息。它进行大量的计算，占用CPU资源却做些特别无用的工作。以下是我们可以在效率低下的排序消耗处理时间时使用的
+    `main` 程序来发起日志请求：
+- en: '[PRE25]'
+  id: totrans-239
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE25]'
+- en: The top-level script starts by creating a `SocketHandler` instance; this writes
+    log messages to the log catcher service shown above. A `StreamHandler` instance
+    writes message to console. Both of these are provided as handlers for all the
+    defined loggers. Once the logging is configured, the `main()` function is invoked
+    with a random workload.
+  id: totrans-240
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 顶层脚本首先创建一个 `SocketHandler` 实例；这会将日志消息写入上面显示的日志捕获服务。一个 `StreamHandler` 实例将消息写入控制台。这两个都作为处理程序提供给所有定义的日志记录器。一旦配置了日志记录，就会以随机的工作负载调用
+    `main()` 函数。
+- en: On an 8-core MacBook Pro, this was run with 128 workers, all inefficiently sorting
+    random numbers. The internal OS `time` command describes the workload as using
+    700% of a core; that is, seven of the eight cores were completely occupied. And
+    yet, there's still plenty of time left over to handle the log messages, edit this
+    document, and play music in the background. Using a faster sort algorithm, we
+    started 256 workers and generated 5,632 log messages in about 4.4 seconds. This
+    is 1,280 transactions per second and we were still only using 628% of the available
+    800%. Your performance may vary. For network-intensive workloads, AsyncIO seems
+    to do a marvelous job of allocating precious CPU time to the coroutine with work
+    to be done, and minimizing the time threads are blocked waiting for something
+    to do.
+  id: totrans-241
+  prefs: []
+  type: TYPE_NORMAL
+- en: It's important to observe that AsyncIO is heavily biased toward network resources
+    including sockets, queues, and OS pipes. The file system is not a first-class
+    part of the `asyncio` module, and therefore requires us to use the associated
+    thread pool to handle processing that will be blocked until it's finished by the
+    operating system.
+  id: totrans-242
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 重要的是要注意，AsyncIO在网络上资源方面有很强的倾向性，包括套接字、队列和操作系统管道。文件系统不是`asyncio`模块的一级部分，因此我们需要使用相关的线程池来处理那些将被操作系统阻塞直到完成的过程。
+- en: We'll take a diversion to look at AsyncIO to write a client-side application.
+    In this case, we won't be creating a server, but instead leveraging the event
+    loop to make sure a client can process data very quickly.
+  id: totrans-243
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们将偏离主题，来探讨如何使用 AsyncIO 编写客户端应用程序。在这种情况下，我们不会创建服务器，而是利用事件循环来确保客户端能够非常快速地处理数据。
+- en: AsyncIO clients
+  id: totrans-244
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+  zh: 异步IO客户端
+- en: Because it is capable of handling many thousands of simultaneous connections,
+    AsyncIO is very common for implementing servers. However, it is a generic networking
+    library and provides full support for client processes as well. This is pretty
+    important, since many microservices act as clients to other servers.
+  id: totrans-245
+  prefs: []
+  type: TYPE_NORMAL
+- en: Clients can be much simpler than servers, as they don't have to be set up to
+    wait for incoming connections. We can leverage the `await` `asyncio.gather()`
+    function to parcel out a lot of work, and wait to process the results when they've
+    completed. This can work well with `asyncio.to_thread()` which assigns blocking
+    requests to separate threads, permitting the main thread to interleave work among
+    the coroutines.
+  id: totrans-246
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can also create individual tasks that can be interleaved by the event loop.
+    This allows the coroutines that implement the tasks to cooperatively schedule
+    reading data along with computing the data that was read.
+  id: totrans-247
+  prefs: []
+  type: TYPE_NORMAL
+- en: For this example, we'll use the `httpx` library to provide an AsyncIO-friendly
+    HTTP request. This additional package needs to be installed with `conda install
+    https` (if you're using *conda* as a virtual environment manager) or `python -m
+    pip install httpx`.
+  id: totrans-248
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here''s an application to make requests to the US weather service, implemented
+    using `asyncio`. We''ll focus on forecast zones useful for sailors in the Chesapeake
+    Bay area. We''ll start with some definitions:'
+  id: totrans-249
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  id: totrans-250
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE26]'
+- en: 'Given the `Zone` named tuple, we can analyze the directory of marine forecast
+    products, and create a list of `Zone` instances that starts like this:'
+  id: totrans-251
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  id: totrans-252
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE27]'
+- en: Depending on where you're going to be sailing, you may want additional or different
+    zones.
+  id: totrans-253
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We need a `MarineWX` class to describe the work to be done. This is an example
+    of a **Command** pattern, where each instance is another thing we wish to do.
+    This class has a `run()` method to gather data from a weather service:'
+  id: totrans-254
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  id: totrans-255
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE28]'
+- en: In this example, the `run()` method downloads the text document from the weather
+    service via an instance of the `httpx` module's `AsyncClient` class. A separate
+    property, `advisory()`, parses the text, looking for a pattern that marks a marine
+    weather advisory. The sections of the weather service document really are marked
+    by three periods, a block of text, and three periods. The Marine Forecast system
+    is designed to provide an easy-to-process format with a tiny document size.
+  id: totrans-256
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So far, this isn''t unique or remarkable. We''ve defined a repository of zone
+    information, and a class that gathers data for a zone. Here''s the important part:
+    a `main()` function that uses the AsyncIO tasks to gather as much data as quickly
+    as possible.'
+  id: totrans-257
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  id: totrans-258
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE29]'
+- en: The `main()` function, when run in the `asyncio` event loop, will launch a number
+    of tasks, each of which is executing the `MarineWX.run()` method for a different
+    zone. The `gather()` function waits until all of them have finished to return
+    the list of futures.
+  id: totrans-259
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this case, we don't really want the future result from the created threads;
+    we want the state changes that have been made to all of the `MarineWX` instances.
+    These will be a collection of `Zone` objects and the forecast details. This client
+    runs pretty quickly – we got all thirteen forecasts in about 300 milliseconds.
+  id: totrans-260
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `httpx` project supports the decomposition of fetching the raw data and
+    processing the data into separate coroutines. This permits the waiting for data
+    to be interleaved with processing.
+  id: totrans-261
+  prefs: []
+  type: TYPE_NORMAL
+- en: We've hit most of the high points of AsyncIO in this section, and the chapter
+    has covered many other concurrency primitives. Concurrency is a hard problem to
+    solve, and no one solution fits all use cases. The most important part of designing
+    a concurrent system is deciding which of the available tools is the correct one
+    to use for the problem. We have seen the advantages and disadvantages of several
+    concurrent systems, and now have some insight into which are the better choices
+    for different types of requirements.
+  id: totrans-262
+  prefs: []
+  type: TYPE_NORMAL
+- en: The next topic touches on the question of how "expressive" a concurrency framework
+    or package can be. We'll see how `asyncio` solves a classic computer science problem
+    with a short, clean-looking application program.
+  id: totrans-263
+  prefs: []
+  type: TYPE_NORMAL
+- en: The dining philosophers benchmark
+  id: totrans-264
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The faculty of the College of Philosophy in an old seaside resort city (on the
+    Atlantic coast of the US) has a long-standing tradition of dining together every
+    Sunday night. The food is catered from Mo's Deli, but is always – always – a heaping
+    bowl of spaghetti. No one can remember why, but Mo's a great chef, and each week's
+    spaghetti is a unique experience.
+  id: totrans-265
+  prefs: []
+  type: TYPE_NORMAL
+- en: The philosophy department is small, having five tenured faculty members. They're
+    also impoverished and can only afford five forks. Because the dining philosophers
+    each require two forks to enjoy their pasta, they sit around a circular table,
+    so each philosopher has access to two nearby forks.
+  id: totrans-266
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This requirement for two forks to eat leads to an interesting resource contention
+    problem, shown in the following diagram:'
+  id: totrans-267
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Diagram  Description automatically generated](img/B17070_14_02.png)'
+  id: totrans-268
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 14.2: The dining philosophers'
+  id: totrans-269
+  prefs: []
+  type: TYPE_NORMAL
+- en: Ideally, a philosopher, say Philosopher 4, the department chairperson, and an
+    Ontologist, will acquire the two closest forks, Fork 4 and Fork 0, required to
+    eat. Once they've eaten, they release the forks so they can spend some time on philosophy.
+  id: totrans-270
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's a problem waiting to be solved. If each philosopher is right-handed,
+    they will reach out, grab the fork on their right, and – unable to grab another
+    fork – are stopped. The system is **deadlocked** because no philosopher can acquire
+    the resources to eat.
+  id: totrans-271
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'One possible solution could break the deadlock by using a timeout: if a philosopher
+    can''t acquire a second fork in a few seconds, they set their first fork down,
+    wait a few seconds, and try again. If they all proceed at the same tempo, this
+    results in a cycle of each philosopher getting one fork, waiting a few seconds,
+    setting their forks down, and trying again. Funny, but unsatisfying.'
+  id: totrans-272
+  prefs: []
+  type: TYPE_NORMAL
+- en: A better solution is to permit only four philosophers at a time to sit at the
+    table. This ensures that at least one philosopher can acquire two forks and eat.
+    While that philosopher is philosophizing, the forks are now available to their
+    two neighbors. Additionally, the first to finish philosophizing can leave the
+    table, allowing the fifth to be seated and join the conversation.
+  id: totrans-273
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'How does this look in code? Here''s the philosopher, defined as a coroutine:'
+  id: totrans-274
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  id: totrans-275
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE30]'
+- en: 'Each philosopher needs to know a few things:'
+  id: totrans-276
+  prefs: []
+  type: TYPE_NORMAL
+- en: Their own unique identifier. This directs them to the two adjacent forks they're
+    permitted to use.
+  id: totrans-277
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A `Semaphore` – the footman – who seats them at the table. It's the footman's
+    job to have an upper bound on how many can be seated, thereby avoiding deadlock.
+  id: totrans-278
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A global collection of forks, represented by a sequence of `Lock` instances,
+    that will be shared by the philosophers.
+  id: totrans-279
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The philosopher''s mealtime is described by acquiring and using resources.
+    This is implemented with the `async with` statements. The sequence of events looks
+    like this:'
+  id: totrans-280
+  prefs: []
+  type: TYPE_NORMAL
+- en: A philosopher acquires a seat at the table from the footman, a `Semaphore`.
+    We can think of the footman as holding a silver tray with four "you may eat" tokens.
+    A philosopher must have a token before they can sit. Leaving the table, a philosopher
+    drops their token on the tray. The fifth philosopher is eagerly waiting for the
+    token drop from the first philosopher who finishes eating.
+  id: totrans-281
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: A philosopher acquires the fork with their ID number and the next higher-numbered
+    fork. The modulo operator assures that the counting of "next" wraps around to
+    zero; `(4+1) % 5` is 0.
+  id: totrans-282
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: With a seat at the table and with two forks, the philosopher may enjoy their
+    pasta. Mo often uses kalamata olives and pickled artichoke hearts; it's delightful.
+    Once a month there might be some anchovies or feta cheese.
+  id: totrans-283
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: After eating, a philosopher releases the two fork resources. They're not done
+    with dinner, however. Once they've set the forks down, they then spend time philosophizing
+    about life, the universe, and everything.
+  id: totrans-284
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Finally, they relinquish their seat at the table, returning their "you may eat"
+    token to the footman, in case another philosopher is waiting for it.
+  id: totrans-285
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Looking at the `philosopher()` function, we can see that the forks are a global
+    resource, but the semaphore is a parameter. There's no compelling technical reason
+    to distinguish between the global collection of `Lock` objects to represent the
+    forks and the `Semaphore` as a parameter. We showed both to illustrate the two
+    common choices for providing data to coroutines.
+  id: totrans-286
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here are the imports for this code:'
+  id: totrans-287
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  id: totrans-288
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE31]'
+- en: 'The overall dining room is organized like this:'
+  id: totrans-289
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  id: totrans-290
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE32]'
+- en: The `main()` coroutine creates the collection of forks; these are modeled as
+    `Lock` objects that a philosopher can acquire. The footman is a `BoundedSemaphore`
+    object with a limit one fewer than the size of the faculty; this avoids a deadlock.
+    For each serving, the department is represented by a collection of `philosopher()`
+    coroutines. The `asyncio.gather()` waits for all of the department's coroutines
+    to complete their work – eating and philosophizing.
+  id: totrans-291
+  prefs: []
+  type: TYPE_NORMAL
+- en: The beauty of this benchmark problem is to show how well the processing can
+    be stated in the given programming language and library. With the `asyncio` package,
+    the code is extremely elegant, and seems to be a succinct and expressive representation
+    of a solution to the problem.
+  id: totrans-292
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `concurrent.futures` library can make use of an explicit `ThreadPool`. It
+    can approach this level of clarity but involves a little bit more technical overhead.
+  id: totrans-293
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `threading` and `multiprocessing` libraries can also be used directly to
+    provide a similar implementation. Using either of these involves even more technical
+    overhead than the `concurrent.futures` library. If the eating or philosophizing
+    involved real computational work – not simply sleeping – we would see that a `multiprocessing`
+    version would finish the soonest because the computation can be spread among several
+    cores. If the eating or philosophizing was mostly waiting for I/O to complete,
+    it would be more like the implementation shown here, and using `asyncio` or using
+    `concurrent.futures` with a thread pool would work out nicely.
+  id: totrans-294
+  prefs: []
+  type: TYPE_NORMAL
+- en: Case study
+  id: totrans-295
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: One of the problems that often plagues data scientists working on machine learning
+    applications is the amount of time it takes to "train" a model. In our specific
+    example of the *k*-nearest neighbors implementation, training means performing
+    the hyperparameter tuning to find an optimal value of *k* and the right distance
+    algorithm. In the previous chapters of our case study, we've tacitly assumed there
+    will be an optimal set of hyperparameters. In this chapter, we'll look at one
+    way to locate the optimal parameters.
+  id: totrans-296
+  prefs: []
+  type: TYPE_NORMAL
+- en: In more complex and less well-defined problems, the time spent training the
+    model can be quite long. If the volume of data is immense, then very expensive
+    compute and storage resources are required to build and train the model.
+  id: totrans-297
+  prefs: []
+  type: TYPE_NORMAL
+- en: As an example of a more complex model, look at the MNIST dataset. See [http://yann.lecun.com/exdb/mnist/](http://yann.lecun.com/exdb/mnist/)
+    for the source data for this dataset and some kinds of analysis that have been
+    performed. This problem requires considerably more time to locate optimal hyperparameters
+    than our small Iris classification problem.
+  id: totrans-298
+  prefs: []
+  type: TYPE_NORMAL
+- en: In our case study, hyperparameter tuning is an example of a compute-intensive
+    application. There's very little I/O; if we use shared memory, there's no I/O.
+    This means that a process pool to allow parallel computation is essential. We
+    can wrap the process pool in AsyncIO coroutines, but the extra `async` and `await`
+    syntax seems unhelpful for this kind of compute-intensive example. Instead, we'll
+    use the `concurrent.futures` module to build our hyperparameter tuning function.
+    The design pattern for `concurrent.futures` is to make use of a processing pool
+    to farm out the various testing computations to a number of workers, and gather
+    the results to determine which combination is optimal. A process pool means each
+    worker can occupy a separate core, maximizing compute time. We'll want to run
+    as many tests of `Hyperparameter` instances at the same time as possible.
+  id: totrans-299
+  prefs: []
+  type: TYPE_NORMAL
+- en: In previous chapters, we looked at several ways to define the training data
+    and the hyperparameter tuning values. In this case study, we'll use some model
+    classes from *Chapter 7*, *Python Data Structures*. From this chapter, we'll be
+    using the `TrainingKnownSample` and the `TestingKnownSample` class definitions.
+    We'll need to keep these in a `TrainingData` instance. And, most importantly,
+    we'll need `Hyperparameter` instances.
+  id: totrans-300
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can summarize the model like this:'
+  id: totrans-301
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Diagram  Description automatically generated](img/B17070_14_03.png)'
+  id: totrans-302
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 14.3: The Hyperparameter model'
+  id: totrans-303
+  prefs: []
+  type: TYPE_NORMAL
+- en: We want to emphasize the `KnownTestingSample` and `KnownTrainingSample` classes.
+    We are looking at testing, and won't be doing anything with `UnknownSample` instances.
+  id: totrans-304
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Our tuning strategy can be described as **grid search**. We can imagine a grid
+    with the alternative values for *k* across the top and the different distance
+    algorithms down the side. We''ll fill in each cell of the grid with a result:'
+  id: totrans-305
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  id: totrans-306
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE33]'
+- en: This lets us compare a range of *k* values and distance algorithms to see which
+    combination is best. We don't really want to print the results, though. We want
+    to save them in a list, sort them to find the highest-quality result, and use
+    that as the preferred `Hyperparameter` configuration for classifying unknown samples.
+  id: totrans-307
+  prefs: []
+  type: TYPE_NORMAL
+- en: '(Spoiler alert: for this Iris dataset, they''re all pretty good.)'
+  id: totrans-308
+  prefs: []
+  type: TYPE_NORMAL
+- en: Each test run is completely independent. We can, therefore, do them all concurrently.
+  id: totrans-309
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To show what we''ll be running concurrently, here''s the test method of the `Hyperparameter` class:'
+  id: totrans-310
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  id: totrans-311
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE34]'
+- en: We'll use each test sample, performing the classification algorithm. If the
+    known result matches the species assigned by the `classify()` algorithm, we'll
+    count this as a pass. If the classification algorithm doesn't match the known
+    result, we'll count this as a failure. The percentage of correct matches is one
+    way to gauge the quality of a classification.
+  id: totrans-312
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here''s an overall testing function, `load_and_tune()`. This function loads
+    the raw data into memory from the `bezdekiris.data` file, which can be found in
+    the code repository for this book. The function includes the use of a `ProcessPoolExecutor`
+    to run a number of workers concurrently:'
+  id: totrans-313
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  id: totrans-314
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE35]'
+- en: We've used the `workers.submit()` to provide a function, the `test()` method
+    of a `Hyperparameter` instance, `h`, to the pool of workers. The result is a `Future[Hyperparameter]` that
+    will (eventually) have a `Hyperparameter` as a result. Each submitted future,
+    managed by the `ProcessPoolExecutor`, will evaluate this function, saving the
+    resulting `Hyperparameter` object as the future's result.
+  id: totrans-315
+  prefs: []
+  type: TYPE_NORMAL
+- en: Is this use of the `ProcessPoolExecutor` optimal? Because we have such a small
+    pool of data, it seems to work well. The overhead of serializing the training
+    data for each submission is minimal. For a larger set of training and testing
+    samples, we will run into performance problems serializing all the data. Since
+    the samples are string and float objects, we can change the data structure to
+    use shared memory. This is a radical restructuring that needs to exploit the Flyweight
+    design pattern from *Chapter 12*, *Advanced Design Patterns*.
+  id: totrans-316
+  prefs: []
+  type: TYPE_NORMAL
+- en: We used the `Future[Hyperparameter]` type hint to remind the **mypy** tool that
+    we expect the `test()` method to return a `Hyperparameter` result. It's important
+    to make sure the expected result type matches the result type from the function
+    actually provided to `submit()`.
+  id: totrans-317
+  prefs: []
+  type: TYPE_NORMAL
+- en: When we examine the `Future[Hyperparameter]` object, the `result` function will
+    provide the `Hyperparameter` that was processed in the worker thread. We can collect
+    these to locate an optimal hyperparameter set.
+  id: totrans-318
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Interestingly, they''re all quite good, varying between 97% and 100% accuracy.
+    Here''s a short snippet of the output:'
+  id: totrans-319
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  id: totrans-320
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE36]'
+- en: 'Why is the quality so consistently high? There are a number of reasons:'
+  id: totrans-321
+  prefs: []
+  type: TYPE_NORMAL
+- en: The source data was carefully curated and prepared by the authors of the original
+    study.
+  id: totrans-322
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: There are only four features for each sample. The classification isn't complex
+    and there aren't a lot of opportunities for near-miss classifications.
+  id: totrans-323
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Of the four features, two are very strongly correlated with the resulting species.
+    The other two have weaker correlations between a feature and the species.
+  id: totrans-324
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: One of the reasons for choosing this example is because the data allows us to
+    enjoy a success without the complications of struggling with a poorly-designed
+    problem, data that's difficult to work with, or a high level of noise that drowns
+    out the import signal hidden in the data.
+  id: totrans-325
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Looking at the `iris.names` file, section 8, we see the following summary statistics:'
+  id: totrans-326
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  id: totrans-327
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE37]'
+- en: These statistics suggest that using only two of the features would be better
+    than using all four features. Indeed, ignoring the sepal width might provide even
+    better results.
+  id: totrans-328
+  prefs: []
+  type: TYPE_NORMAL
+- en: Moving on to more sophisticated problems will introduce new challenges. The
+    essential Python programming shouldn't be part of the problem anymore. It should
+    help to craft workable solutions.
+  id: totrans-329
+  prefs: []
+  type: TYPE_NORMAL
+- en: Recall
+  id: totrans-330
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'We''ve looked closely at a variety of topics related to concurrent processing
+    in Python:'
+  id: totrans-331
+  prefs: []
+  type: TYPE_NORMAL
+- en: Threads have an advantage of simplicity for many cases. This has to be balanced
+    against the GIL interfering with compute-intensive multi-threading.
+  id: totrans-332
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Multiprocessing has an advantage of making full use of all cores of a processor.
+    This has to be balanced against interprocess communication costs. If shared memory
+    is used, there is the complication of encoding and accessing the shared objects.
+  id: totrans-333
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `concurrent.futures` module defines an abstraction – the future – that can
+    minimize the differences in application programming used for accessing threads
+    or processes. This makes it easy to switch and see which approach is fastest.
+  id: totrans-334
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `async`/`await` features of the Python language are supported by the AsyncIO
+    package. Because these are coroutines, there isn't true parallel processing; control
+    switches among the coroutines allow a single thread to interleave between waiting
+    for I/O and computing.
+  id: totrans-335
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The dining philosophers benchmark can be helpful for comparing different kinds
+    of concurrency language features and libraries. It's a relatively simple problem
+    with some interesting complexities.
+  id: totrans-336
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Perhaps the most important observation is the lack of a trivial one-size-fits-all
+    solution to concurrent processing. It's essential to create – and measure – a
+    variety of solutions to determine a design that makes best use of the computing
+    hardware.
+  id: totrans-337
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Exercises
+  id: totrans-338
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We've covered several different concurrency paradigms in this chapter and still
+    don't have a clear idea of when each one is useful. In the case study, we hinted
+    that it's generally best to develop a few different strategies before committing
+    to one that is measurably better than the others. The final choice must be based
+    on measurements of the performance of multi-threaded and multi-processing solutions.
+  id: totrans-339
+  prefs: []
+  type: TYPE_NORMAL
+- en: Concurrency is a huge topic. As your first exercise, we encourage you to search
+    the web to discover what are considered to be the latest Python concurrency best
+    practices. It can help to investigate material that isn't Python-specific to understand
+    the operating system primitives like semaphores, locks, and queues.
+  id: totrans-340
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you have used threads in a recent application, take a look at the code and
+    see how you can make it more readable and less bug-prone by using futures. Compare
+    thread and multiprocessing futures to see whether you can gain anything by using
+    multiple CPUs.
+  id: totrans-341
+  prefs: []
+  type: TYPE_NORMAL
+- en: Try implementing an AsyncIO service for some basic HTTP requests. If you can
+    get it to the point that a web browser can render a simple GET request, you'll
+    have a good understanding of AsyncIO network transports and protocols.
+  id: totrans-342
+  prefs: []
+  type: TYPE_NORMAL
+- en: Make sure you understand the race conditions that happen in threads when you
+    access shared data. Try to come up with a program that uses multiple threads to
+    set shared values in such a way that the data deliberately becomes corrupt or
+    invalid.
+  id: totrans-343
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Chapter 8*, *The Intersection of Object-Oriented and Functional Programming*,
+    we looked at an example that used `subprocess.run()` to execute a number of `python
+    -m doctest` commands on files within a directory. Review that example and rewrite
+    the code to run each subprocess in parallel using a `futures.ProcessPoolExecutor`.
+  id: totrans-344
+  prefs: []
+  type: TYPE_NORMAL
+- en: Looking back at *Chapter 12*, *Advanced Design Patterns*, there's an example
+    that runs an external command to create the figures for each chapter. This relies
+    on an external application, `java`, which tends to consume a lot of CPU resources
+    when it runs. Does concurrency help with this example? Running multiple, concurrent
+    Java programs seems to be a terrible burden. Is this a case where the default
+    value for the size of a process pool is too large?
+  id: totrans-345
+  prefs: []
+  type: TYPE_NORMAL
+- en: When looking at the case study, an important alternative is to use shared memory
+    to allow multiple concurrent processes sharing a common set of raw data. Using
+    shared memory means either sharing bytes or sharing a list of simple objects.
+    Sharing bytes works well for packages like NumPy, but doesn't work well for our
+    Python class definitions. This suggests that we can create a `SharedList` object
+    that contains all of the sample values. We'll need to apply the Flyweight design
+    pattern to present attributes with useful names extracted from the list in shared
+    memory. An individual `FlyweightSample`, then, will extract four measurements
+    and a species assignment. Once the data is prepared, what are the performance
+    differences among concurrent processes and threads within a process? What changes
+    are required to the `TrainingData` class to avoid loading testing and training
+    samples until they're needed?
+  id: totrans-346
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  id: totrans-347
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This chapter ends our exploration of object-oriented programming with a topic
+    that isn't very object-oriented. Concurrency is a difficult problem, and we've
+    only scratched the surface. While the underlying OS abstractions of processes
+    and threads do not provide an API that is remotely object-oriented, Python offers
+    some really good object-oriented abstractions around them. The threading and multiprocessing
+    packages both provide an object-oriented interface to the underlying mechanics.
+    Futures are able to encapsulate a lot of the messy details into a single object.
+    AsyncIO uses coroutine objects to make our code read as though it runs synchronously,
+    while hiding ugly and complicated implementation details behind a very simple
+    loop abstraction.
+  id: totrans-348
+  prefs: []
+  type: TYPE_NORMAL
+- en: Thank you for reading *Python Object-Oriented Programming*, *Fourth Edition*.
+    We hope you've enjoyed the ride and are eager to start implementing object-oriented
+    software in all your future projects!
+  id: totrans-349
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/Image18112.png)'
+  id: totrans-350
+  prefs: []
+  type: TYPE_IMG
+- en: '[packt.com](http://packt.com)'
+  id: totrans-351
+  prefs: []
+  type: TYPE_NORMAL
+- en: Subscribe to our online digital library for full access to over 7,000 books
+    and videos, as well as industry leading tools to help you plan your personal development
+    and advance your career. For more information, please visit our website.
+  id: totrans-352
+  prefs: []
+  type: TYPE_NORMAL
+- en: Why subscribe?
+  id: totrans-353
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Spend less time learning and more time coding with practical eBooks and Videos
+    from over 4,000 industry professionals
+  id: totrans-354
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Learn better with Skill Plans built especially for you
+  id: totrans-355
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Get a free eBook or video every month
+  id: totrans-356
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Fully searchable for easy access to vital information
+  id: totrans-357
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Copy and paste, print, and bookmark content
+  id: totrans-358
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Did you know that Packt offers eBook versions of every book published, with
+    PDF and ePub files available? You can upgrade to the eBook version at [www.Packt.com](http://www.Packt.com)
+    and as a print book customer, you are entitled to a discount on the eBook copy.
+    Get in touch with us at [customercare@packtpub.com](http://customercare@packtpub.com)
+    for more details.
+  id: totrans-359
+  prefs: []
+  type: TYPE_NORMAL
+- en: At [www.Packt.com](http://www.Packt.com), you can also read a collection of
+    free technical articles, sign up for a range of free newsletters, and receive
+    exclusive discounts and offers on Packt books and eBooks.
+  id: totrans-360
+  prefs: []
+  type: TYPE_NORMAL
