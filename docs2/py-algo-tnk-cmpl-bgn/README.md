@@ -1,6 +1,6 @@
-# Go 编程蓝图
+# Python 算法思维初学者完全指南
 
-> 原文：[`zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66`](https://zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66)
+> 原文：[`zh.annas-archive.org/md5/e679266fa7a24db26eea7852656e18cf`](https://zh.annas-archive.org/md5/e679266fa7a24db26eea7852656e18cf)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 

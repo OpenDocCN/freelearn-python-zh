@@ -1,6 +1,6 @@
-# Go 编程蓝图
+# Python 架构模式
 
-> 原文：[`zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66`](https://zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66)
+> 原文：[`zh.annas-archive.org/md5/6f69bfb2569ae444d5094faa98735c8e`](https://zh.annas-archive.org/md5/6f69bfb2569ae444d5094faa98735c8e)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 

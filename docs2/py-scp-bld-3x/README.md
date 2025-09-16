@@ -1,6 +1,6 @@
-# Go 编程蓝图
+# Blender 3.x  Python 脚本编程
 
-> 原文：[`zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66`](https://zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66)
+> 原文：[`zh.annas-archive.org/md5/77d9aa942e53de4085b0cb373abc73b4`](https://zh.annas-archive.org/md5/77d9aa942e53de4085b0cb373abc73b4)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 

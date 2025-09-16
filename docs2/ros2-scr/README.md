@@ -1,6 +1,6 @@
-# Go 编程蓝图
+# 从零开始的 ROS2 指南
 
-> 原文：[`zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66`](https://zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66)
+> 原文：[`zh.annas-archive.org/md5/bf8811360e8e4fe6319d15ed2bf23ef1`](https://zh.annas-archive.org/md5/bf8811360e8e4fe6319d15ed2bf23ef1)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 
