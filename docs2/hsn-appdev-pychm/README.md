@@ -1,6 +1,6 @@
-# Go 编程蓝图
+# PyCharm 应用开发实用指南
 
-> 原文：[`zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66`](https://zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66)
+> 原文：[`zh.annas-archive.org/md5/32117da21b20b2d3bae9d0e710aaee68`](https://zh.annas-archive.org/md5/32117da21b20b2d3bae9d0e710aaee68)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 

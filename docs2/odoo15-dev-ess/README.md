@@ -1,6 +1,6 @@
-# Go 编程蓝图
+# Odoo15 开发精要
 
-> 原文：[`zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66`](https://zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66)
+> 原文：[`zh.annas-archive.org/md5/ffff8bd6d54e17cc8574eee77559e638`](https://zh.annas-archive.org/md5/ffff8bd6d54e17cc8574eee77559e638)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 

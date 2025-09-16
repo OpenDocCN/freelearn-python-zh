@@ -1,6 +1,6 @@
-# Go 编程蓝图
+# 网络编程自动化精要
 
-> 原文：[`zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66`](https://zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66)
+> 原文：[`zh.annas-archive.org/md5/646266457ebe16c16cfa3111e6e3d4e1`](https://zh.annas-archive.org/md5/646266457ebe16c16cfa3111e6e3d4e1)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 
