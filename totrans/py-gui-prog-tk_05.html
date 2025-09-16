@@ -1,0 +1,1164 @@
+<html><head></head><body>
+  <div id="_idContainer088">
+    <h1 class="chapterNumber">5</h1>
+    <h1 id="_idParaDest-104" class="chapterTitle">Reducing User Error with Validation and Automation</h1>
+    <p class="normal">Things are going well for our project: the data entry form works well, the code is better organized, and the users are excited at the prospect of using the application. We're not ready for production yet, though! Our form doesn't yet perform the promised task of preventing or discouraging user errors: number boxes still allow letters, combo boxes aren't limited to the choices given, and dates are just text fields that have to be filled in by hand. In this chapter, we're going to set things right as we work through the following topics:</p>
+    <ul>
+      <li class="bullet">In <em class="italic">Validating user input</em>, we'll talk about some strategies for enforcing correct values in our widgets and how to implement them in Tkinter.</li>
+      <li class="bullet">In <em class="italic">Creating validated widget classes</em>, we'll super-charge Tkinter's widget classes with some custom validation logic.</li>
+      <li class="bullet">In <em class="italic">Implementing validated widgets in our GUI</em>, we'll use our new widgets to improve ABQ Data Entry.</li>
+      <li class="bullet">In <em class="italic">Automating input</em>, we'll implement auto-population of data in our widgets to save users time and effort.</li>
+    </ul>
+    <p class="normal">Let's get started!</p>
+    <h1 id="_idParaDest-105" class="title">Validating user input</h1>
+    <p class="normal">At first glance, Tkinter's selection<a id="_idIndexMarker329"/> of input widgets seems a little disappointing. </p>
+    <p class="normal">It gives us neither a true number entry that only allows digits, nor a truly keyboard-friendly, modern drop-down selector. We have no date inputs, email inputs, or other specially formatted input widgets.</p>
+    <p class="normal">Nevertheless, these weaknesses can become strengths. Because these widgets assume nothing, we can make them behave in a way that's appropriate to our specific needs. For example, alphabetical characters<a id="_idIndexMarker330"/> may seem inappropriate in a number entry, but are they? In Python, strings such as <code class="Code-In-Text--PACKT-">NaN</code> and <code class="Code-In-Text--PACKT-">Infinity</code> are valid float values; having a box that could increment numerals but also handle those string values may be very useful in some applications.</p>
+    <p class="normal">Of course, before we can tailor our widgets to our needs, we'll need to think about what exactly we want them to do. Let's do some analysis.</p>
+    <h2 id="_idParaDest-106" class="title">Strategies to prevent data errors</h2>
+    <p class="normal">There is no universal answer to how a widget should react to a user trying to enter bad data. The validation logic found in various GUI toolkits can differ greatly; when bad data is entered, an input widget<a id="_idIndexMarker331"/> might validate the user input in any<a id="_idIndexMarker332"/> of the following ways:</p>
+    <ul>
+      <li class="bullet">Prevent the invalid keystrokes from registering at all</li>
+      <li class="bullet">Accept the input, but return an error or list of errors when the form is submitted</li>
+      <li class="bullet">Show an error when the user leaves the entry field, perhaps disabling form submission until it's corrected</li>
+      <li class="bullet">Lock the user in the entry field until valid data is entered</li>
+      <li class="bullet">Silently correct the bad data using a best-guess algorithm</li>
+    </ul>
+    <p class="normal">The correct behavior in a data entry form (which is filled out hundreds of times a day by the same users, who may not even be looking at it) may be different from an instrument control panel (where values absolutely must be correct to avoid a disaster) or an online user registration form (which is filled out once by a user who has never seen it before). We need to ask ourselves – and our users – which behavior will best minimize errors.</p>
+    <p class="normal">After discussing this with your users on the data entry staff, you come to the following set of guidelines:</p>
+    <ul>
+      <li class="bullet">Whenever possible, meaningless keystrokes should be ignored (for example, letters in a number field).</li>
+      <li class="bullet">Fields containing bad data should be marked in some visible way at focus-out (when the user exits the field) with an error describing the problem.</li>
+      <li class="bullet">A required field left empty at focus-out should be marked with an error.</li>
+      <li class="bullet">Form submission should be disabled if there are fields with outstanding errors.</li>
+    </ul>
+    <p class="normal">Let's add the following requirements<a id="_idIndexMarker333"/> to our specification before moving<a id="_idIndexMarker334"/> on. Under the Requirements section, update the <code class="Code-In-Text--PACKT-">Functional Requirements</code> as follows:</p>
+    <pre class="programlisting code"><code class="hljs-code">Functional Requirements:
+  (...)
+  * have inputs that:
+    - ignore meaningless keystrokes
+    - display an error if the value is invalid on focusout
+    - display an error if a required field is empty on focusout
+  * prevent saving the record when errors are present
+</code></pre>
+    <p class="normal">So far so good, but how do we implement this?</p>
+    <h2 id="_idParaDest-107" class="title">Validation in Tkinter</h2>
+    <p class="normal">Tkinter's validation system is one of those parts of the toolkit that is less than intuitive. It relies on three configuration<a id="_idIndexMarker335"/> arguments that we can pass into any input<a id="_idIndexMarker336"/> widget:</p>
+    <ul>
+      <li class="bullet"><code class="Code-In-Text--PACKT-">validate</code>: This option determines which type of event will trigger the validation callback.</li>
+      <li class="bullet"><code class="Code-In-Text--PACKT-">validatecommand</code>: This option takes the command that will determine if the data is valid.</li>
+      <li class="bullet"><code class="Code-In-Text--PACKT-">invalidcommand</code>: This option takes a command that will run if <code class="Code-In-Text--PACKT-">validatecommand</code> returns <code class="Code-In-Text--PACKT-">False</code>.</li>
+    </ul>
+    <p class="normal">This all seems pretty straightforward, but there are some unexpected curves. Let's look in depth at each argument.</p>
+    <h3 id="_idParaDest-108" class="title">The validate argument</h3>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">validate</code> argument specifies what kind<a id="_idIndexMarker337"/> of event triggers the<a id="_idIndexMarker338"/> validation. It can be one of the following string values:</p>
+    <table id="table001-2" class="No-Table-Style _idGenTablePara-1">
+      <colgroup>
+        <col/>
+        <col/>
+      </colgroup>
+      <tbody>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Value</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Trigger event</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-"><code class="Code-In-Text--PACKT-">none</code></p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Never. This option turns off validation.</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-"><code class="Code-In-Text--PACKT-">focusin</code></p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">The user selects or enters the widget.</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-"><code class="Code-In-Text--PACKT-">focusout</code></p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">The user leaves the widget.</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-"><code class="Code-In-Text--PACKT-">focus</code></p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Both <code class="Code-In-Text--PACKT-">focusin</code> and <code class="Code-In-Text--PACKT-">focusout</code>.</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-"><code class="Code-In-Text--PACKT-">key</code></p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">The user presses a key while in the widget.</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-"><code class="Code-In-Text--PACKT-">all</code></p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Any of the <code class="Code-In-Text--PACKT-">focusin</code>, <code class="Code-In-Text--PACKT-">focusout</code>, or <code class="Code-In-Text--PACKT-">key</code> events.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="normal">Only one <code class="Code-In-Text--PACKT-">validate</code> argument<a id="_idIndexMarker339"/> can be specified, and all matching events will trigger the same validation callback. Most<a id="_idIndexMarker340"/> of the time, you will want to use <code class="Code-In-Text--PACKT-">key</code> and <code class="Code-In-Text--PACKT-">focusout</code> (validating on <code class="Code-In-Text--PACKT-">focusin</code> is rarely useful), but since there isn't a value that combines those two events, it's often best to use <code class="Code-In-Text--PACKT-">all</code> and let the callback switch its validation logic based on the event type if necessary.</p>
+    <h3 id="_idParaDest-109" class="title">The validatecommand argument</h3>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">validatecommand</code> argument specifies the callback function that will be run when the <code class="Code-In-Text--PACKT-">validate</code> event is triggered. This<a id="_idIndexMarker341"/> is where things get a little tricky. You might think this argument<a id="_idIndexMarker342"/> takes the name of a Python function or method, but that's not quite it. Instead, we need to give it a tuple containing a string reference to a Tcl/Tk function, and (optionally) some <strong class="keyword">substitution codes</strong> that specify information about<a id="_idIndexMarker343"/> the triggering event that we want to pass into the function.</p>
+    <p class="normal">How do we get a reference to a Tcl/Tk function? Fortunately, this isn't too hard; we just need to pass a Python callable to the <code class="Code-In-Text--PACKT-">register()</code> method of any Tkinter widget. This returns string reference that we can use with <code class="Code-In-Text--PACKT-">validatecommand</code>.</p>
+    <p class="normal">For example, we can create a (somewhat pointless) validation command like this:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># validate_demo.py</span>
+<span class="hljs-keyword">import</span> tkinter <span class="hljs-keyword">as</span> tk
+root = tk.Tk()
+entry = tk.Entry(root)
+entry.grid()
+<span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">always_good</span><span class="hljs-function">():</span>
+  <span class="hljs-keyword">return</span> <span class="hljs-literal">True</span>
+validate_ref = root.register(always_good)
+entry.configure(
+  validate=<span class="hljs-string">'all'</span>,
+  validatecommand=(validate_ref,)
+)
+root.mainloop()
+</code></pre>
+    <p class="normal">In this example, we've retrieved our function reference by passing the <code class="Code-In-Text--PACKT-">always_good</code> function to <code class="Code-In-Text--PACKT-">root.register()</code>. Then we can pass this reference in a tuple to <code class="Code-In-Text--PACKT-">validatecommand</code>. The validation callback that we register must return a Boolean value indicating whether the data in the field is valid or invalid.</p>
+    <div class="packt_tip">
+      <p class="Tip--PACKT-">A <code class="Code-In-Text--PACKT-">validatecommand</code> callback <em class="italic">must</em> return a Boolean value. If it returns anything else (including the implicit <code class="Code-In-Text--PACKT-">None</code> value when there is no <code class="Code-In-Text--PACKT-">return</code> statement), Tkinter will turn off validation on the widget (that is, it will set <code class="Code-In-Text--PACKT-">validate</code> to <code class="Code-In-Text--PACKT-">none</code>). Remember that its purpose is <em class="italic">only</em> to indicate whether the data is acceptable or not. The handling of invalid data will be done by our <code class="Code-In-Text--PACKT-">invalidcommand</code> callback.</p>
+    </div>
+    <p class="normal">Of course, it's not easy to validate the data unless we provide the function with some data to be validated. To make Tkinter<a id="_idIndexMarker344"/> pass information to our validation callback, we can<a id="_idIndexMarker345"/> add one or more substitution codes<a id="_idIndexMarker346"/> to our <code class="Code-In-Text--PACKT-">validatecommand</code> tuple. These codes are as follows:</p>
+    <table id="table002-2" class="No-Table-Style _idGenTablePara-1">
+      <colgroup>
+        <col/>
+        <col/>
+      </colgroup>
+      <tbody>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Code</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Value passed</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-"><code class="Code-In-Text--PACKT-">%d</code></p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">A code indicating the action being attempted: <code class="Code-In-Text--PACKT-">0</code> for delete, <code class="Code-In-Text--PACKT-">1</code> for insert, and <code class="Code-In-Text--PACKT-">-1</code> for other events. Note that this is passed as a string, and not as an integer.</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-"><code class="Code-In-Text--PACKT-">%P</code></p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">The proposed value that the field would have after the change (key events only).</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-"><code class="Code-In-Text--PACKT-">%s</code></p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">The value currently in the field (key events only).</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-"><code class="Code-In-Text--PACKT-">%i</code></p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">The index (from <code class="Code-In-Text--PACKT-">0</code>) of the text being inserted or deleted on key events, or <code class="Code-In-Text--PACKT-">-1</code> on non-key events. Note that this is passed as a string, not an integer.</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-"><code class="Code-In-Text--PACKT-">%S</code></p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">For insertion or deletion, the text that is being inserted or deleted (key events only).</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-"><code class="Code-In-Text--PACKT-">%v</code></p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">The widget's <code class="Code-In-Text--PACKT-">validate</code> value.</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-"><code class="Code-In-Text--PACKT-">%V</code></p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">The event type that triggered validation, one of <code class="Code-In-Text--PACKT-">focusin</code>, <code class="Code-In-Text--PACKT-">focusout</code>, <code class="Code-In-Text--PACKT-">key</code>, or <code class="Code-In-Text--PACKT-">forced</code> (indicating the widget's variable was changed).</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-"><code class="Code-In-Text--PACKT-">%W</code></p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">The widget's name in Tcl/Tk, as a string.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="normal">We can use these codes to create a slightly more useful validated <code class="Code-In-Text--PACKT-">Entry</code>, like so:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># validate_demo.py</span>
+<span class="hljs-comment"># Place just before root.mainloop()</span>
+entry2 = tk.Entry(root)
+entry2.grid(pady=10)
+<span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">no_t_for_me</span><span class="hljs-function">(</span><span class="hljs-params">proposed</span><span class="hljs-function">):</span>
+  <span class="hljs-keyword">return</span> <span class="hljs-string">'t'</span> <span class="hljs-keyword">not</span> <span class="hljs-keyword">in</span> proposed
+validate2_ref = root.register(no_t_for_me)
+entry2.configure(
+  validate=<span class="hljs-string">'all'</span>,
+  validatecommand=(validate2_ref, <span class="hljs-string">'%P'</span>)
+)
+</code></pre>
+    <p class="normal">Here, we're passing the <code class="Code-In-Text--PACKT-">%P</code> substitution code into our <code class="Code-In-Text--PACKT-">validatecommand</code> tuple so that our callback function will be passed the proposed new value for the widget (that is, the value of the widget if the keystroke is accepted). In this case, we're going to return <code class="Code-In-Text--PACKT-">False</code> if the proposed value contains the <code class="Code-In-Text--PACKT-">t</code> character.</p>
+    <p class="normal">Note that the behavior of the widget when the <code class="Code-In-Text--PACKT-">validatecommand</code> callback returns changes depending on the type<a id="_idIndexMarker347"/> of event that triggered validation. If a validation callback is triggered by a <code class="Code-In-Text--PACKT-">key</code> event and it returns <code class="Code-In-Text--PACKT-">False</code>, Tkinter's built-in behavior<a id="_idIndexMarker348"/> is to reject the keystroke and leave the contents as they are. In the event of a <code class="Code-In-Text--PACKT-">focus</code> event triggering validation, a <code class="Code-In-Text--PACKT-">False</code> return value will simply flag the widget as invalid. In both cases, the <code class="Code-In-Text--PACKT-">invalidcommand</code> callback will also be executed. If we haven't specified a callback, Tkinter will simply do nothing further.</p>
+    <p class="normal">For example, run the above script; you'll find you cannot type a <code class="Code-In-Text--PACKT-">t</code> in the <code class="Code-In-Text--PACKT-">Entry</code> widget. That's because the <code class="Code-In-Text--PACKT-">key</code> validation returned <code class="Code-In-Text--PACKT-">False</code>, so Tkinter rejected the keystroke.</p>
+    <h3 id="_idParaDest-110" class="title">The invalidcommand argument</h3>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">invalidcommand</code> argument works exactly the same as the <code class="Code-In-Text--PACKT-">validatecommand</code> argument, requiring<a id="_idIndexMarker349"/> the use of the <code class="Code-In-Text--PACKT-">register()</code> method and the same<a id="_idIndexMarker350"/> substitution codes. It specifies a callback function to be run when <code class="Code-In-Text--PACKT-">validatecommand</code> returns <code class="Code-In-Text--PACKT-">False</code>. It could be used to show an error or possibly correct the input.</p>
+    <p class="normal">To see what this looks like together, consider the following code for an <code class="Code-In-Text--PACKT-">Entry</code> widget that only accepts five characters:</p>
+    <pre class="programlisting code"><code class="hljs-code">entry3 = tk.Entry(root)
+entry3.grid()
+entry3_error = tk.Label(root, fg=<span class="hljs-string">'red'</span>)
+entry3_error.grid()
+<span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">only_five_chars</span><span class="hljs-function">(</span><span class="hljs-params">proposed</span><span class="hljs-function">):</span>
+  <span class="hljs-keyword">return</span> <span class="hljs-built_in">len</span>(proposed) &lt; <span class="hljs-number">6</span>
+<span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">only_five_chars_error</span><span class="hljs-function">(</span><span class="hljs-params">proposed</span><span class="hljs-function">):</span>
+  entry3_error.configure(
+  text=<span class="hljs-string">f'</span><span class="hljs-subst">{proposed}</span><span class="hljs-string"> is too long, only 5 chars allowed.'</span>
+  )
+validate3_ref = root.register(only_five_chars)
+invalid3_ref = root.register(only_five_chars_error)
+entry3.configure(
+  validate=<span class="hljs-string">'all'</span>,
+  validatecommand=(validate3_ref, <span class="hljs-string">'%P'</span>),
+  invalidcommand=(invalid3_ref, <span class="hljs-string">'%P'</span>)
+)
+</code></pre>
+    <p class="normal">Here, we've created a simple GUI with an <code class="Code-In-Text--PACKT-">Entry</code> widget and a <code class="Code-In-Text--PACKT-">Label</code> widget. We've also created two functions, one that returns whether or not the length of a string is less than six characters, and another<a id="_idIndexMarker351"/> that configures the <code class="Code-In-Text--PACKT-">Label</code> widget to show an error. We then register<a id="_idIndexMarker352"/> the two functions with Tk using the <code class="Code-In-Text--PACKT-">root.register()</code> method, passing them to the <code class="Code-In-Text--PACKT-">Entry</code> widget's <code class="Code-In-Text--PACKT-">validatecommand</code> and <code class="Code-In-Text--PACKT-">invalidcommand</code> arguments. We also include the <code class="Code-In-Text--PACKT-">%P</code> substitution code so that the proposed value of the widget is passed into each function. Note that you can pass in as many substitution codes as you wish, and in any order, as long as your callback function is written to accept those arguments.</p>
+    <p class="normal">Run this example and test its behavior; note that not only can you <em class="italic">not</em> type more than five characters in the box, but you also receive a warning in the label that your attempted edit was too long.</p>
+    <h1 id="_idParaDest-111" class="title">Creating validated widget classes</h1>
+    <p class="normal">As you can see, adding even<a id="_idIndexMarker353"/> very simple validation to Tkinter widgets involves several steps with some less-than-intuitive logic. Adding validation to even a fraction of our widgets could get quite verbose and ugly. However, we learned in the previous chapter that we can improve on Tkinter widgets by subclassing them to add new configuration and functionality. Let's see if we can apply this technique to widget validation by creating validated versions of Tkinter's widget classes.</p>
+    <p class="normal">For example, let's implement our five-character entry again, this time as a subclass of <code class="Code-In-Text--PACKT-">ttk.Entry</code>, like so:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># five_char_entry_class.py</span>
+<span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">FiveCharEntry</span><span class="hljs-class">(</span><span class="hljs-params">ttk.Entry</span><span class="hljs-class">):</span>
+  <span class="hljs-string">"""An Entry that truncates to five characters on exit."""</span>
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__init__</span><span class="hljs-function">(</span><span class="hljs-params">self, parent, *args, **kwargs</span><span class="hljs-function">):</span>
+    <span class="hljs-built_in">super</span>().__init__(parent, *args, **kwargs)
+    self.error = tk.StringVar()
+    self.configure(
+      validate=<span class="hljs-string">'all'</span>,
+      validatecommand=(self.register(self._validate), <span class="hljs-string">'%P'</span>),
+      invalidcommand=(self.register(self._on_invalid), <span class="hljs-string">'%P'</span>)
+    )
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">_validate</span><span class="hljs-function">(</span><span class="hljs-params">self, proposed</span><span class="hljs-function">):</span>
+    <span class="hljs-keyword">return</span> <span class="hljs-built_in">len</span>(proposed) &lt;= <span class="hljs-number">5</span>
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">_on_invalid</span><span class="hljs-function">(</span><span class="hljs-params">self, proposed</span><span class="hljs-function">):</span>
+    self.error.<span class="hljs-built_in">set</span>(
+      <span class="hljs-string">f'</span><span class="hljs-subst">{proposed}</span><span class="hljs-string"> is too long, only 5 chars allowed!'</span>
+    )
+</code></pre>
+    <p class="normal">This time, we've implemented validation by subclassing <code class="Code-In-Text--PACKT-">Entry</code> and defining our validation logic in a method<a id="_idIndexMarker354"/> rather than an external function. This simplifies access to the widget in our validation methods, should we need it, and also allows us to refer to the methods in <code class="Code-In-Text--PACKT-">__init__()</code> before they are actually defined. We've also added a <code class="Code-In-Text--PACKT-">StringVar</code> called <code class="Code-In-Text--PACKT-">error</code> as an instance variable. We can use this variable to hold an error message should our validation fail.</p>
+    <p class="normal">Note that we've registered these functions using <code class="Code-In-Text--PACKT-">self.register()</code> rather than <code class="Code-In-Text--PACKT-">root.register()</code>. The <code class="Code-In-Text--PACKT-">register()</code> method does not have to be run on the <code class="Code-In-Text--PACKT-">root</code> window object; it can be run on any Tkinter widget. Since we don't know for sure that the code using our class will call the root window <code class="Code-In-Text--PACKT-">root</code>, or if it will be in scope when the <code class="Code-In-Text--PACKT-">__init__()</code> method runs, it makes sense to use the <code class="Code-In-Text--PACKT-">FiveCharEntry</code> widget itself to register the functions. However, this must be done <em class="italic">after</em> we call <code class="Code-In-Text--PACKT-">super().__init__()</code>, since the underlying Tcl/Tk object doesn't actually exist (and cannot register functions) until that method is run. That is why we're using <code class="Code-In-Text--PACKT-">configure()</code> to set these values rather than passing them into <code class="Code-In-Text--PACKT-">super().__init__()</code>.</p>
+    <p class="normal">We can then use this class like so:</p>
+    <pre class="programlisting code"><code class="hljs-code">root = tk.Tk()
+entry = FiveCharEntry(root)
+error_label = ttk.Label(
+  root, textvariable=entry.error, foreground=<span class="hljs-string">'red'</span>
+)
+entry.grid()
+error_label.grid()
+root.mainloop()
+</code></pre>
+    <p class="normal">Here, we've created an instance of the <code class="Code-In-Text--PACKT-">FiveCharEntry</code> widget as well as a <code class="Code-In-Text--PACKT-">Label</code> widget to display errors. Note that we pass<a id="_idIndexMarker355"/> the widget's built-in error variable, <code class="Code-In-Text--PACKT-">entry.error</code>, to the label's <code class="Code-In-Text--PACKT-">textvariable</code> argument. When you execute this, you should see the label displaying an error when you try to type more than five characters, like so:</p>
+    <figure class="mediaobject"><img src="../Images/B17578_05_01.png" alt="The five-character entry refusing to accept &quot;Banana&quot;"/></figure>
+    <p class="packt_figref">Figure 5.1: The five-character entry refusing to accept "Banana"</p>
+    <h2 id="_idParaDest-112" class="title">Creating a Date field</h2>
+    <p class="normal">Let's try something a little more useful now: creating a validating <code class="Code-In-Text--PACKT-">DateEntry</code> widget to use for our <code class="Code-In-Text--PACKT-">Date</code> field. Our widget<a id="_idIndexMarker356"/> will prevent any keystrokes that aren't valid<a id="_idIndexMarker357"/> for a date string, and check for validity of the date on <code class="Code-In-Text--PACKT-">focusout</code>. If the date is invalid, we'll mark the field in some way and set an error message in a <code class="Code-In-Text--PACKT-">StringVar</code>, which some other widget could use to display the error.</p>
+    <p class="normal">First, open a new file called <code class="Code-In-Text--PACKT-">DateEntry.py</code> and begin with the following code:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># DateEntry.py</span>
+<span class="hljs-keyword">import</span> tkinter <span class="hljs-keyword">as</span> tk
+<span class="hljs-keyword">from</span> tkinter <span class="hljs-keyword">import</span> ttk
+<span class="hljs-keyword">from</span> datetime <span class="hljs-keyword">import</span> datetime
+<span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">DateEntry</span><span class="hljs-class">(</span><span class="hljs-params">ttk.Entry</span><span class="hljs-class">):</span>
+  <span class="hljs-string">"""An Entry for ISO-style dates (Year-month-day)"""</span>
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__init__</span><span class="hljs-function">(</span><span class="hljs-params">self, parent, *args, **kwargs</span><span class="hljs-function">):</span>
+    <span class="hljs-built_in">super</span>().__init__(parent, *args, **kwargs)
+    self.configure(
+      validate=<span class="hljs-string">'all'</span>,
+      validatecommand=(
+        self.register(self._validate),
+        <span class="hljs-string">'%S'</span>, <span class="hljs-string">'%i'</span>, <span class="hljs-string">'%V'</span>, <span class="hljs-string">'%d'</span>
+<span class="hljs-string">      </span>),
+      invalidcommand=(self.register(self._on_invalid), <span class="hljs-string">'%V'</span>)
+    )
+    self.error = tk.StringVar()
+</code></pre>
+    <p class="normal">After importing <code class="Code-In-Text--PACKT-">tkinter</code> and <code class="Code-In-Text--PACKT-">ttk</code>, we also import <code class="Code-In-Text--PACKT-">datetime</code>, which we'll need for validating the date strings entered. As with our previous class, we've overridden <code class="Code-In-Text--PACKT-">__init__()</code> to set up validation<a id="_idIndexMarker358"/> and add an error variable. This time, however, we're going to be passing several more arguments<a id="_idIndexMarker359"/> into our <code class="Code-In-Text--PACKT-">validatecommand</code> method: the character being inserted (<code class="Code-In-Text--PACKT-">%S</code>), the index where it's being inserted (<code class="Code-In-Text--PACKT-">%i</code>), the event type triggering validation (<code class="Code-In-Text--PACKT-">%V</code>), and the action type (<code class="Code-In-Text--PACKT-">%d</code>). <code class="Code-In-Text--PACKT-">invalidcommand</code> is receiving only the event type (<code class="Code-In-Text--PACKT-">%V</code>). Since we're triggering validation on all events, we'll need this value to decide how to handle the invalid data appropriately.</p>
+    <p class="normal">Next, let's create a method called <code class="Code-In-Text--PACKT-">_toggle_error()</code> to turn an error state on or off in the widget:</p>
+    <pre class="programlisting code"><code class="hljs-code">  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">_toggle_error</span><span class="hljs-function">(</span><span class="hljs-params">self, error=</span><span class="hljs-string">''</span><span class="hljs-function">):</span>
+    self.error.<span class="hljs-built_in">set</span>(error)
+    <span class="code-highlight"><strong class="hljs-slc">self.config(foreground=</strong><strong class="hljs-string-slc">'red'</strong><strong class="hljs-slc"> </strong><strong class="hljs-keyword-slc">if</strong><strong class="hljs-slc"> error </strong><strong class="hljs-keyword-slc">else</strong><strong class="hljs-slc"> </strong><strong class="hljs-string-slc">'black'</strong><strong class="hljs-slc">)</strong></span>
+</code></pre>
+    <p class="normal">We'll use this method to handle how our widget behaves when an error occurs or is corrected. It starts by setting<a id="_idIndexMarker360"/> our error variable to the string<a id="_idIndexMarker361"/> provided. If the string is not blank, we set a visual error indicator (in this case, turning the text red); if it's blank, we turn off the visual indicator.</p>
+    <p class="normal">Now that we have that, we can create our <code class="Code-In-Text--PACKT-">_validate()</code> method, as follows:</p>
+    <pre class="programlisting code"><code class="hljs-code">  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">_validate</span><span class="hljs-function">(</span><span class="hljs-params">self, char, index, event, action</span><span class="hljs-function">):</span>
+    <span class="hljs-comment"># reset error state</span>
+    self._toggle_error()
+    valid = <span class="hljs-literal">True</span>
+    <span class="hljs-comment"># ISO dates only need digits and hyphens</span>
+    <span class="hljs-keyword">if</span> event == <span class="hljs-string">'key'</span>:
+      <span class="hljs-keyword">if</span> action == <span class="hljs-string">'0'</span>:
+        valid = <span class="hljs-literal">True</span>
+      <span class="hljs-keyword">elif</span> index <span class="hljs-keyword">in</span> (<span class="hljs-string">'0'</span>, <span class="hljs-string">'1'</span>, <span class="hljs-string">'2'</span>, <span class="hljs-string">'3'</span>, <span class="hljs-string">'5'</span>, <span class="hljs-string">'6'</span>, <span class="hljs-string">'8'</span>, <span class="hljs-string">'9'</span>):
+        valid = char.isdigit()
+      <span class="hljs-keyword">elif</span> index <span class="hljs-keyword">in</span> (<span class="hljs-string">'4'</span>, <span class="hljs-string">'7'</span>):
+        valid = char == <span class="hljs-string">'-'</span>
+      <span class="hljs-keyword">else</span>:
+        valid = <span class="hljs-literal">False</span>
+</code></pre>
+    <p class="normal">This method will take an "innocent until proven guilty" approach to validating the user input, so we begin by toggling off any error state and setting a <code class="Code-In-Text--PACKT-">valid</code> flag to <code class="Code-In-Text--PACKT-">True</code>. Then, we'll start looking at keystroke events. The line <code class="Code-In-Text--PACKT-">if action == '0':</code> tells us if the user is trying to delete characters. We always want to allow this so that the user can edit the field, so that should always return <code class="Code-In-Text--PACKT-">True</code>.</p>
+    <p class="normal">The basic format of an ISO date is four digits, a dash, two digits, a dash, and two digits. We can test whether the user is following this format by checking whether the inserted characters match our expectations at the inserted index. For example, the line <code class="Code-In-Text--PACKT-">index in ('0','1', '2', '3', '5', '6', '8', '9')</code> will tell us if the character is being inserted at one of the positions that requires a digit, and if so we check that the character is a digit. The characters at indexes <code class="Code-In-Text--PACKT-">4</code> and <code class="Code-In-Text--PACKT-">7</code> should be a dash. Any other keystroke is invalid.</p>
+    <div class="packt_tip">
+      <p class="Tip--PACKT-">Although you might expect them to be integers, Tkinter passes both action codes and character indexes as strings. Keep this in mind when writing your comparisons.</p>
+    </div>
+    <p class="normal">While this is a hopelessly naive heuristic for a correct date, since it allows for complete nonsense dates like <code class="Code-In-Text--PACKT-">0000-97-46</code>, or right-looking-but-still-wrong dates like <code class="Code-In-Text--PACKT-">2000-02-29</code>, it at least enforces the basic format and removes a large number of invalid keystrokes. A completely accurate partial date analyzer is a project unto itself, but for now, this will do.</p>
+    <p class="normal">Checking our date for correctness<a id="_idIndexMarker362"/> on focus-out is simpler and much<a id="_idIndexMarker363"/> more foolproof, as you can see here:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># still in DateEntry._validate()</span>
+    <span class="hljs-keyword">elif</span> event == <span class="hljs-string">'focusout'</span>:
+      <span class="hljs-keyword">try</span>:
+        datetime.strptime(self.get(), <span class="hljs-string">'%Y-%m-%d'</span>)
+      <span class="hljs-keyword">except</span> ValueError:
+        valid = <span class="hljs-literal">False</span>
+    <span class="hljs-keyword">return</span> valid
+</code></pre>
+    <p class="normal">Since we have access to the final value the user meant to enter at this point, we can use <code class="Code-In-Text--PACKT-">datetime.strptime()</code> to try to convert the string to a Python <code class="Code-In-Text--PACKT-">datetime</code> object using the format <code class="Code-In-Text--PACKT-">%Y-%m-%d</code>. If this fails, we know the date is invalid.</p>
+    <p class="normal">Finally, at the end of the method, we return our <code class="Code-In-Text--PACKT-">valid</code> flag. As you saw previously, it's sufficient to return <code class="Code-In-Text--PACKT-">False</code> for keystroke events to prevent the character from being inserted; but for errors on focus events, we'll need to respond in some user-visible way.</p>
+    <p class="normal">This will be handled in our <code class="Code-In-Text--PACKT-">_on_invalid()</code> method as follows:</p>
+    <pre class="programlisting code"><code class="hljs-code">  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">_on_invalid</span><span class="hljs-function">(</span><span class="hljs-params">self, event</span><span class="hljs-function">):</span>
+    <span class="hljs-keyword">if</span> event != <span class="hljs-string">'key'</span>:
+      self._toggle_error(<span class="hljs-string">'Not a valid date'</span>)
+</code></pre>
+    <p class="normal">We have configured this method to receive only the event type, which we'll use to ignore keystroke events (they're already adequately handled by the default behavior). For any other event type, we'll use our <code class="Code-In-Text--PACKT-">_toggle_error()</code> method to set our visual indicator and the error string.</p>
+    <p class="normal">Let's test the <code class="Code-In-Text--PACKT-">DateEntry</code> class with a small test script at the end of the file:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">if</span> __name__ == <span class="hljs-string">'__main__'</span>:
+  root = tk.Tk()
+  entry = DateEntry(root)
+  entry.pack()
+  ttk.Label(
+    textvariable=entry.error, foreground=<span class="hljs-string">'red'</span>
+  ).pack()
+  <span class="hljs-comment"># add this so we can unfocus the DateEntry</span>
+  ttk.Entry(root).pack()
+  root.mainloop()
+</code></pre>
+    <p class="normal">Save the file and run it to try<a id="_idIndexMarker364"/> the new <code class="Code-In-Text--PACKT-">DateEntry</code> class. Try entering various bad dates or invalid<a id="_idIndexMarker365"/> keystrokes, and then click the second <code class="Code-In-Text--PACKT-">Entry</code> widget to unfocus the <code class="Code-In-Text--PACKT-">DateEntry</code> and note what happens. </p>
+    <p class="normal">You should see something like this:</p>
+    <figure class="mediaobject"><img src="../Images/B17578_05_02.png" alt="A validating DateEntry widget warning us about a bad date string."/></figure>
+    <p class="packt_figref">Figure 5.2: A validating DateEntry widget warning us about a bad date string</p>
+    <h1 id="_idParaDest-113" class="title">Implementing validated widgets in our GUI</h1>
+    <p class="normal">Now that you know how<a id="_idIndexMarker366"/> to validate your widgets, you have your work<a id="_idIndexMarker367"/> cut out for you! We have 17 input widgets, and you'll have to write validation code like that shown in the previous section for all of them to get the behavior we need. Along the way, you'll need to make sure the widgets respond consistently to errors and present a consistent API to the application.</p>
+    <p class="normal">If that sounds like something you'd like to put off indefinitely, I can't blame you. Maybe there's a way we can cut down the amount of repetitive code we need to write.</p>
+    <h2 id="_idParaDest-114" class="title">Introducing the power of multiple inheritance</h2>
+    <p class="normal">So far, we have learned that Python allows us to create new classes by subclassing, inheriting features from the superclass, and only adding<a id="_idIndexMarker368"/> or changing what's different about our new class. Python also supports building classes using <strong class="keyword">multiple inheritance</strong>, in which a subclass can inherit from multiple superclasses. We can exploit<a id="_idIndexMarker369"/> this feature to our advantage by creating what's called a <strong class="keyword">mixin class</strong>.</p>
+    <p class="normal">Mixin classes contain only a specific set of functionalities that we want to be able to "mix in" with other classes to compose a new class.</p>
+    <p class="normal">Take a look at the following example code:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">Fruit</span><span class="hljs-class">():</span>
+  _taste = <span class="hljs-string">'sweet'</span>
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">taste</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">):</span>
+    <span class="hljs-built_in">print</span>(<span class="hljs-string">f'It tastes </span><span class="hljs-subst">{self._taste}</span><span class="hljs-string">'</span>)
+<span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">PeelableMixin</span><span class="hljs-class">():</span>
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__init__</span><span class="hljs-function">(</span><span class="hljs-params">self, *args, **kwargs</span><span class="hljs-function">):</span>
+    <span class="hljs-built_in">super</span>().__init__(*args, **kwargs)
+    self._peeled = <span class="hljs-literal">False</span>
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">peel</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">):</span>
+    self._peeled = <span class="hljs-literal">True</span>
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">taste</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">):</span>
+    <span class="hljs-keyword">if</span> <span class="hljs-keyword">not</span> self._peeled:
+      <span class="hljs-built_in">print</span>(<span class="hljs-string">'I will peel it first'</span>)
+      self.peel()
+    <span class="hljs-built_in">super</span>().taste()
+</code></pre>
+    <p class="normal">In this example, we have a class called <code class="Code-In-Text--PACKT-">Fruit</code> with a <code class="Code-In-Text--PACKT-">_taste</code> class attribute and a <code class="Code-In-Text--PACKT-">taste()</code> method that prints a message indicating how the fruit tastes. We then have a mixin class called <code class="Code-In-Text--PACKT-">PeelableMixin</code>. The mixin class<a id="_idIndexMarker370"/> adds an instance attribute called <code class="Code-In-Text--PACKT-">_peeled</code> to indicate if the fruit has been peeled, as well as a <code class="Code-In-Text--PACKT-">peel()</code> method to update the <code class="Code-In-Text--PACKT-">_peeled</code> attribute. It also overrides the <code class="Code-In-Text--PACKT-">taste()</code> method to check if the fruit is peeled before tasting. Note that the mixin class's <code class="Code-In-Text--PACKT-">__init__()</code> method also calls the superclass initializer, even though it doesn't inherit from another class. We'll see why this is in a moment.</p>
+    <p class="normal">Now, let's use multiple inheritance to create a new class, like so:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">Plantain</span><span class="hljs-class">(</span><span class="hljs-params">PeelableMixin, Fruit</span><span class="hljs-class">):</span>
+  _taste = <span class="hljs-string">'starchy'</span>
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">peel</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">):</span>
+    <span class="hljs-built_in">print</span>(<span class="hljs-string">'It has a tough peel!'</span>)
+    <span class="hljs-built_in">super</span>().peel()
+</code></pre>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">Plantain</code> class is created from the combination of the <code class="Code-In-Text--PACKT-">PeelableMixin</code> and the <code class="Code-In-Text--PACKT-">Fruit</code> class. When we create a class<a id="_idIndexMarker371"/> using multiple inheritance, the rightmost class we specify is called the <strong class="keyword">base class</strong>, and mixin classes should be specified before it (that is, to the left of the base class). Thus, <code class="Code-In-Text--PACKT-">Fruit</code> is the base class in this case.</p>
+    <p class="normal">Let's create an instance of our class and call <code class="Code-In-Text--PACKT-">taste()</code>, like so:</p>
+    <pre class="programlisting code"><code class="hljs-code">plantain = Plantain()
+plantain.taste()
+</code></pre>
+    <p class="normal">As you can see, the resulting subclass has both a <code class="Code-In-Text--PACKT-">taste()</code> and a <code class="Code-In-Text--PACKT-">peel()</code> method, but note that there are two versions of each method defined between all the classes. When we call one of these methods, which version is used?</p>
+    <p class="normal">In a multiple inheritance situation, <code class="Code-In-Text--PACKT-">super()</code> does something a little more complex than just standing in for the superclass. It looks<a id="_idIndexMarker372"/> up the chain of inheritance using something called the <strong class="keyword">method resolution order </strong>(<strong class="keyword">MRO</strong>) and determines the nearest class that defines the method we're calling. The resolution order starts with the current class, and then follows the chain of superclasses from the leftmost to the base class.</p>
+    <p class="normal">Thus, when we call <code class="Code-In-Text--PACKT-">plantain.taste()</code>, a series of method resolutions occurs, as follows:</p>
+    <ul>
+      <li class="bullet"><code class="Code-In-Text--PACKT-">plantain.taste()</code> is resolved to <code class="Code-In-Text--PACKT-">PeelableMixin.taste()</code>.</li>
+      <li class="bullet"><code class="Code-In-Text--PACKT-">PeelableMixin.taste()</code> then calls <code class="Code-In-Text--PACKT-">self.peel()</code>. Since <code class="Code-In-Text--PACKT-">self</code> is a <code class="Code-In-Text--PACKT-">Plantain</code> object, <code class="Code-In-Text--PACKT-">self.peel()</code> is resolved to <code class="Code-In-Text--PACKT-">Plantain.peel()</code>.</li>
+      <li class="bullet"><code class="Code-In-Text--PACKT-">Plaintain.peel()</code> prints a message and calls <code class="Code-In-Text--PACKT-">super().peel()</code>. Python resolves this call to the leftmost class with a <code class="Code-In-Text--PACKT-">peel()</code> method, <code class="Code-In-Text--PACKT-">PeelableMixin.peel()</code>.</li>
+      <li class="bullet">When that's returned, <code class="Code-In-Text--PACKT-">PeelableMixin.taste()</code> then calls <code class="Code-In-Text--PACKT-">super().taste()</code>. The next leftmost class from <code class="Code-In-Text--PACKT-">PeelableMixin</code> is <code class="Code-In-Text--PACKT-">Fruit</code>, so this is resolved to <code class="Code-In-Text--PACKT-">Fruit.taste()</code>.</li>
+      <li class="bullet"><code class="Code-In-Text--PACKT-">Fruit.taste()</code> refers to the class variable <code class="Code-In-Text--PACKT-">_taste</code>. Even though the method being run is in the <code class="Code-In-Text--PACKT-">Fruit</code> class, the class of our object is <code class="Code-In-Text--PACKT-">Plantain</code>, so <code class="Code-In-Text--PACKT-">Plantain._taste</code> is used here.</li>
+    </ul>
+    <p class="normal">If this seems confusing, just remember that <code class="Code-In-Text--PACKT-">self.method()</code> or <code class="Code-In-Text--PACKT-">self.attribute</code> will always look for <code class="Code-In-Text--PACKT-">method()</code> or <code class="Code-In-Text--PACKT-">attribute</code> in the current class first, and then follow the list of inherited classes<a id="_idIndexMarker373"/> from left to right until the method or attribute is found. The <code class="Code-In-Text--PACKT-">super()</code> object will do the same, except that it skips the current class.</p>
+    <p class="normal">This is the reason why we called <code class="Code-In-Text--PACKT-">super().__init__()</code> inside the mixin class's initializer in the example. </p>
+    <p class="normal">Without this call, only the mixin class initializer would be called. By calling <code class="Code-In-Text--PACKT-">super().__init__()</code>, Python will also continue up the MRO chain and call the base class initializer. This is particularly important to remember when creating mixins for Tkinter classes, since the Tkinter class's initializer creates the actual Tcl/Tk object.</p>
+    <div class="packt_tip">
+      <p class="Tip--PACKT-">The method resolution order of a class is stored in its <code class="Code-In-Text--PACKT-">__mro__</code> property; you can inspect this method in a Python shell or debugger if you're having trouble with inherited methods or attributes.</p>
+    </div>
+    <p class="normal">Note that <code class="Code-In-Text--PACKT-">PeelableMixin</code> is not usable on its own: it only works when combined with a class that has a <code class="Code-In-Text--PACKT-">taste()</code> method. This is why it's a mixin class: it is meant to be mixed in to enhance other classes, not used on its own.</p>
+    <div class="packt_tip">
+      <p class="Tip--PACKT-">Unfortunately, Python does not give us a way to explicitly annotate in code that a class is a mixin or what classes it must be mixed with, so be sure to document your mixin classes well.</p>
+    </div>
+    <h2 id="_idParaDest-115" class="title">Building a validating mixin class</h2>
+    <p class="normal">Let's apply our knowledge<a id="_idIndexMarker374"/> of multiple inheritance to build a mixin class that will help us create validated widget classes with less boilerplate code. Open <code class="Code-In-Text--PACKT-">data_entry_app.py</code> and add the new class just above your <code class="Code-In-Text--PACKT-">Application</code> class definition:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># data_entry_app.py</span>
+<span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">ValidatedMixin</span><span class="hljs-class">:</span>
+  <span class="hljs-string">"""Adds a validation functionality to an input widget"""</span>
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__init__</span><span class="hljs-function">(</span><span class="hljs-params">self, *args, error_var=</span><span class="hljs-literal">None</span><span class="hljs-params">, **kwargs</span><span class="hljs-function">):</span>
+    self.error = error_var <span class="hljs-keyword">or</span> tk.StringVar()
+    <span class="hljs-built_in">super</span>().__init__(*args, **kwargs)
+</code></pre>
+    <p class="normal">We've started this class as usual, though we're not subclassing anything this time because this is a mixin class. The constructor also has an extra argument called <code class="Code-In-Text--PACKT-">error_var</code>. This will allow us to pass in a variable to use for the error message; if we don't, the class creates its own. Remember that the call to <code class="Code-In-Text--PACKT-">super().__init__()</code> will ensure that the base class initializer will be executed as well.</p>
+    <p class="normal">Next, we set up validation, as follows:</p>
+    <pre class="programlisting code"><code class="hljs-code">    vcmd = self.register(self._validate)
+    invcmd = self.register(self._invalid)
+    self.configure(
+      validate=<span class="hljs-string">'all'</span>,
+      validatecommand=(vcmd, <span class="hljs-string">'%P'</span>, <span class="hljs-string">'%s'</span>, <span class="hljs-string">'%S'</span>, <span class="hljs-string">'%V'</span>, <span class="hljs-string">'%i'</span>, <span class="hljs-string">'%d'</span>),
+      invalidcommand=(invcmd, <span class="hljs-string">'%P'</span>, <span class="hljs-string">'%s'</span>, <span class="hljs-string">'%S'</span>, <span class="hljs-string">'%V'</span>, <span class="hljs-string">'%i'</span>, <span class="hljs-string">'%d'</span>)
+    )
+</code></pre>
+    <p class="normal">As we've done before, we're registering instance methods for validation and invalid data handling, and then using <code class="Code-In-Text--PACKT-">configure</code> to set them up with the widget. We'll go ahead and pass in all the substitution codes (except <code class="Code-In-Text--PACKT-">%w</code>, the widget name, since it's fairly useless inside a class context). We're running validation on <code class="Code-In-Text--PACKT-">all</code> conditions, so we can capture both <code class="Code-In-Text--PACKT-">focus</code> and <code class="Code-In-Text--PACKT-">key</code> events.</p>
+    <p class="normal">Now, we'll define our error condition handler:</p>
+    <pre class="programlisting code"><code class="hljs-code">  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">_toggle_error</span><span class="hljs-function">(</span><span class="hljs-params">self, on=</span><span class="hljs-literal">False</span><span class="hljs-function">):</span>
+    self.configure(foreground=(<span class="hljs-string">'red'</span> <span class="hljs-keyword">if</span> on <span class="hljs-keyword">else</span> <span class="hljs-string">'black'</span>))
+</code></pre>
+    <p class="normal">This will just change the text color to red if there's an error, or black otherwise. Unlike our previous validated widget classes, we won't set the error string in this function; instead, we'll do that in the validation callback since we'll have a better idea of what the error is in that context.</p>
+    <p class="normal">Our validation callback<a id="_idIndexMarker375"/> will look like this:</p>
+    <pre class="programlisting code"><code class="hljs-code">  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">_validate</span><span class="hljs-function">(</span><span class="hljs-params">self, proposed, current, char, event, index, action</span><span class="hljs-function">):</span>
+    self.error.<span class="hljs-built_in">set</span>(<span class="hljs-string">''</span>)
+    self._toggle_error()
+    valid = <span class="hljs-literal">True</span>
+    <span class="hljs-comment"># if the widget is disabled, don't validate</span>
+    state = <span class="hljs-built_in">str</span>(self.configure(<span class="hljs-string">'state'</span>)[-<span class="hljs-number">1</span>])
+    <span class="hljs-keyword">if</span> state == tk.DISABLED:
+      <span class="hljs-keyword">return</span> valid
+    <span class="hljs-keyword">if</span> event == <span class="hljs-string">'focusout'</span>:
+      valid = self._focusout_validate(event=event)
+    <span class="hljs-keyword">elif</span> event == <span class="hljs-string">'key'</span>:
+      valid = self._key_validate(
+      proposed=proposed,
+      current=current,
+      char=char,
+      event=event,
+      index=index,
+      action=action
+    )
+    <span class="hljs-keyword">return</span> valid
+</code></pre>
+    <p class="normal">Since this is a mixin, our <code class="Code-In-Text--PACKT-">_validate()</code> method doesn't actually contain any validation logic. Rather, it's going to start by handling a few setup chores, like toggling off the error and clearing the error message. It then checks to see if the widget is disabled by retrieving the last item in the widget's <code class="Code-In-Text--PACKT-">state</code> value. If it is disabled, the value of the widget is immaterial, so validation should always pass.</p>
+    <p class="normal">After that, the method calls an event-specific callback method, depending on the event type passed in. We only care about the <code class="Code-In-Text--PACKT-">key</code> and <code class="Code-In-Text--PACKT-">focusout</code> events right now, so any other event just returns <code class="Code-In-Text--PACKT-">True</code>. Those event-specific methods will be defined in our subclasses to determine the actual validation logic used.</p>
+    <div class="note">
+      <p class="Information-Box--PACKT-">Notice that we call the individual methods using keyword arguments; when we create our subclasses, we'll be overriding these methods. By using keyword arguments, our overridden functions can just specify the needed keywords or extract individual arguments from <code class="Code-In-Text--PACKT-">**kwargs</code>, rather than having to get all the arguments in the right order. Also, notice that all the arguments are passed into <code class="Code-In-Text--PACKT-">_key_validate()</code>, but only <code class="Code-In-Text--PACKT-">event</code> is passed into <code class="Code-In-Text--PACKT-">_focusout_validate()</code>. Focus events don't pass anything useful for any of the other arguments, so there's no point in passing them along.</p>
+    </div>
+    <p class="normal">Next, we'll put in placeholders for the event-specific validation methods:</p>
+    <pre class="programlisting code"><code class="hljs-code">  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">_focusout_validate</span><span class="hljs-function">(</span><span class="hljs-params">self, **kwargs</span><span class="hljs-function">):</span>
+    <span class="hljs-keyword">return</span> <span class="hljs-literal">True</span>
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">_key_validate</span><span class="hljs-function">(</span><span class="hljs-params">self, **kwargs</span><span class="hljs-function">):</span>
+    <span class="hljs-keyword">return</span> <span class="hljs-literal">True</span>
+</code></pre>
+    <p class="normal">The ultimate idea here<a id="_idIndexMarker376"/> is that our subclasses only need to override one or both of <code class="Code-In-Text--PACKT-">_focusout_validate()</code> or <code class="Code-In-Text--PACKT-">_key_validate()</code>, depending on what we care about for that widget. If we don't override them, they just return <code class="Code-In-Text--PACKT-">True</code>, so validation passes.</p>
+    <p class="normal">Now, let's do something similar for our invalid input handler:</p>
+    <pre class="programlisting code"><code class="hljs-code">  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">_invalid</span><span class="hljs-function">(</span><span class="hljs-params">self, proposed, current, char, event, index, action</span><span class="hljs-function">):</span>
+    <span class="hljs-keyword">if</span> event == <span class="hljs-string">'focusout'</span>:
+      self._focusout_invalid(event=event)
+    <span class="hljs-keyword">elif</span> event == <span class="hljs-string">'key'</span>:
+      self._key_invalid(
+        proposed=proposed,
+        current=current,
+        char=char,
+        event=event,
+        index=index,
+        action=action
+      )
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">_focusout_invalid</span><span class="hljs-function">(</span><span class="hljs-params">self, **kwargs</span><span class="hljs-function">):</span>
+    <span class="hljs-string">"""Handle invalid data on a focus event"""</span>
+    self._toggle_error(<span class="hljs-literal">True</span>)
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">_key_invalid</span><span class="hljs-function">(</span><span class="hljs-params">self, **kwargs</span><span class="hljs-function">):</span>
+    <span class="hljs-string">"""Handle invalid data on a key event.  </span>
+<span class="hljs-string">    By default we want to do nothing"""</span>
+    <span class="hljs-keyword">pass</span>
+</code></pre>
+    <p class="normal">We take an identical approach to these methods. Unlike the validate methods, though, our invalid data handlers don't need to return anything. For invalid <code class="Code-In-Text--PACKT-">key</code> events, we do nothing by default, and for invalid input on <code class="Code-In-Text--PACKT-">focusout</code> events, we toggle on our error status.</p>
+    <p class="normal">The last thing we want<a id="_idIndexMarker377"/> to add is a way to manually execute validation on the widget. Keystroke validation only really makes sense in the context of entering keys, but there may be times when we want to manually run the focus-out checks since they effectively check the complete entered value. Let's implement that with the following public method:</p>
+    <pre class="programlisting code"><code class="hljs-code">  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">trigger_focusout_validation</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">):</span>
+    valid = self._validate(<span class="hljs-string">''</span>, <span class="hljs-string">''</span>, <span class="hljs-string">''</span>, <span class="hljs-string">'focusout'</span>, <span class="hljs-string">''</span>, <span class="hljs-string">''</span>)
+    <span class="hljs-keyword">if</span> <span class="hljs-keyword">not</span> valid:
+      self._focusout_invalid(event=<span class="hljs-string">'focusout'</span>)
+    <span class="hljs-keyword">return</span> valid
+</code></pre>
+    <p class="normal">In this method, we're just duplicating the logic that occurs when a focus-out event happens: run the validation function, and if it fails, run the invalid handler. This completes the <code class="Code-In-Text--PACKT-">ValidatedMixin</code>. Now let's see how it works by applying it to some of our widgets.</p>
+    <h2 id="_idParaDest-116" class="title">Building validating input widgets with ValidatedMixin</h2>
+    <p class="normal">To begin, let's think through<a id="_idIndexMarker378"/> what classes we need to implement<a id="_idIndexMarker379"/> with our new <code class="Code-In-Text--PACKT-">ValidatedMixin</code> class:</p>
+    <ul>
+      <li class="bullet">All our fields except the Notes field are required (when not disabled), so we'll need a basic <code class="Code-In-Text--PACKT-">Entry</code> widget that registers an error if there's no input.</li>
+      <li class="bullet">We have one Date field, so we need an <code class="Code-In-Text--PACKT-">Entry</code> widget that enforces a valid date string.</li>
+      <li class="bullet">We have a number of <code class="Code-In-Text--PACKT-">Spinbox</code> widgets for decimal or integer input. We'll need to make sure these only accept valid number strings.</li>
+      <li class="bullet">We have a few <code class="Code-In-Text--PACKT-">Combobox</code> widgets that don't behave quite the way we want them to.</li>
+    </ul>
+    <p class="normal">Let's get started!</p>
+    <h3 id="_idParaDest-117" class="title">Requiring data</h3>
+    <p class="normal">Let's start<a id="_idIndexMarker380"/> with a basic <code class="Code-In-Text--PACKT-">Entry</code> widget that requires data. We can use these for the Technician and Seed Sample fields.</p>
+    <p class="normal">Add a new class just after the <code class="Code-In-Text--PACKT-">ValidatedMixin</code> class:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># data_entry_app.py</span>
+<span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">RequiredEntry</span><span class="hljs-class">(</span><span class="hljs-params">ValidatedMixin, ttk.Entry</span><span class="hljs-class">):</span>
+  <span class="hljs-string">"""An Entry that requires a value"""</span>
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">_focusout_validate</span><span class="hljs-function">(</span><span class="hljs-params">self, event</span><span class="hljs-function">):</span>
+    valid = <span class="hljs-literal">True</span>
+    <span class="hljs-keyword">if</span> <span class="hljs-keyword">not</span> self.get():
+      valid = <span class="hljs-literal">False</span>
+      self.error.<span class="hljs-built_in">set</span>(<span class="hljs-string">'A value is required'</span>)
+    <span class="hljs-keyword">return</span> valid
+</code></pre>
+    <p class="normal">There's no keystroke validation to do here, so we just need to create <code class="Code-In-Text--PACKT-">_focusout_validate()</code>. All we need to do in that method is check whether the entered value is empty. If so, we just set an <code class="Code-In-Text--PACKT-">error</code> string and return <code class="Code-In-Text--PACKT-">False</code>.</p>
+    <p class="normal">That's all there is to it!</p>
+    <h3 id="_idParaDest-118" class="title">Creating a Date widget</h3>
+    <p class="normal">Next, let's apply the<a id="_idIndexMarker381"/> mixin class to the <code class="Code-In-Text--PACKT-">DateEntry</code> class we made before, keeping the same validation algorithm. Add the following code<a id="_idIndexMarker382"/> just under the <code class="Code-In-Text--PACKT-">RequiredEntry</code> class:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">DateEntry</span><span class="hljs-class">(</span><span class="hljs-params">ValidatedMixin, ttk.Entry</span><span class="hljs-class">):</span>
+  <span class="hljs-string">"""An Entry that only accepts ISO Date strings"""</span>
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">_key_validate</span><span class="hljs-function">(</span><span class="hljs-params">self, action, index, char, **kwargs</span><span class="hljs-function">):</span>
+    valid = <span class="hljs-literal">True</span>
+    <span class="hljs-keyword">if</span> action == <span class="hljs-string">'0'</span>:  <span class="hljs-comment"># This is a delete action</span>
+      valid = <span class="hljs-literal">True</span>
+    <span class="hljs-keyword">elif</span> index <span class="hljs-keyword">in</span> (<span class="hljs-string">'0'</span>, <span class="hljs-string">'1'</span>, <span class="hljs-string">'2'</span>, <span class="hljs-string">'3'</span>, <span class="hljs-string">'5'</span>, <span class="hljs-string">'6'</span>, <span class="hljs-string">'8'</span>, <span class="hljs-string">'9'</span>):
+      valid = char.isdigit()
+    <span class="hljs-keyword">elif</span> index <span class="hljs-keyword">in</span> (<span class="hljs-string">'4'</span>, <span class="hljs-string">'7'</span>):
+      valid = char == <span class="hljs-string">'-'</span>
+    <span class="hljs-keyword">else</span>:
+      valid = <span class="hljs-literal">False</span>
+    <span class="hljs-keyword">return</span> valid
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">_focusout_validate</span><span class="hljs-function">(</span><span class="hljs-params">self, event</span><span class="hljs-function">):</span>
+    valid = <span class="hljs-literal">True</span>
+    <span class="hljs-keyword">if</span> <span class="hljs-keyword">not</span> self.get():
+      self.error.<span class="hljs-built_in">set</span>(<span class="hljs-string">'A value is required'</span>)
+      valid = <span class="hljs-literal">False</span>
+    <span class="hljs-keyword">try</span>:
+      datetime.strptime(self.get(), <span class="hljs-string">'%Y-%m-%d'</span>)
+    <span class="hljs-keyword">except</span> ValueError:
+      self.error.<span class="hljs-built_in">set</span>(<span class="hljs-string">'Invalid date'</span>)
+      valid = <span class="hljs-literal">False</span>
+    <span class="hljs-keyword">return</span> valid
+</code></pre>
+    <p class="normal">In this class, we've once again simply overridden the <code class="Code-In-Text--PACKT-">key</code> and <code class="Code-In-Text--PACKT-">focus</code> validation methods, this time copying in the validation logic we used in our <code class="Code-In-Text--PACKT-">DateEntry</code> widget from the previous section. The <code class="Code-In-Text--PACKT-">_focusout_validate()</code> method also includes the logic from our <code class="Code-In-Text--PACKT-">RequiredEntry</code> class too, since the <code class="Code-In-Text--PACKT-">Date</code> value is required.</p>
+    <p class="normal">Those classes<a id="_idIndexMarker383"/> were both pretty easy to<a id="_idIndexMarker384"/> create; let's move on to something a bit more intricate.</p>
+    <h3 id="_idParaDest-119" class="title">A better Combobox widget</h3>
+    <p class="normal">The drop-down widgets in different toolkits or widget sets behave fairly consistently when it comes<a id="_idIndexMarker385"/> to mouse operation, but the response to keystrokes varies; for example:</p>
+    <ul>
+      <li class="bullet">Some do nothing, such<a id="_idIndexMarker386"/> as the Tkinter <code class="Code-In-Text--PACKT-">OptionMenu</code></li>
+      <li class="bullet">Some require the use of arrow keys to select items, such as the Tkinter <code class="Code-In-Text--PACKT-">ListBox</code></li>
+      <li class="bullet">Some move to the first entry that begins with any key pressed and cycle through entries beginning with that letter on subsequent presses</li>
+      <li class="bullet">Some narrow down the list to entries that match what's typed</li>
+    </ul>
+    <p class="normal">We need to think about what behavior our <code class="Code-In-Text--PACKT-">Combobox</code> widget should have. Since our users are accustomed to doing data entry with the keyboard, and some have difficulty with the mouse, the widget needs to work well with the keyboard. Making them use repeated keystrokes to select options is not very intuitive, either. After talking with the data entry staff, you decide on this behavior:</p>
+    <ul>
+      <li class="bullet">If the proposed text matches no entries, the keystroke will be ignored</li>
+      <li class="bullet">When the proposed text matches a single entry, the widget is set to that value</li>
+      <li class="bullet">A delete or backspace clears the entire box</li>
+    </ul>
+    <p class="normal">Let's see if we can implement this with validation. Add another class after the <code class="Code-In-Text--PACKT-">DateEntry</code> definition:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">ValidatedCombobox</span><span class="hljs-class">(</span><span class="hljs-params">ValidatedMixin, ttk.Combobox</span><span class="hljs-class">):</span>
+  <span class="hljs-string">"""A combobox that only takes values from its string list"""</span>
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">_key_validate</span><span class="hljs-function">(</span><span class="hljs-params">self, proposed, action, **kwargs</span><span class="hljs-function">):</span>
+    valid = <span class="hljs-literal">True</span>
+    <span class="hljs-keyword">if</span> action == <span class="hljs-string">'0'</span>:
+      self.<span class="hljs-built_in">set</span>(<span class="hljs-string">''</span>)
+      <span class="hljs-keyword">return</span> <span class="hljs-literal">True</span>
+</code></pre>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">_key_validate()</code> method<a id="_idIndexMarker387"/> starts out by setting up a valid flag and doing a quick check to see if this<a id="_idIndexMarker388"/> is a delete action. If it is, we set the value to a blank string and return <code class="Code-In-Text--PACKT-">True</code>. That takes care of the last requirement.</p>
+    <p class="normal">Now, we'll add the logic to match the proposed text to our values:</p>
+    <pre class="programlisting code"><code class="hljs-code">    values = self.cget(<span class="hljs-string">'values'</span>)
+    <span class="hljs-comment"># Do a case-insensitive match against the entered text</span>
+    matching = [
+      x <span class="hljs-keyword">for</span> x <span class="hljs-keyword">in</span> values
+      <span class="hljs-keyword">if</span> x.lower().startswith(proposed.lower())
+    ]
+    <span class="hljs-keyword">if</span> <span class="hljs-built_in">len</span>(matching) == <span class="hljs-number">0</span>:
+      valid = <span class="hljs-literal">False</span>
+    <span class="hljs-keyword">elif</span> <span class="hljs-built_in">len</span>(matching) == <span class="hljs-number">1</span>:
+      self.<span class="hljs-built_in">set</span>(matching[<span class="hljs-number">0</span>])
+      self.icursor(tk.END)
+      valid = <span class="hljs-literal">False</span>
+    <span class="hljs-keyword">return</span> valid
+</code></pre>
+    <p class="normal">A copy of the widget's list of values is retrieved using its <code class="Code-In-Text--PACKT-">cget()</code> method. Then, we use a list comprehension to reduce this list to only the entries that begin with the proposed text. To make matching case-insensitive, we're calling <code class="Code-In-Text--PACKT-">lower()</code> on both the values in the list item and the proposed text before comparing them.</p>
+    <div class="packt_tip">
+      <p class="Tip--PACKT-">Every Tkinter widget supports the <code class="Code-In-Text--PACKT-">cget()</code> method. It can be used to retrieve any of the widget's configuration values by name.</p>
+    </div>
+    <p class="normal">If the length of the matching<a id="_idIndexMarker389"/> list is <code class="Code-In-Text--PACKT-">0</code>, nothing starts with the typed value and we reject the keystroke. If it's <code class="Code-In-Text--PACKT-">1</code>, we've found our match, so we'll set the variable to that value. This is done by calling<a id="_idIndexMarker390"/> the widget's <code class="Code-In-Text--PACKT-">set()</code> method and passing in the matching value. As a final touch, we'll send the cursor to the end of the field using the combo box's <code class="Code-In-Text--PACKT-">.icursor()</code>. This isn't strictly necessary, but it looks better than leaving the cursor in the middle of the text. Note that we set <code class="Code-In-Text--PACKT-">valid</code> to <code class="Code-In-Text--PACKT-">False</code> even though the value matched successfully; since we are setting the value ourselves to the matching item, we want to stop any further input to the widget. Otherwise, the proposed keystroke would be appended to the end of the value we set, creating an invalid input.</p>
+    <p class="normal">Also note that if our matching list contains more than one value, the method will just return <code class="Code-In-Text--PACKT-">True</code>, allowing the user to continue typing and filtering the list.</p>
+    <p class="normal">Next, let's add the <code class="Code-In-Text--PACKT-">focusout</code> validator:</p>
+    <pre class="programlisting code"><code class="hljs-code">  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">_focusout_validate</span><span class="hljs-function">(</span><span class="hljs-params">self, **kwargs</span><span class="hljs-function">):</span>
+    valid = <span class="hljs-literal">True</span>
+    <span class="hljs-keyword">if</span> <span class="hljs-keyword">not</span> self.get():
+      valid = <span class="hljs-literal">False</span>
+      self.error.<span class="hljs-built_in">set</span>(<span class="hljs-string">'A value is required'</span>)
+    <span class="hljs-keyword">return</span> valid
+</code></pre>
+    <p class="normal">We don't have to do much here, because the key validation method ensures that the only possible values are a blank field or an item from the <code class="Code-In-Text--PACKT-">values</code> list, but since all fields require a value, we'll copy in the validation logic from <code class="Code-In-Text--PACKT-">RequiredEntry</code>.</p>
+    <p class="normal">That takes care of our <code class="Code-In-Text--PACKT-">Combobox</code> widget. Next, we'll deal with the <code class="Code-In-Text--PACKT-">Spinbox</code> widget.</p>
+    <h3 id="_idParaDest-120" class="title">A range-limited Spinbox widget</h3>
+    <p class="normal">A number entry seems like it shouldn't be<a id="_idIndexMarker391"/> too complicated to deal with, but there are several subtleties<a id="_idIndexMarker392"/> to work through to make it bulletproof. In addition to limiting the field to valid number strings, you'll want to enforce the <code class="Code-In-Text--PACKT-">from_</code>, <code class="Code-In-Text--PACKT-">to</code>, and <code class="Code-In-Text--PACKT-">increment</code> arguments as the minimum, maximum, and precision of the input, respectively.</p>
+    <p class="normal">The algorithm needs to implement the following rules:</p>
+    <ul>
+      <li class="bullet">Deletion is always allowed</li>
+      <li class="bullet">Digits are always allowed</li>
+      <li class="bullet">If <code class="Code-In-Text--PACKT-">from_</code> is less than 0, a minus is allowed as the first character</li>
+      <li class="bullet">If <code class="Code-In-Text--PACKT-">increment</code> has a decimal component, one (and only one) dot is allowed</li>
+      <li class="bullet">If the proposed value is greater than the <code class="Code-In-Text--PACKT-">to</code> value, ignore the keystroke</li>
+      <li class="bullet">If the proposed value requires more precision than <code class="Code-In-Text--PACKT-">increment</code>, ignore the keystroke</li>
+      <li class="bullet">On <code class="Code-In-Text--PACKT-">focusout</code>, make sure the value is a valid number string</li>
+      <li class="bullet">Also on <code class="Code-In-Text--PACKT-">focusout</code>, make sure the value is greater than the <code class="Code-In-Text--PACKT-">from_</code> value</li>
+    </ul>
+    <p class="normal">This is a lot of rules, so let's proceed slowly as we try to implement them. The first thing we'll want to do is import the <code class="Code-In-Text--PACKT-">Decimal</code> class from the standard library. At the top of the file, add the following to the end of the import list:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">from</span> decimal <span class="hljs-keyword">import</span> Decimal, InvalidOperation
+</code></pre>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">Decimal</code> class helps our decimal values be a bit more precise than the built-in <code class="Code-In-Text--PACKT-">float</code> class, and also makes<a id="_idIndexMarker393"/> converting between numbers and strings a bit easier. <code class="Code-In-Text--PACKT-">InvalidOperation</code> is a decimal-specific<a id="_idIndexMarker394"/> exception we can use in our validation logic.</p>
+    <p class="normal">Now, let's add a new <code class="Code-In-Text--PACKT-">ValidatedSpinbox</code> class under the <code class="Code-In-Text--PACKT-">ValidatedCombobox</code> class, like so:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="code-highlight"><strong class="hljs-keyword-slc">class</strong><strong class="hljs-slc"> </strong><strong class="hljs-title-slc">ValidatedSpinbox</strong><strong class="hljs-slc">(ValidatedMixin, ttk.Spinbox):</strong></span>
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__init__</span><span class="hljs-function">(</span>
+<span class="hljs-params">    self, *args, from_=</span><span class="hljs-string">'-Infinity'</span><span class="hljs-params">, to=</span><span class="hljs-string">'Infinity'</span><span class="hljs-params">, **kwargs</span>
+<span class="hljs-params">  </span><span class="hljs-function">):</span>
+    <span class="hljs-built_in">super</span>().__init__(*args, from_=from_, to=to, **kwargs)
+    increment = Decimal(<span class="hljs-built_in">str</span>(kwargs.get(<span class="hljs-string">'increment'</span>, <span class="hljs-string">'1.0'</span>)))
+    self.precision = increment.normalize().as_tuple().exponent
+</code></pre>
+    <p class="normal">We start by overriding the <code class="Code-In-Text--PACKT-">__init__()</code> method so that we can specify some defaults and grab the <code class="Code-In-Text--PACKT-">from_</code>, <code class="Code-In-Text--PACKT-">to</code>, and <code class="Code-In-Text--PACKT-">increment</code> values from the initializer arguments for use in establishing our validation rules. Note that we have set defaults for <code class="Code-In-Text--PACKT-">to</code> and <code class="Code-In-Text--PACKT-">from_</code>: <code class="Code-In-Text--PACKT-">-Infinity</code> and <code class="Code-In-Text--PACKT-">Infinity</code>. Both <code class="Code-In-Text--PACKT-">float</code> and <code class="Code-In-Text--PACKT-">Decimal</code> will happily accept these values and treat them as you'd expect them to do. Recall that if we specify one limit, we must also specify the other. Adding these defaults allows us to only specify the one we need, and our <code class="Code-In-Text--PACKT-">Spinbox</code> will act as we expect it to.</p>
+    <p class="normal">Once we have run the superclass's initializer method, we're going to figure out the precision value; that is, the number of digits we want to the right of the decimal.</p>
+    <p class="normal">To do this, we're first going to retrieve the <code class="Code-In-Text--PACKT-">increment</code> value from the keyword arguments, using <code class="Code-In-Text--PACKT-">1.0</code> if it's not specified. We then convert this value to a <code class="Code-In-Text--PACKT-">Decimal</code> object. Why do this? The <code class="Code-In-Text--PACKT-">Spinbox</code> widget's arguments can be passed in as floats, integers, or strings. Regardless<a id="_idIndexMarker395"/> of how you pass them in, Tkinter converts them to floats when the <code class="Code-In-Text--PACKT-">Spinbox</code> initializer is run. Determining the precision of a float is problematic because<a id="_idIndexMarker396"/> of floating-point error, so we want to convert it to a Python <code class="Code-In-Text--PACKT-">Decimal</code> before it becomes a float.</p>
+    <div class="note">
+      <p class="Information-Box--PACKT-">What is a floating-point error? Floats attempt to represent decimal numbers in binary form. Open<a id="_idIndexMarker397"/> a Python shell and enter <code class="Code-In-Text--PACKT-">1.2 / 0.2</code>. You might be surprised to find the answer is <code class="Code-In-Text--PACKT-">5.999999999999999</code> rather than <code class="Code-In-Text--PACKT-">6</code>. This is a result of calculations being done on binary numbers rather than decimal numbers, and it's a source of computation error in nearly every programming language. Python offers us the <code class="Code-In-Text--PACKT-">Decimal</code> class, which takes a numeric string and stores it in a way that makes mathematical operations safe from floating-point errors.</p>
+    </div>
+    <p class="normal">Notice that we cast <code class="Code-In-Text--PACKT-">increment</code> to <code class="Code-In-Text--PACKT-">str</code> before passing it to <code class="Code-In-Text--PACKT-">Decimal</code>. Ideally, we should pass <code class="Code-In-Text--PACKT-">increment</code> to our widget as a string to ensure it will be interpreted correctly, but if we need to pass in a float for some reason, <code class="Code-In-Text--PACKT-">str</code> will do some sensible rounding first.</p>
+    <p class="normal">Having converted <code class="Code-In-Text--PACKT-">increment</code> to a <code class="Code-In-Text--PACKT-">Decimal</code> object, we can extract its precision value by taking the exponent of the smallest valid decimal place. We'll use this value in the validation method to make sure our entered data doesn't have too many decimal places.</p>
+    <p class="normal">Our constructor is now settled, so let's write the validation methods. The <code class="Code-In-Text--PACKT-">_key_validate()</code> method is a bit tricky, so we'll walk through it chunk by chunk.</p>
+    <p class="normal">First, we start the method:</p>
+    <pre class="programlisting code"><code class="hljs-code">  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">_key_validate</span><span class="hljs-function">(</span>
+<span class="hljs-params">    self, char, index, current, proposed, action, **kwargs</span>
+<span class="hljs-params">  </span><span class="hljs-function">):</span>
+    <span class="hljs-keyword">if</span> action == <span class="hljs-string">'0'</span>:
+      <span class="hljs-keyword">return</span> <span class="hljs-literal">True</span>
+<span class="hljs-literal">    </span>valid = <span class="hljs-literal">True</span>
+    min_val = self.cget(<span class="hljs-string">'from'</span>)
+    max_val = self.cget(<span class="hljs-string">'to'</span>)
+    no_negative = min_val &gt;= <span class="hljs-number">0</span>
+    no_decimal = self.precision &gt;= <span class="hljs-number">0</span>
+</code></pre>
+    <p class="normal">First, because deletion should always work, we'll return <code class="Code-In-Text--PACKT-">True</code> immediately if the action is a deletion. After that, we retrieve the <code class="Code-In-Text--PACKT-">from_</code> and <code class="Code-In-Text--PACKT-">to</code> values using <code class="Code-In-Text--PACKT-">cget()</code> and declare some flag variables to indicate<a id="_idIndexMarker398"/> if negatives and decimals should be allowed.</p>
+    <p class="normal">Next, we need to test<a id="_idIndexMarker399"/> if the proposed keystroke is a valid character:</p>
+    <pre class="programlisting code"><code class="hljs-code">    <span class="hljs-keyword">if</span> <span class="hljs-built_in">any</span>([
+      (char <span class="hljs-keyword">not</span> <span class="hljs-keyword">in</span> <span class="hljs-string">'-1234567890.'</span>),
+      (char == <span class="hljs-string">'-'</span> <span class="hljs-keyword">and</span> (no_negative <span class="hljs-keyword">or</span> index != <span class="hljs-string">'0'</span>)),
+      (char == <span class="hljs-string">'.'</span> <span class="hljs-keyword">and</span> (no_decimal <span class="hljs-keyword">or</span> <span class="hljs-string">'.'</span> <span class="hljs-keyword">in</span> current))
+    ]):
+      <span class="hljs-keyword">return</span> <span class="hljs-literal">False</span>
+</code></pre>
+    <p class="normal">Valid characters are digits, the <code class="Code-In-Text--PACKT-">-</code> symbol, and the decimal (<code class="Code-In-Text--PACKT-">.</code>). The minus sign is only valid at index <code class="Code-In-Text--PACKT-">0</code>, and only when negative numbers are allowed. The decimal can only appear once, and only if our precision is less than <code class="Code-In-Text--PACKT-">1</code>. We've put all these conditions in a list and passed it to the built-in <code class="Code-In-Text--PACKT-">any()</code> function.</p>
+    <div class="packt_tip">
+      <p class="Tip--PACKT-">The built-in <code class="Code-In-Text--PACKT-">any()</code> function takes a list of expressions and returns <code class="Code-In-Text--PACKT-">True</code> if any one of the expressions in the list is true. There's also an <code class="Code-In-Text--PACKT-">all()</code> function that returns <code class="Code-In-Text--PACKT-">True</code> only if every expression in the list is true. These functions allow you to condense a long chain of Boolean expressions.</p>
+    </div>
+    <p class="normal">We're almost guaranteed at this point to have a valid <code class="Code-In-Text--PACKT-">Decimal</code> string, but not quite; we might have just the <code class="Code-In-Text--PACKT-">-</code>, <code class="Code-In-Text--PACKT-">.</code>, or <code class="Code-In-Text--PACKT-">-.</code> characters. </p>
+    <p class="normal">Those are not valid <code class="Code-In-Text--PACKT-">Decimal</code> strings, but they are valid <em class="italic">partial</em> entries, so we should allow them. This code will check for those combinations and allow them:</p>
+    <pre class="programlisting code"><code class="hljs-code">    <span class="hljs-keyword">if</span> proposed <span class="hljs-keyword">in</span> <span class="hljs-string">'-.'</span>:
+      <span class="hljs-keyword">return</span> <span class="hljs-literal">True</span>
+</code></pre>
+    <p class="normal">If we have not yet returned at this point, the proposed text can only be a valid <code class="Code-In-Text--PACKT-">Decimal</code> string, so we'll make a <code class="Code-In-Text--PACKT-">Decimal</code> from it and do some final tests:</p>
+    <pre class="programlisting code"><code class="hljs-code">    proposed = Decimal(proposed)
+    proposed_precision = proposed.as_tuple().exponent
+    <span class="hljs-keyword">if</span> <span class="hljs-built_in">any</span>([
+      (proposed &gt; max_val),
+      (proposed_precision &lt; self.precision)
+    ]):
+      <span class="hljs-keyword">return</span> <span class="hljs-literal">False</span>
+    <span class="hljs-keyword">return</span> valid
+</code></pre>
+    <p class="normal">Our last two tests check to see whether the proposed text is either greater than our maximum value or has more precision<a id="_idIndexMarker400"/> than the increment that we specified (the reason we use a <code class="Code-In-Text--PACKT-">&lt;</code> operator<a id="_idIndexMarker401"/> here is because precision is given as a negative value for decimal places). Finally, in case nothing has been returned yet, we return the <code class="Code-In-Text--PACKT-">valid</code> value.</p>
+    <p class="normal">That takes care of key validation; our focus-out validator is much simpler, as you can see:</p>
+    <pre class="programlisting code"><code class="hljs-code">  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">_focusout_validate</span><span class="hljs-function">(</span><span class="hljs-params">self, **kwargs</span><span class="hljs-function">):</span>
+    valid = <span class="hljs-literal">True</span>
+    value = self.get()
+    min_val = self.cget(<span class="hljs-string">'from'</span>)
+    max_val = self.cget(<span class="hljs-string">'to'</span>)
+    <span class="hljs-keyword">try</span>:
+      d_value = Decimal(value)
+    <span class="hljs-keyword">except</span> InvalidOperation:
+      self.error.<span class="hljs-built_in">set</span>(f<span class="hljs-string">'Invalid number string: {value}'</span>)
+      <span class="hljs-keyword">return</span> <span class="hljs-literal">False</span>
+    <span class="hljs-keyword">if</span> d_value &lt; min_val:
+      self.error.<span class="hljs-built_in">set</span>(f<span class="hljs-string">'Value is too low (min {min_val})'</span>)
+      valid = <span class="hljs-literal">False</span>
+    <span class="hljs-keyword">if</span> d_value &gt; max_val:
+      self.error.<span class="hljs-built_in">set</span>(f<span class="hljs-string">'Value is too high (max {max_val})'</span>)
+      valid = False
+    <span class="hljs-keyword">return</span> valid
+</code></pre>
+    <p class="normal">With the entire intended value at our disposal, we only need to make sure it's a valid <code class="Code-In-Text--PACKT-">Decimal</code> string and within the specified value range. In theory, our key validation should have prevented an invalid decimal string or high value from being entered, but it doesn't hurt to check regardless.</p>
+    <p class="normal">With that method completed, our <code class="Code-In-Text--PACKT-">ValidatedSpinbox</code> is ready to go.</p>
+    <h3 id="_idParaDest-121" class="title">Validating Radiobutton widgets</h3>
+    <p class="normal">Validating <code class="Code-In-Text--PACKT-">Radiobutton</code> widgets may seem initially pointless since the widget itself can only be<a id="_idIndexMarker402"/> on or off; however, validating a <em class="italic">group</em> of buttons can be quite useful in some situations. For example, in our ABQ data form, the Lab field is required to have a value, but<a id="_idIndexMarker403"/> currently the user can submit a record without clicking on one of the options.</p>
+    <p class="normal">To fix this, we're going to create a new class that will represent a group of buttons and add validation code to this compound widget.</p>
+    <p class="normal">Unfortunately, our mixin class cannot help us here as neither our compound widget nor Ttk <code class="Code-In-Text--PACKT-">Radiobutton</code> widgets can support the <code class="Code-In-Text--PACKT-">validate</code>, <code class="Code-In-Text--PACKT-">validatecommand</code>, or <code class="Code-In-Text--PACKT-">invalidcommand</code> arguments. Therefore, we'll have to implement validation of the button group without help from Tkinter's validation system.</p>
+    <p class="normal">To begin, we'll subclass <code class="Code-In-Text--PACKT-">ttk.Frame</code> to build the compound widget on:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># data_entry_app.py </span>
+<span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">ValidatedRadioGroup</span><span class="hljs-class">(</span><span class="hljs-params">ttk.Frame</span><span class="hljs-class">):</span>
+  <span class="hljs-string">"""A validated radio button group"""</span>
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__init__</span><span class="hljs-function">(</span>
+<span class="hljs-params">    self, *args, variable=</span><span class="hljs-literal">None</span><span class="hljs-params">, error_var=</span><span class="hljs-literal">None</span><span class="hljs-params">,</span>
+<span class="hljs-params">    values=</span><span class="hljs-literal">None</span><span class="hljs-params">, button_args=</span><span class="hljs-literal">None</span><span class="hljs-params">, **kwargs</span>
+<span class="hljs-params">  </span><span class="hljs-function">):</span>
+    <span class="hljs-built_in">super</span>().__init__(*args, **kwargs)
+    self.variable = variable <span class="hljs-keyword">or</span> tk.StringVar()
+    self.error = error_var <span class="hljs-keyword">or</span> tk.StringVar()
+    self.values = values <span class="hljs-keyword">or</span> <span class="hljs-built_in">list</span>()
+    self.button_args = button_args <span class="hljs-keyword">or</span> <span class="hljs-built_in">dict</span>()
+</code></pre>
+    <p class="normal">The initializer for this class takes a number of keyword values:</p>
+    <ul>
+      <li class="bullet"><code class="Code-In-Text--PACKT-">variable</code> will be the control variable for the group's value. If not passed in, it will be created by the class.</li>
+      <li class="bullet"><code class="Code-In-Text--PACKT-">error_var</code> is a control variable for the error string. Just as with our other validated classes, we have allowed the possibility of accepting a <code class="Code-In-Text--PACKT-">StringVar</code> control variable to hold the error string, or we just create one if one wasn't passed in, saving it as <code class="Code-In-Text--PACKT-">self.error</code>.</li>
+      <li class="bullet"><code class="Code-In-Text--PACKT-">values</code> will be a list containing the string values that each button in the group represents.</li>
+      <li class="bullet"><code class="Code-In-Text--PACKT-">button_args</code> will be a dictionary of keyword arguments that we can pass to the individual <code class="Code-In-Text--PACKT-">Radiobutton</code> widgets. This will allow us to pass arguments to the buttons separately from the <code class="Code-In-Text--PACKT-">Frame</code> container.</li>
+    </ul>
+    <p class="normal">The remaining positional<a id="_idIndexMarker404"/> and keyword arguments are passed to the superclass initializer. After saving<a id="_idIndexMarker405"/> the keyword values to instance variables, we'll next create the buttons like so:</p>
+    <pre class="programlisting code"><code class="hljs-code">    <span class="hljs-keyword">for</span> v <span class="hljs-keyword">in</span> self.values:
+      button = ttk.Radiobutton(
+        self, value=v, text=v,
+        variable=self.variable, **self.button_args
+      )
+      button.pack(
+        side=tk.LEFT, ipadx=<span class="hljs-number">10</span>, ipady=<span class="hljs-number">2</span>, expand=<span class="hljs-literal">True</span>, fill=<span class="hljs-string">'x'</span>
+      )
+</code></pre>
+    <p class="normal">Just as we did in the <code class="Code-In-Text--PACKT-">LabelInput</code> initializer, we are iterating through the <code class="Code-In-Text--PACKT-">values</code> list, creating a <code class="Code-In-Text--PACKT-">Radiobutton</code> widget for each value, and binding it to the common control variable. Each one is packed onto the <code class="Code-In-Text--PACKT-">Frame</code> from the left side of the widget.</p>
+    <p class="normal">To finish the initializer, we need to trigger a validation callback whenever the <code class="Code-In-Text--PACKT-">Frame</code> widget loses focus. To do that, we can just use <code class="Code-In-Text--PACKT-">bind()</code>, like so:</p>
+    <pre class="programlisting code"><code class="hljs-code">    self.bind(<span class="hljs-string">'&lt;FocusOut&gt;'</span>, self.trigger_focusout_validation)
+</code></pre>
+    <p class="normal">Now, whenever the widget loses focus, the validation callback will be called. Let's write that callback next:</p>
+    <pre class="programlisting code"><code class="hljs-code">  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">trigger_focusout_validation</span><span class="hljs-function">(</span><span class="hljs-params">self, *_</span><span class="hljs-function">):</span>
+    self.error.<span class="hljs-built_in">set</span>(<span class="hljs-string">''</span>)
+    <span class="hljs-keyword">if</span> <span class="hljs-keyword">not</span> self.variable.get():
+      self.error.<span class="hljs-built_in">set</span>(<span class="hljs-string">'A value is required'</span>)
+</code></pre>
+    <p class="normal">This method will begin by setting the error variable to an empty string and then simply check if our bound variable contains a value. If it's empty, the error string is populated.</p>
+    <p class="normal">Before we can use this compound widget with our application, we'll need to make one minor change to the <code class="Code-In-Text--PACKT-">LabelInput</code> class. Remember that <code class="Code-In-Text--PACKT-">LabelInput</code> makes sure that the correct control variable keyword<a id="_idIndexMarker406"/> argument gets passed into the widget initializer. We need to make sure our new<a id="_idIndexMarker407"/> compound widget class is getting the correct keyword (<code class="Code-In-Text--PACKT-">variable</code>, in this case).</p>
+    <p class="normal">Update the <code class="Code-In-Text--PACKT-">LabelInput</code> initializer like so:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># data_entry_app, in LabelInput.__init__()</span>
+    <span class="hljs-keyword">if</span> input_class <span class="hljs-keyword">in</span> (
+      ttk.Checkbutton, ttk.Button,
+      ttk.Radiobutton, <span class="code-highlight"><strong class="hljs-slc">ValidatedRadioGroup</strong></span>
+    ):
+      input_args[<span class="hljs-string">"variable"</span>] = self.variable
+    <span class="hljs-keyword">else</span>:
+      input_args[<span class="hljs-string">"textvariable"</span>] = self.variable
+</code></pre>
+    <p class="normal">With that, the <code class="Code-In-Text--PACKT-">ValidatedRadio</code> widget should be ready to use!</p>
+    <h2 id="_idParaDest-122" class="title">Updating our form with validated widgets</h2>
+    <p class="normal">Now that our widgets are all made, it's time to make use of them in our form GUI. In <code class="Code-In-Text--PACKT-">data_entry_app.py</code>, scroll down<a id="_idIndexMarker408"/> to the <code class="Code-In-Text--PACKT-">DataRecordForm</code> class's <code class="Code-In-Text--PACKT-">__init__()</code> method, and we'll start<a id="_idIndexMarker409"/> updating our widgets one row at a time. Line 1 is fairly straightforward:</p>
+    <pre class="programlisting code"><code class="hljs-code">    LabelInput(
+      r_info, <span class="hljs-string">"Date"</span>, var=self._<span class="hljs-built_in">vars</span>[<span class="hljs-string">'Date'</span>], input_class=<span class="code-highlight"><strong class="hljs-slc">DateEntry</strong></span>
+    ).grid(row=<span class="hljs-number">0</span>, column=<span class="hljs-number">0</span>)
+    LabelInput(
+      r_info, <span class="hljs-string">"Time"</span>, input_class=<span class="code-highlight"><strong class="hljs-slc">ValidatedCombobox</strong></span>,
+      var=self._<span class="hljs-built_in">vars</span>[<span class="hljs-string">'Time'</span>],
+      input_args={<span class="hljs-string">"values"</span>: [<span class="hljs-string">"8:00"</span>, <span class="hljs-string">"12:00"</span>, <span class="hljs-string">"16:00"</span>, <span class="hljs-string">"20:00"</span>]}
+    ).grid(row=<span class="hljs-number">0</span>, column=<span class="hljs-number">1</span>)
+    LabelInput(
+      r_info, <span class="hljs-string">"Technician"</span>,  var=self._<span class="hljs-built_in">vars</span>[<span class="hljs-string">'Technician'</span>],
+      input_class=<span class="code-highlight"><strong class="hljs-slc">RequiredEntry</strong></span>
+    ).grid(row=<span class="hljs-number">0</span>, column=<span class="hljs-number">2</span>)
+</code></pre>
+    <p class="normal">It's as simple as swapping out the <code class="Code-In-Text--PACKT-">input_class</code> value in each <code class="Code-In-Text--PACKT-">LabelInput</code> call with one of our new classes. Go ahead and run your application and try out the widgets. Try some different valid and invalid dates in the <code class="Code-In-Text--PACKT-">DateEntry</code>, and see how the <code class="Code-In-Text--PACKT-">ValidatedCombobox</code> widget works (<code class="Code-In-Text--PACKT-">RequiredEntry</code> won't do much at this point since the only visible indication is red text, and there's no text to mark red if it's empty; we'll address that in the next section).</p>
+    <p class="normal">Now let's work on line 2, which includes the Lab, Plot, and Seed Sample inputs:</p>
+    <pre class="programlisting code"><code class="hljs-code">    LabelInput(
+      r_info, <span class="hljs-string">"Lab"</span>, input_class=<span class="code-highlight"><strong class="hljs-slc">ValidatedRadioGroup</strong></span>,
+      var=self._<span class="hljs-built_in">vars</span>[<span class="hljs-string">'Lab'</span>], input_args={<span class="hljs-string">"values"</span>: [<span class="hljs-string">"A"</span>, <span class="hljs-string">"B"</span>, <span class="hljs-string">"C"</span>]}
+    ).grid(row=<span class="hljs-number">1</span>, column=<span class="hljs-number">0</span>)
+    LabelInput(
+      r_info, <span class="hljs-string">"Plot"</span>, input_class=ValidatedCombobox,
+      var=self._<span class="hljs-built_in">vars</span>[<span class="hljs-string">'Plot'</span>], 
+      input_args={<span class="hljs-string">"values"</span>: <span class="hljs-built_in">list</span>(<span class="hljs-built_in">range</span>(<span class="hljs-number">1</span>, <span class="hljs-number">21</span>))}
+    ).grid(row=<span class="hljs-number">1</span>, column=<span class="hljs-number">1</span>)
+    LabelInput(
+      r_info, <span class="hljs-string">"Seed Sample"</span>,  var=self._<span class="hljs-built_in">vars</span>[<span class="hljs-string">'Seed Sample'</span>],
+      input_class=RequiredEntry
+    ).grid(row=<span class="hljs-number">1</span>, column=<span class="hljs-number">2</span>)
+</code></pre>
+    <div class="note">
+      <p class="Information-Box--PACKT-">An astute reader might note that this shouldn't work, since our list of values contains integers, and the <code class="Code-In-Text--PACKT-">ValidatedCombobox</code> widget's validation callback assumes the values are strings (for example, we run <code class="Code-In-Text--PACKT-">lower()</code> on each item in the list, and compare the item to the proposed string). It turns out that Tkinter converts the items in the value list to strings implicitly as it converts the call to Tcl/Tk. This is good to be aware of as you're writing validation methods on fields containing numbers.</p>
+    </div>
+    <p class="normal">Great! Let's move<a id="_idIndexMarker410"/> on now to the Environmental Data. We only<a id="_idIndexMarker411"/> need to update the number entries to <code class="Code-In-Text--PACKT-">ValidatedSpinbox</code> widgets here:</p>
+    <pre class="programlisting code"><code class="hljs-code">    LabelInput(
+      e_info, <span class="hljs-string">"Humidity (g/m³)"</span>,
+      input_class=ValidatedSpinbox,  var=self._<span class="hljs-built_in">vars</span>[<span class="hljs-string">'Humidity'</span>],
+      input_args={<span class="hljs-string">"from_"</span>: <span class="hljs-number">0.5</span>, <span class="hljs-string">"to"</span>: <span class="hljs-number">52.0</span>, <span class="hljs-string">"increment"</span>: <span class="hljs-number">.01</span>}
+    ).grid(row=<span class="hljs-number">0</span>, column=<span class="hljs-number">0</span>)
+    LabelInput(
+      e_info, <span class="hljs-string">"Light (klx)"</span>, input_class=ValidatedSpinbox,
+      var=self._<span class="hljs-built_in">vars</span>[<span class="hljs-string">'Light'</span>],
+      input_args={<span class="hljs-string">"from_"</span>: <span class="hljs-number">0</span>, <span class="hljs-string">"to"</span>: <span class="hljs-number">100</span>, <span class="hljs-string">"increment"</span>: <span class="hljs-number">.01</span>}
+    ).grid(row=<span class="hljs-number">0</span>, column=<span class="hljs-number">1</span>)
+    LabelInput(
+      e_info, <span class="hljs-string">"Temperature (°C)"</span>,
+      input_class=ValidatedSpinbox,  var=self._<span class="hljs-built_in">vars</span>[<span class="hljs-string">'Temperature'</span>],
+      input_args={<span class="hljs-string">"from_"</span>: <span class="hljs-number">4</span>, <span class="hljs-string">"to"</span>: <span class="hljs-number">40</span>, <span class="hljs-string">"increment"</span>: <span class="hljs-number">.01</span>}
+    ).grid(row=<span class="hljs-number">0</span>, column=<span class="hljs-number">2</span>)
+</code></pre>
+    <p class="normal">Save and execute the script at this point and give the <code class="Code-In-Text--PACKT-">ValidatedSpinbox</code> widget a try. You should find<a id="_idIndexMarker412"/> it impossible to enter values greater than the maximum<a id="_idIndexMarker413"/> or with more than two decimal places, and should also find the text turns red if you leave it less than the minimum.</p>
+    <p class="normal">Next, we'll update the first row of Plant Data with more <code class="Code-In-Text--PACKT-">ValidatedSpinbox</code> widgets:</p>
+    <pre class="programlisting code"><code class="hljs-code">    LabelInput(
+      p_info, <span class="hljs-string">"Plants"</span>, input_class=ValidatedSpinbox,
+      var=self._<span class="hljs-built_in">vars</span>[<span class="hljs-string">'Plants'</span>], input_args={<span class="hljs-string">"from_"</span>: <span class="hljs-number">0</span>, <span class="hljs-string">"to"</span>: <span class="hljs-number">20</span>}
+    ).grid(row=<span class="hljs-number">0</span>, column=<span class="hljs-number">0</span>)
+    LabelInput(
+      p_info, <span class="hljs-string">"Blossoms"</span>, input_class=ValidatedSpinbox,
+      var=self._<span class="hljs-built_in">vars</span>[<span class="hljs-string">'Blossoms'</span>], input_args={<span class="hljs-string">"from_"</span>: <span class="hljs-number">0</span>, <span class="hljs-string">"to"</span>: <span class="hljs-number">1000</span>}
+    ).grid(row=<span class="hljs-number">0</span>, column=<span class="hljs-number">1</span>)
+    LabelInput(
+      p_info, <span class="hljs-string">"Fruit"</span>, input_class=ValidatedSpinbox,
+      var=self._<span class="hljs-built_in">vars</span>[<span class="hljs-string">'Fruit'</span>], input_args={<span class="hljs-string">"from_"</span>: <span class="hljs-number">0</span>, <span class="hljs-string">"to"</span>: <span class="hljs-number">1000</span>}
+    ).grid(row=<span class="hljs-number">0</span>, column=<span class="hljs-number">2</span>)
+</code></pre>
+    <p class="normal">Save and run the form again; you should find that these widgets will not allow you to type a decimal place, since the increment is at the default (<code class="Code-In-Text--PACKT-">1.0</code>).</p>
+    <p class="normal">All that remains is our last row of number inputs. Before we do those, however, let's address some issues of form widget interaction.</p>
+    <h2 id="_idParaDest-123" class="title">Implementing validation interaction between form widgets</h2>
+    <p class="normal">So far, we've used validation<a id="_idIndexMarker414"/> to create widgets that can validate<a id="_idIndexMarker415"/> based on the user's input to that widget. However, sometimes widgets might need to validate based on the state of another widget on the form. We have two such examples on our form:</p>
+    <ul>
+      <li class="bullet">Our Height fields (Min Height, Med Height, and Max Height) should not allow a user to enter a Min Height that is greater than the other two fields, a Max Height that is less than the other two fields, nor a Med Height that is not between the other fields.</li>
+      <li class="bullet">Our Equipment Fault checkbox should disable entry of Environmental Data, since we do not want to record data suspected of being faulty.</li>
+    </ul>
+    <h3 id="_idParaDest-124" class="title">Dynamically updating the Spinbox range</h3>
+    <p class="normal">To solve the problem with our Height fields, we're going to update our <code class="Code-In-Text--PACKT-">ValidatedSpinbox</code> widget<a id="_idIndexMarker416"/> so that its ranges can be dynamically updated. To do this, we can use the variable tracing feature we learned about in <em class="chapterRef">Chapter 4</em>, <em class="italic">Organizing Our Code with Classes</em>.</p>
+    <p class="normal">Our strategy will be to allow optional <code class="Code-In-Text--PACKT-">min_var</code> and <code class="Code-In-Text--PACKT-">max_var</code> arguments to be passed into the <code class="Code-In-Text--PACKT-">ValidatedSpinbox</code> class, and then set a trace on these variables to update the <code class="Code-In-Text--PACKT-">ValidatedSpinbox</code> object's minimum or maximum values whenever the corresponding variable is changed. We'll also have a <code class="Code-In-Text--PACKT-">focus_update_var</code> variable that will be updated with the <code class="Code-In-Text--PACKT-">Spinbox</code> widget's value at focus-out time. This variable can then be passed in as the <code class="Code-In-Text--PACKT-">min_var</code> or <code class="Code-In-Text--PACKT-">max_var</code> variable to a second <code class="Code-In-Text--PACKT-">ValidatedSpinbox</code> so that the first widget's value can alter the second's valid range.</p>
+    <p class="normal">Let's make these changes to our <code class="Code-In-Text--PACKT-">ValidatedSpinbox</code>. To start, update the <code class="Code-In-Text--PACKT-">ValidatedSpinbox.__init__()</code> method with our new keyword arguments as follows:</p>
+    <pre class="programlisting code"><code class="hljs-code">  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__init__</span><span class="hljs-function">(</span><span class="hljs-params">self, *args, min_var=</span><span class="hljs-literal">None</span><span class="hljs-params">, max_var=</span><span class="hljs-literal">None</span><span class="hljs-params">,</span>
+<span class="hljs-params">    focus_update_var=</span><span class="hljs-literal">None</span><span class="hljs-params">, from_=</span><span class="hljs-string">'-Infinity'</span><span class="hljs-params">, to=</span><span class="hljs-string">'Infinity'</span><span class="hljs-params">, **kwargs</span>
+<span class="hljs-params">  </span><span class="hljs-function">):</span>
+</code></pre>
+    <p class="normal">Some of our code for this feature is going to require that the <code class="Code-In-Text--PACKT-">Spinbox</code> has a variable bound to it, so the next thing we're going to do is make sure that happens; put this code at the end of <code class="Code-In-Text--PACKT-">__init__()</code>:</p>
+    <pre class="programlisting code"><code class="hljs-code">    self.variable = kwargs.get(<span class="hljs-string">'textvariable'</span>)
+    <span class="hljs-keyword">if</span> <span class="hljs-keyword">not</span> self.variable:
+      self.variable = tk.DoubleVar()
+      self.configure(textvariable=self.variable)
+</code></pre>
+    <p class="normal">We start by retrieving the <code class="Code-In-Text--PACKT-">textvariable</code> from the keyword arguments; if it's not set to anything, we'll just create a <code class="Code-In-Text--PACKT-">DoubleVar</code> and make it our variable. We're storing a reference to the variable so we can use it easily in our instance methods.</p>
+    <div class="note">
+      <p class="Information-Box--PACKT-">Note that this arrangement could cause problems if a variable is assigned later using <code class="Code-In-Text--PACKT-">configure()</code>. This won't be a problem in our code, but if you're using this class in your own Tkinter programs, you may want to override <code class="Code-In-Text--PACKT-">configure()</code> to make sure the variable reference is kept in sync.</p>
+    </div>
+    <p class="normal">Next, still in <code class="Code-In-Text--PACKT-">__init__()</code>, let's set up our minimum and maximum variables:</p>
+    <pre class="programlisting code"><code class="hljs-code">    <span class="hljs-keyword">if</span> min_var:
+      self.min_var = min_var
+      self.min_var.trace_add(<span class="hljs-string">'write'</span>, self._set_minimum)
+    <span class="hljs-keyword">if</span> max_var:
+      self.max_var = max_var
+      self.max_var.trace_add(<span class="hljs-string">'write'</span>, self._set_maximum)
+</code></pre>
+    <p class="normal">If we pass in either a <code class="Code-In-Text--PACKT-">min_var</code> or <code class="Code-In-Text--PACKT-">max_var</code> argument, the value is stored and a trace is configured. The callback for the trace points to an appropriately named private method.</p>
+    <p class="normal">We'll also need to store a reference to the <code class="Code-In-Text--PACKT-">focus_update_var</code> argument and bind focus-out events to a method that will be used to update it. To do that, add the following code to <code class="Code-In-Text--PACKT-">__init__()</code>:</p>
+    <pre class="programlisting code"><code class="hljs-code">    self.focus_update_var = focus_update_var
+    self.bind(<span class="hljs-string">'&lt;FocusOut&gt;'</span>, self._set_focus_update_var)
+</code></pre>
+    <div class="note">
+      <p class="Information-Box--PACKT-">The <code class="Code-In-Text--PACKT-">bind()</code> method can be called on any Tkinter widget, and it's used to connect widget events to a Python callable. Events can be keystrokes, mouse movements or clicks, focus events, window management events, and more.</p>
+    </div>
+    <p class="normal">Now, we need to add the callback<a id="_idIndexMarker417"/> methods for our <code class="Code-In-Text--PACKT-">trace()</code> and <code class="Code-In-Text--PACKT-">bind()</code> commands. We'll start with the one that updates the <code class="Code-In-Text--PACKT-">focus_update_var</code>, which we'll call <code class="Code-In-Text--PACKT-">_set_focus_update_var()</code>. Add it as follows:</p>
+    <pre class="programlisting code"><code class="hljs-code">  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">_set_focus_update_var</span><span class="hljs-function">(</span><span class="hljs-params">self, event</span><span class="hljs-function">):</span>
+    value = self.get()
+    <span class="hljs-keyword">if</span> self.focus_update_var <span class="hljs-keyword">and</span> <span class="hljs-keyword">not</span> self.error.get():
+      self.focus_update_var.<span class="hljs-built_in">set</span>(value)
+</code></pre>
+    <p class="normal">This method simply gets the widget's current value and, if there is a <code class="Code-In-Text--PACKT-">focus_update_var</code> argument present in the instance, sets it to the same value. Note that we don't set the value if there's an error currently present on the widget, since it wouldn't make sense to update the value to something invalid.</p>
+    <p class="normal">Also notice that the method takes an <code class="Code-In-Text--PACKT-">event</code> argument. We don't use this argument, but it is necessary since this is a callback for a bind. When Tkinter calls a bind callback, it passes in an event object that contains information about the event that triggered the callback. Even if you aren't going to use this information, your function or method needs to be able to take this argument.</p>
+    <p class="normal">Now, let's create the callback for setting the minimum, starting with this:</p>
+    <pre class="programlisting code"><code class="hljs-code">  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">_set_minimum</span><span class="hljs-function">(</span><span class="hljs-params">self, *_</span><span class="hljs-function">):</span>
+    current = self.get()
+</code></pre>
+    <p class="normal">The first thing this method does is retrieve the current value of the widget using <code class="Code-In-Text--PACKT-">self.get()</code>. The reason we're doing this is because the <code class="Code-In-Text--PACKT-">Spinbox</code> widget has the slightly annoying default behavior of correcting its value when the <code class="Code-In-Text--PACKT-">to</code> or <code class="Code-In-Text--PACKT-">from_</code> values are changed, moving too-low values to the <code class="Code-In-Text--PACKT-">from_</code> value and too-high values to the <code class="Code-In-Text--PACKT-">to</code> value. This kind of silent auto-correction<a id="_idIndexMarker418"/> might slip past the attention of our user and cause bad data to be saved.</p>
+    <p class="normal">What we would prefer is to leave the out-of-range value as-is and mark it as an error; so to work around the <code class="Code-In-Text--PACKT-">Spinbox</code> widget, we're going to save the current value, change the configuration, and then put the original value back in the field.</p>
+    <p class="normal">After storing the current value in <code class="Code-In-Text--PACKT-">current</code>, we attempt to get the value of the <code class="Code-In-Text--PACKT-">min_var</code> and set our widget's <code class="Code-In-Text--PACKT-">from_</code> value from it, like so:</p>
+    <pre class="programlisting code"><code class="hljs-code">    <span class="hljs-keyword">try</span>:
+      new_min = self.min_var.get()
+      self.config(from_=new_min)
+    <span class="hljs-keyword">except</span> (tk.TclError, ValueError):
+      <span class="hljs-keyword">pass</span>
+</code></pre>
+    <p class="normal">There are several things that could go wrong here, such as a blank or invalid value in <code class="Code-In-Text--PACKT-">min_var</code>, all of which should raise either a <code class="Code-In-Text--PACKT-">tk.TclError</code> or a <code class="Code-In-Text--PACKT-">ValueError</code>. In any case, we'll just do nothing, leaving the current minimum in place.</p>
+    <div class="packt_tip">
+      <p class="Tip--PACKT-">It's generally a bad idea to just silence exceptions; however, in this case, there's nothing we can reasonably do if the variable is bad except ignore it.</p>
+    </div>
+    <p class="normal">Now, we just need to write the <code class="Code-In-Text--PACKT-">current</code> value that we saved back into the field, like so:</p>
+    <pre class="programlisting code"><code class="hljs-code">    <span class="hljs-keyword">if</span> <span class="hljs-keyword">not</span> current:
+      self.delete(<span class="hljs-number">0</span>, tk.END)
+    <span class="hljs-keyword">else</span>:
+      self.variable.<span class="hljs-built_in">set</span>(current)
+</code></pre>
+    <p class="normal">If <code class="Code-In-Text--PACKT-">current</code> is empty, we just delete the contents of the field; otherwise, we set the input's variable to <code class="Code-In-Text--PACKT-">current</code>.</p>
+    <p class="normal">Finally, we'll want to trigger the widget's focus-out validation to see if the current value is acceptable in the new range; we can do that by calling our <code class="Code-In-Text--PACKT-">trigger_focusout_validation()</code> method, like this:</p>
+    <pre class="programlisting code"><code class="hljs-code">    self.trigger_focusout_validation()
+</code></pre>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">_set_maximum()</code> method will be identical to this method, except that it will update the <code class="Code-In-Text--PACKT-">to</code> value using <code class="Code-In-Text--PACKT-">max_var</code> instead. It is shown here:</p>
+    <pre class="programlisting code"><code class="hljs-code">  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">_set_maximum</span><span class="hljs-function">(</span><span class="hljs-params">self, *_</span><span class="hljs-function">):</span>
+    current = self.get()
+    <span class="hljs-keyword">try</span>:
+      new_max = self.max_var.get()
+      self.config(to=new_max)
+    <span class="hljs-keyword">except</span> (tk.TclError, ValueError):
+      <span class="hljs-keyword">pass</span>
+    <span class="hljs-keyword">if</span> <span class="hljs-keyword">not</span> current:
+      self.delete(<span class="hljs-number">0</span>, tk.END)
+    <span class="hljs-keyword">else</span>:
+      self.variable.<span class="hljs-built_in">set</span>(current)
+    self.trigger_focusout_validation()
+</code></pre>
+    <p class="normal">That finishes our <code class="Code-In-Text--PACKT-">ValidatedSpinbox</code> changes. Now we can implement the last line of our Plant Data with this new capability.</p>
+    <p class="normal">First, we'll need to set up variables<a id="_idIndexMarker419"/> to store the minimum and maximum height, as follows:</p>
+    <pre class="programlisting code"><code class="hljs-code">    min_height_var = tk.DoubleVar(value=<span class="hljs-string">'-infinity'</span>)
+    max_height_var = tk.DoubleVar(value=<span class="hljs-string">'infinity'</span>)
+</code></pre>
+    <p class="normal">Each variable is a <code class="Code-In-Text--PACKT-">DoubleVar</code>, set to <code class="Code-In-Text--PACKT-">-infinity</code> or <code class="Code-In-Text--PACKT-">infinity</code>, effectively defaulting to no minimum or maximum. Our widgets won't be affected by the values of these variables until they're actually changed (triggering the trace callback), so they won't initially override the <code class="Code-In-Text--PACKT-">to</code> or <code class="Code-In-Text--PACKT-">from_</code> values entered into the widgets. </p>
+    <p class="normal">Note that these need not be instance variables, as our widgets will store references to them.</p>
+    <p class="normal">Now, we'll create the Min Height widget, as follows:</p>
+    <pre class="programlisting code"><code class="hljs-code">    LabelInput(
+      p_info, <span class="hljs-string">"Min Height (cm)"</span>,
+      input_class=<span class="code-highlight"><strong class="hljs-slc">ValidatedSpinbox</strong></span>,  var=self._<span class="hljs-built_in">vars</span>[<span class="hljs-string">'Min Height'</span>],
+      input_args={
+        <span class="hljs-string">"from_"</span>: <span class="hljs-number">0</span>, <span class="hljs-string">"to"</span>: <span class="hljs-number">1000</span>, <span class="hljs-string">"increment"</span>: <span class="hljs-number">.01</span>,
+        <span class="code-highlight"><strong class="hljs-string-slc">"max_var"</strong><strong class="hljs-slc">: max_height_var, </strong><strong class="hljs-string-slc">"focus_update_var"</strong><strong class="hljs-slc">: min_height_var</strong></span>
+      }
+    ).grid(row=<span class="hljs-number">1</span>, column=<span class="hljs-number">0</span>)
+</code></pre>
+    <p class="normal">We'll use <code class="Code-In-Text--PACKT-">max_height_var</code> to update the maximum here, and set the <code class="Code-In-Text--PACKT-">focus_update_var</code> to <code class="Code-In-Text--PACKT-">min_height_var</code> so that entry into the Min Height widget will update the minimum height variable. We do not want<a id="_idIndexMarker420"/> to set a <code class="Code-In-Text--PACKT-">min_var</code> on this field because its value represents the minimum for other fields.</p>
+    <p class="normal">Next, let's update the Max Height widget:</p>
+    <pre class="programlisting code"><code class="hljs-code">    LabelInput(
+      p_info, <span class="hljs-string">"Max Height (cm)"</span>,
+      input_class=<span class="code-highlight"><strong class="hljs-slc">ValidatedSpinbox</strong></span>,  var=self._<span class="hljs-built_in">vars</span>[<span class="hljs-string">'Max Height'</span>],
+      input_args={
+        <span class="hljs-string">"from_"</span>: <span class="hljs-number">0</span>, <span class="hljs-string">"to"</span>: <span class="hljs-number">1000</span>, <span class="hljs-string">"increment"</span>: <span class="hljs-number">.01</span>,
+        <span class="code-highlight"><strong class="hljs-string-slc">"min_var"</strong><strong class="hljs-slc">: min_height_var, </strong><strong class="hljs-string-slc">"focus_update_var"</strong><strong class="hljs-slc">: max_height_var</strong></span>
+      }
+    ).grid(row=<span class="hljs-number">1</span>, column=<span class="hljs-number">1</span>)
+</code></pre>
+    <p class="normal">This time, we use our <code class="Code-In-Text--PACKT-">min_height_var</code> variable to set the widget's minimum value and set the <code class="Code-In-Text--PACKT-">max_height_var</code> to be updated with the widget's current value on focus-out. We do not set a <code class="Code-In-Text--PACKT-">max_var</code> on this field since its value will represent the maximum and shouldn't be constrained beyond its initial limits.</p>
+    <p class="normal">Finally, the Median Height field should be updated like so:</p>
+    <pre class="programlisting code"><code class="hljs-code">    LabelInput(
+      p_info, <span class="hljs-string">"Median Height (cm)"</span>,
+      input_class=ValidatedSpinbox,  var=self._<span class="hljs-built_in">vars</span>[<span class="hljs-string">'Med Height'</span>],
+      input_args={
+        <span class="hljs-string">"from_"</span>: <span class="hljs-number">0</span>, <span class="hljs-string">"to"</span>: <span class="hljs-number">1000</span>, <span class="hljs-string">"increment"</span>: <span class="hljs-number">.01</span>,
+        <span class="hljs-string">"min_var"</span>: min_height_var, <span class="hljs-string">"max_var"</span>: max_height_var
+      }
+    ).grid(row=<span class="hljs-number">1</span>, column=<span class="hljs-number">2</span>)
+</code></pre>
+    <p class="normal">Here, we're setting the minimum and maximum values for the field from the <code class="Code-In-Text--PACKT-">min_height_var</code> and <code class="Code-In-Text--PACKT-">max_height_var</code> variables, respectively. We're not updating any variables from the Median Height field, although we could add additional variables and code here to make sure that Min Height couldn't go above it or Max Height below it. In most cases, it won't matter as long as the user is entering data in order since Median Height is last.</p>
+    <p class="normal">You might wonder why we don't just use the bound variables from Min Height and Max Height to hold these values<a id="_idIndexMarker421"/> instead. If you try this, you'll discover the reason: the bound variable updates as you type, which means your partial value instantly becomes the new maximum or minimum value. We'd rather wait until the user has committed to the value to update the ranges, and thus we created a separate variable that is only updated on focus-out.</p>
+    <h3 id="_idParaDest-125" class="title">Dynamic disabling of fields</h3>
+    <p class="normal">To implement the disabling of our Environment Data fields when the Equipment<code class="Code-In-Text--PACKT-"> </code>Fault checkbox is activated, we'll once<a id="_idIndexMarker422"/> again use control variable tracing. This time, however, instead of implementing it at the widget class level, we'll implement it in our compound widget, the <code class="Code-In-Text--PACKT-">LabelInput</code>.</p>
+    <p class="normal">Locate the <code class="Code-In-Text--PACKT-">LabelInput</code> class in your code, and let's add a new keyword argument to its <code class="Code-In-Text--PACKT-">__init__()</code> method:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">LabelInput</span><span class="hljs-class">(</span><span class="hljs-params">tk.Frame</span><span class="hljs-class">):</span>
+  <span class="hljs-string">"""A widget containing a label and input together."""</span>
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__init__</span><span class="hljs-function">(</span>
+<span class="hljs-params">    self, parent, label, var, input_class=ttk.Entry,</span>
+<span class="hljs-params">      input_args=</span><span class="hljs-literal">None</span><span class="hljs-params">, label_args=</span><span class="hljs-literal">None</span><span class="hljs-params">, </span><span class="code-highlight"><strong class="hljs-slc">disable_var=None</strong></span><span class="hljs-params">,</span>
+<span class="hljs-params">      **kwargs</span>
+<span class="hljs-params">  </span><span class="hljs-function">):</span>
+</code></pre>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">disable_var</code> argument will allow us to pass in a Boolean control variable that will be monitored to determine if our field should be disabled. To make use of it, we'll need to store it in the <code class="Code-In-Text--PACKT-">LabelInput</code> instance and configure a trace. Add this code to the end of <code class="Code-In-Text--PACKT-">LabelInput.__init__()</code>:</p>
+    <pre class="programlisting code"><code class="hljs-code">    <span class="hljs-keyword">if</span> disable_var:
+      self.disable_var = disable_var
+      self.disable_var.trace_add(<span class="hljs-string">'write'</span>, self._check_disable)
+</code></pre>
+    <p class="normal">The trace is linked to an instance method called <code class="Code-In-Text--PACKT-">_check_disable()</code>. This method will need to check the value of <code class="Code-In-Text--PACKT-">disable_var</code> and take appropriate action with the <code class="Code-In-Text--PACKT-">LabelInput</code> widget's input.</p>
+    <p class="normal">Let's implement the method in our <code class="Code-In-Text--PACKT-">LabelInput</code> class like this:</p>
+    <pre class="programlisting code"><code class="hljs-code">  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">_check_disable</span><span class="hljs-function">(</span><span class="hljs-params">self, *_</span><span class="hljs-function">):</span>
+    <span class="hljs-keyword">if</span> <span class="hljs-keyword">not</span> <span class="hljs-built_in">hasattr</span>(self, <span class="hljs-string">'disable_var'</span>):
+      <span class="hljs-keyword">return</span>
+    <span class="hljs-keyword">if</span> self.disable_var.get():
+      self.<span class="hljs-built_in">input</span>.configure(state=tk.DISABLED)
+      self.variable.<span class="hljs-built_in">set</span>(<span class="hljs-string">''</span>)
+    <span class="hljs-keyword">else</span>:
+      self.<span class="hljs-built_in">input</span>.configure(state=tk.NORMAL)
+</code></pre>
+    <p class="normal">First, our method uses <code class="Code-In-Text--PACKT-">hasattr</code> to see if this <code class="Code-In-Text--PACKT-">LabelInput</code> even has a <code class="Code-In-Text--PACKT-">disable_var</code>. In theory, the method shouldn't even get called if it doesn't, since there would be no trace, but just to be sure, we'll check and simply return if the instance variable doesn't exist.</p>
+    <p class="normal">If we have a <code class="Code-In-Text--PACKT-">disable_var</code>, we'll check its value to see if it's <code class="Code-In-Text--PACKT-">True</code>. If it is, we disable the input widget. To disable an input<a id="_idIndexMarker423"/> widget, we need to configure its <code class="Code-In-Text--PACKT-">state</code> property. The <code class="Code-In-Text--PACKT-">state</code> property determines the current disposition of the widget. In this case, we want to disable it, so we can set <code class="Code-In-Text--PACKT-">state</code> to the <code class="Code-In-Text--PACKT-">tk.DISABLED</code> constant. That will have the effect of "graying out" our field and making it read-only. We also want to clear out any information in the disabled fields, to make sure the user understands no data will be recorded for these fields. So, we'll set the variable to an empty string.</p>
+    <p class="normal">If the <code class="Code-In-Text--PACKT-">disable_var</code> is false, we need to re-enable the widget. To do that, we can just set its state to <code class="Code-In-Text--PACKT-">tk.NORMAL</code>.</p>
+    <div class="note">
+      <p class="Information-Box--PACKT-">The <code class="Code-In-Text--PACKT-">state</code> property will be covered in more detail in <em class="chapterRef">Chapter 9</em>, <em class="italic">Improving the Look with Styles and Themes</em>.</p>
+    </div>
+    <p class="normal">With that method written, we just need to update our Environmental Data fields with a <code class="Code-In-Text--PACKT-">disable_var</code> variable. Scroll back to your <code class="Code-In-Text--PACKT-">DataRecordForm.__init__()</code> method and find where we've created those fields. We'll update them like so:</p>
+    <pre class="programlisting code"><code class="hljs-code">    LabelInput(
+      e_info, <span class="hljs-string">"Humidity (g/m³)"</span>,
+      input_class=ValidatedSpinbox,  var=self._<span class="hljs-built_in">vars</span>[<span class="hljs-string">'Humidity'</span>],
+      input_args={<span class="hljs-string">"from_"</span>: <span class="hljs-number">0.5</span>, <span class="hljs-string">"to"</span>: <span class="hljs-number">52.0</span>, <span class="hljs-string">"increment"</span>: <span class="hljs-number">.01</span>},
+      <span class="code-highlight"><strong class="hljs-slc">disable_var=self._</strong><strong class="hljs-built_in-slc">vars</strong><strong class="hljs-slc">[</strong><strong class="hljs-string-slc">'Equipment Fault'</strong><strong class="hljs-slc">]</strong></span>
+    ).grid(row=<span class="hljs-number">0</span>, column=<span class="hljs-number">0</span>)
+    LabelInput(
+      e_info, <span class="hljs-string">"Light (klx)"</span>, input_class=ValidatedSpinbox,
+      var=self._<span class="hljs-built_in">vars</span>[<span class="hljs-string">'Light'</span>],
+      input_args={<span class="hljs-string">"from_"</span>: <span class="hljs-number">0</span>, <span class="hljs-string">"to"</span>: <span class="hljs-number">100</span>, <span class="hljs-string">"increment"</span>: <span class="hljs-number">.01</span>},
+      <span class="code-highlight"><strong class="hljs-slc">disable_var=self._</strong><strong class="hljs-built_in-slc">vars</strong><strong class="hljs-slc">[</strong><strong class="hljs-string-slc">'Equipment Fault'</strong><strong class="hljs-slc">]</strong></span>
+    ).grid(row=<span class="hljs-number">0</span>, column=<span class="hljs-number">1</span>)
+    LabelInput(
+      e_info, <span class="hljs-string">"Temperature (°C)"</span>,
+      input_class=ValidatedSpinbox,  <span class="code-highlight"><strong class="hljs-slc">var=self._</strong><strong class="hljs-built_in-slc">vars</strong><strong class="hljs-slc">[</strong><strong class="hljs-string-slc">'Temperature'</strong><strong class="hljs-slc">],</strong></span>
+      input_args={<span class="hljs-string">"from_"</span>: <span class="hljs-number">4</span>, <span class="hljs-string">"to"</span>: <span class="hljs-number">40</span>, <span class="hljs-string">"increment"</span>: <span class="hljs-number">.01</span>},
+      <span class="code-highlight"><strong class="hljs-slc">disable_var=self._</strong><strong class="hljs-built_in-slc">vars</strong><strong class="hljs-slc">[</strong><strong class="hljs-string-slc">'Equipment Fault'</strong><strong class="hljs-slc">]</strong></span>
+    ).grid(row=<span class="hljs-number">0</span>, column=<span class="hljs-number">2</span>)
+</code></pre>
+    <p class="normal">In each case, we've added the <code class="Code-In-Text--PACKT-">disable_var</code> argument and set it to <code class="Code-In-Text--PACKT-">self._vars['Equipment Fault']</code>. If you run the script now, you should find that checking the Equipment Fault box disables<a id="_idIndexMarker424"/> and clears these three fields, and unchecking it re-enables them.</p>
+    <p class="normal">Our form is now much better at enforcing correct data and catching potential errors during data entry, but it's not quite user-friendly yet. Let's see what can be done about that in the next section.</p>
+    <h2 id="_idParaDest-126" class="title">Displaying errors</h2>
+    <p class="normal">If you run the application, you may notice that while fields with the focus-out errors turn red, we don't get<a id="_idIndexMarker425"/> to see the actual error. This is a bit of a problem for user-friendliness, so let's see if we can fix it. Our plan will be to update the <code class="Code-In-Text--PACKT-">LabelInput</code> compound widget with another <code class="Code-In-Text--PACKT-">Label</code> that can display an error string in the event of an error.</p>
+    <p class="normal">To implement this, first locate your <code class="Code-In-Text--PACKT-">LabelInput</code> class. Add this code to the end of the <code class="Code-In-Text--PACKT-">__init__()</code> method:</p>
+    <pre class="programlisting code"><code class="hljs-code">    self.error = <span class="hljs-built_in">getattr</span>(self.<span class="hljs-built_in">input</span>, <span class="hljs-string">'error'</span>, tk.StringVar())
+    ttk.Label(self, textvariable=self.error, **label_args).grid(
+      row=<span class="hljs-number">2</span>, column=<span class="hljs-number">0</span>, sticky=(tk.W + tk.E)
+    )
+</code></pre>
+    <p class="normal">Here, we check to see if our input has an error variable, and if not, we create one. Our validated widgets should already have such a variable, but unvalidated widgets such as the <code class="Code-In-Text--PACKT-">BoundText</code> widget used for the <code class="Code-In-Text--PACKT-">Notes</code> field do not, so we need this check to make sure.</p>
+    <p class="normal">Next, we're creating and placing a <code class="Code-In-Text--PACKT-">Label</code> widget and binding the error variable to its <code class="Code-In-Text--PACKT-">textvariable</code> argument. This will update the <code class="Code-In-Text--PACKT-">Label</code> contents with whatever our widget's <code class="Code-In-Text--PACKT-">error</code> variable contains as it is updated by the validation logic.</p>
+    <p class="normal">Save the application, run it, and try entering some bad data in the fields (for example, a low value in one of the <code class="Code-In-Text--PACKT-">Spinbox</code> widgets). You should see an error pop up under the field when you focus the next field. Success!</p>
+    <p class="normal">There is one small<a id="_idIndexMarker426"/> issue to fix, though. If you happen to be focused on an Environment Data field like Humidity when you click the Equipment Fault checkbox, an error will be left under the field. The reason is that clicking the checkbox causes the field to lose focus, triggering its validation. Meanwhile, the <code class="Code-In-Text--PACKT-">_check_disable()</code> method sets its value to an invalid blank string, which the validation logic rejects.</p>
+    <p class="normal">The solution is for us to clear the error string when we disable the field. In the <code class="Code-In-Text--PACKT-">LabelInput._check_disable()</code> method, update the code like so:</p>
+    <pre class="programlisting code"><code class="hljs-code">    <span class="hljs-keyword">if</span> self.disable_var.get():
+      self.<span class="hljs-built_in">input</span>.configure(state=tk.DISABLED)
+      self.variable.<span class="hljs-built_in">set</span>(<span class="hljs-string">''</span>)
+      self.error.<span class="hljs-built_in">set</span>(<span class="hljs-string">''</span>)
+</code></pre>
+    <p class="normal">Run the application again and you should see the errors disappear when the checkbox is checked.</p>
+    <h2 id="_idParaDest-127" class="title">Preventing form submission on error</h2>
+    <p class="normal">The final step in preventing errors from getting into our CSV file is to stop the application from saving<a id="_idIndexMarker427"/> the record if the form has known errors.</p>
+    <p class="normal">Record saving happens in our <code class="Code-In-Text--PACKT-">Application</code> object, so we need a way for that object to determine the error state of the form before it saves the data. That means our <code class="Code-In-Text--PACKT-">DataRecordForm</code> will need a public method. We'll call that method <code class="Code-In-Text--PACKT-">get_errors()</code>.</p>
+    <p class="normal">At the end of the <code class="Code-In-Text--PACKT-">DataRecordForm</code> class, add the following method:</p>
+    <pre class="programlisting code"><code class="hljs-code">  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">get_errors</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">):</span>
+    <span class="hljs-string">"""Get a list of field errors in the form"""</span>
+    errors = {}
+    <span class="hljs-keyword">for</span> key, var <span class="hljs-keyword">in</span> self._<span class="hljs-built_in">vars</span>.items():
+      inp = var.label_widget.<span class="hljs-built_in">input</span>
+      error = var.label_widget.error
+      <span class="hljs-keyword">if</span> <span class="hljs-built_in">hasattr</span>(inp, <span class="hljs-string">'trigger_focusout_validation'</span>):
+        inp.trigger_focusout_validation()
+      <span class="hljs-keyword">if</span> error.get():
+        errors[key] = error.get()
+    <span class="hljs-keyword">return</span> errors
+</code></pre>
+    <p class="normal">We begin by defining an empty <code class="Code-In-Text--PACKT-">dict</code> object to store the errors. We'll store our errors in the dictionary as <code class="Code-In-Text--PACKT-">field: error_string</code> so that the calling code can be specific about the fields that have errors.</p>
+    <p class="normal">Recall that our <code class="Code-In-Text--PACKT-">LabelInput</code> class attaches<a id="_idIndexMarker428"/> a reference to itself to the control variable passed into its <code class="Code-In-Text--PACKT-">__init__()</code> method. We can use this reference now as we loop through our dictionary of variables. For each variable, we've done the following:</p>
+    <ul>
+      <li class="bullet">We retrieve its input widget and the associated <code class="Code-In-Text--PACKT-">error</code> variable from the <code class="Code-In-Text--PACKT-">LabelWidget</code> reference</li>
+      <li class="bullet">If the input defines a <code class="Code-In-Text--PACKT-">trigger_focusout_validation()</code> method, we call it, just to be sure that its value has been validated</li>
+      <li class="bullet">If the value is invalid, that should populate the error variable; so, if <code class="Code-In-Text--PACKT-">error</code> is not empty, we add it to the <code class="Code-In-Text--PACKT-">errors</code> dictionary</li>
+      <li class="bullet">After we've gone through all the fields, we can return the <code class="Code-In-Text--PACKT-">errors</code> dictionary</li>
+    </ul>
+    <p class="normal">Now that we have a way to retrieve the form's errors, we need to utilize it in the <code class="Code-In-Text--PACKT-">Application</code> class's <code class="Code-In-Text--PACKT-">on_save()</code> method. Locate that method, and then add the following code to the beginning of the method:</p>
+    <pre class="programlisting code"><code class="hljs-code">    errors = self.recordform.get_errors()
+    <span class="hljs-keyword">if</span> errors:
+      self.status.<span class="hljs-built_in">set</span>(
+        <span class="hljs-string">"Cannot save, error in fields: {}"</span>
+        .<span class="hljs-built_in">format</span>(<span class="hljs-string">', '</span>.join(errors.keys()))
+      )
+      <span class="hljs-keyword">return</span>
+</code></pre>
+    <p class="normal">Recall that our <code class="Code-In-Text--PACKT-">Application</code> object stores a reference to the form in <code class="Code-In-Text--PACKT-">self.recordform</code>. We can now retrieve its dictionary of errors by calling its <code class="Code-In-Text--PACKT-">get_errors()</code> method. If the dictionary is not empty, we'll construct an error string by joining all its keys (that is, the field names) and appending them to an error message. This is then passed to the <code class="Code-In-Text--PACKT-">status</code> control variable, causing it to be displayed in the status bar. Finally, we return from the method so that the remaining logic in <code class="Code-In-Text--PACKT-">on_save()</code> is not executed.</p>
+    <p class="normal">Start the application and try it out by trying to save a blank form. You should get error messages in all fields and a message<a id="_idIndexMarker429"/> at the bottom telling you which fields have errors, as shown here:</p>
+    <figure class="mediaobject"><img src="../Images/B17578_05_03.png" alt="The application with all errors showing."/></figure>
+    <p class="packt_figref">Figure 5.3: The application with all errors showing</p>
+    <h1 id="_idParaDest-128" class="title">Automating input</h1>
+    <p class="normal">Preventing users from entering bad<a id="_idIndexMarker430"/> data is one way to improve the quality of their output; another approach is to automate the entry of data wherever the values are predictable. Using our understanding of how the forms are likely to be filled out, we can insert values that are very likely to be correct for certain fields.</p>
+    <p class="normal">Remember from <em class="chapterRef">Chapter 2</em>, <em class="italic">Designing GUI Applications</em>, that the forms are nearly always recorded the same day that they're filled out, starting with Plot 1 and going to Plot 20 in order for each paper form. </p>
+    <p class="normal">Also remember that the Date, Time, Lab, and Technician values remain<a id="_idIndexMarker431"/> the same for each form that is filled in. That gives us the possibility of implementing some helpful automation, specifically:</p>
+    <ul>
+      <li class="bullet">The current date can automatically be inserted in the Date field</li>
+      <li class="bullet">If the previous Plot was not the last plot in the lab, we can increment its value and leave the Time, Technician, and Lab values the same</li>
+    </ul>
+    <p class="normal">Let's see how we can implement these changes for the users.</p>
+    <h2 id="_idParaDest-129" class="title">Date automation</h2>
+    <p class="normal">Inserting the current date<a id="_idIndexMarker432"/> is an easy place to start. The place to do this is in the <code class="Code-In-Text--PACKT-">DataRecordForm.reset()</code> method, which is called when the form is initialized and every time a record is saved to set up the form for a new record.</p>
+    <p class="normal">Update that method as follows:</p>
+    <pre class="programlisting code"><code class="hljs-code">  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">reset</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">):</span>
+    <span class="hljs-string">"""Resets the form entries"""</span>
+    <span class="hljs-keyword">for</span> var <span class="hljs-keyword">in</span> self._<span class="hljs-built_in">vars</span>.values():
+      <span class="hljs-keyword">if</span> <span class="hljs-built_in">isinstance</span>(var, tk.BooleanVar):
+        var.<span class="hljs-built_in">set</span>(<span class="hljs-literal">False</span>)
+      <span class="hljs-keyword">else</span>:
+        var.<span class="hljs-built_in">set</span>(<span class="hljs-string">''</span>)
+    current_date = datetime.today().strftime(<span class="hljs-string">'%Y-%m-%d'</span>)
+    self._<span class="hljs-built_in">vars</span>[<span class="hljs-string">'Date'</span>].<span class="hljs-built_in">set</span>(current_date)
+    self._<span class="hljs-built_in">vars</span>[<span class="hljs-string">'Time'</span>].label_widget.<span class="hljs-built_in">input</span>.focus()
+</code></pre>
+    <p class="normal">After clearing the values of all the variables, we're going to get the current date in ISO format using <code class="Code-In-Text--PACKT-">datetime.today().strftime()</code>, just as we do for the datestamp in <code class="Code-In-Text--PACKT-">Application.on_save()</code>. Once we have that value, it's simply a matter of setting the <code class="Code-In-Text--PACKT-">Date</code> variable to it.</p>
+    <p class="normal">As a final touch, we should update the focus of the form to the next input that needs entry, in this case, the Time field. Otherwise, the user would have to manually tab through the Date field, which is already filled in. To do this, we have accessed the input widget associated<a id="_idIndexMarker433"/> with the <code class="Code-In-Text--PACKT-">Time</code> variable by way of its <code class="Code-In-Text--PACKT-">label_widget</code> member and called the widget's <code class="Code-In-Text--PACKT-">focus()</code> method. This method gives the widget keyboard focus.</p>
+    <h2 id="_idParaDest-130" class="title">Automating Plot, Lab, Time, and Technician</h2>
+    <p class="normal">Handling Plot, Lab, Time, and Technician is a bit more complex. Our strategy will go something like this:</p>
+    <ul>
+      <li class="bullet">Before clearing<a id="_idIndexMarker434"/> the data, store the Plot, Lab, Time, and Technician values.</li>
+      <li class="bullet">Clear<a id="_idIndexMarker435"/> all the values.</li>
+      <li class="bullet">If the stored Plot value<a id="_idIndexMarker436"/> is less than the last value (20), we'll put the Lab, Time, and Technician values back<a id="_idIndexMarker437"/> in the fields. We'll also increment the Plot value.</li>
+      <li class="bullet">If the stored Plot value <em class="italic">is</em> the last value (or no value), leave those fields blank.</li>
+    </ul>
+    <p class="normal">Let's begin to add this logic to the <code class="Code-In-Text--PACKT-">reset()</code> method, as follows:</p>
+    <pre class="programlisting code"><code class="hljs-code">  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">reset</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">):</span>
+    <span class="hljs-string">"""Resets the form entries"""</span>
+    lab = self._<span class="hljs-built_in">vars</span>[<span class="hljs-string">'Lab'</span>].get()
+    time = self._<span class="hljs-built_in">vars</span>[<span class="hljs-string">'Time'</span>].get()
+    technician = self._<span class="hljs-built_in">vars</span>[<span class="hljs-string">'Technician'</span>].get()
+    <span class="hljs-keyword">try</span>:
+      plot = self._<span class="hljs-built_in">vars</span>[<span class="hljs-string">'Plot'</span>].get()
+    <span class="hljs-keyword">except</span> tk.TclError:
+      plot = <span class="hljs-string">''</span>
+    plot_values = (
+      self._<span class="hljs-built_in">vars</span>[<span class="hljs-string">'Plot'</span>].label_widget.<span class="hljs-built_in">input</span>.cget(<span class="hljs-string">'values'</span>)
+    )
+</code></pre>
+    <p class="normal">Before anything else in <code class="Code-In-Text--PACKT-">reset()</code>, we're going to get the values of the affected fields and save them. Note that we have put <code class="Code-In-Text--PACKT-">plot</code> in a <code class="Code-In-Text--PACKT-">try/except</code> block. In the event that the Plot input is blank, it will throw a <code class="Code-In-Text--PACKT-">TclError</code>, since a blank string is an invalid integer string. In that case, we'll assign the plot to be a blank string and carry on.</p>
+    <p class="normal">We're also retrieving the list of possible plot values by accessing the Plot widget by way of the Plot variable's <code class="Code-In-Text--PACKT-">label_widget</code> member. Since we know there are 20 plots in each lab, we could just hardcode a list of 1 to 20 here, but that kind of hardcoding of information is bad form; if plots are added or eliminated from the lab, we would have to scour our code for the number 20 to fix all the places where we'd made this assumption. It's far better to query the widget itself to find out its possible values.</p>
+    <p class="normal">Next, at the end of this method (after clearing the fields and setting the date), let's add this code to update the fields:</p>
+    <pre class="programlisting code"><code class="hljs-code">    <span class="hljs-keyword">if</span> plot <span class="hljs-keyword">not</span> <span class="hljs-keyword">in</span> (<span class="hljs-string">''</span>, <span class="hljs-number">0</span>, plot_values[-<span class="hljs-number">1</span>]):
+      self._<span class="hljs-built_in">vars</span>[<span class="hljs-string">'Lab'</span>].<span class="hljs-built_in">set</span>(lab)
+      self._<span class="hljs-built_in">vars</span>[<span class="hljs-string">'Time'</span>].<span class="hljs-built_in">set</span>(time)
+      self._<span class="hljs-built_in">vars</span>[<span class="hljs-string">'Technician'</span>].<span class="hljs-built_in">set</span>(technician)
+      next_plot_index = plot_values.index(<span class="hljs-built_in">str</span>(plot)) + <span class="hljs-number">1</span>
+      self._<span class="hljs-built_in">vars</span>[<span class="hljs-string">'Plot'</span>].<span class="hljs-built_in">set</span>(plot_values[next_plot_index])
+      self._<span class="hljs-built_in">vars</span>[<span class="hljs-string">'Seed Sample'</span>].label_widget.<span class="hljs-built_in">input</span>.focus()
+</code></pre>
+    <p class="normal">This code checks to see if the<a id="_idIndexMarker438"/> plot value is a blank string, <code class="Code-In-Text--PACKT-">0</code>, or the last value in the list of plot<a id="_idIndexMarker439"/> values. If it's not, we start populating the automated fields. First Lab, Time, and Technician are populated<a id="_idIndexMarker440"/> with our stored values. Then we need<a id="_idIndexMarker441"/> to increment the Plot value.</p>
+    <p class="normal">Plot <em class="italic">should</em> be an integer at this point, but because of Tkinter's habit of implicitly casting things to string, it's better to work with it as though it were not. So, instead of merely incrementing the value of Plot, we're instead going to retrieve its index from <code class="Code-In-Text--PACKT-">plot_values</code> and increment that instead. Then we can set the value of the Plot variable to the incremented index.</p>
+    <p class="normal">As a final touch, we will set the focus of the form to the Seed Sample input, just as we did previously with the Time input.</p>
+    <p class="normal">Our validation and automation code is complete, and the form is now ready for a trial run with our users. It's definitely an improvement over the CSV entry at this point and will help data entry to make quick work of those forms. Great work!</p>
+    <h1 id="_idParaDest-131" class="title">Summary</h1>
+    <p class="normal">The application has really come a long way. In this chapter, we learned about Tkinter validation, created a validation mixin class, and used it to create validated versions of the <code class="Code-In-Text--PACKT-">Entry</code>, <code class="Code-In-Text--PACKT-">Combobox</code>, and <code class="Code-In-Text--PACKT-">Spinbox</code> widgets. We also learned how to validate widgets like <code class="Code-In-Text--PACKT-">Radiobutton</code>, which don't support the built-in validation framework. We validated different kinds of data on keystrokes and focus events, and created fields that dynamically change state or update their constraints based on the values of related fields. Finally, we automated input on several fields to reduce the amount of manual data entry required by the user.</p>
+    <p class="normal">In the next chapter, we're going to prepare our code base for expansion by learning how to organize a large application for easier maintenance. More specifically, we'll learn about the MVC pattern and how to structure our code in multiple files for simpler maintenance. We'll also learn about version control software and how it can help us keep track of changes.</p>
+  </div>
+</body></html>

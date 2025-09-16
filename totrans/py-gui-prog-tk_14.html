@@ -1,0 +1,612 @@
+<html><head></head><body>
+  <div id="_idContainer237">
+    <h1 class="chapterNumber">14</h1>
+    <h1 id="_idParaDest-386" class="chapterTitle">Asynchronous Programming with Thread and Queue</h1>
+    <p class="normal">Many times, code that works flawlessly in the simplicity of a test environment encounters problems in the real world; unfortunately, this seems to be the case for the ABQ Data Entry application. While your network functions ran instantaneously in your localhost-only test environment, the lab's slow VPN uplink has exposed some shortcomings in your programming. Users report that the application freezes or becomes unresponsive when network transactions are taking place. Although it does work, it looks unprofessional and is an annoyance to users.</p>
+    <p class="normal">To solve this problem, we're going to need to apply asynchronous programming techniques, which we'll learn about in the following topics:</p>
+    <ul>
+      <li class="bullet">In <em class="italic">The Tkinter event queue</em>, we'll learn how to manipulate Tkinter's event processing to improve the responsiveness of the application.</li>
+      <li class="bullet">In <em class="italic">Running code in the background with threads</em>, we'll explore writing multi-threaded applications using Python's <code class="Code-In-Text--PACKT-">threading</code> module.</li>
+      <li class="bullet">In <em class="italic">Passing messages using a queue</em>, you'll learn how to use <code class="Code-In-Text--PACKT-">Queue</code> objects to implement inter-thread communication.</li>
+      <li class="bullet">In <em class="italic">Using locks to protect shared resources</em>, we'll utilize a <code class="Code-In-Text--PACKT-">Lock</code> object to keep threads from overwriting one another.</li>
+    </ul>
+    <p class="normal">Let's get started!</p>
+    <h1 id="_idParaDest-387" class="title">Tkinter's event queue</h1>
+    <p class="normal">As we <a id="_idIndexMarker1392"/>discussed in <em class="chapterRef">Chapter 11</em>, <em class="italic">Creating Automated Tests with unittest</em>, many tasks in Tkinter, such as drawing and updating widgets, are done asynchronously rather than taking immediate action when called in code. More specifically, the actions you perform in Tkinter, such as clicking a button, triggering a key bind or trace, or resizing a window, place<a id="_idIndexMarker1393"/> an <strong class="keyword">event</strong> in the event queue. On each iteration of the main loop, Tkinter pulls all outstanding events from the queue and processes them one at a time. For each event, Tkinter <a id="_idIndexMarker1394"/>executes any <strong class="keyword">tasks</strong> (that is, callbacks or internal operations like redrawing widgets) bound to the event before proceeding to the next event in the queue.</p>
+    <p class="normal">Tasks are roughly prioritized by Tkinter as <a id="_idIndexMarker1395"/>either <strong class="keyword">regular</strong> or <strong class="keyword">do-when-idle</strong> (often referred to as <strong class="keyword">idle tasks</strong>). During <a id="_idIndexMarker1396"/>event processing, regular tasks <a id="_idIndexMarker1397"/>are processed first, followed by idle tasks when all the regular tasks are finished. Most drawing or widget-updating tasks are classified as idle tasks, while actions like callback functions are, by default, regular priority.</p>
+    <h2 id="_idParaDest-388" class="title">Event queue control</h2>
+    <p class="normal">Most <a id="_idIndexMarker1398"/>of the time, we get the behavior we need from Tkinter by relying on higher-level constructs like <code class="Code-In-Text--PACKT-">command</code> callbacks and <code class="Code-In-Text--PACKT-">bind()</code>. However, there are situations where we might want to directly interact with the event queue and manually control how events are processed. We've already seen some of the functionality available to do this, but let's take a deeper look at them here.</p>
+    <h3 id="_idParaDest-389" class="title">The update() methods</h3>
+    <p class="normal">In <em class="chapterRef">Chapter 11</em>, <em class="italic">Creating Automated Tests with unittest</em>, you learned about the <code class="Code-In-Text--PACKT-">update()</code> and <code class="Code-In-Text--PACKT-">update_idletasks()</code> methods. To<a id="_idIndexMarker1399"/> review, these methods will cause Tkinter to execute <a id="_idIndexMarker1400"/>any tasks for events currently in the queue; <code class="Code-In-Text--PACKT-">update()</code> runs tasks for all events currently waiting in the queue until it's entirely clear, while <code class="Code-In-Text--PACKT-">update_idletasks()</code> only runs the idle tasks.</p>
+    <p class="normal">Since idle tasks are generally smaller and safer operations, it's recommended to use <code class="Code-In-Text--PACKT-">update_idletasks()</code> unless you find it doesn't do the job.</p>
+    <div class="note">
+      <p class="Information-Box--PACKT-">Note that <code class="Code-In-Text--PACKT-">update()</code> and <code class="Code-In-Text--PACKT-">update_idletasks()</code> will cause the processing of <em class="italic">all</em> outstanding events for <em class="italic">all</em> widgets, regardless of what widget the method is called on. There is no way to only process events for a particular widget or Tkinter object.</p>
+    </div>
+    <h3 id="_idParaDest-390" class="title">The after() methods</h3>
+    <p class="normal">In <a id="_idIndexMarker1401"/>addition to allowing us to control the processing <a id="_idIndexMarker1402"/>of the queue, Tkinter widgets have two methods for adding arbitrary code to the event queue on a delay: <code class="Code-In-Text--PACKT-">after()</code> and <code class="Code-In-Text--PACKT-">after_idle()</code>.</p>
+    <p class="normal">Basic use of <code class="Code-In-Text--PACKT-">after()</code> looks like this:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># basic_after_demo.py</span>
+<span class="hljs-keyword">import</span> tkinter <span class="hljs-keyword">as</span> tk
+root = tk.Tk()
+root.after(<span class="hljs-number">1000</span>, root.quit)
+root.mainloop()
+</code></pre>
+    <p class="normal">In this <a id="_idIndexMarker1403"/>example, we're setting the <code class="Code-In-Text--PACKT-">root.quit()</code> method to run after 1 second (1,000 milliseconds). What actually happens here is that an event bound to <code class="Code-In-Text--PACKT-">root.quit</code> is added to the event queue, but with the condition that it shouldn't be executed <a id="_idIndexMarker1404"/>until at least 1,000 milliseconds from the moment when <code class="Code-In-Text--PACKT-">after()</code> is called. During that time period, any other events in the queue will be processed first. As a result, while the command will not be executed <em class="italic">sooner</em> than 1,000 milliseconds, it will very likely be executed <em class="italic">later</em>, depending on what else is being processed already in the event queue.</p>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">after_idle()</code> method also adds a task to the event queue, but rather than giving it an explicit delay it simply adds it as an idle task, ensuring that it will be run after any regular tasks.</p>
+    <p class="normal">In both methods, any additional arguments after the callback reference are simply passed to the callback as positional arguments; for example:</p>
+    <pre class="programlisting code"><code class="hljs-code">root.after(<span class="hljs-number">1000</span>, <span class="hljs-built_in">print</span>, <span class="hljs-string">'hello'</span>, <span class="hljs-string">'Python'</span>, <span class="hljs-string">'programmers!'</span>)
+</code></pre>
+    <p class="normal">In this example, we're passing the arguments <code class="Code-In-Text--PACKT-">'hello'</code>, <code class="Code-In-Text--PACKT-">'Python'</code>, and <code class="Code-In-Text--PACKT-">'programmers'</code> to a <code class="Code-In-Text--PACKT-">print()</code> call. This statement will schedule the statement <code class="Code-In-Text--PACKT-">print('hello', 'Python', 'programmers!')</code> to be run as soon as possible after 1 second has elapsed.</p>
+    <div class="packt_tip">
+      <p class="Tip--PACKT-">Note that <code class="Code-In-Text--PACKT-">after()</code> and <code class="Code-In-Text--PACKT-">after_idle()</code> cannot take keyword arguments for the passed callable, only positional arguments.</p>
+    </div>
+    <p class="normal">Code scheduled with <code class="Code-In-Text--PACKT-">after()</code> can also be un-scheduled using the <code class="Code-In-Text--PACKT-">after_cancel()</code> method. The method takes a task ID number, which is returned when we call <code class="Code-In-Text--PACKT-">after()</code>. </p>
+    <p class="normal">For example, we could amend our previous example like so:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># basic_after_cancel_demo.py</span>
+<span class="hljs-keyword">import</span> tkinter <span class="hljs-keyword">as</span> tk
+root = tk.Tk()
+task_id = root.after(<span class="hljs-number">3000</span>, root.quit)
+tk.Button(
+  root,
+  text=<span class="hljs-string">'Do not quit!'</span>, command=<span class="hljs-keyword">lambda</span>: root.after_cancel(task_id)
+).pack()
+root.mainloop()
+</code></pre>
+    <p class="normal">In this <a id="_idIndexMarker1405"/>script, we save the return value of <code class="Code-In-Text--PACKT-">after()</code>, which <a id="_idIndexMarker1406"/>gives us the ID of the scheduled task. Then, in the callback for our button, we call <code class="Code-In-Text--PACKT-">after_cancel()</code>, passing in the ID value. Clicking the button before the 3 seconds is up results in the <code class="Code-In-Text--PACKT-">root.quit</code> task being canceled and the application remaining open.</p>
+    <h2 id="_idParaDest-391" class="title">Common uses of event queue control</h2>
+    <p class="normal">In <em class="chapterRef">Chapter 11</em>, <em class="italic">Creating Automated Tests with unittest</em>, we made good use of queue control <a id="_idIndexMarker1407"/>methods to make sure our tests ran quickly and efficiently without having to wait on human interaction. There are a few different ways we can use these methods in actual applications though, which we'll look at here.</p>
+    <h3 id="_idParaDest-392" class="title">Smoothing out display changes</h3>
+    <p class="normal">In an application<a id="_idIndexMarker1408"/> with dynamic GUI changes, the smoothness of these changes may suffer a bit as the windows resize in response to elements appearing and reappearing. For example, in the ABQ application, you may notice a smaller application window appearing just after login, which gets quickly resized as the GUI is built. This is not a major issue, but it detracts from the overall presentation of the application.</p>
+    <p class="normal">We can correct this by delaying the <code class="Code-In-Text--PACKT-">deiconify()</code> call after login using <code class="Code-In-Text--PACKT-">after()</code>. Inside <code class="Code-In-Text--PACKT-">Application.__init__()</code>, let's alter that line as follows:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># application.py, inside Application.__init__()</span>
+    self.after(<span class="hljs-number">250</span>, self.deiconify)
+</code></pre>
+    <p class="normal">Now, instead of immediately restoring the application window after login, we have delayed the restore by a quarter of a second. While barely perceptible to the user, it gives Tkinter enough time to build and redraw the GUI before displaying the window, smoothing out the operation.</p>
+    <div class="packt_tip">
+      <p class="Tip--PACKT-">Use delayed code sparingly, and don't rely on it in situations where the delayed code's stability or security depends on some other process finishing first. This can lead to a <strong class="keyword">race condition</strong>, in <a id="_idIndexMarker1409"/>which some unforeseen circumstance like a slow disk or network connection can cause your delay to be insufficient to properly order the execution of code. In the case of our application, our delay is merely a cosmetic fix; nothing disastrous will happen if the application window is restored before it finishes drawing.</p>
+    </div>
+    <h3 id="_idParaDest-393" class="title">Mitigating GUI freezes</h3>
+    <p class="normal">Because <a id="_idIndexMarker1410"/>callback tasks are prioritized over screen-updating tasks, a callback task that blocks code execution for an extended period of time can cause the program to seem frozen or stuck at an awkward point while the redrawing tasks wait for it to complete. One way to address this is to use the <code class="Code-In-Text--PACKT-">after()</code> and <code class="Code-In-Text--PACKT-">update()</code> methods to control the event queue processing manually. To see how this works, we'll build a simple application that uses these methods to keep the UI responsive during a long-running task.</p>
+    <p class="normal">Start with this simple, but slow, application:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># after_demo.py</span>
+<span class="hljs-keyword">import</span> tkinter <span class="hljs-keyword">as</span> tk
+<span class="hljs-keyword">from</span> time <span class="hljs-keyword">import</span> sleep
+<span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">App</span><span class="hljs-class">(</span><span class="hljs-params">tk.Tk</span><span class="hljs-class">):</span>
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__init__</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">):</span>
+    <span class="hljs-built_in">super</span>().__init__()
+    self.status = tk.StringVar()
+    tk.Label(self, textvariable=self.status).pack()
+    tk.Button(
+      self, text=<span class="hljs-string">"Run Process"</span>,
+      command=self.run_process
+    ).pack()
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">run_process</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">):</span>
+    self.status.<span class="hljs-built_in">set</span>(<span class="hljs-string">"Starting process"</span>)
+    sleep(<span class="hljs-number">2</span>)
+    <span class="hljs-keyword">for</span> phase <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(<span class="hljs-number">1</span>, <span class="hljs-number">5</span>):
+      self.status.<span class="hljs-built_in">set</span>(<span class="hljs-string">f"Phase </span><span class="hljs-subst">{phase}</span><span class="hljs-string">"</span>)
+      self.process_phase(phase, <span class="hljs-number">2</span>)
+    self.status.<span class="hljs-built_in">set</span>(<span class="hljs-string">'Complete'</span>)
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">process_phase</span><span class="hljs-function">(</span><span class="hljs-params">self, n, length</span><span class="hljs-function">):</span>
+    <span class="hljs-comment"># some kind of heavy processing here</span>
+    sleep(length)
+App().mainloop()
+</code></pre>
+    <p class="normal">This <a id="_idIndexMarker1411"/>application uses <code class="Code-In-Text--PACKT-">time.sleep()</code> to simulate some heavy processing task done in multiple phases. The GUI presents the user with a button, which launches the processes, and a status indicator to show progress.</p>
+    <p class="normal">When the user clicks the button, the status indicator is <em class="italic">supposed</em> to do the following:</p>
+    <ul>
+      <li class="bullet">Show <strong class="screenText">Starting process</strong> for 2 seconds.</li>
+      <li class="bullet">Show <strong class="screenText">Phase 1</strong>, <strong class="screenText">Phase 2</strong>, through <strong class="screenText">Phase 4</strong> for 2 seconds each.</li>
+      <li class="bullet">Finally, it should read <strong class="screenText">Complete</strong>.</li>
+    </ul>
+    <p class="normal">If you try it, though, you'll see it does no such thing. Instead, it freezes up the moment the button goes down and does not unfreeze until all the phases are complete and the status reads <strong class="screenText">Complete</strong>. Why does this happen?</p>
+    <p class="normal">When the button-click event is processed by the main loop, the <code class="Code-In-Text--PACKT-">run_process()</code> callback takes priority over any drawing tasks (since those are idle tasks) and is immediately executed, blocking the main loop until it returns. When the callback calls <code class="Code-In-Text--PACKT-">self.status.set()</code>, the <code class="Code-In-Text--PACKT-">status</code> variable's write events are placed in the queue (where they will eventually trigger a redraw event on the <code class="Code-In-Text--PACKT-">Label</code> widget). However, processing of the queue is currently halted, waiting on the <code class="Code-In-Text--PACKT-">run_process()</code> method to return. When it finally does return, all the updates to <code class="Code-In-Text--PACKT-">status</code> that were waiting in the event queue are executed in a fraction of a second.</p>
+    <p class="normal">To make this a bit better, let's schedule <code class="Code-In-Text--PACKT-">run_process()</code> using <code class="Code-In-Text--PACKT-">after()</code>:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># after_demo2.py</span>
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">run_process</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">):</span>
+    self.status.<span class="hljs-built_in">set</span>(<span class="hljs-string">"Starting process"</span>)
+    self.after(<span class="hljs-number">50</span>, self._run_phases)
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">_run_phases</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">):</span>
+    <span class="hljs-keyword">for</span> phase <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(<span class="hljs-number">1</span>, <span class="hljs-number">5</span>):
+      self.status.<span class="hljs-built_in">set</span>(<span class="hljs-string">f"Phase </span><span class="hljs-subst">{phase}</span><span class="hljs-string">"</span>)
+      self.process_phase(phase, <span class="hljs-number">2</span>)
+    self.status.<span class="hljs-built_in">set</span>(<span class="hljs-string">'Complete'</span>)
+</code></pre>
+    <p class="normal">This time, the loop part of <code class="Code-In-Text--PACKT-">run_process()</code> is split off into a separate method called <code class="Code-In-Text--PACKT-">_run_phases()</code>. The <code class="Code-In-Text--PACKT-">run_process()</code> method itself just sets the starting status, then schedules <code class="Code-In-Text--PACKT-">_run_phases()</code> to run 50 milliseconds later. This delay gives Tkinter time to finish up any drawing tasks and to update the status before kicking off the long blocking loop. The exact amount of time isn't critical in this case, just so long as it's sufficient for Tkinter to <a id="_idIndexMarker1412"/>finish drawing operations, but short enough that users aren't likely to notice it; 50 milliseconds seems to do the job just fine.</p>
+    <p class="normal">We still aren't seeing individual phase status messages with this version, though; it goes directly from <strong class="screenText">Starting process</strong> to <strong class="screenText">Complete</strong> because the <code class="Code-In-Text--PACKT-">_run_phases()</code> method is still blocking the event loop when it eventually runs.</p>
+    <p class="normal">To fix this, we can use <code class="Code-In-Text--PACKT-">update_idletasks()</code> in the loop:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># after_demo_update.py</span>
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">_run_phases</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">):</span>
+    <span class="hljs-keyword">for</span> phase <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(<span class="hljs-number">1</span>, <span class="hljs-number">5</span>):
+      self.status.<span class="hljs-built_in">set</span>(<span class="hljs-string">f"Phase </span><span class="hljs-subst">{phase}</span><span class="hljs-string">"</span>)
+      self.update_idletasks()
+      self.process_phase(phase, <span class="hljs-number">2</span>)
+    self.status.<span class="hljs-built_in">set</span>(<span class="hljs-string">'Complete'</span>)
+</code></pre>
+    <p class="normal">By forcing Tkinter to run the remaining idle tasks in the queue before starting the long blocking method, our GUI kept is up to date. Unfortunately, there are some shortcomings to this approach:</p>
+    <ul>
+      <li class="bullet">Firstly, the individual tasks still block the application while they're running. No matter how we break them up, the application will still be frozen while the individual units of the process are executing.</li>
+      <li class="bullet">Secondly, this approach is problematic for separation of concerns. In a real application, our processing phases are likely going to be running in a backend or model class of some kind. Those classes should not be manipulating GUI widgets.</li>
+    </ul>
+    <p class="normal">While these queue control methods can be useful for managing GUI-layer processes, it's clear we need a better solution for working with slow background processes like the ABQ network upload functions. For those, we'll need to use something more powerful: threads.</p>
+    <h1 id="_idParaDest-394" class="title">Running code in the background with threads</h1>
+    <p class="normal">All of the <a id="_idIndexMarker1413"/>code we have written up to this point in the book can be described as <strong class="keyword">single-threaded</strong>; that is, every <a id="_idIndexMarker1414"/>statement is executed one at a time, the prior statement finishing before the next one is begun. Even asynchronous elements such as our Tkinter event queue, though they may change the order in which tasks are executed, still execute only one task at a time. This means that a long-running procedure like a slow network transaction or file read will unavoidably freeze up our application while it runs.</p>
+    <p class="normal">To see this in action, run the <code class="Code-In-Text--PACKT-">sample_rest_service.py</code> script included with the example code for <em class="chapterRef">Chapter 14</em> (make sure you run the <em class="chapterRef">Chapter 14</em> version, not the <em class="chapterRef">Chapter 13</em> version!). Now run ABQ Data Entry, make sure you've got some data in the database for today, and run the REST upload. The upload should take about 20 seconds, during which time the service script should be printing status messages like these:</p>
+    <pre class="programlisting con"><code class="hljs-con">File 0% uploaded
+File 5% uploaded
+File 10% uploaded
+File 15% uploaded
+File 20% uploaded
+File 25% uploaded
+</code></pre>
+    <p class="normal">Meanwhile, though, our GUI application is frozen. You'll find you cannot interact with any of the controls, and moving or resizing it may result in a blank gray window. Only when the upload process completes will your application become responsive again.</p>
+    <p class="normal">To truly get around this problem, we need to <a id="_idIndexMarker1415"/>create a <strong class="keyword">multi-threaded</strong> application, in which multiple pieces of code can be run concurrently without needing to wait for one another. In Python, we can do this using the <code class="Code-In-Text--PACKT-">threading</code> module.</p>
+    <h2 id="_idParaDest-395" class="title">The threading module</h2>
+    <p class="normal">Multi-threaded application<a id="_idIndexMarker1416"/> programming can be quite challenging to grasp fully, but the standard library's <code class="Code-In-Text--PACKT-">threading</code> module makes working with threads about as simple as it can be.</p>
+    <p class="normal">To demonstrate the basic use of <code class="Code-In-Text--PACKT-">threading</code>, let's first create an intentionally slow function:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># basic_threading_demo.py</span>
+<span class="hljs-keyword">from</span> time <span class="hljs-keyword">import</span> sleep
+<span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">print_slowly</span><span class="hljs-function">(</span><span class="hljs-params">string</span><span class="hljs-function">):</span>
+  words = string.split()
+  <span class="hljs-keyword">for</span> word <span class="hljs-keyword">in</span> words:
+    sleep(<span class="hljs-number">1</span>)
+    <span class="hljs-built_in">print</span>(word)
+</code></pre>
+    <p class="normal">This function<a id="_idIndexMarker1417"/> takes a string and prints it at a rate of one word per second. This will simulate a long-running, computationally expensive process and give us some feedback that it's still running.</p>
+    <p class="normal">Let's create a Tkinter GUI frontend for this function:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># basic_threading_demo.py</span>
+<span class="hljs-keyword">import</span> tkinter <span class="hljs-keyword">as</span> tk
+<span class="hljs-comment"># print_slowly() function goes here</span>
+<span class="hljs-comment"># ...</span>
+<span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">App</span><span class="hljs-class">(</span><span class="hljs-params">tk.Tk</span><span class="hljs-class">):</span>
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__init__</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">):</span>
+    <span class="hljs-built_in">super</span>().__init__()
+    self.text = tk.StringVar()
+    tk.Entry(self, textvariable=self.text).pack()
+    tk.Button(
+      self, text=<span class="hljs-string">"Run unthreaded"</span>,
+      command=self.print_unthreaded
+    ).pack()
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">print_unthreaded</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">):</span>
+    print_slowly(self.text.get())
+App().mainloop()
+</code></pre>
+    <p class="normal">This simple application has a text entry and a button; when the button is pushed, the text in the entry is sent to the <code class="Code-In-Text--PACKT-">print_slowly()</code> function. Run this code, then enter or paste a long sentence into the <code class="Code-In-Text--PACKT-">Entry</code> widget. </p>
+    <p class="normal">When you click the button, you'll see that the entire application freezes up as the words are printed to the console. That's because it's all running in a single execution thread.</p>
+    <p class="normal">Now let's add the threading code:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># basic_threading_demo.py</span>
+<span class="hljs-keyword">from</span> threading <span class="hljs-keyword">import</span> Thread
+<span class="hljs-comment"># at the end of App.__init__()</span>
+    tk.Button(
+      self, text=<span class="hljs-string">"Run threaded"</span>,
+      command=self.print_threaded
+    ).pack()
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">print_threaded</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">):</span>
+    thread = Thread(
+      target=print_slowly,
+      args=(self.text.get(),)
+    )
+    thread.start()
+</code></pre>
+    <p class="normal">This time, we've <a id="_idIndexMarker1418"/>imported the <code class="Code-In-Text--PACKT-">Thread</code> class and created a new callback called <code class="Code-In-Text--PACKT-">print_threaded()</code>. This callback uses a <code class="Code-In-Text--PACKT-">Thread</code> object to run <code class="Code-In-Text--PACKT-">print_slowly()</code> in its own execution thread.</p>
+    <p class="normal">A <code class="Code-In-Text--PACKT-">Thread</code> object takes a <code class="Code-In-Text--PACKT-">target</code> argument that points to the callable which will be run in the new execution thread. It can also take an <code class="Code-In-Text--PACKT-">args</code> tuple, which contains arguments to be passed into the <code class="Code-In-Text--PACKT-">target</code> argument, and a <code class="Code-In-Text--PACKT-">kwargs</code> dictionary, which will also be expanded in the <code class="Code-In-Text--PACKT-">target</code> function's argument list.</p>
+    <p class="normal">To execute the <code class="Code-In-Text--PACKT-">Thread</code> object, we call its <code class="Code-In-Text--PACKT-">start()</code> method. This method does not block, so the <code class="Code-In-Text--PACKT-">print_threaded()</code> callback immediately returns, allowing Tkinter to resume its event loop while <code class="Code-In-Text--PACKT-">thread</code> executes in the background.</p>
+    <p class="normal">If you try this code, you'll see that the GUI no longer freezes while the sentence is printed. No matter how long the sentence, the GUI remains responsive the whole time.</p>
+    <h3 id="_idParaDest-396" class="title">Tkinter and thread safety</h3>
+    <p class="normal">Threading<a id="_idIndexMarker1419"/> introduces a <a id="_idIndexMarker1420"/>great deal of complication into a code base, and not all code is written to behave properly in a multi-threaded environment. </p>
+    <p class="normal">We refer to code that is written with threading in mind as being <strong class="keyword">thread-safe</strong>.</p>
+    <p class="normal">It's often repeated that Tkinter is not thread-safe; this isn't entirely true. Assuming your Tcl/Tk binaries have been compiled with thread support (which those included with the official Python<a id="_idIndexMarker1421"/> distributions for Linux, Windows, and macOS have been), Tkinter should work fine in a multi-threaded program. However, the Python documentation warns us that there are still some edge cases where Tkinter calls across threads do not behave properly.</p>
+    <p class="normal">The best way to avoid these issues is to keep our Tkinter code within a single thread and restrict our use of threads to non-Tkinter code (such as our model classes).</p>
+    <p class="normal">More <a id="_idIndexMarker1422"/>information about Tkinter and threading can be found at <a href="https://docs.python.org/3/library/tkinter.html#threading-model"><span class="url">https://docs.python.org/3/library/tkinter.html#threading-model</span></a>.</p>
+    <h2 id="_idParaDest-397" class="title">Converting our network functions to threaded execution</h2>
+    <p class="normal">Passing a <a id="_idIndexMarker1423"/>function to a <code class="Code-In-Text--PACKT-">Thread</code> object's <code class="Code-In-Text--PACKT-">target</code> argument is one way of running code in a thread; a more flexible and powerful approach is to subclass the <code class="Code-In-Text--PACKT-">Thread</code> class and override its <code class="Code-In-Text--PACKT-">run()</code> method with the code you want to execute. To demonstrate this approach, let's update the corporate REST upload feature we created for ABQ Data Entry in <em class="chapterRef">Chapter 13</em>, <em class="italic">Connecting to the Cloud</em>, so that it runs the slow upload operation in a separate thread.</p>
+    <p class="normal">To begin, open up <code class="Code-In-Text--PACKT-">models.py</code> and let's import the <code class="Code-In-Text--PACKT-">Thread</code> class, like so:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># models.py, at the top</span>
+<span class="hljs-keyword">from</span> threading <span class="hljs-keyword">import</span> Thread
+</code></pre>
+    <p class="normal">Rather than having a <code class="Code-In-Text--PACKT-">CorporateRestModel</code> method execute the upload, we're going to create a class based on <code class="Code-In-Text--PACKT-">Thread</code> whose instances will be able to execute the upload operation in a separate thread. We'll call it <code class="Code-In-Text--PACKT-">ThreadedUploader</code>.</p>
+    <p class="normal">To execute its upload, the <code class="Code-In-Text--PACKT-">ThreadedUploader</code> instance will need an endpoint URL and a local file path; we can simply pass those to the object in its initializer. It will also need access to an authenticated session; that presents more of a problem. We might be able to get away with passing our authenticated <code class="Code-In-Text--PACKT-">Session</code> object to the thread, but at the time of writing there is a great deal of uncertainty as to whether <code class="Code-In-Text--PACKT-">Session</code> objects are thread-safe, so it's best to avoid sharing them between threads.</p>
+    <p class="normal">However, we don't really need the whole <code class="Code-In-Text--PACKT-">Session</code> object, just the authentication token or session cookie. </p>
+    <p class="normal">It turns out that when we authenticate to the REST server, a cookie called <code class="Code-In-Text--PACKT-">session</code> is placed in our cookie jar, which we can see by inspecting the <code class="Code-In-Text--PACKT-">Session.cookies</code> object from a terminal, like so:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-comment"># execute this with the sample REST server running in another terminal</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">import</span> requests
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> s = requests.Session()
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> s.post(<span class="hljs-con-string">'http://localhost:8000/auth'</span>, data={<span class="hljs-con-string">'username'</span>: <span class="hljs-con-string">'test'</span>, <span class="hljs-con-string">'password'</span>: <span class="hljs-con-string">'test'</span>})
+&lt;Response [200]&gt;
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">dict</span>(s.cookies)
+{'session': 'eyJhdXRoZW50aWNhdGVkIjp0cnVlfQ.YTu7xA.c5ZOSuHQbckhasRFRF'}
+</code></pre>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">cookies</code> attribute is a <code class="Code-In-Text--PACKT-">requests.CookieJar</code> object, which behaves in many ways like a dictionary. Each <a id="_idIndexMarker1424"/>cookie has a unique name, which can be used to retrieve the cookie itself. In this case, our session cookie is called <code class="Code-In-Text--PACKT-">session</code>.</p>
+    <p class="normal">Since the cookie itself is just a string, we can safely pass it to another thread. Once there, we'll create a new <code class="Code-In-Text--PACKT-">Session</code> object and give it the cookie, after which it can authenticate requests.</p>
+    <div class="note">
+      <p class="Information-Box--PACKT-">Immutable objects, including strings, integers, and floats, are always thread-safe. Since immutable objects can't be altered after creation, we don't have to worry that two threads will try to change the object at the same time. </p>
+    </div>
+    <p class="normal">Let's start our new uploader class as follows:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># models.py</span>
+<span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">ThreadedUploader</span><span class="hljs-class">(</span><span class="hljs-params">Thread</span><span class="hljs-class">):</span>
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__init__</span><span class="hljs-function">(</span><span class="hljs-params">self, session_cookie, files_url, filepath</span><span class="hljs-function">):</span>
+    <span class="hljs-built_in">super</span>().__init__()
+    self.files_url = files_url
+    self.filepath = filepath
+    <span class="hljs-comment"># Create the new session and hand it the cookie</span>
+    self.session = requests.Session()
+    self.session.cookies[<span class="hljs-string">'session'</span>] = session_cookie
+</code></pre>
+    <p class="normal">The initializer method starts by calling the superclass initializer to set up the <code class="Code-In-Text--PACKT-">Thread</code> object, then assigns the passed <code class="Code-In-Text--PACKT-">files_url</code> and <code class="Code-In-Text--PACKT-">filepath</code> strings to instance attributes. </p>
+    <p class="normal">Next, we create a new <code class="Code-In-Text--PACKT-">Session</code> object and add the passed cookie value to the cookie jar by assigning it to the <code class="Code-In-Text--PACKT-">session</code> key (the same key used in the original session's cookie jar). Now we have all the information we need to execute an upload process. The actual process to be executed in the thread is implemented in its <code class="Code-In-Text--PACKT-">run()</code> method, which we'll add next:</p>
+    <pre class="programlisting code"><code class="hljs-code">  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">run</span><span class="hljs-function">(</span><span class="hljs-params">self, *args, **kwargs</span><span class="hljs-function">):</span>
+    <span class="hljs-keyword">with</span> <span class="hljs-built_in">open</span>(self.filepath, <span class="hljs-string">'rb'</span>) <span class="hljs-keyword">as</span> fh:
+      files = {<span class="hljs-string">'file'</span>: fh}
+      response = self.session.put(
+        self.files_url, files=files
+      )
+      response.raise_for_status()
+</code></pre>
+    <p class="normal">Note that <a id="_idIndexMarker1425"/>this code is essentially the code from the model's <code class="Code-In-Text--PACKT-">upload()</code> method, except that the function arguments have been changed to instance properties.</p>
+    <p class="normal">Now, let's head over to our model and see how we can use this class.</p>
+    <div class="packt_tip">
+      <p class="Tip--PACKT-">The Python documentation recommends that you <em class="italic">only</em> override <code class="Code-In-Text--PACKT-">run()</code> and <code class="Code-In-Text--PACKT-">__init__()</code> when subclassing <code class="Code-In-Text--PACKT-">Thread</code>. Other methods should be left alone for proper operation.</p>
+    </div>
+    <h3 id="_idParaDest-398" class="title">Using the threaded uploader</h3>
+    <p class="normal">Now<a id="_idIndexMarker1426"/> that we've created a threaded uploader, we just need to make <code class="Code-In-Text--PACKT-">CorporateRestModel</code> use it. Find your model class and let's rewrite the <code class="Code-In-Text--PACKT-">upload_file()</code> method as follows:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># models.py, inside CorporateRestModel</span>
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">upload_file</span><span class="hljs-function">(</span><span class="hljs-params">self, filepath</span><span class="hljs-function">):</span>
+    <span class="hljs-string">"""PUT a file on the server"""</span>
+    cookie = self.session.cookies.get(<span class="hljs-string">'session'</span>)
+    uploader = ThreadedUploader(
+      cookie, self.files_url, filepath
+    )
+    uploader.start()
+</code></pre>
+    <p class="normal">Here, we start by extracting the session cookie from our <code class="Code-In-Text--PACKT-">Session</code> object, then pass it along with the URL and the file path to the <code class="Code-In-Text--PACKT-">ThreadedUploader</code> initializer. Finally, we call the thread's <code class="Code-In-Text--PACKT-">start()</code> method to begin execution of the upload.</p>
+    <p class="normal">Now, give your REST upload <a id="_idIndexMarker1427"/>another try and you'll see that the application doesn't freeze up. Great job! However, it doesn't quite behave how we'd like it to yet...</p>
+    <div class="packt_tip">
+      <p class="Tip--PACKT-">Remember, you override the <code class="Code-In-Text--PACKT-">run()</code> method, but call the <code class="Code-In-Text--PACKT-">start()</code> method. Mixing these up will cause your code to either do nothing or block like a normal single-threaded call.</p>
+    </div>
+    <h3 id="_idParaDest-399" class="title">Passing messages using a queue</h3>
+    <p class="normal">We've solved <a id="_idIndexMarker1428"/>the problem of the program freezing up, but now we have some new problems. The most obvious problem is that our callback immediately shows a message box claiming that we've successfully uploaded the file, even though you can see from the server output that the process is still ongoing in the background. A subtler and far worse problem is that we aren't alerted to errors. If you try terminating the test service while the upload is running (so that the callback should fail), it will still immediately claim that the upload succeeded, even though you can see on the terminal that exceptions are being raised. What's going on here?</p>
+    <p class="normal">The <a id="_idIndexMarker1429"/>first problem here is that the <code class="Code-In-Text--PACKT-">Thread.start()</code> method doesn't block code execution. This is what we wanted, of course, but it now means our success dialog isn't waiting until the upload process is complete before it displays. As soon as the new thread is launched, the execution of code in the main thread continues in parallel with the new thread, immediately showing the success dialog.</p>
+    <p class="normal">The second problem is that code running in its own thread cannot pass exceptions caused in the thread's <code class="Code-In-Text--PACKT-">run()</code> method back to the main thread. Those exceptions are raised within the new thread, and can only be caught in the new thread. As far as our main thread is concerned, the code in the <code class="Code-In-Text--PACKT-">try</code> block executed just fine. In fact, the upload operation can't communicate failures <em class="italic">or</em> successes. </p>
+    <p class="normal">In order to solve these problems, we need a way for the GUI and model threads to communicate, so that the upload thread can send error or progress messages back to the main thread to be handled appropriately. We can do this using a <strong class="keyword">queue</strong>.</p>
+    <h3 id="_idParaDest-400" class="title">The Queue object</h3>
+    <p class="normal">Python's <code class="Code-In-Text--PACKT-">queue.Queue</code> class <a id="_idIndexMarker1430"/>provides a <strong class="keyword">first-in first-out </strong>(<strong class="keyword">FIFO</strong>) data <a id="_idIndexMarker1431"/>structure. Python objects can be placed into a <code class="Code-In-Text--PACKT-">Queue</code> object using the <code class="Code-In-Text--PACKT-">put()</code> method, and retrieved using the <code class="Code-In-Text--PACKT-">get()</code> method; to see how this works, execute this in the Python shell:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span> queue <span class="hljs-con-keyword">import</span> Queue
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> q = Queue()
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> q.put(<span class="hljs-con-string">'My item'</span>)
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> q.get()
+'My item'
+</code></pre>
+    <p class="normal">This may not seem terribly exciting; after all, you can do essentially the same thing with a <code class="Code-In-Text--PACKT-">list</code> object. What makes <code class="Code-In-Text--PACKT-">Queue</code> useful, though, is that it is thread-safe. One thread can place messages on the queue, and another can retrieve them and respond appropriately.</p>
+    <p class="normal">By default, the queue's <code class="Code-In-Text--PACKT-">get()</code> method will block execution until an item is received. This behavior can be altered by passing <code class="Code-In-Text--PACKT-">False</code> as its first argument, or using the <code class="Code-In-Text--PACKT-">get_nowait()</code> method. In no-wait mode, the method will return immediately, raising an exception if the queue is empty.</p>
+    <p class="normal">To see how this works, execute the following in the shell:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> q = Queue()
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> q.get_nowait()
+Traceback (most recent call last):
+  File "&lt;stdin&gt;", line 1, in &lt;module&gt;
+  File "/usr/lib/python3.9/queue.py", line 199, in get_nowait
+    return self.get(block=False)
+  File "/usr/lib/python3.9/queue.py", line 168, in get
+    raise Empty
+_queue.Empty
+</code></pre>
+    <p class="normal">We can also check whether the queue is empty using the <code class="Code-In-Text--PACKT-">empty()</code> or <code class="Code-In-Text--PACKT-">qsize()</code> methods; for example:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> q.empty()
+True
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> q.qsize()
+0
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> q.put(<span class="hljs-con-number">1</span>)
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> q.empty()
+False
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> q.qsize()
+1
+</code></pre>
+    <p class="normal">As you can see, <code class="Code-In-Text--PACKT-">empty()</code> returns a Boolean indicating if the queue is empty, and <code class="Code-In-Text--PACKT-">qsize()</code> returns the <a id="_idIndexMarker1432"/>number of items in the queue. <code class="Code-In-Text--PACKT-">Queue</code> has several other methods that are useful in more advanced multi-threading situations, but <code class="Code-In-Text--PACKT-">get()</code>, <code class="Code-In-Text--PACKT-">put()</code>, and <code class="Code-In-Text--PACKT-">empty()</code> will be sufficient to solve our problems.</p>
+    <h3 id="_idParaDest-401" class="title">Using queues to communicate between threads</h3>
+    <p class="normal">Before <a id="_idIndexMarker1433"/>editing our application code, let's create a simple example application to make sure we understand how to use <code class="Code-In-Text--PACKT-">Queue</code> to <a id="_idIndexMarker1434"/>communicate between threads.</p>
+    <p class="normal">Start with a long-running thread:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># threading_queue_demo.py</span>
+<span class="hljs-keyword">from</span> threading <span class="hljs-keyword">import</span> Thread
+<span class="hljs-keyword">from</span> time <span class="hljs-keyword">import</span> sleep
+<span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">Backend</span><span class="hljs-class">(</span><span class="hljs-params">Thread</span><span class="hljs-class">):</span>
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__init__</span><span class="hljs-function">(</span><span class="hljs-params">self, queue, *args, **kwargs</span><span class="hljs-function">):</span>
+    <span class="hljs-built_in">super</span>().__init__(*args, **kwargs)
+    self.queue = queue
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">run</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">):</span>
+    self.queue.put(<span class="hljs-string">'ready'</span>)
+    <span class="hljs-keyword">for</span> n <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(<span class="hljs-number">1</span>, <span class="hljs-number">5</span>):
+      self.queue.put(<span class="hljs-string">f'stage </span><span class="hljs-subst">{n}</span><span class="hljs-string">'</span>)
+      <span class="hljs-built_in">print</span>(<span class="hljs-string">f'stage </span><span class="hljs-subst">{n}</span><span class="hljs-string">'</span>)
+      sleep(<span class="hljs-number">2</span>)
+    self.queue.put(<span class="hljs-string">'done'</span>)
+</code></pre>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">Backend</code> object is a subclass of <code class="Code-In-Text--PACKT-">Thread</code> that takes a <code class="Code-In-Text--PACKT-">Queue</code> object as an argument and saves it as an instance property. Its <code class="Code-In-Text--PACKT-">run()</code> method simulates a long-running four-phase process using <code class="Code-In-Text--PACKT-">print()</code> and <code class="Code-In-Text--PACKT-">sleep()</code>. At the beginning, at the end, and before each phase, we use <code class="Code-In-Text--PACKT-">queue.put()</code> to place a status message into the queue module.</p>
+    <p class="normal">Now we'll create a frontend for this process in Tkinter:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># threading_queue_demo.py</span>
+<span class="hljs-keyword">import</span> tkinter <span class="hljs-keyword">as</span> tk
+<span class="hljs-keyword">from</span> queue <span class="hljs-keyword">import</span> Queue
+<span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">App</span><span class="hljs-class">(</span><span class="hljs-params">tk.Tk</span><span class="hljs-class">):</span>
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__init__</span><span class="hljs-function">(</span><span class="hljs-params">self, *args, **kwargs</span><span class="hljs-function">):</span>
+    <span class="hljs-built_in">super</span>().__init__(*args, **kwargs)
+    self.status = tk.StringVar(self, value=<span class="hljs-string">'ready'</span>)
+    tk.Label(self, textvariable=self.status).pack()
+    tk.Button(self, text=<span class="hljs-string">"Run process"</span>, command=self.go).pack()
+    self.queue = Queue()
+</code></pre>
+    <p class="normal">This <a id="_idIndexMarker1435"/>simple application contains a <code class="Code-In-Text--PACKT-">Label</code> object bound to a <code class="Code-In-Text--PACKT-">status</code> control variable, a <code class="Code-In-Text--PACKT-">Button</code> widget bound to a callback method, <code class="Code-In-Text--PACKT-">go()</code>, and a <code class="Code-In-Text--PACKT-">Queue</code> object stored as an instance variable. The idea is that, when <a id="_idIndexMarker1436"/>we click the <strong class="screenText">Run process</strong> button, the <code class="Code-In-Text--PACKT-">go()</code> method will run our <code class="Code-In-Text--PACKT-">Backend</code> class and the queued messages will be displayed in the label by way of the <code class="Code-In-Text--PACKT-">status</code> control variable.</p>
+    <p class="normal">Let's create the <code class="Code-In-Text--PACKT-">go()</code> method:</p>
+    <pre class="programlisting code"><code class="hljs-code">  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">go</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">):</span>
+    p = Backend(self.queue)
+    p.start()
+</code></pre>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">go()</code> method creates an instance of the <code class="Code-In-Text--PACKT-">Backend</code> class, passing in the application's <code class="Code-In-Text--PACKT-">Queue</code> object, and starts it. Because both threads now have a reference to <code class="Code-In-Text--PACKT-">queue</code>, we can use it to communicate between them. We've already seen how <code class="Code-In-Text--PACKT-">Backend</code> places status messages on the queue, so how should <code class="Code-In-Text--PACKT-">App()</code> retrieve them?</p>
+    <p class="normal">Maybe we could start a loop, like this:</p>
+    <pre class="programlisting code"><code class="hljs-code">  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">go</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">):</span>
+    p = Backend(self.queue)
+    p.start()
+    <span class="hljs-keyword">while</span> <span class="hljs-literal">True</span>:
+      status = self.queue.get()
+      self.status.<span class="hljs-built_in">set</span>(status)
+      <span class="hljs-keyword">if</span> status == <span class="hljs-string">'done'</span>:
+        <span class="hljs-keyword">break</span>
+</code></pre>
+    <p class="normal">That won't work, of course, because the loop will block; the Tkinter event loop would be stuck executing <code class="Code-In-Text--PACKT-">go()</code>, freezing up the GUI and defeating the purpose of using a second thread. Instead, we<a id="_idIndexMarker1437"/> need a way to periodically poll the <code class="Code-In-Text--PACKT-">queue</code> object for status messages and update<a id="_idIndexMarker1438"/> the status whenever one is received.</p>
+    <p class="normal">We'll start by writing a method that can check the queue and respond appropriately:</p>
+    <pre class="programlisting code"><code class="hljs-code">  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">check_queue</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">):</span>
+    msg = <span class="hljs-string">''</span>
+    <span class="hljs-keyword">while</span> <span class="hljs-keyword">not</span> self.queue.empty():
+      msg = self.queue.get()
+      self.status.<span class="hljs-built_in">set</span>(msg)
+</code></pre>
+    <p class="normal">Using the <code class="Code-In-Text--PACKT-">Queue.empty()</code> method, we first find out if the queue is empty or not. If it is, we don't want to do anything, because <code class="Code-In-Text--PACKT-">get()</code> will, by default, block until it receives a message, and we don't want to block execution. If the <code class="Code-In-Text--PACKT-">queue</code> object contains items, we'll want to get those items and send them to our <code class="Code-In-Text--PACKT-">status</code> variable. We're doing this in a <code class="Code-In-Text--PACKT-">while</code> loop so that we only leave the function when the queue is empty.</p>
+    <p class="normal">This only performs one check, of course; we want to keep polling the queue module until the thread sends a <code class="Code-In-Text--PACKT-">done</code> message. Thus, if our status is not <code class="Code-In-Text--PACKT-">done</code>, we need to schedule another queue check.</p>
+    <p class="normal">That can be done with a call to <code class="Code-In-Text--PACKT-">after()</code> at the end of <code class="Code-In-Text--PACKT-">check_queue()</code>, like this:</p>
+    <pre class="programlisting code"><code class="hljs-code">    <span class="hljs-keyword">if</span> msg != <span class="hljs-string">'done'</span>:
+      self.after(<span class="hljs-number">100</span>, self.check_queue)
+</code></pre>
+    <p class="normal">Now <code class="Code-In-Text--PACKT-">check_queue()</code> will do its job, then schedule itself to run again every <code class="Code-In-Text--PACKT-">100</code> milliseconds until the status is <code class="Code-In-Text--PACKT-">done</code>. All that remains is to kick off the process at the end of <code class="Code-In-Text--PACKT-">go()</code>, like so:</p>
+    <pre class="programlisting code"><code class="hljs-code">  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">go</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">):</span>
+    p = Backend(self.queue)
+    p.start()
+    <span class="code-highlight"><strong class="hljs-slc">self.check_queue()</strong></span>
+</code></pre>
+    <p class="normal">If you run this application, you'll see that we get status messages in (relatively) real time. Unlike the single-threaded application we created earlier in the chapter, there is no freezing, even while the tasks are running.</p>
+    <h2 id="_idParaDest-402" class="title">Adding a communication queue to our threaded uploader</h2>
+    <p class="normal">Let's apply<a id="_idIndexMarker1439"/> our knowledge of queues to fix the problems with the <code class="Code-In-Text--PACKT-">ThreadedUploader</code> class. To begin, we'll update the initializer <a id="_idIndexMarker1440"/>signature so that we can pass in a <code class="Code-In-Text--PACKT-">Queue</code> object, then store the object as an instance attribute, like so:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># models.py, in ThreadedUploader</span>
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__init__</span><span class="hljs-function">(</span>
+<span class="hljs-params">    self, session_cookie, files_url, filepath, </span><span class="code-highlight"><strong class="hljs-slc">queue</strong></span>
+<span class="hljs-params">  </span><span class="hljs-function">):</span>
+  <span class="hljs-comment"># ...</span>
+  <span class="code-highlight"><strong class="hljs-slc">self.queue = queue</strong></span>
+</code></pre>
+    <p class="normal">Just as we did in our example application, we'll create the <code class="Code-In-Text--PACKT-">Queue</code> object in the <code class="Code-In-Text--PACKT-">CorporateRestModel</code> object so that both the uploader and the model have a reference to it. In addition, we'll save the queue as a public attribute of the model so that the application object can also reference it. To do that, we'll first need to import <code class="Code-In-Text--PACKT-">Queue</code> into <code class="Code-In-Text--PACKT-">models.py</code>, so add this import at the top:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># models.py, at the top</span>
+<span class="hljs-keyword">from</span> queue <span class="hljs-keyword">import</span> Queue
+</code></pre>
+    <p class="normal">Now, back down in the <code class="Code-In-Text--PACKT-">CorporateRestModel</code> initializer, create a <code class="Code-In-Text--PACKT-">Queue</code> object:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># models.py, inside CorporateRestModel</span>
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__init__</span><span class="hljs-function">(</span><span class="hljs-params">self, base_url</span><span class="hljs-function">):</span>
+    <span class="hljs-comment">#...</span>
+    <span class="code-highlight"><strong class="hljs-slc">self.queue = Queue()</strong></span>
+</code></pre>
+    <p class="normal">Next, we need to update the <code class="Code-In-Text--PACKT-">upload_file()</code> method so that it passes the queue into the <code class="Code-In-Text--PACKT-">ThreadedUploader</code> object:</p>
+    <pre class="programlisting code"><code class="hljs-code">  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">upload_file</span><span class="hljs-function">(</span><span class="hljs-params">self, filepath</span><span class="hljs-function">):</span>
+    cookie = self.session.cookies.get(<span class="hljs-string">'session'</span>)
+    uploader = ThreadedUploader(
+      cookie, self.files_url, filepath, <span class="code-highlight"><strong class="hljs-slc">self.queue</strong></span>
+    )
+    uploader.start()
+</code></pre>
+    <p class="normal">Now the GUI can access the queue from <code class="Code-In-Text--PACKT-">rest_model.queue</code>, and we can use that connection to <a id="_idIndexMarker1441"/>send messages from<a id="_idIndexMarker1442"/> our upload thread back to the GUI. Before we can use that connection, however, we need to develop a communications protocol.</p>
+    <h2 id="_idParaDest-403" class="title">Creating a communications protocol</h2>
+    <p class="normal">Now that <a id="_idIndexMarker1443"/>we have established a channel for inter-thread communication, we have to decide how our two threads will communicate. In other words, what exactly will our uploader thread place on the queue, and how should our application thread respond to it? We could just throw anything into the queue and keep writing <code class="Code-In-Text--PACKT-">if</code> statements on the app-side to deal with whatever shows up, but a better approach is to standardize communications by defining a simple protocol.</p>
+    <p class="normal">Our uploader thread will mainly be sending status-related information back to the application so that it can display updates about what's happening in message boxes or on the status bar. We will create a message format that we can use to determine what the thread is doing and communicate that to the user.</p>
+    <p class="normal">The message structure will look like this:</p>
+    <table id="table001-10" class="No-Table-Style">
+      <colgroup>
+        <col/>
+        <col/>
+      </colgroup>
+      <tbody>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Field</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Description</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-"><code class="Code-In-Text--PACKT-">status</code></p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">One word indicating the type of message, such as info or error</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-"><code class="Code-In-Text--PACKT-">subject</code></p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">A short sentence summarizing the message</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-"><code class="Code-In-Text--PACKT-">body</code></p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">A longer string with details about the message</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="normal">We could create a structure like this using dictionary or a class, but simple collections of named fields like this are a great use-case <a id="_idIndexMarker1444"/>for <strong class="keyword">named tuples</strong>. The <code class="Code-In-Text--PACKT-">collections.namedtuple()</code> function allows us to quickly create mini-classes that contain only named properties.</p>
+    <p class="normal">Creating a <code class="Code-In-Text--PACKT-">namedtuple</code> class looks like this:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">from</span> collections <span class="hljs-keyword">import</span> namedtuple
+MyClass = namedtuple(<span class="hljs-string">'MyClass'</span>, [<span class="hljs-string">'prop1'</span>, <span class="hljs-string">'prop2'</span>])
+</code></pre>
+    <p class="normal">This is equivalent to writing:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">MyClass</span><span class="hljs-class">():</span>
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__init__</span><span class="hljs-function">(</span><span class="hljs-params">self, prop1, prop2</span><span class="hljs-function">):</span>
+    self.prop1 = prop1
+    self.prop2 = prop2
+</code></pre>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">namedtuple()</code> method is much faster to create than a class, and unlike a dictionary it enforces <a id="_idIndexMarker1445"/>uniformity—that is, every <code class="Code-In-Text--PACKT-">MyClass</code> object must have a <code class="Code-In-Text--PACKT-">prop1</code> and a <code class="Code-In-Text--PACKT-">prop2</code> attribute, whereas a dictionary is never required to have any particular keys.</p>
+    <p class="normal">At the top of the <code class="Code-In-Text--PACKT-">models.py</code> file, let's import <code class="Code-In-Text--PACKT-">namedtuple</code> and use it to define a class called <code class="Code-In-Text--PACKT-">Message</code>:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># models.py, at the top</span>
+<span class="hljs-keyword">from</span> collections <span class="hljs-keyword">import</span> namedtuple
+Message = namedtuple(<span class="hljs-string">'Message'</span>, [<span class="hljs-string">'status'</span>, <span class="hljs-string">'subject'</span>, <span class="hljs-string">'body'</span>])
+</code></pre>
+    <p class="normal">Now that we've created the <code class="Code-In-Text--PACKT-">Message</code> class, making a new <code class="Code-In-Text--PACKT-">Message</code> object is just like making an instance of any other class:</p>
+    <pre class="programlisting code"><code class="hljs-code">message = Message(
+  <span class="hljs-string">'info'</span>, <span class="hljs-string">'Testing the class'</span>, 
+  <span class="hljs-string">'We are testing the Message class'</span>
+)
+</code></pre>
+    <p class="normal">Let's implement the use of these <code class="Code-In-Text--PACKT-">Message</code> objects in our queue.</p>
+    <h2 id="_idParaDest-404" class="title">Sending messages from the uploader</h2>
+    <p class="normal">Now that we<a id="_idIndexMarker1446"/> have established a protocol, it's time<a id="_idIndexMarker1447"/> to put it to use. Locate the <code class="Code-In-Text--PACKT-">ThreadedUploader</code> class, and let's update the <code class="Code-In-Text--PACKT-">run()</code> method to send messages, starting with an informational message:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># models.py, in ThreadedUploader</span>
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">run</span><span class="hljs-function">(</span><span class="hljs-params">self, *args, **kwargs</span><span class="hljs-function">):</span>
+    self.queue.put(
+      Message(
+        <span class="hljs-string">'info'</span>, <span class="hljs-string">'Upload Started'</span>, 
+        <span class="hljs-string">f'Begin upload of </span><span class="hljs-subst">{self.filepath}</span><span class="hljs-string">'</span>
+      )
+    )
+</code></pre>
+    <p class="normal">Our first message is just an informational message indicating that the upload is starting. Next, we'll <a id="_idIndexMarker1448"/>begin the upload and return some messages <a id="_idIndexMarker1449"/>indicating the success or failure of the operation:</p>
+    <pre class="programlisting code"><code class="hljs-code">    <span class="hljs-keyword">with</span> <span class="hljs-built_in">open</span>(self.filepath, <span class="hljs-string">'rb'</span>) <span class="hljs-keyword">as</span> fh:
+      files = {<span class="hljs-string">'file'</span>: fh}
+      response = self.session.put(
+        self.files_url, files=files
+      )
+    <span class="hljs-keyword">try</span>:
+      response.raise_for_status()
+    <span class="hljs-keyword">except</span> Exception <span class="hljs-keyword">as</span> e:
+      self.queue.put(Message(<span class="hljs-string">'error'</span>, <span class="hljs-string">'Upload Error'</span>, <span class="hljs-built_in">str</span>(e)))
+    <span class="hljs-keyword">else</span>:
+      self.queue.put(
+        Message(
+          <span class="hljs-string">'done'</span>,  <span class="hljs-string">'Upload Succeeded'</span>,
+          <span class="hljs-string">f'Upload of </span><span class="hljs-subst">{self.filepath}</span><span class="hljs-string"> to REST succeeded'</span>
+        )
+      )
+</code></pre>
+    <p class="normal">As before, we begin the upload process by opening the file and making our <code class="Code-In-Text--PACKT-">PUT</code> request to the web service. This time, though, we run <code class="Code-In-Text--PACKT-">raise_for_status()</code> in a <code class="Code-In-Text--PACKT-">try</code> block. If we catch an exception from the operation, we put a message with a status of <code class="Code-In-Text--PACKT-">error</code> on the queue along with the text of the exception. If we succeed, we place a success message on the queue.</p>
+    <p class="normal">That's all that our <code class="Code-In-Text--PACKT-">ThreadedUploader</code> needs to do; now we need to head over the GUI to implement a response to these messages.</p>
+    <h2 id="_idParaDest-405" class="title">Handling queue messages</h2>
+    <p class="normal">Back<a id="_idIndexMarker1450"/> in the <code class="Code-In-Text--PACKT-">Application</code> object, we need to add some code to monitor the queue and take appropriate actions when a message is sent from the thread. As we did in our queue demo application, we'll create a method that uses the Tkinter event loop to periodically poll the queue and handle any messages sent from the model's queue object.</p>
+    <p class="normal">Start the <code class="Code-In-Text--PACKT-">Application._check_queue()</code> method like so:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># application.py, inside Application</span>
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">_check_queue</span><span class="hljs-function">(</span><span class="hljs-params">self, queue</span><span class="hljs-function">):</span>
+    <span class="hljs-keyword">while</span> <span class="hljs-keyword">not</span> queue.empty():
+      item = queue.get()
+</code></pre>
+    <p class="normal">The <a id="_idIndexMarker1451"/>method accepts a <code class="Code-In-Text--PACKT-">Queue</code> object, and starts by checking to see whether it has any items. If so, it retrieves one. Once we have one, we need to examine it and determine what to do with it based on the <code class="Code-In-Text--PACKT-">status</code> value.</p>
+    <p class="normal">First, let's handle a <code class="Code-In-Text--PACKT-">done</code> status; add this code under the <code class="Code-In-Text--PACKT-">if</code> block:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># application.py, inside Application._check_queue()</span>
+      <span class="hljs-keyword">if</span> item.status == <span class="hljs-string">'done'</span>:
+        messagebox.showinfo(
+          item.status,
+          message=item.subject,
+          detail=item.body
+        )
+        self.status.<span class="hljs-built_in">set</span>(item.subject)
+        <span class="hljs-keyword">return</span>
+</code></pre>
+    <p class="normal">When our upload finishes successfully, we want to show a message box and set the status, then return without doing anything else. </p>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">Message</code> object's <code class="Code-In-Text--PACKT-">status</code>, <code class="Code-In-Text--PACKT-">subject</code>, and <code class="Code-In-Text--PACKT-">body</code> attributes map nicely to the <code class="Code-In-Text--PACKT-">title</code>, <code class="Code-In-Text--PACKT-">message</code>, and <code class="Code-In-Text--PACKT-">detail</code> arguments of the message box, so we've just passed those directly to it. We also show the subject of the message in the application's status bar by setting the <code class="Code-In-Text--PACKT-">status</code> variable.</p>
+    <p class="normal">Next, we'll handle <code class="Code-In-Text--PACKT-">error</code> messages from the queue:</p>
+    <pre class="programlisting code"><code class="hljs-code">      <span class="hljs-keyword">elif</span> item.status == <span class="hljs-string">'error'</span>:
+        messagebox.showerror(
+          item.status,
+          message=item.subject,
+          detail=item.body
+        )
+        self.status.<span class="hljs-built_in">set</span>(item.subject)
+        <span class="hljs-keyword">return</span>
+</code></pre>
+    <p class="normal">Once again, we show a message box, this time using <code class="Code-In-Text--PACKT-">showerror()</code>. We also want to exit the method, since <a id="_idIndexMarker1452"/>the thread has presumably quit and we don't need to schedule the next queue check.</p>
+    <p class="normal">Finally, let's handle the <code class="Code-In-Text--PACKT-">info</code> statuses:</p>
+    <pre class="programlisting code"><code class="hljs-code">      <span class="hljs-keyword">else</span>:
+        self.status.<span class="hljs-built_in">set</span>(<span class="hljs-string">f'</span><span class="hljs-subst">{item.subject}</span><span class="hljs-string">: </span><span class="hljs-subst">{item.body}</span><span class="hljs-string">'</span>)
+</code></pre>
+    <p class="normal">Informational messages don't really warrant a modal message box, so we're just sending them to the status bar.</p>
+    <p class="normal">The last thing we need to do in this method is make sure it gets called again if the thread is still going. Since <code class="Code-In-Text--PACKT-">done</code> and <code class="Code-In-Text--PACKT-">error</code> messages cause the method to return, if we've reached this point in the function the thread is still running and we should continue to poll it. So, we'll add a call to <code class="Code-In-Text--PACKT-">after()</code>:</p>
+    <pre class="programlisting code"><code class="hljs-code">    self.after(<span class="hljs-number">100</span>, self._check_queue, queue)
+</code></pre>
+    <p class="normal">With <code class="Code-In-Text--PACKT-">_check_queue()</code> written, we just need to eliminate the exception handling around <code class="Code-In-Text--PACKT-">rest_model.upload_file()</code> at the end of <code class="Code-In-Text--PACKT-">_upload_to_corporate_rest()</code> and call <code class="Code-In-Text--PACKT-">_check_queue()</code> instead:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># application.py, in Application._upload_to_corporate_rest()</span>
+        rest_model.upload_file(csvfile)
+        self._check_queue(self.rest_queue)
+</code></pre>
+    <p class="normal">This call doesn't need to be scheduled with <code class="Code-In-Text--PACKT-">after()</code> since there will most likely not be a message on the first call, causing <code class="Code-In-Text--PACKT-">_check_queue()</code> to just schedule its next call and return.</p>
+    <p class="normal">Now that we've finished that update, launch the test server and the application and try the REST upload again. Watch the status bar and you'll see the progress getting displayed, ending with a message box when the process completes. Try it with the HTTP server turned off, and you should see an error message pop up right away.</p>
+    <h1 id="_idParaDest-406" class="title">Using locks to protect shared resources</h1>
+    <p class="normal">While it's <a id="_idIndexMarker1453"/>great that our application no longer freezes up during slow file uploads, it raises a potential problem. Suppose a user tries to start a second REST upload while the first is ongoing? Go ahead and try this; launch the sample HTTP server and the application, and try to launch two REST uploads in quick succession, so that the second begins before the first finishes. Note the output from the REST server; depending on your timing, you may see confusing log messages with percentages going up and down as both threads upload files at the same time.</p>
+    <p class="normal">Of course, our<a id="_idIndexMarker1454"/> sample REST server only simulates a slow link with <code class="Code-In-Text--PACKT-">sleep()</code>; the actual file upload happens so fast it's unlikely to cause a problem. In a situation with a genuinely slow network, concurrent uploads could be more problematic. While it's possible that the receiving server is robust enough to sensibly handle two threads trying to upload the same file, it's best if we avoid that situation in the first place.</p>
+    <p class="normal">What we need is some kind of flag that is shared between threads which can indicate if a thread is currently uploading so that others will know not to do so. We can do this using the <code class="Code-In-Text--PACKT-">threading</code> module's <code class="Code-In-Text--PACKT-">Lock</code> object.</p>
+    <h2 id="_idParaDest-407" class="title">Understanding the Lock object</h2>
+    <p class="normal">A lock is a <a id="_idIndexMarker1455"/>very simple object with two states: <strong class="keyword">acquired</strong> and <strong class="keyword">released</strong>. When a <code class="Code-In-Text--PACKT-">Lock</code> object is in the released state, any thread may call its <code class="Code-In-Text--PACKT-">acquire()</code> method to put it in the acquired state. Once a thread has acquired the lock, the <code class="Code-In-Text--PACKT-">acquire()</code> method will block until the lock has been released by calling its <code class="Code-In-Text--PACKT-">release()</code> method. That means that if another thread calls <code class="Code-In-Text--PACKT-">acquire()</code>, its execution will wait until the lock is released by the first thread.</p>
+    <p class="normal">To see how this works, look at the <code class="Code-In-Text--PACKT-">basic_threading_demo.py</code> script we created earlier in this chapter. Run that script from a terminal prompt, enter a sentence into the <code class="Code-In-Text--PACKT-">Entry</code> widget, and click the <strong class="screenText">Run threaded</strong> button. </p>
+    <p class="normal">As we noted earlier, the sentence prints out at one word per second to the terminal output. But now, click the <strong class="screenText">Run threaded</strong> button twice in quick succession. Notice that the output is a jumble of repeated words as the two threads simultaneously output text to the terminal. You can just imagine the havoc multiple threads could wreak upon a file or network session in a situation like this.</p>
+    <p class="normal">To correct this, let's create a lock. First, import <code class="Code-In-Text--PACKT-">Lock</code> from the <code class="Code-In-Text--PACKT-">threading</code> module and create an instance of it:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># basic_threading_demo_with_lock.py</span>
+<span class="hljs-keyword">from</span> threading <span class="hljs-keyword">import</span> Thread, Lock
+print_lock = Lock()
+</code></pre>
+    <p class="normal">Now, inside the <code class="Code-In-Text--PACKT-">print_slowly()</code> function, let's add calls to <code class="Code-In-Text--PACKT-">acquire()</code> and <code class="Code-In-Text--PACKT-">release()</code> around the method, like so:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">print_slowly</span><span class="hljs-function">(</span><span class="hljs-params">string</span><span class="hljs-function">):</span>
+  print_lock.acquire()
+  words = string.split()
+  <span class="hljs-keyword">for</span> word <span class="hljs-keyword">in</span> words:
+    sleep(<span class="hljs-number">1</span>)
+    <span class="hljs-built_in">print</span>(word)
+  print_lock.release()
+</code></pre>
+    <p class="normal">Save this<a id="_idIndexMarker1456"/> file as <code class="Code-In-Text--PACKT-">basic_threading_demo_with_lock.py</code> and run it again. Now, when you click the <strong class="screenText">Run threaded</strong> button multiple times, each run waits for the previous one to release the lock before beginning. In this way, we can force threads to wait for each other while still maintaining a responsive application.</p>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">Lock</code> object can also be used as a context manager so that <code class="Code-In-Text--PACKT-">acquire()</code> is called on entering the block and <code class="Code-In-Text--PACKT-">release()</code> upon exiting. Thus, we could rewrite the preceding example like so:</p>
+    <pre class="programlisting code"><code class="hljs-code">  <span class="hljs-keyword">with</span> print_lock:
+    words = string.split()
+    <span class="hljs-keyword">for</span> word <span class="hljs-keyword">in</span> words:
+      sleep(<span class="hljs-number">1</span>)
+      <span class="hljs-built_in">print</span>(word)
+</code></pre>
+    <h2 id="_idParaDest-408" class="title">Using a Lock object to prevent concurrent uploads</h2>
+    <p class="normal">Let's apply <a id="_idIndexMarker1457"/>our understanding<a id="_idIndexMarker1458"/> of the <code class="Code-In-Text--PACKT-">Lock</code> object to prevent concurrent uploading to the corporate REST server. To begin, we need to import <code class="Code-In-Text--PACKT-">Lock</code> into <code class="Code-In-Text--PACKT-">models.py</code>, like so:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">from</span> threading <span class="hljs-keyword">import</span> Thread, <span class="code-highlight"><strong class="hljs-slc">Lock</strong></span>
+</code></pre>
+    <p class="normal">Next, we'll create a <code class="Code-In-Text--PACKT-">Lock</code> object as a class attribute of the <code class="Code-In-Text--PACKT-">ThreadedUploader</code> class, like so:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">ThreadedUploader</span><span class="hljs-class">(</span><span class="hljs-params">Thread</span><span class="hljs-class">):</span>
+  <span class="code-highlight"><strong class="hljs-slc">rest_upload_lock = Lock()</strong></span>
+</code></pre>
+    <p class="normal">Recall from <em class="chapterRef">Chapter 4</em>, <em class="italic">Organizing Our Code with Classes</em>, that objects assigned to class attributes are shared by all instances of the class. Therefore, by creating the lock as a class attribute, any <code class="Code-In-Text--PACKT-">ThreadedUploader</code> thread will have access to the lock.</p>
+    <p class="normal">Now, inside the <code class="Code-In-Text--PACKT-">run()</code> method, we need to utilize our lock. The cleanest approach is to use it as<a id="_idIndexMarker1459"/> a context manager, like so:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># models.py, inside ThreadedUploader.run()</span>
+    <span class="hljs-keyword">with</span> self.upload_lock:
+      <span class="hljs-keyword">with</span> <span class="hljs-built_in">open</span>(self.filepath, <span class="hljs-string">'rb'</span>) <span class="hljs-keyword">as</span> fh:
+        files = {<span class="hljs-string">'file'</span>: fh}
+        response = self.session.put(
+          self.files_url, files=files
+        )
+        <span class="hljs-comment">#... remainder of method in this block</span>
+</code></pre>
+    <p class="normal">Whether<a id="_idIndexMarker1460"/> the <code class="Code-In-Text--PACKT-">put()</code> call returns or raises an exception, the context manager will ensure that <code class="Code-In-Text--PACKT-">release()</code> is called when the block exits so that other calls to <code class="Code-In-Text--PACKT-">run()</code> can acquire the lock.</p>
+    <p class="normal">After adding this code, run the test HTTP server and the application again and try launching two REST uploads in quick succession. Now you should see that the second upload doesn't start until the first has completed.</p>
+    <h3 id="_idParaDest-409" class="title">Threading and the GIL</h3>
+    <p class="normal">Whenever we discuss threading in Python, it's important to understand Python's <strong class="keyword">Global Interpreter Lock</strong> (<strong class="keyword">GIL</strong>) and<a id="_idIndexMarker1461"/> how it affects threading. </p>
+    <p class="normal">The GIL is a lock mechanism that protects Python's memory management by preventing more than one thread from executing Python commands at the same time. Similar to the lock we implemented in our <code class="Code-In-Text--PACKT-">ThreadedUploader</code> class, the GIL can be thought of like a token that can be held by only one thread at a time; whichever thread holds the token may execute Python instructions, and the rest have to wait.</p>
+    <p class="normal">It may seem like this defeats the idea of multi-threading on Python, However, there are two factors that mitigate the impact of the GIL:</p>
+    <ul>
+      <li class="bullet">First, the GIL only limits the execution of <em class="italic">Python</em> code; many libraries execute code in other languages. For example, Tkinter executes TCL code, and <code class="Code-In-Text--PACKT-">psycopg2</code> executes compiled C code. Non-Python code like this can run in a separate thread while Python code runs in another.</li>
+      <li class="bullet">Second, <strong class="keyword">Input/Output</strong> (<strong class="keyword">I/O</strong>) operations like <a id="_idIndexMarker1462"/>disk access or network requests can run concurrently with Python code. For instance, when we make an HTTP request using <code class="Code-In-Text--PACKT-">requests</code>, the GIL is released while waiting for the server to respond.</li>
+    </ul>
+    <p class="normal">The only <a id="_idIndexMarker1463"/>situation where the GIL really limits the utility of multi-threading is when we have computationally expensive Python code. Slow operations in typical data-oriented applications like ABQ are likely to be I/O-based operations, and for heavy-computation situations we can use non-Python libraries like <code class="Code-In-Text--PACKT-">numpy</code>. Even so, it's good to be aware of the GIL and know that it may impact the effectiveness of a multi-threaded design.</p>
+    <h1 id="_idParaDest-410" class="title">Summary</h1>
+    <p class="normal">In this chapter, you learned how to use asynchronous and multi-threaded programming techniques to remove unresponsive behavior from your program. You learned how to work with and control Tkinter's event queue using the <code class="Code-In-Text--PACKT-">after()</code> and <code class="Code-In-Text--PACKT-">update()</code> methods, and how to apply these methods to solve problems in your application. You also learned how to use Python's <code class="Code-In-Text--PACKT-">threading</code> module to run processes in the background, and how to utilize <code class="Code-In-Text--PACKT-">Queue</code> objects to communicate between threads. Finally, you learned to use the <code class="Code-In-Text--PACKT-">Lock</code> object to prevent shared resources from getting corrupted.</p>
+    <p class="normal">In the next chapter, we're going to explore the most powerful widget in Tkinter: the Canvas. We'll learn how to draw images and animate them, and create useful and informative charts.</p>
+  </div>
+</body></html>

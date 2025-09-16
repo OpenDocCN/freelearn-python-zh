@@ -1,0 +1,1880 @@
+<html><head></head><body>
+  <div id="_idContainer213">
+    <h1 class="chapterNumber">12</h1>
+    <h1 id="_idParaDest-307" class="chapterTitle">Improving Data Storage with SQL</h1>
+    <p class="normal">As weeks have passed by, there is a growing problem at the lab: CSV files are everywhere! Conflicting copies, missing files, records getting changed by non-data entry staff, and other CSV-related frustrations are plaguing the project. Unfortunately, the password protection in the application does nothing meaningful to prevent anyone from editing the files and corrupting data. It's clear that the current data storage solution is not working out. Something better is needed!</p>
+    <p class="normal">The facility has an older Linux server with a PostgreSQL database installed. You've been asked to update your program so that it stores data in the PostgreSQL database rather than in the CSV files, and authenticates users against the database. This way there can be one authoritative source of data to which the support staff can easily manage access. In addition, the SQL database will help enforce correct data types and allow for more complex data relationships than the simple flat file. This promises to be a major update to your application!</p>
+    <p class="normal">In this chapter, you'll learn the following topics:</p>
+    <ul>
+      <li class="bullet">In <em class="italic">PostgreSQL</em>, we'll install and configure the PostgreSQL database system.</li>
+      <li class="bullet">In <em class="italic">Modeling relational data</em>, we'll discuss the art of structuring data in a database for good performance and reliability.</li>
+      <li class="bullet">In <em class="italic">Creating the ABQ database</em>, we'll build a SQL database for the ABQ Data Entry application.</li>
+      <li class="bullet">In <em class="italic">Connecting to PostgreSQL with psycopg2</em>, we'll use the <code class="Code-In-Text--PACKT-">psycopg2</code> library to connect our program to PostgreSQL.</li>
+      <li class="bullet">Finally, in <em class="italic">Integrating SQL into our application</em>, we'll update ABQ Data Entry to utilize the new SQL database.</li>
+    </ul>
+    <div class="note">
+      <p class="Information-Box--PACKT-">This chapter assumes you have a basic knowledge of SQL. If you don't, please see <em class="chapterRef">Appendix B</em>, <em class="italic">A Quick SQL Tutorial</em>.</p>
+    </div>
+    <h1 id="_idParaDest-308" class="title">PostgreSQL</h1>
+    <p class="normal">Python can interact with a wide variety of relational databases, including Microsoft SQL Server, Oracle, MariaDB, MySQL, and SQLite; in this book, we're going to focus on a very popular choice <a id="_idIndexMarker1130"/>in the Python world, PostgreSQL. PostgreSQL (usually pronounced post-gress, with the "QL" silent) is a free, open source, cross-platform relational database system. It runs as a network service with which you can communicate using client programs or software libraries. At the time of writing, version 13 is the current stable.</p>
+    <p class="normal">Although ABQ has provided a PostgreSQL server that is already installed and configured, you'll need to download and install the software on your workstation for development purposes. Let's take a look at how we can get our workstation ready for PostgreSQL development.</p>
+    <div class="packt_tip">
+      <p class="Tip--PACKT-">Shared production resources such as databases and web services should never be used for testing or development. Always set up a separate development copy of these resources on your own workstation or a separate server machine.</p>
+    </div>
+    <h2 id="_idParaDest-309" class="title">Installing and configuring PostgreSQL</h2>
+    <p class="normal">To download <a id="_idIndexMarker1131"/>PostgreSQL, visit <a href="https://www.postgresql.org/download"><span class="url">https://www.postgresql.org/download</span></a> and download an installation package for your operating <a id="_idIndexMarker1132"/>system. Installation packages are provided for Windows, macOS, Linux, BSD, and Solaris by EnterpriseDB, a commercial entity that provides paid <a id="_idIndexMarker1133"/>support for PostgreSQL. These installers include the server, command-line <a id="_idIndexMarker1134"/>client, and <strong class="keyword">pgAdmin</strong> graphical client all in one package. To install the software, launch the installer using an account with administrative rights and follow the screens in the installation wizard. During installation, you'll be asked to set a password for the <code class="Code-In-Text--PACKT-">postgres</code> superuser account; make sure to take note of this password.</p>
+    <h3 id="_idParaDest-310" class="title">Configuring PostgreSQL using the GUI utility</h3>
+    <p class="normal">Once <a id="_idIndexMarker1135"/>installed, you can configure and interact <a id="_idIndexMarker1136"/>with PostgreSQL using the <strong class="keyword">pgAdmin</strong> graphical utility. Go ahead and launch pgAdmin from your application menu and follow these steps to create a new admin user for yourself:</p>
+    <ol>
+      <li class="numbered">Select <strong class="screenText">Servers</strong> from the <strong class="screenText">Browser</strong> pane on the left. You'll be prompted for your superuser password.</li>
+      <li class="numbered">Once authenticated, select <strong class="screenText">Object</strong> |<strong class="screenText"> Create</strong> |<strong class="screenText"> Login/Group Role</strong>. Enter a username to use for database access on the <strong class="screenText">General</strong> tab. Then visit the <strong class="screenText">Privileges</strong> tab to check <strong class="screenText">Superuser </strong>and<strong class="screenText"> Can Login</strong>, and the <strong class="screenText">Definition</strong> tab to set a password.</li>
+      <li class="numbered">Click the <strong class="screenText">Save</strong> button at the bottom of the window.</li>
+    </ol>
+    <p class="normal">Next, we need to create a database. To do that, follow these steps:</p>
+    <ol>
+      <li class="numbered" value="1">Select <strong class="screenText">Object</strong> | <strong class="screenText">Create</strong> |<strong class="screenText"> Database</strong> from the menu.</li>
+      <li class="numbered">Name the database <code class="Code-In-Text--PACKT-">abq</code>, and set your new user account as the owner.</li>
+      <li class="numbered">Click the <strong class="screenText">Save</strong> button at the bottom of the window.</li>
+    </ol>
+    <p class="normal">Your database is now ready to work with. You can begin entering SQL to run against your database by selecting the database in the <strong class="screenText">Browser</strong> pane and clicking on <strong class="screenText">Tools</strong> | <strong class="screenText">Query Tool</strong> in the menu.</p>
+    <h3 id="_idParaDest-311" class="title">Configuring PostgreSQL using the command line</h3>
+    <p class="normal">If you <a id="_idIndexMarker1137"/>prefer to work directly in the command <a id="_idIndexMarker1138"/>line, PostgreSQL includes several command-line utilities, including the following:</p>
+    <table id="table001-8" class="No-Table-Style _idGenTablePara-1">
+      <colgroup>
+        <col/>
+        <col/>
+      </colgroup>
+      <tbody>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Command</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Description</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-"><code class="Code-In-Text--PACKT-">createuser</code></p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Create PostgreSQL user accounts</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-"><code class="Code-In-Text--PACKT-">dropuser</code></p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Delete PostgreSQL user accounts</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-"><code class="Code-In-Text--PACKT-">createdb</code></p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Create PostgreSQL databases</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-"><code class="Code-In-Text--PACKT-">dropdb</code></p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Delete PostgreSQL databases</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-"><code class="Code-In-Text--PACKT-">psql</code></p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Command-line SQL shell</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="normal">For example, on macOS or Linux, we can complete the configuration of our database with the following commands:</p>
+    <pre class="programlisting con"><code class="hljs-con">$ sudo -u postgres createuser -sP myusername
+$ sudo -u postgres createdb -O myusername abq
+$ psql -d abq -U myusername
+</code></pre>
+    <p class="normal">These three commands create the user, create the database, and open a SQL shell where <a id="_idIndexMarker1139"/>queries can be entered. Note that <a id="_idIndexMarker1140"/>we use the <code class="Code-In-Text--PACKT-">sudo</code> command to run these as the <code class="Code-In-Text--PACKT-">postgres</code> user. Remember that this is the superuser account you set up during installation.</p>
+    <div class="packt_tip">
+      <p class="Tip--PACKT-">Although EnterpriseDB provides binary installers for Linux, most Linux users will prefer to use packages supplied by their distribution. You may end up with a slightly older version of PostgreSQL, but that won't matter for most basic use cases. Be aware that pgAdmin is usually part of a separate package, and also may be at a slightly older version. Regardless, you should have no trouble following this chapter with the older version.</p>
+    </div>
+    <h1 id="_idParaDest-312" class="title">Modeling relational data</h1>
+    <p class="normal">Our application currently stores data in a single CSV file; a file like this is often called a <strong class="keyword">flat file</strong>, because the data has been flattened to two dimensions. While this format works <a id="_idIndexMarker1141"/>acceptably for our application and could be translated directly to a SQL table, a more accurate and useful data model requires more complexity. In this section, we're going to go through some concepts of data modeling that will help us convert our CSV data into effective relational tables.</p>
+    <h2 id="_idParaDest-313" class="title">Primary keys</h2>
+    <p class="normal">Every table in a relational database should have something called a <strong class="keyword">primary key</strong>. The primary key <a id="_idIndexMarker1142"/>is a value, or set of values, that uniquely identifies <a id="_idIndexMarker1143"/>a record in the table; as such, it should be a value or set of values that is unique and non-null for every row in a table. Other tables in the database can use this field to reference <a id="_idIndexMarker1144"/>particular rows of the table. This is called a <strong class="keyword">foreign key</strong> relationship.</p>
+    <p class="normal">How do we figure out what the primary key is for a set of data? Consider this table:</p>
+    <table id="table002-8" class="No-Table-Style">
+      <colgroup>
+        <col/>
+        <col/>
+      </colgroup>
+      <tbody>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Fruit</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Classification</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Banana</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Berry</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Kiwi</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Berry</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Orange</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Citrus</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Lemon</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Citrus</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="normal">In this table, each row represents a type of fruit. It would make no sense for the <code class="Code-In-Text--PACKT-">Fruit</code> column to be empty in this table, or for two rows to have the same value for <code class="Code-In-Text--PACKT-">Fruit</code>. This makes the column a perfect candidate for a primary key.</p>
+    <p class="normal">Now consider a different table:</p>
+    <table id="table003-7" class="No-Table-Style">
+      <colgroup>
+        <col/>
+        <col/>
+        <col/>
+      </colgroup>
+      <tbody>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Fruit</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Variety</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Quantity</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Banana</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Cavendish</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">452</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Banana</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Red</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">72</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Orange</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Navel</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">1023</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Orange</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Red</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">875</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="normal">In this table, each <a id="_idIndexMarker1145"/>row represents a subvariety of fruit; however, there is <a id="_idIndexMarker1146"/>no one field that uniquely defines a single variety of a single fruit. Instead, it requires both the <code class="Code-In-Text--PACKT-">Fruit</code> and <code class="Code-In-Text--PACKT-">Variety</code> fields. When we need multiple <a id="_idIndexMarker1147"/>fields to determine the primary key, we call this a <strong class="keyword">composite primary key</strong>. In this case, our composite primary key uses both the <code class="Code-In-Text--PACKT-">Fruit</code> and <code class="Code-In-Text--PACKT-">Variety</code> fields.</p>
+    <h3 id="_idParaDest-314" class="title">Using surrogate primary keys</h3>
+    <p class="normal">Consider this table of <code class="Code-In-Text--PACKT-">employees</code>:</p>
+    <table id="table004-5" class="No-Table-Style">
+      <colgroup>
+        <col/>
+        <col/>
+        <col/>
+      </colgroup>
+      <tbody>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">First</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Last</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Title</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Bob</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Smith</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Manager</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Alice</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Jones</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Analyst</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Pat</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Thompson</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Developer</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="normal">Suppose this <a id="_idIndexMarker1148"/>table were to use <code class="Code-In-Text--PACKT-">First</code> and <code class="Code-In-Text--PACKT-">Last</code> as a composite primary key, and suppose that other tables in the database reference rows using the primary keys. Leaving aside the obvious problem that two people can have the same first and last name, what would happen if Bob Smith decided he would prefer to be called Robert, or if Alice Jones married and took a new last name? Remember that other tables use the primary key value to reference rows in the table; if we change the contents of the primary key field, all the tables referencing these employees would either have to be updated as well or they would be unable to locate the record in the <code class="Code-In-Text--PACKT-">employees</code> table.</p>
+    <p class="normal">While using actual data fields to build a primary key value is arguably the most theoretically pure approach, there are two big downsides that come up when you start relating tables using foreign keys:</p>
+    <ul>
+      <li class="bullet">You have to duplicate the data in every table that needs to reference your table. This can particularly become onerous if you have a composite key of many fields.</li>
+      <li class="bullet">You can't change the values in the original table without breaking foreign key references.</li>
+    </ul>
+    <p class="normal">For this reason, database <a id="_idIndexMarker1149"/>engineers may opt for using <strong class="keyword">surrogate keys</strong>. These are typically integer or <strong class="keyword">globally unique identifier</strong> (<strong class="keyword">GUID</strong>) values <a id="_idIndexMarker1150"/>stored in an <strong class="keyword">identity column</strong> that are automatically added to a record when it is inserted into a table. In the case of the <code class="Code-In-Text--PACKT-">employees</code> table, we could simply add an <code class="Code-In-Text--PACKT-">ID</code> field containing an auto-incrementing integer value, like so:</p>
+    <table id="table005-3" class="No-Table-Style">
+      <colgroup>
+        <col/>
+        <col/>
+        <col/>
+        <col/>
+      </colgroup>
+      <tbody>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">ID</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">First</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Last</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Title</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">1</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Bob</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Smith</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Manager</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">2</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Alice</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Jones</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Analyst</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">3</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Pat</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Thompson</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Developer</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="normal">Now other tables can simply refer to <code class="Code-In-Text--PACKT-">employees.ID=1</code>, or <code class="Code-In-Text--PACKT-">employees.ID=2</code>, leaving <code class="Code-In-Text--PACKT-">Bob</code> and <code class="Code-In-Text--PACKT-">Alice</code> free to change their names without consequence.</p>
+    <p class="normal">The use of surrogate keys arguably breaks the theoretical purity of a database; it also may require us to manually specify uniqueness or non-null constraints on columns that are implicit when they are used as a primary key. Sometimes, though, the practical advantages of surrogate keys outweigh these concerns. You will need to evaluate which option works best with your application and its data.</p>
+    <p class="normal">One rule of thumb in making this determination is to consider whether the data you propose to use as a key <strong class="keyword">describes</strong> or <strong class="keyword">defines</strong> the item represented by the row. For example, a name does not define a person: a person can change their name and still be the same person. On the other hand, the plot checks stored in our CSV files are defined by the date, time, lab, and plot values. Change any one of those values and you are referring to a different plot check.</p>
+    <h2 id="_idParaDest-315" class="title">Normalization</h2>
+    <p class="normal">The <a id="_idIndexMarker1151"/>process <a id="_idIndexMarker1152"/>of breaking out a flat data file into multiple tables is called <strong class="keyword">normalization</strong>. The normalization process is broken into a series of levels called <strong class="keyword">normal forms</strong>, which progressively <a id="_idIndexMarker1153"/>remove duplication and create a more precise model of the data we're storing. Although there are many normal forms, most issues encountered in common business data can be handled by conforming to the first three.</p>
+    <p class="normal">The purpose <a id="_idIndexMarker1154"/>of conforming data to these forms is to eliminate <a id="_idIndexMarker1155"/>the potential for redundant, conflicting, or undefined data situations. Let's briefly look at each of the first three normal forms, and what kind of issues it prevents.</p>
+    <h3 id="_idParaDest-316" class="title">First normal form</h3>
+    <p class="normal">The <strong class="keyword">first normal form</strong> requires <a id="_idIndexMarker1156"/>that each field contains only one value, and that repeating <a id="_idIndexMarker1157"/>columns must be eliminated. For example, suppose we have a flat file that looks like this:</p>
+    <table id="table006-2" class="No-Table-Style">
+      <colgroup>
+        <col/>
+        <col/>
+      </colgroup>
+      <tbody>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Fruit</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Varieties</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Banana</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Cavendish, Red, Apple</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Orange</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Navel, Valencia, Blood, Cara Cara</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">Varieties</code> field in this table has multiple values in a single column, so this table is not in the first normal form. We might try to fix it like so:</p>
+    <table id="table007-2" class="No-Table-Style">
+      <colgroup>
+        <col/>
+        <col/>
+        <col/>
+        <col/>
+        <col/>
+      </colgroup>
+      <tbody>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Fruit</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Variety_1</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Variety_2</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Variety_3</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Variety_4</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Banana</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Cavendish</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Red</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Apple</p>
+          </td>
+          <td class="No-Table-Style"/>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Orange</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Navel</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Valencia</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Blood</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Cara Cara</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="normal">This is an improvement, but it's still not in the first normal form, because we have <strong class="keyword">repeating columns</strong>. All of the <code class="Code-In-Text--PACKT-">Variety_</code> columns represent the same attribute (the variety of fruit), but have been arbitrarily broken out into distinct columns. One way to tell if you have repeating columns is if the data is equally valid whether it goes in one column or the other; for example, <code class="Code-In-Text--PACKT-">Cavendish</code> could just as well go in the <code class="Code-In-Text--PACKT-">Variety_2</code>, <code class="Code-In-Text--PACKT-">Variety_3</code>, or <code class="Code-In-Text--PACKT-">Variety_4</code> columns.</p>
+    <p class="normal">Consider some of the problems with this format:</p>
+    <ul>
+      <li class="bullet">What would it mean if we had the same data in multiple <code class="Code-In-Text--PACKT-">Variety</code> fields; for example, if the <code class="Code-In-Text--PACKT-">Banana</code> row had <code class="Code-In-Text--PACKT-">Cavendish</code> for <code class="Code-In-Text--PACKT-">Variety_1</code> and <code class="Code-In-Text--PACKT-">Variety_4</code>? Or what would it indicate for <code class="Code-In-Text--PACKT-">Variety_1</code> to be blank, but <code class="Code-In-Text--PACKT-">Variety_2</code> to have a value? These ambiguous situations are known as <strong class="keyword">anomalies</strong> and can lead to conflicting or confusing data in the database.</li>
+      <li class="bullet">How complex would it be to query the table to see if two fruits share a variety name? We would have to check each <code class="Code-In-Text--PACKT-">Variety_</code> field against every other <code class="Code-In-Text--PACKT-">Variety_</code> field. What if we needed more than four varieties for a particular fruit? We would have to add columns, meaning our query would get exponentially more complex.</li>
+    </ul>
+    <p class="normal">To bring this table to the first normal form, we would need to create one <code class="Code-In-Text--PACKT-">Fruit</code> and one <code class="Code-In-Text--PACKT-">Variety</code> column, something like this:</p>
+    <table id="table008-2" class="No-Table-Style">
+      <colgroup>
+        <col/>
+        <col/>
+      </colgroup>
+      <tbody>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Fruit</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Variety</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Banana</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Cavendish</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Banana</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Red</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Banana</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Apple</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Orange</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Navel</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Orange</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Valencia</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Orange</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Blood</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Orange</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Cara Cara</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="normal">Note that <a id="_idIndexMarker1158"/>this changes the nature of our table, as it's no longer one row per <code class="Code-In-Text--PACKT-">Fruit</code>, but rather one row per <code class="Code-In-Text--PACKT-">Fruit-Variety</code> combination. In other words, the primary <a id="_idIndexMarker1159"/>key has changed from <code class="Code-In-Text--PACKT-">Fruit</code> to <code class="Code-In-Text--PACKT-">Fruit + Variety</code>. What if there are additional fields in the table that relate specifically to the <code class="Code-In-Text--PACKT-">Fruit</code> type without respect to <code class="Code-In-Text--PACKT-">Variety</code>? We'll address that as we look at the second normal form.</p>
+    <h3 id="_idParaDest-317" class="title">Second normal form</h3>
+    <p class="normal">The <strong class="keyword">second normal form</strong> requires the first normal form, and additionally that <em class="italic">every value must be dependent on the entire primary key</em>. In other words, if a table has primary <a id="_idIndexMarker1160"/>key fields A, B, and C, and the value of column X depends solely on the value of column A without respect to B or C, the table violates the <a id="_idIndexMarker1161"/>second normal form. For example, suppose we added a <code class="Code-In-Text--PACKT-">Classification</code> field to our table, like so:</p>
+    <table id="table009-1" class="No-Table-Style">
+      <colgroup>
+        <col/>
+        <col/>
+        <col/>
+      </colgroup>
+      <tbody>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Fruit</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Variety</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Classification</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Banana</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Cavendish</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Berry</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Banana</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Red</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Berry</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Orange</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Navel</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Citrus</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Orange</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Valencia</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Citrus</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="normal">In this table, <code class="Code-In-Text--PACKT-">Fruit</code> and <code class="Code-In-Text--PACKT-">Variety</code> comprise the primary key of each row. <code class="Code-In-Text--PACKT-">Classification</code> only depends on <code class="Code-In-Text--PACKT-">Fruit</code>, though, since all bananas are berries, and all oranges are citrus. Consider <a id="_idIndexMarker1162"/>the problems with this format:</p>
+    <ul>
+      <li class="bullet">First, we have a data redundancy, since every <code class="Code-In-Text--PACKT-">Fruit</code> type is going to have its <code class="Code-In-Text--PACKT-">Classification</code> listed multiple times (once each time the <code class="Code-In-Text--PACKT-">Fruit</code> value is repeated).</li>
+      <li class="bullet">The redundancy creates the potential for an anomaly where the same <code class="Code-In-Text--PACKT-">Fruit</code> value has a different <code class="Code-In-Text--PACKT-">Classification</code> value in different rows. This would make no sense.</li>
+    </ul>
+    <p class="normal">To address <a id="_idIndexMarker1163"/>this, we'd need to break our table into two tables; one containing <code class="Code-In-Text--PACKT-">Fruit</code> and <code class="Code-In-Text--PACKT-">Classification</code>, with a primary key of <code class="Code-In-Text--PACKT-">Fruit</code>, and one containing <code class="Code-In-Text--PACKT-">Fruit</code> and <code class="Code-In-Text--PACKT-">Variety</code>, with both fields comprising the primary key.</p>
+    <h3 id="_idParaDest-318" class="title">Third normal form</h3>
+    <p class="normal">The <strong class="keyword">third normal form</strong> requires <a id="_idIndexMarker1164"/>the second normal <a id="_idIndexMarker1165"/>form, and additionally that <em class="italic">every value in the table is dependent only on the primary key</em>. In other words, given a table with primary key A, and data fields X and Y, the value of Y can't depend on the value of X. It can only depend on A.</p>
+    <p class="normal">For example, consider this table:</p>
+    <table id="table010" class="No-Table-Style">
+      <colgroup>
+        <col/>
+        <col/>
+        <col/>
+      </colgroup>
+      <tbody>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Fruit</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Leading Export Country</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Leading Export Continent</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Banana</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Ecuador</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">South America</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Orange</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Brazil</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">South America</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Apples</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">China</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Asia</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="normal">This table complies with the second normal form, because both columns are distinct to the primary key – each fruit can only have one leading export country, and one leading export continent. However, the <code class="Code-In-Text--PACKT-">Leading Export Continent</code> value depends on the <code class="Code-In-Text--PACKT-">Leading Export Country</code> value (a non-primary key field), because a country is on a continent without any respect to its fruit exports. The problems with this format are:</p>
+    <ul>
+      <li class="bullet">There is data redundancy, as any country appearing multiple times would result in its continent appearing multiple times.</li>
+      <li class="bullet">Once again, the redundancy creates the potential for an anomaly, where the same country could have two different continents listed. That makes no sense.</li>
+    </ul>
+    <p class="normal">To bring this to the third normal form, we would need to create a separate table of countries that could contain the continent column and any other column that depended on the country.</p>
+    <h3 id="_idParaDest-319" class="title">More normalization forms</h3>
+    <p class="normal">Database theorists propose other higher normalization forms that can help further eliminate ambiguities and redundancies in data, but for this book the first three should suffice to organize <a id="_idIndexMarker1166"/>our data. Be aware that it is possible to <strong class="keyword">over-normalize</strong> data for an application. Deciding what constitutes over-normalization really depends on the data and the users.</p>
+    <p class="normal">For example, if you have a contacts database that contains the columns <code class="Code-In-Text--PACKT-">telephone_1</code> and <code class="Code-In-Text--PACKT-">telephone_2</code>, the first normal form would dictate that you put telephone numbers in their own table to eliminate the repeating field. But if your users never need more than two fields, rarely use the second one, and never do complex queries on the data, it may not be worth complicating your database and application to conform to a theoretically pure model.</p>
+    <h2 id="_idParaDest-320" class="title">Entity-relationship diagrams</h2>
+    <p class="normal">One effective way to help normalize our data and prepare it for a relational database is to create an <strong class="keyword">entity-relationship diagram</strong>, or <strong class="keyword">ERD</strong>. An ERD is a way of diagramming the things <a id="_idIndexMarker1167"/>that our database is storing information <a id="_idIndexMarker1168"/>about and the relationships between those things.</p>
+    <p class="normal">Those "things" are called <strong class="keyword">entities</strong>. An entity is a uniquely identifiable object; it corresponds to a <a id="_idIndexMarker1169"/>single row of a single table. Entities have <strong class="keyword">attributes</strong>, which correspond to the <a id="_idIndexMarker1170"/>columns of a table. Entities also have <strong class="keyword">relationships</strong> with <a id="_idIndexMarker1171"/>other entities, which correspond to the foreign key relationships we define in SQL.</p>
+    <p class="normal">Let's consider the entities in our lab scenario with their attributes and relationships:</p>
+    <ul>
+      <li class="bullet">There are <strong class="keyword">labs</strong>. Each lab has a name.</li>
+      <li class="bullet">There are <strong class="keyword">plots</strong>. Each plot belongs to a lab and has a number. A single seed sample is planted in each plot.</li>
+      <li class="bullet">There are <strong class="keyword">lab technicians</strong>, who each have a name.</li>
+      <li class="bullet">There are <strong class="keyword">lab checks</strong>, which are performed by a lab tech at a given lab. Each lab check has a date and time.</li>
+      <li class="bullet">There are <strong class="keyword">plot checks</strong>, which are the data gathered at a single plot during a lab check. Each plot check has various plant and environmental data recorded on it.</li>
+    </ul>
+    <p class="normal">The following diagram shows these entities and their relationships:</p>
+    <figure class="mediaobject"><img src="../Images/B17578_12_01.png" alt="An Entity-relationship diagram of our ABQ data"/></figure>
+    <p class="packt_figref">Figure 12.1: An entity-relationship diagram of our ABQ data</p>
+    <p class="normal">In this <a id="_idIndexMarker1172"/>diagram, the entities are represented by <a id="_idIndexMarker1173"/>rectangles. We have five entities: <code class="Code-In-Text--PACKT-">Lab</code>, <code class="Code-In-Text--PACKT-">Plot</code>, <code class="Code-In-Text--PACKT-">Lab Tech</code>, <code class="Code-In-Text--PACKT-">Lab Check</code>, and <code class="Code-In-Text--PACKT-">Plot Check</code>. Each entity has attributes, represented by the ovals. The relationships between entities are represented by diamonds, with the words describing the left-to-right relationship. For example, a <code class="Code-In-Text--PACKT-">Lab Tech</code> performs a <code class="Code-In-Text--PACKT-">Lab Check</code>, and a <code class="Code-In-Text--PACKT-">Lab Check</code> is performed in a <code class="Code-In-Text--PACKT-">Lab</code>. Note the small <em class="italic">1</em> and <em class="italic">n</em> characters around the <a id="_idIndexMarker1174"/>relationship: these show the <strong class="keyword">cardinality</strong> of the relationship. There are three types of cardinality commonly seen in a database:</p>
+    <ul>
+      <li class="bullet">A <strong class="keyword">one-to-many</strong> (1 to n) relationship, where <a id="_idIndexMarker1175"/>one row in the left table is related to many rows in the right table. For example, one <code class="Code-In-Text--PACKT-">Lab Tech</code> performs many <code class="Code-In-Text--PACKT-">Lab Checks</code>.</li>
+      <li class="bullet">A <strong class="keyword">many-to-one</strong> (n to 1) relationship, where many rows in the left table are related <a id="_idIndexMarker1176"/>to the same row in the right. For example, multiple <code class="Code-In-Text--PACKT-">Lab Checks</code> are performed in the same <code class="Code-In-Text--PACKT-">Lab</code>.</li>
+      <li class="bullet">A <strong class="keyword">many-to-many</strong> (n to n) relationship, where many rows in the left table are related <a id="_idIndexMarker1177"/>to many rows in the right. For example, if we needed to update our database to allow more than one tech to work on the same lab check, then one lab tech would still perform many checks, but one check would have multiple techs (fortunately, we don't need to implement this!).</li>
+    </ul>
+    <p class="normal">This diagram <a id="_idIndexMarker1178"/>represents a reasonably <a id="_idIndexMarker1179"/>normalized structure for our data. To implement it in SQL, we'd just make a table for each entity, a column for each attribute, and a foreign key relationship for each relationship. Before we can do that, though, let's consider one more thing: SQL data types.</p>
+    <h2 id="_idParaDest-321" class="title">Assigning data types</h2>
+    <p class="normal">Standard SQL defines 16 data types, including types for integers and floating-point numbers of <a id="_idIndexMarker1180"/>various sizes, ASCII or Unicode strings of either fixed or variable sizes, date and time types, and single-bit types. In addition to <a id="_idIndexMarker1181"/>implementing standard types, nearly every SQL engine extends this list with yet more types to accommodate things like binary data, JSON data, currency values, network addresses, and other special types of strings or numbers. Many data types seem a little redundant, and several have aliases that may be different between implementations. Choosing data types for your columns can be surprisingly confusing!</p>
+    <p class="normal">For PostgreSQL, the following chart provides some reasonable choices:</p>
+    <table id="table011" class="No-Table-Style">
+      <colgroup>
+        <col/>
+        <col/>
+        <col/>
+      </colgroup>
+      <tbody>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Data being stored</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Recommended type</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Notes</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Fixed-length strings</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-"><code class="Code-In-Text--PACKT-">CHAR</code></p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Requires a length, for example, <code class="Code-In-Text--PACKT-">CHAR(256)</code>.</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Short-to-medium strings</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-"><code class="Code-In-Text--PACKT-">VARCHAR</code></p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Requires a max length argument, for example, <code class="Code-In-Text--PACKT-">VARCHAR(256)</code>.</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Long, freeform text</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-"><code class="Code-In-Text--PACKT-">TEXT</code></p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Unlimited length, slower performance.</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Smaller integers</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-"><code class="Code-In-Text--PACKT-">SMALLINT</code></p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Up to ±32,767.</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Most integers</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-"><code class="Code-In-Text--PACKT-">INT</code></p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Up to around ±2.1 billion.</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Larger integers</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-"><code class="Code-In-Text--PACKT-">BIGINT</code></p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Up to around ±922 quadrillion.</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Decimal numbers</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-"><code class="Code-In-Text--PACKT-">NUMERIC</code></p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Takes optional length and precision arguments.</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Integer primary key</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-"><code class="Code-In-Text--PACKT-">SERIAL, BIGSERIAL</code></p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Auto-incrementing integers or big integers.</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Boolean</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-"><code class="Code-In-Text--PACKT-">BOOLEAN</code></p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Can be TRUE, FALSE, or NULL.</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Date and time</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-"><code class="Code-In-Text--PACKT-">TIMESTAMP WITH TIMEZONE</code></p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Stores date, time, and timezone. Accurate to 1 µs.</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Date without time</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-"><code class="Code-In-Text--PACKT-">DATE</code></p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Stores date.</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Time without date</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-"><code class="Code-In-Text--PACKT-">TIME</code></p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">Can be with or without time zone.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="normal">These types will probably meet the vast majority of your needs in most applications, and we'll be <a id="_idIndexMarker1182"/>using a subset of these for our ABQ database. As we <a id="_idIndexMarker1183"/>create our tables, we'll refer to our data dictionary and choose appropriate data types for our columns.</p>
+    <div class="packt_tip">
+      <p class="Tip--PACKT-">Be careful not to choose overly specific or restrictive data types. Any data can ultimately be stored in a <code class="Code-In-Text--PACKT-">TEXT</code> field; the purpose of choosing more specific types is mainly to enable the use of operators, functions, or sorting specific to that type of data. If those aren't required, consider a more generic type. For example, phone numbers and U.S. social security numbers can be represented purely with digits, but that's no reason to make them <code class="Code-In-Text--PACKT-">INTEGER</code> or <code class="Code-In-Text--PACKT-">NUMERIC</code> fields; after all, you wouldn't do arithmetic with them!</p>
+    </div>
+    <h1 id="_idParaDest-322" class="title">Creating the ABQ database</h1>
+    <p class="normal">Now that we've modeled our data and gotten a feel for the data types available, it's time to <a id="_idIndexMarker1184"/>build our database. Make sure you've installed PostgreSQL and created the <code class="Code-In-Text--PACKT-">abq</code> database as described in the first section of this chapter, and let's begin writing SQL to create our database structure.</p>
+    <p class="normal">Under your project root folder, create a new directory called <code class="Code-In-Text--PACKT-">sql</code>. Inside the <code class="Code-In-Text--PACKT-">sql</code> folder, create a file called <code class="Code-In-Text--PACKT-">create_db.sql</code>. We'll start writing our table definition queries in this file.</p>
+    <h2 id="_idParaDest-323" class="title">Creating our tables</h2>
+    <p class="normal">The order in which we create our tables is significant. Any table referred to in a foreign key relationship <a id="_idIndexMarker1185"/>will need to exist before the relationship is defined. Because of this, it's best to start with your lookup tables and follow the chain of one-to-many relationships until all the tables are created. In our ERD, that takes us from roughly the upper left to the lower right.</p>
+    <h3 id="_idParaDest-324" class="title">Creating the lookup tables</h3>
+    <p class="normal">We need <a id="_idIndexMarker1186"/>to create <a id="_idIndexMarker1187"/>the following three lookup tables:</p>
+    <ul>
+      <li class="bullet"><code class="Code-In-Text--PACKT-">labs</code>: This lookup table will contain the ID strings for our laboratories. Since the names of the labs aren't going to change, we'll just use the single-letter names as the primary key values.</li>
+      <li class="bullet"><code class="Code-In-Text--PACKT-">lab_techs</code>: This lookup table will have the names of the lab technicians. Since we don't want to use employee names for primary keys, we'll create a column for the employee ID number and use it for the primary key.</li>
+      <li class="bullet"><code class="Code-In-Text--PACKT-">plots</code>: This lookup table will have one row for each physical plot, identified by lab and plot numbers. It will also keep track of the current seed sample planted in the plot.</li>
+    </ul>
+    <p class="normal">Add the SQL query for creating these tables to <code class="Code-In-Text--PACKT-">create_db.sql</code>, as follows:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># create_db.sql</span>
+<span class="hljs-keyword">CREATE</span> <span class="hljs-keyword">TABLE</span> labs (id <span class="hljs-type">CHAR</span>(<span class="hljs-number">1</span>) <span class="hljs-keyword">PRIMARY</span> KEY);
+<span class="hljs-keyword">CREATE</span> <span class="hljs-keyword">TABLE</span> lab_techs (
+  id <span class="hljs-type">SMALLINT</span> <span class="hljs-keyword">PRIMARY</span> KEY,
+  name <span class="hljs-type">VARCHAR</span>(<span class="hljs-number">512</span>) <span class="hljs-keyword">UNIQUE</span> <span class="hljs-keyword">NOT</span> <span class="hljs-keyword">NULL</span>
+);
+<span class="hljs-keyword">CREATE</span> <span class="hljs-keyword">TABLE</span> plots (
+  lab_id <span class="hljs-type">CHAR</span>(<span class="hljs-number">1</span>) <span class="hljs-keyword">NOT</span> <span class="hljs-keyword">NULL</span> <span class="hljs-keyword">REFERENCES</span> labs(id),
+  plot <span class="hljs-type">SMALLINT</span> <span class="hljs-keyword">NOT</span> <span class="hljs-keyword">NULL</span>,
+  current_seed_sample <span class="hljs-type">CHAR</span>(<span class="hljs-number">6</span>),
+  <span class="hljs-keyword">PRIMARY</span> KEY(lab_id, plot),
+  <span class="hljs-keyword">CONSTRAINT</span> valid_plot <span class="hljs-keyword">CHECK</span> (plot <span class="hljs-keyword">BETWEEN</span> <span class="hljs-number">1</span> <span class="hljs-keyword">AND</span> <span class="hljs-number">20</span>)
+);
+</code></pre>
+    <p class="normal">Once created, the three tables look something like this:</p>
+    <table id="table012" class="No-Table-Style _idGenTablePara-1">
+      <colgroup>
+        <col/>
+      </colgroup>
+      <tbody>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">lab_id</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">A</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">B</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">C</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="packt_figref">The labs table</p>
+    <table id="table013" class="No-Table-Style _idGenTablePara-1">
+      <colgroup>
+        <col/>
+        <col/>
+      </colgroup>
+      <tbody>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">id</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">name</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">4291</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">J Simms</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">4319</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">P Taylor</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="packt_figref">The lab_techs table</p>
+    <table id="table014" class="No-Table-Style _idGenTablePara-1">
+      <colgroup>
+        <col/>
+        <col/>
+        <col/>
+      </colgroup>
+      <tbody>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">lab_id</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">plot</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">current_seed_sample</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">A</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">1</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">AXM477</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">A</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">2</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">AXM478</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">A</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">3</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">AXM479</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="packt_figref">The plots table</p>
+    <p class="normal">While these <a id="_idIndexMarker1188"/>tables may seem very simple, they will help enforce data <a id="_idIndexMarker1189"/>integrity and make it simple to build an interface dynamically from the database. For example, since we'll be populating our <code class="Code-In-Text--PACKT-">Labs</code> widget from the database, adding a new lab to the application is simply a matter of adding a row to the database.</p>
+    <h3 id="_idParaDest-325" class="title">The lab_checks table</h3>
+    <p class="normal">The rows of the <code class="Code-In-Text--PACKT-">lab_checks</code> table each represent an instance of a technician checking all the plots <a id="_idIndexMarker1190"/>of a lab at a given time on a given date. We will define it <a id="_idIndexMarker1191"/>using the following SQL:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">CREATE</span> <span class="hljs-keyword">TABLE</span> lab_checks(
+  <span class="hljs-type">date</span> <span class="hljs-type">DATE</span> <span class="hljs-keyword">NOT</span> <span class="hljs-keyword">NULL</span>, <span class="hljs-type">time</span> <span class="hljs-type">TIME</span> <span class="hljs-keyword">NOT</span> <span class="hljs-keyword">NULL</span>,
+  lab_id <span class="hljs-type">CHAR</span>(<span class="hljs-number">1</span>) <span class="hljs-keyword">NOT</span> <span class="hljs-keyword">NULL</span> <span class="hljs-keyword">REFERENCES</span> labs(id),
+  lab_tech_id <span class="hljs-type">SMALLINT</span> <span class="hljs-keyword">NOT</span> <span class="hljs-keyword">NULL</span> <span class="hljs-keyword">REFERENCES</span> lab_techs(id),
+  <span class="hljs-keyword">PRIMARY</span> KEY(<span class="hljs-type">date</span>, <span class="hljs-type">time</span>, lab_id)
+);
+</code></pre>
+    <p class="normal">When created and populated, the table will look like this:</p>
+    <table id="table015" class="No-Table-Style">
+      <colgroup>
+        <col/>
+        <col/>
+        <col/>
+        <col/>
+      </colgroup>
+      <tbody>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">date</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">time</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">lab_id</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">lab_tech_id</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">2021-10-01</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">8:00</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">A</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">4291</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="packt_figref">The lab_checks table</p>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">date</code>, <code class="Code-In-Text--PACKT-">time</code>, and <code class="Code-In-Text--PACKT-">lab_id</code> columns together uniquely identify a lab check, and so we designate <a id="_idIndexMarker1192"/>them collectively as the primary key. The ID of the lab <a id="_idIndexMarker1193"/>technician performing the check is the lone attribute in this table, and creates a foreign key relationship to the <code class="Code-In-Text--PACKT-">lab_techs</code> table.</p>
+    <h3 id="_idParaDest-326" class="title">The plot_checks table</h3>
+    <p class="normal">Plot checks are the actual data records collected at individual plots. These each belong to a lab <a id="_idIndexMarker1194"/>check, and so must refer back to an existing lab check using <a id="_idIndexMarker1195"/>the three key values, <code class="Code-In-Text--PACKT-">date</code>, <code class="Code-In-Text--PACKT-">time</code>, and <code class="Code-In-Text--PACKT-">lab_id</code>.</p>
+    <p class="normal">We'll begin with the primary key columns:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">CREATE</span> <span class="hljs-keyword">TABLE</span> plot_checks(
+  <span class="hljs-type">date</span> <span class="hljs-type">DATE</span> <span class="hljs-keyword">NOT</span> <span class="hljs-keyword">NULL</span>,
+  <span class="hljs-type">time</span> <span class="hljs-type">TIME</span> <span class="hljs-keyword">NOT</span> <span class="hljs-keyword">NULL</span>,
+  lab_id <span class="hljs-type">CHAR</span>(<span class="hljs-number">1</span>) <span class="hljs-keyword">NOT</span> <span class="hljs-keyword">NULL</span> <span class="hljs-keyword">REFERENCES</span> labs(id),
+  plot <span class="hljs-type">SMALLINT</span> <span class="hljs-keyword">NOT</span> <span class="hljs-keyword">NULL</span>,
+</code></pre>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">plot_checks</code> primary key is essentially the primary key of a <code class="Code-In-Text--PACKT-">lab_check</code> table with the addition of a plot number; its key constraints look like this:</p>
+    <pre class="programlisting code"><code class="hljs-code">  <span class="hljs-keyword">PRIMARY</span> KEY(<span class="hljs-type">date</span>, <span class="hljs-type">time</span>, lab_id, plot),
+  <span class="hljs-keyword">FOREIGN</span> KEY(<span class="hljs-type">date</span>, <span class="hljs-type">time</span>, lab_id)
+    <span class="hljs-keyword">REFERENCES</span> lab_checks(<span class="hljs-type">date</span>, <span class="hljs-type">time</span>, lab_id),
+  <span class="hljs-keyword">FOREIGN</span> KEY(lab_id, plot) <span class="hljs-keyword">REFERENCES</span> plots(lab_id, plot),
+</code></pre>
+    <p class="normal">Now that we've defined the key columns, we can add the attribute columns:</p>
+    <pre class="programlisting code"><code class="hljs-code">  seed_sample <span class="hljs-type">CHAR</span>(<span class="hljs-number">6</span>) <span class="hljs-keyword">NOT</span> <span class="hljs-keyword">NULL</span>,
+  humidity <span class="hljs-type">NUMERIC</span>(<span class="hljs-number">4</span>, <span class="hljs-number">2</span>) <span class="hljs-keyword">CHECK</span> (humidity <span class="hljs-keyword">BETWEEN</span> <span class="hljs-number">0.5</span> <span class="hljs-keyword">AND</span> <span class="hljs-number">52.0</span>),
+  light <span class="hljs-type">NUMERIC</span>(<span class="hljs-number">5</span>, <span class="hljs-number">2</span>) <span class="hljs-keyword">CHECK</span> (light <span class="hljs-keyword">BETWEEN</span> <span class="hljs-number">0</span> <span class="hljs-keyword">AND</span> <span class="hljs-number">100</span>),
+  temperature <span class="hljs-type">NUMERIC</span>(<span class="hljs-number">4</span>, <span class="hljs-number">2</span>) <span class="hljs-keyword">CHECK</span> (temperature <span class="hljs-keyword">BETWEEN</span> <span class="hljs-number">4</span> <span class="hljs-keyword">AND</span> <span class="hljs-number">40</span>),
+  equipment_fault <span class="hljs-type">BOOLEAN</span> <span class="hljs-keyword">NOT</span> <span class="hljs-keyword">NULL</span>,
+  blossoms <span class="hljs-type">SMALLINT</span> <span class="hljs-keyword">NOT</span> <span class="hljs-keyword">NULL</span> <span class="hljs-keyword">CHECK</span> (blossoms <span class="hljs-keyword">BETWEEN</span> <span class="hljs-number">0</span> <span class="hljs-keyword">AND</span> <span class="hljs-number">1000</span>),
+  plants <span class="hljs-type">SMALLINT</span> <span class="hljs-keyword">NOT</span> <span class="hljs-keyword">NULL</span> <span class="hljs-keyword">CHECK</span> (plants <span class="hljs-keyword">BETWEEN</span> <span class="hljs-number">0</span> <span class="hljs-keyword">AND</span> <span class="hljs-number">20</span>),
+  fruit <span class="hljs-type">SMALLINT</span> <span class="hljs-keyword">NOT</span> <span class="hljs-keyword">NULL</span> <span class="hljs-keyword">CHECK</span> (fruit <span class="hljs-keyword">BETWEEN</span> <span class="hljs-number">0</span> <span class="hljs-keyword">AND</span> <span class="hljs-number">1000</span>),
+  max_height <span class="hljs-type">NUMERIC</span>(<span class="hljs-number">6</span>, <span class="hljs-number">2</span>) <span class="hljs-keyword">NOT</span> <span class="hljs-keyword">NULL</span>
+    <span class="hljs-keyword">CHECK</span> (max_height <span class="hljs-keyword">BETWEEN</span> <span class="hljs-number">0</span> <span class="hljs-keyword">AND</span> <span class="hljs-number">1000</span>),
+  min_height <span class="hljs-type">NUMERIC</span>(<span class="hljs-number">6</span>, <span class="hljs-number">2</span>) <span class="hljs-keyword">NOT</span> <span class="hljs-keyword">NULL</span>
+    <span class="hljs-keyword">CHECK</span> (min_height <span class="hljs-keyword">BETWEEN</span> <span class="hljs-number">0</span> <span class="hljs-keyword">AND</span> <span class="hljs-number">1000</span>),
+  median_height <span class="hljs-type">NUMERIC</span>(<span class="hljs-number">6</span>, <span class="hljs-number">2</span>) <span class="hljs-keyword">NOT</span> <span class="hljs-keyword">NULL</span>
+  <span class="hljs-keyword">CHECK</span> (median_height <span class="hljs-keyword">BETWEEN</span> min_height <span class="hljs-keyword">AND</span> max_height),
+  notes TEXT
+);
+</code></pre>
+    <p class="normal">When <a id="_idIndexMarker1196"/>created and populated, the first several columns of the table <a id="_idIndexMarker1197"/>look something like this:</p>
+    <table id="table016" class="No-Table-Style _idGenTablePara-1">
+      <colgroup>
+        <col/>
+        <col/>
+        <col/>
+        <col/>
+        <col/>
+        <col/>
+        <col/>
+        <col/>
+      </colgroup>
+      <tbody>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">date</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">time</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">lab</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">plot</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">seed_sample</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">humidity</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">light</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">(etc...)</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">2021-10-01</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">08:00:00</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">A</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">1</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">AXM477</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">24.19</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">0.97</p>
+          </td>
+          <td class="No-Table-Style"/>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">2021-10-01</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">08:00:00</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">A</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">2</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">AXM478</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">23.62</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">1.03</p>
+          </td>
+          <td class="No-Table-Style"/>
+        </tr>
+      </tbody>
+    </table>
+    <p class="packt_figref">The plot_checks table</p>
+    <p class="normal">Notice our use of data types and the <code class="Code-In-Text--PACKT-">CHECK</code> constraint to duplicate the limits defined in the specification's data dictionary. Using these, we've leveraged the power of the database to safeguard against invalid data. This completes our table definitions for the ABQ database.</p>
+    <h2 id="_idParaDest-327" class="title">Creating a view</h2>
+    <p class="normal">Before we finish our database design, we're going to create a <strong class="keyword">view</strong> that will simplify access to <a id="_idIndexMarker1198"/>our data. A view behaves like a table in most respects, but contains no <a id="_idIndexMarker1199"/>actual data; it's really just a stored <code class="Code-In-Text--PACKT-">SELECT</code> query. We'll create a view called <code class="Code-In-Text--PACKT-">data_record_view</code> to rearrange our data for easier interaction with the GUI.</p>
+    <p class="normal">Views are created using the <code class="Code-In-Text--PACKT-">CREATE VIEW</code> command, which begins like this:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># create_db.sql</span>
+<span class="hljs-keyword">CREATE</span> <span class="hljs-keyword">VIEW</span> data_record_view <span class="hljs-keyword">AS</span> (
+</code></pre>
+    <p class="normal">Next, inside the parentheses, we put the <code class="Code-In-Text--PACKT-">SELECT</code> query that will return the table data we want in our view:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">SELECT</span> pc.date <span class="hljs-keyword">AS</span> "<span class="hljs-type">Date</span>", to_char(pc.time, 'FMHH24:MI') <span class="hljs-keyword">AS</span> "<span class="hljs-type">Time</span>",
+  lt.name <span class="hljs-keyword">AS</span> "Technician", pc.lab_id <span class="hljs-keyword">AS</span> "Lab", pc.plot <span class="hljs-keyword">AS</span> "Plot",
+  pc.seed_sample <span class="hljs-keyword">AS</span> "Seed Sample", pc.humidity <span class="hljs-keyword">AS</span> "Humidity",
+  pc.light <span class="hljs-keyword">AS</span> "Light", pc.temperature <span class="hljs-keyword">AS</span> "Temperature",
+  pc.plants <span class="hljs-keyword">AS</span> "Plants", pc.blossoms <span class="hljs-keyword">AS</span> "Blossoms",
+  pc.fruit <span class="hljs-keyword">AS</span> "Fruit", pc.max_height <span class="hljs-keyword">AS</span> "Max Height",
+  pc.min_height <span class="hljs-keyword">AS</span> "Min Height", pc.median_height <span class="hljs-keyword">AS</span> "Med Height",
+  pc.notes <span class="hljs-keyword">AS</span> "Notes"
+<span class="hljs-keyword">FROM</span> plot_checks <span class="hljs-keyword">AS</span> pc
+  <span class="hljs-keyword">JOIN</span> lab_checks <span class="hljs-keyword">AS</span> lc <span class="hljs-keyword">ON</span> pc.lab_id <span class="hljs-operator">=</span> lc.lab_id
+  <span class="hljs-keyword">AND</span> pc.date <span class="hljs-operator">=</span> lc.date <span class="hljs-keyword">AND</span> pc.time <span class="hljs-operator">=</span> lc.time
+  <span class="hljs-keyword">JOIN</span> lab_techs <span class="hljs-keyword">AS</span> lt <span class="hljs-keyword">ON</span> lc.lab_tech_id <span class="hljs-operator">=</span> lt.id
+ );
+</code></pre>
+    <p class="normal">We're selecting the <code class="Code-In-Text--PACKT-">plot_checks</code> table, and joining it to <code class="Code-In-Text--PACKT-">lab_checks</code> and <code class="Code-In-Text--PACKT-">lab_techs</code> by way of our foreign key relationships. Notice that we've aliased these tables by using the <code class="Code-In-Text--PACKT-">AS</code> keyword. Short aliases like this can help make a large query more readable. We're also aliasing <a id="_idIndexMarker1200"/>each field to the name used in the application's data structures. These must <a id="_idIndexMarker1201"/>be enclosed in double quotes to allow for the use of spaces and to preserve casing. By making the column names match the data dictionary keys in our application, we won't need to translate field names in our application code.</p>
+    <p class="normal">The first several columns of the view look like this; compare this to the raw <code class="Code-In-Text--PACKT-">plot_checks</code> table above:</p>
+    <table id="table017" class="No-Table-Style">
+      <colgroup>
+        <col/>
+        <col/>
+        <col/>
+        <col/>
+        <col/>
+        <col/>
+        <col/>
+        <col/>
+      </colgroup>
+      <tbody>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Date</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Time</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Technician</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Lab</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Plot</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Seed Sample</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Humidity</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Heading--PACKT-">Light</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">2021-10-01</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">8:00</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">J Simms</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">A</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">1</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">AXM477</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">24.19</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">0.97</p>
+          </td>
+        </tr>
+        <tr class="No-Table-Style">
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">2021-10-01</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">8:00</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">J Simms</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">A</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">2</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">AXM478</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">23.62</p>
+          </td>
+          <td class="No-Table-Style">
+            <p class="Table-Column-Content--PACKT-">1.03</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="packt_tip">
+      <p class="Tip--PACKT-">SQL database engines such as PostgreSQL are highly efficient at joining and transforming tabular data. Whenever possible, leverage this power and make the database do the work of formatting the data for the convenience of your application.</p>
+    </div>
+    <p class="normal">This completes our database creation script. Run this script in your PostgreSQL client and verify that <a id="_idIndexMarker1202"/>the four tables and the view have been created. To execute the <a id="_idIndexMarker1203"/>script in pgAdmin, first open the <strong class="screenText">Query Tool</strong> from <strong class="screenText">Tools</strong> |<strong class="screenText"> Query Tool</strong>, then open the file by clicking the folder icon above the <strong class="screenText">Query Editor</strong> window. Once the file is opened, click the play button icon to execute it. To run the script at the command line, execute the following at a terminal:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">$</span> <span class="hljs-con-built_in">cd</span> ABQ_Data_Entry/sql
+<span class="hljs-con-meta">$</span> psql -U myuser -d abq &lt; create_db.sql
+</code></pre>
+    <h2 id="_idParaDest-328" class="title">Populating the lookup tables</h2>
+    <p class="normal">Although <a id="_idIndexMarker1204"/>the tables are all created, the lookup tables will need to be populated before we can use them; specifically:</p>
+    <ul>
+      <li class="bullet"><code class="Code-In-Text--PACKT-">labs</code> should have values <code class="Code-In-Text--PACKT-">A</code> through <code class="Code-In-Text--PACKT-">C</code>, representing the three labs.</li>
+      <li class="bullet"><code class="Code-In-Text--PACKT-">lab_techs</code> needs the name and ID number for our four lab technicians: J Simms (4291), P Taylor (4319), Q Murphy (4478), and L Taniff (5607).</li>
+      <li class="bullet"><code class="Code-In-Text--PACKT-">plots</code> needs all 60 of the plots, numbers 1 through 20 for each lab. The seed sample rotates between four values such as AXM477, AXM478, AXM479, and AXM480.</li>
+    </ul>
+    <p class="normal">You can populate these tables by hand using pgAdmin, or by using the <code class="Code-In-Text--PACKT-">lookup_populate.sql</code> script included with the example code. Execute it just as you did the <code class="Code-In-Text--PACKT-">create_db.sql</code> script.</p>
+    <p class="normal">Now our database is ready to use with the application. Let's get the application ready to work with the database!</p>
+    <h1 id="_idParaDest-329" class="title">Connecting to PostgreSQL with psycopg2</h1>
+    <p class="normal">Now that <a id="_idIndexMarker1205"/>we have a nice database to work with, how do <a id="_idIndexMarker1206"/>we get our application to use it? To make SQL queries from our application, we'll need to install a Python library that can talk directly to our database. In Python, each different SQL product has one or more libraries available that can be used to integrate with it. </p>
+    <p class="normal">For PostgreSQL, the most popular choice is <code class="Code-In-Text--PACKT-">psycopg2</code>. The <code class="Code-In-Text--PACKT-">psycopg2</code> library is not a part of the Python standard library, so you'll need to install it on any machine running your application. You can find the most current installation instructions at <a href="http://initd.org/psycopg/docs/install.html"><span class="url">http://initd.org/psycopg/docs/install.html</span></a>; however, the preferred method is to use <code class="Code-In-Text--PACKT-">pip</code>.</p>
+    <p class="normal">For Windows, macOS, and Linux, the following command should work:</p>
+    <pre class="programlisting con"><code class="hljs-con">$ pip install --user psycopg2-binary
+</code></pre>
+    <p class="normal">If that <a id="_idIndexMarker1207"/>doesn't work, or if you'd rather install it from <a id="_idIndexMarker1208"/>the source, check the requirements on the website. Take note that the <code class="Code-In-Text--PACKT-">psycopg2</code> library is written in C, not Python, so it requires a C compiler and a few other development packages to install from source.</p>
+    <div class="packt_tip">
+      <p class="Tip--PACKT-">Linux users can usually install <code class="Code-In-Text--PACKT-">psycopg2</code> from their distribution's package management system.</p>
+    </div>
+    <h2 id="_idParaDest-330" class="title">psycopg2 basics</h2>
+    <p class="normal">The essential <a id="_idIndexMarker1209"/>workflow of using <code class="Code-In-Text--PACKT-">psycopg2</code> is as follows:</p>
+    <ol>
+      <li class="numbered" value="1">First, we create a <code class="Code-In-Text--PACKT-">Connection</code> object using <code class="Code-In-Text--PACKT-">psycopg2.connect()</code>. This object represents our connection to the database engine and is used to manage our login session.</li>
+      <li class="numbered">Next, we create a <code class="Code-In-Text--PACKT-">Cursor</code> object from our connection using the <code class="Code-In-Text--PACKT-">Connection</code> object's <code class="Code-In-Text--PACKT-">cursor()</code> method. A <strong class="keyword">cursor</strong> is our point of interaction with the database engine.</li>
+      <li class="numbered">We can run queries by passing SQL strings to the cursor's <code class="Code-In-Text--PACKT-">execute()</code> method.</li>
+      <li class="numbered">If our queries return data, we can retrieve the data using the cursor's <code class="Code-In-Text--PACKT-">fetchone()</code> or <code class="Code-In-Text--PACKT-">fetchall()</code> methods.</li>
+    </ol>
+    <p class="normal">The following script demonstrates the basic use of <code class="Code-In-Text--PACKT-">psycopg2</code>:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># psycopg2_demo.py</span>
+<span class="hljs-keyword">import</span> psycopg2 <span class="hljs-keyword">as</span> pg
+<span class="hljs-keyword">from</span> getpass <span class="hljs-keyword">import</span> getpass
+cx = pg.connect(
+  host=<span class="hljs-string">'localhost'</span>,  database=<span class="hljs-string">'abq'</span>,
+  user=<span class="hljs-built_in">input</span>(<span class="hljs-string">'Username: '</span>),
+  password=getpass(<span class="hljs-string">'Password: '</span>)
+)
+cur = cx.cursor()
+cur.execute(<span class="hljs-string">"""</span>
+<span class="hljs-string">  CREATE TABLE test</span>
+<span class="hljs-string">  (id SERIAL PRIMARY KEY, val TEXT)</span>
+<span class="hljs-string">"""</span>)
+cur.execute(<span class="hljs-string">"""</span>
+<span class="hljs-string">  INSERT INTO test (val)</span>
+<span class="hljs-string">  VALUES ('Banana'), ('Orange'), ('Apple');</span>
+<span class="hljs-string">"""</span>)
+</code></pre>
+    <p class="normal">We begin by importing <code class="Code-In-Text--PACKT-">psycopg2</code> and aliasing it to <code class="Code-In-Text--PACKT-">pg</code> for brevity's sake; we also import <code class="Code-In-Text--PACKT-">getpass</code> for prompting the user for a password. Next, we generate a connection object, <code class="Code-In-Text--PACKT-">cx</code>, using the <code class="Code-In-Text--PACKT-">connect()</code> function, passing in all the details required to locate the database server <a id="_idIndexMarker1210"/>and authenticate to it. These details include the host name of the server, the name of the database, and the authentication credentials. The <code class="Code-In-Text--PACKT-">host</code> argument can be the server name, IP address, or fully qualified domain name of the system running the PostgreSQL server. Since we're running PostgreSQL on our local system, we've used <code class="Code-In-Text--PACKT-">localhost</code> here, which points back to our local system.</p>
+    <p class="normal">From the connection, we create a cursor object, <code class="Code-In-Text--PACKT-">cur</code>. Finally, we've used the cursor's <code class="Code-In-Text--PACKT-">execute()</code> method to execute two SQL queries.</p>
+    <p class="normal">Now let's retrieve some data from the database, like so:</p>
+    <pre class="programlisting code"><code class="hljs-code">cur.execute(<span class="hljs-string">"SELECT * FROM test"</span>)
+num_rows = cur.rowcount
+data = cur.fetchall()
+<span class="hljs-built_in">print</span>(<span class="hljs-string">f'Got </span><span class="hljs-subst">{num_rows}</span><span class="hljs-string"> rows from database:'</span>)
+<span class="hljs-built_in">print</span>(data)
+</code></pre>
+    <p class="normal">You might expect that the data retrieved from the query is found in the return value of <code class="Code-In-Text--PACKT-">execute()</code>; however, that's not how it works. Instead, we execute the query, then use cursor methods and attributes to retrieve the data and the metadata about the execution. In this case, we've used <code class="Code-In-Text--PACKT-">fetchall()</code> to retrieve all the rows of data at once. We have also used the <code class="Code-In-Text--PACKT-">rowcount</code> attribute of the cursor to see how many rows were returned from the database.</p>
+    <p class="normal">PostgreSQL <a id="_idIndexMarker1211"/>is a <strong class="keyword">transactional database</strong>, meaning that modification operations (like our <code class="Code-In-Text--PACKT-">CREATE</code> and <code class="Code-In-Text--PACKT-">INSERT</code> statements) are not automatically saved to disk. To do that, we need to <strong class="keyword">commit</strong> our transaction. We can do this in <code class="Code-In-Text--PACKT-">psycopg2</code> using the connection object's <code class="Code-In-Text--PACKT-">commit()</code> method, like so:</p>
+    <pre class="programlisting code"><code class="hljs-code">cx.commit()
+</code></pre>
+    <p class="normal">If we do not <a id="_idIndexMarker1212"/>commit, the changes we make will not be saved when our connection exits. The connection will exit automatically when our application or script quits, but we can also explicitly exit using the connection's <code class="Code-In-Text--PACKT-">close()</code> method, like this:</p>
+    <pre class="programlisting code"><code class="hljs-code">cx.close()
+</code></pre>
+    <div class="packt_tip">
+      <p class="Tip--PACKT-">You can specify <code class="Code-In-Text--PACKT-">autocommit=True</code> when creating a <code class="Code-In-Text--PACKT-">Connection</code> object to have <code class="Code-In-Text--PACKT-">psycopg2</code> implicitly commit the transaction after every query. This is a handy convenience, especially when working with PostgreSQL in the shell.</p>
+    </div>
+    <h2 id="_idParaDest-331" class="title">Parameterized queries</h2>
+    <p class="normal">Quite often, we need to include runtime data, such as that entered by our users, in a SQL query. You might <a id="_idIndexMarker1213"/>be tempted to do this using Python's powerful string-formatting capabilities, like this:</p>
+    <pre class="programlisting code"><code class="hljs-code">new_item = <span class="hljs-built_in">input</span>(<span class="hljs-string">'Enter new item: '</span>)
+cur.execute(<span class="hljs-string">f"INSERT INTO test (val) VALUES ('</span><span class="hljs-subst">{new_item}</span><span class="hljs-string">')"</span>)
+cur.execute(<span class="hljs-string">'SELECT * FROM test'</span>)
+<span class="hljs-built_in">print</span>(cur.fetchall())
+</code></pre>
+    <p class="normal"><em class="italic">Never, never do this!</em> While it initially works, it creates a vulnerability known as a <strong class="keyword">SQL injection vulnerability</strong>. In other words, it will allow a user of the program to enter any SQL command <a id="_idIndexMarker1214"/>they wish. For example, we could execute our script and add malicious data like this:</p>
+    <pre class="programlisting con"><code class="hljs-con">$ python psycopg2_demo.py
+Username: alanm
+Password:
+Got 3 rows from database:
+[(1, 'Banana'), (2, 'Orange'), (3, 'Apple')]
+Enter new item: '); DROP TABLE test; SELECT ('
+Traceback (most recent call last):
+  File "/home/alanm/psycopg2_demo.py", line 37, in &lt;module&gt;
+    cur.execute('SELECT * FROM test')
+psycopg2.errors.UndefinedTable: relation "test" does not exist
+LINE 1: SELECT * FROM test
+</code></pre>
+    <p class="normal">In this example, we've executed the program and entered a string that closes our coded SQL statement and adds on a <code class="Code-In-Text--PACKT-">DROP TABLE</code> statement. It then adds a partial <code class="Code-In-Text--PACKT-">SELECT</code> statement to avoid a syntax error from the SQL engine. The result is that the <code class="Code-In-Text--PACKT-">test</code> table is deleted, and we get an exception trying to query data from it!</p>
+    <p class="normal">SQL injection <a id="_idIndexMarker1215"/>vulnerabilities have plagued applications for decades and been the source of many high-profile hacking disasters. Fortunately, <code class="Code-In-Text--PACKT-">psycopg2</code> gives us a way to avoid this by using <strong class="keyword">parameterized queries</strong>. A parameterized version of the previous code looks like this:</p>
+    <pre class="programlisting code"><code class="hljs-code">new_item = <span class="hljs-built_in">input</span>(<span class="hljs-string">'Enter new item: '</span>)
+<span class="code-highlight"><strong class="hljs-slc">cur.execute(</strong><strong class="hljs-string-slc">"INSERT INTO test (val) VALUES (%s)"</strong><strong class="hljs-slc">, (new_item,))</strong></span>
+cur.execute(<span class="hljs-string">'SELECT * FROM test'</span>)
+<span class="hljs-built_in">print</span>(cur.fetchall())
+</code></pre>
+    <p class="normal">To parameterize a query, we use the <code class="Code-In-Text--PACKT-">%s</code> string to stand in for values we want to be inserted into the query. The values themselves are passed into <code class="Code-In-Text--PACKT-">execute()</code> as a second argument. For multiple values, the parameter values should be passed in as a list or tuple, and will replace the <code class="Code-In-Text--PACKT-">%s</code> occurrences in order.</p>
+    <p class="normal">For complicated queries, we can also give each parameter a name, and pass in a dictionary to match up the values; for example:</p>
+    <pre class="programlisting code"><code class="hljs-code">cur.execute(
+  <span class="hljs-string">"INSERT INTO test (val) VALUES (%(item)s)"</span>,
+  {<span class="hljs-string">'item'</span>: new_item}
+)
+</code></pre>
+    <p class="normal">The parameter's name is put in parentheses between the percent sign and <code class="Code-In-Text--PACKT-">s</code> character. The name will then be matched to a key in the parameters value dictionary and substituted when the query is executed by the database.</p>
+    <div class="note">
+      <p class="Information-Box--PACKT-">The <code class="Code-In-Text--PACKT-">s</code> in this parameter string is called a <strong class="keyword">format specifier</strong>, and derives from the original Python syntax for string substitution. It is required and should <em class="italic">always</em> be <code class="Code-In-Text--PACKT-">s</code>. If your parameterized query causes an Invalid Format Specifier error, it's because you have forgotten the <code class="Code-In-Text--PACKT-">s</code> or used a different character.</p>
+    </div>
+    <p class="normal">Parameterized queries take care of properly escaping and sanitizing our data so that SQL injection attacks <a id="_idIndexMarker1216"/>are largely impossible. For example, if we try our previous hack with the parameterized code, we get the following:</p>
+    <pre class="programlisting con"><code class="hljs-con">Enter new item: '); DROP TABLE test; SELECT ('
+[(1, 'Banana'), (2, 'Orange'), (3, 'Apple'), (4, "'); DROP TABLE test; SELECT ('")]
+</code></pre>
+    <p class="normal">Not only do parameterized queries protect us from SQL injection, but they also perform automatic conversion of certain Python types to SQL values; for example, Python <code class="Code-In-Text--PACKT-">date</code> and <code class="Code-In-Text--PACKT-">datetime</code> objects are automatically converted to strings that SQL will recognize as dates, and <code class="Code-In-Text--PACKT-">None</code> is automatically converted to SQL <code class="Code-In-Text--PACKT-">NULL</code>.</p>
+    <div class="note">
+      <p class="Information-Box--PACKT-">Note that parameters only work for <em class="italic">data values</em>; there is no way to parameterize other query content like table names or commands.</p>
+    </div>
+    <h2 id="_idParaDest-332" class="title">Special cursor classes</h2>
+    <p class="normal">By default, <code class="Code-In-Text--PACKT-">Cursor.fetchall()</code> returns our query results as a list of tuples. This might be acceptable if we <a id="_idIndexMarker1217"/>have a table of one or two columns, but for large tables like those in our ABQ database, it quickly becomes a problem remembering which tuple index corresponds to which field. Ideally, we'd like to be able to reference a field by name.</p>
+    <p class="normal">To accommodate this, <code class="Code-In-Text--PACKT-">psycopg2</code> allows us to specify a <strong class="keyword">cursor factory</strong> class for our connection object that allows us to use cursor objects with customized behavior. One such custom cursor class included with <code class="Code-In-Text--PACKT-">psycop2</code> is the <code class="Code-In-Text--PACKT-">DictCursor</code> class. We use it like so:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># psycopg2_demo.py</span>
+<span class="code-highlight"><strong class="hljs-keyword-slc">from</strong><strong class="hljs-slc"> psycopg2.extras </strong><strong class="hljs-keyword-slc">import</strong><strong class="hljs-slc"> DictCursor</strong></span>
+cx = pg.connect(
+  host=<span class="hljs-string">'localhost'</span>,  database=<span class="hljs-string">'abq'</span>,
+  user=<span class="hljs-built_in">input</span>(<span class="hljs-string">'Username: '</span>),
+  password=getpass(<span class="hljs-string">'Password: '</span>),
+  <span class="code-highlight"><strong class="hljs-slc">cursor_factory=DictCursor</strong></span>
+)
+</code></pre>
+    <p class="normal"><code class="Code-In-Text--PACKT-">DictCursor</code> is found in the <code class="Code-In-Text--PACKT-">psycopg2.extras</code> module, so we have to import it separately from the main <a id="_idIndexMarker1218"/>module. Once imported, we pass it to the <code class="Code-In-Text--PACKT-">connect()</code> function's <code class="Code-In-Text--PACKT-">cursor_factory</code> argument. Now, rows will be returned as <code class="Code-In-Text--PACKT-">DictRow</code> objects, which can be treated just like dictionaries:</p>
+    <pre class="programlisting code"><code class="hljs-code">cur.execute(<span class="hljs-string">"SELECT * FROM test"</span>)
+data = cur.fetchall()
+<span class="hljs-keyword">for</span> row <span class="hljs-keyword">in</span> data:
+    <span class="hljs-built_in">print</span>(row[<span class="hljs-string">'val'</span>])
+</code></pre>
+    <p class="normal">This is much handier when dealing with a large number of columns.</p>
+    <div class="note">
+      <p class="Information-Box--PACKT-">More information <a id="_idIndexMarker1219"/>about the use of <code class="Code-In-Text--PACKT-">psycopg2</code> can be found in its official documentation at <a href="https://www.psycopg.org/docs/"><span class="url">https://www.psycopg.org/docs/</span></a>.</p>
+    </div>
+    <h1 id="_idParaDest-333" class="title">Integrating SQL into our application</h1>
+    <p class="normal">Converting our application to a SQL backend will be no small task. The application was built around <a id="_idIndexMarker1220"/>the assumption of the CSV files, and although we've taken care to separate our concerns, many things are going to need to change.</p>
+    <p class="normal">Let's break down the steps we'll need to take:</p>
+    <ul>
+      <li class="bullet">We'll need to create a new model to interface with the SQL database.</li>
+      <li class="bullet">Our <code class="Code-In-Text--PACKT-">Application</code> class will need to use the SQL model, and may need to adjust some behaviors as a result.</li>
+      <li class="bullet">The record form will need to be reordered to prioritize our key fields, use the new lookup tables, and auto-populate using information in the database.</li>
+      <li class="bullet">The record list will need to be adjusted to work with the new data model and primary keys.</li>
+    </ul>
+    <p class="normal">Let's get started!</p>
+    <h2 id="_idParaDest-334" class="title">Creating a new model</h2>
+    <p class="normal">We'll start in <code class="Code-In-Text--PACKT-">models.py</code> by importing <code class="Code-In-Text--PACKT-">psycopg2</code> and <code class="Code-In-Text--PACKT-">DictCursor</code>:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># models.py</span>
+<span class="hljs-keyword">import</span> psycopg2 <span class="hljs-keyword">as</span> pg
+<span class="hljs-keyword">from</span> psycopg2.extras <span class="hljs-keyword">import</span> DictCursor
+</code></pre>
+    <p class="normal">As you <a id="_idIndexMarker1221"/>learned in the previous section, <code class="Code-In-Text--PACKT-">DictCursor</code> will allow us to fetch results in a Python dictionary rather than the default tuples, which is easier to work with in our application.</p>
+    <p class="normal">Now, begin a new model class called <code class="Code-In-Text--PACKT-">SQLModel</code> and copy over the <code class="Code-In-Text--PACKT-">fields</code> property from the <code class="Code-In-Text--PACKT-">CSVModel</code>, like so:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># models.py</span>
+<span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">SQLModel</span><span class="hljs-class">:</span>
+  <span class="hljs-string">"""Data Model for SQL data storage"""</span>
+  fields = {
+    <span class="hljs-string">"Date"</span>: {<span class="hljs-string">'req'</span>: <span class="hljs-literal">True</span>, <span class="hljs-string">'type'</span>: FT.iso_date_string},
+    <span class="hljs-string">"Time"</span>: {<span class="hljs-string">'req'</span>: <span class="hljs-literal">True</span>, <span class="hljs-string">'type'</span>: FT.string_list,
+     <span class="hljs-string">'values'</span>: [<span class="hljs-string">'8:00'</span>, <span class="hljs-string">'12:00'</span>, <span class="hljs-string">'16:00'</span>, <span class="hljs-string">'20:00'</span>]},
+    <span class="hljs-comment"># etc. ...</span>
+</code></pre>
+    <p class="normal">We need to make a few changes to this dictionary, however. First, our valid Lab and Plot values are going to be pulled from the database rather than being hardcoded here, so we'll specify them as empty lists and populate them in the initializer. Also, the Technician field will become a drop-down select, also populated from the database, so we need to make it a <code class="Code-In-Text--PACKT-">string_list</code> type with an empty list for the <code class="Code-In-Text--PACKT-">values</code> argument.</p>
+    <p class="normal">Those three entries should look like this:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># models.py, in the SQLModel.fields property</span>
+    <span class="hljs-string">"Technician"</span>: {
+      <span class="hljs-string">'req'</span>: <span class="hljs-literal">True</span>, <span class="hljs-string">'type'</span>:  FT.string_list, <span class="hljs-string">'values'</span>: []
+    },
+    <span class="hljs-string">"Lab"</span>: {
+      <span class="hljs-string">'req'</span>: <span class="hljs-literal">True</span>, <span class="hljs-string">'type'</span>: FT.short_string_list, <span class="hljs-string">'values'</span>: []
+    },
+    <span class="hljs-string">"Plot"</span>: {
+      <span class="hljs-string">'req'</span>: <span class="hljs-literal">True</span>, <span class="hljs-string">'type'</span>: FT.string_list, <span class="hljs-string">'values'</span>: []
+    },
+</code></pre>
+    <p class="normal">Before we write our initializer, let's create a method to encapsulate a lot of the boilerplate code around querying and retrieving data. We'll call this method <code class="Code-In-Text--PACKT-">query()</code>; add it to the <code class="Code-In-Text--PACKT-">SQLModel</code> class like so:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># models.py, inside SQLModel</span>
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">query</span><span class="hljs-function">(</span><span class="hljs-params">self, query, parameters=</span><span class="hljs-literal">None</span><span class="hljs-function">):</span>
+    <span class="hljs-keyword">with</span> self.connection:
+      <span class="hljs-keyword">with</span> self.connection.cursor() <span class="hljs-keyword">as</span> cursor:
+        cursor.execute(query, parameters)
+      
+        <span class="hljs-keyword">if</span> cursor.description <span class="hljs-keyword">is</span> <span class="hljs-keyword">not</span> <span class="hljs-literal">None</span>:
+          <span class="hljs-keyword">return</span> cursor.fetchall()
+</code></pre>
+    <p class="normal">This method <a id="_idIndexMarker1222"/>takes a query string and, optionally, a sequence of parameters. Inside the method, we begin by opening a context block using the <code class="Code-In-Text--PACKT-">Connection</code> object. Using the connection this way means that <code class="Code-In-Text--PACKT-">psycopg2</code> will automatically commit the transaction if the query is successful. Next, we generate our <code class="Code-In-Text--PACKT-">Cursor</code> object, also using a context manager. By using the cursor as a context manager, <code class="Code-In-Text--PACKT-">psycopg2</code> will automatically <strong class="keyword">roll back</strong> our transaction if an exception is thrown by the <code class="Code-In-Text--PACKT-">execute()</code> method. Rolling back is the opposite of committing the database: instead of saving the changes, we throw them away and start with the database as it was the last time we committed (or the beginning of the session, if we haven't called <code class="Code-In-Text--PACKT-">commit()</code> yet). After rolling back, the exception will be re-raised so that we can handle it in our calling code, and, in either case, the cursor will be closed when the block exits. Essentially, it's equivalent to the following:</p>
+    <pre class="programlisting code"><code class="hljs-code">    cursor = self.connection.cursor()
+    <span class="hljs-keyword">try</span>:
+      cursor.execute(query, parameters)
+    <span class="hljs-keyword">except</span> (pg.Error) <span class="hljs-keyword">as</span> e:
+      self.connection.rollback()
+      <span class="hljs-keyword">raise</span> e
+    <span class="hljs-keyword">finally</span>:
+      cursor.close()
+</code></pre>
+    <p class="normal">If we successfully execute the query and it returns data, the method will need to return that data. To determine if data was returned, we check the cursor.<code class="Code-In-Text--PACKT-">description</code> property. The <code class="Code-In-Text--PACKT-">cursor.description</code> property returns a list of the headers for the table returned by our query; in the event that our query returns no data (such as an <code class="Code-In-Text--PACKT-">INSERT</code> query), it is set to <code class="Code-In-Text--PACKT-">None</code>. It's important to realize that <code class="Code-In-Text--PACKT-">fetchall()</code> will raise an exception if there is no data returned from the query, so we should check <code class="Code-In-Text--PACKT-">description</code> before executing it.</p>
+    <p class="normal">Now that we have this method, we can easily retrieve results from our database like so:</p>
+    <pre class="programlisting code"><code class="hljs-code">  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">some_method</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">):</span>
+    <span class="hljs-keyword">return</span> self.query(<span class="hljs-string">'SELECT * FROM table'</span>)
+</code></pre>
+    <p class="normal">To see <a id="_idIndexMarker1223"/>how we can use the query method, let's go ahead and add an initializer method to this class:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># models.py, inside SQLModel</span>
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__init__</span><span class="hljs-function">(</span><span class="hljs-params">self, host, database, user, password</span><span class="hljs-function">):</span>
+    self.connection = pg.connect(
+      host=host, database=database,
+      user=user, password=password,
+      cursor_factory=DictCursor
+    )
+    techs = self.query(<span class="hljs-string">"SELECT name FROM lab_techs ORDER BY name"</span>)
+    labs = self.query(<span class="hljs-string">"SELECT id FROM labs ORDER BY id"</span>)
+    plots = self.query(
+      <span class="hljs-string">"SELECT DISTINCT plot FROM plots ORDER BY plot"</span>
+    )
+    self.fields[<span class="hljs-string">'Technician'</span>][<span class="hljs-string">'values'</span>] = [
+      x[<span class="hljs-string">'name'</span>] <span class="hljs-keyword">for</span> x <span class="hljs-keyword">in</span> techs
+    ]
+    self.fields[<span class="hljs-string">'Lab'</span>][<span class="hljs-string">'values'</span>] = [x[<span class="hljs-string">'id'</span>] <span class="hljs-keyword">for</span> x <span class="hljs-keyword">in</span> labs]
+    self.fields[<span class="hljs-string">'Plot'</span>][<span class="hljs-string">'values'</span>] = [
+      <span class="hljs-built_in">str</span>(x[<span class="hljs-string">'plot'</span>]) <span class="hljs-keyword">for</span> x <span class="hljs-keyword">in</span> plots
+    ]
+</code></pre>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">__init__()</code> method takes the database connection details and establishes a connection to the database using <code class="Code-In-Text--PACKT-">psycopg2.connect()</code>, setting the <code class="Code-In-Text--PACKT-">cursor_factory</code> to <code class="Code-In-Text--PACKT-">DictCursor</code>. Then, we use our new <code class="Code-In-Text--PACKT-">query()</code> method to query the database for the pertinent columns in our three lookup tables, using a list comprehension to flatten the results of each query for the respective <code class="Code-In-Text--PACKT-">values</code> list.</p>
+    <p class="normal">Next, we need to write the methods that the application calls to retrieve data from the model. We'll start with <code class="Code-In-Text--PACKT-">get_all_records()</code>, which looks like this:</p>
+    <pre class="programlisting code"><code class="hljs-code">  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">get_all_records</span><span class="hljs-function">(</span><span class="hljs-params">self, all_dates=</span><span class="hljs-literal">False</span><span class="hljs-function">):</span>
+    query = (
+      <span class="hljs-string">'SELECT * FROM data_record_view '</span>
+      <span class="hljs-string">'WHERE NOT %(all_dates)s OR "Date" = CURRENT_DATE '</span>
+      <span class="hljs-string">'ORDER BY "Date" DESC, "Time", "Lab", "Plot"'</span>
+    )
+    <span class="hljs-keyword">return</span> self.query(query, {<span class="hljs-string">'all_dates'</span>: all_dates})
+</code></pre>
+    <p class="normal">Since our <a id="_idIndexMarker1224"/>users are used to working with only the current day's data, we'll only show that data by default, but add an optional flag should we ever need to retrieve all data for all time. To retrieve the current date in PostgreSQL, we can use the <code class="Code-In-Text--PACKT-">CURRENT_DATE</code> constant, which always holds the current date according to the server. Note that we use a prepared query to pass the <code class="Code-In-Text--PACKT-">all_dates</code> value to the query.</p>
+    <p class="normal">Next, let's create <code class="Code-In-Text--PACKT-">get_record()</code>:</p>
+    <pre class="programlisting code"><code class="hljs-code">  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">get_record</span><span class="hljs-function">(</span><span class="hljs-params">self, rowkey</span><span class="hljs-function">):</span>
+    date, time, lab, plot = rowkey
+    query = (
+      <span class="hljs-string">'SELECT * FROM data_record_view '</span>
+      <span class="hljs-string">'WHERE "Date" = %(date)s AND "Time" = %(time)s '</span>
+      <span class="hljs-string">'AND "Lab" = %(lab)s AND "Plot" = %(plot)s'</span>
+    )
+    result = self.query(
+      query,
+      {<span class="hljs-string">"date"</span>: date, <span class="hljs-string">"time"</span>: time, <span class="hljs-string">"lab"</span>: lab, <span class="hljs-string">"plot"</span>: plot}
+    )
+    <span class="hljs-keyword">return</span> result[<span class="hljs-number">0</span>] <span class="hljs-keyword">if</span> result <span class="hljs-keyword">else</span> <span class="hljs-built_in">dict</span>()
+</code></pre>
+    <p class="normal">This method represents a change in interface from the <code class="Code-In-Text--PACKT-">CSVModel</code> class. We're no longer dealing in row numbers; instead, rows are identified by their primary key values. In the case of our records (that is, plot checks), we need Date, Time, Lab, and Plot to identify a record. For convenience, we'll be passing this value around as a tuple in the format (<code class="Code-In-Text--PACKT-">date</code>, <code class="Code-In-Text--PACKT-">time</code>, <code class="Code-In-Text--PACKT-">lab</code>, <code class="Code-In-Text--PACKT-">plot</code>). Thus, the first thing our method does is extract the <code class="Code-In-Text--PACKT-">rowkey</code> tuple into those four values.</p>
+    <p class="normal">Once we have these values, we can use a prepared query to retrieve all the record data from the view we created. Keep in mind that, even when the query results are a single row, the <code class="Code-In-Text--PACKT-">query()</code> method is going to return the results in a list. However, our application expects a single dictionary of data from <code class="Code-In-Text--PACKT-">get_record()</code>, so our <code class="Code-In-Text--PACKT-">return</code> statement extracts the first item in <code class="Code-In-Text--PACKT-">result</code> if the list is not empty, or an empty dictionary if it is.</p>
+    <p class="normal">Retrieving <a id="_idIndexMarker1225"/>a lab check record is very similar:</p>
+    <pre class="programlisting code"><code class="hljs-code">  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">get_lab_check</span><span class="hljs-function">(</span><span class="hljs-params">self, date, time, lab</span><span class="hljs-function">):</span>
+    query = (
+      <span class="hljs-string">'SELECT date, time, lab_id, lab_tech_id, '</span>
+      <span class="hljs-string">'lt.name as lab_tech FROM lab_checks JOIN lab_techs lt '</span>
+      <span class="hljs-string">'ON lab_checks.lab_tech_id = lt.id WHERE '</span>
+      <span class="hljs-string">'lab_id = %(lab)s AND date = %(date)s AND time = %(time)s'</span>
+    )
+    results = self.query(
+      query, {<span class="hljs-string">'date'</span>: date, <span class="hljs-string">'time'</span>: time, <span class="hljs-string">'lab'</span>: lab}
+    )
+    <span class="hljs-keyword">return</span> results[<span class="hljs-number">0</span>] <span class="hljs-keyword">if</span> results <span class="hljs-keyword">else</span> <span class="hljs-built_in">dict</span>()
+</code></pre>
+    <p class="normal">In this query, we're using a join to make sure we have the technician name available and not just the ID. This method did not exist in <code class="Code-In-Text--PACKT-">CSVModel</code>, because we had not yet normalized the data; but it will come in handy in our <code class="Code-In-Text--PACKT-">save_record()</code> method and in our form automation methods.</p>
+    <h3 id="_idParaDest-335" class="title">Saving data</h3>
+    <p class="normal">Saving data in our SQL model is a little more complex than the CSV, since each data record is <a id="_idIndexMarker1226"/>represented by rows in two different tables: the <code class="Code-In-Text--PACKT-">lab_checks</code> and the <code class="Code-In-Text--PACKT-">plot_checks</code> tables. When we try to save a record, there are three possibilities that we need to account for:</p>
+    <ul>
+      <li class="bullet">Neither a lab check nor a plot check record exists for the given date, time, lab, and plot. In this case, both the lab check and plot check records will need to be created.</li>
+      <li class="bullet">The lab check exists for the given date, time, and lab, but no corresponding plot check exists for the given plot. In this case, the lab check record will need to be updated (in case the user wants to correct the technician value), and the plot check record will need to be added.</li>
+      <li class="bullet">Both the lab check and plot check exist. In this case, both will need to be updated with the submitted non-primary key values.</li>
+    </ul>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">save_record()</code> method we implement will need to check for these conditions and run the appropriate <code class="Code-In-Text--PACKT-">INSERT</code> or <code class="Code-In-Text--PACKT-">UPDATE</code> queries on each table.</p>
+    <p class="normal">We also need to consider the possibility that a user will update one of the primary key fields when <a id="_idIndexMarker1227"/>editing an existing record. What should the model do in this case? Let's consider:</p>
+    <ul>
+      <li class="bullet">From the user's point of view, each record they fill out in the application corresponds to a plot check.</li>
+      <li class="bullet">A plot check is associated with a lab check on the basis of its date, time, and lab.</li>
+      <li class="bullet">Thus, if a user alters one of those key fields, their intention is most likely to associate the plot check record with a different lab check, rather than to alter the lab check record it is already associated with.</li>
+      <li class="bullet">Since, from a GUI standpoint, the user is updating an existing record rather than adding a new one, though, it makes sense to update the plot check identified by the pre-change date, time, lab, and plot values with the newly entered values for those fields.</li>
+    </ul>
+    <p class="normal">Therefore, when we're determining whether to run our <code class="Code-In-Text--PACKT-">INSERT</code> or <code class="Code-In-Text--PACKT-">UPDATE</code> queries, we should determine this based on the <em class="italic">entered data</em> for the lab check, but the <em class="italic">key data</em> for the plot check.</p>
+    <p class="normal">Let's begin implementing this logic by writing our queries, which we will store in class variables to keep our <code class="Code-In-Text--PACKT-">save_record()</code> method more concise.</p>
+    <p class="normal">We'll start with the lab check queries:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># models.py, in SQLModel</span>
+  lc_update_query = (
+    <span class="hljs-string">'UPDATE lab_checks SET lab_tech_id = '</span>
+    <span class="hljs-string">'(SELECT id FROM lab_techs WHERE name = %(Technician)s) '</span>
+    <span class="hljs-string">'WHERE date=%(Date)s AND time=%(Time)s AND lab=%(Lab)s'</span>
+  )
+  lc_insert_query = (
+    <span class="hljs-string">'INSERT INTO lab_checks VALUES (%(Date)s, %(Time)s, %(Lab)s, '</span>
+    <span class="hljs-string">'(SELECT id FROM lab_techs WHERE name LIKE %(Technician)s))'</span>
+  )
+</code></pre>
+    <p class="normal">These queries are fairly straightforward, though note our use of a subquery to populate <code class="Code-In-Text--PACKT-">lab_tech_id</code> in each case. Our application will have no idea what a lab tech's ID is, so we'll need to look the ID up by name. Also, take note that our parameter names match the names used in our model's <code class="Code-In-Text--PACKT-">fields</code> dictionary. This will save us from having to reformat <a id="_idIndexMarker1228"/>the record data acquired from our form.</p>
+    <p class="normal">The plot check queries are longer but not any more complicated:</p>
+    <pre class="programlisting code"><code class="hljs-code">  pc_update_query = (
+    <span class="hljs-string">'UPDATE plot_checks SET seed_sample = %(Seed Sample)s, '</span>
+    <span class="hljs-string">'humidity = %(Humidity)s, light = %(Light)s, '</span>
+    <span class="hljs-string">'temperature = %(Temperature)s, '</span>
+    <span class="hljs-string">'equipment_fault = %(Equipment Fault)s, '</span>
+    <span class="hljs-string">'blossoms = %(Blossoms)s, plants = %(Plants)s, '</span>
+    <span class="hljs-string">'fruit = %(Fruit)s, max_height = %(Max Height)s, '</span>
+    <span class="hljs-string">'min_height = %(Min Height)s, median_height = %(Med Height)s, '</span>
+    <span class="hljs-string">'notes = %(Notes)s WHERE date=%(key_date)s AND time=%(key_time)s '</span>
+    <span class="hljs-string">'AND lab_id=%(key_lab)s AND plot=%(key_plot)s'</span>)
+  pc_insert_query = (
+    <span class="hljs-string">'INSERT INTO plot_checks VALUES (%(Date)s, %(Time)s, %(Lab)s,'</span>
+    <span class="hljs-string">' %(Plot)s, %(Seed Sample)s, %(Humidity)s, %(Light)s,'</span>
+    <span class="hljs-string">' %(Temperature)s, %(Equipment Fault)s, %(Blossoms)s,'</span>
+    <span class="hljs-string">' %(Plants)s, %(Fruit)s, %(Max Height)s, %(Min Height)s,'</span>
+    <span class="hljs-string">' %(Med Height)s, %(Notes)s)'</span>)
+</code></pre>
+    <p class="normal">Note that the parameter names used in the <code class="Code-In-Text--PACKT-">UPDATE</code> query's <code class="Code-In-Text--PACKT-">WHERE</code> clause are prefixed with <code class="Code-In-Text--PACKT-">key_</code>; this will allow us to update the record identified by the date, time, lab, and plot values from the row key, as explained previously.</p>
+    <p class="normal">With the queries in place, we can start writing the <code class="Code-In-Text--PACKT-">save_record()</code> method:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># models.py, inside SQLModel</span>
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">save_record</span><span class="hljs-function">(</span><span class="hljs-params">self, record, rowkey</span><span class="hljs-function">):</span>
+    <span class="hljs-keyword">if</span> rowkey:
+      key_date, key_time, key_lab, key_plot = rowkey
+      record.update({
+        <span class="hljs-string">"key_date"</span>: key_date,
+        <span class="hljs-string">"key_time"</span>: key_time,
+        <span class="hljs-string">"key_lab"</span>: key_lab,
+        <span class="hljs-string">"key_plot"</span>: key_plot
+      })
+</code></pre>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">CSVModel.save_record()</code> method took a record dictionary and an integer value, <code class="Code-In-Text--PACKT-">rownum</code>, to determine which record would be updated (or <code class="Code-In-Text--PACKT-">None</code> if it was a new record). In our database, we're using a compound key to identify a plot check, which we'll expect as a tuple of the date, time, lab, and plot. Therefore, if a <code class="Code-In-Text--PACKT-">rowkey</code> is passed in, we'll extract its values to variables and add them to the record dictionary so that we can pass them to the queries.</p>
+    <p class="normal">Next, we need to determine what kind of query to run for the lab check table:</p>
+    <pre class="programlisting code"><code class="hljs-code">    <span class="hljs-keyword">if</span> self.get_lab_check(
+      record[<span class="hljs-string">'Date'</span>], record[<span class="hljs-string">'Time'</span>], record[<span class="hljs-string">'Lab'</span>]
+    ):
+      lc_query = self.lc_update_query
+    <span class="hljs-keyword">else</span>:
+      lc_query = self.lc_insert_query
+</code></pre>
+    <p class="normal">If there <a id="_idIndexMarker1229"/>is an existing lab check record with the entered date, time, and lab, we'll just update it (which will really just change the technician value to what was entered). If there is not, we'll create one.</p>
+    <p class="normal">Next, let's determine which plot check operation to do:</p>
+    <pre class="programlisting code"><code class="hljs-code">    <span class="hljs-keyword">if</span> rowkey:
+      pc_query = self.pc_update_query
+    <span class="hljs-keyword">else</span>:
+      pc_query = self.pc_insert_query
+</code></pre>
+    <p class="normal">This time we only need to know if a row key tuple was given to the method. If it was, this should be an existing record and we just want to update it. If not, we'll need to insert a new record.</p>
+    <p class="normal">Now, we finish off the method by just running the two queries, passing in the <code class="Code-In-Text--PACKT-">record</code> dictionary as the parameter list:</p>
+    <pre class="programlisting code"><code class="hljs-code">    self.query(lc_query, record)
+    self.query(pc_query, record)
+</code></pre>
+    <p class="normal">Note that <code class="Code-In-Text--PACKT-">psycopg2</code> has no problem with us passing a dictionary with extra parameters that aren't referenced in the query, so we don't need to bother with filtering unneeded items from <code class="Code-In-Text--PACKT-">record</code>.</p>
+    <h3 id="_idParaDest-336" class="title">Getting the current seed sample for the plot</h3>
+    <p class="normal">There is one last method this model needs; since our database knows what seed sample is currently <a id="_idIndexMarker1230"/>in each plot, we want our form to populate this automatically for the user. We'll need a method that takes a <code class="Code-In-Text--PACKT-">lab</code> and <code class="Code-In-Text--PACKT-">plot_id</code> and returns the seed sample name.</p>
+    <p class="normal">We'll call it <code class="Code-In-Text--PACKT-">get_current_seed_sample()</code>:</p>
+    <pre class="programlisting code"><code class="hljs-code">  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">get_current_seed_sample</span><span class="hljs-function">(</span><span class="hljs-params">self, lab, plot</span><span class="hljs-function">):</span>
+    result = self.query(
+      <span class="hljs-string">'SELECT current_seed_sample FROM plots '</span>
+      <span class="hljs-string">'WHERE lab_id=%(lab)s AND plot=%(plot)s'</span>,
+      {<span class="hljs-string">'lab'</span>: lab, <span class="hljs-string">'plot'</span>: plot}
+    )
+    <span class="hljs-keyword">return</span> result[<span class="hljs-number">0</span>][<span class="hljs-string">'current_seed_sample'</span>] <span class="hljs-keyword">if</span> result <span class="hljs-keyword">else</span> <span class="hljs-string">''</span>
+</code></pre>
+    <p class="normal">This time, our <code class="Code-In-Text--PACKT-">return</code> statement is not just extracting the first row of results, but the value of the <code class="Code-In-Text--PACKT-">current_seed_sample</code> column from that first row. If there's no result, we return an empty string.</p>
+    <p class="normal">That completes our model class; now let's incorporate it into the application.</p>
+    <h2 id="_idParaDest-337" class="title">Adjusting the Application class for the SQL backend</h2>
+    <p class="normal">Before it can create a <code class="Code-In-Text--PACKT-">SQLModel</code> instance, the <code class="Code-In-Text--PACKT-">Application</code> class will need the database connection <a id="_idIndexMarker1231"/>information to pass to the model: the server name, database name, user, and password. The host and database names aren't going to change often, if at all, so we don't need to make the user enter those each time. Instead, we can just add them as settings in the <code class="Code-In-Text--PACKT-">SettingsModel</code>:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># models.py, inside SettingsModel</span>
+<span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">SettingsModel</span><span class="hljs-class">:</span>
+  fields = {
+    <span class="hljs-comment">#...</span>
+    <span class="code-highlight"><strong class="hljs-string-slc">'db_host'</strong><strong class="hljs-slc">: {</strong><strong class="hljs-string-slc">'type'</strong><strong class="hljs-slc">: </strong><strong class="hljs-string-slc">'str'</strong><strong class="hljs-slc">, </strong><strong class="hljs-string-slc">'value'</strong><strong class="hljs-slc">: </strong><strong class="hljs-string-slc">'localhost'</strong><strong class="hljs-slc">},</strong></span>
+    <span class="code-highlight"><strong class="hljs-string-slc">'db_name'</strong><strong class="hljs-slc">: {</strong><strong class="hljs-string-slc">'type'</strong><strong class="hljs-slc">: </strong><strong class="hljs-string-slc">'str'</strong><strong class="hljs-slc">, </strong><strong class="hljs-string-slc">'value'</strong><strong class="hljs-slc">: </strong><strong class="hljs-string-slc">'abq'</strong><strong class="hljs-slc">}</strong></span>
+  }
+</code></pre>
+    <p class="normal">These <a id="_idIndexMarker1232"/>can be saved in our JSON config file, which can be edited to switch from development to production, but the username and password used for authentication will need to be entered by the user. For that, we can use our login dialog.</p>
+    <h3 id="_idParaDest-338" class="title">Implementing SQL logins</h3>
+    <p class="normal">The login dialog currently authenticates using hardcoded credentials in the <code class="Code-In-Text--PACKT-">Application._simple_login()</code> method. This is far from ideal, so we're going to use our PostgreSQL <a id="_idIndexMarker1233"/>server as a production-quality authentication backend. To start, let's create a new <code class="Code-In-Text--PACKT-">Application</code> method called <code class="Code-In-Text--PACKT-">_database_login()</code>, like so:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># application.py, inside Application</span>
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">_database_login</span><span class="hljs-function">(</span><span class="hljs-params">self, username, password</span><span class="hljs-function">):</span>
+    db_host = self.settings[<span class="hljs-string">'db_host'</span>].get()
+    db_name = self.settings[<span class="hljs-string">'db_name'</span>].get()
+    <span class="hljs-keyword">try</span>:
+      self.model = m.SQLModel(
+        db_host, db_name, username, password
+      )
+    <span class="hljs-keyword">except</span> m.pg.OperationalError <span class="hljs-keyword">as</span> e:
+      <span class="hljs-built_in">print</span>(e)
+      <span class="hljs-keyword">return</span> <span class="hljs-literal">False</span>
+    <span class="hljs-keyword">return</span> <span class="hljs-literal">True</span>
+</code></pre>
+    <p class="normal">This method is analogous to our <code class="Code-In-Text--PACKT-">_simple_login()</code> method, in that the <code class="Code-In-Text--PACKT-">Application._show_login()</code> method will call it to authenticate the credentials entered by the user. Unlike <code class="Code-In-Text--PACKT-">_simple_login()</code>, however, this method is an instance method, as it needs access to the settings and needs to save the <code class="Code-In-Text--PACKT-">SQLModel</code> instance that it creates.</p>
+    <p class="normal">The method begins by pulling the database host and database name from the <code class="Code-In-Text--PACKT-">settings</code> dictionary, then attempts to create a <code class="Code-In-Text--PACKT-">SQLModel</code> instance using them. A <code class="Code-In-Text--PACKT-">psycopg2.OperationalError</code> indicates a failure to connect to the database, most likely due to failed credentials; in this case, we'll return <code class="Code-In-Text--PACKT-">False</code> from the method. Otherwise, if the connection is successful, we'll return <code class="Code-In-Text--PACKT-">True</code>.</p>
+    <div class="note">
+      <p class="Information-Box--PACKT-">Note that we print the error message to the console. Since other problems could potentially cause an <code class="Code-In-Text--PACKT-">OperationalError</code>, it would be smart to log the exception or otherwise make it accessible for debugging, rather than just silencing it.</p>
+    </div>
+    <p class="normal">To use this login backend, we need only change a single line in the <code class="Code-In-Text--PACKT-">_show_login()</code> method:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># application.py, in Application</span>
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">_show_login</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">):</span>
+    <span class="hljs-comment">#...</span>
+      <span class="code-highlight"><strong class="hljs-keyword-slc">if</strong><strong class="hljs-slc"> self._database_login(username, password):</strong></span>
+        <span class="hljs-keyword">return</span> <span class="hljs-literal">True</span>
+</code></pre>
+    <p class="normal">The last change we need for SQL logins is in the <code class="Code-In-Text--PACKT-">Application</code> class's initializer. We need to make sure that the <code class="Code-In-Text--PACKT-">settings</code> dictionary is available <em class="italic">before</em> we show the login dialog, since <a id="_idIndexMarker1234"/>our database logins depend on the <code class="Code-In-Text--PACKT-">db_host</code> and <code class="Code-In-Text--PACKT-">db_name</code> settings. Simply move the lines that load the settings to the top of <code class="Code-In-Text--PACKT-">__init__()</code>, just after calling <code class="Code-In-Text--PACKT-">super().__init__()</code>, as shown here:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># application.py, in Application</span>
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__init__</span><span class="hljs-function">(</span><span class="hljs-params">self, *args, **kwargs</span><span class="hljs-function">):</span>
+    <span class="hljs-built_in">super</span>().__init__(*args, **kwargs)
+    self.settings_model = m.SettingsModel()
+    self._load_settings()
+    self.withdraw()
+    <span class="hljs-keyword">if</span> <span class="hljs-keyword">not</span> self._show_login():
+      self.destroy()
+      <span class="hljs-keyword">return</span>
+    self.deiconify()
+</code></pre>
+    <h3 id="_idParaDest-339" class="title">Updating the Application._on_save() method</h3>
+    <p class="normal">Since our <a id="_idIndexMarker1235"/>record keys have changed from a single integer to a tuple, we need to make some small adjustments to our <code class="Code-In-Text--PACKT-">_on_save()</code> method. Thanks to our efforts to keep the model object's interface intact, the core functionality of this method actually works just fine. However, when it comes to saving references to the rows that have been changed or updated, we can no longer rely on calculating the row numbers; we'll have to rely on the keys instead.</p>
+    <p class="normal">Starting in the second half of the <code class="Code-In-Text--PACKT-">Application._on_save()</code> method, just after the <code class="Code-In-Text--PACKT-">if errors:</code> block, change the code as follows:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># application,py, in Application._on_save()</span>
+    data = self.recordform.get()
+    <span class="code-highlight"><strong class="hljs-slc">rowkey = self.recordform.current_record</strong></span>
+    <span class="code-highlight"><strong class="hljs-slc">self.model.save_record(data, rowkey)</strong></span>
+    <span class="code-highlight"><strong class="hljs-keyword-slc">if</strong><strong class="hljs-slc"> rowkey </strong><strong class="hljs-keyword-slc">is</strong><strong class="hljs-slc"> </strong><strong class="hljs-keyword-slc">not</strong><strong class="hljs-slc"> </strong><strong class="hljs-literal-slc">None</strong><strong class="hljs-slc">:</strong></span>
+      <span class="code-highlight"><strong class="hljs-slc">self.recordlist.add_updated_row(rowkey)</strong></span>
+    <span class="code-highlight"><strong class="hljs-slc">else:</strong></span>
+      <span class="code-highlight"><strong class="hljs-slc">rowkey = (</strong></span>
+        <span class="code-highlight"><strong class="hljs-slc">data[</strong><strong class="hljs-string-slc">'Date'</strong><strong class="hljs-slc">], data[</strong><strong class="hljs-string-slc">'Time'</strong><strong class="hljs-slc">], data[</strong><strong class="hljs-string-slc">'Lab'</strong><strong class="hljs-slc">], data[</strong><strong class="hljs-string-slc">'Plot'</strong><strong class="hljs-slc">]</strong></span>
+      <span class="code-highlight"><strong class="hljs-slc">)</strong></span>
+      <span class="code-highlight"><strong class="hljs-slc">self.recordlist.add_inserted_row(rowkey)</strong></span>
+    <span class="hljs-comment"># remainder of method as before</span>
+</code></pre>
+    <p class="normal">First, we've changed the <code class="Code-In-Text--PACKT-">rownum</code> variable to <code class="Code-In-Text--PACKT-">rowkey</code> to make it more descriptive of what the <a id="_idIndexMarker1236"/>variable contains. Second, when we have a new record, we construct a new row key using the Date, Time, Lab, and Plot values that were passed in with the record. Note that now the contents of the <code class="Code-In-Text--PACKT-">RecordList</code> widget's <code class="Code-In-Text--PACKT-">_updated</code> and <code class="Code-In-Text--PACKT-">_inserted</code> lists will be tuples rather than integers, so we'll need to update its code as well. We'll do that later in this chapter.</p>
+    <h3 id="_idParaDest-340" class="title">Removing file-based code</h3>
+    <p class="normal">Before we <a id="_idIndexMarker1237"/>move on from the <code class="Code-In-Text--PACKT-">Application</code> class, we need to remove some of the file-based code that we'll no longer need. Delete or comment out the following code:</p>
+    <ul>
+      <li class="bullet">In <code class="Code-In-Text--PACKT-">__init__()</code>, remove the line that creates the <code class="Code-In-Text--PACKT-">CSVModel</code> instance. We no longer want to do this.</li>
+      <li class="bullet">Also in <code class="Code-In-Text--PACKT-">__init__()</code>, remove the <code class="Code-In-Text--PACKT-">&lt;&lt;FileSelect&gt;&gt;</code> event from the <code class="Code-In-Text--PACKT-">event_callbacks</code> dictionary.</li>
+      <li class="bullet">Remove the <code class="Code-In-Text--PACKT-">self._on_file_select()</code> method definition.</li>
+      <li class="bullet">Finally, over in <code class="Code-In-Text--PACKT-">mainmenu.py</code>, we can comment out calls to the <code class="Code-In-Text--PACKT-">_add_file_open()</code> method in each of our menu classes.</li>
+    </ul>
+    <p class="normal">Now <a id="_idIndexMarker1238"/>the <code class="Code-In-Text--PACKT-">Application</code> object is ready for SQL, let's check out our view code.</p>
+    <h2 id="_idParaDest-341" class="title">Adjusting the DataRecordForm for SQL data</h2>
+    <p class="normal">Currently our <code class="Code-In-Text--PACKT-">DataRecordForm</code> keeps track of its record using a row number. This is no longer going to work, since records are identified by a compound primary key. We'll need to adjust <a id="_idIndexMarker1239"/>the way records are loaded, and how the record form is labeled, so that we can accurately identify the row we're working on. We also need to reorder the fields so that the key values are entered first, which will help the auto-populate to work more smoothly.</p>
+    <p class="normal">Also, our database presents us with new possibilities for auto-filling data. Once we know enough to identify a Lab Check record, we can auto-fill the Technician field, and once we know which plot we're working with, we can auto-fill the Seed Sample field.</p>
+    <h3 id="_idParaDest-342" class="title">Reordering fields</h3>
+    <p class="normal">The first change we can make to <code class="Code-In-Text--PACKT-">DataRecordForm</code> is the simplest. We just need to reorder <a id="_idIndexMarker1240"/>the fields so that the key fields Date, Time, Lab, and Plot appear first.</p>
+    <p class="normal">The updated calls (with some arguments left out) should be ordered like so:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># views.py, inside DataRecordForm.__init__()</span>
+    <span class="hljs-comment"># line 1</span>
+    w.LabelInput(
+      r_info, <span class="hljs-string">"Date"</span>,
+      <span class="hljs-comment">#...</span>
+    ).grid(row=<span class="hljs-number">0</span>, column=<span class="hljs-number">0</span>)
+    w.LabelInput(
+      r_info, <span class="hljs-string">"Time"</span>,
+      <span class="hljs-comment">#...</span>
+    ).grid(row=<span class="hljs-number">0</span>, column=<span class="hljs-number">1</span>)
+    <span class="hljs-comment"># swap order for chapter 12</span>
+    w.LabelInput(
+      r_info, <span class="hljs-string">"Lab"</span>,
+      <span class="hljs-comment">#...</span>
+    ).grid(row=<span class="hljs-number">0</span>, column=<span class="hljs-number">2</span>)
+    <span class="hljs-comment"># line 2</span>
+    w.LabelInput(
+      r_info, <span class="hljs-string">"Plot"</span>,
+      <span class="hljs-comment">#...</span>
+    ).grid(row=<span class="hljs-number">1</span>, column=<span class="hljs-number">0</span>)
+    w.LabelInput(
+      r_info, <span class="hljs-string">"Technician"</span>,
+      <span class="hljs-comment">#...</span>
+    ).grid(row=<span class="hljs-number">1</span>, column=<span class="hljs-number">1</span>)
+    w.LabelInput(
+      r_info, <span class="hljs-string">"Seed Sample"</span>,
+      <span class="hljs-comment">#...</span>
+    ).grid(row=<span class="hljs-number">1</span>, column=<span class="hljs-number">2</span>)
+</code></pre>
+    <p class="normal">Note that <a id="_idIndexMarker1241"/>you need to change the <code class="Code-In-Text--PACKT-">row</code> and <code class="Code-In-Text--PACKT-">column</code> arguments of the <code class="Code-In-Text--PACKT-">grid()</code> method calls, not just the ordering of the <code class="Code-In-Text--PACKT-">LabelInput</code> calls.</p>
+    <h3 id="_idParaDest-343" class="title">Fixing the load_record() method</h3>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">load_record()</code> method only needs two adjustments. First, we'll replace the <code class="Code-In-Text--PACKT-">rownum</code> variable <a id="_idIndexMarker1242"/>with <code class="Code-In-Text--PACKT-">rowkey</code>, to be consistent with the <code class="Code-In-Text--PACKT-">Application</code> class. Second, we need to update the title text generated to identify the record, like so:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment">#views.py, inside DataRecordForm.load_record()</span>
+    <span class="hljs-keyword">if</span> <span class="code-highlight"><strong class="hljs-slc">rowkey</strong></span> <span class="hljs-keyword">is</span> <span class="hljs-literal">None</span>:
+      self.reset()
+      self.record_label.config(text=<span class="hljs-string">'New Record'</span>)
+    <span class="hljs-keyword">else</span>:
+      <span class="code-highlight"><strong class="hljs-slc">date, time, lab, plot = rowkey</strong></span>
+      <span class="code-highlight"><strong class="hljs-slc">title = </strong><strong class="hljs-string-slc">f'Record for Lab</strong><strong class="hljs-slc"> </strong><strong class="hljs-string-slc">{lab}, Plot</strong><strong class="hljs-slc"> </strong><strong class="hljs-string-slc">{plot}</strong><strong class="hljs-slc"> </strong><strong class="hljs-string-slc">at</strong><strong class="hljs-slc"> </strong><strong class="hljs-string-slc">{date}</strong><strong class="hljs-slc"> </strong><strong class="hljs-subst-slc">{time}</strong><strong class="hljs-string-slc">'</strong></span>
+      self.record_label.config(text=title)
+</code></pre>
+    <p class="normal">Once again, we have extracted the <code class="Code-In-Text--PACKT-">date</code>, <code class="Code-In-Text--PACKT-">time</code>, <code class="Code-In-Text--PACKT-">lab</code>, and <code class="Code-In-Text--PACKT-">plot</code> values from the key and used them to identify which record the user is currently editing. The remainder of the method can stay the same.</p>
+    <h3 id="_idParaDest-344" class="title">Improving auto-fill</h3>
+    <p class="normal">There are two auto-population callbacks we want to have for our record form. First, when the <a id="_idIndexMarker1243"/>user enters a <code class="Code-In-Text--PACKT-">lab</code> and <code class="Code-In-Text--PACKT-">plot</code> value, we want to automatically populate the Seed Sample field with the seed value that is currently planted in that <code class="Code-In-Text--PACKT-">plot</code>. Second, when the <code class="Code-In-Text--PACKT-">date</code>, <code class="Code-In-Text--PACKT-">time</code>, and <code class="Code-In-Text--PACKT-">lab</code> values have been entered, and we have an existing lab check that matches, we should populate the name of the lab tech who did that check. Of course, if our user prefers not to have data auto-filled, we shouldn't do either of these things.</p>
+    <p class="normal">Let's start with the seed sample callback:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># views.py, inside DataRecordForm</span>
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">_populate_current_seed_sample</span><span class="hljs-function">(</span><span class="hljs-params">self, *_</span><span class="hljs-function">):</span>
+    <span class="hljs-string">"""Auto-populate the current seed sample for Lab and Plot"""</span>
+    <span class="hljs-keyword">if</span> <span class="hljs-keyword">not</span> self.settings[<span class="hljs-string">'autofill sheet data'</span>].get():
+      <span class="hljs-keyword">return</span>
+    plot = self._<span class="hljs-built_in">vars</span>[<span class="hljs-string">'Plot'</span>].get()
+    lab = self._<span class="hljs-built_in">vars</span>[<span class="hljs-string">'Lab'</span>].get()
+    <span class="hljs-keyword">if</span> plot <span class="hljs-keyword">and</span> lab:
+      seed = self.model.get_current_seed_sample(lab, plot)
+      self._<span class="hljs-built_in">vars</span>[<span class="hljs-string">'Seed Sample'</span>].<span class="hljs-built_in">set</span>(seed)
+</code></pre>
+    <p class="normal">We begin by checking whether or not the user wants data auto-filled. If not, we return from the method. If they do, we fetch the Plot and Lab values from the form's control variables dictionary. If we have both, we use them to fetch the Seed Sample value from the model and set it in the form accordingly.</p>
+    <p class="normal">We'll do something similar with the Technician value:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># views.py, inside DataRecordForm</span>
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">_populate_tech_for_lab_check</span><span class="hljs-function">(</span><span class="hljs-params">self, *_</span><span class="hljs-function">):</span>
+    <span class="hljs-string">"""Populate technician based on the current lab check"""</span>
+    <span class="hljs-keyword">if</span> <span class="hljs-keyword">not</span> self.settings[<span class="hljs-string">'autofill sheet data'</span>].get():
+      <span class="hljs-keyword">return</span>
+    date = self._<span class="hljs-built_in">vars</span>[<span class="hljs-string">'Date'</span>].get()
+    <span class="hljs-keyword">try</span>:
+      datetime.fromisoformat(date)
+    <span class="hljs-keyword">except</span> ValueError:
+      <span class="hljs-keyword">return</span>
+    time = self._<span class="hljs-built_in">vars</span>[<span class="hljs-string">'Time'</span>].get()
+    lab = self._<span class="hljs-built_in">vars</span>[<span class="hljs-string">'Lab'</span>].get()
+    <span class="hljs-keyword">if</span> <span class="hljs-built_in">all</span>([date, time, lab]):
+      check = self.model.get_lab_check(date, time, lab)
+      tech = check[<span class="hljs-string">'lab_tech'</span>] <span class="hljs-keyword">if</span> check <span class="hljs-keyword">else</span> <span class="hljs-string">''</span>
+      self._<span class="hljs-built_in">vars</span>[<span class="hljs-string">'Technician'</span>].<span class="hljs-built_in">set</span>(tech)
+</code></pre>
+    <p class="normal">This time, we use the form's <code class="Code-In-Text--PACKT-">date</code>, <code class="Code-In-Text--PACKT-">time</code>, and <code class="Code-In-Text--PACKT-">lab</code> values to fetch the lab check record, then set the Technician value from the results (or a blank string if there are no results). Note that we've added error handling around the <code class="Code-In-Text--PACKT-">date</code> value; that's because we plan to trigger <a id="_idIndexMarker1244"/>these methods from a variable trace. <code class="Code-In-Text--PACKT-">Lab</code> and <code class="Code-In-Text--PACKT-">Time</code> are both selected from <code class="Code-In-Text--PACKT-">Combobox</code> widgets, so they will only change to a complete value, but <code class="Code-In-Text--PACKT-">Date</code> is a text-entry field, so it's possible we'll be getting a partially entered date. There's no point in running a SQL query (a relatively time-consuming operation) if the <code class="Code-In-Text--PACKT-">date</code> string isn't valid, so we've used <code class="Code-In-Text--PACKT-">datetime.fromisoformat()</code> to determine if the entered <code class="Code-In-Text--PACKT-">date</code> string is valid. If it's not, we just return from the method since there's nothing more to do.</p>
+    <p class="normal">To complete this functionality, we just need to add triggers to run the methods whenever the appropriate variables are updated. Add this code to <code class="Code-In-Text--PACKT-">DataRecordForm.__init__()</code>:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># views.py, inside DataRecordForm.__init__()</span>
+    <span class="hljs-keyword">for</span> field <span class="hljs-keyword">in</span> (<span class="hljs-string">'Lab'</span>, <span class="hljs-string">'Plot'</span>):
+      self._<span class="hljs-built_in">vars</span>[field].trace_add(
+        <span class="hljs-string">'write'</span>, self._populate_current_seed_sample
+      )
+    <span class="hljs-keyword">for</span> field <span class="hljs-keyword">in</span> (<span class="hljs-string">'Date'</span>, <span class="hljs-string">'Time'</span>, <span class="hljs-string">'Lab'</span>):
+      self._<span class="hljs-built_in">vars</span>[field].trace_add(
+        <span class="hljs-string">'write'</span>, self._populate_tech_for_lab_check
+      )
+</code></pre>
+    <p class="normal">Using a <code class="Code-In-Text--PACKT-">for</code> loop, we've added a trace to each variable involved in determining the Seed Sample and Technician values. Now, these fields should get auto-populated whenever sufficient information is entered to determine their values.</p>
+    <h2 id="_idParaDest-345" class="title">Updating the RecordList for the SQLModel</h2>
+    <p class="normal">One of our <code class="Code-In-Text--PACKT-">RecordList</code> object's most important features is the ability to select a record so that <a id="_idIndexMarker1245"/>the <code class="Code-In-Text--PACKT-">Application</code> object can open it in the <code class="Code-In-Text--PACKT-">DataRecordForm</code> view. To do this, we have to store each record's key in its respective <code class="Code-In-Text--PACKT-">Treeview</code> item's IID value. This worked easily with integer row number values, but now there is a problem. Recall from <em class="chapterRef">Chapter 8</em>, <em class="italic">Navigating Records with Treeview and Notebook</em>, that an IID value <em class="italic">must be a string</em>. We cannot use a tuple.</p>
+    <p class="normal">To solve this problem, we just need to come up with a consistent way to connect our row key tuple to a string value that can be used as an IID. We'll create a dictionary as an instance variable that will map row keys to IID values.</p>
+    <p class="normal">In <code class="Code-In-Text--PACKT-">RecordList.__init__()</code>, add this line that creates our mapping:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># views.py, near the beginning of RecordList.__init__()</span>
+    self.iid_map = <span class="hljs-built_in">dict</span>()
+</code></pre>
+    <p class="normal">Now we need to update the <code class="Code-In-Text--PACKT-">populate()</code> method to utilize the dictionary rather than integer values. First, at the beginning of the method just after deleting the existing rows, let's clear the dictionary of any current information, like so:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># views.py, in RecordList.populate()</span>
+    self.iid_map.clear()
+</code></pre>
+    <p class="normal">Then, find the <code class="Code-In-Text--PACKT-">for</code> loop in this method that populates the <code class="Code-In-Text--PACKT-">Treeview</code> and let's edit the code as follows:</p>
+    <pre class="programlisting code"><code class="hljs-code">    <span class="hljs-keyword">for</span> rowdata <span class="hljs-keyword">in</span> rows:
+      values = [rowdata[key] <span class="hljs-keyword">for</span> key <span class="hljs-keyword">in</span> cids]
+      rowkey = <span class="hljs-built_in">tuple</span>([<span class="hljs-built_in">str</span>(v) <span class="hljs-keyword">for</span> v <span class="hljs-keyword">in</span> values])
+      <span class="hljs-keyword">if</span> rowkey <span class="hljs-keyword">in</span> self._inserted:
+        tag = <span class="hljs-string">'inserted'</span>
+      <span class="hljs-keyword">elif</span> rowkey <span class="hljs-keyword">in</span> self._updated:
+        tag = <span class="hljs-string">'updated'</span>
+      <span class="hljs-keyword">else</span>:
+        tag = <span class="hljs-string">''</span>
+      iid = self.treeview.insert(
+        <span class="hljs-string">''</span>, <span class="hljs-string">'end'</span>, values=values, tag=tag
+      )
+      self.iid_map[iid] = rowkey
+</code></pre>
+    <p class="normal">Since row numbers are no longer in the picture, we can remove the <code class="Code-In-Text--PACKT-">enumerate()</code> call and just deal with the row data. It so happens that the four columns in the <code class="Code-In-Text--PACKT-">cids</code> list are the same four that make up the key, and in the same order. So, we can just convert that list to a <code class="Code-In-Text--PACKT-">tuple</code> object to create our <code class="Code-In-Text--PACKT-">rowkey</code>. Note that we do need to convert each item in the key to a string; they come out of the database as Python objects like <code class="Code-In-Text--PACKT-">date</code> and <code class="Code-In-Text--PACKT-">int</code>, and we need to match them against the keys in the _<code class="Code-In-Text--PACKT-">inserted</code> and _<code class="Code-In-Text--PACKT-">updated</code> lists. Those values, pulled from our <code class="Code-In-Text--PACKT-">DataRecordForm</code>, are all string values.</p>
+    <p class="normal">Once we have the key, we check if it is in one of the lists and set the <code class="Code-In-Text--PACKT-">tag</code> value appropriately. Then, we'll save the output from <code class="Code-In-Text--PACKT-">Treeview.insert()</code> as <code class="Code-In-Text--PACKT-">iid</code>. When <code class="Code-In-Text--PACKT-">insert()</code> is called without an explicit IID value, one is generated automatically and returned by the method. We then add our <code class="Code-In-Text--PACKT-">rowkey</code> value to the mapping dictionary using the generated IID value as a key.</p>
+    <p class="normal">After the <code class="Code-In-Text--PACKT-">for</code> loop, the last part of this method focuses the first row for keyboard users. To focus the first row before, we relied on the fact that the first IID was always <code class="Code-In-Text--PACKT-">0</code>. Now the first IID <a id="_idIndexMarker1246"/>will be an automatically generated value that we cannot predict before the data is loaded, so we'll have to retrieve the IID before we can set the selection and focus.</p>
+    <p class="normal">We can do this by using the <code class="Code-In-Text--PACKT-">Treeview.identify_row()</code> method:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># views.py, in RecordList.populate()</span>
+    <span class="hljs-keyword">if</span> <span class="hljs-built_in">len</span>(rows) &gt; <span class="hljs-number">0</span>:
+      firstrow = self.treeview.identify_row(<span class="hljs-number">0</span>)
+      self.treeview.focus_set()
+      self.treeview.selection_set(firstrow)
+      self.treeview.focus(firstrow)
+</code></pre>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">identify_row()</code> method takes a row number and returns the IID of that row. Once we have that, we can pass it to <code class="Code-In-Text--PACKT-">selection_set()</code> and <code class="Code-In-Text--PACKT-">focus()</code>.</p>
+    <p class="normal">We've taken care of mapping the row keys to our IIDs; now we need to update the <code class="Code-In-Text--PACKT-">selected_id()</code> property method so that it returns a row key tuple. Update that method as follows:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># views.py, in RecordList</span>
+<span class="hljs-meta">  @property</span>
+  <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">selected_id</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">):</span>
+    selection = self.treeview.selection()
+    <span class="hljs-keyword">return</span> <span class="code-highlight"><strong class="hljs-slc">self.iid_map[selection[0]]</strong></span> <span class="hljs-keyword">if</span> selection <span class="hljs-keyword">else</span> <span class="hljs-literal">None</span>
+</code></pre>
+    <p class="normal">Just as before, we're retrieving the selected IID using the <code class="Code-In-Text--PACKT-">self.treeview.selection()</code> method. This time, though, we need to look up the row key value in the mapping dictionary before returning it.</p>
+    <p class="normal">The last change to <code class="Code-In-Text--PACKT-">RecordList</code> needs to be done in the initializer. Currently, our first column, <code class="Code-In-Text--PACKT-">Row</code>, displays the IID on the pretext that it is the row number. That's no longer the case, and as our updated call to <code class="Code-In-Text--PACKT-">insert()</code> did not specify a value to display, the column is just empty. So, the best thing we can do is remove this column.</p>
+    <p class="normal">However, that's <a id="_idIndexMarker1247"/>not possible. The <code class="Code-In-Text--PACKT-">#0</code> column is required and cannot be removed. It <em class="italic">can</em>, however, be hidden. To do that, we need to set the <code class="Code-In-Text--PACKT-">Treeview</code> widget's <code class="Code-In-Text--PACKT-">show</code> property, like so:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># views.py, inside RecordList.__init__()</span>
+    self.treeview.config(show=<span class="hljs-string">'headings'</span>)
+</code></pre>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">show</code> property essentially determines if the <code class="Code-In-Text--PACKT-">#0</code> column will be displayed or not. It can be set to <code class="Code-In-Text--PACKT-">tree</code>, in which case the column will be shown, or <code class="Code-In-Text--PACKT-">headings</code>, in which case it will be hidden. The default is <code class="Code-In-Text--PACKT-">tree</code>, so we've changed this to <code class="Code-In-Text--PACKT-">headings</code>. Now only our four data columns will be shown.</p>
+    <h2 id="_idParaDest-346" class="title">We're done!</h2>
+    <p class="normal">Phew! That was quite a journey, but our SQL conversion is more or less complete. You should be able to launch the application, log in using your PostgreSQL credentials, and load and save records using the database. This represents a huge improvement in the application and a major shift from a simple script to append a file to a full-blown database application.</p>
+    <div class="packt_tip">
+      <p class="Tip--PACKT-">In the real world, of course, we aren't quite done here. Unit tests and documentation would all need to be updated to reflect the new model layer and other code changes. In addition, existing data may need to be imported into the database and users would need retraining to adjust to the move away from flat files. We won't be addressing all this in the book, but keep it in mind if you're undertaking a change like this in a real production environment!</p>
+    </div>
+    <h1 id="_idParaDest-347" class="title">Summary</h1>
+    <p class="normal">In this chapter, you learned how to work with a relational SQL database. You installed and configured PostgreSQL. You converted a flat-file dataset into relational tables by identifying the primary key fields, choosing correct data types, and normalizing the data structure to reduce the possibility of inconsistencies, redundancies, and anomalies. You learned how to install and work with the <code class="Code-In-Text--PACKT-">psycopg2</code> library for retrieving and storing data in PostgreSQL. Finally, you went through the arduous task of building a SQL database to hold your ABQ data, building a database model class to interface with the database, and converting the application code to use the new SQL backend.</p>
+    <p class="normal">In the next chapter, we'll be reaching out to the cloud. We'll need to contact some remote servers using different networking protocols to exchange data. You'll learn about the Python standard library's module for working with HTTP, as well as third-party packages for connecting with REST services and transferring files over SFTP.</p>
+  </div>
+</body></html>
