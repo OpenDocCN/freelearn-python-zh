@@ -1,0 +1,345 @@
+<html><head></head><body>
+  <div id="_idContainer037">
+    <h1 class="chapterNumber">5</h1>
+    <h1 id="_idParaDest-88" class="chapterTitle">Splitting the Monolith</h1>
+    <p class="normal">In the previous chapter, we created a monolithic application to serve as an assistant; we did so rapidly, concentrating on adding features rather than long-term architecture. There is nothing wrong with that approach—after all if the application never needs to scale up then the engineering effort is wasted.</p>
+    <p class="normal">But let us assume that our service is very popular, and the number of requests it receives is growing. We now have to make sure it performs well under load, and also ensure that it is easy to maintain for a growing team of developers. How should we proceed from here? In this chapter, we will:</p>
+    <ul>
+      <li class="bullet">Examine how to identify the best components to migrate to a new microservice based on code complexity and data we collect about usage</li>
+      <li class="bullet">Show techniques for preparing and performing that migration, as well as checking on its success</li>
+    </ul>
+    <h1 id="_idParaDest-89" class="title">Identifying potential microservices</h1>
+    <p class="normal">For an application<a id="_idIndexMarker294"/> that is familiar to us, we might have a lot of intuition about which components are overloaded or unreliable. After all, either we wrote it, or have rewritten large parts of it, and tested it, along with making decisions about its architecture. It's also natural to have made notes about the database growing larger, or noticing that one particular function takes a long time to run during testing.</p>
+    <p class="normal">Our own intuition may lead us astray, however, and it is a good idea to let our decisions be informed by the data we collect. Developers and operations people will have specific questions that should be answered to make a decision about the future direction of a service. Product management and other business-oriented people will also have questions that need answering, which are often not specific to the technology. Questions a developer may ask include:</p>
+    <ul>
+      <li class="bullet">How fast are responses to HTTP requests?</li>
+      <li class="bullet">What are the success and error rates on HTTP requests for different endpoints?</li>
+      <li class="bullet">Which parts of the system are troublesome when making changes?</li>
+      <li class="bullet">How many active connections does a component have to deal with, on average, at peak use?</li>
+    </ul>
+    <p class="normal">Some<a id="_idIndexMarker295"/> non-technical business questions to consider are:</p>
+    <ul>
+      <li class="bullet">Does a slow response mean a user will stop checking with our Slack bot and start using other tools instead?</li>
+      <li class="bullet">In a web-based shop, what is the conversion rate—that is, how many customers viewed items, compared to how many bought something?</li>
+      <li class="bullet">How accurate and up to date is the information we provide through the service?</li>
+    </ul>
+    <p class="normal">For our discussion, we will focus on technical questions, but it is always worth remembering why software exists, and how best to answer the questions put forward by the people who need an application—as well as the people who produce it. To make our decisions about splitting our monolithic application, we will keep two questions in mind:</p>
+    <ul>
+      <li class="bullet">Which components are the slowest and cause the most delays when they are run?</li>
+      <li class="bullet">Which components are tightly coupled to the rest of the application, and so fragile when changed?<div class="packt_tip">
+          <p class="Tip--PACKT-">Two terms often heard are <em class="italic">data-driven</em> and <em class="italic">data-informed</em>. To be data-driven<a id="_idIndexMarker296"/> involves collecting data about a situation and always basing decisions on that information. Being data-informed<a id="_idIndexMarker297"/> also involves collecting data, but using it alongside personal experience and knowledge of the wider situation.</p>
+        </div>
+      </li>
+    </ul>
+    <p class="normal">There are many aspects to software and what it does—network connections, reading files, querying databases, and so on. It is tempting to think that collecting everything and looking for patterns in the data will be the best way to monitor the application. There is often too much data to sift through, however, and too many variables to account for. Instead, we should start with a qualitative question.</p>
+    <p class="normal">However, the question should not be, "which parts of the application would work as a microservice?"; instead, we should consider questions such as "which parts of the application are having the most impact on performance?" and "which parts of the application are difficult to change?" The answer might be a microservice—and since this book<a id="_idIndexMarker298"/> is about that option, we will investigate it in depth—but there are other performance problems that can arise, and other solutions, such as optimizing a database or caching common query results.</p>
+    <p class="normal">Let us look at some ways that we can identify the parts of an application that need refactoring, and that would make good microservices.</p>
+    <h2 id="_idParaDest-90" class="title">Code complexity and maintenance</h2>
+    <p class="normal">As we discussed in <em class="chapterRef">Chapter 1</em>, <em class="italic">Understanding Microservices</em>, as the size of a project increases<a id="_idIndexMarker299"/> it becomes<a id="_idIndexMarker300"/> more difficult<a id="_idIndexMarker301"/> to reason<a id="_idIndexMarker302"/> about, especially for people new to the team. Keeping different logical parts of the system separate and having a clean interface between them helps us think more effectively about the interactions between all the different components—making it easier to understand where to make changes—without having to worry about accidentally breaking something in code that seems unrelated.</p>
+    <p class="normal">Many of the decisions made when looking at maintenance will be based on experience: when reading the code, developers get a sense of what areas they understand well, and which areas they do not, as well as how risky it is to change various parts of a project. </p>
+    <p class="normal">We can also take a data-informed approach by using tools that assess<a id="_idIndexMarker303"/> the <strong class="keyword">cyclomatic complexity</strong> of the code. Cyclomatic complexity is a software metric, developed in the 1970s, to assess how many branches and paths of code execution a program has. Understanding the mathematics is outside the scope of this book, so for our purposes we should understand that a higher score indicates more complex code, and code that scores 1.0 has no decisions in it at all.</p>
+    <p class="normal"><strong class="keyword">Radon</strong> (<a href="https://pypi.org/project/radon/"><span class="url">https://pypi.org/project/radon/</span></a>) is a Python<a id="_idIndexMarker304"/> tool for quickly assessing code complexity; it also groups the complexity scores into bands, similar to academic grades such as A through F. Since our examples so far have been simple, let's run <code class="Code-In-Text--PACKT-">Radon</code> against <code class="Code-In-Text--PACKT-">Quart</code> itself. </p>
+    <p class="normal">Here, we tell Radon to calculate the cyclomatic complexity and only report on those areas that have a complexity rating of C or worse:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">$</span> git <span class="hljs-con-built_in">clone</span> https://gitlab.com/pgjones/quart
+<span class="hljs-con-meta">$</span> <span class="hljs-con-built_in">cd</span> quart
+<span class="hljs-con-meta">$</span> radon  cc .  --average --min c
+asgi.py
+    M 205:4 ASGIWebsocketConnection.handle_websocket - C
+blueprints.py
+    M 510:4 Blueprint.register - D
+cli.py
+    F 278:0 routes_command - C
+    M 48:4 ScriptInfo.load_app - C
+app.py
+    M 1178:4 Quart.run - C
+helpers.py
+    F 154:0 url_for - C
+    F 347:0 send_file - C
+testing/utils.py
+    F 60:0 make_test_body_with_headers - C
+ 
+8 blocks (classes, functions, methods) analyzed.
+Average complexity: C (15.125)
+</code></pre>
+    <p class="normal">It's easy<a id="_idIndexMarker305"/> to think<a id="_idIndexMarker306"/> that<a id="_idIndexMarker307"/> a high-complexity function<a id="_idIndexMarker308"/> is always bad, but that's not necessarily the case. We should strive for simplicity, but not over-simplification to the point where we lose usefulness in the software. We should use scores like these as guides for our decisions. </p>
+    <p class="normal">Now, we will look at other sorts of data we can collect about our code, to help us make informed decisions.</p>
+    <h2 id="_idParaDest-91" class="title">Metrics and Monitoring</h2>
+    <p class="normal">It is easy to think of monitoring<a id="_idIndexMarker309"/> tools<a id="_idIndexMarker310"/> as being useful to alert us when something is broken, but there are other valuable uses. <strong class="keyword">Operational health</strong> monitoring relies<a id="_idIndexMarker311"/> on a wide range of high-resolution metrics that arrive with low latency to allow us to notice and fix problems with the system. To determine if a change in architecture is needed, we might look at the operational health of a service, but we also want to look at the service's quality: <strong class="keyword">quality assurance</strong> discovers<a id="_idIndexMarker312"/> whether or not the service is meeting our standards. </p>
+    <p class="normal">How is this different from operational health? In a complex system, there can be components that are unreliable or slow, but the overall performance of the system is acceptable to the people using it. If we ask software to send an email for us, and it arrives ten seconds later, then most people would consider that quality of service acceptable, even if behind the scenes there are numerous failed nodes, connection timeouts, and retrying operations. Such a service is working but needs maintenance, or it will continue with a higher risk of a large outage or lack of burst capacity.</p>
+    <p class="normal">Gathering data about what our application is doing leaves us more informed about which components need attention, which are slow, and which are responding well. What does it mean to take a measurement? It has historically been tricky to pin down a good definition. Psychologist Stanley Smith Stevens, however, describes it in a useful way:</p>
+    <blockquote class="packt_quote">Measurement, in the broadest sense, is defined as the assignment of numerals to objects and events according to rules. <p class="cite">—On the Theory of Scales of Measurement, S. S. Stevens (1946)</p>
+    </blockquote>
+    <p class="normal">What is a good<a id="_idIndexMarker313"/> measurement<a id="_idIndexMarker314"/> to make? Giving a firm answer to this is difficult too, although for our purposes, there are three main categories of data we could collect. The first is gauges, which are an absolute measure at a certain point in time. A fuel gauge in a car will tell you how much fuel is remaining, and a tool such as netstat will tell you how many open network connections a server has. Inside a service, a measurement, such as the number of active connections, is a gauge.</p>
+    <p class="normal">Counters are measurements that continue to grow incrementally and cumulatively—you will often see measurements about the amount of network traffic or disk I/O as a counter. Whenever you ask the kernel how many bytes have been transferred out of a network interface, you will get a number that doesn't mean much by itself, as it will be the total amount of traffic since counting started. But ask again one second later, subtract one number from the other, and now you have a value that is bytes per second. Unix tools such as <code class="Code-In-Text--PACKT-">iostat</code> and <code class="Code-In-Text--PACKT-">vmstat</code> do this for you, which is why the first set of numbers they display is often very high and should be discounted.</p>
+    <p class="normal">It is important to understand what your gauges and counters are collecting, as it changes the ways in which they can be used. Taking an average value—mostly the mean, but sometimes a median—usually gives us a meaningful number. If we record that, in the last second, our laptop's six CPU cores have used 0, 0, 0, 1, 1, and 1 seconds of CPU time, it makes sense to say our average CPU usage is 50%. It is also reasonable to say that we have used a sum of three seconds of CPU time in the last one second. However, if we are measuring the temperature of our laptop and its three sensors tell us the values of 65, 70, and 75<sup class="Superscript--PACKT-">°</sup>C, the average value is still useful, but it would be meaningless to say the total temperature is 210 degrees!</p>
+    <p class="normal">Ratios are the third category of data we are concerned about. These describe how the other measurements relate to one another. We have already seen a useful ratio when discussing counters, as "the number of bytes transferred" divided by "the time it took" gives us a ratio, as does "the number of bytes transferred" divided by the number of API calls.</p>
+    <p class="normal">Choosing what metrics<a id="_idIndexMarker315"/> to collect is often a difficult choice, as there are so many possibilities. It is best to start with specific questions and work toward answering them, rather than trying to collect everything at once. If people report that our application is slow, then we need to discover what parts are slow to respond, and why. Thankfully we can start with two of the easiest things to monitor in a web application:</p>
+    <ul>
+      <li class="bullet">Counting how many times each endpoint is visited</li>
+      <li class="bullet">How long each endpoint takes to finish processing a request</li>
+    </ul>
+    <p class="normal">Once we have<a id="_idIndexMarker316"/> information<a id="_idIndexMarker317"/> about these two things, this will hopefully direct us to a specific endpoint that is overloaded, or that takes too long to process requests and falls behind. If it doesn't help, then we need to start investigating similar high-level information about other components of the system, such as the database or network throughput. To investigate this in a cloud-agnostic way, we will turn to a common tool for operational monitoring, called <strong class="keyword">Prometheus</strong> (<a href="https://prometheus.io/"><span class="url">https://prometheus.io/</span></a>). Prometheus<a id="_idIndexMarker318"/> operates by scraping endpoints—we configure it with some URLs to query, and it expects some metrics to be returned when it sends a request. To easily integrate metrics into our application, we can use the <code class="Code-In-Text--PACKT-">aioprometheus</code><code class="Code-In-Text--PACKT-"><a id="_idIndexMarker319"/></code> library. Its documentation can be found at <a href="https://aioprometheus.readthedocs.io/en/latest/"><span class="url">https://aioprometheus.readthedocs.io/en/latest/</span></a>.</p>
+    <p class="normal">To begin with, we will have to set up the metrics that we want to collect. For now, let's assume that we are interested in how many concurrent requests an endpoint is responding to, and how long each request takes. We can use <code class="Code-In-Text--PACKT-">aioprometheus</code> to set up a <code class="Code-In-Text--PACKT-">Registry</code> object to store these until a Prometheus server asks for the information. The number of active requests is a gauge, since it is a snapshot of the current state at a single point in time. The duration of each request is recorded as a <code class="Code-In-Text--PACKT-">Summary</code> object, as once the data is in Prometheus, we will want to aggregate it, and perhaps look at the distribution of values. We can create both registries and then add them to our application:</p>
+    <pre class="programlisting code"><code class="hljs-code">    app.registry = Registry()
+    app.api_requests_gauge = Gauge(
+        <span class="hljs-string">"quart_active_requests"</span>, <span class="hljs-string">"Number of active requests per endpoint"</span>
+    )
+    app.request_timer = Summary(
+        <span class="hljs-string">"request_processing_seconds"</span>, <span class="hljs-string">"Time spent processing request"</span>
+    )
+    app.registry.register(app.api_requests_gauge)
+    app.registry.register(app.request_timer)
+</code></pre>
+    <p class="normal">We also need to add an endpoint for Prometheus to reach our application and ask for the metrics<a id="_idIndexMarker320"/> that have been collected. <code class="Code-In-Text--PACKT-">aioprometheus</code> also provides a <code class="Code-In-Text--PACKT-">render</code> function to generate this data for us, and so the metrics handler is short:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-meta">@app.route(</span><span class="hljs-string">"/metrics"</span><span class="hljs-meta">)</span>
+<span class="hljs-keyword">async</span> <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">handle_metrics</span><span class="hljs-function">():</span>
+    <span class="hljs-keyword">return</span> render(app.registry, request.headers.getlist(<span class="hljs-string">"accept"</span>))
+</code></pre>
+    <p class="normal">Once that is done, we can make use<a id="_idIndexMarker321"/> of some helper functions<a id="_idIndexMarker322"/> provided by <code class="Code-In-Text--PACKT-">aioprometheus</code> to record the duration of a function, and also to automatically increment and decrement a gauge. The contents of the function here are just to provide some content that takes some time—we will sleep for between 1 and 1.5 seconds to generate a set of values for how long the response takes. Let's add it all together into a working example:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># quart_metrics.py</span>
+<span class="hljs-keyword">import</span> asyncio
+<span class="hljs-keyword">from</span> random <span class="hljs-keyword">import</span> randint
+<span class="hljs-keyword">from</span> aioprometheus <span class="hljs-keyword">import</span> Gauge, Registry, Summary, inprogress, render, timer
+<span class="hljs-keyword">from</span> quart <span class="hljs-keyword">import</span> Quart, request
+app = Quart(__name__)
+app.registry = Registry()
+app.api_requests_gauge = Gauge(
+    <span class="hljs-string">"quart_active_requests"</span>, <span class="hljs-string">"Number of active requests per endpoint"</span>
+)
+app.request_timer = Summary(
+    <span class="hljs-string">"request_processing_seconds"</span>, <span class="hljs-string">"Time spent processing request"</span>
+)
+app.registry.register(app.api_requests_gauge)
+app.registry.register(app.request_timer)
+<span class="hljs-meta">@app.route(</span><span class="hljs-string">"/"</span><span class="hljs-meta">)</span>
+<span class="hljs-meta">@timer(</span><span class="hljs-params">app.request_timer, labels={</span><span class="hljs-string">"path"</span><span class="hljs-params">: </span><span class="hljs-string">"/"</span><span class="hljs-params">}</span><span class="hljs-meta">)</span>
+<span class="hljs-meta">@inprogress(</span><span class="hljs-params">app.api_requests_gauge, labels={</span><span class="hljs-string">"path"</span><span class="hljs-params">: </span><span class="hljs-string">"/"</span><span class="hljs-params">}</span><span class="hljs-meta">)</span>
+<span class="hljs-keyword">async</span> <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">index_handler</span><span class="hljs-function">():</span>
+    <span class="hljs-keyword">await</span> asyncio.sleep(<span class="hljs-number">1.0</span>)
+    <span class="hljs-keyword">return</span> <span class="hljs-string">"index"</span>
+<span class="hljs-meta">@app.route(</span><span class="hljs-string">"/endpoint1"</span><span class="hljs-meta">)</span>
+<span class="hljs-meta">@timer(</span><span class="hljs-params">app.request_timer, labels={</span><span class="hljs-string">"path"</span><span class="hljs-params">: </span><span class="hljs-string">"/endpoint1"</span><span class="hljs-params">}</span><span class="hljs-meta">)</span>
+<span class="hljs-meta">@inprogress(</span><span class="hljs-params">app.api_requests_gauge, labels={</span><span class="hljs-string">"path"</span><span class="hljs-params">: </span><span class="hljs-string">"/endpoint1"</span><span class="hljs-params">}</span><span class="hljs-meta">)</span>
+<span class="hljs-keyword">async</span> <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">endpoint1_handler</span><span class="hljs-function">():</span>
+    <span class="hljs-keyword">await</span> asyncio.sleep(randint(<span class="hljs-number">1000</span>, <span class="hljs-number">1500</span>) / <span class="hljs-number">1000.0</span>)
+    <span class="hljs-keyword">return</span> <span class="hljs-string">"endpoint1"</span>
+<span class="hljs-meta">@app.route(</span><span class="hljs-string">"/endpoint2"</span><span class="hljs-meta">)</span>
+<span class="hljs-meta">@timer(</span><span class="hljs-params">app.request_timer, labels={</span><span class="hljs-string">"path"</span><span class="hljs-params">: </span><span class="hljs-string">"/endpoint2"</span><span class="hljs-params">}</span><span class="hljs-meta">)</span>
+<span class="hljs-meta">@inprogress(</span><span class="hljs-params">app.api_requests_gauge, labels={</span><span class="hljs-string">"path"</span><span class="hljs-params">: </span><span class="hljs-string">"/endpoint2"</span><span class="hljs-params">}</span><span class="hljs-meta">)</span>
+<span class="hljs-keyword">async</span> <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">endpoint2_handler</span><span class="hljs-function">():</span>
+    <span class="hljs-keyword">await</span> asyncio.sleep(randint(<span class="hljs-number">2000</span>, <span class="hljs-number">2500</span>) / <span class="hljs-number">1000.0</span>)
+    <span class="hljs-keyword">return</span> <span class="hljs-string">"endpoint2"</span>
+<span class="hljs-meta">@app.route(</span><span class="hljs-string">"/metrics"</span><span class="hljs-meta">)</span>
+<span class="hljs-keyword">async</span> <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">handle_metrics</span><span class="hljs-function">():</span>
+    <span class="hljs-keyword">return</span> render(app.registry, request.headers.getlist(<span class="hljs-string">"accept"</span>))
+<span class="hljs-keyword">if</span> __name__ == <span class="hljs-string">"__main__"</span>:
+    app.run(host=<span class="hljs-string">"0.0.0.0"</span>)
+</code></pre>
+    <p class="normal">For a production<a id="_idIndexMarker323"/> service, the metrics<a id="_idIndexMarker324"/> collection<a id="_idIndexMarker325"/> service is another component that needs to be deployed and managed; however, for our own experiments while developing, a local copy of Prometheus is enough, and we can run it in a container. If we set up a basic configuration file, we will need to make sure that the targets match the IP address of the computer we are running our application on—it cannot be localhost, as Prometheus is running inside its own container, and so traffic to localhost will never leave that container. Here is our configuration, which we can place in a file called <code class="Code-In-Text--PACKT-">prometheus.yml</code>, which we will then include in the container:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># prometheus.yml</span>
+---
+<span class="hljs-keyword">global</span>:
+  scrape_interval: 15s
+  external_labels:
+    monitor: 'quart-monitor'
+scrape_configs:
+  - job_name: 'prometheus'
+    scrape_interval: 5s
+    static_configs:
+      - targets: ['<span class="hljs-number">192.168.1.100</span>:<span class="hljs-number">5000</span>']  <span class="hljs-comment"># Replace with your app's IP address</span>
+        labels:
+          group: 'quart'
+</code></pre>
+    <p class="normal">Now we run Prometheus and visit the web interface, which, if you are running the container on your laptop, will be at <code class="Code-In-Text--PACKT-">http://localhost:9090/</code>:</p>
+    <pre class="programlisting code"><code class="hljs-code">docker run \
+    -p <span class="hljs-number">9090</span>:<span class="hljs-number">9090</span> \
+    -v /path/to/prometheus.yml:/etc/prometheus/prometheus.yml \
+    prom/prometheus
+</code></pre>
+    <p class="normal"><em class="italic">Figure 5.1</em> shows the data<a id="_idIndexMarker326"/> we collect<a id="_idIndexMarker327"/> after running a series of queries against our running application, using the <strong class="keyword">Boom</strong> (<a href="https://github.com/tarekziade/boom"><span class="url">https://github.com/tarekziade/boom</span></a>) tool that we introduced in <em class="chapterRef">Chapter 3</em>, <em class="italic">Coding, Testing, and Documentation: the Virtuous Cycle</em>, when discussing load testing. Because we randomized which endpoints we call in the test, we can see the different rates of use in the graph. The Prometheus query asks for the rate of the number of active requests each minute, using the name of the gauge we set above in <code class="Code-In-Text--PACKT-">quart_metrics.py</code>. </p>
+    <p class="normal">More information about querying Prometheus<a id="_idIndexMarker328"/> can be found here: <a href="https://prometheus.io/docs/prometheus/latest/getting_started/"><span class="url">https://prometheus.io/docs/prometheus/latest/getting_started/</span></a>.</p>
+    <figure class="mediaobject"><img src="../Images/B17108_05_01.png" alt="image2.png"/></figure>
+    <p class="packt_figref">Figure 5.1: An example of Prometheus showing how many active requests each endpoint is serving</p>
+    <p class="normal">Now we have a much clearer<a id="_idIndexMarker329"/> picture<a id="_idIndexMarker330"/> of how many times each endpoint in our API is queried, and how long those requests take. We could also add extra metrics, such as how much CPU time is used, how much memory is consumed, or how long we are waiting for other network calls to complete. Data like this helps us pinpoint exactly which parts of our application consume the most resources, and which have trouble scaling up.</p>
+    <h2 id="_idParaDest-92" class="title">Logging</h2>
+    <p class="normal">Numbers can tell us a lot about what's going on in an application, but not the whole story. We also<a id="_idIndexMarker331"/> need<a id="_idIndexMarker332"/> to use logging, which is the act of producing some text or data that will be recorded, but is not part of the essential operation of the software. This does not mean that logging isn't important—it is—but the application could run happily without any messages being written out.</p>
+    <p class="normal">Once we have an idea of which parts of a system are operating slowly, the next question is going to be "what, exactly, is it doing?" Reading the code will only give us part of the answer—logging will give us the rest, by recording which decisions were taken, what data was sent, and what errors were encountered.</p>
+    <p class="normal">Recording absolutely everything will increase the I/O requirements of the application, either sending those messages across the network or using up disk resources writing the files locally. We should carefully consider what gets written out, and why. This is especially true when log messages might contain sensitive information, such as personal details about people or passwords. For a service running in production, logs should be sanitized whenever possible, removing anything that might leak personal data.</p>
+    <p class="normal">Python<a id="_idIndexMarker333"/> has powerful<a id="_idIndexMarker334"/> logging options that can automatically format messages for us, and filter the messages based on their severity. The log message's severity is graded on a scale of debug, info, warning, error, and critical, which allows us to easily change how many messages our application produces with one setting, instead of changing each line that produces a message.</p>
+    <p class="normal">Quart provides an interface that allows the use of Python's built-in logging with ease, within the application. Let's take a look at a basic example where we use <code class="Code-In-Text--PACKT-">app.logger</code> to produce log messages whenever <code class="Code-In-Text--PACKT-">hello_handler</code> is called:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># quart_logging.py</span>
+<span class="hljs-keyword">import</span> logging
+<span class="hljs-keyword">from</span> quart <span class="hljs-keyword">import</span> Quart, request
+app = Quart(__name__)
+app.logger.setLevel(logging.INFO)
+<span class="hljs-meta">@app.route(</span><span class="hljs-string">"/hello"</span><span class="hljs-meta">)</span>
+<span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">hello_handler</span><span class="hljs-function">():</span>
+    app.logger.info(<span class="hljs-string">"hello_handler called"</span>)
+    app.logger.debug(<span class="hljs-string">f"The request was </span><span class="hljs-subst">{request}</span><span class="hljs-string">"</span>)
+    <span class="hljs-keyword">return</span> {<span class="hljs-string">"Hello"</span>: <span class="hljs-string">"World!"</span>}
+<span class="hljs-keyword">if</span> __name__ == <span class="hljs-string">"__main__"</span>:
+    app.run()
+</code></pre>
+    <p class="normal">When we run our application and the <code class="Code-In-Text--PACKT-">/hello</code> endpoint is queried, <code class="Code-In-Text--PACKT-">Quart</code> will display one extra message in the terminal where it is running:</p>
+    <pre class="programlisting con"><code class="hljs-con">    [2021-06-26 21:21:41,144] Running on http://127.0.0.1:5000 (CTRL + C to quit)
+    [2021-06-26 21:21:42,743] INFO in quart_logging: hello_handler called
+    [2021-06-26 21:21:42,747] 127.0.0.1:51270 GET /hello 1.1 200 18 4702
+</code></pre>
+    <p class="normal">Why only one message? The second call is using the "debug" severity, and we set the log level to <code class="Code-In-Text--PACKT-">INFO</code> so that only messages of informational importance and above are produced. If we want our debugging messages to appear, we can change <code class="Code-In-Text--PACKT-">app.logger.setLevel(logging.INFO)</code> to <code class="Code-In-Text--PACKT-">app.logger.setLevel(logging.DEBUG)</code>.</p>
+    <p class="normal">While there is a specific format to our log messages so far, what gets produced is still a single text string. This can be awkward to process if you have a program that wants to examine the log entries for important errors or find patterns in what is happening.</p>
+    <p class="normal">For log messages<a id="_idIndexMarker335"/> that<a id="_idIndexMarker336"/> should be readable by a computer, structured logging is the best option. Structured logging is commonly a log message produced in JSON format, so that the date, text description, source of the message, and any other metadata are all separate fields in the JSON. Python's <code class="Code-In-Text--PACKT-">structlog</code><code class="Code-In-Text--PACKT-"><a id="_idIndexMarker337"/></code> library does a good job of formatting the output correctly, and also makes it easy to add processors to the log message to censor names, passwords, and other similar private information: <a href="https://www.structlog.org/en/stable/index.html"><span class="url">https://www.structlog.org/en/stable/index.html</span></a>.</p>
+    <p class="normal">Using it with Quart involves setting up <code class="Code-In-Text--PACKT-">structlog</code>, and replacing the functions used to create log messages:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># quart_structlog.py</span>
+<span class="hljs-keyword">import</span> logging
+<span class="hljs-keyword">from</span> quart <span class="hljs-keyword">import</span> Quart, request
+<span class="hljs-keyword">import</span> structlog
+<span class="hljs-keyword">from</span> structlog <span class="hljs-keyword">import</span> wrap_logger
+<span class="hljs-keyword">from</span> structlog.processors <span class="hljs-keyword">import</span> JSONRenderer
+app = Quart(__name__)
+logger = wrap_logger(
+app.logger,
+    processors=[
+        structlog.processors.add_log_level,
+        structlog.processors.TimeStamper(),
+        JSONRenderer(indent=<span class="hljs-number">4</span>, sort_keys=<span class="hljs-literal">True</span>),
+    ],
+)
+app.logger.setLevel(logging.DEBUG)
+<span class="hljs-meta">@app.route(</span><span class="hljs-string">"/hello"</span><span class="hljs-meta">)</span>
+<span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">hello_handler</span><span class="hljs-function">():</span>
+    logger.info(<span class="hljs-string">"hello_handler called"</span>)
+    logger.debug(<span class="hljs-string">f"The request was </span><span class="hljs-subst">{request}</span><span class="hljs-string">"</span>)
+    <span class="hljs-keyword">return</span> {<span class="hljs-string">"Hello"</span>: <span class="hljs-string">"World!"</span>}
+<span class="hljs-keyword">if</span> __name__ == <span class="hljs-string">"__main__"</span>:
+    app.run()
+</code></pre>
+    <p class="normal">Using the code above, we now get structured log entries—still surrounded by human-readable text, but now there are entries that a computer can easily parse:</p>
+    <pre class="programlisting con"><code class="hljs-con">[2021-06-26 21:54:24,208] INFO in _base: {
+    "event": "hello_handler called",
+    "level": "info",
+    "timestamp": 1624740864.2083042
+}
+[2021-06-26 21:54:24,211] DEBUG in _base: {
+    "event": "The request was &lt;Request 'http://localhost:5000/hello' [GET]&gt;",
+    "level": "debug",
+    "timestamp": 1624740864.211336
+}
+</code></pre>
+    <p class="normal">Further configuration<a id="_idIndexMarker338"/> of <code class="Code-In-Text--PACKT-">structlog</code><code class="Code-In-Text--PACKT-"><a id="_idIndexMarker339"/></code> allows you to send the JSON directly to a central logging server, such as <strong class="keyword">Graylog</strong> (<a href="https://www.graylog.org/"><span class="url">https://www.graylog.org/</span></a>), which<a id="_idIndexMarker340"/> will be useful for collecting logs from multiple different copies of your software running on different computers.</p>
+    <p class="normal">With all this information about code complexity and how well each component in our monolith is working, we should have a good idea as to which areas need the most work, and which would benefit the most from being extracted into their own microservice. Once we have identified those components, we can begin this process.</p>
+    <h1 id="_idParaDest-93" class="title">Splitting a Monolith</h1>
+    <p class="normal">Now that we know which components are consuming the most resources and taking the most time, how should we split them up?</p>
+    <p class="normal">It's already possible<a id="_idIndexMarker341"/> to move several components in our service to separate servers. RabbitMQ, Celery, and the database all communicate over the network, and so while there are a lot of steps to setting up new servers and configuring them, it is a well-understood process to install those hosts and update our application to use new URLs. This lets our API concentrate on handling network connections and moves the larger tasks to their own workers.</p>
+    <div class="packt_tip">
+      <p class="Tip--PACKT-">A developer must also consider setting up network security, accounts, access control and other concerns relating to running and securing a service.</p>
+    </div>
+    <p class="normal">The parts of our own application are trickier: we call functions to invoke our own features, and we will need to call a REST API instead. Should this be done using one large deployment and all the changes in one go? Should we run the old and new versions side by side for a while? </p>
+    <p class="normal">A cautious, measured<a id="_idIndexMarker342"/> change is always safer. Being cautious does not mean you have to be slow, but it does involve planning. How do we tell if the migration is successful? What happens if we need to reverse the changes? Asking these questions lets us discover difficult situations in the migration before they happen—although things may not always go according to plan. There is an old saying that plans never survive contact with the enemy, but there's an important nuance, attributed to former US President Dwight D. Eisenhower:</p>
+    <blockquote class="packt_quote">Plans are worthless, but planning is everything. <p class="cite">—Dwight D. Eisenhower, 1957</p>
+    </blockquote>
+    <p class="normal">It doesn't matter if the plans you make don't end up being useful. The act of making those plans helps you to better understand a situation and leaves you with the tools to deal with the changing situation in front of you.</p>
+    <p class="normal">An excellent first step with any approach is to return to our service-oriented architecture principles and define a clear interface between the future microservice and the rest of the application. Let's look back at our monolithic application, at the function that works out which action to perform, and the other that gets chosen if the user wants to look up the weather. This code has plenty of issues, but we will address the relevant ones:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-comment"># Decide which action to take, and take it.</span>
+<span class="hljs-keyword">async</span> <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">process_message</span><span class="hljs-function">(</span><span class="hljs-params">message, metadata</span><span class="hljs-function">):</span>
+    <span class="hljs-string">"""Decide on an action for a chat message.</span>
+<span class="hljs-string">    Arguments:</span>
+<span class="hljs-string">        message (str): The body of the chat message</span>
+<span class="hljs-string">        metadata (dict): Data about who sent the message,</span>
+<span class="hljs-string">                         the time and channel.</span>
+<span class="hljs-string">    """</span>
+    reply = <span class="hljs-literal">None</span>
+    <span class="hljs-keyword">for</span> test, action <span class="hljs-keyword">in</span> ACTION_MAP.items():
+        <span class="hljs-keyword">if</span> message.startswith(test):
+            reply = <span class="hljs-keyword">await</span> action(message[<span class="hljs-built_in">len</span>(test):] metadata)
+            <span class="hljs-keyword">break</span>
+    <span class="hljs-keyword">if</span> reply:
+        post_to_slack(reply, metadata)
+<span class="hljs-comment"># Process the weather action</span>
+<span class="hljs-keyword">async</span> <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">weather_action</span><span class="hljs-function">(</span><span class="hljs-params">text, metadata</span><span class="hljs-function">):</span>
+    <span class="hljs-keyword">if</span> text:
+        location = text.strip()
+    <span class="hljs-keyword">else</span>:
+        <span class="hljs-keyword">with</span> user_dal() <span class="hljs-keyword">as</span> ud:
+            user = ud.get_user_by_slack_id(metadata[metadata[<span class="hljs-string">"sender"</span>])
+            <span class="hljs-keyword">if</span> user.location:
+                location = user.location
+            <span class="hljs-keyword">else</span>:
+                <span class="hljs-keyword">return</span> <span class="hljs-string">"I don't know where you are."</span>
+    <span class="hljs-keyword">return</span> <span class="hljs-keyword">await</span> fetch_weather(location)
+</code></pre>
+    <p class="normal">We see that our <code class="Code-In-Text--PACKT-">weather_action</code> function<a id="_idIndexMarker343"/> gets all the information it needs from the <code class="Code-In-Text--PACKT-">process_message</code>, but it also needs to understand how to parse the text received as part of the message, and how to interpret the metadata about replying. Ideally only the function that replies needs to understand that metadata. If we wanted to turn the weather feature into a microservice, then we would need to have some way of understanding the messages from different sources, which would require reading the User table to learn where someone is if they haven't told us during the query. We can refactor this to make the function call very clear with regards to what data it needs.</p>
+    <p class="normal">First, it's not easy to test the way in which the location is extracted from the received message. Two new specialist functions should help with that, and ensure that these are more easily tested—the text processing in <code class="Code-In-Text--PACKT-">extract_location</code> only relies on its inputs, and <code class="Code-In-Text--PACKT-">fetch_user_location</code> is now just a database lookup, which we can mock in testing:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">async</span> <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">extract_location</span><span class="hljs-function">(</span><span class="hljs-params">text</span><span class="hljs-function">):</span>
+    <span class="hljs-string">"""Extract location information from free-form text."""</span>
+    <span class="hljs-keyword">return</span> re.sub(<span class="hljs-string">r'^weather (in )?'</span>, <span class="hljs-string">''</span>, text)
+<span class="hljs-keyword">async</span> <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">fetch_user_location</span><span class="hljs-function">(</span><span class="hljs-params">slack_id</span><span class="hljs-function">):</span>
+    location = <span class="hljs-literal">None</span>
+    <span class="hljs-keyword">with</span> user_dal() <span class="hljs-keyword">as</span> ud:
+           user = ud.get_user_by_slack_id(metadata[metadata[<span class="hljs-string">"sender"</span>])
+        location = user.location
+    <span class="hljs-keyword">return</span> location
+</code></pre>
+    <p class="normal">The ability to generate<a id="_idIndexMarker344"/> a more complex analysis of the text to find a location within it is now easier too, as it can be done without affecting any other code. What should call these two functions? The answer is a new pre-processor that can accept the freeform text of a message written by a human and try to structure the data within it. We will also adjust our weather action so that it is now very simple and calls a function that performs the web request we need, and passes that text on to the component that sends messages back to Slack:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">async</span> <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">process_weather_action</span><span class="hljs-function">(</span><span class="hljs-params">text, metadata</span><span class="hljs-function">):</span>
+    potential_location = <span class="hljs-keyword">await</span> extract_location(text)
+    <span class="hljs-keyword">if</span> <span class="hljs-keyword">not</span> potential_location:
+        potential_location = <span class="hljs-keyword">await</span> fetch_user_location(metadata[<span class="hljs-string">"sender"</span>])
+    <span class="hljs-keyword">if</span> potential_location:
+        <span class="hljs-keyword">await</span> weather_action(potential_location, metadata)
+    <span class="hljs-keyword">else</span>:
+        <span class="hljs-keyword">await</span> send_response(<span class="hljs-string">"I don't know where you are"</span>, metadata)
+<span class="hljs-keyword">async</span> <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">weather_action</span><span class="hljs-function">(</span><span class="hljs-params">location, metadata</span><span class="hljs-function">):</span>
+    reply = <span class="hljs-keyword">await</span> fetch_weather(location)
+    <span class="hljs-keyword">await</span> send_response(reply, metadata)
+</code></pre>
+    <p class="normal">Now, when the time comes to move to a microservice, we have a clear model of what the microservice should accept and what data it needs to return. Because the function call can be replaced with one that will perform a web-based query with the same well-structured data, we can incorporate this data into our tests and become more confident that the new microservice will operate as expected. We are also changing the way responses are sent, so that we do not rely on the code that called <code class="Code-In-Text--PACKT-">weather_action</code>, but can instead pass a message on to a dedicated handler. Once we swap to a microservice, the calling code no longer needs to wait for a reply.</p>
+    <h2 id="_idParaDest-94" class="title">Feature Flags</h2>
+    <p class="normal">Changing a large codebase often involves multiple large patches, which in professional environments will be reviewed by peers before they are accepted and merged. With large changes, it can be confusing when you must determine exactly which set of patches must exist in order for a new feature to work. Even worse, if something goes wrong and the changes need to be reverted, this can cause problems in a fast-moving environment where others may have already made new changes that make assumptions about what is already there.</p>
+    <p class="normal">A feature flag is a configuration<a id="_idIndexMarker345"/> option that exists purely to turn a specific feature on or off. They operate in a similar way to normal configuration options, letting you choose the behavior of the software, but they primarily exist to help with new features, fixes, and migrations. Instead of coordinating multiple large software patches, those changes can arrive in production whenever is most convenient, and they will not be used unless a new configuration option is turned on.</p>
+    <p class="normal">Turning a new feature on is then simply a case of adjusting the configuration file—whether that's through a new release, some configuration management software, or updating a service discovery tool<a id="_idIndexMarker346"/> such as <strong class="keyword">etcd</strong> (<a href="https://etcd.io/"><span class="url">https://etcd.io/</span></a>), which we discuss in <em class="chapterRef">Chapter 10</em>, <em class="italic">Deploying on AWS</em>. There will also be situations—despite all the careful planning—in which you need to turn off a new behavior in a hurry. A feature flag means that this is a simple operation, easily understood by anyone who has to review and understands the change.</p>
+    <p class="normal">A feature flag does not have to be an all-or-nothing switch. Given a choice between either a "call a local function" or "make a web request" path, it could be told to send 99% of the traffic to the first path and 1% to the second to let you examine how successful those queries are. A migration can continue slowly, gradually increasing the proportion of traffic going to the new code. You could also choose to duplicate calls and send real traffic to a test system to see how it copes under the load.</p>
+    <p class="normal">Implementing a feature flag should not be complicated—the code only exists while the migration is happening, after all. A simple on/off flag and a router for a proportion of traffic can be as simple as the following examples. The first example will swap to the new worker completely when the configuration value changes, and the second is configured to send a percentage of the traffic to the new worker to allow a controlled rollout of the new code:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-meta">@app.route(</span><span class="hljs-string">"/migrating_endpoint"</span><span class="hljs-meta">)</span>
+<span class="hljs-keyword">async</span> <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">migration_example</span><span class="hljs-function">():</span>
+    <span class="hljs-keyword">if</span> current_app.config.get(<span class="hljs-string">"USE_NEW_WORKER"</span>):
+        <span class="hljs-keyword">return</span> <span class="hljs-keyword">await</span> new_worker()
+    <span class="hljs-keyword">else</span>:
+        <span class="hljs-keyword">return</span> <span class="hljs-keyword">await</span> original_worker()
+<span class="hljs-meta">@app.route(</span><span class="hljs-string">"/migrating_gradually"</span><span class="hljs-meta">)</span>
+<span class="hljs-keyword">async</span> <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">migrating_gradually_example</span><span class="hljs-function">():</span>
+    percentage_split = current_app.config.get(<span class="hljs-string">"NEW_WORKER_PERCENTAGE"</span>)
+    <span class="hljs-keyword">if</span> percentage_split <span class="hljs-keyword">and</span> random.randint(<span class="hljs-number">1</span>,<span class="hljs-number">100</span>) &lt;= percentage_split:
+        <span class="hljs-keyword">return</span> <span class="hljs-keyword">await</span> new_worker()
+    <span class="hljs-keyword">else</span>:
+        <span class="hljs-keyword">return</span> <span class="hljs-keyword">await</span> original_worker()
+</code></pre>
+    <p class="normal">Using Prometheus, we can monitor<a id="_idIndexMarker347"/> the migration. <em class="italic">Figure 5.2</em> is an example of a graph showing how the rate of the <code class="Code-In-Text--PACKT-">original_worker</code> and <code class="Code-In-Text--PACKT-">new_worker</code> calls that our application performs change over time with respect to the number of requests they process, as we steadily increase the percentage of calls that should use the new function.</p>
+    <figure class="mediaobject"><img src="../Images/B17108_05_02.png" alt="image4.png"/></figure>
+    <p class="packt_figref">Figure 5.2: Using Prometheus to track how a gradual feature migration is progressing</p>
+    <p class="normal">Once a new feature<a id="_idIndexMarker348"/> is stable, the default state for the configuration option can be changed—until now, if the option is missing, the feature is off. By now it should be safe to assume that if the option is missing, it should be turned on. This should catch any piece of the code that is not using the configuration properly! It will let you remove the feature flag, and also let you remove the old version of the feature and any code that checks the flag, finishing a migration.</p>
+    <h1 id="_idParaDest-95" class="title">Refactoring Jeeves</h1>
+    <p class="normal">Examining Jeeves<a id="_idIndexMarker349"/> to see what aspects could be improved as a microservice, we might discover some external queries are slowing down our responses or using too many resources.</p>
+    <p class="normal">However, we also discover a more fundamental change to the architecture. Responding to an incoming message is purely for the benefit of Slack's infrastructure, as the user does not see that message. Sending messages to Slack is independent of receiving messages, and so those two elements could be separate services. Instead of a monolithic application, we could have a microservice that simply accepts incoming messages, and routes them appropriately to other microservices that perform the actions the user has asked for. Then those services can all contact a microservice that specializes in sending messages to Slack.</p>
+    <p class="normal">Some of these services will need to contact the database, and if we were to keep our current database architecture then each of these new microservices would need the database models. This is a tightly coupled design, meaning that any change in the database schema will need to be duplicated in all these new services, and the deployment managed so that the old and new versions are not running at the same time. To prevent this, we can convert our database into its own microservice, and set it up to answer the questions we know it will get. </p>
+    <p class="normal">No other service needs to know the internal structure of the data, as it must simply know where to ask, and that the answer will always be structured the same way—or be obvious through a version marker in the data that it should read differently.</p>
+    <figure class="mediaobject"><img src="../Images/B17108_05_03.png" alt=""/></figure>
+    <p class="packt_figref">Figure 5.3: Our new microservice architecture; the Celery workers are left out for simplicity</p>
+    <p class="normal">This has an additional<a id="_idIndexMarker350"/> benefit: All these microservices can be used by any other tool. We could have a service that receives email, or messages through Signal and Telegram, or reads an IRC channel, and each of those could parse and understand the incoming messages, package up some instructions on how to reply, and send them on to the right service to perform the actions.</p>
+    <p class="normal">With the microservice version of the architecture, we can respond quickly to the needs of the organization and start controlling services, while also processing data in a consistent way, and allowing people flexibility in how they make automated requests and get notified of the results.</p>
+    <p class="normal">Let us look at the workflow in more detail.</p>
+    <h2 id="_idParaDest-96" class="title">Workflow</h2>
+    <p class="normal">Everything<a id="_idIndexMarker351"/> looks the same from Slack's perspective. When a user types a message, the URL we have configured will be sent some JSON-formatted information. This data is received by our Slack Request API, which is where all the Slack message processing happens, and where we choose the right microservice as a destination. We also build a data structure that can contain information about where to send a reply that will act as an envelope for our message. The action processing services don't need to understand it, but the tools that post a reply to Slack do—and in the future, other ways to reply can be added with their own information in this metadata.</p>
+    <p class="normal">If our Slack Request service<a id="_idIndexMarker352"/> then makes a web request to the microservice, we must wait for it to respond, accounting for the time it has to wait for all the calls it makes. This can make our API very slow; its toleration of faults is also poor, as in the event of components breaking the entire chain falls apart and the message is lost.</p>
+    <figure class="mediaobject"><img src="../Images/B17108_05_04.png" alt=""/></figure>
+    <p class="packt_figref">Figure 5.4: How messages traverse the new microservices architecture</p>
+    <p class="normal">Thankfully, we have a message queue! Instead of directly calling each step in sequence, we can pass a message to RabbitMQ and immediately return an appropriate status code to Slack's infrastructure. It will accept the messages and ensure that they are delivered to workers that can perform the actions we need. </p>
+    <p class="normal">If one of our workers has a failure, the messages will queue up and still be there when we come back online—unless we tell them to expire after a certain period of time.</p>
+    <p class="normal">Once a reply has been created, we can then use RabbitMQ again and send a message to the Slack Posting service. We gain the same reliability improvements using the message queue as we do for the incoming messages, only now they are more resilient in the event of any failures.</p>
+    <h1 id="_idParaDest-97" class="title">Summary</h1>
+    <p class="normal">In this chapter, we have discussed how to examine a monolithic service and determine which components should be converted to microservices, along with what sort of metrics to collect to allow us to gain a good understanding of a service's operational health and capacity. </p>
+    <p class="normal">This splitting process should be conservative and iterative, otherwise it is quite easy to end up with a system where the overhead for building and maintaining microservices outweighs the benefits of splitting an application up.</p>
+    <p class="normal">However, we have moved from a single application to many that need to interact with each other. Every link in <em class="italic">Figure 5.4</em> can be a weak point for your application. What happens, for instance, if RabbitMQ goes down, or if there is a network split between the message processor and the Slack Posting service? We also need to consider how quickly our application responds to external requests, so that if a caller does not need to wait around for a response then they do not have to.</p>
+    <p class="normal">The same question goes for every new network link that was added to our architecture. We need to be resilient when something goes wrong. We need to know where we are and what to do when a service that was down is back online.</p>
+    <p class="normal">All these problems are addressed in the next chapter.</p>
+  </div>
+</body></html>
