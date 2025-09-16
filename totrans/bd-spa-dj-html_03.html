@@ -1,0 +1,287 @@
+<html><head></head><body>
+		<div id="_idContainer028">
+			<h1 id="_idParaDest-29"><a id="_idTextAnchor033"/>Chapter 2: Creating a Django Project around Docker</h1>
+			<p>In the previous chapter, we learned how to launch an application made in Python using a container system such as <strong class="bold">Docker</strong>. In addition, we created a project in <strong class="bold">Django</strong>, always with an eye on WebSockets for future real-time communication. At the moment, we only have a simple <em class="italic">executable</em>; we need to create a service architecture that complements Django. Important pieces such as a database to store and retrieve information, among other things (such as a fake mail server), will be useful for development. By configuring these tools, we will finish building an optimal working environment around Docker to then focus on the code.</p>
+			<p>We will also work on the communication and integration of environment variables to configure some aspects of the project through <strong class="source-inline">docker-compose.yaml</strong>. We will modify the critical elements of deployment, such as activating or deactivating the debug mode, changing the domain, indicating the path where the statics will be stored, and some other important particularities that differentiate a local development from a production server.</p>
+			<p>By the end of this chapter, we will have a fully integrated project with Django, ready for deployment on a test or real server, which will also be easy for other team members to pick up.</p>
+			<p>In this chapter, we’ll be covering the following topics:</p>
+			<ul>
+				<li>Exploring the containers used for building our app </li>
+				<li>Adding the Django service</li>
+				<li>Configuring databases</li>
+				<li>Connecting Django to a web server</li>
+				<li>Adding a fake SMTP mail server</li>
+				<li>Testing for correct operation</li>
+			</ul>
+			<h1 id="_idParaDest-30"><a id="_idTextAnchor034"/>Technical requirements</h1>
+			<p>The code for this chapter can be found at <a href="https://github.com/PacktPublishing/Building-SPAs-with-Django-and-HTML-Over-the-Wire/tree/main/chapter-2">https://github.com/PacktPublishing/Building-SPAs-with-Django-and-HTML-Over-the-Wire/tree/main/chapter-2</a>.</p>
+			<h1 id="_idParaDest-31"><a id="_idTextAnchor035"/>Exploring the containers used for building our app</h1>
+			<p>Containers <a id="_idIndexMarker059"/>are processes isolated from your operating system. Docker allows us to modify them, add tools, execute scripts, and the like, all without leaving the memory space that Docker reserves for us while they are running. When we want to stop working with a container, we can stop it and any action we have performed will cease to exist. Of course, if we need to, we can save the changes in <em class="italic">volumes</em>. These are Docker virtual hard disks that can connect to any container that is mounted in folders; this is very useful in allowing the container to access project files or configurations.</p>
+			<p>We will use containers to create an environment that is easy to deploy, irrespective of the software or version of Python installed on the machine. In addition, we will be able to select the version for each software in a transparent way.</p>
+			<p>Let’s start by extending <strong class="source-inline">docker-compose.yaml</strong> by adding the following services:</p>
+			<p><strong class="bold">Django</strong>: We will <a id="_idIndexMarker060"/>modify the Python service to a large extent. We will not only change its name but also add environment variables and a script that will perform management tasks.</p>
+			<ul>
+				<li><strong class="bold">PostgreSQL</strong>: This will be <a id="_idIndexMarker061"/>the relational database that we will use. Although Django is database-agnostic, the framework itself recommends it (<a href="https://bit.ly/3JUyfUB">https://bit.ly/3JUyfUB</a>) because PostgreSQL is rich in field types and has interesting extensions.</li>
+				<li><strong class="bold">Caddy</strong>: This is an <a id="_idIndexMarker062"/>excellent web server. It will be in charge of managing the domain, auto-renewing the SSL certificate, serving static documents, and being a reverse proxy to access the Django service.</li>
+				<li><strong class="bold">Redis</strong>: If <a id="_idIndexMarker063"/>you don’t know it already, this is an in-memory database that works with a really fast key-value paradigm. We won’t communicate directly with it but channels will when we open or close rooms. On the other hand, integrating it is a good idea, whether we use WebSockets, as it is an excellent caching system.</li>
+				<li><strong class="bold">MailHog</strong>: This is a <a id="_idIndexMarker064"/>simple SMTP server that will capture all the traffic sent by mail and display it on a graphical interface for users to visualize.</li>
+			</ul>
+			<p>Using a Python service was enough to launch simple code, but now we must have a Docker service that integrates all the configurations and launches the Django server.</p>
+			<h1 id="_idParaDest-32"><a id="_idTextAnchor036"/>Adding the Django service</h1>
+			<p>Within <strong class="source-inline">docker-compose.yaml</strong>, replace <a id="_idIndexMarker065"/>the entire <strong class="source-inline">python</strong> block with the foll<a id="_idTextAnchor037"/>owing:</p>
+			<pre class="source-code">django:</pre>
+			<pre class="source-code">    build:</pre>
+			<pre class="source-code">      context: ./</pre>
+			<pre class="source-code">      dockerfile: ./Dockerfile</pre>
+			<pre class="source-code">    entrypoint: bash ./django-launcher.sh</pre>
+			<pre class="source-code">    volumes:</pre>
+			<pre class="source-code">      - .:/usr/src/app/</pre>
+			<pre class="source-code">    environment:</pre>
+			<pre class="source-code">      DEBUG: "True"</pre>
+			<pre class="source-code">      ALLOWED_HOSTS: hello.localhost</pre>
+			<pre class="source-code">      SECRET_KEY: mysecret</pre>
+			<pre class="source-code">      DB_ENGINE: django.db.backends.postgresql</pre>
+			<pre class="source-code">      DB_NAME: hello_db</pre>
+			<pre class="source-code">      DB_USER: postgres</pre>
+			<pre class="source-code">      DB_PASSWORD: postgres</pre>
+			<pre class="source-code">      DB_HOST: postgresql</pre>
+			<pre class="source-code">      DB_PORT: 5432</pre>
+			<pre class="source-code">      DOMAIN: hello.localhost</pre>
+			<pre class="source-code">      DOMAIN_URL: http://hello.localhost</pre>
+			<pre class="source-code">      REDIS_HOST: redis</pre>
+			<pre class="source-code">      REDIS_PORT: 6379</pre>
+			<pre class="source-code">      DEFAULT_FROM_EMAIL: no-reply@hello.localhost</pre>
+			<pre class="source-code">      STATIC_URL: /static/</pre>
+			<pre class="source-code">      STATIC_ROOT: static</pre>
+			<pre class="source-code">      MEDIA_URL: /media/</pre>
+			<pre class="source-code">      EMAIL_HOST: mailhog</pre>
+			<pre class="source-code">      EMAIL_USE_TLS: "False"</pre>
+			<pre class="source-code">      EMAIL_USE_SSL: "False"</pre>
+			<pre class="source-code">      EMAIL_PORT: 1025</pre>
+			<pre class="source-code">      EMAIL_USER:</pre>
+			<pre class="source-code">      EMAIL_PASSWORD:</pre>
+			<pre class="source-code">    expose:</pre>
+			<pre class="source-code">      - 8000</pre>
+			<pre class="source-code">    depends_on:</pre>
+			<pre class="source-code">      - postgresql</pre>
+			<pre class="source-code">      - redis</pre>
+			<p>Let us go <a id="_idIndexMarker066"/>through each point:</p>
+			<ul>
+				<li>With <strong class="source-inline">build</strong>, as when we use <strong class="source-inline">python</strong>, we indicate that we generate the Python image that we have defined in <strong class="source-inline">Dockerfile</strong>:<p class="source-code">build:</p><p class="source-code">      context: ./</p><p class="source-code">      dockerfile: ./Dockerfile</p></li>
+				<li>As you<a id="_idIndexMarker067"/> can see, we have modified the command that will execute the service when it is up. In this case, it will be necessary to launch several commands, so we will choose to save it in a shell file that we will invoke:<p class="source-code">entrypoint: bash ./django-launcher.sh</p></li>
+			</ul>
+			<p>We’ll create <strong class="source-inline">django-launcher.sh</strong> later, so we’ll ignore it for now.</p>
+			<ul>
+				<li>We will mount and synchronize the volume, which is the service space, with the folder we are in. The structure of the current folder is as follows:<p class="source-code">folder/project:folder/container</p></li>
+			</ul>
+			<p>In the next snippet, the dot (<strong class="source-inline">.</strong>) represents the location of the project, the colon (<strong class="source-inline">:</strong>) is a separator, and <strong class="source-inline">/usr/src/app/</strong> is the path to the container where the project will be located:</p>
+			<p class="source-code">volumes:</p>
+			<p class="source-code">  - .:/usr/src/app/</p>
+			<ul>
+				<li>We define all the environment variables that we will later integrate with Django’s configuration so that we can move between the local and a production server anytime:<p class="source-code">environment:</p><p class="source-code">  KEY: value</p></li>
+				<li>We activate development mode:<p class="source-code">DEBUG: True</p></li>
+				<li>We indicate the domain that will be allowed (for the moment, we will use a fictitious one):<p class="source-code">ALLOWED_HOSTS: hello.localhost</p></li>
+				<li>We define a cryptographic key: <p class="source-code">SECRET_KEY: mysecret</p></li>
+			</ul>
+			<p>When working locally, its complexity should not be important.</p>
+			<ul>
+				<li>We configure PostgreSQL as our database:<p class="source-code">DB_ENGINE: django.db.backends.postgresql</p></li>
+				<li>We indicate a name for the database:<p class="source-code">DB_NAME: hello_db</p></li>
+			</ul>
+			<p>This will be created later with the PostgreSQL service that we have not yet added.</p>
+			<ul>
+				<li>We define a database user:<p class="source-code">DB_USER: postgres</p></li>
+				<li>We add a password for the database:<p class="source-code">DB_PASSWORD: postgres</p></li>
+				<li>We configure the database with the name of the service of the future database:<p class="source-code">DB_HOST: postgresql</p></li>
+				<li>We indicate the PostgreSQL port (by default it uses port <strong class="source-inline">5432</strong>):<p class="source-code">DB_PORT: 5432</p></li>
+				<li>We add the domain we will use (do not add the protocol, such as <strong class="source-inline">https://</strong>):<p class="source-code">DOMAIN: hello.localhost</p></li>
+				<li>We define the path to be used, which will match the <em class="italic">protocol</em> and the <em class="italic">domain</em>:<p class="source-code">DOMAIN_URL: http://hello.localhost</p></li>
+				<li>We tell Django the address and the port of Redis, which is another service we have set up:<p class="source-code">      REDIS_HOST: redis</p><p class="source-code">      REDIS_PORT: 6379</p></li>
+				<li>We give <strong class="source-inline">static</strong> a prefix:<p class="source-code">STATIC_URL: /static/</p></li>
+				<li>We create the folder where we will save the static files:<p class="source-code">STATIC_ROOT: static</p></li>
+			</ul>
+			<p>We will use the <strong class="source-inline">static</strong> folder in the same project</p>
+			<ul>
+				<li>We define the path for multimedia content:<p class="source-code">MEDIA_URL: /media/</p></li>
+				<li>We define all the configuration for the fake SMTP server:<p class="source-code">DEFAULT_FROM_EMAIL: no-reply@hello.localhost</p><p class="source-code">EMAIL_HOST: mailhog</p><p class="source-code">EMAIL_USE_TLS: False</p><p class="source-code">EMAIL_USE_SSL: False</p><p class="source-code">EMAIL_PORT: 1025</p><p class="source-code">EMAIL_USER:</p><p class="source-code">EMAIL_PASSWORD:</p></li>
+			</ul>
+			<p>We tell it to use the <strong class="source-inline">mailhog</strong> service, which does not exist yet, with port <strong class="source-inline">1025</strong>. On a real server, it will probably be <strong class="source-inline">25</strong>.</p>
+			<ul>
+				<li>The web server needs to access the Django server. We will open it on port <strong class="source-inline">8000</strong>. There are two ways to do it, visible to all (<strong class="source-inline">ports</strong>) or only to the Docker subnet (<strong class="source-inline">expose</strong>). It only needs to be accessible to other services:<p class="source-code">expose:</p><p class="source-code">  - 8000</p></li>
+				<li>Finally, please<a id="_idIndexMarker068"/> wait for the databases before launching. They do not yet exist, but they will be there soon:<p class="source-code">depends_on:</p><p class="source-code">  - postgresql</p><p class="source-code">  - redis</p></li>
+			</ul>
+			<p>Next, we will create a script to control the actions when we start the Django service.</p>
+			<h2 id="_idParaDest-33"><a id="_idTextAnchor038"/>Creating a Django launcher</h2>
+			<p>It is good <a id="_idIndexMarker069"/>practice to keep track of the commands that will be executed each time the Django service is up. So, <a id="_idTextAnchor039"/>we’ll create <strong class="source-inline">django-launcher.sh</strong> in the root of the project with the following content:</p>
+			<pre class="source-code">#!/bin/sh</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code"># Collect static files</pre>
+			<pre class="source-code">python3 manage.py collectstatic --noinput</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code"># Apply database migrations</pre>
+			<pre class="source-code">python3 manage.py migrate</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code"># Start server with debug mode</pre>
+			<pre class="source-code">python3 manage.py runserve<a id="_idTextAnchor040"/>r 0.0.0.0 8000</pre>
+			<p>In this way, every time we raise the Django service, we will get the static files, launch the new migrations, and raise the development server on port <strong class="source-inline">8000</strong>.</p>
+			<p>We edit the <strong class="source-inline">hello_world/settings.py</strong>. We are going to import <strong class="source-inline">os</strong> to access the environmen<a id="_idTextAnchor041"/>t variables:</p>
+			<pre class="source-code">import os</pre>
+			<p>Next, we <a id="_idIndexMarker070"/>modify the following lines:</p>
+			<pre class="source-code">SECRET_KEY = os.environ.get("SECRET_KEY")</pre>
+			<pre class="source-code">DEBUG = os.environ.get("DEBUG", "True") == "True"</pre>
+			<pre class="source-code">ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS"). split(",")</pre>
+			<pre class="source-code">DATABASES = {</pre>
+			<pre class="source-code">    "default": {</pre>
+			<pre class="source-code">        "ENGINE": os.environ.get("DB_ENGINE"),</pre>
+			<pre class="source-code">        "NAME": os.environ.get("DB_NAME"),</pre>
+			<pre class="source-code">        "USER": os.environ.get("DB_USER"),</pre>
+			<pre class="source-code">        "PASSWORD": os.environ.get("DB_PASSWORD"),</pre>
+			<pre class="source-code">        "HOST": os.environ.get("DB_HOST"),</pre>
+			<pre class="source-code">        "PORT": os.environ.get("DB_PORT"),</pre>
+			<pre class="source-code">    }</pre>
+			<pre class="source-code">}</pre>
+			<pre class="source-code">STATIC_ROOT = os.environ.get("STATIC_ROOT")</pre>
+			<pre class="source-code">STATIC_URL = os.environ.get("STATIC_URL")</pre>
+			<pre class="source-code">MEDIA_ROOT = os.path.join(BASE_DIR, "media")</pre>
+			<pre class="source-code">MEDIA_URL = os.environ.get("MEDIA_URL")</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">DOMAIN = os.environ.get("DOMAIN")</pre>
+			<pre class="source-code">DOMAIN_URL = os.environ.get("DOMAIN_URL")</pre>
+			<pre class="source-code">CSRF_TRUSTED_ORIGINS = [DOMAIN_URL]</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">"""EMAIL CONFIG"""</pre>
+			<pre class="source-code">DEFAULT_FROM_EMAIL = os.environ.get("EMAIL_ADDRESS")</pre>
+			<pre class="source-code">EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS") == "True"</pre>
+			<pre class="source-code">EMAIL_HOST = os.environ.get("EMAIL_HOST")</pre>
+			<pre class="source-code">EMAIL_PORT = os.environ.get("EMAIL_PORT")</pre>
+			<pre class="source-code">EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER")</pre>
+			<pre class="source-code">EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")</pre>
+			<pre class="source-code">STATIC_ROOT = os.environ.get("STATIC_ROOT")</pre>
+			<pre class="source-code">STATIC_URL = os.environ.get("STATIC_URL")</pre>
+			<pre class="source-code">MEDIA_ROOT = os.path.join(BASE_DIR, "media")</pre>
+			<pre class="source-code">MEDIA_URL = os.environ.get("MEDIA_URL")</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">DOMAIN = os.environ.get("DOMAIN")</pre>
+			<pre class="source-code">DOMAIN_URL = os.environ.get("DOMAIN_URL")</pre>
+			<pre class="source-code">CSRF_TRUSTED_ORIGINS = [DOMAIN_URL]</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">"""EMAIL CONFIG"""</pre>
+			<pre class="source-code">DEFAULT_FROM_EMAIL = os.environ.get("EMAIL_ADDRESS")</pre>
+			<pre class="source-code">EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS") == "True"</pre>
+			<pre class="source-code">EMAIL_USE_SSL = os.environ.get("EMAIL_USE_SSL") == "True"</pre>
+			<pre class="source-code">EMAIL_HOST = os.environ.get("EMAIL_HOST")</pre>
+			<pre class="source-code">EMAIL_PORT = os.environ.get("EMAIL_PORT")</pre>
+			<pre class="source-code">EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER")</pre>
+			<pre class="source-code">EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")</pre>
+			<pre class="source-code">CHANNEL_LAYERS = {</pre>
+			<pre class="source-code">    "default": {</pre>
+			<pre class="source-code">        "BACKEND": "channels_redis.core.RedisChannelLayer",</pre>
+			<pre class="source-code">        "CONFIG": {</pre>
+			<pre class="source-code">            "hosts": [(os.environ.get("REDIS_HOST"), os.environ.get("REDIS_PORT"))],</pre>
+			<pre class="source-code">        },</pre>
+			<pre class="source-code">    },</pre>
+			<pre class="source-code">}</pre>
+			<p>With that, you will <a id="_idIndexMarker071"/>have perfectly integrated Django. If you have problems, feel free to copy the example material online:</p>
+			<p><a href="https://github.com/PacktPublishing/Building-SPAs-with-Django-and-HTML-Over-the-Wire/tree/main/chapter-2">https://github.com/PacktPublishing/Building-SPAs-with-Django-and-HTML-Over-the-Wire/tree/main/chapter-2</a></p>
+			<p>An application without a database has very limited use. So, we’re going to give Django two databases: PostgreSQL and Redis. You’ll soon understand why.</p>
+			<h1 id="_idParaDest-34"><a id="_idTextAnchor042"/>Configuring the databases</h1>
+			<p>We continue <a id="_idIndexMarker072"/>adding services in <strong class="source-inline">docker-compose.yaml</strong>. After the Django service, we add the following<a id="_idTextAnchor043"/> configuration:</p>
+			<pre class="source-code">postgresql:</pre>
+			<pre class="source-code">    image: postgres</pre>
+			<pre class="source-code">    environment:</pre>
+			<pre class="source-code">      POSTGRES_USER: postgres</pre>
+			<pre class="source-code">      POSTGRES_PASSWORD: postgres</pre>
+			<pre class="source-code">      POSTGRES_DB: hello_db</pre>
+			<pre class="source-code">    volumes:</pre>
+			<pre class="source-code">      - ./postgres_data:/var/lib/postgresql/data/</pre>
+			<pre class="source-code">    expose:</pre>
+			<pre class="source-code">      - 5432</pre>
+			<p>In <strong class="source-inline">image: postgres</strong>, we are using the official PostgreSQL image. It will be automatically downloaded from the official repositories. Next, we configure the environment variables to indicate the user credentials (<strong class="source-inline">POSTGRES_USER</strong> and <strong class="source-inline">POSTGRES_PASSWORD</strong>) and the name of the database (<strong class="source-inline">POSTGRES_DB</strong>). The variables must match those declared in the Django service; otherwise, it will fail to connect. </p>
+			<p>It is important to keep a copy of the database, otherwise everything is lost when rebooting. <strong class="source-inline">postgres_data:/var/lib/postgresql/data/</strong> indicates that all the PostgreSQL content in the container is saved in the <strong class="source-inline">postgres_data</strong> folder. Finally, we expose the port (<strong class="source-inline">5432</strong>) that Django will use to connect.</p>
+			<p>Then, we add Redis, the other key<a id="_idTextAnchor044"/>-value database:</p>
+			<pre class="source-code">redis:</pre>
+			<pre class="source-code">    image: redis:alpine</pre>
+			<pre class="source-code">    expose:</pre>
+			<pre class="source-code">      - 6379</pre>
+			<p>It’s as<a id="_idIndexMarker073"/> simple as that. We use the official image with the <strong class="source-inline">alpine</strong> label to make it as light as possible and expose port <strong class="source-inline">6379</strong>.</p>
+			<p>We already have Django and the databases ready. The next step is to connect Django to a web server that exposes the project and manages the SSL certificates automatically.</p>
+			<h1 id="_idParaDest-35"><a id="_idTextAnchor045"/>Connecting Django to a web server</h1>
+			<p>We must have a gateway service that manages the static content. We will use Caddy for its simplicity.</p>
+			<p>Caddy is configured wit<a id="_idTextAnchor046"/>h a flat file named <strong class="source-inline">Caddyfile</strong>. We must create it and add the following content:</p>
+			<pre class="source-code">http://hello.localhost {</pre>
+			<pre class="source-code">    root * /usr/src/app/</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">    @notStatic {</pre>
+			<pre class="source-code">      not path /static/* /media/*</pre>
+			<pre class="source-code">    }</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">    reverse_proxy @notStatic django:8000</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">    file_server</pre>
+			<pre class="source-code">}</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">http://webmail.localhost {</pre>
+			<pre class="source-code">    reverse_proxy mailhog:8025</pre>
+			<pre class="source-code">}</pre>
+			<p>With the<a id="_idIndexMarker074"/> first line, <strong class="source-inline">http://hello.localhost</strong>, we<a id="_idIndexMarker075"/> indicate the domain that we will use. As we are in a development environment, we will indicate the <em class="italic">http</em> protocol instead of <em class="italic">https</em>. Next, with <strong class="source-inline">root * /usr/src/app/</strong> and <strong class="source-inline">file_server</strong>, we’re telling Caddy to expose static files (images, CSS files, JavaScript files, and so on) because that’s not Django’s job. Finally, we reverse proxy the <strong class="source-inline">django</strong> service on port <strong class="source-inline">8000</strong>, ignoring its static or media routes to avoid conflicts.</p>
+			<p>The second block is again a reverse proxy that will point to the fake SMTP mail interface with the <strong class="source-inline">webmail.localhost</strong> domain.</p>
+			<p>After leaving the configuration ready, we have to create the service. We add <strong class="source-inline">docker-compose.yaml</strong> in<a id="_idTextAnchor047"/>to the <strong class="source-inline">Caddy</strong> service:</p>
+			<pre class="source-code">caddy:</pre>
+			<pre class="source-code">    image: caddy:alpine</pre>
+			<pre class="source-code">    ports:</pre>
+			<pre class="source-code">      - 80:80</pre>
+			<pre class="source-code">      - 443:443</pre>
+			<pre class="source-code">    volumes:</pre>
+			<pre class="source-code">      - ./Caddyfile:/etc/caddy/Caddyfile</pre>
+			<pre class="source-code">      - ./caddy_data:/data</pre>
+			<pre class="source-code">    depends_on:</pre>
+			<pre class="source-code">      - django</pre>
+			<p>As with Redis, we<a id="_idIndexMarker076"/> use the official image in its alpine <a id="_idIndexMarker077"/>version: <strong class="source-inline">image: caddy:alpine</strong>. We open ports <strong class="source-inline">80</strong> and <strong class="source-inline">443</strong> publicly so that any visitor can access the site. The next thing is to connect two volumes: the <strong class="source-inline">Caddyfile</strong> configuration file with the internal one of the container (<strong class="source-inline">./Caddyfile:/etc/caddy/Caddyfile</strong>) and the Caddy information with a folder that we will save in the project named <strong class="source-inline">caddy_data</strong> <strong class="source-inline">(./caddy_data:/data</strong>).</p>
+			<p>The next step will be to add a mail server to test that future mail is received correctly by users. In addition, we will test that the rest of the services work as they should.</p>
+			<h1 id="_idParaDest-36"><a id="_idTextAnchor048"/>Adding a fake SMTP mail server</h1>
+			<p>At the end <a id="_idIndexMarker078"/>of the <strong class="source-inline">docker-compose.yaml</strong>, <a id="_idTextAnchor049"/>we add the last service:</p>
+			<pre class="source-code">mailhog:</pre>
+			<pre class="source-code">    image: mailhog/mailhog:latest</pre>
+			<pre class="source-code">    expose:</pre>
+			<pre class="source-code">      - 1025</pre>
+			<pre class="source-code">      - 8025</pre>
+			<p>The ports used will be <strong class="source-inline">1025</strong> for Django to connect to the SMTP server and <strong class="source-inline">8025</strong> for the web interface via the <strong class="source-inline">webmail.localhost</strong> domain because Caddy will act as a reverse proxy.</p>
+			<p>Now that we have added all the containers, it’s time to test whether the containers run and work with each other.</p>
+			<h1 id="_idParaDest-37"><a id="_idTextAnchor050"/>Testing for correct operation</h1>
+			<p>Finally, we pull up all the services from <strong class="source-inline">docker-compose.yaml</strong> to test whether the containers run and work with each other.</p>
+			<h2 id="_idParaDest-38"><a id="_idTextAnchor051"/>Caddy and Django</h2>
+			<p>Caddy<a id="_idIndexMarker079"/> and Django<a id="_idIndexMarker080"/> are easy to check, as when you enter the <strong class="source-inline">hello.localhost</strong> domain, you will see Django fully functioning with its welcome page:</p>
+			<div>
+				<div id="_idContainer026" class="IMG---Figure">
+					<img src="image/Figure_2.1_B18321.jpg" alt="Figure 2.1 – Django running under the hello.localhost domain&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 2.1 – Django running under the hello.localhost domain</p>
+			<p>We know that Django has connected to PostgreSQL because we can see in the log how it has applied the migrations:</p>
+			<p class="source-code">Running migrations:</p>
+			<p class="source-code">Applying contenttypes.0001_initial... OK</p>
+			<p class="source-code">Applying auth.0001_initial... OK</p>
+			<p class="source-code">Applying admin.0001_initial... OK</p>
+			<p class="source-code">Applying admin.0002_logentry_remove_auto_add... OK</p>
+			<p class="source-code">Applying admin.0003_logentry_add_action_flag_choices... OK</p>
+			<p class="source-code">Applying contenttypes.0002_remove_content_type_name... OK</p>
+			<p class="source-code">Applying auth.0002_alter_permission_name_max_length... OK</p>
+			<p class="source-code">...</p>
+			<h2 id="_idParaDest-39"><a id="_idTextAnchor052"/>MailHog</h2>
+			<p>MailHog is<a id="_idIndexMarker081"/> simple because when you enter the <strong class="source-inline">webmail.localhost</strong> domain, you will see the web interface with an empty inbox:</p>
+			<div>
+				<div id="_idContainer027" class="IMG---Figure">
+					<img src="image/Figure_2.2_B18321.jpg" alt="Figure 2.2 – MailHog WebMail with an empty inbox&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 2.2 – MailHog WebMail with an empty inbox</p>
+			<p>And finally, with Redis, we only have to make sure that there are no errors in the log. Otherwise, it will be silent.</p>
+			<h1 id="_idParaDest-40"><a id="_idTextAnchor053"/>Summary</h1>
+			<p>In the previous chapter, we were able to run Python in complete isolation from the operating system, including its dependencies. It wasn’t much different from creating a virtual environment. But in this iteration, we’ve taken it up a notch by incorporating all the external software into Django. Containers have become the backbone of the site, incorporating elements as important as databases and the web server itself. What’s more, integration with Django is not merely decorative, as the most critical configurations originate in the Docker environment variables that directly affect <strong class="source-inline">settings.py</strong>. Right now, if we wanted to, we could deploy the site on any server that has Docker installed with just one command. We can find harmony and architecture in every line of Docker.</p>
+			<p>We are now ready to dive into asynchrony, WebSockets, channels, and real-time requests.</p>
+		</div>
+		<div>
+			<div id="_idContainer029">
+			</div>
+		</div>
+	</body></html>

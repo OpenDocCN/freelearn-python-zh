@@ -1,0 +1,347 @@
+<html><head></head><body>
+		<div id="_idContainer041">
+			<h1 id="_idParaDest-42"><a id="_idTextAnchor055"/>Chapter 3: Adding WebSockets to Django</h1>
+			<p>Channels is a Django <a id="_idIndexMarker082"/>extension that allows us to use protocols other than HTTP. The Django team, knowing the existing limitations of including other protocols, had to create a new <a id="_idIndexMarker083"/>server called Daphne that is natively compatible <a id="_idIndexMarker084"/>with the <strong class="bold">Asynchronous Server Gateway Interface</strong> (<strong class="bold">ASGI</strong>), an update of the <strong class="bold">Web Server Gateway Interface</strong> (<strong class="bold">WSGI</strong>). Without <a id="_idIndexMarker085"/>Channels, it would be impossible to have the WebSockets protocol.</p>
+			<p>You may wonder why the migration from WSGI to ASGI is so important. First, we need to understand what communication interfaces are. When we want to serve a Python site, be it Django or any other framework, we need to run software capable of keeping an instance active and mediating with any web server that makes requests. There are many interfaces for a web server to understand Python, but the most recommended is the WSGI specification, a Python standard for communication between a web server (Apache, Nginx, Caddy, etc.) and any Python web app or frameworks/applications (Django, Flask, FastAPI, etc.). Unfortunately, there is a limitation. </p>
+			<p>When we want to use HTTP with another protocol (WebSockets, etc.) it is not possible; HTTP was not designed to work with other protocols. The alternative is to use the ASGI specification, which will allow us to accept different protocols and asynchronous requests, split tasks into events, and keep a request alive after its response. In addition, it is compatible with applications using WSGI, so it will work perfectly with existing applications. That’s why Daphne (remember that it’s Django’s new ASGI server) is a spiritual successor as it maintains compatibility and extends Django possibilities. And this is the reason why we included the dependencies of <strong class="bold">daphne</strong>, <strong class="bold">asgiref</strong>, and <strong class="bold">channels</strong> in <a href="B18321_02_ePub.xhtml#_idTextAnchor033"><em class="italic">Chapter 2</em></a>, <em class="italic">Creating a Django Project around Docker</em>, when we created the Docker container; they are the minimum tools required to be able to work with the WebSockets protocol.</p>
+			<p>In this chapter, we’ll learn how to activate Channels, configure Django to use Daphne, create a communication channel between the backend and frontend, send different formats (plain text, JSON, and HTML), where Django will generate the HTML blocks that will be displayed in the frontend. We will also delve into other essential Channels components such as <strong class="bold">scope</strong>, <strong class="bold">consumers</strong>, <strong class="bold">routing</strong>, and events.</p>
+			<p>By the end of this chapter, we will acquire the minimum skills required to establish bidirectional communication between the server and the client using Django.</p>
+			<p>We will be covering the following topics in this chapter:</p>
+			<ul>
+				<li>Creating our first page with Daphne</li>
+				<li>Listening to events with consumers</li>
+				<li>Sending plain text from the backend</li>
+				<li>Sending and receiving messages in JSON</li>
+				<li>Rendering HTML in the backend</li>
+			</ul>
+			<h1 id="_idParaDest-43"><a id="_idTextAnchor056"/>Technical requirements</h1>
+			<p>The code for this chapter can be found at <a href="https://github.com/PacktPublishing/Building-SPAs-with-Django-and-HTML-Over-the-Wire/tree/main/chapter-3">https://github.com/PacktPublishing/Building-SPAs-with-Django-and-HTML-Over-the-Wire/tree/main/chapter-3</a>.</p>
+			<h1 id="_idParaDest-44"><a id="_idTextAnchor057"/>Creating our first page with Daphne</h1>
+			<p>Let’s begin by activating all the real-time capabilities that Channels has to offer. So, we are going <a id="_idIndexMarker086"/>to enable Channels in the configuration, change the WSGI server for ASGI, and build a minimal HTML page to check that <a id="_idIndexMarker087"/>everything is running correctly. We will continue the application we started in <a href="B18321_02_ePub.xhtml#_idTextAnchor033"><em class="italic">Chapter 2</em></a>, <em class="italic">Creating a Django Project around Docker</em>. If you don’t have the code, you can use the example available in the following repository: <a href="https://github.com/PacktPublishing/Building-SPAs-with-Django-and-HTML-Over-the-Wire/tree/main/chapter-2">https://github.com/PacktPublishing/Building-SPAs-with-Django-and-HTML-Over-the-Wire/tree/main/chapter-2</a>.</p>
+			<p>Let’s begin:</p>
+			<ol>
+				<li>The first thing we are going to do is to activate Channels. To do this, we open <strong class="source-inline">hello_world/settings.py</strong>, and under <strong class="source-inline">INSTALLED_APPS</strong>, we add <strong class="source-inline">app.simple_app</strong> (put it at the end) and <strong class="source-inline">channels</strong> (put it first):<p class="source-code">INSTALLED_APPS = [</p><p class="source-code"><a id="_idTextAnchor058"/>    ' channels', # New line</p><p class="source-code">    'django.contrib.admin',</p><p class="source-code">    'django.contrib.auth',</p><p class="source-code">    'django.contrib.contenttypes',</p><p class="source-code">    'django.contrib.sessions',</p><p class="source-code">    'django.contrib.messages',</p><p class="source-code">    'django.contrib.staticfiles'<a id="_idTextAnchor059"/>,</p><p class="source-code">    'app.simple_app', #New line</p><p class="source-code">]</p></li>
+				<li>As we <a id="_idIndexMarker088"/>learned in the introduction, Channels needs <a id="_idIndexMarker089"/>an ASGI-compatible server to work. If we don’t meet this requirement, Django won’t even be able to get up. That’s why we have to indicate where the file with the configuration for Daphne, or any other server that manages the interface, is located. In our case, we will go to the end of <strong class="source-inline">settings.py</strong> and add the followin<a id="_idTextAnchor060"/>g line:<p class="source-code"><strong class="bold">ASGI_APPLICATION = "hello_world.asgi.application"</strong></p></li>
+				<li>As the project is inside the <strong class="source-inline">app</strong> folder, Django may not be able to handle imports properly. To fix this, we’ll change the name of our application. We open <strong class="source-inline">app/simple_app/apps.py</strong> and leave it as follows:<p class="source-code">from django.apps import AppConfig</p><p class="source-code">class SimpleAppConfig(AppConfig):</p><p class="source-code">    default_auto_field = 'django.db.models.</p><p class="source-code">        BigAutoField'.</p><p class="source-code">    name = 'app.simple_app' # Update</p></li>
+				<li>We will <a id="_idIndexMarker090"/>next create a basic HTML page, where <a id="_idIndexMarker091"/>JavaScript will interact with the future WebSockets server.</li>
+			</ol>
+			<p>Inside <strong class="source-inline">app/simple_app/</strong>, we create the <strong class="source-inline">templates</strong> folder, and inside it we create a new fi<a id="_idTextAnchor061"/>le called <strong class="source-inline">index.html</strong>. The full path would be <strong class="source-inline">app/simple_app/templates/index.html</strong>. We include the following content:</p>
+			<p class="source-code">&lt;html lang="en"&gt;</p>
+			<p class="source-code">&lt;head&gt;</p>
+			<p class="source-code">    &lt;meta charset="UTF-8"&gt;</p>
+			<p class="source-code">    &lt;meta name="viewport" content="width=device-width, </p>
+			<p class="source-code">      user-scalable=no, initial-scale=1.0, maximum- </p>
+			<p class="source-code">        scale=1.0, minimum-scale=1.0"&gt;</p>
+			<p class="source-code">    &lt;title&gt; Index &lt;/title&gt;</p>
+			<p class="source-code">&lt;/head&gt;</p>
+			<p class="source-code">&lt;body&gt;</p>
+			<p class="source-code">    &lt;h1&gt; Hello Django! &lt;h1&gt;</p>
+			<p class="source-code">&lt;/body&gt;</p>
+			<p class="source-code">&lt;/html&gt;</p>
+			<ol>
+				<li value="5">Next, let’s create a view that serves the HTML file we just created. We open <strong class="source-inline">app/simple_app/views.py</strong> and create the view <strong class="source-inline">index</strong>. In <strong class="source-inline">return</strong>, we’ll tell it to respond with the content of the <a id="_idTextAnchor062"/>template:<p class="source-code">from django.shortcuts import render</p><p class="source-code"> </p><p class="source-code">def index(request):</p><p class="source-code">    return render(request, 'index.html', {})</p></li>
+				<li>Now we <a id="_idIndexMarker092"/>just need to give a route. We go into <strong class="source-inline">hello_world/urls.py</strong>. Import <a id="_idIndexMarker093"/>the view and add a new <strong class="source-inline">path</strong>:<p class="source-code">from django.contrib import admin</p><p class="source-code">from django.urls <a id="_idTextAnchor063"/>import path</p><p class="source-code">from app.simple_app import views</p><p class="source-code"> </p><p class="source-code">urlpatte<a id="_idTextAnchor064"/>rns = [</p><p class="source-code">    path('', views.index, name='index'), # New line</p><p class="source-code">    path('admin/', admin.site.urls),</p><p class="source-code">]</p></li>
+				<li>We pull up Docker and go to <strong class="source-inline">http://hello.localhost/</strong>. It will respond with a minimalist message:</li>
+			</ol>
+			<div>
+				<div id="_idContainer032" class="IMG---Figure">
+					<img src="image/Figure_3.1_B18321.jpg" alt="Figure 3.1 – Displaying a static HTML page on the domain hello.localhost&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 3.1 – Displaying a static HTML page on the domain hello.localhost</p>
+			<p>Congratulations! You have <a id="_idIndexMarker094"/>built a web page with Daphne <a id="_idIndexMarker095"/>and Django that is ready to handle WebSockets connections.</p>
+			<p>The next step is to build and learn about the concept of Consumers, Channels’ way of handling events. We’ll connect the frontend with a simple Consumer that will act as an intermediary to communicate between Django and the JavaScript WebSocket client. </p>
+			<h1 id="_idParaDest-45"><a id="_idTextAnchor065"/>Listening to events with consumers</h1>
+			<p>We are <a id="_idIndexMarker096"/>going to build an example where we can send <a id="_idIndexMarker097"/>messages between a backend and frontend in real time. We will need an intermediary to listen to both and make decisions. Channels <a id="_idIndexMarker098"/>comes ready with a specially prepared tool called a consumer. It is a series of functions that are invoked when an event is triggered by a WebSocket client.</p>
+			<p>Here you can see a minimal consumer structure for WebSockets: </p>
+			<pre class="source-code">from channels.generic.websocket import WebsocketConsumer</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">class NameConsumer(WebsocketConsumer):</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">    def connect(self):</pre>
+			<pre class="source-code">        """Event when client connects"""</pre>
+			<pre class="source-code">        # Informs client of successful connection</pre>
+			<pre class="source-code">        self.accept()</pre>
+			<pre class="source-code">  </pre>
+			<pre class="source-code">    def disconnect(self, close_code):</pre>
+			<pre class="source-code">        """Event when client disconnects"""</pre>
+			<pre class="source-code">        pass</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">    def receive(self, text_data):</pre>
+			<pre class="source-code">        """Event when data is received"""</pre>
+			<pre class="source-code">        pass</pre>
+			<p>Let us <a id="_idIndexMarker099"/>go through what each of these events in the <a id="_idIndexMarker100"/>preceding code snippet does: </p>
+			<ul>
+				<li><strong class="source-inline">connect</strong>: Asks for permission to connect. If we accept, we will assign a group. More on this later.</li>
+				<li><strong class="source-inline">receive</strong>: Sends us information and we decide what to do with it. It may trigger some actions, or we may ignore it; we are not obliged to process it.</li>
+				<li><strong class="source-inline">disconnect</strong>: Notifies us that it is going to close the connection. It is important to be aware in advance if the connection is going to close.</li>
+			</ul>
+			<p>Being technical, Consumers are an abstraction for making event-driven applications using ASGI. They allow us to execute the code we need when a change occurs. If you have worked with JavaScript events, you will be very familiar with them. And if you haven’t, you could think of them as Channels views, except, instead of being triggered by requests to the URLs we link to the views, they are actions that execute functions. </p>
+			<p>Django is able <a id="_idIndexMarker101"/>to capture client events. Channels knows whether <a id="_idIndexMarker102"/>a new client has connected, disconnected, or sent information. However, the backend has a very powerful ability: to select the recipients of the information. When a client asks to connect, Django must assign the client a group or channel. The client can be left alone or grouped with other clients, depending on the need. When the time comes to send a message, we must decide who will receive it—a specific client or a group.</p>
+			<p>In what situation will I need to send data to a client or a group? Let’s use the example of a chat. When I write a private message, Django will send the new text to a specific client, that is the specific user I’m talking to. On the other hand, if I am in a group with other users, when I write a message, the backend will send the text only to a specific selection, that is all the users subscribed to the chat room. The frontend does not decide whether it receives new information or who the recipients are; it is the consumer who is the master of who moves the available information.</p>
+			<p>Now that we have seen how consumers can be useful, let’s look at the role they play when sending plain text to a server/client. We will explore how a client can capture information received from a channel. </p>
+			<h1 id="_idParaDest-46"><a id="_idTextAnchor066"/>Sending plain text from the backend</h1>
+			<p>Let’s build <a id="_idIndexMarker103"/>the first minimalistic consumer that greets <a id="_idIndexMarker104"/>a WebSocket client when it connects. Later, we will add complexity and other actions.</p>
+			<p>All the code for the example can be found at <a href="https://github.com/PacktPublishing/Building-SPAs-with-Django-and-HTML-Over-the-Wire/tree/main/chapter-3/Sending%20plain%20text">https://github.com/PacktPublishing/Building-SPAs-with-Django-and-HTML-Over-the-Wire/tree/main/chapter-3/Sending%20plain%20text</a>:</p>
+			<ol>
+				<li value="1">We <a id="_idTextAnchor067"/><a id="_idIndexMarker105"/>create <strong class="source-inline">app/simple_app/consumers.py</strong> with <a id="_idTextAnchor068"/><a id="_idIndexMarker106"/>the following content:<p class="source-code"># app/simple_app/consumers.py</p><p class="source-code">from channels.generic.websocket import WebsocketConsumer</p><p class="source-code"> </p><p class="source-code">class EchoConsumer(WebsocketConsumer):</p><p class="source-code"> </p><p class="source-code">    def connect(self):</p><p class="source-code">        """Event when client connects"""</p><p class="source-code"> </p><p class="source-code">        # Informs client of successful connection</p><p class="source-code">        self.accept()</p><p class="source-code"> </p><p class="source-code">        # Send message to client</p><p class="source-code">        self.send(text_data="You are connected by WebSockets!")</p><p class="source-code"> </p><p class="source-code">    def disconnect(self, close_code):</p><p class="source-code">        """Event when client disconnects"""</p><p class="source-code">        pass</p><p class="source-code"> </p><p class="source-code">    def receive(self, text_data):</p><p class="source-code">        """Event when data is received"""</p><p class="source-code">        pass</p></li>
+			</ol>
+			<p>Let's explain each element of the file we have just created:</p>
+			<ul>
+				<li>With <strong class="source-inline">from channels.generic.websocket import WebsocketConsumer</strong>, we import the consumer object for WebSockets.</li>
+				<li>We declare the Consumer with <strong class="source-inline">class EchoConsumer(WebsocketConsumer):</strong> and call it <strong class="source-inline">EchoConsumer</strong>.</li>
+				<li>You need at least three functions that are the events that will be triggered by the frontend actions: <strong class="source-inline">connect</strong>, <strong class="source-inline">disconnect</strong>, and <strong class="source-inline">receive</strong>. We are going to focus on <strong class="source-inline">connect</strong>.</li>
+				<li>When <a id="_idIndexMarker107"/>clients connect, the first thing <a id="_idIndexMarker108"/>we’ll do is confirm the connection to establish future communication between Django and the client. We use <strong class="source-inline">self.accept()</strong>.</li>
+				<li>Finally, we will send a message with <strong class="source-inline">self.send</strong>, the string <strong class="source-inline">"You are connected by WebSockets!"</strong>. That way every client that connects will receive a greeting.</li>
+			</ul>
+			<ol>
+				<li value="2">Now we need to assign the consumer a route for a WebSockets client to connect to. For this, we add the routes on the ASGI server that connects to the consumers. We open <strong class="source-inline">hello_world/asgi.py</strong> and update with the path <strong class="source-inline">/ws/echo/</strong> pointing to <strong class="source-inline">EchoConsumer</strong>:<p class="source-code"># hello_world/asgi.py</p><p class="source-code">import os</p><p class="source-code">from django.core.asgi import get_asgi_application</p><p class="source-code">from channels.auth import AuthMiddlewareStack</p><p class="source-code">from channels.routing import ProtocolTypeRouter, </p><p class="source-code">    URLRouter</p><p class="source-code">from django.urls import re_path</p><p class="source-code">from app.simple_app.consumers import EchoConsumer</p><p class="source-code"> os.environ.setdefault('DJANGO_SETTINGS_MODULE', </p><p class="source-code">    'hello_world.settings')</p><p class="source-code"> </p><p class="source-code">application = ProtocolTypeRouter({</p><p class="source-code">    # Django's ASGI application to handle traditional </p><p class="source-code">    HTTP requests</p><p class="source-code">    "http": get_asgi_application(),</p><p class="source-code">    # WebSocket handler</p><p class="source-code">    "websocket": AuthMiddlewareStack(</p><p class="source-code">        URLRouter([</p><p class="source-code">            re_path(r"^ws/echo/$", EchoConsumer.</p><p class="source-code">                as_asgi()),</p><p class="source-code">        ])</p><p class="source-code">    ),</p><p class="source-code">})</p></li>
+			</ol>
+			<p>In <strong class="source-inline">asgi.py</strong>, you will <a id="_idIndexMarker109"/>find all the configurations <a id="_idIndexMarker110"/>that you can apply to the ASGI server:</p>
+			<ul>
+				<li>Since ASGI loads before Django, it can’t know the path to Django’s own configuration file. We must preempt this with <strong class="source-inline">os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hello_world.settings')</strong>.</li>
+				<li>In <strong class="source-inline">application</strong>, we configure all routes, whether HTTP or any other protocol. We use the <strong class="source-inline">ProtocolTypeRouter</strong> object to indicate the type and destination of each route.</li>
+				<li>It will still be necessary to use traditional HTTP requests: loading pages via HTTP, managing sessions, cookies, and other particularities. For this task, we include <strong class="source-inline">"http": get_asgi_application()</strong> inside <strong class="source-inline">ProtocolTypeRouter</strong>.</li>
+				<li>Finally, we include the consumer path with <strong class="source-inline">re_path(r'ws/echo/$', consumers.EchoConsumer.as_asgi())</strong>. Now the path to connect to <strong class="source-inline">EchoConsumer</strong> is <strong class="source-inline">/ws/echo/</strong>.</li>
+			</ul>
+			<ol>
+				<li value="3">Next, we <a id="_idIndexMarker111"/>connect a WebSockets client to Django.</li>
+			</ol>
+			<p>We go to <strong class="source-inline">app/simple_app/templates/index.html</strong>, where we are going to <a id="_idIndexMarker112"/>define with JavaScript a WebSockets client that connects to the path we just created: </p>
+			<p class="source-code">{# app/simple_app/templates/index.html #}</p>
+			<p class="source-code">&lt;! doctype html&gt;</p>
+			<p class="source-code">&lt;html lang="en"&gt;</p>
+			<p class="source-code">&lt;head&gt;</p>
+			<p class="source-code">    &lt;meta charset="UTF-8"&gt;</p>
+			<p class="source-code">    &lt;meta name="viewport" content="width=device-width, </p>
+			<p class="source-code">      user-scalable=no, initial-scale=1.0, maximum-</p>
+			<p class="source-code">        scale=1.0, minimum-scale=1.0"&gt;</p>
+			<p class="source-code">    &lt; title&gt; Index &lt;/title&gt;</p>
+			<p class="source-code">&lt;/head&gt;</p>
+			<p class="source-code">&lt;body&gt;</p>
+			<p class="source-code">    &lt;h1&gt;Hello Django!&lt;/h1&gt;</p>
+			<p class="source-code"> </p>
+			<p class="source-code">    &lt;!-- Place where we will display the connection </p>
+			<p class="source-code">    message. --&gt;</p>
+			<p class="source-code">    &lt;h2 id="welcome"&gt;&lt;/h2&gt;</p>
+			<p class="source-code">    &lt;script&gt;</p>
+			<p class="source-code">        // Connect to WebSockets server (EchoConsumer)</p>
+			<p class="source-code">        const myWebSocket = new WebSocket("ws://{{ </p>
+			<p class="source-code">            request.get_host }}/ws/echo/");</p>
+			<p class="source-code"> </p>
+			<p class="source-code">        // Event when a new message is received by </p>
+			<p class="source-code">        WebSockets</p>
+			<p class="source-code">        myWebSocket.addEventListener("message", </p>
+			<p class="source-code">            (event) =&gt; {</p>
+			<p class="source-code">            // Display the message in '#welcome'.</p>
+			<p class="source-code">            document.querySelector("#welcome").</p>
+			<p class="source-code">                textContent = event.data;</p>
+			<p class="source-code">        });</p>
+			<p class="source-code">    &lt;/script&gt;</p>
+			<p class="source-code">&lt;/body&gt;</p>
+			<p class="source-code">&lt;/html&gt;</p>
+			<p>We've created a minimalistic WebSockets client in JavaScript to listen to everything we receive from the backend:</p>
+			<ul>
+				<li>We define <a id="_idIndexMarker113"/>an HTML tag to display the welcome <a id="_idIndexMarker114"/>message that the backend will send us. Adding <strong class="source-inline">&lt;h2 id="welcome"&gt;&lt;/h2&gt;</strong> will be enough; later, we will fill it with JavaScript.</li>
+				<li>We connect with <strong class="source-inline">new WebSocket()</strong> to <strong class="source-inline">/ws/echo/</strong>. The address must contain the following structure: <strong class="source-inline">protocol://domain/path</strong>. In our case, it will be <strong class="source-inline">ws://hello.localhost/ws/echo/</strong>.</li>
+				<li>The <strong class="source-inline">message</strong> event will be fired when the backend sends a message. As soon as we <a id="_idIndexMarker115"/>connect to Django, we’ll receive the <a id="_idIndexMarker116"/>message we’ve programmed and then display it in <strong class="source-inline">&lt;h2&gt;</strong>.</li>
+			</ul>
+			<p class="callout-heading">WebSocket secure protocol</p>
+			<p class="callout">We can use the <strong class="source-inline">ws://</strong> protocol, where information is sent in plain text, or <strong class="source-inline">wss://</strong> to maintain a secure connection. The difference is similar to using <strong class="source-inline">http://</strong> or <strong class="source-inline">https://</strong>. We will change the protocol to secure when it is in production or when we can provide an SSL certificate; while we are developing, it is not necessary.</p>
+			<p>Open in your favorite browser the address <strong class="source-inline">http://hello.localhost</strong>.</p>
+			<div>
+				<div id="_idContainer033" class="IMG---Figure">
+					<img src="image/Figure_3.2_B18321.jpg" alt="Figure 3.2 – Sending plain text from the backend a plain text (&quot;You are connected by WebSockets&quot;) and rendering the message in an HTML element, below the title"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 3.2 – Sending plain text from the backend a plain text ("You are connected by WebSockets") and rendering the message in an HTML element, below the title</p>
+			<p>We just learned how to send asynchronous plain text from the backend to the frontend via WebSockets. OK! It’s not very spectacular; it’s sent at the very moment we connect. However, as we have it built, we can send messages whenever we need to.</p>
+			<p>Let’s make it more interesting: do we synchronize the time for all our visitors? In other words, send the same information to all connected clients in real-time. Of course!</p>
+			<p>We go back to <strong class="source-inline">app/simple_app/consumers.py</strong>. We will create an infinite loop wherein every second a text is sent to the frontend, specifically, the current time. We’ll use <strong class="bold">threading</strong> to <a id="_idIndexMarker117"/>create a <a id="_idIndexMarker118"/>background task and not <a id="_idIndexMarker119"/>produce any interruptions:</p>
+			<pre class="source-code"># app/simple_app/consumers.py</pre>
+			<pre class="source-code">from channels.generic.websocket import WebsocketConsumer</pre>
+			<pre class="source-code">from datetime import datetime # New line</pre>
+			<pre class="source-code">import time # New line</pre>
+			<pre class="source-code">import threading # New line</pre>
+			<pre class="source-code">class EchoConsumer(WebsocketConsumer):</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">    def connect(self):</pre>
+			<pre class="source-code">        """Event when client connects"""</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">        # Informs client of successful connection</pre>
+			<pre class="source-code">        self.accept()</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">        # Send message to client</pre>
+			<pre class="source-code">        self.send(text_data="You are connected by </pre>
+			<pre class="source-code">            WebSockets!")</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">        # Send message to client every second</pre>
+			<pre class="source-code">        def send_time(self): # New line</pre>
+			<pre class="source-code">            while True:</pre>
+			<pre class="source-code">                # Send message to client</pre>
+			<pre class="source-code">                self.send(text_data=str(datetime.now(). </pre>
+			<pre class="source-code">                    Strftime("%H:%M:%S")))</pre>
+			<pre class="source-code">                # Sleep for 1 second</pre>
+			<pre class="source-code">                time.sleep(1)</pre>
+			<pre class="source-code">        threading.Thread(target=send_time, args=(self,)).</pre>
+			<pre class="source-code">            start() # New line</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">    def disconnect(self, close_code):</pre>
+			<pre class="source-code">        """Event when client disconnects"""</pre>
+			<pre class="source-code">        pass</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">    def receive(self, text_data):</pre>
+			<pre class="source-code">        """Event when data is received"""</pre>
+			<pre class="source-code">        pass</pre>
+			<p>Now, open <a id="_idIndexMarker120"/>the same address <strong class="source-inline">hello.localhost</strong> in different <a id="_idIndexMarker121"/>tabs or browsers; you’ll see how they show the exact same time. All clients are synchronized, receiving the same. No waiting, no need to ask the backend.</p>
+			<div>
+				<div id="_idContainer034" class="IMG---Figure">
+					<img src="image/Figure_3.3_B18321.jpg" alt="Figure 3.3 – Showing the same time to all visitors in real time&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 3.3 – Showing the same time to all visitors in real time</p>
+			<p>The power <a id="_idIndexMarker122"/>of real time before your eyes. Maybe it’s inspiring your imagination; the possibilities are endless: an election system? An <a id="_idIndexMarker123"/>auction site? Notifications? Taxi locator? Food order? Chat? We’ll keep exploring with small projects. </p>
+			<p>In the following sections, we will continue to learn how to send messages from the backend in different formats, such as JSON or HTML.</p>
+			<h1 id="_idParaDest-47"><a id="_idTextAnchor069"/>Sending JSON from the backend</h1>
+			<p>We are <a id="_idIndexMarker124"/>going to send content in JSON <a id="_idIndexMarker125"/>format from the backend and <a id="_idIndexMarker126"/>consume it at the frontend. In addition, we will give the code a reusable structure that will be useful throughout the book.</p>
+			<p>All the code for the example can be found at <a href="https://github.com/PacktPublishing/Building-SPAs-with-Django-and-HTML-Over-the-Wire/tree/main/chapter-3/Sending%20JSON">https://github.com/PacktPublishing/Building-SPAs-with-Django-and-HTML-Over-the-Wire/tree/main/chapter-3/Sending%20JSON</a>.</p>
+			<p>We have a consumer type adapted for the purpose of sending or receiving JSON called <strong class="source-inline">JsonWebsocketConsumer</strong>. It is the same as <strong class="source-inline">WebsocketConsumer</strong> except for two differences:</p>
+			<ul>
+				<li>We <a id="_idIndexMarker127"/>need to add the <strong class="source-inline">send_json</strong> function to encode to JSON:<p class="source-code">book = {</p><p class="source-code">    'title': 'Don Quixote',</p><p class="source-code">    author': 'Miguel de Cervantes'.</p><p class="source-code">}</p><p class="source-code">self.send_json(content=book)</p></li>
+				<li>We <a id="_idIndexMarker128"/>have a new event, called <strong class="source-inline">receive_json</strong>, which <a id="_idIndexMarker129"/>automatically decodes JSON when a message <a id="_idIndexMarker130"/>is received from the client:<p class="source-code">def receive_json(self, data):</p><p class="source-code">    """Event when data is received"""</p><p class="source-code">    pass</p></li>
+			</ul>
+			<p>To exemplify how we can send content in JSON format, we will create a Bingo project.</p>
+			<h2 id="_idParaDest-48"><a id="_idTextAnchor070"/>Example project – Generating a ticket of random numbers</h2>
+			<p>When a client connects, a ticket with a series of random numbers will be generated and delivered <a id="_idIndexMarker131"/>to them via WebSockets. Then, every so often, we will send a random ball from Django. When the player has all the numbers, we will display a winner message.</p>
+			<p>Let’s get started:</p>
+			<ol>
+				<li value="1">We add to <strong class="source-inline">app/simple_app/consumers.py</strong> a new consumer extending from <strong class="source-inline">JsonWebsocketConsumer</strong>:<p class="source-code">from channels.generic.websocket import JsonWebsocketConsumer</p><p class="source-code">class BingoConsumer(JsonWebsocketConsumer):</p><p class="source-code"> </p><p class="source-code">    def connect(self):</p><p class="source-code">        self.accept()</p><p class="source-code"> </p><p class="source-code">    def disconnect(self, close_code):</p><p class="source-code">        """Event when client disconnects"""</p><p class="source-code">        pass</p><p class="source-code"> </p><p class="source-code">    def receive_json(self, data):</p><p class="source-code">        """Event when data is received"""</p><p class="source-code">        Pass</p></li>
+				<li>We generate <a id="_idIndexMarker132"/>a ticket of five numbers between <a id="_idTextAnchor071"/>1 and 10. We will avoid repetitions with <strong class="source-inline">set()</strong>:<p class="source-code">class BingoConsumer(JsonWebsocketConsumer):</p><p class="source-code"> </p><p class="source-code">    def connect(self):</p><p class="source-code">        self.accept()</p><p class="source-code">        ## Send numbers to client</p><p class="source-code">        # Generates numbers 5 random numbers,  </p><p class="source-code">           approximately, between 1 and 10</p><p class="source-code">        random_numbers = list(set([randint(1, 10) for </p><p class="source-code">            _ in range(5)])))</p><p class="source-code">        message = {</p><p class="source-code">            ' action': 'New ticket',</p><p class="source-code">            ' ticket': random_numbers</p><p class="source-code">        }</p><p class="source-code">        self.send_json(content=message)</p><p class="source-code"> </p><p class="source-code">    def disconnect(self, close_code):</p><p class="source-code">        """Event when client disconnects"""</p><p class="source-code">        pass</p><p class="source-code"> </p><p class="source-code">    def receive_json(self, data):</p><p class="source-code">        """Event when data is received"""</p><p class="source-code">        pass</p></li>
+			</ol>
+			<p>To inform <a id="_idIndexMarker133"/>the client what kind of action we are going to perform, we include in the JSON to send <strong class="source-inline">action</strong>. Separately, in <strong class="source-inline">ticket</strong>, we include the list of numbers.</p>
+			<ol>
+				<li value="3">Edit <strong class="source-inline">hello_world/asgi.py</strong> and add the path <strong class="source-inline">/ws/bingo/</strong> pointing to <strong class="source-inline">BingoConsumer</strong>. Don’t forget to import it. Now we have a new endpoint to feed the future WebSockets client. It's time to create the HTML:<p class="source-code"># hello_world/asgi.py</p><p class="source-code">import os </p><p class="source-code">from django.core.asgi import get_asgi_application</p><p class="source-code">from channels.auth import AuthMiddlewareStack</p><p class="source-code">from channels.routing import ProtocolTypeRouter, URLRouter</p><p class="source-code">from django.urls import re_path</p><p class="source-code">fr<a id="_idTextAnchor072"/>om app.simple_app.consumers import EchoConsumer, BingoConsumer # Update</p><p class="source-code"> </p><p class="source-code">os.environ.setdefault('DJANGO_SETTINGS_MODULE', </p><p class="source-code">    'hello_world.settings')</p><p class="source-code"> </p><p class="source-code">application = ProtocolTypeRouter({</p><p class="source-code">    # Django's ASGI application to handle traditional </p><p class="source-code">    HTTP requests</p><p class="source-code">    "http": get_asgi_application(),</p><p class="source-code">    # WebSocket handler</p><p class="source-code">    "websocket": AuthMiddlewareStack(</p><p class="source-code">        URLRouter([</p><p class="source-code">            re_path(r"^ws/echo/$", EchoC<a id="_idTextAnchor073"/>onsumer.</p><p class="source-code">                as_asgi()),</p><p class="source-code">            re_path(r"^ws/bingo/$", BingoConsumer.</p><p class="source-code">                as_asgi()), # New line</p><p class="source-code">        ])</p><p class="source-code">    ),</p><p class="source-code">})</p></li>
+			</ol>
+			<p>The consumer <a id="_idIndexMarker134"/>is prepared to send a ticket with random numbers to every client that connects. The next step will be to prepare the frontend to receive it and render it in the appropriate HTML element.</p>
+			<h1 id="_idParaDest-49"><a id="_idTextAnchor074"/>Receiving JSON in the frontend</h1>
+			<p>The goal <a id="_idIndexMarker135"/>will be to receive an <a id="_idIndexMarker136"/>asynchronous JSON from the backend that JavaScript will detect in an event. With the data, we will show in the HTML the information to the visitor:</p>
+			<ol>
+				<li value="1">We create a new HTML in <strong class="source-inline">app/simple_app/templates/bingo.html</strong> that will contain all the frontend: <p class="source-code">{# app/simple_app/templates/bingo.html #}</p><p class="source-code">&lt;! doctype html&gt;</p><p class="source-code">&lt;html lang="en"&gt;</p><p class="source-code">&lt;head&gt;</p><p class="source-code">    &lt;meta charset="UTF-8"&gt;</p><p class="source-code">    &lt;meta name="viewport"</p><p class="source-code">          content="width=device-width, user</p><p class="source-code">            scalable=no, initial-scale=1.0, maximum-</p><p class="source-code">              scale=1.0, minimum-scale=1.0"&gt;</p><p class="source-code">    &lt;title&gt;Bingo&lt;/title&gt;</p><p class="source-code">&lt;/head&gt;</p><p class="source-code">&lt;body&gt;</p><p class="source-code">    &lt;h1&gt;Bingo&lt;/h1&gt;</p><p class="source-code">    &lt;h2&gt;Ball: &lt;span id="ball"&gt;&lt;/span&gt;&lt;/h2&gt;.</p><p class="source-code">    &lt;h2 id="ticket"&gt;&lt;/h2&gt;</p><p class="source-code"> </p><p class="source-code">    &lt;script&gt;</p><p class="source-code">        // Connect to WebSockets server</p><p class="source-code">        (BingoConsumer)</p><p class="source-code">        const myWebSocket = new WebSocket("ws://{{ </p><p class="source-code">            request.get_host }}/ws/bingo/");</p><p class="source-code">        let ticket = [];</p><p class="source-code"> </p><p class="source-code">        // Event when a new message is received by </p><p class="source-code">           WebSockets</p><p class="source-code">        myWebSocket.addEventListener("message", </p><p class="source-code">            (event) =&gt; {</p><p class="source-code">            const myData = JSON.parse(event.data);</p><p class="source-code">            switch (myData.action) {</p><p class="source-code">                case "New ticket":</p><p class="source-code">                    // Save the new ticket</p><p class="source-code">                    ticket = myData.ticket;</p><p class="source-code">                    // Render ticket</p><p class="source-code">                    document.getElementById("ticket"). </p><p class="source-code">                         textContent = "Ticket: " + </p><p class="source-code">                             ticket.join(", ");</p><p class="source-code">                    break;</p><p class="source-code">                } }</p><p class="source-code">        });</p><p class="source-code">    &lt;/script&gt;</p><p class="source-code">&lt;/body&gt;</p><p class="source-code">&lt;/html&gt;</p></li>
+				<li>We <a id="_idIndexMarker137"/>will need a view <a id="_idIndexMarker138"/>for the template we have created. We add to <strong class="source-inline">app/simple_app/views.py</strong> the following function:<p class="source-code">from django.shortcuts import render</p><p class="source-code"> </p><p class="source-code">def index(req<a id="_idTextAnchor075"/>uest):</p><p class="source-code">    return render(request, 'index.html', {})</p><p class="source-code"> </p><p class="source-code">def bingo(request): # New function</p><p class="source-code">    return render(request, 'bingo.html', {})</p></li>
+				<li>In <strong class="source-inline">hello_world/urls.py</strong>, we <a id="_idIndexMarker139"/>include <a id="_idIndexMarker140"/>the <strong class="source-inline">/bingo/</strong> path:<p class="source-code">from django.contrib import admin</p><p class="source-code">from django.urls import path</p><p class="source-code">from app.simple_app import views</p><p class="source-code"> </p><p class="source-code">urlpa<a id="_idTextAnchor076"/>tterns = [</p><p class="source-code">    path('', views.index, name='index'),</p><p class="source-code">    path('bingo/', views.bingo, name='bingo'), # New line</p><p class="source-code">    path('admin/', admin.site.urls),</p><p class="source-code">]</p></li>
+			</ol>
+			<p>And with this change, ticket generation will be ready.</p>
+			<ol>
+				<li value="4">When we enter <strong class="source-inline">http://hello.localhost/bingo/</strong>, we will see a ticket of random numbers that will only be given to us: </li>
+			</ol>
+			<div>
+				<div id="_idContainer035" class="IMG---Figure">
+					<img src="image/Figure_3.4_B18321.jpg" alt="Figure 3.4 – Backend returning a set of random numbers when we connect via WebSockets&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 3.4 – Backend returning a set of random numbers when we connect via WebSockets</p>
+			<p>Currently, the <a id="_idIndexMarker141"/>consumer <a id="_idIndexMarker142"/>returns a JSON like the following to any client that connects to <strong class="source-inline">/ws/bingo/</strong>:</p>
+			<p class="source-code">{</p>
+			<p class="source-code"><strong class="source-inline">"</strong> action<strong class="source-inline">"</strong>: <strong class="source-inline">"</strong> New ticket<strong class="source-inline"> "</strong></p>
+			<p class="source-code"><strong class="source-inline">"</strong> ticket<strong class="source-inline">"</strong>: [1, 2, 3...] // Random numbers</p>
+			<p class="source-code">}</p>
+			<p>JavaScript waits, listening. If it receives a JSON whose <strong class="source-inline">"action"</strong> is <strong class="source-inline">"New ticket"</strong>, it will store the entire contents of <strong class="source-inline">"ticket"</strong> in the <strong class="source-inline">ticket</strong> variable. Finally, the JSON displays the HTML:</p>
+			<p class="source-code">myWebSocket.addEventListener("message", (event) =&gt; {</p>
+			<p class="source-code">const myData = JSON.parse(event.data);</p>
+			<p class="source-code">switch (myData.action) {</p>
+			<p class="source-code">case "New ticket":</p>
+			<p class="source-code">// Save the new ticket</p>
+			<p class="source-code">ticket = myData.ticket;</p>
+			<p class="source-code">// Render ticket</p>
+			<p class="source-code">document.getElementById("ticket"). textContent = </p>
+			<p class="source-code">    "Ticket: " + ticket.join(", ");</p>
+			<p class="source-code">                    break;</p>
+			<p class="source-code">} </p>
+			<p class="source-code">}</p>
+			<p class="source-code">});</p>
+			<p>We now <a id="_idIndexMarker143"/>have an automated <a id="_idIndexMarker144"/>system for each customer to generate their own set of numbers to play. The next step will be to send all customers the same random number to represent the ball.</p>
+			<h2 id="_idParaDest-50"><a id="_idTextAnchor077"/>Example project – Checking for matching numbers </h2>
+			<p>The next <a id="_idIndexMarker145"/>milestone is to send random numbers, on a recurring basis, from the backend for the frontend to check for matches. It’s time to mix the balls!</p>
+			<ol>
+				<li value="1">We create a thread that generates random numbers and sends them every second. We will call the action <strong class="source-inline">'New ball'</strong>:<p class="source-code"># app/simple_app/consumers.py</p><p class="source-code">from channels.generic.websocket import WebsocketConsumer</p><p class="source-code">from datetime import datetime</p><p class="source-code">import time</p><p class="source-code">import threading</p><p class="source-code">from random import randint</p><p class="source-code">from channels.generic.websocket import JsonWebsocketConsumer</p><p class="source-code"> </p><p class="source-code">class EchoConsumer(WebsocketConsumer):</p><p class="source-code"> # E<a id="_idTextAnchor078"/>cho Code</p><p class="source-code">class BingoConsumer(JsonWebsocketConsumer):</p><p class="source-code"> </p><p class="source-code">    def connect(self):</p><p class="source-code">        self.accept()</p><p class="source-code">        ## Send numbers to client</p><p class="source-code">        # Generates numbers 5 random numbers, approximately, between 1 and 10</p><p class="source-code">        random_numbers = list(set([randint(1, 10) for </p><p class="source-code">            _ in range(5)]))</p><p class="source-code">        message = {</p><p class="source-code">            ' action': 'New ticket',</p><p class="source-code">            ' ticket': random_numbers</p><p class="source-code">        }</p><p class="source-code">        self.send_json(content=message)</p><p class="source-code"> </p><p class="source-code">        ## Send balls</p><p class="source-code">        def send_ball(self):</p><p class="source-code">            while True:</p><p class="source-code">                # Send message to client</p><p class="source-code">                random_ball = randint(1, 10)</p><p class="source-code">                message = {</p><p class="source-code">                    ' action': 'New ball',</p><p class="source-code">                    ' ball': random_ball</p><p class="source-code">                }</p><p class="source-code">                self.send_json(content=message)</p><p class="source-code">                # Sleep for 1 second</p><p class="source-code">                time.sleep(1)</p><p class="source-code"> </p><p class="source-code">        threading.Thread(target=send_ball, </p><p class="source-code">            args=(self,)). start()</p><p class="source-code"> </p><p class="source-code">    def disconnect(self, close_code):</p><p class="source-code">        """Event when client disconnects"""</p><p class="source-code">        pass</p><p class="source-code"> </p><p class="source-code">    def receive_json(self, data):</p><p class="source-code">        """Event when data is received"""</p><p class="source-code">        Pass</p></li>
+				<li>In the <a id="_idIndexMarker146"/>JavaScript event that listens to Django, we’ll add the case to detect whether an action with <strong class="source-inline">"New ball"</strong> arrives: <p class="source-code">{# app/simple_app/templates/bingo.html #}</p><p class="source-code">&lt;! doctype html&gt;</p><p class="source-code">&lt;html lang="en"&gt;</p><p class="source-code">&lt;head&gt;</p><p class="source-code">    &lt;meta charset="UTF-8"&gt;</p><p class="source-code">    &lt;meta name="viewport"</p><p class="source-code">          content="width=device-width, user-</p><p class="source-code">            scalable=no, initial-scale=1.0, maximum-</p><p class="source-code">              scale=1.0, minimum-scale=1.0"&gt;</p><p class="source-code">    &lt;title&gt;Bingo&lt;/title&gt;</p><p class="source-code">&lt;/head&gt;</p><p class="source-code">&lt; body&gt;</p><p class="source-code">    &lt;h1&gt;Bingo&lt;/h1&gt;</p><p class="source-code">    &lt;h2&gt;Ball: &lt;span id="ball"&gt;&lt;/span&gt;&lt;/h2&gt;.</p><p class="source-code">    &lt;h2 id="ticket"&gt;&lt;/h2&gt;</p><p class="source-code"> </p><p class="source-code">    &lt;script&gt;</p><p class="source-code">        // Connect to WebSockets server (BingoConsumer)</p><p class="source-code">        const myWebSocket = new WebSocket("ws://{{ </p><p class="source-code">            request.get_host }}/ws/bingo/");</p><p class="source-code">        let ticket = [];</p><p class="source-code"> </p><p class="source-code">        // Event when a new message is received by </p><p class="source-code">        WebSockets</p><p class="source-code">        myWebSocket.addEventListener("message", </p><p class="source-code">           (event) =&gt; {</p><p class="source-code">            const myData = JSON.parse(event.data);</p><p class="source-code">            switch (myData.action) {</p><p class="source-code">                case "New ticket":</p><p class="source-code">                    // Save the new ticket</p><p class="source-code">                    ticket = myData.ticket;</p><p class="source-code">                    // Render ticket</p><p class="source-code">                    document.getElementById("ticket"). </p><p class="source-code">                        textContent = "Ticket: " + </p><p class="source-code">                            t<a id="_idTextAnchor079"/>icket.join(", ");</p><p class="source-code">                    break;</p><p class="source-code">                case "New ball":</p><p class="source-code">                    // Get the ball number</p><p class="source-code">                    ball = myData.ball;</p><p class="source-code">                    // Check if ball is in the ticket </p><p class="source-code">                    and remove it</p><p class="source-code">                    ticket = ticket.map(item =&gt; item </p><p class="source-code">                        === ball ? "X" : item);</p><p class="source-code">                    // Render ticket</p><p class="source-code">                    document.getElementById("ticket"). </p><p class="source-code">                        textContent = "Ticket: " + </p><p class="source-code">                            ticket.join(", ");</p><p class="source-code">                    // Render ball</p><p class="source-code">                    document.getElementById("ball"). </p><p class="source-code">                        textContent = ball;</p><p class="source-code">                    // Check if we have a winner</p><p class="source-code">                    if (ticket.find(number =&gt; number </p><p class="source-code">                        !== "X") === undefined) {</p><p class="source-code">                        // We have a winner</p><p class="source-code">                        document.getElementById</p><p class="source-code">                            ("ticket"). textContent = </p><p class="source-code">                                "Winner!";</p><p class="source-code">                    }</p><p class="source-code">                    break;</p><p class="source-code">            }</p><p class="source-code">        });</p><p class="source-code"> </p><p class="source-code">    &lt;/script&gt;</p><p class="source-code">&lt;/body&gt;</p><p class="source-code">&lt;/html&gt;</p></li>
+				<li>If so, we search <a id="_idIndexMarker147"/>the array of tickets for a match and replace the number with an <strong class="source-inline">X</strong>:</li>
+			</ol>
+			<div>
+				<div id="_idContainer036" class="IMG---Figure">
+					<img src="image/Figure_3.5_B18321.jpg" alt="Figure 3.5 – If any of the balls matches a number on the ticket, we replace it with an X&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 3.5 – If any of the balls matches a number on the ticket, we replace it with an X</p>
+			<p>And how do we know we have won? If all the contents of my ticket are <strong class="source-inline">X</strong>: game over!</p>
+			<div>
+				<div id="_idContainer037" class="IMG---Figure">
+					<img src="image/Figure_3.6_B18321.jpg" alt="Figure 3.6 – All ticket numbers have been crossed out, so we display a winner message&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 3.6 – All ticket numbers have been crossed out, so we display a winner message</p>
+			<p>So far, all that the frontend has done is listen and obey like a good child. However, they’re now <a id="_idIndexMarker148"/>mature enough to be heard. From JavaScript, we’re going to communicate with Django by making requests or sending information, and the backend will respond in two ways: either with JSON (as we’ve learned in this section) or with rendered HTML.</p>
+			<h1 id="_idParaDest-51"><a id="_idTextAnchor080"/>Rendering HTML in the backend</h1>
+			<p>In this chapter, we will take the first steps on the principles of HTML over WebSockets. The backend <a id="_idIndexMarker149"/>will be in charge of rendering the HTML, taking the responsibility away from JavaScript and simplifying its tasks. On the other hand, we will <a id="_idIndexMarker150"/>avoid the need to incorporate a framework such as React, Vue, or Angular, and an API for an HTTP client.</p>
+			<p>The goal <a id="_idIndexMarker151"/>will be to build a <strong class="bold">body mass index</strong> (<strong class="bold">BMI</strong>) calculator for adults using the metric system. All calculations and HTML creation will be a Django task.</p>
+			<p>All the code for the example can be found at <a href="https://github.com/PacktPublishing/Building-SPAs-with-Django-and-HTML-Over-the-Wire/tree/main/chapter-3/Rendering%20HTML">https://github.com/PacktPublishing/Building-SPAs-with-Django-and-HTML-Over-the-Wire/tree/main/chapter-3/Rendering%20HTML</a>.</p>
+			<p>We will ask for the height, in centimeters, and the weight, in kilograms. The formula to get it is <em class="italic">weight (kg) / (height (m))</em><span class="superscript">2</span>.</p>
+			<p>In Python, it would be translated as follows: <strong class="source-inline">weight / (height ** 2)</strong>.</p>
+			<p>And its result will indicate the status:</p>
+			<div>
+				<div id="_idContainer038" class="IMG---Figure">
+					<img src="image/011.jpg" alt=" Table 1.1 – BMI status&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US"> Table 1.1 – BMI status</p>
+			<p>For example, if I weigh 78 kg and I am 180 cm tall (or 1.8 m), the calculation would be 78 / (1.8 ** 2), resulting in <strong class="source-inline">24</strong>. I would be in a <em class="italic">Normal</em> state, just one point away from <em class="italic">Overweight</em> – I think <a id="_idIndexMarker152"/>this is life’s warning for me to give up my daily chocolate desserts:</p>
+			<ol>
+				<li value="1">I start <a id="_idIndexMarker153"/>by adding a consumer name<a id="_idTextAnchor081"/>d <strong class="source-inline">BMIConsumer</strong> in <strong class="source-inline">app/simple_app/consumers.py<a id="_idTextAnchor082"/></strong>:<p class="source-code">from django.template.loader import render_to_string<a id="_idTextAnchor083"/></p><p class="source-code">class BMIConsumer(JsonWebsocketConsumer):</p><p class="source-code"> </p><p class="source-code">    def connect(self):</p><p class="source-code">        self.accept()</p><p class="source-code"> </p><p class="source-code">    def disconnect(self, close_code):</p><p class="source-code">        """Event when client disconnects"""</p><p class="source-code">        pass</p><p class="source-code"> </p><p class="source-code">    def receive_json(self, data):</p><p class="source-code">        """Event when data is received"""</p><p class="source-code">        height = data['height'] / 100</p><p class="source-code">        weight = data['weight']</p><p class="source-code">        bmi = round(weight / (height ** 2), 1)</p><p class="source-code">        self.send_json(</p><p class="source-code">            content={</p><p class="source-code">                    "action": "BMI result",</p><p class="source-code">                    "html": render_to_string(</p><p class="source-code">                        "components/_bmi_result.html",</p><p class="source-code">                        {"height": height, "weight": </p><p class="source-code">                            weight, "bmi": bmi}</p><p class="source-code">                    )</p><p class="source-code">            }</p><p class="source-code">        )</p></li>
+			</ol>
+			<p>For the first time, we will receive information from the client. The client will provide <a id="_idIndexMarker154"/>us with the values of a future form with weight <a id="_idIndexMarker155"/>and height, and in return we will return the HTML ready to display.</p>
+			<p>Let’s explain what’s going on in the preceding code snippet:</p>
+			<ul>
+				<li>We import the Django function to render HTML: <strong class="source-inline">from django.template.loader import render_to_string</strong>.</li>
+				<li>Everything happens inside the <strong class="source-inline">receive_json</strong> function. With <strong class="source-inline">data['height']</strong> and <strong class="source-inline">data['weight']</strong>, we collect two pieces of data that we will send from JavaScript.</li>
+				<li>Calculate the index with <strong class="source-inline">round(weight / (height ** 2), 1)</strong>.</li>
+				<li>We send back to the client a JSON with two fields: <strong class="source-inline">"action"</strong>, where we simply inform the client what action to take, and <strong class="source-inline">"html"</strong> with the HTML generated from <strong class="bold">render_to_string</strong>.</li>
+			</ul>
+			<ol>
+				<li value="2">Edit <strong class="source-inline">hello_world/asgi.py</strong> and <a id="_idIndexMarker156"/>add the <strong class="source-inline">/ws/bmi/</strong> path <a id="_idIndexMarker157"/>pointing to <strong class="source-inline">BMIConsumer</strong>.<p class="source-code"># hello_world/asgi.py</p><p class="source-code">Import</p><p class="source-code">from django.core.asgi import get_asgi_application</p><p class="source-code">from channels.auth import AuthMiddlewareStack</p><p class="source-code">from channels.routing import ProtocolTypeRouter, URLRouter</p><p class="source-code">from django.urls import re_path</p><p class="source-code">from app.simple_app.consumers import EchoConsumer, BingoCons<a id="_idTextAnchor084"/>umer, BMIConsumer # Update</p><p class="source-code"> </p><p class="source-code">os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hello_world.settings')</p><p class="source-code"> </p><p class="source-code">application = ProtocolTypeRouter({</p><p class="source-code">    # Django's ASGI application to handle traditional </p><p class="source-code">    HTTP requests</p><p class="source-code">    "http": get_asgi_application(),</p><p class="source-code">    # WebSocket handler</p><p class="source-code">    "websocket": AuthMiddlewareStack(</p><p class="source-code">        URLRouter([</p><p class="source-code">            re_path(r"^ws/echo/$", EchoConsumer.</p><p class="source-code">                as_asgi()),</p><p class="source-code">            re_path(r"^ws/bingo/$", BingoConsumer.</p><p class="source-code">                as_asgi()),</p><p class="source-code">      <a id="_idTextAnchor085"/>      re_path(r"^ws/bmi/$", BMIConsumer.</p><p class="source-code">                as_asgi()), # New line</p><p class="source-code">        ])</p><p class="source-code">    ),</p><p class="source-code">})</p></li>
+				<li>We create <a id="_idIndexMarker158"/>a new HTML in <strong class="source-inline">app/simple_app/templates/bmi.html</strong> that will contain the form and the JavaScript <a id="_idIndexMarker159"/>that will send the information:<p class="source-code">{# app/simple_app/templates/bmi.html #}</p><p class="source-code">&lt;! doctype html&gt;</p><p class="source-code">&lt;html lang="en"&gt;</p><p class="source-code">&lt;head&gt;</p><p class="source-code">    &lt;meta charset="UTF-8"&gt;</p><p class="source-code">    &lt;meta name="viewport"</p><p class="source-code">          content="width=device-width, user-</p><p class="source-code">            scalable=no, initial-scale=1.0, maximum-</p><p class="source-code">              scale=1.0, minimum-scale=1.0"&gt;</p><p class="source-code">    &lt;title&gt;BMI Calculator&lt;/title&gt;.</p><p class="source-code">&lt;/head&gt;</p><p class="source-code">&lt;body&gt;</p><p class="source-code">    &lt;h1&gt;BMI Calculator&lt;/h1&gt;</p><p class="source-code">    &lt;label for="height"&gt; Height (cm):</p><p class="source-code">        &lt;input type="text" name="height" id="height"&gt;</p><p class="source-code">    &lt;/label&gt;</p><p class="source-code">    &lt;label for="weight"&gt; Weight (kg)</p><p class="source-code">        &lt;input type="text" name="weight" id="weight"&gt;</p><p class="source-code">    &lt;/label&gt;</p><p class="source-code">    &lt;input type="button" id="calculate" value=</p><p class="source-code">        "Calculate"&gt;</p><p class="source-code">    &lt;div id="result"&gt;&lt;/div&gt;</p><p class="source-code"> </p><p class="source-code">    &lt;script&gt;</p><p class="source-code">        // Connect to WebSockets server </p><p class="source-code">        (BingoConsumer)</p><p class="source-code">        const myWebSocket = new WebSocket("ws://{{ </p><p class="source-code">            request.get_host }}/ws/bmi/");</p><p class="source-code"> </p><p class="source-code">        // Event when a new message is received by </p><p class="source-code">        WebSockets</p><p class="source-code">        myWebSocket.addEventListener("message", </p><p class="source-code">           (event) =&gt; {</p><p class="source-code">            const myData = JSON.parse(event.data);</p><p class="source-code">            switch (myData.action) {</p><p class="source-code">                case "BMI result":</p><p class="source-code">                    document.getElementById("result"). </p><p class="source-code">                        innerHTML = myData.html;</p><p class="source-code">                    break;</p><p class="source-code">            }</p><p class="source-code">        });</p><p class="source-code"> </p><p class="source-code">        document.querySelector('#calculate'). </p><p class="source-code">            addEventListener('click', () =&gt; {</p><p class="source-code">            const height = parseFloat(document.</p><p class="source-code">                querySelector('#height'). value);</p><p class="source-code">            const weight = parseFloat(document.</p><p class="source-code">                querySelector('#weight'). value);</p><p class="source-code">            myWebSocket.send(JSON.stringify({</p><p class="source-code">                height: height,</p><p class="source-code">                weight: weight</p><p class="source-code">            }));</p><p class="source-code">        });</p><p class="source-code"> </p><p class="source-code">    &lt;/script&gt;</p><p class="source-code">&lt;/body&gt;</p><p class="source-code">&lt;/html&gt;</p></li>
+			</ol>
+			<p>The mechanism <a id="_idIndexMarker160"/>is simple. When the <strong class="bold">Calculate</strong> button is clicked, it will get the input data and send it to the backend. If it <a id="_idIndexMarker161"/>receives an input with the <strong class="source-inline">"action"</strong> <strong class="source-inline">"BMI results"</strong>, it will inject the HTML in the appropriate place.</p>
+			<ol>
+				<li value="4">We will need a view for the template we have created. We add to <strong class="source-inline">app/simple_app/views.py</strong> the <strong class="source-inline">bmi</strong> function that points to the template:<p class="source-code">from django.shortcuts import render</p><p class="source-code"> </p><p class="source-code">def index(request):</p><p class="source-code">    return render(request, 'index.html', {})</p><p class="source-code"> </p><p class="source-code">def bingo(request):</p><p class="source-code">    return render(request, 'bingo.htm<a id="_idTextAnchor086"/>l', {})</p><p class="source-code"> </p><p class="source-code">def bmi(request): # New function</p><p class="source-code">    return render(request, 'bmi. html', {})</p></li>
+				<li>In <strong class="source-inline">hello_world/urls.py</strong>, we <a id="_idIndexMarker162"/>include the <strong class="source-inline">/bmi/</strong> path:<p class="source-code">from django.contrib import admin</p><p class="source-code">from django.urls import path</p><p class="source-code">from app.simple_app import views</p><p class="source-code"> </p><p class="source-code">urlpatterns = [</p><p class="source-code">    path('', views.index, name='index'),</p><p class="source-code">    path('bingo/', views.bingo, name='bin<a id="_idTextAnchor087"/>go'),</p><p class="source-code">    path('bmi/', views.bmi, name='bmi'), # New line</p><p class="source-code">    path('admin/', admin.site.urls),</p><p class="source-code">]</p></li>
+			</ol>
+			<p>Now when <a id="_idIndexMarker163"/>we enter <strong class="source-inline">http://hello.localhost/bmi/</strong>, we will be shown the website with the form:</p>
+			<div>
+				<div id="_idContainer039" class="IMG---Figure">
+					<img src="image/Figure_3.7_B18321.jpg" alt="Figure 3.7 – The form is displayed ready for use&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 3.7 – The form is displayed ready for use</p>
+			<ol>
+				<li value="6">We only need the HTML component that we will use to display the content. We create in <strong class="source-inline">app/simple_app/templates/<a id="_idTextAnchor088"/>components/_bmi_result.html</strong> a document <a id="_idIndexMarker164"/>with the following content:<p class="source-code">&lt;p&gt;&lt;strong&gt; Weight&lt;/strong&gt; {{ weight }} Kg&lt;/p&gt;</p><p class="source-code">&lt;p&gt;&lt;strong&gt;Height&lt;/strong&gt; {{ height }} m&lt;/p&gt;</p><p class="source-code">&lt;p&gt;&lt;p&gt;&lt;strong&gt;BMI&lt;/strong&gt; {{ bmi }}&lt; /p&gt;</p><p class="source-code">{% if bmi &lt; 18.5 %}</p><p class="source-code">&lt;p&gt;Underweight&lt;/p&gt;</p><p class="source-code">{% elif bmi &lt; 25 %}</p><p class="source-code">&lt;p&gt;Normal&lt;/p&gt;</p><p class="source-code">{% elif bmi &lt; 30 %}</p><p class="source-code">&lt;p&gt;Overweight&lt;/p&gt;</p><p class="source-code">{% else %}</p><p class="source-code">&lt;p&gt;Obese&lt;/p&gt;</p><p class="source-code">{% endif %}</p></li>
+			</ol>
+			<p>Everything <a id="_idIndexMarker165"/>is ready, you can now calculate your body mass index. Warning! I am only responsible for bugs; for any other problem, you should consult a nutritionist.</p>
+			<div>
+				<div id="_idContainer040" class="IMG---Figure">
+					<img src="image/Figure_3.8_B18321.jpg" alt="Figure 3.8 – When the form is filled in and Calculate is clicked, the HTML of the component is displayed&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 3.8 – When the form is filled in and Calculate is clicked, the HTML of the component is displayed</p>
+			<h1 id="_idParaDest-52"><a id="_idTextAnchor089"/>Summary</h1>
+			<p>We have acquired the skills to create a bidirectional communication tunnel between a backend and frontend using the WebSockets protocol. We can send plain text, JSON, or HTML—totally asynchronous and without waiting. We even know how to ask the backend to take care of rendering HTML fragments that we will inject without the visitor noticing a delay.</p>
+			<p>Despite everything we have learned, we still have some issues, such as the fact that the backend can only send information to individual clients, and not to groups. In addition, we still don’t know how to interact with the database, create sessions, or identify users. And without all these elements, we will be unable to make an application that facilitates communication between two visitors or manipulate the database. We need to go deeper.</p>
+			<p>In the next chapter, we will be introduced to database models and create a complete <strong class="bold">Browse-Read-Edit-Add-Delete</strong> (<strong class="bold">BREAD</strong>) with a completely new project.</p>
+			<p class="callout-heading">BREAD Is an Evolution of CRUD</p>
+			<p class="callout"><strong class="bold">CRUD</strong> is well known when you want to create a complete data processing system (<strong class="bold">Create-Read-Update-Delete</strong>). It is traditionally used in interfaces, APIs, databases, and Web Apps, but it does not consider actions such as pagination, search, or sorting. BREAD was born as an expansion to highlight the fact that information must be navigable, browsea: Browse-Read-Edit-Add-Delete.</p>
+			<p class="callout">Reference: <a href="https://guvena.wordpress.com/2017/11/12/bread-is-the-new-crud/">https://guvena.wordpress.com/2017/11/12/bread-is-the-new-crud/</a>.</p>
+		</div>
+		<div>
+			<div id="_idContainer042">
+			</div>
+		</div>
+	</body></html>

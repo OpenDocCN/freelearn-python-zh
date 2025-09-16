@@ -1,0 +1,809 @@
+<html><head></head><body>
+		<div id="_idContainer056">
+			<h1 id="_idParaDest-61"><a id="_idTextAnchor106"/>Chapter 5: Separating Communication in Rooms</h1>
+			<p>Channels allow us to broadcast, send, and receive asynchronous messages to/from all clients that belong to a group. Within a group, we cannot filter a selection of users. To solve this problem and create a division or categories, we must resort to creating new Channels and manually grouping the clients. </p>
+			<p>So far, we can communicate with a customer who is isolated in a Channel or with all the customers connected to a common Channel. Now, it is time to learn how to control groups/Channels to separate and move customers between different groups as needed. You can even assign the same customer to several groups at the same time. For example, if we are creating a Chat, it would be useful for the user to be subscribed to a unique Channel to receive notifications, as well as another public group where all the customers can write freely, and other private groups where they can have conversations with other users. It makes sense for a client to receive or send different messages from various groups for different purposes.</p>
+			<p>In this chapter, we will cover the following topics:</p>
+			<ul>
+				<li>Basic functions for managing Channels</li>
+				<li>Creating a full Chat</li>
+			</ul>
+			<h1 id="_idParaDest-62"><a id="_idTextAnchor107"/>Technical requirements</h1>
+			<p>You can download the code for this chapter from this book’s GitHub repository: <a href="https://github.com/PacktPublishing/Building-SPAs-with-Django-and-HTML-Over-the-Wire/tree/main/chapter-5">https://github.com/PacktPublishing/Building-SPAs-with-Django-and-HTML-Over-the-Wire/tree/main/chapter-5</a>.</p>
+			<p>We will be using the template we constructed in <a href="B18321_04_ePub.xhtml#_idTextAnchor090"><em class="italic">Chapter 4</em></a><em class="italic">, Working with the Database</em>: <a href="https://github.com/PacktPublishing/Building-SPAs-with-Django-and-HTML-Over-the-Wire/tree/main/chapter-4/initial-template">https://github.com/PacktPublishing/Building-SPAs-with-Django-and-HTML-Over-the-Wire/tree/main/chapter-4/initial-template</a></p>
+			<p>I have changed the name of the application to Chat. Ensure that the <strong class="source-inline">App</strong> folder is called <strong class="source-inline">/app/chat/</strong> and that <strong class="source-inline">apps.py</strong> has been renamed with its <strong class="source-inline">name</strong> variable:</p>
+			<pre class="source-code">from django.apps import AppConfig</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">class SimpleAppConfig(AppConfig):</pre>
+			<pre class="source-code">    default_auto_field = "django.db.models.BigAutoField"</pre>
+			<pre class="source-code">    name = "app.chat" # Update</pre>
+			<p>If you rename an application, you must reflect this in <strong class="source-inline">/project_template/settings.py</strong>:</p>
+			<pre class="source-code">INSTALLED_APPS = [</pre>
+			<pre class="source-code">    "channels",</pre>
+			<pre class="source-code">    "django.contrib.admin",</pre>
+			<pre class="source-code">    "django.contrib.auth",</pre>
+			<pre class="source-code">    "django.contrib.contenttypes",</pre>
+			<pre class="source-code">    "django.contrib.sessions",</pre>
+			<pre class="source-code">    "django.contrib.messages",</pre>
+			<pre class="source-code">    "django.contrib.staticfiles",</pre>
+			<pre class="source-code">    "app.chat", # Update</pre>
+			<pre class="source-code">]</pre>
+			<p>I have also changed the name of the Consumer to <a id="_idTextAnchor108"/><strong class="source-inline">ChatConsumer</strong>:</p>
+			<pre class="source-code"># app/chat/consumers.py</pre>
+			<pre class="source-code">class ChatConsumer(JsonWebsocketConsumer):</pre>
+			<p>In <strong class="source-inline">project_template/urls.py</strong>, you must change the View import:</p>
+			<pre class="source-code">from <strong class="source-inline">app.chat</strong> import views</pre>
+			<p>In <strong class="source-inline">Caddyfile</strong>, change the domain from <strong class="source-inline">hello.localhost</strong> to <strong class="source-inline">chat.localhost</strong>:</p>
+			<pre class="source-code">http://chat.localhost {</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">    root * /usr/src/app/</pre>
+			<p>Finally, remember that whenever you change the name of the Consumer, you must modify <strong class="source-inline">/project_template/asgi.py</strong>:</p>
+			<pre class="source-code">from app.chat.consumers import ChatConsumer # Update</pre>
+			<pre class="source-code">... </pre>
+			<pre class="source-code">                    re_path(r"^ws/chat/$", ChatConsumer.</pre>
+			<pre class="source-code">                        as_asgi()), # Update</pre>
+			<pre class="source-code">...</pre>
+			<p>With the template in place, we can now start the project, which will involve creating a Chat tool.</p>
+			<p>We will prepare the database with a model and generate some random users. However, before we continue, we must know about the functions that Channels provide for sending information to customers or for managing groups.</p>
+			<h1 id="_idParaDest-63"><a id="_idTextAnchor109"/>Basic functions for managing Channels</h1>
+			<p>The basic functions <a id="_idIndexMarker217"/>for managing Channels are as follows:</p>
+			<ul>
+				<li><strong class="source-inline">send()</strong>: This is used to send new messages from the Consumer to a single client. We have used this function from the beginning of this book. However, we used the <strong class="source-inline">JsonWebsocketConsumer</strong> wrapper to make <strong class="source-inline">send_json()</strong> more convenient for sending JSON:<p class="source-code">data = {</p><p class="source-code">            "my_data": "hi",</p><p class="source-code">       }</p><p class="source-code">self.send_json(data)</p></li>
+				<li><strong class="source-inline">group_send()</strong>: This is used to send new messages from the Consumer to a group of clients that we have previously defined. It is an asynchronous function, so we will need the whole Consumer to be asynchronous or, preferably, use the <strong class="source-inline">async_to_sync</strong> function. In the following example, you can see how the <strong class="source-inline">{"my_data": "hi"}</strong> JSON is <a id="_idIndexMarker218"/>sent to the whole group as <strong class="source-inline">"Main"</strong>:<p class="source-code">from asgiref.sync import async_to_sync</p><p class="source-code">async_to_sync(self.channel_layer.group_send)(</p><p class="source-code">            "Main", {</p><p class="source-code">                "type": "send.hi", # Run "send_hi()" </p><p class="source-code">                    method</p><p class="source-code">                "my_data": "hi",</p><p class="source-code">            }</p><p class="source-code">        </p><p class="source-code">def send_hi(self, event):</p><p class="source-code">        """Event: Send "hi" to client""""</p><p class="source-code">        data = {</p><p class="source-code">            "my_data": event["my_data"],</p><p class="source-code">        }</p><p class="source-code">        self.send_json(data)</p></li>
+				<li><strong class="source-inline">group_add()</strong>: This is used to add a client to a new or existing group. The function is also asynchronous, so we will use <strong class="source-inline">async_to_sync</strong> again. In the following example, we are adding <strong class="source-inline">(self.channel_name)</strong> to a group called <strong class="source-inline">"Main"</strong>:<p class="source-code">async_to_sync(self.channel_layer.group_add)("Main", self.channel_name)</p></li>
+				<li><strong class="source-inline">group_discard()</strong>: This is used to remove a client from a group. Again, this is an asynchronous function, so we are forced to use <strong class="source-inline">async_to_sync</strong>. In this example, we have removed <strong class="source-inline">(self.channel_name)</strong> from a group called <strong class="source-inline">"Main"</strong>:<p class="source-code">async_to_sync(self.channel_layer.group_discard)("Main", self.channel_name)</p></li>
+			</ul>
+			<p>With these functions, we can now dominate the world, or at least the world of real time. They are ideal for building a complete chat. And... why don’t we compete with WhatsApp or Slack? They have hundreds of the best engineers, but we’ll use Django here: it’s a<a id="_idIndexMarker219"/> balanced fight. We will create a piece of software that will use the full potential of Channels to manage different groups with the following features:</p>
+			<ul>
+				<li>Group and public messages with no limit regarding the number of clients</li>
+				<li>Private messages that can be sent between two clients</li>
+				<li>Control over connected or disconnected clients</li>
+				<li>Registered users can be identified</li>
+			</ul>
+			<p>If we add the functions of Channels to those of Django, we will see that we have everything we need to manage the information and connect to the database. However, we need to learn about a few important details before connecting to Django’s models. How can we isolate users?</p>
+			<h1 id="_idParaDest-64"><a id="_idTextAnchor110"/>Creating a full Chat</h1>
+			<p>A very popular<a id="_idIndexMarker220"/> exercise when implementing WebSockets in any technology is to create a simple Chat. However, the difficulty increases considerably when we have several connected clients who are going to talk in private spaces and open groups so that any client can read or participate. Using Channels, we are creating a solid enough abstraction so that we can focus on other issues. </p>
+			<p>Let’s create a Chat<a id="_idIndexMarker221"/> complete with modern features: </p>
+			<ul>
+				<li>Message history</li>
+				<li>Private conversations</li>
+				<li>Groups </li>
+				<li>Customers associated with a registered user in the database </li>
+			</ul>
+			<p>Next, we must define the database. We will define the models for users, rooms, and messages. That way, we will be able to store the actions of each user and there will be a record of everything that happens.</p>
+			<h2 id="_idParaDest-65"><a id="_idTextAnchor111"/>Defining the database</h2>
+			<p>In this section, we <a id="_idIndexMarker222"/>are going to create some models in the database to <a id="_idIndexMarker223"/>manage customers, groups (which we will call rooms), and messages.</p>
+			<p>Edit <strong class="source-inline">/app/chat/models.py</strong> with the following content:</p>
+			<pre class="source-code">from django.db import <a id="_idTextAnchor112"/>models</pre>
+			<pre class="source-code">from django.contrib.auth.models import User</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">class Client(models.Model):</pre>
+			<pre class="source-code">    """</pre>
+			<pre class="source-code">    Clients for users</pre>
+			<pre class="source-code">    """</pre>
+			<pre class="source-code">    user = models.ForeignKey(User, on_delete=models.CASCADE)</pre>
+			<pre class="source-code">    channel = models.CharField(max_length=200, blank=True, null=True, default=None)</pre>
+			<pre class="source-code">    created_at = models.DateTimeField(auto_now_add=True)</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">    def __str__(self):</pre>
+			<pre class="source-code">        return self.user.username</pre>
+			<p>The <strong class="source-inline">Client</strong> model allows us to have a record of the users that are connected or disconnected. It also allows us to store the private Channel of each client in case we need to send them an<a id="_idIndexMarker224"/> individual message from anywhere in <a id="_idIndexMarker225"/>the<a id="_idTextAnchor113"/> code:</p>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">class Room(models.Model):</pre>
+			<pre class="source-code">    """</pre>
+			<pre class="source-code">    Rooms for users</pre>
+			<pre class="source-code">    """</pre>
+			<pre class="source-code">    users_subscribed = models.ManyToManyField(User, </pre>
+			<pre class="source-code">        related_name="users_subscribed")</pre>
+			<pre class="source-code">    clients_active = models.ManyToManyField(Client, </pre>
+			<pre class="source-code">        related_name="clients_active")</pre>
+			<pre class="source-code">    name = models.CharField(max_length=255, blank=True, </pre>
+			<pre class="source-code">        null=True, default=None)</pre>
+			<pre class="source-code">    is_group = models.BooleanField(default=False)</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">    def __str__(self):</pre>
+			<pre class="source-code">        return self.name</pre>
+			<p><strong class="source-inline">Rooms</strong> will be a record of all the Channels that have been created and the clients that are subscribed to them via the <strong class="source-inline">users_subscribed</strong> column. We must perform this functionality because Channels do not allow us to access this information unless we use a third-party extension or make a record in the database, which is exactly what we are doing here. We’ll use <strong class="source-inline">clients_active</strong> to know which clients are currently viewing the group, as they may be added, but at the same time disconnected or present in another room. This way, we will only send the updates or new HTML that’s generated with the list of messages to the active clients and not to all the subscribed ones. Finally, <strong class="source-inline">name</strong> will be the name of the group and <strong class="source-inline">is_group</strong> will mark if this is a public group with many <a id="_idIndexMarker226"/>clients (<strong class="source-inline">True</strong>) or a private room (<strong class="source-inline">False</strong>), which is mandatory <a id="_idIndexMarker227"/>for controlling unwanted<a id="_idTextAnchor114"/> guests:</p>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">class Message(models.Model):</pre>
+			<pre class="source-code">    """</pre>
+			<pre class="source-code">    Messages for users</pre>
+			<pre class="source-code">    """</pre>
+			<pre class="source-code">    User = models.ForeignKey(User, on_delete=models.</pre>
+			<pre class="source-code">        CASCADE)</pre>
+			<pre class="source-code">    room = models.ForeignKey(Room, on_delete=models.</pre>
+			<pre class="source-code">        CASCADE)</pre>
+			<pre class="source-code">    text = models.TextField()</pre>
+			<pre class="source-code">    created_at = models.DateTimeField(auto_now_add=True)</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">    def __str__(self):</pre>
+			<pre class="source-code">        return self.text</pre>
+			<p>The <strong class="source-inline">Message</strong> model will be in charge of storing the Chat messages. Each element will have an author (who we will call <strong class="source-inline">user</strong>), a Channel where a message has been sent (which we will call <strong class="source-inline">room</strong>), and the text of the message itself (which we will call <strong class="source-inline">text</strong>). In addition, we have added <strong class="source-inline">created_at</strong> to sort the messages when listing them.</p>
+			<p>We will lift <strong class="source-inline">docker-compose</strong> to carry out migrations:</p>
+			<p class="source-code">docker-compose up</p>
+			<p>With the models defined, we are going to create the migration. We need to go into the <strong class="source-inline">django</strong> container and look for its name. As a hint, we know that it will end with <strong class="source-inline">_django_1</strong>:</p>
+			<p class="source-code">docker ps</p>
+			<p>You will see a<a id="_idIndexMarker228"/> list of all your active containers, along with the processes they <a id="_idIndexMarker229"/>are running:</p>
+			<div>
+				<div id="_idContainer051" class="IMG---Figure">
+					<img src="image/Figure_5.01_B18321.jpg" alt="Figure 5.1 – Listing all the names of the containers after Docker is up&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 5.1 – Listing all the names of the containers after Docker is up</p>
+			<p>In my case, Django is <strong class="source-inline">chapter-5_django_1</strong>.</p>
+			<p>Now, let’s enter the interactive Bash terminal:</p>
+			<p class="source-code">docker exec -it chapter-5_django_1 bash</p>
+			<p>Here, we can create the necessary migrations:</p>
+			<pre class="source-code">./manage.py makemigrations chat</pre>
+			<pre class="source-code">./manage.py migrate</pre>
+			<p>With the database ready, we will include some random users to differentiate the clients.</p>
+			<h2 id="_idParaDest-66"><a id="_idTextAnchor115"/>Generating random users</h2>
+			<p>Without <a id="_idIndexMarker230"/>registered users, we can’t work, so let’s create a Python <a id="_idIndexMarker231"/>script that makes some random data.</p>
+			<p>We will create <a id="_idTextAnchor116"/>a file called <strong class="source-inline">make_fake_users.py</strong> at the root of the project that contains the following content. At the moment, we will not be able to run it because we do not have <strong class="bold">Faker</strong> installed:</p>
+			<p class="callout-heading">Faker</p>
+			<p class="callout">Faker is a Python library for generating fake data for various uses. Among its most common uses, it is used to insert data into the database to develop, prototype, or stress test an application.</p>
+			<pre class="source-code"># make_<a id="_idTextAnchor117"/>fake_users.py</pre>
+			<pre class="source-code">from django.contrib.auth.models import User</pre>
+			<pre class="source-code">from faker import Faker</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">fake = Faker()</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code"># Delete all users</pre>
+			<pre class="source-code">User.objects.all().delete()</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code"># Generate 30 random emails and iterate them.</pre>
+			<pre class="source-code">for email in [fake.unique.email() for i in range(5)]:</pre>
+			<pre class="source-code">    # Create user in database</pre>
+			<pre class="source-code">    user = User.objects.create_user(fake.user_name(), </pre>
+			<pre class="source-code">        email, "password")</pre>
+			<pre class="source-code">    user.last_name = fake.last_name()</pre>
+			<pre class="source-code">    user.is_active = True</pre>
+			<pre class="source-code">    user.save()</pre>
+			<p>Using Faker, we generate five unique emails. Then, we iterate them and create a unique user with a generated username and last name.</p>
+			<p>To install Faker, add the following line to the <strong class="source-inline">requirements.txt</strong> file:</p>
+			<pre class="source-code"># Fake data</pre>
+			<pre class="source-code">Faker===8.13.2</pre>
+			<p>Don’t forget to recreate the Django image again so that the new dependency is installed from <strong class="source-inline">Dockerfile</strong>.</p>
+			<p>Now, let’s run the Python script from Bash from the Django container:</p>
+			<p class="source-code">./manage.py shell &lt; make_fake_users.py</p>
+			<p>We<a id="_idIndexMarker232"/> currently<a id="_idIndexMarker233"/> have five random users ready to be used.</p>
+			<p>With the database created and populated with data, we can focus on generating the HTML and its components that will make use of this information.</p>
+			<h2 id="_idParaDest-67"><a id="_idTextAnchor118"/>Integrating HTML and styles</h2>
+			<p>We need to display <a id="_idIndexMarker234"/>some nice minimalistic HTML to make the <a id="_idIndexMarker235"/>Chat usable, although we won’t win the best web design of the year award.</p>
+			<p>Let’s create <strong class="source-inline">app/chat/templates/index.html</strong> with the following content:</p>
+			<pre class="source-code">{# app/chat/templates/index.html #}</pre>
+			<pre class="source-code">{% load static %}</pre>
+			<pre class="source-code">&lt;! doctype html&gt;</pre>
+			<pre class="source-code">&lt;html lang="en"&gt;</pre>
+			<pre class="source-code">&lt;head&gt;</pre>
+			<pre class="source-code">    &lt;meta charset="UTF-8"&gt;</pre>
+			<pre class="source-code">    &lt;meta name="viewport" content="width=device-width, </pre>
+			<pre class="source-code">        user-scalable=no, initial-scale=1.0, maximum-</pre>
+			<pre class="source-code">            scale=1.0, minimum-scale=1.0"&gt;</pre>
+			<pre class="source-code">    &lt;title&gt;Chat&lt;/title&gt;</pre>
+			<pre class="source-code">    {# CSS #}</pre>
+			<pre class="source-code">    &lt;link rel="stylesheet" href="{% static 'css/main.css' %}"&gt;</pre>
+			<pre class="source-code">    {# JavaScript #}</pre>
+			<pre class="source-code">    &lt;script defer src="{% static 'js/index.js' %}"&gt;</pre>
+			<pre class="source-code">    &lt;/script&gt;</pre>
+			<pre class="source-code">&lt;/head&gt;</pre>
+			<p>Let’s link the future CSS and JavaScript files:</p>
+			<pre class="source-code">&lt;body</pre>
+			<pre class="source-code">        data-host="{{ request.get_host }}"</pre>
+			<pre class="source-code">        data-scheme="{{ request.scheme }}"</pre>
+			<pre class="source-code">&gt;</pre>
+			<p>Now, let’s <a id="_idIndexMarker236"/>communicate the path that JavaScript will use to<a id="_idIndexMarker237"/> connect to <strong class="source-inline">host</strong> and check whether the connection is secur<a id="_idTextAnchor119"/>e with <strong class="source-inline">scheme</strong>:</p>
+			<pre class="source-code">    &lt;h1 class="title"&gt;Chat&lt;/h1&gt;</pre>
+			<pre class="source-code">    {# Login user name #}</pre>
+			<pre class="source-code">    &lt;h2 class="subtitle"&gt;I'm &lt;span id="logged-user"&gt;</pre>
+			<pre class="source-code">    &lt;/span&gt;&lt;/h2&gt;</pre>
+			<pre class="source-code">    &lt;div class="container chat"&gt;</pre>
+			<pre class="source-code">        &lt;aside id="aside"&gt;</pre>
+			<pre class="source-code">            {# List of groups and users #}</pre>
+			<pre class="source-code">            {% include "components/_aside.html" with </pre>
+			<pre class="source-code">            users=users %}</pre>
+			<pre class="source-code">        &lt;/aside&gt;</pre>
+			<pre class="source-code">        &lt;main id="main"&gt;</pre>
+			<pre class="source-code">            {# Chat: Group name, list of users and form to </pre>
+			<pre class="source-code">            send new message #}</pre>
+			<pre class="source-code">            {% include "components/_chat.html" %}</pre>
+			<pre class="source-code">        &lt;/main&gt;</pre>
+			<pre class="source-code">    &lt;/div&gt;</pre>
+			<pre class="source-code">&lt;/body&gt;</pre>
+			<pre class="source-code">&lt;/html&gt;</pre>
+			<p>The<a id="_idIndexMarker238"/> preceding <a id="_idIndexMarker239"/>block is divided into three parts:</p>
+			<ul>
+				<li><strong class="source-inline">&lt;span id="logged-user"&gt;&lt;/span&gt;</strong>: This is used to display the client’s name</li>
+				<li><strong class="source-inline">&lt;aside id="aside"&gt;&lt;/aside&gt;</strong>: A component that will list the name of the groups and users that will be clickable to dynamically jump between Channels (or Rooms)</li>
+				<li><strong class="source-inline">&lt;main id="main"&gt;&lt;/main&gt;</strong>: Contains another component that will render all existing or new messages with the respective form to publish a new message</li>
+			</ul>
+			<p>Now, let’s create all the components. Let’s start with <strong class="source-inline">/app/chat<a id="_idTextAnchor120"/>/templates/components/_aside.html</strong>:</p>
+			<pre class="source-code">&lt;nav&gt;</pre>
+			<pre class="source-code">    {# Group links #}</pre>
+			<pre class="source-code">    &lt;h2&gt;Groups&lt;/h2&gt;</pre>
+			<pre class="source-code">    &lt;ul class="nav__ul"&gt;</pre>
+			<pre class="source-code">        &lt;li class="nav__li"&gt;</pre>
+			<pre class="source-code">            &lt;a</pre>
+			<pre class="source-code">                class="nav__link"</pre>
+			<pre class="source-code">                href="#"</pre>
+			<pre class="source-code">                data-group-name="hi"</pre>
+			<pre class="source-code">                data-group-public="true"</pre>
+			<pre class="source-code">            &gt;</pre>
+			<pre class="source-code">                #hi</pre>
+			<pre class="source-code">            &lt;/a&gt;</pre>
+			<pre class="source-code">        &lt;/li&gt;</pre>
+			<pre class="source-code">        &lt;li class="nav__li"&gt;</pre>
+			<pre class="source-code">            &lt;a</pre>
+			<pre class="source-code">                class="nav__link" </pre>
+			<pre class="source-code">                href="#"</pre>
+			<pre class="source-code">                data-group-name="python"</pre>
+			<pre class="source-code">                data-group-public="true"</pre>
+			<pre class="source-code">            &gt;</pre>
+			<pre class="source-code">                #python</pre>
+			<pre class="source-code">            &lt;/a&gt;</pre>
+			<pre class="source-code">        &lt;/li&gt;</pre>
+			<pre class="source-code">                &lt;li class="nav__li"&gt;</pre>
+			<pre class="source-code">            &lt;a</pre>
+			<pre class="source-code">                class="nav__link"</pre>
+			<pre class="source-code">                href="#"</pre>
+			<pre class="source-code">                data-group-name="events"</pre>
+			<pre class="source-code">                data-group-public="true"</pre>
+			<pre class="source-code">            &gt;</pre>
+			<pre class="source-code">                #events</pre>
+			<pre class="source-code">            &lt;/a&gt;</pre>
+			<pre class="source-code">        &lt;/li&gt;</pre>
+			<pre class="source-code">        &lt;/li&gt;</pre>
+			<pre class="source-code">        &lt;li class="nav__li"&gt;</pre>
+			<pre class="source-code">            &lt;a</pre>
+			<pre class="source-code">                class="nav__link" </pre>
+			<pre class="source-code">                href="#"</pre>
+			<pre class="source-code">                data-group-name="off-topic"</pre>
+			<pre class="source-code">                data-group-public="true"</pre>
+			<pre class="source-code">            &gt;</pre>
+			<pre class="source-code">                #off-topic</pre>
+			<pre class="source-code">            &lt;/a&gt;</pre>
+			<pre class="source-code">        &lt;/li&gt;</pre>
+			<pre class="source-code">    &lt;/ul&gt;</pre>
+			<pre class="source-code">    {# End Group links #}</pre>
+			<pre class="source-code">    {# Users links #}</pre>
+			<pre class="source-code">    &lt;h2&gt; Users&lt;/h2&gt;</pre>
+			<pre class="source-code">    &lt;ul class="nav__ul"&gt;</pre>
+			<pre class="source-code">    {% for user in users %}</pre>
+			<pre class="source-code">        &lt;li class="nav__li"&gt;</pre>
+			<pre class="source-code">            &lt;a</pre>
+			<pre class="source-code">                class="nav__link"</pre>
+			<pre class="source-code">                href="#"</pre>
+			<pre class="source-code">                data-group-name="{{ user.username }}"</pre>
+			<pre class="source-code">                data-is-group="false"</pre>
+			<pre class="source-code">            &gt;</pre>
+			<pre class="source-code">                {{ user.username }}</pre>
+			<pre class="source-code">            &lt;/a&gt;</pre>
+			<pre class="source-code">        &lt;/li&gt;</pre>
+			<pre class="source-code">    {% endfor %}</pre>
+			<pre class="source-code">    &lt;/ul&gt;</pre>
+			<pre class="source-code">    {# End Users links #}</pre>
+			<pre class="source-code">&lt;/nav&gt;</pre>
+			<p>To simplify this code, we <a id="_idIndexMarker240"/>have manually typed in the names of all the<a id="_idIndexMarker241"/> groups where several clients will be able to speak at the same time. You are free to generate them from the model. </p>
+			<p>Now, let’s create <strong class="source-inline">/app/ch<a id="_idTextAnchor121"/>at/templates/components/_chat.html</strong>:</p>
+			<pre class="source-code">&lt;section class="messages"&gt;</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">    {# Name of the connected group #}</pre>
+			<pre class="source-code">    &lt;h2 id="group-name"&gt;{{ name }}&lt;/h2&gt;</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">    {# List of messages #}</pre>
+			<pre class="source-code">    &lt;div class="messages__list" id="messages-list"&gt;&lt;/div&gt;</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">    {# Form to add a new message #}</pre>
+			<pre class="source-code">    &lt;form action="" class="messages__new-message"&gt;</pre>
+			<pre class="source-code">        &lt;input type="text" class="input" name="message" </pre>
+			<pre class="source-code">            id="message-text" /&gt;</pre>
+			<pre class="source-code">        &lt;input type="submit" id="send" class="button" </pre>
+			<pre class="source-code">            value="Send" /&gt;</pre>
+			<pre class="source-code">    &lt;/form&gt;</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">&lt;/section&gt;</pre>
+			<p>The preceding code contains the three essential parts of any self-respecting chat room:</p>
+			<ul>
+				<li>The name of the group or Channel present at the time</li>
+				<li>A list of messages</li>
+				<li>A form for adding new messages</li>
+			</ul>
+			<p>However, the<a id="_idIndexMarker242"/> list of messages is empty. Where is the loop<a id="_idIndexMarker243"/> with the HTML template? To be tidy, we have placed it in another component located in <strong class="source-inline">app/<a id="_idTextAnchor122"/>chat/templates/components/_list_messages.html</strong>, which contains the following code:</p>
+			<pre class="source-code">{% for message in messages %}</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">    {# Item message #}</pre>
+			<pre class="source-code">    &lt;article class="message__item"&gt;</pre>
+			<pre class="source-code">        &lt;header class="massage__header"&gt;</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">            {# Username #}</pre>
+			<pre class="source-code">            &lt;h3 class="message__title"&gt;{{ </pre>
+			<pre class="source-code">                message.user.username }}&lt;/h3&gt;</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">            {# Date of creation #}</pre>
+			<pre class="source-code">            &lt;time class="message__time"&gt;{{ </pre>
+			<pre class="source-code">                message.created_at|date: "d/m/Y H:i" </pre>
+			<pre class="source-code">                    }}&lt;/time&gt;</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">        &lt;/header&gt;</pre>
+			<pre class="source-code">        &lt;div&gt;</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">            {# Text #}</pre>
+			<pre class="source-code">            {{ message.text }}</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">        &lt;/div&gt;</pre>
+			<pre class="source-code">    &lt;/article&gt;</pre>
+			<pre class="source-code">    {# End Item message #}</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">{% endfor %}</pre>
+			<p>Now that<a id="_idIndexMarker244"/> we <a id="_idIndexMarker245"/>have defined all the HTML for the chat, we just need to add some minimal styles to give it structure.</p>
+			<h2 id="_idParaDest-68"><a id="_idTextAnchor123"/>Defining CSS styles</h2>
+			<p>In this section, we<a id="_idIndexMarker246"/> will <a id="_idIndexMarker247"/>create a style file in <strong class="source-inline">static/css/main.css</strong> with a few fixes to make the future Chat more comfortable to use:</p>
+			<pre class="source-code">/* Global styles */</pre>
+			<pre class="source-code">:root {</pre>
+			<pre class="source-code">    --color__background: #f6f4f3;</pre>
+			<pre class="source-code">    --color__gray: #ccc;</pre>
+			<pre class="source-code">    --color__black: #000;</pre>
+			<pre class="source-code">}</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">* {</pre>
+			<pre class="source-code">    font-family: "Helvetica Neue", Helvetica, Arial, sans-</pre>
+			<pre class="source-code">        serif;</pre>
+			<pre class="source-code">    box-sizing: border-box;</pre>
+			<pre class="source-code">}</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">body {</pre>
+			<pre class="source-code">    margin: 0;</pre>
+			<pre class="source-code">    background-color: var(--color__background);</pre>
+			<pre class="source-code">}</pre>
+			<p>We will prepare <a id="_idIndexMarker248"/>some colors, provide a nice typeface (if you only take one thing from the book, always use <a id="_idTextAnchor124"/>Helvetica), and arrange <strong class="source-inline">body</strong>:</p>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">/* General classes for small components */</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">.container {</pre>
+			<pre class="source-code">    margin: 0 auto;</pre>
+			<pre class="source-code">    padding: 1rem 0;</pre>
+			<pre class="source-code">    max-width: 40rem;</pre>
+			<pre class="source-code">}</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">.button {</pre>
+			<pre class="source-code">    display: inline-block;</pre>
+			<pre class="source-code">    padding: 0.5rem 1rem;</pre>
+			<pre class="source-code">    background-color: var(--color__gray);</pre>
+			<pre class="source-code">    border: 0;</pre>
+			<pre class="source-code">    cursor: pointer;</pre>
+			<pre class="source-code">    text-decoration: none;</pre>
+			<pre class="source-code">}</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">.button:hover {</pre>
+			<pre class="source-code">    filter: brightness(90%);</pre>
+			<pre class="source-code">}</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">.input {</pre>
+			<pre class="source-code">    display: block;</pre>
+			<pre class="source-code">    width: 100%;</pre>
+			<pre class="source-code">    outline: none;</pre>
+			<pre class="source-code">    padding: .5rem;</pre>
+			<pre class="source-code">    resize: none;</pre>
+			<pre class="source-code">    border: 1px solid var(--color__gray);</pre>
+			<pre class="source-code">    box-sizing: border-box;</pre>
+			<pre class="source-code">}</pre>
+			<p>We will slightly <a id="_idIndexMarker249"/>modernize the inputs and prepare a<a id="_idTextAnchor125"/> container to center<a id="_idIndexMarker250"/> the Chat:</p>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">/* Styles for chat */</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">.title {</pre>
+			<pre class="source-code">    text-align: center;</pre>
+			<pre class="source-code">}</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">.subtitle {</pre>
+			<pre class="source-code">    text-align: center;</pre>
+			<pre class="source-code">    font-weight: normal;</pre>
+			<pre class="source-code">    margin: 0;</pre>
+			<pre class="source-code">}</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">.chat {</pre>
+			<pre class="source-code">    display: grid;</pre>
+			<pre class="source-code">    grid-template-columns: 1fr 3fr;</pre>
+			<pre class="source-code">    gap: 1rem;</pre>
+			<pre class="source-code">}</pre>
+			<p>Now, let’s align <strong class="source-inline">&lt;<a id="_idTextAnchor126"/>aside&gt;</strong> and <strong class="source-inline">&lt;main&gt;</strong> horizontally:</p>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">/* Aside */</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">.nav__ul {</pre>
+			<pre class="source-code">    list-style: none;</pre>
+			<pre class="source-code">    padding: 0;</pre>
+			<pre class="source-code">}</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">.nav__link {</pre>
+			<pre class="source-code">    display: block;</pre>
+			<pre class="source-code">    padding: 0.5rem 1rem;</pre>
+			<pre class="source-code">    background-color: var(--color__gray);</pre>
+			<pre class="source-code">    border: 1px solid var(--color__background);</pre>
+			<pre class="source-code">    color: var(--color__black);</pre>
+			<pre class="source-code">    text-decoration: none;</pre>
+			<pre class="source-code">}</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">.nav__link:hover {</pre>
+			<pre class="source-code">    filter: brightness(90%);</pre>
+			<pre class="source-code">}</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">/* End Aside */</pre>
+			<p>Here, we <a id="_idIndexMarker251"/>have fixed the browser and the links included within <strong class="source-inline">&lt;aside&gt;</strong> so that they<a id="_idIndexMarker252"/> have a clickable area that i<a id="_idTextAnchor127"/>s comfortable enough to click on:</p>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">/* Chat */</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">.messages {</pre>
+			<pre class="source-code">    display: grid;</pre>
+			<pre class="source-code">    height: 30rem;</pre>
+			<pre class="source-code">    grid-template-rows: 4rem auto 2rem;</pre>
+			<pre class="source-code">}</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">.massage__header {</pre>
+			<pre class="source-code">    display: grid;</pre>
+			<pre class="source-code">    grid-template-columns: 1fr 1fr;</pre>
+			<pre class="source-code">    grid-gap: 1rem;</pre>
+			<pre class="source-code">}</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">.messages__list {</pre>
+			<pre class="source-code">    overflow-y: auto;</pre>
+			<pre class="source-code">}</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">.message__item {</pre>
+			<pre class="source-code">    border: 1px solid var(--color__gray);</pre>
+			<pre class="source-code">    padding: 1rem;</pre>
+			<pre class="source-code">}</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">.massage__header . message__title {</pre>
+			<pre class="source-code">    margin-top: 0;</pre>
+			<pre class="source-code">}</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">.massage__header . message__time {</pre>
+			<pre class="source-code">    text-align: right;</pre>
+			<pre class="source-code">}</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">.messages__new-message {</pre>
+			<pre class="source-code">    display: grid;</pre>
+			<pre class="source-code">    grid-template-columns: 8fr 1fr;</pre>
+			<pre class="source-code">}</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">/* End Chat */</pre>
+			<p>Finally, we have converted each chat message into a well-delimited box with a border. We also horizontally aligned the input and the form button to display it as we are used to today.</p>
+			<p>Now, we<a id="_idIndexMarker253"/> must create a view to render all the pieces we have created – the <a id="_idIndexMarker254"/>database, generated users, template, and HTML components – with a little CSS.</p>
+			<h2 id="_idParaDest-69"><a id="_idTextAnchor128"/>Creating the view </h2>
+			<p>There’s<a id="_idIndexMarker255"/> nothing at the root of the chat yet. Without a view and a route, the template cannot be served to the client. Even if we show a static template, we must indicate the path where it can be visited and rendered. We need a view to generate its presentation HTML.</p>
+			<p>In <strong class="source-inline">/app/chat/views.py</strong>, we will create a view called <strong class="source-inline">index</strong> that renders <strong class="source-inline">index.html</strong> with all the users, which will be displayed in <strong class="source-inline">&lt;aside&gt;<a id="_idTextAnchor129"/></strong>:</p>
+			<pre class="source-code">from django.shortcuts import render</pre>
+			<pre class="source-code">from djang<a id="_idTextAnchor130"/>o.contrib.auth.models import User</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">def index(request):</pre>
+			<pre class="source-code">    """View with chat layout"""</pre>
+			<pre class="source-code">    return render(</pre>
+			<pre class="source-code">        request, "index.html", { "users": </pre>
+			<pre class="source-code">            User.objects.all(). order_by("username")})</pre>
+			<pre class="source-code">    </pre>
+			<p>In <strong class="source-inline">/project_template/urls.py</strong>, we will add the view to be displayed when a visitor enters the site’s root:</p>
+			<pre class="source-code">from django.urls import path</pre>
+			<pre class="source-code">from app.chat import views</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">urlpatterns = [</pre>
+			<pre class="source-code">    path("", views.index, name="index"),</pre>
+			<pre class="source-code">]</pre>
+			<p>Now, we will<a id="_idIndexMarker256"/> open the browser we have at hand with the domain of the project. The address is described in the <strong class="source-inline">DOMAIN</strong> variable of the <strong class="source-inline">docker-compose.yaml</strong> file. If you haven’t touched the document, the address will be <strong class="source-inline">http://hello.localhost</strong>. In my case, I have changed it to <strong class="source-inline">http://chat.localhost</strong>. </p>
+			<p>We will be able to see in the browser the list of groups, written manually, and the list of existing users. In addition, we have a form where we can write future messages:</p>
+			<div>
+				<div id="_idContainer052" class="IMG---Figure">
+					<img src="image/Figure_5.02_B18321.jpg" alt="Figure 5.2 – The chat without any messages, group name, or client name&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 5.2 – The chat without any messages, group name, or client name</p>
+			<p>The visual<a id="_idIndexMarker257"/> part is ready; we can now focus all our attention on the chat logic. We already have the body; now, we need a brain to manage the logic.</p>
+			<h2 id="_idParaDest-70"><a id="_idTextAnchor131"/>Declaring JavaScript to listen to messages or send them</h2>
+			<p>Let’s<a id="_idIndexMarker258"/> update the <strong class="source-inline">static/js/index.js</strong> file <a id="_idIndexMarker259"/>with the following code:</p>
+			<pre class="source-code">    VARIABLES</pre>
+			<pre class="source-code">*/</pre>
+			<pre class="source-code">// Connect to WebSockets server (SocialNetworkConsumer)</pre>
+			<pre class="source-code">const myWebSocket = new WebSocket(`${document.body.dataset.scheme === 'http' ? 'ws' : 'wss'}://${ document.body.dataset.host }/ws/chat/`);</pre>
+			<p>We will connect to the backend with the WebSockets client using the <strong class="source-inline">scheme</strong> and <strong class="source-inline">host</strong> values we<a id="_idIndexMarker260"/> have printed in the dataset’s <strong class="source-inline">&lt;body&gt;</strong> tag:</p>
+			<pre class="source-code">    FUNCTIONS</pre>
+			<pre class="source-code">*/</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">/**</pre>
+			<pre class="source-code">* Send data to WebSockets server</pre>
+			<pre class="source-code">* @param {string} message</pre>
+			<pre class="source-code">* @param {WebSocket} webSocket</pre>
+			<pre class="source-code">* @return {void}</pre>
+			<pre class="source-code">*/</pre>
+			<pre class="source-code">function sendData(message, webSocket) {</pre>
+			<pre class="source-code">    webSocket.send(JSON.stringify(message));</pre>
+			<pre class="source-code">}</pre>
+			<p>Let’s retrieve the <strong class="source-inline">sendData()</strong> function we used in the previous examples to send messages to the backend:</p>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">/**</pre>
+			<pre class="source-code">* Send message to WebSockets server</pre>
+			<pre class="source-code">* @return {void}</pre>
+			<pre class="source-code">*/</pre>
+			<pre class="source-code">function sendNewMessage(event) {</pre>
+			<pre class="source-code">    event.preventDefault();</pre>
+			<pre class="source-code">    const messageText = document.querySelector('#message-</pre>
+			<pre class="source-code">        text')</pre>
+			<pre class="source-code">    sendData({</pre>
+			<pre class="source-code">            action: 'New message',</pre>
+			<pre class="source-code">            data: {</pre>
+			<pre class="source-code">                message: messageText.value</pre>
+			<pre class="source-code">            }</pre>
+			<pre class="source-code">        }, myWebSocket);</pre>
+			<pre class="source-code">    messageText.value = '';</pre>
+			<pre class="source-code">}</pre>
+			<p>Now, we must declare a function to send a new message. We won’t need anything more than the text <a id="_idIndexMarker261"/>since I will k<a id="_idTextAnchor132"/>now who <a id="_idIndexMarker262"/>the author is due to the Consumer:</p>
+			<pre class="source-code">/**</pre>
+			<pre class="source-code">* Requests the Consumer to change the group with respect to the Dataset group-name.</pre>
+			<pre class="source-code">* @param event</pre>
+			<pre class="source-code">*/</pre>
+			<pre class="source-code">function changeGroup(event) {</pre>
+			<pre class="source-code">    event.preventDefault();</pre>
+			<pre class="source-code">    sendData({</pre>
+			<pre class="source-code">            action: 'Change group',</pre>
+			<pre class="source-code">            data: {</pre>
+			<pre class="source-code">                groupName: event.target.dataset.groupName,</pre>
+			<pre class="source-code">                isGroup: event.target.dataset.groupPublic </pre>
+			<pre class="source-code">                    === "true".</pre>
+			<pre class="source-code">            }</pre>
+			<pre class="source-code">        }, myWebSocket);</pre>
+			<pre class="source-code">}</pre>
+			<p>The <strong class="source-inline">changeGroup()</strong> function will tell the Consumer to change the group and send us the HTML for the existing messages of the group. We will accompany this request with the dataset that stores the name of the Room to change and information about whether it is a multi-user group or a private conversation.</p>
+			<p>The final<a id="_idIndexMarker263"/> JavaScript fragment is for<a id="_idIndexMarker264"/> the backend listener:</p>
+			<pre class="source-code">    EVENTS</pre>
+			<pre class="source-code">*/</pre>
+			<pre class="source-code">// Event when a new message is received by WebSockets</pre>
+			<pre class="source-code">myWebSocket.addEventListener("message", (event) =&gt; {</pre>
+			<pre class="source-code">    // Parse the data received</pre>
+			<pre class="source-code">    const data = JSON.parse(event.data);</pre>
+			<pre class="source-code">    // Renders the HTML received from the Consumer</pre>
+			<pre class="source-code">    document.querySelector(data.selector).innerHTML = </pre>
+			<pre class="source-code">        data.html;</pre>
+			<p>As in the previous examples, we will collect the JSON, parse it, and inject the HTML:</p>
+			<pre class="source-code">    // Scrolls to the bottom of the chat</pre>
+			<pre class="source-code">    const messagesList = document.querySelector('#messages-</pre>
+			<pre class="source-code">        list');</pre>
+			<pre class="source-code">    messagesList.scrollTop = messagesList.scrollHeight;</pre>
+			<p>Every time we print a list of messages or receive a new message, the scroll will be placed at an inappropriate height. It may not scroll at all, or it may hang in the middle. To fix this, after each HTML injection, we must scroll down to the end of the element, always displaying<a id="_idIndexMarker265"/> the last messag<a id="_idTextAnchor133"/>e. This<a id="_idIndexMarker266"/> is a common behavior in all Chats:</p>
+			<pre class="source-code">    /**</pre>
+			<pre class="source-code">     * Reassigns the events of the newly rendered HTML</pre>
+			<pre class="source-code">     */</pre>
+			<pre class="source-code">    // Button to send new message button</pre>
+			<pre class="source-code">    document.querySelector('#send').addEventListener('click', </pre>
+			<pre class="source-code">    sendNewMessage);</pre>
+			<pre class="source-code">    // Buttons for changing groups</pre>
+			<pre class="source-code">    document.querySelectorAll(".nav__link").forEach(button =&gt; {</pre>
+			<pre class="source-code">        button.addEventListener("click", changeGroup);</pre>
+			<pre class="source-code">    });</pre>
+			<pre class="source-code">});</pre>
+			<p>Finally, we must reassign all the events after each render. The button that sends a new message, with an ID of <strong class="source-inline">send</strong> will execute <strong class="source-inline">sendNewMessage()</strong>, while all <strong class="source-inline">&lt;aside&gt;</strong> buttons will call <strong class="source-inline">changeGroup()</strong>.</p>
+			<p>With the frontend defined, it’s time to work with the Consumer. The Consumer is responsible for <a id="_idIndexMarker267"/>managing the database, listening to JavaScript, rendering the HTML, and managing <a id="_idIndexMarker268"/>the groups.</p>
+			<h2 id="_idParaDest-71"><a id="_idTextAnchor134"/>Building a Consumer to manage groups</h2>
+			<p>In this <a id="_idIndexMarker269"/>section, we are going to define what will <a id="_idIndexMarker270"/>happen when a client connects, disconnects, sends us the action of changing groups, or adds a new message.</p>
+			<p>Edit <strong class="source-inline">app/chat/consumers.py</strong> with the following content:</p>
+			<pre class="source-code"># app/chat/consumers.py</pre>
+			<pre class="source-code">from channels.generic.websocket import JsonWebsocketConsumer</pre>
+			<pre class="source-code">from django.template.loader import rend<a id="_idTextAnchor135"/>er_to_string</pre>
+			<pre class="source-code">from asgiref.sync import async_to_sync</pre>
+			<pre class="source-code">from channels.auth import login, logout</pre>
+			<pre class="source-code">from django.contrib.auth.models import User</pre>
+			<pre class="source-code">from .models import Client, Room, Message</pre>
+			<p>Let’s import the authentication system, User, and models:</p>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">class ChatConsumer(JsonWebsocketConsumer):</pre>
+			<pre class="source-code"> </pre>
+			<p>The first thing we will do when we load the Consumer is delete Zo<a id="_idTextAnchor136"/>mbie Clients in case we forcefully close Django:</p>
+			<pre class="source-code">    Client.objects.all().delete()</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">    def connect(self):</pre>
+			<pre class="source-code">        """Event when client connects"""</pre>
+			<p>Now, we will accept the customer’s connection:</p>
+			<pre class="source-code">        self.accept()</pre>
+			<p>Next, we will obtain a random user who is not already registered as a customer:</p>
+			<pre class="source-code">        user = User.objects.exclude(</pre>
+			<pre class="source-code">            id__in=Client.objects.all().values("user")</pre>
+			<pre class="source-code">        ).order_by("?").first()</pre>
+			<p>Here, we will identify the user. It will be easier to work with sessions than storing the user ID:</p>
+			<pre class="source-code">        async_to_sync(login)(self.scope, user)</pre>
+			<pre class="source-code">        self.scope["session"].save()</pre>
+			<p>Now, we will <a id="_idIndexMarker271"/>send the name of the registered user <a id="_idIndexMarker272"/>to the frontend:</p>
+			<pre class="source-code">        self.send_html(</pre>
+			<pre class="source-code">            {</pre>
+			<pre class="source-code">                "selector": "#logged-user",</pre>
+			<pre class="source-code">                "html": self.scope["user"].username,</pre>
+			<pre class="source-code">            }</pre>
+			<pre class="source-code">        </pre>
+			<p>Next, we will register the client in the database to control who is connected:</p>
+			<pre class="source-code">        Client.objects.create(user=user, </pre>
+			<pre class="source-code">            channel=self.channel_name)</pre>
+			<p>At this point, we will assign the <strong class="source-inline">"hi"</strong> group as the first room to be displayed when you enter. We have created a special function to handle some repetitive tasks when changing rooms. We will describe how the function works shortly:</p>
+			<pre class="source-code">        self.add_client_to_room("hi", True)</pre>
+			<p>Now, let’s list the messages of the room where we have just assigned the client:</p>
+			<pre class="source-code">        self.list_room_messages()</pre>
+			<pre class="source-code">def disconnect(self, close_code):</pre>
+			<pre class="source-code">        """Event when client disconnects"""</pre>
+			<p>When a client disconnects, we will perform the following three tasks:</p>
+			<ul>
+				<li>Remove the client from the current room:</li>
+			</ul>
+			<pre class="source-code">        self.remove_client_from_current_room()</pre>
+			<ul>
+				<li>Deregister the client:</li>
+			</ul>
+			<pre class="source-code">        Client.objects.get(channel=self.channel_name).delete()</pre>
+			<ul>
+				<li>Log the user out:</li>
+			</ul>
+			<pre class="source-code">        logout(self.scope, self.scope["user"])</pre>
+			<p>With that, we<a id="_idIndexMarker273"/> have automatically implemented a<a id="_idIndexMarker274"/> system that creates a session for the user, which is very handy for identifying and sending individual messages to the user, and also closes the user’s session when the WebSocket client disconnects.</p>
+			<p>The function we have used in other examples for managing frontend actions is useful here. The backend tasks are simple: listen for and return JSON. We will always use the same functions, regardless of the application:</p>
+			<pre class="source-code">    def receive_json(self, data_received):</pre>
+			<pre class="source-code">        """</pre>
+			<pre class="source-code">            Event when data is received</pre>
+			<pre class="source-code">            All information will arrive in 2 variables:</pre>
+			<pre class="source-code">            "action", with the action to be taken</pre>
+			<pre class="source-code">            "data" with the information</pre>
+			<pre class="source-code">        """</pre>
+			<pre class="source-code">        # Get the data</pre>
+			<pre class="source-code">        data = data_received["data"]</pre>
+			<p>Depending on the action, we will do one task or the other. These are the actions that are requested by the frontend, such as adding a new message or listing all messages.</p>
+			<p>We will only change groups if the frontend makes a request. But when will this request be made? When the user clicks on the name of the group where they want to go or on the user they want to talk to. The event will be captured by the frontend and the <strong class="source-inline">Change group</strong> action will be sent to the backend.</p>
+			<p>We can’t work in the same way with a user who wants to enter a private room, where there will only be two users, and another user who will enter a public room (with no limit regarding <a id="_idIndexMarker275"/>users and open messages). The code is different. To control this situation, we <a id="_idIndexMarker276"/>will ask the frontend to send us <strong class="source-inline">isGroup</strong>. If it’s <strong class="source-inline">true</strong>, it’s a public group. If it’s <strong class="source-inline">false</strong>, it is a private group between two users.</p>
+			<p>We will start by changing groups:</p>
+			<pre class="source-code">        match data_received["action"]:</pre>
+			<pre class="source-code">            case "Change group":</pre>
+			<pre class="source-code">                if data["isGroup"]:</pre>
+			<p>If <strong class="source-inline">isGroup</strong> is <strong class="source-inline">True</strong>, we will add the client in a multi-user room: #hi, #python...</p>
+			<pre class="source-code">                    self.add_client_to_room(data["groupName"], data["isGroup"])</pre>
+			<pre class="source-code">                else:</pre>
+			<p>If <strong class="source-inline">isGroup</strong> is <strong class="source-inline">False</strong>, we will add a target user and the current user to the private room.</p>
+			<p>The major problem that we face is when two clients need to talk to each other, we need to ensure that we create a Room just for them. The difficulty is that we need to check if a Room already exists, and if it doesn’t, we need to create a group and then inform the participants of this when they want to connect. We will have to make a decision tree, as follows:</p>
+			<ol>
+				<li>Search for an already created Room where both clients have already spoken in the past. If it exists, retrieve the name of the Room and add the client to the group. If it does not exist, go to <em class="italic">Step 2</em>.</li>
+				<li>See if the users who want to talk to each other are alone in a Room. This is because they have created a Room and are waiting for another user to join and talk to them. If not, go to <em class="italic">Step 3</em>.</li>
+				<li>Create a new Room and hope that a user wants to talk to us.</li>
+			</ol>
+			<p>First, we will search for rooms where both clients match:</p>
+			<pre class="source-code">                    room = Room.objects.filter(users_subscribed__in=[self.scope["user"]], is_group=False). intersection(Room.objects.filter(users_subscribed__in=[user_target], is_group=False)).first())</pre>
+			<pre class="source-code">                    if room and user_target and room.users_subscribed.count() == 2:</pre>
+			<p>Then, we <a id="_idIndexMarker277"/>will<a id="_idIndexMarker278"/> get the client who wants to talk:</p>
+			<pre class="source-code">                    user_target = User.objects.filter(username=data["groupName"]).first()</pre>
+			<p>An existing group may be found where both the target and current clients are already talking. This is the most favorable case as there is a previous conversation where a Room has already been created. In this case, the client can be added to the group to talk:</p>
+			<pre class="source-code">                        self.add_client_to_room(room.name)</pre>
+			<pre class="source-code">                    else:</pre>
+			<p>If there is no existing group, look for a room where the target user is alone:</p>
+			<pre class="source-code">                        room = Room.objects.filter(</pre>
+			<pre class="source-code">                            users_subscribed__in=[</pre>
+			<pre class="source-code">                                user_target,</pre>
+			<pre class="source-code">                            ],</pre>
+			<pre class="source-code">                            is_group=False,</pre>
+			<pre class="source-code">                        ).last()</pre>
+			<pre class="source-code">                        if room and room.users_subscribed.count() == 1:</pre>
+			<p>If there is a room, let’s join:</p>
+			<pre class="source-code">                            self.add_client_to_room(room.name)</pre>
+			<pre class="source-code">                        else:</pre>
+			<p>If we have not found a room where the target user is alone, we must create a new room:</p>
+			<pre class="source-code">                            self.add_client_to_room()</pre>
+			<p>After moving the client to another room, we need to give them feedback so that they know which<a id="_idIndexMarker279"/> room they are in at the moment. We will <a id="_idIndexMarker280"/>send them the name of the room:</p>
+			<pre class="source-code">                self.send_room_name()</pre>
+			<pre class="source-code">            case "New message":</pre>
+			<p>Here, we have received a new message to save:</p>
+			<pre class="source-code">                self.save_message(data["message"])</pre>
+			<p>After this, there will be changes to show to the client, such as adding a new message. We will always send a list of the messages where the client is located so that they have the latest changes in the HTML:</p>
+			<pre class="source-code">        self.list_room_messages()</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">    def send_html(self, event):</pre>
+			<pre class="source-code">        """Event: Send html to client"""</pre>
+			<pre class="source-code">        data = {</pre>
+			<pre class="source-code">            "selector": event["selector"],</pre>
+			<pre class="source-code">            "html": event["html"],</pre>
+			<pre class="source-code">        }</pre>
+			<pre class="source-code">        self.send_json(data)</pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">    def list_room_messages(self):</pre>
+			<pre class="source-code">        List all messages from a group""""""</pre>
+			<pre class="source-code">        room_name = self.get_name_room_active()</pre>
+			<pre class="source-code">        # Get the room</pre>
+			<pre class="source-code">        room = Room.objects.get(name=room_name)</pre>
+			<pre class="source-code">        # Get all messages from the room</pre>
+			<pre class="source-code">        messages = Message.objects.filter(room=room). order_by("created_at")</pre>
+			<pre class="source-code">        # Render HTML and send to client</pre>
+			<pre class="source-code">        async_to_sync(self.channel_layer.group_send)(</pre>
+			<pre class="source-code">            room_name, {</pre>
+			<pre class="source-code">                "type": "send.html", # Run "send_html()" method</pre>
+			<pre class="source-code">                "selector": "#messages-list",</pre>
+			<pre class="source-code">                "html": render_to_string("components/_list_messages.html", {"messages": messages})</pre>
+			<pre class="source-code">            }</pre>
+			<pre class="source-code">        </pre>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">    def send_room_name(self):</pre>
+			<pre class="source-code">        """Send the room name to the client"""</pre>
+			<pre class="source-code">        room_name = self.get_name_room_active()</pre>
+			<pre class="source-code">        room = Room.objects.get(name=room_name)</pre>
+			<pre class="source-code">        data = {</pre>
+			<pre class="source-code">            "selector": "#group-name",</pre>
+			<pre class="source-code">            # Concadena # if it is a group for aesthetic reasons</pre>
+			<pre class="source-code">            "html": ("#" if room.is_group else "") + room_name,</pre>
+			<pre class="source-code">        }</pre>
+			<pre class="source-code">        self.send_json(data)</pre>
+			<p>Whenever we<a id="_idIndexMarker281"/> want to know who we are, we can use <strong class="source-inline">self.scope["user"]</strong>. It will return the<a id="_idIndexMarker282"/> logged-in user object:</p>
+			<pre class="source-code"> </pre>
+			<pre class="source-code">    def save_message(self, text):</pre>
+			<pre class="source-code">        "Save a message in the database"""""</pre>
+			<pre class="source-code">        # Get the room</pre>
+			<pre class="source-code">        room = Room.objects.get(name=self.get_name_room_active())</pre>
+			<pre class="source-code">        # Save message</pre>
+			<pre class="source-code">        Message.objects.create(</pre>
+			<pre class="source-code">            user=self.scope["user"],</pre>
+			<pre class="source-code">            room=room,</pre>
+			<pre class="source-code">            text=text,</pre>
+			<pre class="source-code">        </pre>
+			<p> To add a user to a Room, we must do the following:</p>
+			<ol>
+				<li value="1">Get the user client. </li>
+				<li>Remove the client from the previous room.</li>
+				<li>Get or create a room.</li>
+				<li>If the room has no name, it is assigned <strong class="source-inline">"private_{id}"</strong>. For example, if <strong class="source-inline">id</strong> is 1, it shall be <strong class="source-inline">"private_1"</strong>.</li>
+				<li>Add a client to the group.</li>
+				<li>Send <a id="_idIndexMarker283"/>the group name to the client, as<a id="_idIndexMarker284"/> follows:</li>
+			</ol>
+			<pre class="source-code">    def add_client_to_room(self, room_name=None, is_group=False):</pre>
+			<pre class="source-code">        """Add customer to a room within Channels and save the reference in the Room model."""""</pre>
+			<pre class="source-code">        client = Client.objects.get(user=self.scope["user"])</pre>
+			<pre class="source-code">        self.remove_client_from_current_room()</pre>
+			<pre class="source-code">        room, created = Room.objects.get_or_create(name=room_name, is_group=is_group)</pre>
+			<pre class="source-code">        if not room.name:</pre>
+			<pre class="source-code">            room.name = f "private_{room.id}"</pre>
+			<pre class="source-code">            room.save()</pre>
+			<pre class="source-code">        room.clients_active.add(client)</pre>
+			<pre class="source-code">        room.users_subscribed.add(client.user)</pre>
+			<pre class="source-code">        room.save()</pre>
+			<pre class="source-code">        async_to_sync(self.channel_layer.group_add)(room.name, self.channel_name)</pre>
+			<pre class="source-code">        self.send_room_name()</pre>
+			<p> Let’s describe the preceding code in more detail. There are several important parts to understand:</p>
+			<ol>
+				<li value="1">Obtaining the name of the Room where we are active is relatively easy by filtering the database:<p class="source-code">    def get_name_room_active(self):</p><p class="source-code">        """Get the name of the group from login user""""</p><p class="source-code">        room = Room.objects.filter(clients_active__user_id=self.scope["user"].id). first()</p><p class="source-code">        return room.name</p></li>
+				<li>To<a id="_idIndexMarker285"/> remove <a id="_idIndexMarker286"/>ourselves from a group, we must do the reverse:<p class="source-code">    def remove_client_from_current_room(self):</p><p class="source-code">        Remove client from current group""""""</p></li>
+				<li>We get all the Rooms where we are active:<p class="source-code">        client = Client.objects.get(user=self.scope["user"])</p><p class="source-code">        rooms = Room.objects.filter(clients_active__in=[client])</p></li>
+				<li>We go in and out of the Room and eliminate each other:<p class="source-code">        for room in rooms:</p></li>
+				<li>We remove the client from the group:<p class="source-code">            async_to_sync(self.channel_layer.group_discard)(room.name, self.channel_name)</p></li>
+				<li>We remove the client from the Room model:<p class="source-code">            room.clients_active.remove(client)</p><p class="source-code">            room.save()</p></li>
+			</ol>
+			<p>And the Chat is now complete. When we enter, it will render our username and the name of <a id="_idIndexMarker287"/>the <a id="_idIndexMarker288"/>Room where we are active. At the start of the chat, we will see <strong class="source-inline">#hi</strong>:</p>
+			<div>
+				<div id="_idContainer053" class="IMG---Figure">
+					<img src="image/Figure_5.03_B18321.jpg" alt="Figure 5.3 – Our username, which is randomly assigned when we log in, and the current Room&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 5.3 – Our username, which is randomly assigned when we log in, and the current Room</p>
+			<p>If we open a tab in <a id="_idIndexMarker289"/>another browser or use private browsing, a new random user will be assigned to the session, and we will be able to post to any of the groups. All the messages will be rendered in real time to the clients that are present or active in the group:</p>
+			<div>
+				<div id="_idContainer054" class="IMG---Figure">
+					<img src="image/Figure_5.04_B18321.jpg" alt="Figure 5.4 – Any user can write freely in the groups, without limitations&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 5.4 – Any user can write freely in the groups, without limitations</p>
+			<p>If we open a<a id="_idIndexMarker290"/> third browser, we can experience private <a id="_idIndexMarker291"/>rooms or conversations between two clients:</p>
+			<div>
+				<div id="_idContainer055" class="IMG---Figure">
+					<img src="image/Figure_5.05_B18321.jpg" alt="Figure 5.5 – A private conversation between two users&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 5.5 – A private conversation between two users</p>
+			<p>At any time, we can exchange messages with existing users or groups. Moreover, as we have a database to store the messages, even if we restart the Docker containers, we will always see the history with everything written, sorted by creation date. Here, we have a realistic Chat, with real-time response and logic in the backend. It’s amazing what we can achieve if <a id="_idIndexMarker292"/>we know how to use Django’s native <a id="_idIndexMarker293"/>tools and know how to manage Channels.</p>
+			<h1 id="_idParaDest-72"><a id="_idTextAnchor137"/>Summary</h1>
+			<p>In this chapter, we created a functional chat with private rooms and groups, like other software such as Slack or Teams, with very few lines of JavaScript (no comments, less than 35 lines). In addition, we have taken the first steps in an authentication system. We can now register and manage clients in different Channels, depending on our needs, and know who is connected or disconnected. The magic is over – we are now masters of Channels.</p>
+			<p>In the next chapter, <a href="B18321_06_ePub.xhtml#_idTextAnchor139"><em class="italic">Chapter 6</em></a>, <em class="italic">Creating SPAs on the Backends</em>, we will deal with the last few elements that are necessary to dynamize a site, such as changing pages, deciding when we want to update a whole section or add a new HTML fragment, working with sessions so as not to depend so much on the database, and validating the origin of the data to avoid <strong class="bold">cross-site request forgery</strong> (<strong class="bold">CSRF</strong>) with WebSockets. With all the skills we will have acquired, we will develop a complete SPA by building a blog in <a href="B18321_07_ePub.xhtml#_idTextAnchor152"><em class="italic">Chapter 7</em></a>, <em class="italic">Creating a Real-Time Blog Using Only Django</em>.</p>
+		</div>
+		<div>
+			<div id="_idContainer057">
+			</div>
+		</div>
+	</body></html>
