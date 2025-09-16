@@ -1,0 +1,608 @@
+<html><head></head><body>
+  <div id="sbo-rt-content"><div class="chapter" title="Chapter 11. Using Threads and Timers to Create Responsive Interfaces"><div class="titlepage"><div><div><h1 class="title"><a id="ch11"/>Chapter 11. Using Threads and Timers to Create Responsive Interfaces</h1></div></div></div><p>In this chapter, we will cover:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Non-Blocking GUI</li><li class="listitem" style="list-style-type: disc">Understanding thread safety</li><li class="listitem" style="list-style-type: disc">Threading tools</li><li class="listitem" style="list-style-type: disc">Using Timers</li><li class="listitem" style="list-style-type: disc">Capturing output</li></ul></div><div class="section" title="Introduction"><div class="titlepage"><div><div><h1 class="title"><a id="ch11lvl1sec01"/>Introduction</h1></div></div></div><p>It's all too familiar and an annoying issue when you are using an application and click on some button or control only to find that the application's UI all of a sudden appears to stop responding, the busy cursor shows up, and you are left there wondering if the application is still working, or if it has locked up and needs to be forced quit. This unpleasant experience is almost always the result of a function or action that takes a considerable amount of time to return after being called. If this function or action is called on the same thread that the GUI objects live on, it will block all the code that is running in the background and that is managing the GUI, leading to this locked up and unresponsive interface.</p><p>Being able to design an application in a way that prevents this situation from being presented to its users requires additional considerations in comparison to most traditional procedural approaches. This chapter explores this problem by providing solutions, and hopefully all the tools necessary, to build highly-responsive, multi-threaded applications in wxPython.</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Non-Blocking GUI"><div class="titlepage"><div><div><h1 class="title"><a id="ch11lvl1sec02"/>Non-Blocking GUI</h1></div></div></div><p>In this recipe, we explore what a responsive interface is and try to gain a good understanding of what the problem is that the other recipes in this chapter will provide solutions to. The recipe creates a simple application with two buttons. Each button will perform exactly the same task. However, the way in which the application responds and provides feedback to the user after the button is clicked will differ greatly between the two buttons, due to how the control flow is carried out.<a id="id393" class="indexterm"/>
+</p><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec01"/>How to do it...</h2></div></div></div><p>To illustrate the issue at hand, we will create a simple Fibonacci number calculator application. First, we will begin by defining a Thread class and the function that will be used to calculate the Nth Fibonacci number:<a id="id394" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">import wx
+import threading
+
+class FibThread(threading.Thread):
+    def __init__(self, window, n):
+        super(FibThread, self).__init__()
+
+        # Attributes
+        self.window = window
+        self.n = n
+
+    def run(self):
+        val = SlowFib(self.n)
+        wx.CallAfter(self.window.output.SetValue, str(val))
+        wx.CallAfter(self.window.StopBusy)
+
+def SlowFib(n):
+    """Calculate Fibonacci numbers
+    using slow recursive method to demonstrate
+    blocking the UI.
+    """
+    if n == 0:
+        return 0
+    elif n == 1:
+        return 1
+    else:
+        return SlowFib(n-1) + SlowFib(n-2)
+
+</pre></div><p>Now let's create the user interface for our Fibonacci number calculator:</p><div class="informalexample"><pre class="programlisting">class BlockingApp(wx.App):
+    def OnInit(self):
+        self.frame = BlockingFrame(None,
+                                   title="Non-Blocking Gui")
+        self.frame.Show()
+        return True
+
+class BlockingFrame(wx.Frame):
+    """Main application window"""
+    def __init__(self, *args, **kwargs):
+        super(BlockingFrame, self).__init__(*args, **kwargs)
+
+        # Attributes
+        self.panel = BlockingPanel(self)
+
+        # Layout
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(self.panel, 1, wx.EXPAND)
+        self.SetSizer(sizer)
+        self.SetInitialSize()
+
+</pre></div><p>Here, in the<code class="literal"> Panel</code>, is where most of the action will be taking place in this example. Here we lay out a simple interface with an input field and an output field, two buttons, and a progress bar:<a id="id395" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">class BlockingPanel(wx.Panel):
+    def __init__(self, parent):
+        super(BlockingPanel, self).__init__(parent)
+
+        # Attributes
+        self.timer = wx.Timer(self)
+        self.input = wx.SpinCtrl(self, value="35", min=1)
+        self.output = wx.TextCtrl(self)
+        self.block = wx.Button(self, label="Blocking")
+        self.noblock = wx.Button(self, label="Non-Blocking")
+        self.prog = wx.Gauge(self)
+
+        # Layout
+        self.__DoLayout()
+
+        # Event Handlers
+        self.Bind(wx.EVT_BUTTON, self.OnButton)
+        self.Bind(wx.EVT_TIMER, self.OnPulse, self.timer)
+
+    def __DoLayout(self):
+        vsizer = wx.BoxSizer(wx.VERTICAL)
+        hsizer = wx.BoxSizer(wx.HORIZONTAL)
+        gridsz = wx.GridSizer(2, 2, 5, 5)
+
+        # Layout controls
+        vsizer.Add(self.prog, 0, wx.EXPAND)
+        gridsz.Add(wx.StaticText(self, label="fib(n):"))
+        gridsz.Add(self.input, 0, wx.EXPAND)
+        gridsz.Add(wx.StaticText(self, label="result:"))
+        gridsz.Add(self.output, 0, wx.EXPAND)
+        vsizer.Add(gridsz, 0, wx.EXPAND|wx.ALL, 10)
+        hsizer.Add(self.block, 0, wx.ALL, 5)
+        hsizer.Add(self.noblock, 0, wx.ALL, 5)
+        vsizer.Add(hsizer, 0, wx.ALIGN_CENTER_HORIZONTAL)
+
+        self.SetSizer(vsizer)
+
+</pre></div><p>Here, in our handler for<code class="literal"> EVT_BUTTON</code>, is where we do the calculations. First, we clear the current output and then start the progress<code class="literal"> Gauge</code>. After that, we take one of two paths depending upon which<code class="literal"> Button</code> was clicked. If the "Blocking" button, we do the calculations right here in the same thread. If the "Non-Blocking" button was clicked, we delegate the task to a background thread in order to allow the GUI to continue processing:<a id="id396" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">    def OnButton(self, event):
+        input = self.input.GetValue()
+        self.output.SetValue("") # clear output
+        self.StartBusy() # give busy feedback
+        if event.GetEventObject() == self.block:
+            # Calculate value in blocking mode
+            val = SlowFib(input)
+            self.output.SetValue(str(val))
+            self.StopBusy()
+        else:
+            # Non-Blocking mode
+            task = FibThread(self, input)
+            task.start()
+
+</pre></div><p>These methods were added to control the progress Gauge and to update the state of the GUI, depending upon whether the application is busy calculating or not:</p><div class="informalexample"><pre class="programlisting">    def OnPulse(self, event):
+        self.prog.Pulse() # Pulse busy feedback
+
+    def StartBusy(self):
+        self.timer.Start(100)
+        self.block.Disable()
+        self.noblock.Disable()
+
+    def StopBusy(self):
+        self.timer.Stop()
+        self.prog.SetValue(0)
+        self.block.Enable()
+        self.noblock.Enable()
+
+if __name__ == '__main__':
+    app = BlockingApp(False)
+    app.MainLoop()
+
+</pre></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec02"/>How it works...</h2></div></div></div><p>Running the previous code will result in the following application window being displayed:<a id="id397" class="indexterm"/>
+</p><div class="mediaobject"><img src="images/1780_11_01.jpg" alt="How it works..."/></div><p>This application will calculate the Nth Fibonacci number specified by the first field. Using a number of 35 or higher will take from many seconds to several minutes to calculate by using the<code class="literal"> SlowFib</code> function. Clicking on either of the two buttons will result in the same<code class="literal"> SlowFib</code> function being called, and ultimately the same result being generated. So with this in mind, let's jump to the<code class="literal"> BlockingPanel's OnButton</code> method to see what happens differently between the two buttons.</p><p>When<code class="literal"> OnButton</code> is called, we first clear the result field and then<code class="literal"> Start</code> the<code class="literal"> Timer</code> to<code class="literal"> Pulse</code> the<code class="literal"> Gauge</code> at the top of the window to give the user feedback that we are busy calculating the result. If the Blocking button was clicked, we directly call the<code class="literal"> SlowFib</code> function to get the result. At this point, the control flow of the application will be stuck waiting for<code class="literal"> SlowFib</code> to return, which means that the<code class="literal"> MainLoop</code> will be waiting on our<code class="literal"> OnButton</code> method to return. Since<code class="literal"> OnButton</code> will not return until<code class="literal"> SlowFib</code> finishes, the framework will not be able to process any events for things such as repainting the window, mouse clicks, or our<code class="literal"> TimerEvent</code> for pulsing the<code class="literal"> Gauge</code>. Because of this, the Blocking button will still appear to be pressed, and the<code class="literal"> Frame</code> and all of its controls will be completely unresponsive until<code class="literal"> SlowFib</code> finishes and returns control to the<code class="literal"> MainLoop:</code>
+<a id="id398" class="indexterm"/>
+</p><div class="mediaobject"><img src="images/1780OS_11_02.jpg" alt="How it works..."/></div><p>On the contrary, if you click on the Non-Blocking button we still run the same<code class="literal"> SlowFib</code> function, but do it in a separate<code class="literal"> Thread</code>. This allows<code class="literal"> OnButton</code> to return immediately, returning control to the<code class="literal"> MainLoop</code>. So since the<code class="literal"> MainLoop</code> isn't stuck in<code class="literal"> OnButton</code>, it is free to process other events, allowing our busy indicator to be updated, the buttons to be shown as disabled, and the<code class="literal"> Frame</code> to be freely moved around the desktop. When the calculations finish on the<code class="literal"> FibThread</code>, it uses the<code class="literal"> CallAfter</code> function to send a message to call the required functions to update the GUI back on the main thread and then exits, leaving the GUI ready to start another calculation:<a id="id399" class="indexterm"/>
+</p><div class="mediaobject"><img src="images/1780OS_11_03.jpg" alt="How it works..."/></div><p>Both buttons will take about the same time to produce the result, but the Non-Blocking button allows the GUI to continue running smoothly and will give the user a better impression of knowing that the software is busy working and is not just locked up.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec03"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">See the<span class="emphasis"><em> Understanding thread safety</em></span> recipe in this chapter for more information on creating thread-safe GUIs.</li><li class="listitem" style="list-style-type: disc">See the<span class="emphasis"><em> Using Timers</em></span> recipe in this chapter for another approach to keeping the GUI responsive while performing a long-running task.</li></ul></div></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Understanding thread safety"><div class="titlepage"><div><div><h1 class="title"><a id="ch11lvl1sec03"/>Understanding thread safety</h1></div></div></div><p>Nearly all user interface toolkits are designed to run within a single thread of execution. Knowing how to interact with the GUI thread from other worker threads in a threaded application is an important task that needs to be performed with care in order to avoid seemingly unexplainable and random crashes in an application. This is as true in wxPython as any other typical GUI toolkit.</p><p>Maintaining thread safety in a wxPython application can be handled in a few different ways, but the use of events is most typical. The event queue monitored by the<code class="literal"> MainLoop</code> provides a thread-safe way to pass data and actions from a background thread to be processed in the context of the GUI thread. This recipe shows how to use custom events and the<code class="literal"> PostEvent</code> function to make updates to GUI objects that exist in the main GUI thread.<a id="id400" class="indexterm"/>
+</p><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec04"/>How to do it...</h2></div></div></div><p>Since we will be using events to maintain thread safety in our sample application, we will first start by defining a custom event type:</p><div class="informalexample"><pre class="programlisting">import wx
+import time
+import threading
+
+# Define a new custom event type
+wxEVT_THREAD_UPDATE = wx.NewEventType()
+EVT_THREAD_UPDATE = wx.PyEventBinder(wxEVT_THREAD_UPDATE, 1)
+
+class ThreadUpdateEvent(wx.PyCommandEvent):
+    def __init__(self, eventType, id):
+        super(ThreadUpdateEvent, self).__init__(eventType, id)
+
+        # Attributes
+        self.value = None
+
+    def SetValue(self, value):
+        self.value = value
+
+    def GetValue(self):
+        return self.value
+
+</pre></div><p>The<code class="literal"> CountingThread</code> class below will be used as this application's background worker thread and will use the previous event class to notify and make updates on the main GUI thread:</p><div class="informalexample"><pre class="programlisting">class CountingThread(threading.Thread):
+    """Simple thread that sends an update to its 
+    target window once a second with the new count value.
+    """
+    def __init__(self, targetwin, id):
+        super(CountingThread, self).__init__()
+
+        # Attributes
+        self.window = targetwin
+        self.id = id
+        self.count = 0
+        self.stop = False
+
+    def run(self):
+        while not self.stop:
+            time.sleep(1) # wait a second
+            # Notify the main thread itsit’s time 
+            # to update the ui
+            if self.window:
+                event = ThreadUpdateEvent(wxEVT_THREAD_UPDATE,
+                                          self.id)
+                event.SetValue(self.count)
+                wx.PostEvent(self.window, event)
+            self.count += 1
+
+    def Stop(self):
+        # Stop the thread
+        self.stop = True
+
+class ThreadSafetyApp(wx.App):
+    def OnInit(self):
+        self.frame = ThreadSafeFrame(None,
+                                     title="Thread Safety")
+        self.frame.Show()
+        return True
+
+</pre></div><p>Beginning here, with the<code class="literal"> ThreadSafeFrame</code> class, we will create the application's GUI. The Frame will be the target for the updates from the<code class="literal"> CountingThread:</code>
+<a id="id403" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">class ThreadSafeFrame(wx.Frame):
+    """Main application window"""
+    def __init__(self, *args, **kwargs):
+        super(ThreadSafeFrame, self).__init__(*args, **kwargs)
+
+        # Attributes
+        self.panel = ThreadSafePanel(self)
+        self.threadId = wx.NewId()
+        self.worker = CountingThread(self, self.threadId)
+
+        # Layout
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(self.panel, 1, wx.EXPAND)
+        self.SetSizer(sizer)
+        self.SetInitialSize((300, 300))
+
+        # Start the worker thread
+        self.worker.start()
+
+        # Event Handlers
+        self.Bind(wx.EVT_CLOSE, self.OnClose)
+        self.Bind(EVT_THREAD_UPDATE, self.OnThreadEvent)
+
+    def OnClose(self, event):
+        # Stop the worker thread
+        self.worker.Stop()
+        event.Skip()
+
+</pre></div><p>Here is the event handler that the<code class="literal"> ThreadSafeFrame</code> bound to the<code class="literal"> EVT_THREAD_UPDATE</code> event binder for the custom<code class="literal"> ThreadUpdateEvent</code> class. This method will be called after the<code class="literal"> CountingThread</code> posts a new update event to do the GUI updates on the main GUI thread:<a id="id404" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">    def OnThreadEvent(self, event):
+        if event.GetId() == self.threadId():
+            # Handle event to update Displayed Count
+            value = event.GetValue()
+            self.panel.DisplayCount(value)
+        else:
+            event.Skip()
+
+class ThreadSafePanel(wx.Panel):
+    def __init__(self, parent):
+        super(ThreadSafePanel, self).__init__(parent)
+
+        # Attributes
+        self.count = wx.StaticText(self, label="Count: ")
+
+        # Setup
+        self.__DoLayout()
+
+    def __DoLayout(self):
+        vsizer = wx.BoxSizer(wx.VERTICAL)
+        hsizer = wx.BoxSizer(wx.HORIZONTAL)
+        vsizer.AddStretchSpacer()
+        hsizer.AddStretchSpacer()
+        hsizer.Add(self.count)
+        hsizer.AddStretchSpacer()
+        vsizer.Add(hsizer, 0, wx.EXPAND)
+        vsizer.AddStretchSpacer()
+        self.SetSizer(vsizer)
+
+    def DisplayCount(self, value):
+        self.count.SetLabel("Count: %d" % value)
+
+if __name__ == '__main__':
+    app = ThreadSafetyApp(False)
+    app.MainLoop()
+
+</pre></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec05"/>How it works...</h2></div></div></div><p>The point of this recipe was to show a generic pattern for updating the GUI from a background thread. To illustrate this, we created a simple<code class="literal"> Frame</code> that has a<code class="literal"> Panel</code> with a single<code class="literal"> StaticTextCtrl</code> that will be updated by our<code class="literal"> CountingThread</code> after each time that it has completed its arduous task of incrementing the count by one.<a id="id405" class="indexterm"/>
+</p><p>First, we created a new event type of<code class="literal"> ThreadUpdateEvent</code>, and related event binder to use for transporting the data from the<code class="literal"> CountingThread</code> to the main thread when it needs to tell the UI to update the displayed value. The<code class="literal"> ThreadUpdateEvent</code> is used by the<code class="literal"> CountingThread</code> in its<code class="literal"> run</code> method by passing it to<code class="literal"> PostEvent</code>, which is a thread-safe way to queue up some work for the main GUI thread.</p><p>
+<code class="literal">PostEvent</code> will place the event object into the<code class="literal"> MainLoop's</code> event queue so that after it has finished processing any current tasks, it will grab and dispatch this update event to the appropriate event handler in our<code class="literal"> ThreadSafeFrame</code>. This is the key that makes it possible to safely update the GUI from a background thread.</p><p>If we had instead called the<code class="literal"> Panel's DisplayCount</code> method directly from within the context of the<code class="literal"> CountingThread</code>, there is no guarantee that both threads would not be trying to access or modify the same data at the same time. For example, if the GUI thread was in the middle of processing an internal<code class="literal"> PaintEvent</code> in order to redraw the<code class="literal"> StaticTextCtrl</code>, the control's label value would be getting accessed. If, at the same time, in the<code class="literal"> CountingThread</code>, it was trying to change that value, there would be potential memory corruption, which would cause the application to crash. By using an event, the update will be processed in the context of the main thread after it has finished any other pending tasks, eliminating the risk of collision since access to the variable would be controlled in a serialized manner by the main thread.</p></div><div class="section" title="There's more..."><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec06"/>There's more...</h2></div></div></div><p>The<code class="literal"> CallAfter</code> function provided by wxPython can also be used to make calls to methods that affect a GUI object from a background thread. The<code class="literal"> CallAfter</code> function encapsulates much of the event creation and processing internally, and can be more convenient and transparent for making simple changes to the GUI, as we did in this recipe. So let's take a little look at how<code class="literal"> CallAfter</code> works and can be used:<a id="id406" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">wx.CallAfter(callable, *args, **kw)
+</pre></div><p>
+<code class="literal">CallAfter</code> takes a function as its first argument. The<code class="literal"> *args</code> and<code class="literal"> **kw</code> are for specifying any positional or keyword arguments that should be passed the function specified by the first argument when it is called. So, for example, we could replace the three lines of code in our<code class="literal"> CountingThread's run</code> method that are creating and sending the custom event with the following:</p><div class="informalexample"><pre class="programlisting">wx.CallAfter(self.window.panel.DisplayCount,
+             self.count)
+
+</pre></div><p>Now, the<code class="literal"> CallAfter</code> function will create and post an event that contains the function and its arguments to the App object on the main GUI thread. When the<code class="literal"> MainLoop</code> gets to processing this event, it will get handled by an event handler belonging to the<code class="literal"> App</code> object. This event handler will then just simply call the function with any of its specified arguments, so that it is called in the context of the main GUI thread.</p><p>It's important to understand that<code class="literal"> CallAfter</code> means precisely that—the method will be called after the next iteration of the<code class="literal"> MainLoop</code>. So you cannot expect to get a return value from the method that you pass to it since it will be called asynchronously to the scope of where you made the<code class="literal"> CallAfter</code> call. So, just to be clear,<code class="literal"> CallAfter</code> always returns<code class="literal"> None</code>, meaning that you can't use it for code like the following:</p><div class="informalexample"><pre class="programlisting">value = wx.CallAfter(window.GetValue)
+</pre></div><p>This is because<code class="literal"> window.GetValue</code> isn't actually called until after the<code class="literal"> CallAfter</code> function returns.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec07"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">See the<span class="emphasis"><em> Creating custom event classes</em></span> recipe in<a class="link" href="ch02.html" title="Chapter 2. Responding to Events"> Chapter 2</a>,<span class="emphasis"><em> Responding to Events</em></span> for another example of creating custom events.</li><li class="listitem" style="list-style-type: disc">See the<span class="emphasis"><em> Threading tools</em></span> recipe in this chapter for some more examples and approaches to maintaining the thread safety of the GUI when working with background threads.</li></ul></div></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Threading tools"><div class="titlepage"><div><div><h1 class="title"><a id="ch11lvl1sec04"/>Threading tools</h1></div></div></div><p>Maintaining thread safety can be cumbersome and difficult at times so in this recipe we will create three useful utilities that will make working with threads easier. We will create two decorator functions and a metaclass to help make applying thread safe rules to methods and functions as simple as adding a single line of code.</p><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec08"/>How to do it...<a id="id407" class="indexterm"/>
+</h2></div></div></div><p>Here, will create a little utility module that can be used to help any wxPython application that needs to work with threads:</p><div class="informalexample"><pre class="programlisting">import wx
+import threading
+from types import FunctionType, MethodType
+
+__all__ = ['callafter', 'synchfunct', 'ClassSynchronizer']
+
+</pre></div><p>Starting here, we will create a simple decorator function that can be used to decorate any method in a GUI class, so that if a call to the decorated method is made from a background thread, it will automatically delegate the call to the<code class="literal"> CallAfter</code> function:</p><div class="informalexample"><pre class="programlisting">def callafter(funct):callafter(funct):
+    """Decorator to automatically use CallAfter if
+    a method is called from a different thread.
+    """
+    def callafterwrap(*args, **kwargs):
+        if wx.Thread_IsMain():
+            return funct(*args, **kwargs)
+        else:
+            wx.CallAfter(funct, *args, **kwargs)
+    callafterwrap.__name__ = funct.__name__
+    callafterwrap.__doc__ = funct.__doc__
+    return callafterwrap
+
+</pre></div><p>Next is the<code class="literal"> Synchronizer</code> class, which is used as a helper class to synchronize an asynchronous call to the main GUI thread:</p><div class="informalexample"><pre class="programlisting">class Synchronizer(object):
+    """Synchronize CallAfter calls"""
+    def __init__(self, funct, args, kwargs):
+        super(Synchronizer, self).__init__()
+
+        # Attributes
+        self.funct = funct
+        self.args = args
+        self.kwargs = kwargs
+        self._synch = threading.Semaphore(0)
+
+</pre></div><p>This method will be called by this class's<code class="literal"> Run</code> method using<code class="literal"> CallAfter</code> to execute it on the main GUI thread. It simply calls the function and releases the<code class="literal"> Semaphore:</code>
+<a id="id409" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">    def _AsynchWrapper(self):
+        """This part runs in main gui thread"""
+        try:
+            self.result = self.funct(*self.args,
+                                     **self.kwargs)
+        except Exception, msg:
+            # Store exception to report back to
+            # the calling thread.
+            self.exception = msg
+        # Release Semaphore to allow processing back 
+        # on other thread to resume.
+        self._synch.release()
+
+</pre></div><p>The<code class="literal"> Run</code> method is called by the background thread, and uses<code class="literal"> CallAfter</code> to delegate the function call to the main GUI thread. It then<code class="literal"> acquires</code> the<code class="literal"> Semaphore</code> so that the execution will pause at that line in the background thread until the<code class="literal"> _AsyncWrapper</code> method calls<code class="literal"> release:</code>
+</p><div class="informalexample"><pre class="programlisting">    def Run(self):
+        """Call from background thread"""
+        # Make sure this is not called from main thread
+        # as it will result in deadlock waiting on the
+        # Semaphore.
+        assert not wx.Thread_IsMain(), "Deadlock!"
+        # Make the asynchronous call to the main thread
+        # to run the function.
+        wx.CallAfter(self._AsynchWrapper)
+        # Block on Semaphore release until the function
+        # has been processed in the main thread by the
+        # UI's event loop.
+        self._synch.acquire()
+        # Return result to caller or raise error
+        try:
+            return self.result
+        except AttributeError:
+            raise self.exception
+
+</pre></div><p>Next up is the<code class="literal"> syncfunct</code> decorator which works the same way as the<code class="literal"> CallAfter</code> decorator, except that it uses the<code class="literal"> Synchronizer</code> to make the calls from the background thread synchronous:<a id="id410" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">def synchfunct(funct):
+    """Decorator to synchronize a method call from a worker
+    thread to the GUI thread.
+    """
+    def synchwrap(*args, **kwargs):
+        if wx.Thread_IsMain():
+            # called in context of main thread so
+            # no need for special synchronization
+            return self.funct(*args, **kwargs)
+        else:
+            synchobj = Synchronizer(funct, args, kwargs)
+            return synchobj.Run()
+            
+    synchwrap.__name__ = funct.__name__
+    synchwrap.__doc__ = funct.__doc__
+    return synchwrap
+
+</pre></div><p>The final utility that we will present in this module is the<code class="literal"> ClassSynchronizer</code> metaclass, which can be used to automatically apply the<code class="literal"> synchfunct</code> decorator to all of the methods in a class:<a id="id411" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">class ClassSynchronizer(type):
+    """Metaclass to make all methods in a class threadsafe"""
+    def __call__(mcs, *args, **kwargs):
+        obj = type.__call__(mcs, *args, **kwargs)
+
+        # Wrap all methods/functions in the class with
+        # the synchfunct decorator.
+        for attrname in dir(obj):
+            attr = getattr(obj, attrname)
+            if type(attr) in (MethodType, FunctionType):
+                nfunct = synchfunct(attr)
+                setattr(obj, attrname, nfunct)
+
+        return obj
+
+</pre></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec09"/>How it works...</h2></div></div></div><p>Decorators and MetaClasses can be a little intimidating at first if you haven't used them before, so let's take a look at each of our three new utilities one by one and see how they work and how to use them in your code.</p><p>The first utility is the<code class="literal"> callafter</code> decorator. This is a very simple decorator that will just wrap a function in<code class="literal"> CallAfter</code> when called from a thread that is not the GUI thread. Since it uses<code class="literal"> CallAfter</code>, this decorator should only be used for methods that don't expect a return value, such as setting a value or doing an update that you don't need feedback from on the background thread. The usage of this decorator is very simple. See the following example snippet:<a id="id412" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">class MyPanel(wx.Panel):
+    <span class="strong"><strong>@callafter</strong></span>
+    def SetSomeGuiValues(self, values):
+        self.ctrl1.SetValue(values[0])
+        ...
+        self.ctrlN.SetValue(values[N])
+
+</pre></div><p>Now the<code class="literal"> SetSomeGuiValues</code> method can be called from any thread in the application. A decorator function takes another function as an argument and returns a new function that usually wraps the existing function in some new behavior. So when our module is initialized by Python, it will see that the decorator arguments in the class will apply the decorator to the function and then rebind the function to the new one returned by the decorator. Our<code class="literal"> callafter</code> decorator simply wraps the given function in a check to see if it is being called from the main thread, and if not, it uses<code class="literal"> CallAfter</code> to run the function.<a id="id413" class="indexterm"/>
+</p><p>Next is the<code class="literal"> synchfunct</code> decorator. This decorator uses our<code class="literal"> Synchronizer</code> class to make it possible to synchronize inter-thread calls to functions. This method can be used when a background thread needs to make a call to retrieve a value from the GUI in a synchronous manner. The<code class="literal"> synchfunct</code> decorator works pretty much the same as our<code class="literal"> callafter</code> one, so let's look at how the<code class="literal"> Synchronizer</code> makes it possibly to turn the asynchronous<code class="literal"> CallAfter</code> function into a synchronous call.<a id="id414" class="indexterm"/>
+</p><p>The<code class="literal"> Synchronizer</code> class, like the<code class="literal"> CallAfter</code> function, takes a function and any of its arguments as parameters to initialize it. It also creates a<code class="literal"> Semaphore</code> object from the<code class="literal"> threading</code> module to use for synchronizing the actions. The<code class="literal"> Synchronizer's Run</code> method uses<code class="literal"> CallAfter</code> to call the passed-in function. After calling<code class="literal"> CallAfter</code>, the<code class="literal"> Run</code> method will block on the<code class="literal"> Semaphore's acquire</code> call. This will halt execution of the rest of the code in the<code class="literal"> Run</code> function and the background thread until the<code class="literal"> _AsynchWrapper</code> method has called<code class="literal"> release</code> on the<code class="literal"> Semaphore</code> after it has finished running the passed-in function back on the main thread. When<code class="literal"> release</code> has been called, the<code class="literal"> Run</code> method will continue past its<code class="literal"> acquire</code> call and will either return the result from the function that was run on the main thread or raise an exception if one was raised by calling that method.</p><p>Last, we have the<code class="literal"> ClassSynchronizer</code> metaclass. This metaclass will use the<code class="literal"> synchfunct</code> decorator to make every method in a class thread safe. First, let's take a quick look at the snippet below, in order to show how to use this metaclass, and then we will check out how it works:<a id="id415" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">class MyPanel(wx.Panel):
+    <span class="strong"><strong>__metaclass__ = ClassSynchronizer</strong></span>
+    def __init__(self, parent, *args, **kwargs)
+
+</pre></div><p>Can't get much easier than that, can it? When the Python interpreter initializes the class, it will see our<code class="literal"> __metaclass__</code> declaration, which will result in our<code class="literal"> ClassSynchronizer's __call__</code> method getting called. In<code class="literal"> __call__</code>, we use<code class="literal"> dir</code> to enumerate all of the given class's items from its dictionary. Then, for each item in the class that is a<code class="literal"> MethodType</code> or<code class="literal"> FunctionType</code>, we apply the<code class="literal"> synchfunct</code> decorator in order to get a newly-wrapped version of the method, and then use the wrapped version to replace it with.<a id="id416" class="indexterm"/>
+</p></div><div class="section" title="There's more..."><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec10"/>There's more...</h2></div></div></div><p>Included in the sample code that accompanies this topic is the full<code class="literal"> threadtools</code> module shown above, plus a sample application that shows some additional usage examples of the<code class="literal"> callafter</code> and<code class="literal"> syncfunct</code> decorators, as well as the<code class="literal"> ClassSynchronizer</code> metaclass in an application that fetches HTML from a given URL and displays it in a<code class="literal"> TextCtrl</code>.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec11"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">See the<span class="emphasis"><em> Understanding thread safety</em></span> recipe in this chapter for more information about using threads with a GUI.</li><li class="listitem" style="list-style-type: disc">See the<span class="emphasis"><em> Using decorators</em></span> recipe in<a class="link" href="ch09.html" title="Chapter 9. Design Approaches and Techniques"> Chapter 9</a>,<span class="emphasis"><em> Design Approaches and Techniques</em></span> for another example of using decorator functions.</li></ul></div></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Using Timers"><div class="titlepage"><div><div><h1 class="title"><a id="ch11lvl1sec05"/>Using Timers</h1></div></div></div><p>A<code class="literal"> Timer</code> is an object that can be created to send out events on a regular periodic basis. Typically, a<code class="literal"> Timer</code> is used to run short, atomic tasks, such as status checks and updates, but can also be leveraged to keep the UI active during a long-running task by performing tasks in incremental steps instead of one long blocking call. However, since a<code class="literal"> Timer</code> will run in the context of the main GUI thread, it is necessary to be able to design the execution of the long-running task to be able to be carried out in several smaller incremental steps, otherwise the UI will still become locked up while processing the<code class="literal"> TimerEvent</code>. This recipe creates a simple framework for processing long-running tasks by using a Timer.<a id="id417" class="indexterm"/>
+</p><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec12"/>How to do it...</h2></div></div></div><p>First, we will create a base class that defines an interface for tasks to derive from:<a id="id418" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">class TimerTaskBase(object):
+    """Defines interface for long running task
+    state machine.
+    """
+    TASK_STATE_PENDING, \
+    TASK_STATE_RUNNING, \
+    TASK_STATE_COMPLETE = range(3)
+    def __init__(self):
+        super(TimerTaskBase, self).__init__()
+
+        # Attributes
+        self._state = TimerTaskBase.TASK_STATE_PENDING
+
+    #---- Interface ----#
+
+    def ProcessNext(self):
+        """Do next iteration of task
+        @note: must be implemented by subclass
+        """
+        raise NotImplementedError
+
+    def InitTask(self):
+        """Optional override called before task 
+        processing begins
+        """
+        self.SetState(TimerTaskBase.TASK_STATE_RUNNING)
+
+    #---- Implementation ----#
+
+    def GetState(self):
+        return self._state
+
+    def SetState(self, state):
+        self._state = state
+
+</pre></div><p>Next, the<code class="literal"> TimerTaskMixin</code> class can be used to add the functionality for using a<code class="literal"> Timer</code> to process<code class="literal"> TimerTaskBase-derived</code> task objects to any window class:<a id="id419" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">class TimerTaskMixin(object):
+    """Mixin class for a wxWindow object to use timers
+    for running long task. Must be used as a mixin with
+    a wxWindow derived class!
+    """
+    def __init__(self):
+        super(TimerTaskMixin, self).__init__()
+
+        # Attributes
+        self._task = None
+        self._timer = wx.Timer(self)
+
+        # Event Handlers
+        self.Bind(wx.EVT_TIMER, self.OnTimer, self._timer)
+        
+    def __del__(self):
+        # Make sure timer is stopped
+        self.StopProcessing()
+
+</pre></div><p>The<code class="literal"> OnTimer</code> method will be called once every 100ms, when the<code class="literal"> Timer</code> generates a new event. Each time, it will call the<code class="literal"> TimerTask</code> object's<code class="literal"> ProcessNext</code> method to allow it to perform the next step in its processing:<a id="id420" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">    def OnTimer(self, event):
+        if self._task is not None:
+            self._task.ProcessNext()
+            state = self._task.GetState()
+            if state == self._task.TASK_STATE_COMPLETE:
+                self._timer.Stop()
+
+    def StartTask(self, taskobj):
+        assert not self._timer.IsRunning(), \
+               "Task already busy!"
+        assert isinstance(taskobj, TimerTaskBase)
+        self._task = taskobj
+        self._task.InitTask()
+        self._timer.Start(100)
+
+    def StopProcessing(self):
+        if self._timer.IsRunning():
+            self._timer.Stop()
+
+</pre></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec13"/>How it works...</h2></div></div></div><p>First, let's take a look at our<code class="literal"> TimerTaskBase</code> class, which defines the basic interface that our<code class="literal"> TimerTaskMixin</code> class will use to execute the long running task. The<code class="literal"> TimerTaskBase</code> class is very simple. It provides a<code class="literal"> ProcessNext</code> method that must be overridden by a subclass in order to implement the processing of the next chunk of the task's work. This method will be called each time that the<code class="literal"> TimerTaskMixin</code> class's Timer fires a<code class="literal"> TimerEvent</code>. The other method,<code class="literal"> InitTask</code>, is an optional override for a subclass to implement. It will be called immediately prior to the first<code class="literal"> ProcessNext</code> call, and can be used to perform any set-up that the task may require prior to processing.<a id="id421" class="indexterm"/>
+</p><p>The<code class="literal"> TimerTaskMixin</code> class is a mixin class that can be used with any<code class="literal"> wx.Window-derived</code> class, such as a<code class="literal"> Frame</code> or<code class="literal"> Panel</code>. It adds the framework for managing a<code class="literal"> TimerTask</code> object. This simple framework adds a<code class="literal"> StartTask</code> method that can be used by the UI to start the processing of a<code class="literal"> TimerTask. StartTask</code> takes the<code class="literal"> TimerTask</code> object that needs to be processed, and then starts the<code class="literal"> Timer</code>. The<code class="literal"> Timer</code> will fire every 100ms in order to call the task's<code class="literal"> ProcessNext</code> method, until the task reports that its state is in a completed state.</p></div><div class="section" title="There's more..."><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec14"/>There's more...</h2></div></div></div><p>In the full sample code that accompanies this topic, there is a simple example application that uses this framework for transcribing a string of DNA code to RNA, as an example of breaking up a bigger task into many smaller tasks that are to be processed during timer events.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec15"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">See the<span class="emphasis"><em> Handling events</em></span> recipe in<a class="link" href="ch02.html" title="Chapter 2. Responding to Events"> Chapter 2</a>,<span class="emphasis"><em> Responding to Events</em></span> for more information on event handling.</li><li class="listitem" style="list-style-type: disc">See the<span class="emphasis"><em> Using mixin classes</em></span> recipe in<a class="link" href="ch09.html" title="Chapter 9. Design Approaches and Techniques"> Chapter 9</a>,<span class="emphasis"><em> Design Approaches and Techniques</em></span> for more information on and examples of working with mixin classes.</li></ul></div></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Capturing output"><div class="titlepage"><div><div><h1 class="title"><a id="ch11lvl1sec06"/>Capturing output</h1></div></div></div><p>This recipe takes a number of the concepts put forth earlier in this chapter, to create an<code class="literal"> OutputWindow</code> component that can be used to capture console output from a subprocess and redirect it to a text display in an application. It will use<code class="literal"> Threads</code> and<code class="literal"> Timers</code> to implement a high-performance solution to this task, so let's get started and take a look at the code.<a id="id422" class="indexterm"/>
+</p><div class="note" title="Note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="note12"/>Note</h3><p>When run on Windows, this recipe makes use of the pywin32 extension module.(<a class="ulink" href="http://sourceforge.net/projects/pywin32/">http://sourceforge.net/projects/pywin32/</a>)</p></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec16"/>How to do it...</h2></div></div></div><p>In this recipe, we will create two classes. The first will be a worker thread class that will run the<code class="literal"> subprocess</code> and report its output to the GUI. The second will be the GUI component that makes use of the worker thread and displays its output:<a id="id423" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">import wx
+import wx.stc as stc
+import threading
+import subprocess
+
+</pre></div><p>The<code class="literal"> ProcessThread</code> class will run a<code class="literal"> subprocess</code> and read the process's output from its output pipe, and then pass the data back to the thread's<code class="literal"> parent</code> object:</p><div class="informalexample"><pre class="programlisting">class ProcessThread(threading.Thread):
+    """Helper Class for OutputWindow to run a subprocess in
+    a separate thread and report its output back 
+    to the window.
+    """
+    def __init__(self, parent, command, readblock=4096):
+        """
+        @param parent: OutputWindow instance
+        @param command: Command line command
+        @param readblock: amount to read from stdout each read
+        """
+        assert hasattr(parent, 'AppendUpdate')
+        assert readblock &gt; 0
+        super(ProcessThread, self).__init__()
+
+        # Attributes
+        self._proc = None
+        self._parent = parent
+        self._command = command
+        self._readblock = readblock
+
+        # Setup
+        self.setDaemon(True)
+
+</pre></div><p>Here, in the<code class="literal"> ProcessThread's run</code> method, we use the<code class="literal"> subprocess</code> module from the Python standard library to start and run the process that we want to get output from:<a id="id424" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">    def run(self):
+        # Suppress popping up a console window
+        # when running on windows
+        if subprocess.mswindows:            
+            suinfo = subprocess.STARTUPINFO()
+            try:
+                from win32process import STARTF_USESHOWWINDOW
+                suinfo.dwFlags |= STARTF_USESHOWWINDOW
+            except ImportError:
+                # Give up and use hard coded value 
+                # from Windows.h
+                suinfo.dwFlags |= 0x00000001
+        else:
+            suinfo = None
+        
+        try:
+            # Start the subprocess
+            outmode = subprocess.PIPE
+            errmode = subprocess.STDOUT
+            self._proc = subprocess.Popen(self._command,
+                                          stdout=outmode,
+                                          stderr=errmode,
+                                          shell=True,
+                                          startupinfo=suinfo)
+        except OSError, msg:
+            self._parent.AppendUpdate(unicode(msg))
+            return
+
+</pre></div><p>Here, we just loop as long as the process is running, reading its output and appending it to the<code class="literal"> parent</code> object's update queue:</p><div class="informalexample"><pre class="programlisting">        # Read from stdout while there is output from process
+        while True:
+            self._proc.poll()
+            if self._proc.returncode is None:
+                # Still running so check stdout
+                txt = self._proc.stdout.read(self._readblock)
+                if txt:
+                    # Add to UI's update queue
+                    self._parent.AppendUpdate(txt)
+            else:
+                break
+
+</pre></div><p>Next, we have the GUI control for displaying a process's output. This class will use the<code class="literal"> ProcessThread</code> to run a process and be the receiver for its data. It will maintain a list of threads so that there can be an arbitrary number of processes running at the same time.<a id="id425" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">class OutputWindow(stc.StyledTextCtrl):
+    def __init__(self, parent):
+        super(OutputWindow, self).__init__(parent)
+
+        # Attributes
+        self._mutex = threading.Lock()
+        self._updating = threading.Condition(self._mutex)
+        self._updates = list()
+        self._timer = wx.Timer(self)
+        self._threads = list()
+
+        # Setup
+        self.SetReadOnly(True)
+
+        # Event Handlers
+        self.Bind(wx.EVT_TIMER, self.OnTimer)
+
+    def __del__(self):
+        if self._timer.IsRunning():
+            self._timer.Stop()
+
+</pre></div><p>The<code class="literal"> AppendUpdate</code> method is used by the<code class="literal"> ProcessThread</code> to pass data to this control. The updates are appended to a list that we guard with a lock to ensure that only one thread is accessing it at a time:</p><div class="informalexample"><pre class="programlisting">    def AppendUpdate(self, value):
+        """Thread safe method to add updates to UI"""
+        self._updating.acquire()
+        self._updates.append(value)
+        self._updating.release()
+
+</pre></div><p>Next, we have a<code class="literal"> Timer</code> event handler to periodically check the update list and apply them to the GUI:</p><div class="informalexample"><pre class="programlisting">def OnTimer(self, event):
+"""Check updates queue and apply to UI"""
+# Check Thread(s)
+tlist = list(self._threads)
+for idx, thread in enumerate(tlist):
+if not thread.isAlive():
+del self._threads[idx]
+# Apply pending updates to control
+ind = len(self._updates)
+if ind:
+# Flush update buffer
+self._updating.acquire()
+self.SetReadOnly(False)
+txt = ''.join(self._updates[:])
+self.AppendText(txt)
+self.GotoPos(self.GetLength())
+self._updates = list()
+self.SetReadOnly(True)
+self._updating.release()
+if not len(self._threads):
+self._timer.Stop()
+</pre></div><p>Finally, the<code class="literal"> StartProcess</code> method is what the application can use to tell the control to start a new process:<a id="id426" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">    def StartProcess(self, command, blocksize=4096):
+        """Start command. Blocksize can be used to control
+        how much text must be read from stdout before window
+        will update.
+        """
+        procthread = ProcessThread(self, command, blocksize)
+        procthread.start()
+        self._threads.append(procthread)
+        if not self._timer.IsRunning():
+            self._timer.Start(250)
+
+</pre></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec17"/>How it works...</h2></div></div></div><p>First, let's jump in with a look at our<code class="literal"> ProcessThread</code> class. This is the worker thread that the<code class="literal"> OutputWindow</code> uses to start an external process and capture its output from. The constructor takes three arguments: a parent window, a command-line string, and an optional keyword parameter that can specify the amount of text to block on reading from the process's standard output on each iteration. Setting the<code class="literal"> readblock</code> parameter to a small number will result in more responsive updates from the<code class="literal"> ProcessThread</code>. However, setting it too low on a process that outputs lots of data can result in lots of small, inefficient updates. So it's generally best to try to select a value that is as large as is appropriate for the given process's output.<a id="id427" class="indexterm"/>
+</p><p>The<code class="literal"> ProcessThread's run</code> method is where it does all its work. First, we have to handle a special case for Windows, because<code class="literal"> subprocess.POpen</code> can cause a command window to be opened when running shell commands. The use of the<code class="literal"> startupflags</code> can be used to suppress this behavior since we want to show the output in our<code class="literal"> OutputWindow</code> instead. Next, we use the<code class="literal"> subprocess</code> module's<code class="literal"> POpen</code> class to run the command specified in the constructor. Finally, the thread just enters a simple loop that checks to see if the process is still running, and if it is it then blocks the read of the specified amount of text from the processes output pipe. After the text has been read, it calls the<code class="literal"> OutputWindow's AppendUpdate</code> method to add the output to its update queue.<a id="id428" class="indexterm"/>
+</p><p>Now, let's see how the<code class="literal"> OutputWindow</code> works to display the text that the<code class="literal"> ProcessThread</code> captures. The<code class="literal"> OutputWindow</code> derives from<code class="literal"> StyledTextCtrl</code> because this can handle larger amounts of text with generally better performance than the standard<code class="literal"> TextCtrl</code>, and has a more powerful API for working with the text in the buffer, should we decided to add some additional functionality at a later date. In the<code class="literal"> OutputWindow's</code> constructor, we did a few important things. First, we created a lock to use for guarding the update queue so that only one thread can modify it at a time. If a second thread tries to<code class="literal"> acquire</code> the lock while another thread has it, it will cause the second thread to wait at the<code class="literal"> acquire</code> call until the lock is released by the other thread. The second is the update queue, third is the<code class="literal"> Timer</code> that will be used to poll the update queue periodically, and finally we have a list to keep references to the<code class="literal"> ProcessThread(s)</code> that are started.</p><p>The remaining methods in the<code class="literal"> OutputWindow</code> class are all used to manage the updates from the<code class="literal"> ProcessThread(s)</code> that it owns.<code class="literal"> StartProcess</code> creates and starts a new<code class="literal"> ProcessThread</code>, as well as the<code class="literal"> OutputWindow's</code> update Timer if it hasn't been previously started.<code class="literal"> AppendUpdate</code> is a thread-safe method for background threads to call and add updates to the<code class="literal"> OutputWindow</code>. This method is safe to directly call from a background thread because the data object that it is modifying is guarded by a lock that will prevent more than one thread from modifying the object at the same time. This method was chosen over posting events from the worker threads because it can help to keep the UI more responsive during high-volume updates, because it allows the updates to the UI to be grouped into a smaller number of larger updates as opposed to many small updates which can lead to the UI becoming locked up while processing all the events. Last but not least is the<code class="literal"> OnTimer</code> method, where the actual UI updates occur.<code class="literal"> OnTimer</code> first checks and removes any threads that have finished running from the thread pool, and then it acquires the lock to make sure it has exclusive access to the update queue. After acquiring the lock, it proceeds to flush all the queued updates to the<code class="literal"> OutputWindow</code>, and then empties the queue and releases the lock.<a id="id429" class="indexterm"/>
+</p></div><div class="section" title="There's more..."><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec18"/>There's more...</h2></div></div></div><p>See the sample code that accompanies this topic for a small, sample application that makes use of the<code class="literal"> OutputWindow</code> to create a GUI display for running the ping command:</p><div class="mediaobject"><img src="images/1780_11_04.jpg" alt="There's more..."/></div></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec19"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">See the<span class="emphasis"><em> Understanding thread safety</em></span> recipe in this chapter for a discussion of what thread safety is as it relates to the GUI.</li><li class="listitem" style="list-style-type: disc">See the<span class="emphasis"><em> Using Timers</em></span> recipe in this chapter for another example of using Timers.</li></ul></div></div></div></div>
+</body></html>

@@ -1,0 +1,660 @@
+<html><head></head><body>
+  <div id="sbo-rt-content"><div class="chapter" title="Chapter 8. Drawing to the Screen"><div class="titlepage"><div><div><h1 class="title"><a id="ch08"/>Chapter 8. Drawing to the Screen</h1></div></div></div><p>In this chapter, we will cover:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Screen drawing</li><li class="listitem" style="list-style-type: disc">Drawing shapes</li><li class="listitem" style="list-style-type: disc">Utilizing<code class="literal"> SystemSettings</code></li><li class="listitem" style="list-style-type: disc">Using a<code class="literal"> GraphicsContext</code></li><li class="listitem" style="list-style-type: disc">Drawing with<code class="literal"> RendererNative</code></li><li class="listitem" style="list-style-type: disc">Reducing flicker in drawing routines</li></ul></div><div class="section" title="Introduction"><div class="titlepage"><div><div><h1 class="title"><a id="ch08lvl1sec01"/>Introduction</h1></div></div></div><p>Being able to display objects on a computer's display is one of the most basic functionalities of a GUI toolkit. In wxPython, objects are shown on the display through drawing commands issued to a<span class="strong"><strong> Device Context</strong></span> (<span class="strong"><strong>DC</strong></span>). Underneath the hood, all controls are represented as bitmaps that are drawn on the screen's display. The interface provided by a DC allows for the customization of a control's appearance. When used in combination with events, they are also the basis for creating new controls.<a id="id296" class="indexterm"/>
+</p><p>These rudimentary tools open a number of doors and possibilities that allow the application designer to fill the gaps in what the toolkit provides in order to meet the specific needs of an application. Now that the tool has been presented, it is time to pick it up and put it to use.</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Screen drawing"><div class="titlepage"><div><div><h1 class="title"><a id="ch08lvl1sec02"/>Screen drawing</h1></div></div></div><p>All windows that are visible on the screen issue some drawing commands to a Device Context (often referred to as a DC) to tell the system what kind of pixel information to display on the screen. Some control's classes, such as<code class="literal"> wx.Control, wx.Window</code>, and<code class="literal"> wx.Panel</code> allow for user-defined control of what is drawn on the screen through the use of<code class="literal"> wx.EVT_PAINT</code>. This recipe provides an introduction to screen drawing by creating a simple little slideshow widget that will load a PNG or JPG file from a directory, and then draw that image on the screen along with some label text below it, to show which image is out of the set.<a id="id297" class="indexterm"/>
+</p><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec01"/>How to do it...</h2></div></div></div><p>Here we will look at our<code class="literal"> ImageCanvas</code> widget. Starting with its constructor we<code class="literal"> Bind</code> to<code class="literal"> EVT_PAINT</code> so that we can get call backs from the framework when a part of our window has been marked as needing to be redrawn:<a id="id298" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">import os
+import wx
+
+class ImageCanvas(wx.PyPanel):
+    def __init__(self, parent):
+        super(SlideShowPanel, self).__init__(parent)
+
+        # Attributes
+        self.idx = 0 # Current index in image list
+        self.images = list() # list of images found to display
+
+        # Event Handlers
+        self.Bind(wx.EVT_PAINT, self.OnPaint)
+
+</pre></div><p>Here we override<code class="literal"> DoGetBestSize</code> so that the widget can be resized depending upon the size of the image that is displayed in it:<a id="id299" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">    def DoGetBestSize(self):
+        """Virtual override for PyPanel"""
+        newsize = wx.Size(0, 0)
+        if len(self.images):
+            imgpath = self.images[self.idx]
+            bmp = wx.Bitmap(imgpath)
+            newsize = bmp.GetSize()
+            newsize = newsize + (20, 20) # some padding
+        else:
+            tsize = self.GetTextExtent("No Image!")
+            newsize = tsize + (20, 20)
+
+        # Ensure new size is at least 300x300
+        return wx.Size(max(300, newsize[0]),
+                       max(300, newsize[1]))
+
+</pre></div><p>Here, in<code class="literal"> OnPaint</code>, we handle<code class="literal"> EVT_PAINT</code> and create a<code class="literal"> PaintDC</code> to draw the current image on the Panel:<a id="id300" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">    def OnPaint(self, event):
+        """Draw the image on to the panel"""
+        dc = wx.PaintDC(self) # Must create a PaintDC
+
+        # Get the working rectangle
+        rect = self.GetClientRect()
+
+        # Setup the DC
+        dc.SetTextForeground(wx.BLACK)
+
+        # Do the drawing
+        if len(self.images):
+            # Draw the current image
+            imgpath = self.images[self.idx]
+            bmp = wx.Bitmap(imgpath)
+            bsize = bmp.GetSize()
+            # Try and center the image
+            # Note: assumes image is smaller than canvas
+            xpos = (rect.width - bsize[0]) / 2
+            ypos = (rect.height - bsize[1]) / 2
+            dc.DrawBitmap(bmp, xpos, ypos)
+            # Draw a label under the image saying what
+            # number in the set it is.
+            imgcount = len(self.images)
+            number = "%d / %d" % (self.idx+1, imgcount)
+            tsize = dc.GetTextExtent(number)
+            xpos = (rect.width - tsize[0]) / 2
+            ypos = ypos + bsize[1] + 5 # 5px below image
+            dc.DrawText(number, xpos, ypos)
+        else:
+            # Display that there are no images
+            font = self.GetFont()
+            font.SetWeight(wx.FONTWEIGHT_BOLD)
+            dc.SetFont(font)
+            dc.DrawLabel("No Images!", rect, wx.ALIGN_CENTER)
+
+</pre></div><p>Finally, we add a few methods for client code to interact with in order to change the image and set the image source directory:</p><div class="informalexample"><pre class="programlisting">def Next(self):
+        """Goto next image"""
+        self.idx += 1
+        if self.idx &gt;= len(self.images):
+            self.idx = 0 # Go back to zero
+        self.Refresh() # Causes a repaint
+
+    def Previous(self):
+        """Goto previous image"""
+        self.idx -= 1
+        if self.idx &lt; 0:
+            self.idx = len(self.images) - 1 # Goto end
+        self.Refresh() # Causes a repaint
+
+    def SetImageDir(self, imgpath):
+        """Set the path to where the images are"""
+        assert os.path.exists(imgpath)
+        # Find all the images in the directory
+        self.images = [ os.path.join(imgpath, img)
+                        for img in os.listdir(imgpath)
+                        if img.lower().endswith('.png') or
+                           img.lower().endswith('.jpg') ]
+        self.idx = 0
+
+</pre></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec02"/>How it works...</h2></div></div></div><p>That was pretty easy, so let's take a quick walkthrough to see how everything works. First we derived our<code class="literal"> ImageCanvas</code> panel from<code class="literal"> PyPanel</code> so that we could get access to some of its virtual methods. Next, in the constructor, we<code class="literal"> Bind</code> our paint handler to<code class="literal"> EVT_PAINT</code> so that we will get<code class="literal"> PaintEvent</code> notifications.<a id="id301" class="indexterm"/>
+</p><p>The next method,<code class="literal"> DoGetBestSize</code>, is a virtual override. The framework will call this method when it wants us to tell it what our best size is. This occurs when the layout is being calculated. We base the best size on the size of the current image, but reserve a minimum rectangle of 300x300 pixels just to ensure that we have some space to work with.<a id="id302" class="indexterm"/>
+</p><p>Next we get to<code class="literal"> OnPaint</code>. This is where the main focus of this recipe unfolds. The first thing to notice is that we create a<code class="literal"> PaintDC</code>. This is a required step. If a<code class="literal"> PaintDC</code> is not created within an<code class="literal"> EVT_PAINT</code> handler, then on platforms such as Windows there will be errors when refreshing the window. The<code class="literal"> PaintDC</code> provides the interface to the DC, which will allow us to draw on the screen.<a id="id303" class="indexterm"/>
+</p><p>Most of the work in<code class="literal"> OnPaint</code> is just calculating where to position what we want to draw. We do this by first getting the rectangle that we have to work in, which is simply returned by calling<code class="literal"> GetClientRect</code>. From here, in the case where we have some images to display, we do some simple calculations to center the current image, and then use the DC's<code class="literal"> DrawBitmap</code> method to draw our<code class="literal"> Bitmap</code> object to the screen. Then we proceed to draw some text under the image to show what number the image is in the set. To do this, we use<code class="literal"> GetTextExtent</code> to get the on-screen size that our string will require to be drawn with the current font. In the case where there are no images, we simply use the DC's<code class="literal"> DrawLabel</code> function with the<code class="literal"> ALIGN_CENTER</code> flag to draw a warning label in the middle of the rectangle.</p><p>To facilitate cycling through the images in the directory specified by calling<code class="literal"> SetImageDir</code>, we have two methods:<code class="literal"> Next</code> and<code class="literal"> Previous</code>. These methods simply increment or decrement the index we are looking at in the list, and then call<code class="literal"> Refresh. Refresh</code> will cause the system to issue a new<code class="literal"> PaintEvent</code>. When this happens, our<code class="literal"> OnPaint</code> handler will be called and will draw the new image. See the sample code that accompanies this recipe for a sample application using our<code class="literal"> ImageCanvas</code> widget.<a id="id304" class="indexterm"/>
+</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec03"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">The<span class="emphasis"><em> Using Bitmaps</em></span> recipe in<a class="link" href="ch01.html" title="Chapter 1. Getting Started with wxPython"> Chapter 1</a>,<span class="emphasis"><em> Getting Started with wxPython</em></span> discusses the basics of using Bitmaps in an application.</li><li class="listitem" style="list-style-type: disc">The<span class="emphasis"><em> Understanding inheritance limitations</em></span> recipe in<a class="link" href="ch01.html" title="Chapter 1. Getting Started with wxPython"> Chapter 1</a>,<span class="emphasis"><em> Getting Started with wxPython</em></span> explains the usage of the<code class="literal"> Py</code> classes and how to override their virtual methods.</li></ul></div></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Drawing shapes"><div class="titlepage"><div><div><h1 class="title"><a id="ch08lvl1sec03"/>Drawing shapes</h1></div></div></div><p>Besides being able to draw text and bitmaps, DC's are also able to draw arbitrary shapes and lines. These rudimentary tools are what make it possible to create entirely custom widgets and controls, and to perform tasks such as drawing diagrams. This recipe explores these additional abilities of the<code class="literal"> PaintDC</code> by creating a simple smiley face control.<a id="id305" class="indexterm"/>
+</p><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec04"/>How to do it...</h2></div></div></div><p>Here we will define our simple smiley face control that is derived from PyControl:<a id="id306" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">class Smiley(wx.PyControl):
+    def __init__(self, parent, size=(50,50)):
+        super(Smiley, self).__init__(parent,
+                                     size=size,
+                                     style=wx.NO_BORDER)
+
+        # Event Handlers
+        self.Bind(wx.EVT_PAINT, self.OnPaint)
+
+</pre></div><p>Here in,<code class="literal"> OnPaint</code> is where we will draw our Smiley face onto the<code class="literal"> PyControl's</code> background:</p><div class="informalexample"><pre class="programlisting">    def OnPaint(self, event):
+        """Draw the image on to the panel"""
+        dc = wx.PaintDC(self) # Must create a PaintDC
+
+        # Get the working rectangle we can draw in
+        rect = self.GetClientRect()
+
+        # Setup the DC
+        dc.SetPen(wx.BLACK_PEN) # for drawing lines / borders
+        yellowbrush = wx.Brush(wx.Colour(255, 255, 0))
+        dc.SetBrush(yellowbrush) # Yellow fill
+
+</pre></div><p>First we will start by drawing the circle for the head, by finding the center of the control's rectangle and using<code class="literal"> DrawCircle</code> to draw a yellow circle with a black border, using the current Pen and Brush that was set above:<a id="id307" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">        cx = (rect.width / 2) + rect.x
+        cy = (rect.width / 2) + rect.y
+        radius = min(rect.width, rect.height) / 2
+        dc.DrawCircle(cx, cy, radius)
+
+</pre></div><p>The next step is to draw the eyes. This smiley face is going to have blue, square-shaped eyes. To do this, we first calculate the size of the eyes as 1/8th of the total face area, set the brush to blue, and then use the DC's<code class="literal"> DrawRectangle</code> method to draw each of the eyes:</p><div class="informalexample"><pre class="programlisting">        eyesz = (rect.width / 8, rect.height / 8)
+        eyepos = (cx / 2, cy / 2)
+        dc.SetBrush(wx.BLUE_BRUSH)
+        dc.DrawRectangle(eyepos[0], eyepos[1],
+                         eyesz[0], eyesz[1])
+        eyepos = (eyepos[0] + (cx - eyesz[0]), eyepos[1])
+        dc.DrawRectangle(eyepos[0], eyepos[1],
+                         eyesz[0], eyesz[1])
+
+</pre></div><p>Last but not least is to draw the smile onto the face. To do this, we set the brush back to yellow and then use the DC's<code class="literal"> DrawArc</code> method to draw a slice of a circle. Since all we want is the bottom part of the arc to use as the smile, we finish by drawing a yellow rectangle over the top part of the slice, to cover up the wedge:</p><div class="informalexample"><pre class="programlisting">        dc.SetBrush(yellowbrush)
+        startpos = (cx / 2, (cy / 2) + cy)
+        endpos = (cx + startpos[0], startpos[1])
+        dc.DrawArc(startpos[0], startpos[1],
+                   endpos[0], endpos[1], cx, cy)
+        dc.SetPen(wx.TRANSPARENT_PEN)
+        dc.DrawRectangle(startpos[0], cy,
+                         endpos[0] - startpos[0],
+                         startpos[1] - cy)
+
+</pre></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec05"/>How it works...</h2></div></div></div><p>In this recipe, we made use of a<code class="literal"> Pen</code>, a<code class="literal"> Brush</code>, and some of the rudimentary drawing routines that<code class="literal"> PaintDC</code> provides us with. Let's take a look at our<code class="literal"> OnPaint</code> method, to see how everything works.<a id="id308" class="indexterm"/>
+</p><p>First, we start off by setting up our DCs drawing tools. We set a black<code class="literal"> Pen</code>, which will be used by the DC when it draws lines. We then set a yellow<code class="literal"> Brush</code>. A<code class="literal"> Brush</code> is used to fill the area inside of a shape when it is drawn. Next, we proceed to draw the face, which is a circle. To do this, we simply needed to find the center of our drawing area and then call the<code class="literal"> DrawCircle</code> method with the center point and radius that we desire. The DC will then use our<code class="literal"> Pen</code> and<code class="literal"> Brush</code> to create a yellow circle with a black border drawn around it.</p><p>Next, for the eyes, we decided to draw them as blue squares. So we changed to a blue<code class="literal"> Brush</code> and called the<code class="literal"> DrawRectangle</code> routine to draw the squares. This method's first two arguments are where the top left corner of the rectangle will be drawn from. The second two are the width and height of the rectangle.</p><p>The final step is to draw the smile, which is just a simple arc. To perform this step, we need to figure out where we want the arc's two end points to be, which we just based on the center point of our circle. Then we called the<code class="literal"> DrawArc</code> method, which will draw a slice of a circle. Because it draws a slice, there will be two unwanted lines from the center point extending to the start and end points of the arc. To get rid of this, we drew a yellow rectangle over the top of these two lines to erase it and only leave the arc which makes up the smile.</p></div><div class="section" title="There's more..."><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec06"/>There's more...</h2></div></div></div><p>Here is a quick reference to the basic drawing functions of a<code class="literal"> PaintDC</code>.<a id="id309" class="indexterm"/>
+</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Functions</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Description</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">DrawArc(x1,y1,x2,y2, xcenter,ycenter)</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Draws a section of a circle with an arc from<code class="literal"> x1,y1</code> to<code class="literal"> x2,y2</code> centered from<code class="literal"> xcenter,ycenter</code>.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">DrawBitmap(bmp,x,y, useMask=False)</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Draws a bitmap at position<code class="literal"> x,y</code>.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">DrawCheckMark(x,y,width, height)</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Draws a checkmark in the given rectangle.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">DrawCircle(x,y,radius)</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Draws a circle with center point<code class="literal"> x,y</code> and the given radius.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">DrawEllipse(x,y,width,height)</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Draws an ellipse in the given rectangle.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">DrawEllipticArc(x,y,w,h, start,end)</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Draw the arc of an ellipse in the given rectangle. The start and end parameters are angles that specify the start and end of the arc relative to the 3 o'clock position in the rectangle.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">DrawIcon(icon, x, y)</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Draw an icon at<code class="literal"> x,y</code>.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">DrawImageLabel(lbl,bmp,rect, align)</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Draw a label and a bitmap in the given rectangle, using the given alignment flags.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">DrawLabel(text,rect,align)</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Draw the text in the rectangle with the given alignment flags.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">DrawLine(x1,y1,x2,y2)</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Draw a line with the current pen from<code class="literal"> x1,y1</code> to<code class="literal"> x2,y2</code>.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">DrawPoint(x,y)</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Draw a point at<code class="literal"> x,y</code> with the current pen.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">DrawPolygon(points,x,y)</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Draw a polygon based on the list of points at position<code class="literal"> x,y</code>.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">DrawRectangle(x,y,w,h)</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Draw a rectangle of size<code class="literal"> w,h</code> at position<code class="literal"> x,y</code>.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">DrawRotatedText(text,x,y, angle)</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Draw text at position<code class="literal"> x,y</code> rotated to the given angle.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">DrawRoundedRectangle(x,y,w,h, angle)</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Draw a rectangle with rounded corners.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">DrawSpline(points)</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Draw a spline using the list of points.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">DrawText(text,x,y)</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Draw text at position<code class="literal"> x,y</code>.</p>
+</td></tr></tbody></table></div></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec07"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">See the<span class="emphasis"><em> Screen drawing</em></span> recipe in this chapter for the basics of creating and using a<code class="literal"> DeviceContext</code>.</li></ul></div></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Utilizing SystemSettings"><div class="titlepage"><div><div><h1 class="title"><a id="ch08lvl1sec04"/>Utilizing SystemSettings</h1></div></div></div><p>The<code class="literal"> SystemSettings</code> object allows a program to query the system for information about default colors and fonts. Being able to know this information can be very helpful when creating custom drawings, as it makes it possible to use the same colors and fonts that the native system components are using, so that your custom control or window decoration can blend in and look like it belongs with the other native components that share the same window with it. In this recipe, we will use<code class="literal"> SystemSettings</code> to create a custom control that is similar to a<code class="literal"> StaticBox</code> but with a caption that is similar to the title bar of the<code class="literal"> Frame</code> bar.<a id="id310" class="indexterm"/>
+</p><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec08"/>How to do it...</h2></div></div></div><p>For this custom control, we will again start by deriving from<code class="literal"> PyPanel</code> so that we have access to its<code class="literal"> DoGetBestSize</code> method:<a id="id311" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">class CaptionBox(wx.PyPanel):
+    def __init__(self, parent, caption):
+        super(CaptionBox, self).__init__(parent,
+                                         style=wx.NO_BORDER)
+
+        # Attributes
+        self._caption = caption
+        self._csizer = wx.BoxSizer(wx.VERTICAL)
+
+        # Setup
+        self.__DoLayout()
+
+        # Event Handlers
+        self.Bind(wx.EVT_PAINT, self.OnPaint)
+
+    def __DoLayout(self):
+        msizer = wx.BoxSizer(wx.HORIZONTAL)
+        self._csizer.AddSpacer(12) # extra space for caption
+        msizer.Add(self._csizer, 0, wx.EXPAND|wx.ALL, 8)
+        self.SetSizer(msizer)
+
+    def DoGetBestSize(self):
+        size = super(CaptionBox, self).DoGetBestSize()
+            
+        # Compensate for wide caption labels
+        tw = self.GetTextExtent(self._caption)[0]
+        size.SetWidth(max(size.width, tw+20))
+        return size
+
+    def AddItem(self, item):
+        """Add a window or sizer item to the CaptionBox"""
+        self._csizer.Add(item, 0, wx.ALL, 5)
+
+</pre></div><p>Here, in our<code class="literal"> EVT_PAINT</code> handler, we draw a simple caption at the top of the panel, and a border around the rest, using the caption color that we retrieve from the<code class="literal"> SystemSettings</code> singleton:</p><div class="informalexample"><pre class="programlisting">    def OnPaint(self, event):
+        """Draws the Caption and border around the controls"""
+        dc = wx.PaintDC(self)
+
+        # Get the working rectangle we can draw in
+        rect = self.GetClientRect()
+
+        # Get the sytem color to draw the caption
+        ss = wx.SystemSettings
+        color = ss.GetColour(wx.SYS_COLOUR_ACTIVECAPTION)
+        txtcolor = ss.GetColour(wx.SYS_COLOUR_CAPTIONTEXT)
+        dc.SetTextForeground(txtcolor)
+
+        # Draw the border
+        rect.Inflate(-2, -2)
+        dc.SetPen(wx.Pen(color))
+        dc.SetBrush(wx.TRANSPARENT_BRUSH)
+        dc.DrawRectangleRect(rect)
+
+        # Add the Caption
+        rect = wx.Rect(rect.x, rect.y,
+                       rect.width, 16)
+        dc.SetBrush(wx.Brush(color))
+        dc.DrawRectangleRect(rect)
+        rect.Inflate(-5, 0)
+        dc.SetFont(self.GetFont())
+        dc.DrawLabel(self._caption, rect, wx.ALIGN_LEFT)
+
+</pre></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec09"/>How it works...</h2></div></div></div><p>In this recipe, we derived our new<code class="literal"> CaptionBox</code> class from<code class="literal"> PyPanel</code>. This was done because this control is going to be a container of other controls, and the use of<code class="literal"> PyPanel</code> will allow the use of sizers to manage the layout and sizing of the control.<a id="id312" class="indexterm"/>
+</p><p>As a part of the initial layout of the Panel in<code class="literal"> __DoLayout</code>, we reserved 20 pixels of space on the top and 8 pixels around the other sides, for the caption and border. This was done by putting in a spacer at the top plus an additional 8 pixel border around the<code class="literal"> BoxSizer</code> that will be used to layout the<code class="literal"> CaptionBox's</code> children controls. Also as part of the layout management, we overrode<code class="literal"> DoGetBestSize</code> in order to handle cases where the caption text is wider than the box's children windows. When using this class, its<code class="literal"> AddItem</code> method must be used to add its children controls to it.</p><p>Now let's check out how we draw the control. In<code class="literal"> OnPaint</code>, the first thing we do is use the<code class="literal"> SystemSettings</code> singleton to get the system-defined colours for a caption's background and text, which will allow the control to fit in and match other controls no matter what theme or operating system it is run on. Next, we shrink the drawing<code class="literal"> Rect</code> by 2 pixels in both directions to define the controls border. After this, all there is to do is set the Pen to the caption color and call<code class="literal"> DrawRect</code> to draw the border. The caption bar is also drawn in a similar fashion by creating a smaller rectangle in the upper space we had reserved in the layout and drawing a solid rectangle by setting the<code class="literal"> Brush</code> to the caption color. All that leaves is the final step of drawing the caption text on the rectangle we just drew. See the following screenshot, which shows two<code class="literal"> CaptionBoxes:</code>
+</p><div class="mediaobject"><img src="images/1780_08_01.jpg" alt="How it works..."/></div></div><div class="section" title="There's more"><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec10"/>There's more</h2></div></div></div><p>In addition to being able to provide colors, the<code class="literal"> SystemSettings</code> object can also provide system fonts and metrics. The three methods<code class="literal"> GetColour, GetFont</code>, and<code class="literal"> GetMetric</code> all take an index parameter that is one of the<code class="literal"> wx.SYS_*</code> constants.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec11"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">See the<span class="emphasis"><em> Screen drawing</em></span> recipe in this chapter for details of how to create and use a Device Context.</li></ul></div></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Using a GraphicsContext"><div class="titlepage"><div><div><h1 class="title"><a id="ch08lvl1sec05"/>Using a GraphicsContext</h1></div></div></div><p>The<code class="literal"> GraphicsContext</code> is a new feature in wxPython2.8. It provides access to the platform's higher-level drawing functionality. It provides features such as anti-aliasing, a floating point precision coordinate system, alpha blending, gradient brushes, and a handful of advanced methods. This recipe uses it to create a custom control that is like<code class="literal"> StaticText</code>, but has a gradient-filled, pill-shaped background.<a id="id313" class="indexterm"/>
+</p><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec12"/>How to do it...</h2></div></div></div><p>Much like the other recipes in this chapter, we will derive our new control from<code class="literal"> PyControl</code> so that we can override its<code class="literal"> DoGetBestSize</code> method to size the control to our label:</p><div class="informalexample"><pre class="programlisting">class PodLabel(wx.PyControl):
+    def __init__(self, parent, label, color):
+        super(PodLabel, self).__init__(parent,
+                                       style=wx.NO_BORDER)
+
+        # Attributes
+        self._label = label
+        self._color = color
+
+        # Event Handlers
+        self.Bind(wx.EVT_PAINT, self.OnPaint)
+
+    def DoGetBestSize(self):
+        txtsz = self.GetTextExtent(self._label)
+        size = wx.Size(txtsz[0] + 10, txtsz[1] + 6)
+        return size
+
+</pre></div><p>This time in<code class="literal"> OnPaint</code>, we will create a GCDC from our<code class="literal"> PaintDC</code> and do the drawing with the GCDC and its<code class="literal"> GraphicsContext:</code>
+<a id="id314" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">    def OnPaint(self, event):
+        """Draws the Caption and border around the controls"""
+        dc = wx.PaintDC(self)
+        gcdc = wx.GCDC(dc)
+        gc = gcdc.GetGraphicsContext()
+
+        # Get the working rectangle we can draw in
+        rect = self.GetClientRect()
+
+        # Setup the GraphicsContext
+        pen = gc.CreatePen(wx.TRANSPARENT_PEN)
+        gc.SetPen(pen)
+        rgb = self._color.Get(False)
+        alpha = self._color.Alpha() *.2 # fade to transparent
+        color2 = wx.Colour(*rgb, alpha=alpha)
+        x1, y1 = rect.x, rect.y
+        y2 = y1 + rect.height
+        gradbrush = gc.CreateLinearGradientBrush(x1, y1,
+                                                 x1, y2,
+                                                 self._color,
+                                                 color2)
+        gc.SetBrush(gradbrush)
+
+        # Draw the background
+        gc.DrawRoundedRectangle(rect.x, rect.y,
+                                rect.width, rect.height,
+                                rect.height/2)
+        # Use the GCDC to help draw the aa text
+        gcdc.DrawLabel(self._label, rect, wx.ALIGN_CENTER)
+
+</pre></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec13"/>How it works...</h2></div></div></div><p>In order to draw this control in<code class="literal"> OnPaint</code>, we took the<code class="literal"> PaintDC</code> and wrapped it in a<code class="literal"> GCDC</code>. A<code class="literal"> GCDC</code> is a device context interface that uses a<code class="literal"> GraphicsContext</code> internally. Using this interface makes it possible to use a<code class="literal"> GraphicsContext</code> in a similar way to using a regular device context.<a id="id315" class="indexterm"/>
+</p><p>When setting up the<code class="literal"> Pen</code> and<code class="literal"> Brush</code>, we used a transparent pen in order to not draw a border round the control. Drawing a gradient-colored background with a<code class="literal"> GraphicsContext</code> is made simple with the use of the<code class="literal"> GraphicsBrush</code> returned by the<code class="literal"> CreateLinearGradientBrush</code> method of<code class="literal"> GraphicsContext</code>. This method will create a brush that draws a gradient from the first set of coordinates to the second set, starting with the first color and blending it to the second. In this case, our second color only differs in its alpha level, so the gradient will fade to partially-transparent, which will show the panel behind it.</p><p>All that is left now is to just call the<code class="literal"> GraphicsContext's DrawRoundedRectangle</code> method, to draw a nice pill-shaped background that is filled with the gradient defined by the<code class="literal"> GraphicsBrush</code> we created earlier. Then all that is left is to draw the label text on top of the background. To do this, we used the<code class="literal"> DrawLabel</code> method of<code class="literal"> GCDC</code> which is just like the<code class="literal"> DrawLabel</code> method of<code class="literal"> PaintDC</code> but uses the<code class="literal"> GraphicsContext</code> under the hood to draw smooth, anti-aliased text. The following screenshot shows an example dialog with three instances of the<code class="literal"> PodLabel</code> control on it. As can be seen, using the<code class="literal"> GraphicsContext</code> has allowed the control to be drawn with smooth, anti-aliased edges and a gradient background that fades and becomes transparent near the bottom by taking advantage of the alpha blending of<code class="literal"> GraphicsContext</code>.</p><div class="mediaobject"><img src="images/1780_08_02.jpg" alt="How it works..."/></div></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec14"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">The<span class="emphasis"><em> Screen drawing</em></span> recipe in this chapter discusses the use of Device Contexts.</li><li class="listitem" style="list-style-type: disc">See the<span class="emphasis"><em> Drawing shapes</em></span> recipe in this chapter for an overview of the basic drawing routines.</li><li class="listitem" style="list-style-type: disc">See the<span class="emphasis"><em> Reducing flicker in drawing routines</em></span> recipe in this chapter for more examples of using a<code class="literal"> GraphicsContext</code>.</li></ul></div></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Drawing with RendererNative"><div class="titlepage"><div><div><h1 class="title"><a id="ch08lvl1sec06"/>Drawing with RendererNative</h1></div></div></div><p>
+<code class="literal">RendererNative</code> is a class that contains a collection of functions that encapsulate the drawing of a native UI component. It allows you to draw things such as native-looking<code class="literal"> Button</code> and<code class="literal"> CheckBox</code> objects in a device context without needing to know any of the details about how it is done. This is a very powerful and useful class when you need to create generic widgets but want and maintain the native look and feel of the platform's own widgets. This recipe uses<code class="literal"> RendererNative</code> to create a custom button class for showing a drop-down menu.<a id="id316" class="indexterm"/>
+</p><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec15"/>How to do it...</h2></div></div></div><p>This custom Button class will use<code class="literal"> RendererNative</code> to do its drawing, based on the location and state of the mouse:<a id="id317" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">class DropArrowButton(wx.PyControl):
+    def __init__(self, parent, id=wx.ID_ANY,
+                 label="", pos=wx.DefaultPosition,
+                 size=wx.DefaultSize, style=0,
+                 validator=wx.DefaultValidator,
+                 name="DropArrowButton"):
+        style |= wx.BORDER_NONE
+        super(DropArrowButton, self).__init__(parent, id,
+                                              pos, size,
+                                              style,
+                                              validator, name)
+
+        # Attributes
+        self._label = label
+        self._menu = None
+        self._state = 0
+
+        # Event Handlers
+        self.Bind(wx.EVT_LEFT_DOWN, self.OnLeftDown)
+        self.Bind(wx.EVT_LEFT_UP, self.OnLeftUp)
+        self.Bind(wx.EVT_LEAVE_WINDOW,
+                  lambda event:
+                  self.SetState(0))
+        self.Bind(wx.EVT_ENTER_WINDOW,
+                  lambda event:
+                  self.SetState(wx.CONTROL_CURRENT))
+        self.Bind(wx.EVT_PAINT, self.OnPaint)
+
+</pre></div><p>We override<code class="literal"> DoGetBestSize</code> and use the size of the label string as the basis for calculating the button's size:</p><div class="informalexample"><pre class="programlisting">    def DoGetBestSize(self):
+        size = self.GetTextExtent(self._label)
+        size = (size[0]+16, size[1]+16) # Drop Arrow
+        size = (size[0]+8, size[1]+4) # Padding
+        self.CacheBestSize(size)
+        return size
+
+</pre></div><p>Here we add handlers for<code class="literal"> EVT_LEFT_DOWN</code> and<code class="literal"> EVT_LEFT_UP</code> to change the state of the control, and to show our pop-up menu:</p><div class="informalexample"><pre class="programlisting">    def OnLeftDown(self, event):
+        """Show the drop menu"""
+        self.SetState(wx.CONTROL_PRESSED)
+        if self._menu:
+            size = self.GetSizeTuple()
+            self.PopupMenu(self._menu, (0, size[1]))
+
+    def OnLeftUp(self, event):
+        """Send a button click event"""
+        if self._state != wx.CONTROL_PRESSED:
+            return
+
+        self.SetState(wx.CONTROL_CURRENT)
+
+</pre></div><p>Here, in<code class="literal"> OnPaint</code>, we create the required<code class="literal"> PaintDC</code> and get a reference to the<code class="literal"> RendererNative</code> singleton, which we will use to help us draw the Button's background:<a id="id318" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">    def OnPaint(self, event):
+        """Draw the Conrol"""
+        dc = wx.PaintDC(self)
+        gc = wx.GCDC(dc) # AA text
+
+        # Get the renderer singleton
+        render = wx.RendererNative.Get()
+
+        # Get the working rectangle we can draw in
+        rect = self.GetClientRect()
+
+        # Draw the button
+        render.DrawPushButton(self, gc, rect, self._state)
+        # Draw the label on the button
+        lblrect = wx.Rect(rect.x+4, rect.y+2,
+                          rect.width-24, rect.height-4)
+        gc.DrawLabel(self._label, lblrect, wx.ALIGN_CENTER)
+        # Draw drop arrow
+        droprect = wx.Rect((rect.x+rect.width)-20,
+                           rect.y+2, 16, rect.height-4)
+        state = self._state
+        if state != wx.CONTROL_PRESSED:
+            state = wx.CONTROL_CURRENT
+        render.DrawDropArrow(self, gc, droprect, state)
+
+</pre></div><p>Finally, we have an API to allow the client code to set the Button's pop-up menu:</p><div class="informalexample"><pre class="programlisting">    def SetMenu(self, menu):
+        """Set the buttons drop menu
+        @param menu: wx.Menu
+        """
+        if self._menu:
+            self._menu.Destroy()
+        self._menu = menu
+
+    def SetState(self, state):
+        self._state = state
+        self.Refresh()
+
+</pre></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec16"/>How it works...</h2></div></div></div><p>In this recipe, we created a completely new custom button control that looks just like a regular native button but has a drop-down arrow and will show a<code class="literal"> Menu</code> when clicked on. Using<code class="literal"> RendererNative</code> to handle most of the drawing has greatly simplified the creation of this nice-looking control, so let's take a look at how it all came together.<a id="id319" class="indexterm"/>
+</p><p>Let's start by looking at the<code class="literal"> OnPaint</code> method, since it is where the control gets drawn. First, we created the required<code class="literal"> PaintDC</code>, and then we used this to create a<code class="literal"> GCDC</code> that will allow us to draw anti-aliased text just like the native control has. Then we get a reference to the<code class="literal"> RendererNative</code> singleton by calling the classes<code class="literal"> Get</code> method. Next, we start drawing the control. All the<code class="literal"> RenderNative</code> methods take the same four arguments: the window we are drawing on, a DC, the<code class="literal"> Rect</code>, and the renderer flags.<code class="literal"> DrawPushButton</code> will draw a native button control with the given DC in the state specified by the renderer flag's bitmask. We pass in one of three flags in this example:<code class="literal"> 0</code> for the default state,<code class="literal"> CONTROL_CURRENT</code> for the hover-over state, and<code class="literal"> CONTROL_PRESSED</code> for when the control is pressed. We finish up the rest with<code class="literal"> DrawLabel</code> and<code class="literal"> DrawDropArrow</code> to draw the button's label with a down arrow to the right of it.<a id="id320" class="indexterm"/>
+</p><p>To make this behave like a button, we bind to a number of mouse events in the<code class="literal"> __init__</code> method of our control.<code class="literal"> EVT_ENTER_WINDOW</code> and<code class="literal"> EVT_LEAVE_WINDOW</code> are used to toggle the hover-over state by changing the control flag between<code class="literal"> CONTROL_CURRENT</code> and<code class="literal"> 0. EVT_LEFT_DOWN</code> is used to set the<code class="literal"> CONTROL_PRESSED</code> state, and finally<code class="literal"> EVT_LEFT_UP</code> is used to show the pop-up menu. After each state change,<code class="literal"> Refresh</code> is called to re-invoke the<code class="literal"> OnPaint</code> handler and draw the control in its new state.</p></div><div class="section" title="There's more..."><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec17"/>There's more...</h2></div></div></div><p>Included below are some quick reference tables that list the drawing commands for<code class="literal"> RendererNative</code>, and the state flags that affect how it draws the control.</p><div class="section" title="Drawing Methods"><div class="titlepage"><div><div><h3 class="title"><a id="ch08lvl3sec01"/>Drawing Methods</h3></div></div></div><p>The following table is a quick reference to the<code class="literal"> RendererNative</code> methods. All the methods take the same first four arguments:<code class="literal"> window, DC, rect</code>, and<code class="literal"> flags</code>.<a id="id321" class="indexterm"/>
+</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>
+<code class="literal">RendererNative</code> methods</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Description</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">DrawCheckBox</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Draws a<code class="literal"> CheckBox</code>
+</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">DrawChoice</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Draws a<code class="literal"> Choice</code> control</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">DrawComboBox</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Draws a<code class="literal"> ComboBox</code>
+</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">DrawComboBoxDropButton</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Draws a<code class="literal"> ComboBox</code> button</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">DrawDropArrow</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Draws a drop arrow</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">DrawHeaderButton</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Draws a<code class="literal"> ListCtrl</code> column header</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">DrawItemSelectionRect</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Draws a selection rectangle</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">DrawPushButton</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Draws a<code class="literal"> Button</code>
+</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">DrawRadioButton</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Draws a<code class="literal"> RadioButton</code>
+</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">DrawSplitterBorder</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Draws the border of a<code class="literal"> SplitterWindow</code> sash</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">DrawSplitterSash</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Draws a<code class="literal"> SplitterWindow</code> sash</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">DrawTextCtrl</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Draws a<code class="literal"> TextCtrl</code>
+</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">DrawTreeItemButton</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Draws a<code class="literal"> TreeCtrl</code> node button</p>
+</td></tr></tbody></table></div></div><div class="section" title="Control Flags"><div class="titlepage"><div><div><h3 class="title"><a id="ch08lvl3sec02"/>Control Flags</h3></div></div></div><p>The following flags can be passed as a part of a bitmask to the draw method's<code class="literal"> flags</code> parameter. Not passing any flags, or passing<code class="literal"> 0</code> for the<code class="literal"> flags</code> parameter, results in the control being drawn in its default state:<a id="id322" class="indexterm"/>
+</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Flags</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Description</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">CONTROL_CHECKABLE</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Control can be checked (for<code class="literal"> DrawCheckBox)</code>
+</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">CONTROL_CHECKED</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Control is checked (for<code class="literal"> DrawCheckBox)</code>
+</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">CONTROL_CURRENT</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Mouse is over the control</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">CONTROL_DISABLED</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Control is disabled</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">CONTROL_EXPANDED</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Only for<code class="literal"> DrawTreeItemButton</code>
+</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">CONTROL_FOCUSED</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Control has the keyboard focus</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">CONTROL_ISDEFAULT</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Is default control (for<code class="literal"> DrawPushButton)</code>
+</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">CONTROL_PRESSED</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Button is pressed</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">CONTROL_SELECTED</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Control is selected</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">CONTROL_UNDETERMINED</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>
+<code class="literal">CheckBox</code> is in undetermined state</p>
+</td></tr></tbody></table></div></div></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec18"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">See the<span class="emphasis"><em> Playing with the mouse</em></span> recipe in<a class="link" href="ch02.html" title="Chapter 2. Responding to Events"> Chapter 2</a>,<span class="emphasis"><em> Responding to Events</em></span> for some additional examples of working with<code class="literal"> MouseEvents</code>.</li></ul></div></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Reducing flicker in drawing routines"><div class="titlepage"><div><div><h1 class="title"><a id="ch08lvl1sec07"/>Reducing flicker in drawing routines</h1></div></div></div><p>Flicker occurs when the redrawing of the window leads to a visible flashing in the user interface. Even simple drawing routines, when done improperly, can lead to flicker. Luckily there are a number of things that can be done to combat and minimize flicker, which will then lead to an improved look and feel in an application's interface. This recipe shows a few snippets of three techniques that can be used to reduce flicker in drawing routines. The sample code that accompanies this chapter includes a sample application that uses all of these techniques in a simple animated wristwatch control.<a id="id323" class="indexterm"/>
+</p><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec19"/>How to do it...</h2></div></div></div><p>We will start with one of the simplest techniques, which is to avoid unnecessary background erasure events by binding to<code class="literal"> EVT_ERASE_BACKGROUND:</code>
+<a id="id324" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">self.Bind(wx.EVT_ERASE_BACKGROUND, self.OnErase)
+</pre></div><p>Then we need do nothing in the handler for it, in order to prevent it from erasing the background:</p><div class="informalexample"><pre class="programlisting">    def OnErase(self, event):
+        # Do nothing, reduces flicker by removing
+        # unneeded background erasures and redraws
+        pass
+
+</pre></div><p>The next technique is to use a buffered<code class="literal"> PaintDC</code> in the<code class="literal"> OnPaint</code> handler, so that all the individual drawing steps are performed off-screen, and then the finished product is displayed on the screen in one step:</p><div class="informalexample"><pre class="programlisting">    def OnPaint(self, event):
+        """Draw the image on to the panel"""
+        # Create a Buffered PaintDC
+        dc = wx.AutoBufferedPaintDCFactory(self)
+
+</pre></div><p>The third technique is to just redraw the bare minimum of the screen when possible, by using the<code class="literal"> Refresh</code> method's<code class="literal"> rect</code> argument to tell it the part of the window that needs to be updated:</p><div class="informalexample"><pre class="programlisting">self Refresh(rect=RectToUpdate)
+</pre></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec20"/>How it works...</h2></div></div></div><p>The first technique that was shown creates an empty event handler and bind it to the<code class="literal"> EVT_ERASE_BACKGROUND</code> event. This is usually the first thing to try when you are running into flicker issues in your drawing routines. By doing nothing in the event handler, we prevent the system from clearing the background, so that when we draw it again in<code class="literal"> OnPaint</code> it will draw over the existing background. This reduces the visibility of the redraw because the background won't flash to white in between<code class="literal"> EVT_ERASE_BACKGROUND</code> and<code class="literal"> EVT_PAINT</code>.<a id="id325" class="indexterm"/>
+</p><p>The second technique uses an<code class="literal"> AutoBufferedPaintDCFactory</code> in order to create a buffered<code class="literal"> PaintDC</code> instead of a regular<code class="literal"> PaintDC</code> in the<code class="literal"> OnPaint</code> handler. Buffered DCs do all the drawing in an off-screen<code class="literal"> Bitmap</code> and then<code class="literal"> Blit</code> the whole new<code class="literal"> Bitmap</code> to the screen in one operation. This greatly reduces flicker because the screen gets updated in one single change instead of many individual changes when drawing to the screen directly in an unbuffered DC.</p><p>The final technique shown was to only redraw the minimal part of the screen that needs to be redrawn. This technique can be used when a control needs to manually redraw only a part of itself due to a state change. For example, imagine a control that consists of some label text and an image. If the control has the behavior to change the label color on mouse over, it could call Refresh on itself using the<code class="literal"> rect</code> argument to specify just the label's rectangle in the control, so that only that part of the control is updated, minimizing the area of the screen that is redrawn.<a id="id326" class="indexterm"/>
+</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec21"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">The<span class="emphasis"><em> Handling events</em></span> recipe in<a class="link" href="ch02.html" title="Chapter 2. Responding to Events"> Chapter 2</a>,<span class="emphasis"><em> Responding to Events</em></span> explains the basics of event handling.</li><li class="listitem" style="list-style-type: disc">See the<span class="emphasis"><em> Using a GraphicsContext</em></span> recipe in this chapter for more detailed information on using the<code class="literal"> GraphicsContext</code> class for drawing gradients.</li><li class="listitem" style="list-style-type: disc">See the<span class="emphasis"><em> Using Timers</em></span> recipe in<a class="link" href="ch11.html" title="Chapter 11. Using Threads and Timers to Create Responsive Interfaces"> Chapter 11</a>,<span class="emphasis"><em> Using Threads and Timers to Create Responsive Interfaces</em></span> for more information on using timers.</li></ul></div></div></div></div>
+</body></html>
