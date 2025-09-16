@@ -1,6 +1,6 @@
-# Go 编程蓝图
+# Python Forex 交易入门指南
 
-> 原文：[`zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66`](https://zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66)
+> 原文：[`zh.annas-archive.org/md5/7644c1146aa53bbae354e31828ebf7e7`](https://zh.annas-archive.org/md5/7644c1146aa53bbae354e31828ebf7e7)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 

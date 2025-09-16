@@ -1,6 +1,6 @@
-# Go 编程蓝图
+# 成为 Django 企业级开发者
 
-> 原文：[`zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66`](https://zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66)
+> 原文：[`zh.annas-archive.org/md5/c25a1eb02aa86674f6515ab39c915c55`](https://zh.annas-archive.org/md5/c25a1eb02aa86674f6515ab39c915c55)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 

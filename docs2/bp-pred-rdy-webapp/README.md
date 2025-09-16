@@ -1,6 +1,6 @@
-# Go 编程蓝图
+# 企业就绪的 Web 应用蓝图
 
-> 原文：[`zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66`](https://zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66)
+> 原文：[`zh.annas-archive.org/md5/7307753f02dcea646873ecfc8d055a9e`](https://zh.annas-archive.org/md5/7307753f02dcea646873ecfc8d055a9e)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 
