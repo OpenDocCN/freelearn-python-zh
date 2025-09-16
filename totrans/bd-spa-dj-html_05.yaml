@@ -1,0 +1,1412 @@
+- en: 'Chapter 3: Adding WebSockets to Django'
+  id: totrans-0
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+  zh: 第3章：将WebSocket添加到Django
+- en: Channels is a Django extension that allows us to use protocols other than HTTP.
+    The Django team, knowing the existing limitations of including other protocols,
+    had to create a new server called Daphne that is natively compatible with the
+    **Asynchronous Server Gateway Interface** (**ASGI**), an update of the **Web Server
+    Gateway Interface** (**WSGI**). Without Channels, it would be impossible to have
+    the WebSockets protocol.
+  id: totrans-1
+  prefs: []
+  type: TYPE_NORMAL
+  zh: Channels是一个Django扩展，它允许我们使用除HTTP之外的其他协议。Django团队了解到包含其他协议的现有局限性，因此不得不创建一个新的服务器，名为Daphne，它与**异步服务器网关接口**（**ASGI**）本机兼容，这是**Web服务器网关接口**（**WSGI**）的更新。没有Channels，将无法使用WebSocket协议。
+- en: You may wonder why the migration from WSGI to ASGI is so important. First, we
+    need to understand what communication interfaces are. When we want to serve a
+    Python site, be it Django or any other framework, we need to run software capable
+    of keeping an instance active and mediating with any web server that makes requests.
+    There are many interfaces for a web server to understand Python, but the most
+    recommended is the WSGI specification, a Python standard for communication between
+    a web server (Apache, Nginx, Caddy, etc.) and any Python web app or frameworks/applications
+    (Django, Flask, FastAPI, etc.). Unfortunately, there is a limitation.
+  id: totrans-2
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 你可能会想知道为什么从WSGI迁移到ASGI如此重要。首先，我们需要了解什么是通信接口。当我们想为Python站点提供服务，无论是Django还是任何其他框架时，我们需要运行能够保持实例活跃并介助于任何请求的Web服务器的软件。有多个接口让Web服务器理解Python，但最推荐的是WSGI规范，这是Python标准，用于Web服务器（Apache、Nginx、Caddy等）与任何Python
+    Web应用或框架（Django、Flask、FastAPI等）之间的通信。不幸的是，存在一个限制。
+- en: When we want to use HTTP with another protocol (WebSockets, etc.) it is not
+    possible; HTTP was not designed to work with other protocols. The alternative
+    is to use the ASGI specification, which will allow us to accept different protocols
+    and asynchronous requests, split tasks into events, and keep a request alive after
+    its response. In addition, it is compatible with applications using WSGI, so it
+    will work perfectly with existing applications. That’s why Daphne (remember that
+    it’s Django’s new ASGI server) is a spiritual successor as it maintains compatibility
+    and extends Django possibilities. And this is the reason why we included the dependencies
+    of **daphne**, **asgiref**, and **channels** in [*Chapter 2*](B18321_02_ePub.xhtml#_idTextAnchor033),
+    *Creating a Django Project around Docker*, when we created the Docker container;
+    they are the minimum tools required to be able to work with the WebSockets protocol.
+  id: totrans-3
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 当我们想与其他协议（如WebSocket）一起使用HTTP时，这是不可能的；HTTP并非设计为与其他协议一起工作。替代方案是使用ASGI规范，这将允许我们接受不同的协议和异步请求，将任务拆分为事件，并在响应后保持请求活跃。此外，它与使用WSGI的应用程序兼容，因此它将完美地与现有应用程序一起工作。这就是为什么Daphne（记住它是Django的新ASGI服务器）是精神上的继承者，因为它保持了兼容性并扩展了Django的可能性。这也是为什么我们在创建Docker容器时包括了**daphne**、**asgiref**和**channels**的依赖项，在[*第2章*](B18321_02_ePub.xhtml#_idTextAnchor033)，“围绕Docker创建Django项目”中，它们是能够与WebSocket协议一起工作的最小工具。
+- en: In this chapter, we’ll learn how to activate Channels, configure Django to use
+    Daphne, create a communication channel between the backend and frontend, send
+    different formats (plain text, JSON, and HTML), where Django will generate the
+    HTML blocks that will be displayed in the frontend. We will also delve into other
+    essential Channels components such as **scope**, **consumers**, **routing**, and
+    events.
+  id: totrans-4
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在本章中，我们将学习如何激活Channels，配置Django以使用Daphne，在前后端之间创建通信通道，发送不同格式（纯文本、JSON和HTML），其中Django将生成将在前端显示的HTML块。我们还将深入了解其他重要的Channels组件，如**作用域**、**消费者**、**路由**和**事件**。
+- en: By the end of this chapter, we will acquire the minimum skills required to establish
+    bidirectional communication between the server and the client using Django.
+  id: totrans-5
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 到本章结束时，我们将掌握使用Django在服务器和客户端之间建立双向通信所需的最基本技能。
+- en: 'We will be covering the following topics in this chapter:'
+  id: totrans-6
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 本章我们将涵盖以下主题：
+- en: Creating our first page with Daphne
+  id: totrans-7
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 使用Daphne创建我们的第一个页面
+- en: Listening to events with consumers
+  id: totrans-8
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 使用消费者监听事件
+- en: Sending plain text from the backend
+  id: totrans-9
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 从后端发送纯文本
+- en: Sending and receiving messages in JSON
+  id: totrans-10
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 发送和接收JSON消息
+- en: Rendering HTML in the backend
+  id: totrans-11
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 在后端渲染HTML
+- en: Technical requirements
+  id: totrans-12
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+  zh: 技术要求
+- en: The code for this chapter can be found at [https://github.com/PacktPublishing/Building-SPAs-with-Django-and-HTML-Over-the-Wire/tree/main/chapter-3](https://github.com/PacktPublishing/Building-SPAs-with-Django-and-HTML-Over-the-Wire/tree/main/chapter-3).
+  id: totrans-13
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 本章的代码可以在 [https://github.com/PacktPublishing/Building-SPAs-with-Django-and-HTML-Over-the-Wire/tree/main/chapter-3](https://github.com/PacktPublishing/Building-SPAs-with-Django-and-HTML-Over-the-Wire/tree/main/chapter-3)
+    找到。
+- en: Creating our first page with Daphne
+  id: totrans-14
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+  zh: 使用 Daphne 创建我们的第一个页面
+- en: 'Let’s begin by activating all the real-time capabilities that Channels has
+    to offer. So, we are going to enable Channels in the configuration, change the
+    WSGI server for ASGI, and build a minimal HTML page to check that everything is
+    running correctly. We will continue the application we started in [*Chapter 2*](B18321_02_ePub.xhtml#_idTextAnchor033),
+    *Creating a Django Project around Docker*. If you don’t have the code, you can
+    use the example available in the following repository: [https://github.com/PacktPublishing/Building-SPAs-with-Django-and-HTML-Over-the-Wire/tree/main/chapter-2](https://github.com/PacktPublishing/Building-SPAs-with-Django-and-HTML-Over-the-Wire/tree/main/chapter-2).'
+  id: totrans-15
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 让我们从激活 Channels 提供的所有实时功能开始。因此，我们将启用配置中的 Channels，更改 ASGI 的 WSGI 服务器，并构建一个最小的
+    HTML 页面来检查一切是否运行正确。我们将继续我们在 [*第 2 章*](B18321_02_ePub.xhtml#_idTextAnchor033) 中开始的应用程序，即
+    *围绕 Docker 创建 Django 项目*。如果您没有代码，您可以使用以下存储库中的示例：[https://github.com/PacktPublishing/Building-SPAs-with-Django-and-HTML-Over-the-Wire/tree/main/chapter-2](https://github.com/PacktPublishing/Building-SPAs-with-Django-and-HTML-Over-the-Wire/tree/main/chapter-2)。
+- en: 'Let’s begin:'
+  id: totrans-16
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 让我们开始：
+- en: 'The first thing we are going to do is to activate Channels. To do this, we
+    open `hello_world/settings.py`, and under `INSTALLED_APPS`, we add `app.simple_app`
+    (put it at the end) and `channels` (put it first):'
+  id: totrans-17
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 我们将要做的第一件事是激活 Channels。为此，我们打开 `hello_world/settings.py`，并在 `INSTALLED_APPS`
+    下添加 `app.simple_app`（放在末尾）和 `channels`（放在最前面）：
+- en: '[PRE0]'
+  id: totrans-18
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+  zh: '[PRE0]'
+- en: 'As we learned in the introduction, Channels needs an ASGI-compatible server
+    to work. If we don’t meet this requirement, Django won’t even be able to get up.
+    That’s why we have to indicate where the file with the configuration for Daphne,
+    or any other server that manages the interface, is located. In our case, we will
+    go to the end of `settings.py` and add the following line:'
+  id: totrans-19
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 正如我们在介绍中学习的，Channels 需要一个 ASGI 兼容的服务器才能工作。如果我们不满足这一要求，Django 甚至无法启动。这就是为什么我们必须指出配置
+    Daphne 或任何其他管理界面的服务器的配置文件所在位置。在我们的例子中，我们将前往 `settings.py` 的末尾并添加以下行：
+- en: '[PRE1]'
+  id: totrans-20
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+  zh: '[PRE1]'
+- en: 'As the project is inside the `app` folder, Django may not be able to handle
+    imports properly. To fix this, we’ll change the name of our application. We open
+    `app/simple_app/apps.py` and leave it as follows:'
+  id: totrans-21
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 由于项目位于 `app` 文件夹中，Django 可能无法正确处理导入。为了解决这个问题，我们将更改我们应用程序的名称。我们打开 `app/simple_app/apps.py`
+    并将其保留如下：
+- en: '[PRE2]'
+  id: totrans-22
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+  zh: '[PRE2]'
+- en: We will next create a basic HTML page, where JavaScript will interact with the
+    future WebSockets server.
+  id: totrans-23
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 接下来，我们将创建一个基本的 HTML 页面，其中 JavaScript 将与未来的 WebSocket 服务器交互。
+- en: 'Inside `app/simple_app/`, we create the `templates` folder, and inside it we
+    create a new file called `index.html`. The full path would be `app/simple_app/templates/index.html`.
+    We include the following content:'
+  id: totrans-24
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在 `app/simple_app/` 内部，我们创建一个名为 `templates` 的文件夹，并在其中创建一个名为 `index.html` 的新文件。完整路径为
+    `app/simple_app/templates/index.html`。我们包含以下内容：
+- en: '[PRE3]'
+  id: totrans-25
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE3]'
+- en: 'Next, let’s create a view that serves the HTML file we just created. We open
+    `app/simple_app/views.py` and create the view `index`. In `return`, we’ll tell
+    it to respond with the content of the template:'
+  id: totrans-26
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 接下来，让我们创建一个视图来展示我们刚刚创建的 HTML 文件。我们打开 `app/simple_app/views.py` 并创建一个名为 `index`
+    的视图。在 `return` 中，我们将告诉它以模板的内容进行响应：
+- en: '[PRE4]'
+  id: totrans-27
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+  zh: '[PRE4]'
+- en: 'Now we just need to give a route. We go into `hello_world/urls.py`. Import
+    the view and add a new `path`:'
+  id: totrans-28
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 现在我们只需要提供一个路由。我们进入 `hello_world/urls.py`，导入视图并添加一个新的 `path`：
+- en: '[PRE5]'
+  id: totrans-29
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+  zh: '[PRE5]'
+- en: 'We pull up Docker and go to `http://hello.localhost/`. It will respond with
+    a minimalist message:'
+  id: totrans-30
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 我们启动 Docker 并进入 `http://hello.localhost/`。它将响应一个简约的消息：
+- en: '![Figure 3.1 – Displaying a static HTML page on the domain hello.localhost'
+  id: totrans-31
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '![Figure 3.1 – Displaying a static HTML page on the domain hello.localhost]'
+- en: '](img/Figure_3.1_B18321.jpg)'
+  id: totrans-32
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '![Figure 3.1_B18321.jpg]'
+- en: Figure 3.1 – Displaying a static HTML page on the domain hello.localhost
+  id: totrans-33
+  prefs: []
+  type: TYPE_NORMAL
+  zh: Figure 3.1 – Displaying a static HTML page on the domain hello.localhost
+- en: Congratulations! You have built a web page with Daphne and Django that is ready
+    to handle WebSockets connections.
+  id: totrans-34
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 恭喜！您已经使用 Daphne 和 Django 构建了一个网页，它准备好处理 WebSocket 连接。
+- en: The next step is to build and learn about the concept of Consumers, Channels’
+    way of handling events. We’ll connect the frontend with a simple Consumer that
+    will act as an intermediary to communicate between Django and the JavaScript WebSocket
+    client.
+  id: totrans-35
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 下一步是构建并了解消费者概念，这是Channels处理事件的方式。我们将连接前端与一个简单的消费者，它将作为中介在Django和JavaScript WebSocket客户端之间进行通信。
+- en: Listening to events with consumers
+  id: totrans-36
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+  zh: 使用消费者监听事件
+- en: We are going to build an example where we can send messages between a backend
+    and frontend in real time. We will need an intermediary to listen to both and
+    make decisions. Channels comes ready with a specially prepared tool called a consumer.
+    It is a series of functions that are invoked when an event is triggered by a WebSocket
+    client.
+  id: totrans-37
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们将构建一个示例，在这个示例中，我们可以在后端和前端之间实时发送消息。我们需要一个中介来监听两者并做出决定。Channels自带一个特别准备好的工具，称为消费者。它是一系列在WebSocket客户端触发事件时被调用的函数。
+- en: 'Here you can see a minimal consumer structure for WebSockets:'
+  id: totrans-38
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在这里，你可以看到WebSocket的最小消费者结构：
+- en: '[PRE6]'
+  id: totrans-39
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE6]'
+- en: '[PRE7]'
+  id: totrans-40
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE7]'
+- en: '[PRE8]'
+  id: totrans-41
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE8]'
+- en: '[PRE9]'
+  id: totrans-42
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE9]'
+- en: '[PRE10]'
+  id: totrans-43
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE10]'
+- en: '[PRE11]'
+  id: totrans-44
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE11]'
+- en: '[PRE12]'
+  id: totrans-45
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE12]'
+- en: '[PRE13]'
+  id: totrans-46
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE13]'
+- en: '[PRE14]'
+  id: totrans-47
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE14]'
+- en: '[PRE15]'
+  id: totrans-48
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE15]'
+- en: '[PRE16]'
+  id: totrans-49
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE16]'
+- en: '[PRE17]'
+  id: totrans-50
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE17]'
+- en: 'Let us go through what each of these events in the preceding code snippet does:'
+  id: totrans-51
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 让我们逐一了解前述代码片段中每个事件的作用：
+- en: '`connect`: Asks for permission to connect. If we accept, we will assign a group.
+    More on this later.'
+  id: totrans-52
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: '`connect`：请求连接权限。如果我们接受，我们将分配一个组。关于这一点，我们稍后再谈。'
+- en: '`receive`: Sends us information and we decide what to do with it. It may trigger
+    some actions, or we may ignore it; we are not obliged to process it.'
+  id: totrans-53
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: '`receive`：向我们发送信息，我们决定如何处理它。它可能触发一些操作，或者我们可能忽略它；我们没有义务处理它。'
+- en: '`disconnect`: Notifies us that it is going to close the connection. It is important
+    to be aware in advance if the connection is going to close.'
+  id: totrans-54
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: '`disconnect`：通知我们将要关闭连接。提前意识到连接将要关闭是很重要的。'
+- en: Being technical, Consumers are an abstraction for making event-driven applications
+    using ASGI. They allow us to execute the code we need when a change occurs. If
+    you have worked with JavaScript events, you will be very familiar with them. And
+    if you haven’t, you could think of them as Channels views, except, instead of
+    being triggered by requests to the URLs we link to the views, they are actions
+    that execute functions.
+  id: totrans-55
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 作为技术性的，消费者是使用ASGI创建事件驱动应用程序的一种抽象。它们允许我们在发生变化时执行所需的代码。如果你曾经使用过JavaScript事件，你会非常熟悉它们。如果你还没有，你可以将它们视为视图的通道，除了，它们不是通过请求到我们链接到视图的URL来触发的，而是执行函数的动作。
+- en: 'Django is able to capture client events. Channels knows whether a new client
+    has connected, disconnected, or sent information. However, the backend has a very
+    powerful ability: to select the recipients of the information. When a client asks
+    to connect, Django must assign the client a group or channel. The client can be
+    left alone or grouped with other clients, depending on the need. When the time
+    comes to send a message, we must decide who will receive it—a specific client
+    or a group.'
+  id: totrans-56
+  prefs: []
+  type: TYPE_NORMAL
+  zh: Django能够捕获客户端事件。Channels知道是否有新的客户端已连接、断开连接或发送了信息。然而，后端有一个非常强大的能力：选择信息接收者。当客户端请求连接时，Django必须为客户端分配一个组或通道。客户端可以单独存在，或者与其他客户端分组，这取决于需要。当发送消息的时间到来时，我们必须决定谁将接收它——一个特定的客户端或一个组。
+- en: In what situation will I need to send data to a client or a group? Let’s use
+    the example of a chat. When I write a private message, Django will send the new
+    text to a specific client, that is the specific user I’m talking to. On the other
+    hand, if I am in a group with other users, when I write a message, the backend
+    will send the text only to a specific selection, that is all the users subscribed
+    to the chat room. The frontend does not decide whether it receives new information
+    or who the recipients are; it is the consumer who is the master of who moves the
+    available information.
+  id: totrans-57
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在什么情况下我需要向客户端或一组发送数据？让我们以聊天为例。当我发送一条私信时，Django会将新文本发送给特定的客户端，即我正在与之交谈的特定用户。另一方面，如果我与其他用户在同一个组中，当我发送消息时，后端只会将文本发送给特定的选择，即所有订阅聊天室的用户。前端不会决定是否接收新信息或接收者是谁；消费者是掌握谁移动可用信息的主导者。
+- en: Now that we have seen how consumers can be useful, let’s look at the role they
+    play when sending plain text to a server/client. We will explore how a client
+    can capture information received from a channel.
+  id: totrans-58
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 现在我们已经看到了消费者如何有用，让我们看看它们在向服务器/客户端发送纯文本时扮演的角色。我们将探讨客户端如何捕获从通道接收到的信息。
+- en: Sending plain text from the backend
+  id: totrans-59
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+  zh: 从后端发送纯文本
+- en: Let’s build the first minimalistic consumer that greets a WebSocket client when
+    it connects. Later, we will add complexity and other actions.
+  id: totrans-60
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 让我们构建第一个最小化的消费者，当 WebSocket 客户端连接时，它会向客户端打招呼。稍后，我们将增加复杂性和其他操作。
+- en: 'All the code for the example can be found at [https://github.com/PacktPublishing/Building-SPAs-with-Django-and-HTML-Over-the-Wire/tree/main/chapter-3/Sending%20plain%20text](https://github.com/PacktPublishing/Building-SPAs-with-Django-and-HTML-Over-the-Wire/tree/main/chapter-3/Sending%20plain%20text):'
+  id: totrans-61
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 示例的所有代码都可以在 [https://github.com/PacktPublishing/Building-SPAs-with-Django-and-HTML-Over-the-Wire/tree/main/chapter-3/Sending%20plain%20text](https://github.com/PacktPublishing/Building-SPAs-with-Django-and-HTML-Over-the-Wire/tree/main/chapter-3/Sending%20plain%20text)
+    找到：
+- en: 'We create `app/simple_app/consumers.py` with the following content:'
+  id: totrans-62
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 我们使用以下内容创建 `app/simple_app/consumers.py`：
+- en: '[PRE18]'
+  id: totrans-63
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+  zh: '[PRE18]'
+- en: 'Let''s explain each element of the file we have just created:'
+  id: totrans-64
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 让我们解释一下我们刚刚创建的文件中的每个元素：
+- en: With `from channels.generic.websocket import WebsocketConsumer`, we import the
+    consumer object for WebSockets.
+  id: totrans-65
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 通过 `from channels.generic.websocket import WebsocketConsumer`，我们导入了用于 WebSockets
+    的消费者对象。
+- en: We declare the Consumer with `class EchoConsumer(WebsocketConsumer):` and call
+    it `EchoConsumer`.
+  id: totrans-66
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 我们使用 `class EchoConsumer(WebsocketConsumer):` 声明消费者，并将其命名为 `EchoConsumer`。
+- en: 'You need at least three functions that are the events that will be triggered
+    by the frontend actions: `connect`, `disconnect`, and `receive`. We are going
+    to focus on `connect`.'
+  id: totrans-67
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 你至少需要三个函数，这些函数是前端操作将触发的事件：`connect`、`disconnect` 和 `receive`。我们将重点关注 `connect`。
+- en: When clients connect, the first thing we’ll do is confirm the connection to
+    establish future communication between Django and the client. We use `self.accept()`.
+  id: totrans-68
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 当客户端连接时，我们首先会确认连接，以建立 Django 和客户端之间的未来通信。我们使用 `self.accept()`。
+- en: Finally, we will send a message with `self.send`, the string `"You are connected
+    by WebSockets!"`. That way every client that connects will receive a greeting.
+  id: totrans-69
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 最后，我们将使用 `self.send` 发送一条消息，内容为 `"You are connected by WebSockets!"`。这样，每个连接的客户端都会收到一条问候。
+- en: 'Now we need to assign the consumer a route for a WebSockets client to connect
+    to. For this, we add the routes on the ASGI server that connects to the consumers.
+    We open `hello_world/asgi.py` and update with the path `/ws/echo/` pointing to
+    `EchoConsumer`:'
+  id: totrans-70
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 现在我们需要为消费者分配一个路由，以便 WebSocket 客户端可以连接到。为此，我们在 ASGI 服务器上添加了连接到消费者的路由。我们打开 `hello_world/asgi.py`
+    并更新路径 `/ws/echo/`，指向 `EchoConsumer`：
+- en: '[PRE19]'
+  id: totrans-71
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+  zh: '[PRE19]'
+- en: 'In `asgi.py`, you will find all the configurations that you can apply to the
+    ASGI server:'
+  id: totrans-72
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在 `asgi.py` 文件中，你可以找到所有可以应用于 ASGI 服务器的配置：
+- en: Since ASGI loads before Django, it can’t know the path to Django’s own configuration
+    file. We must preempt this with `os.environ.setdefault('DJANGO_SETTINGS_MODULE',
+    'hello_world.settings')`.
+  id: totrans-73
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 由于 ASGI 在 Django 之前加载，它无法知道 Django 自身配置文件的路径。我们必须使用 `os.environ.setdefault('DJANGO_SETTINGS_MODULE',
+    'hello_world.settings')` 来先发制人。
+- en: In `application`, we configure all routes, whether HTTP or any other protocol.
+    We use the `ProtocolTypeRouter` object to indicate the type and destination of
+    each route.
+  id: totrans-74
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 在 `application` 中，我们配置所有路由，无论是 HTTP 还是其他协议。我们使用 `ProtocolTypeRouter` 对象来指示每个路由的类型和目的地。
+- en: 'It will still be necessary to use traditional HTTP requests: loading pages
+    via HTTP, managing sessions, cookies, and other particularities. For this task,
+    we include `"http": get_asgi_application()` inside `ProtocolTypeRouter`.'
+  id: totrans-75
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: '仍然需要使用传统的 HTTP 请求：通过 HTTP 加载页面、管理会话、cookies 以及其他特定功能。为此任务，我们在 `ProtocolTypeRouter`
+    中包含 `"http": get_asgi_application()`。'
+- en: Finally, we include the consumer path with `re_path(r'ws/echo/$', consumers.EchoConsumer.as_asgi())`.
+    Now the path to connect to `EchoConsumer` is `/ws/echo/`.
+  id: totrans-76
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 最后，我们使用 `re_path(r'ws/echo/$', consumers.EchoConsumer.as_asgi())` 包含消费者路径。现在连接到
+    `EchoConsumer` 的路径是 `/ws/echo/`。
+- en: Next, we connect a WebSockets client to Django.
+  id: totrans-77
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 接下来，我们将 WebSocket 客户端连接到 Django。
+- en: 'We go to `app/simple_app/templates/index.html`, where we are going to define
+    with JavaScript a WebSockets client that connects to the path we just created:'
+  id: totrans-78
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们前往 `app/simple_app/templates/index.html`，我们将在这里使用 JavaScript 定义一个连接到我们刚刚创建的路径的
+    WebSocket 客户端：
+- en: '[PRE20]'
+  id: totrans-79
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE20]'
+- en: 'We''ve created a minimalistic WebSockets client in JavaScript to listen to
+    everything we receive from the backend:'
+  id: totrans-80
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们已经使用 JavaScript 创建了一个最小化的 WebSocket 客户端来监听从后端接收到的所有内容：
+- en: We define an HTML tag to display the welcome message that the backend will send
+    us. Adding `<h2 id="welcome"></h2>` will be enough; later, we will fill it with
+    JavaScript.
+  id: totrans-81
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 我们定义一个 HTML 标签来显示后端将发送给我们的欢迎消息。添加 `<h2 id="welcome"></h2>` 就足够了；稍后，我们将用 JavaScript
+    填充它。
+- en: 'We connect with `new WebSocket()` to `/ws/echo/`. The address must contain
+    the following structure: `protocol://domain/path`. In our case, it will be `ws://hello.localhost/ws/echo/`.'
+  id: totrans-82
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 我们通过 `new WebSocket()` 连接到 `/ws/echo/`。地址必须包含以下结构：`protocol://domain/path`。在我们的例子中，它将是
+    `ws://hello.localhost/ws/echo/`。
+- en: The `message` event will be fired when the backend sends a message. As soon
+    as we connect to Django, we’ll receive the message we’ve programmed and then display
+    it in `<h2>`.
+  id: totrans-83
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 当后端发送消息时，将触发 `message` 事件。一旦我们连接到 Django，我们就会收到我们已编程的消息，然后在 `<h2>` 中显示它。
+- en: WebSocket secure protocol
+  id: totrans-84
+  prefs: []
+  type: TYPE_NORMAL
+  zh: WebSocket 安全协议
+- en: We can use the `ws://` protocol, where information is sent in plain text, or
+    `wss://` to maintain a secure connection. The difference is similar to using `http://`
+    or `https://`. We will change the protocol to secure when it is in production
+    or when we can provide an SSL certificate; while we are developing, it is not
+    necessary.
+  id: totrans-85
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们可以使用 `ws://` 协议，其中信息以纯文本形式发送，或者使用 `wss://` 来保持安全连接。这种差异类似于使用 `http://` 或 `https://`。当我们在生产环境中或者能够提供
+    SSL 证书时，我们将更改协议以保持安全；而在开发过程中，这并不是必需的。
+- en: Open in your favorite browser the address `http://hello.localhost`.
+  id: totrans-86
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在您喜欢的浏览器中打开地址 `http://hello.localhost`。
+- en: '![Figure 3.2 – Sending plain text from the backend a plain text ("You are connected
+    by WebSockets") and rendering the message in an HTML element, below the title](img/Figure_3.2_B18321.jpg)'
+  id: totrans-87
+  prefs: []
+  type: TYPE_IMG
+  zh: '![图 3.2 – 从后端发送纯文本（“您通过 WebSockets 连接”）并在标题下方的 HTML 元素中渲染消息](img/Figure_3.2_B18321.jpg)'
+- en: Figure 3.2 – Sending plain text from the backend a plain text ("You are connected
+    by WebSockets") and rendering the message in an HTML element, below the title
+  id: totrans-88
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 图 3.2 – 从后端发送纯文本（“您通过 WebSockets 连接”）并在标题下方的 HTML 元素中渲染消息
+- en: We just learned how to send asynchronous plain text from the backend to the
+    frontend via WebSockets. OK! It’s not very spectacular; it’s sent at the very
+    moment we connect. However, as we have it built, we can send messages whenever
+    we need to.
+  id: totrans-89
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们刚刚学习了如何通过 WebSockets 从后端异步发送纯文本到前端。OK！这并不非常引人注目；它是在我们连接的同一时刻发送的。然而，正如我们构建的那样，我们可以随时发送消息。
+- en: 'Let’s make it more interesting: do we synchronize the time for all our visitors?
+    In other words, send the same information to all connected clients in real-time.
+    Of course!'
+  id: totrans-90
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 让它更有趣：我们是否同步所有访客的时间？换句话说，实时向所有连接的客户端发送相同的信息。当然！
+- en: 'We go back to `app/simple_app/consumers.py`. We will create an infinite loop
+    wherein every second a text is sent to the frontend, specifically, the current
+    time. We’ll use **threading** to create a background task and not produce any
+    interruptions:'
+  id: totrans-91
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们回到 `app/simple_app/consumers.py`。我们将创建一个无限循环，其中每秒向前端发送一个文本，特别是当前时间。我们将使用 **threading**
+    创建一个后台任务，不会产生任何中断：
+- en: '[PRE21]'
+  id: totrans-92
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE21]'
+- en: '[PRE22]'
+  id: totrans-93
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE22]'
+- en: '[PRE23]'
+  id: totrans-94
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE23]'
+- en: '[PRE24]'
+  id: totrans-95
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE24]'
+- en: '[PRE25]'
+  id: totrans-96
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE25]'
+- en: '[PRE26]'
+  id: totrans-97
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE26]'
+- en: '[PRE27]'
+  id: totrans-98
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE27]'
+- en: '[PRE28]'
+  id: totrans-99
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE28]'
+- en: '[PRE29]'
+  id: totrans-100
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE29]'
+- en: '[PRE30]'
+  id: totrans-101
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE30]'
+- en: '[PRE31]'
+  id: totrans-102
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE31]'
+- en: '[PRE32]'
+  id: totrans-103
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE32]'
+- en: '[PRE33]'
+  id: totrans-104
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE33]'
+- en: '[PRE34]'
+  id: totrans-105
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE34]'
+- en: '[PRE35]'
+  id: totrans-106
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE35]'
+- en: '[PRE36]'
+  id: totrans-107
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE36]'
+- en: '[PRE37]'
+  id: totrans-108
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE37]'
+- en: '[PRE38]'
+  id: totrans-109
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE38]'
+- en: '[PRE39]'
+  id: totrans-110
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE39]'
+- en: '[PRE40]'
+  id: totrans-111
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE40]'
+- en: '[PRE41]'
+  id: totrans-112
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE41]'
+- en: '[PRE42]'
+  id: totrans-113
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE42]'
+- en: '[PRE43]'
+  id: totrans-114
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE43]'
+- en: '[PRE44]'
+  id: totrans-115
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE44]'
+- en: '[PRE45]'
+  id: totrans-116
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE45]'
+- en: '[PRE46]'
+  id: totrans-117
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE46]'
+- en: '[PRE47]'
+  id: totrans-118
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE47]'
+- en: '[PRE48]'
+  id: totrans-119
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE48]'
+- en: '[PRE49]'
+  id: totrans-120
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE49]'
+- en: Now, open the same address `hello.localhost` in different tabs or browsers;
+    you’ll see how they show the exact same time. All clients are synchronized, receiving
+    the same. No waiting, no need to ask the backend.
+  id: totrans-121
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 现在，在不同的标签页或浏览器中打开相同的地址 `hello.localhost`；您将看到它们显示的确切相同的时间。所有客户端都是同步的，接收相同的信息。无需等待，无需询问后端。
+- en: '![Figure 3.3 – Showing the same time to all visitors in real time'
+  id: totrans-122
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '![图 3.3 – 实时向所有访客显示相同的时间'
+- en: '](img/Figure_3.3_B18321.jpg)'
+  id: totrans-123
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '](img/Figure_3.3_B18321.jpg)'
+- en: Figure 3.3 – Showing the same time to all visitors in real time
+  id: totrans-124
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 图 3.3 – 实时向所有访客显示相同的时间
+- en: 'The power of real time before your eyes. Maybe it’s inspiring your imagination;
+    the possibilities are endless: an election system? An auction site? Notifications?
+    Taxi locator? Food order? Chat? We’ll keep exploring with small projects.'
+  id: totrans-125
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 眼前的实时力量。也许它正在激发你的想象力；可能性是无限的：一个选举系统？一个拍卖网站？通知？出租车定位器？食品订单？聊天？我们将通过小型项目继续探索。
+- en: In the following sections, we will continue to learn how to send messages from
+    the backend in different formats, such as JSON or HTML.
+  id: totrans-126
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在接下来的章节中，我们将继续学习如何以不同的格式从后端发送消息，例如 JSON 或 HTML。
+- en: Sending JSON from the backend
+  id: totrans-127
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+  zh: 从后端发送 JSON
+- en: We are going to send content in JSON format from the backend and consume it
+    at the frontend. In addition, we will give the code a reusable structure that
+    will be useful throughout the book.
+  id: totrans-128
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们将从后端以 JSON 格式发送内容，并在前端消费它。此外，我们将为代码提供一个可重用的结构，这在整本书中都将是有用的。
+- en: All the code for the example can be found at [https://github.com/PacktPublishing/Building-SPAs-with-Django-and-HTML-Over-the-Wire/tree/main/chapter-3/Sending%20JSON](https://github.com/PacktPublishing/Building-SPAs-with-Django-and-HTML-Over-the-Wire/tree/main/chapter-3/Sending%20JSON).
+  id: totrans-129
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We have a consumer type adapted for the purpose of sending or receiving JSON
+    called `JsonWebsocketConsumer`. It is the same as `WebsocketConsumer` except for
+    two differences:'
+  id: totrans-130
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We need to add the `send_json` function to encode to JSON:'
+  id: totrans-131
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE50]'
+  id: totrans-132
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+  zh: '[PRE50]'
+- en: 'We have a new event, called `receive_json`, which automatically decodes JSON
+    when a message is received from the client:'
+  id: totrans-133
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE51]'
+  id: totrans-134
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+  zh: '[PRE51]'
+- en: To exemplify how we can send content in JSON format, we will create a Bingo
+    project.
+  id: totrans-135
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example project – Generating a ticket of random numbers
+  id: totrans-136
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: When a client connects, a ticket with a series of random numbers will be generated
+    and delivered to them via WebSockets. Then, every so often, we will send a random
+    ball from Django. When the player has all the numbers, we will display a winner
+    message.
+  id: totrans-137
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s get started:'
+  id: totrans-138
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We add to `app/simple_app/consumers.py` a new consumer extending from `JsonWebsocketConsumer`:'
+  id: totrans-139
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE52]'
+  id: totrans-140
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+  zh: '[PRE52]'
+- en: 'We generate a ticket of five numbers between 1 and 10\. We will avoid repetitions
+    with `set()`:'
+  id: totrans-141
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE53]'
+  id: totrans-142
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+  zh: '[PRE53]'
+- en: To inform the client what kind of action we are going to perform, we include
+    in the JSON to send `action`. Separately, in `ticket`, we include the list of
+    numbers.
+  id: totrans-143
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Edit `hello_world/asgi.py` and add the path `/ws/bingo/` pointing to `BingoConsumer`.
+    Don’t forget to import it. Now we have a new endpoint to feed the future WebSockets
+    client. It''s time to create the HTML:'
+  id: totrans-144
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE54]'
+  id: totrans-145
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+  zh: '[PRE54]'
+- en: The consumer is prepared to send a ticket with random numbers to every client
+    that connects. The next step will be to prepare the frontend to receive it and
+    render it in the appropriate HTML element.
+  id: totrans-146
+  prefs: []
+  type: TYPE_NORMAL
+- en: Receiving JSON in the frontend
+  id: totrans-147
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The goal will be to receive an asynchronous JSON from the backend that JavaScript
+    will detect in an event. With the data, we will show in the HTML the information
+    to the visitor:'
+  id: totrans-148
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We create a new HTML in `app/simple_app/templates/bingo.html` that will contain
+    all the frontend:'
+  id: totrans-149
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE55]'
+  id: totrans-150
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+  zh: '[PRE55]'
+- en: 'We will need a view for the template we have created. We add to `app/simple_app/views.py`
+    the following function:'
+  id: totrans-151
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE56]'
+  id: totrans-152
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+  zh: '[PRE56]'
+- en: 'In `hello_world/urls.py`, we include the `/bingo/` path:'
+  id: totrans-153
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE57]'
+  id: totrans-154
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+  zh: '[PRE57]'
+- en: And with this change, ticket generation will be ready.
+  id: totrans-155
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When we enter `http://hello.localhost/bingo/`, we will see a ticket of random
+    numbers that will only be given to us:'
+  id: totrans-156
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 3.4 – Backend returning a set of random numbers when we connect via
+    WebSockets'
+  id: totrans-157
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/Figure_3.4_B18321.jpg)'
+  id: totrans-158
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 3.4 – Backend returning a set of random numbers when we connect via WebSockets
+  id: totrans-159
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Currently, the consumer returns a JSON like the following to any client that
+    connects to `/ws/bingo/`:'
+  id: totrans-160
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE58]'
+  id: totrans-161
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE58]'
+- en: 'JavaScript waits, listening. If it receives a JSON whose `"action"` is `"New
+    ticket"`, it will store the entire contents of `"ticket"` in the `ticket` variable.
+    Finally, the JSON displays the HTML:'
+  id: totrans-162
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE59]'
+  id: totrans-163
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE59]'
+- en: We now have an automated system for each customer to generate their own set
+    of numbers to play. The next step will be to send all customers the same random
+    number to represent the ball.
+  id: totrans-164
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们现在为每位客户都有一套自动生成的数字来玩。下一步将是向所有客户发送相同的随机数字来代表球。
+- en: Example project – Checking for matching numbers
+  id: totrans-165
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+  zh: 示例项目 – 检查匹配的数字
+- en: The next milestone is to send random numbers, on a recurring basis, from the
+    backend for the frontend to check for matches. It’s time to mix the balls!
+  id: totrans-166
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 下一个里程碑是定期从后端发送随机数字，供前端检查匹配。是时候混合球了！
+- en: 'We create a thread that generates random numbers and sends them every second.
+    We will call the action `''New ball''`:'
+  id: totrans-167
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 我们创建一个线程生成随机数字，并每秒发送一次。我们将调用动作`'New ball'`：
+- en: '[PRE60]'
+  id: totrans-168
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+  zh: '[PRE60]'
+- en: 'In the JavaScript event that listens to Django, we’ll add the case to detect
+    whether an action with `"New ball"` arrives:'
+  id: totrans-169
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 在监听Django的JavaScript事件中，我们将添加一个案例来检测是否到达了带有`"New ball"`的动作：
+- en: '[PRE61]'
+  id: totrans-170
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+  zh: '[PRE61]'
+- en: 'If so, we search the array of tickets for a match and replace the number with
+    an `X`:'
+  id: totrans-171
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 如果是这样，我们将在票据数组中搜索匹配项，并用`X`替换数字：
+- en: '![Figure 3.5 – If any of the balls matches a number on the ticket, we replace
+    it with an X'
+  id: totrans-172
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '![图3.5 – 如果任何球与票据上的数字匹配，我们将用X替换它'
+- en: '](img/Figure_3.5_B18321.jpg)'
+  id: totrans-173
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '![图片](img/Figure_3.5_B18321.jpg)'
+- en: Figure 3.5 – If any of the balls matches a number on the ticket, we replace
+    it with an X
+  id: totrans-174
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 图3.5 – 如果任何球与票据上的数字匹配，我们将用X替换它
+- en: 'And how do we know we have won? If all the contents of my ticket are `X`: game
+    over!'
+  id: totrans-175
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 那我们怎么知道我们赢了？如果我的票据上的所有内容都是`X`：游戏结束！
+- en: '![Figure 3.6 – All ticket numbers have been crossed out, so we display a winner
+    message'
+  id: totrans-176
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '![图3.6 – 所有票据数字已被划掉，因此我们显示获胜信息'
+- en: '](img/Figure_3.6_B18321.jpg)'
+  id: totrans-177
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '![图片](img/Figure_3.6_B18321.jpg)'
+- en: Figure 3.6 – All ticket numbers have been crossed out, so we display a winner
+    message
+  id: totrans-178
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 图3.6 – 所有票据数字已被划掉，因此我们显示获胜信息
+- en: 'So far, all that the frontend has done is listen and obey like a good child.
+    However, they’re now mature enough to be heard. From JavaScript, we’re going to
+    communicate with Django by making requests or sending information, and the backend
+    will respond in two ways: either with JSON (as we’ve learned in this section)
+    or with rendered HTML.'
+  id: totrans-179
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 到目前为止，前端所做的只是像好孩子一样听从和服从。然而，他们现在已经足够成熟，可以被人听到。从JavaScript开始，我们将通过发出请求或发送信息与Django进行通信，后端将以两种方式做出回应：要么以JSON（如我们在本节中学到的）形式，要么以渲染的HTML形式。
+- en: Rendering HTML in the backend
+  id: totrans-180
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+  zh: 后端渲染HTML
+- en: In this chapter, we will take the first steps on the principles of HTML over
+    WebSockets. The backend will be in charge of rendering the HTML, taking the responsibility
+    away from JavaScript and simplifying its tasks. On the other hand, we will avoid
+    the need to incorporate a framework such as React, Vue, or Angular, and an API
+    for an HTTP client.
+  id: totrans-181
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在本章中，我们将迈出HTML over WebSockets原理的第一步。后端将负责渲染HTML，将责任从JavaScript中移除，简化其任务。另一方面，我们将避免需要集成React、Vue或Angular等框架以及HTTP客户端的API。
+- en: The goal will be to build a **body mass index** (**BMI**) calculator for adults
+    using the metric system. All calculations and HTML creation will be a Django task.
+  id: totrans-182
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 目标将是使用公制系统为成年人构建一个**体质指数**（**BMI**）计算器。所有计算和HTML创建都将由Django任务处理。
+- en: All the code for the example can be found at [https://github.com/PacktPublishing/Building-SPAs-with-Django-and-HTML-Over-the-Wire/tree/main/chapter-3/Rendering%20HTML](https://github.com/PacktPublishing/Building-SPAs-with-Django-and-HTML-Over-the-Wire/tree/main/chapter-3/Rendering%20HTML).
+  id: totrans-183
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 示例中的所有代码都可以在[https://github.com/PacktPublishing/Building-SPAs-with-Django-and-HTML-Over-the-Wire/tree/main/chapter-3/Rendering%20HTML](https://github.com/PacktPublishing/Building-SPAs-with-Django-and-HTML-Over-the-Wire/tree/main/chapter-3/Rendering%20HTML)找到。
+- en: We will ask for the height, in centimeters, and the weight, in kilograms. The
+    formula to get it is *weight (kg) / (height (m))*2.
+  id: totrans-184
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们将要求输入身高（厘米）和体重（公斤）。获取它的公式是*体重（公斤）/（身高（米））*2。
+- en: 'In Python, it would be translated as follows: `weight / (height ** 2)`.'
+  id: totrans-185
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在Python中，它将被翻译为以下内容：`weight / (height ** 2)`。
+- en: 'And its result will indicate the status:'
+  id: totrans-186
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 其结果将指示状态：
+- en: '![ Table 1.1 – BMI status'
+  id: totrans-187
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '![表1.1 – BMI状态'
+- en: '](img/011.jpg)'
+  id: totrans-188
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '![图片](img/011.jpg)'
+- en: Table 1.1 – BMI status
+  id: totrans-189
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 表1.1 – BMI状态
+- en: 'For example, if I weigh 78 kg and I am 180 cm tall (or 1.8 m), the calculation
+    would be 78 / (1.8 ** 2), resulting in `24`. I would be in a *Normal* state, just
+    one point away from *Overweight* – I think this is life’s warning for me to give
+    up my daily chocolate desserts:'
+  id: totrans-190
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 例如，如果我体重78公斤，身高180厘米（或1.8米），计算结果将是78 / (1.8 ** 2)，结果是`24`。我会处于**正常**状态，仅差一点就到**超重**
+    – 我想这是生活对我放弃每天巧克力的警告：
+- en: 'I start by adding a consumer named `BMIConsumer` in `app/simple_app/consumers.py`:'
+  id: totrans-191
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 我首先在 `app/simple_app/consumers.py` 中添加了一个名为 `BMIConsumer` 的消费者：
+- en: '[PRE62]'
+  id: totrans-192
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+  zh: '[PRE62]'
+- en: For the first time, we will receive information from the client. The client
+    will provide us with the values of a future form with weight and height, and in
+    return we will return the HTML ready to display.
+  id: totrans-193
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 第一次，我们将从客户端接收信息。客户端将提供未来表单的体重和身高值，而我们则返回准备显示的 HTML。
+- en: 'Let’s explain what’s going on in the preceding code snippet:'
+  id: totrans-194
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 让我们解释一下前面代码片段中发生的事情：
+- en: 'We import the Django function to render HTML: `from django.template.loader
+    import render_to_string`.'
+  id: totrans-195
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 我们导入 Django 函数以渲染 HTML：`from django.template.loader import render_to_string`。
+- en: Everything happens inside the `receive_json` function. With `data['height']`
+    and `data['weight']`, we collect two pieces of data that we will send from JavaScript.
+  id: totrans-196
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 所有事情都发生在 `receive_json` 函数中。通过 `data['height']` 和 `data['weight']`，我们收集了我们将从
+    JavaScript 发送的两条数据。
+- en: Calculate the index with `round(weight / (height ** 2), 1)`.
+  id: totrans-197
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 使用 `round(weight / (height ** 2), 1)` 计算指数。
+- en: 'We send back to the client a JSON with two fields: `"action"`, where we simply
+    inform the client what action to take, and `"html"` with the HTML generated from
+    **render_to_string**.'
+  id: totrans-198
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 我们向客户端发送一个包含两个字段的 JSON：`"action"`，我们简单地通知客户端要采取什么操作，以及 `"html"`，其中包含从 **render_to_string**
+    生成的 HTML。
+- en: Edit `hello_world/asgi.py` and add the `/ws/bmi/` path pointing to `BMIConsumer`.
+  id: totrans-199
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 编辑 `hello_world/asgi.py` 并添加指向 `BMIConsumer` 的 `/ws/bmi/` 路径。
+- en: '[PRE63]'
+  id: totrans-200
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+  zh: '[PRE63]'
+- en: 'We create a new HTML in `app/simple_app/templates/bmi.html` that will contain
+    the form and the JavaScript that will send the information:'
+  id: totrans-201
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 我们在 `app/simple_app/templates/bmi.html` 中创建一个新的 HTML 文件，它将包含表单和将发送信息的 JavaScript：
+- en: '[PRE64]'
+  id: totrans-202
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+  zh: '[PRE64]'
+- en: The mechanism is simple. When the `"action"` `"BMI results"`, it will inject
+    the HTML in the appropriate place.
+  id: totrans-203
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 机制很简单。当 `"action"` 为 `"BMI results"` 时，它将在适当的位置注入 HTML。
+- en: 'We will need a view for the template we have created. We add to `app/simple_app/views.py`
+    the `bmi` function that points to the template:'
+  id: totrans-204
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 我们需要一个视图来显示我们创建的模板。我们在 `app/simple_app/views.py` 中添加了指向模板的 `bmi` 函数：
+- en: '[PRE65]'
+  id: totrans-205
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+  zh: '[PRE65]'
+- en: 'In `hello_world/urls.py`, we include the `/bmi/` path:'
+  id: totrans-206
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 在 `hello_world/urls.py` 中，我们包含了 `/bmi/` 路径：
+- en: '[PRE66]'
+  id: totrans-207
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+  zh: '[PRE66]'
+- en: 'Now when we enter `http://hello.localhost/bmi/`, we will be shown the website
+    with the form:'
+  id: totrans-208
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 现在，当我们输入 `http://hello.localhost/bmi/` 时，我们将看到带有表单的网站：
+- en: '![Figure 3.7 – The form is displayed ready for use'
+  id: totrans-209
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '![图 3.7 – 表单已显示，准备使用'
+- en: '](img/Figure_3.7_B18321.jpg)'
+  id: totrans-210
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '](img/Figure_3.7_B18321.jpg)'
+- en: Figure 3.7 – The form is displayed ready for use
+  id: totrans-211
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 图 3.7 – 表单已显示，准备使用
+- en: 'We only need the HTML component that we will use to display the content. We
+    create in `app/simple_app/templates/components/_bmi_result.html` a document with
+    the following content:'
+  id: totrans-212
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 我们只需要我们将用于显示内容的 HTML 组件。我们在 `app/simple_app/templates/components/_bmi_result.html`
+    中创建了一个包含以下内容的文档：
+- en: '[PRE67]'
+  id: totrans-213
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+  zh: '[PRE67]'
+- en: Everything is ready, you can now calculate your body mass index. Warning! I
+    am only responsible for bugs; for any other problem, you should consult a nutritionist.
+  id: totrans-214
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 一切准备就绪，你现在可以计算你的体质指数。警告！我只负责错误；对于任何其他问题，你应该咨询营养师。
+- en: '![Figure 3.8 – When the form is filled in and Calculate is clicked, the HTML
+    of the component is displayed'
+  id: totrans-215
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '![图 3.8 – 当表单填写完毕并点击“计算”时，组件的 HTML 显示'
+- en: '](img/Figure_3.8_B18321.jpg)'
+  id: totrans-216
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '](img/Figure_3.8_B18321.jpg)'
+- en: Figure 3.8 – When the form is filled in and Calculate is clicked, the HTML of
+    the component is displayed
+  id: totrans-217
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 图 3.8 – 当表单填写完毕并点击“计算”时，组件的 HTML 显示
+- en: Summary
+  id: totrans-218
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+  zh: 摘要
+- en: We have acquired the skills to create a bidirectional communication tunnel between
+    a backend and frontend using the WebSockets protocol. We can send plain text,
+    JSON, or HTML—totally asynchronous and without waiting. We even know how to ask
+    the backend to take care of rendering HTML fragments that we will inject without
+    the visitor noticing a delay.
+  id: totrans-219
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们已经掌握了使用 WebSocket 协议在前后端之间创建双向通信通道的技能。我们可以发送纯文本、JSON 或 HTML——完全异步，无需等待。我们甚至知道如何让后端处理渲染
+    HTML 片段，这样访客就不会注意到延迟。
+- en: Despite everything we have learned, we still have some issues, such as the fact
+    that the backend can only send information to individual clients, and not to groups.
+    In addition, we still don’t know how to interact with the database, create sessions,
+    or identify users. And without all these elements, we will be unable to make an
+    application that facilitates communication between two visitors or manipulate
+    the database. We need to go deeper.
+  id: totrans-220
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 尽管我们已经学到了很多东西，但我们仍然有一些问题，比如后端只能向单个客户端发送信息，而不能向组发送。此外，我们仍然不知道如何与数据库交互、创建会话或识别用户。没有所有这些元素，我们将无法制作一个促进两个访客之间通信或操作数据库的应用程序。我们需要更深入地学习。
+- en: In the next chapter, we will be introduced to database models and create a complete
+    **Browse-Read-Edit-Add-Delete** (**BREAD**) with a completely new project.
+  id: totrans-221
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在下一章中，我们将介绍数据库模型，并创建一个全新的**浏览-读取-编辑-添加-删除**（**BREAD**）功能，用于一个全新的项目。
+- en: BREAD Is an Evolution of CRUD
+  id: totrans-222
+  prefs: []
+  type: TYPE_NORMAL
+  zh: BREAD 是 CRUD 的一种进化
+- en: '**CRUD** is well known when you want to create a complete data processing system
+    (**Create-Read-Update-Delete**). It is traditionally used in interfaces, APIs,
+    databases, and Web Apps, but it does not consider actions such as pagination,
+    search, or sorting. BREAD was born as an expansion to highlight the fact that
+    information must be navigable, browsea: Browse-Read-Edit-Add-Delete.'
+  id: totrans-223
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 当你想创建一个完整的数据处理系统（**创建-读取-更新-删除**）时，**CRUD**是众所周知的。它传统上用于接口、API、数据库和Web应用中，但它没有考虑分页、搜索或排序等操作。BREAD作为一种扩展而生，旨在强调信息必须是可导航的，浏览：浏览-读取-编辑-添加-删除。
+- en: 'Reference: [https://guvena.wordpress.com/2017/11/12/bread-is-the-new-crud/](https://guvena.wordpress.com/2017/11/12/bread-is-the-new-crud/).'
+  id: totrans-224
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 参考：[https://guvena.wordpress.com/2017/11/12/bread-is-the-new-crud/](https://guvena.wordpress.com/2017/11/12/bread-is-the-new-crud/).

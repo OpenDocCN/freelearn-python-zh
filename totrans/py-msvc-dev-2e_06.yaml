@@ -1,0 +1,983 @@
+- en: '6'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Interacting with Other Services
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapter, our monolithic application was split up into several
+    microservices, and consequently, more network interactions between the different
+    parts were included.
+  prefs: []
+  type: TYPE_NORMAL
+- en: More interactions with other components can lead to complications of their own,
+    however, such as a high volume of messages or large data sizes delaying responses,
+    or long-running tasks taking up valuable resources. Since many of our useful tasks
+    involve interacting with third-party services, the techniques to manage these
+    changes are useful both inside our application and for communicating outside of
+    it. Having the ability to loosely couple different parts of the system using some
+    asynchronous messages is useful to prevent blockages and unwanted dependency entanglements.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In any case, the bottom line is that we need to interact with other services
+    through the network, both synchronously and asynchronously. These interactions
+    need to be efficient, and when something goes wrong, we need to have a plan.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The other problem introduced by adding more network connections is **testing**:
+    how do we test a microservice in isolation that also needs to call other microservices
+    to function? In this chapter, we will explore this in detail:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: How one service can call another using synchronous and asynchronous libraries,
+    and how to make these calls more efficient
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How a service can use messages to make asynchronous calls and communicate with
+    other services via events
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We will also see some techniques to test services that have network dependencies
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Calling other web resources
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: As we have seen in the previous chapters, synchronous interactions between microservices
+    can be done via HTTP APIs using JSON payloads. This is by far the pattern most
+    often used, because both HTTP and JSON are common standards. If your web service
+    implements an HTTP API that accepts JSON, any developer using any programming
+    language will be able to use it. Most of these interfaces are also RESTful, meaning
+    that they follow the **Representational State Transfer** (**REST**) architecture
+    principles of being stateless—with each interaction containing all the information
+    needed instead of relying on previous exchanges—as well as cacheable and having
+    a well-defined interface.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Following a RESTful scheme is not a requirement, however, and some projects
+    implement **Remote Procedure Call** (**RPC**) APIs, which focus on the action
+    being performed and abstract away the network requests from the code that handles
+    the messages. In REST, the focus is on the resource, and actions are defined by
+    HTTP methods. Some projects are a mix of both and don't strictly follow a given
+    standard. The most important thing is that your service behavior should be consistent
+    and well-documented. This book leans on REST rather than RPC, but is not strict
+    about it, and recognizes that different situations have different solutions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sending and receiving JSON payloads is the simplest way for a microservice to
+    interact with others, and only requires microservices to know the entry points
+    and parameters to pass using HTTP requests.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To do this, you just need to use an HTTP client. Python has one as part of
+    the `http.client` module, and in a synchronous Python environment, the `Requests`
+    library is rightfully popular: [https://docs.python-requests.org](https://docs.python-requests.org).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As we are in an asynchronous environment, we will use `aiohttp`, which has
+    a clean way of creating asynchronous web requests and offers built-in features
+    that make it easier to perform multiple simultaneous asynchronous requests: [https://docs.aiohttp.org/en/stable/](https://docs.aiohttp.org/en/stable/).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: HTTP requests in the `aiohttp` library are built around the concept of a session,
+    and the best way to use it is to call `CreateSession`, creating a `Session` object
+    that can be reused every time you interact with any service.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A `Session` object can hold authentication information and some default headers
+    you may want to set for all requests that your application will make. It can also
+    control default error handling behavior, storing cookies, and what timeouts to
+    use. In the following example, the call to `ClientSession` will create an object
+    with the right `Content-Type` headers:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If we should limit how many concurrent requests are being made to an external
+    endpoint, there are two main approaches. `aiohttp` has a concept of connectors,
+    and we can set options to control how many outgoing TCP connections a `session`
+    can operate at once, as well as limiting those numbers for a single destination:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: This might be enough for our needs; however, if we make several outgoing connections
+    to complete one request, we could end up in a situation where each piece of work
+    is continuously blocking after each one as we reach the limit. Ideally, we would
+    like a discrete chunk of work to continue until it's done, and for that we can
+    use a semaphore. A semaphore is a simple token that gives code permission to perform
+    a task. If we were to add a semaphore with three slots, then the first three tasks
+    that try to access the semaphore will take a slot each and carry on. Any other
+    task that requests the semaphore will have to wait until one of the slots is free.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Since the most common way to request a semaphore is inside a `with` block,
+    this means that as soon as the context of the `with` block is over, the semaphore
+    is released—inside the semaphore object''s `__exit__` function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: Let us now see how we can generalize this pattern in a Quart app that needs
+    to interact with other services.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This naive implementation is based on the hypothesis that everything will go
+    smoothly, but real life is rarely so easy. We can set up different error handling
+    options in a `ClientSession`, such as retries and timeouts, and we only need to
+    set them up in that one place.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finding out where to go
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: When we make a web request to a service, we need to know which **Uniform Resource
+    Locator** (**URL**) to use. Most of the examples in this book use hardcoded URLs—that
+    is, they are written into the source code. This is nice and easy to read for an
+    example, but can be a problem when maintaining software. What happens when a service
+    gets a new URI, and its hostname or IP address changes? It might move between
+    AWS regions due to a failure or be migrated from Google Cloud Platform to Microsoft
+    Azure. An API update can make the path to a resource change, even if the hostname
+    or IP address has not updated.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We want to pass in data about which URLs to use as configuration to our application.
+    There are several options to manage more configuration options without adding
+    them directly to the code, such as environment variables and service discovery.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Environment variables
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Container-based environments are common these days, and we will discuss them
+    in more detail in *Chapter 10*, *Deploying on AWS*. The most common approach to
+    get configuration options into a container is to pass the container some environment
+    variables. This has the advantage of being straightforward, since the code just
+    needs to examine the environment when processing its configuration:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: The downside to this approach is that if the URL changes, then we need to restart
+    the application—and sometimes redeploy it—with the new environment. If you don't
+    expect the configuration to change very often, environment variables are still
+    a good idea due to their simplicity, although we must be careful to not record
+    any secrets that are in environment variables when we log messages.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Service discovery
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'But what if we did not need to tell our service about all its options when
+    we deploy it? Service discovery is an approach that involves configuring an application
+    with just a few pieces of information: where to ask for configuration and how
+    to identify the right questions to ask.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Services such as `etcd` ([https://etcd.io/](https://etcd.io/)) provide a reliable
+    key-value store in which to keep this configuration data. For example, let''s
+    use `etcd` to store the URL of the production and development RabbitMQ instances:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: When an application starts up, it can check to see whether it is running in
+    production or in a local development environment and ask `etcd` for the right
+    value—either `myservice/production/rabbitmq/url` or `myservice/development/rabbitmq/url`.
+    With a single option in a deployment, it is possible to change a whole number
+    of configuration options, use different external URLs, bind to different ports,
+    or any other piece of configuration you might think of.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It's also possible to update the values in `etcd`, and when your application
+    next checks for a new value, it will update and use that instead. Deploying a
+    new version of `RabbitMQ` can now be done alongside the old version, and the swap
+    will be a value change in `etcd`—or a change back if it goes wrong.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This approach does add complexity, both as an extra service to run and in terms
+    of updating these values within your application, but it can be a valuable approach
+    in more dynamic environments. We will discuss service discovery more in *Chapter
+    10*, *Deploying on AWS*, when we cover deploying an application on containers
+    and in the cloud.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Transferring data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: JSON is a human-readable data format. There is a long history of human-readable
+    data transfer on the internet—a good example would be email, as you can quite
+    happily type out the protocol needed to send an email as a human author. This
+    readability is useful for determining exactly what is happening in your code and
+    its connections, especially as JSON maps directly onto Python data structures.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The downside to this readability is the size of the data. Sending HTTP requests
+    and responses with JSON payloads can add some bandwidth overhead in the long run,
+    and serializing and deserializing data from Python objects to JSON structures
+    also adds a bit of CPU overhead.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are other ways to transfer data that involve caching, compression, binary
+    payloads, or RPC, however.
+  prefs: []
+  type: TYPE_NORMAL
+- en: HTTP cache headers
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In the HTTP protocol, there are a few cache mechanisms that can be used to indicate
+    to a client that a page that it's trying to fetch has not changed since its last
+    visit. Caching is something we can do in our microservices on all the read-only
+    API endpoints, such as `GETs` and `HEADs`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The simplest way to implement it is to return, along with a result, an ETag
+    header in the response. An `ETag` value is a string that can be considered as
+    a version for the resource the client is trying to get. It can be a timestamp,
+    an incremental version, or a hash. It's up to the server to decide what to put
+    in it, but the idea is that it should be unique to the value of the response.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Like web browsers, when the client fetches a response that contains such a header,
+    it can build a local dictionary cache that stores the response bodies and `ETags`
+    as its values, and the URLs as its keys.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When making a new request, the client can look in its local cache and pass along
+    a stored `ETag` value in the `If-Modified-Since` header. If the server sends back
+    a `304` status code, it means that the response has not changed, and the client
+    can use the previously stored one.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This mechanism can greatly reduce the response times from the server, since
+    it can immediately return an empty `304` response when the content has not changed.
+    If it has changed, the client gets the full message in the usual way.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Of course, this means the services that you are calling should implement this
+    caching behavior by adding the proper `ETag` support. It's not possible to implement
+    a generic solution for this because the cache logic depends on the nature of the
+    data your service is managing. The rule of thumb is to version each resource and
+    change that version every time the data changes. In the following example, the
+    Quart app uses the current server time to create `ETag` values associated with
+    users' entries. The `ETag` value is the current time since the epoch, in milliseconds,
+    and is stored in the modified field.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `get_user()` method returns a user entry from `_USERS` and sets the `ETag`
+    value with `response.set_etag`. When the view gets some calls, it also looks for
+    the `If-None-Match` header to compare it to the user''s modified field, and returns
+    a `304` response if it matches:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `change_user()` view sets a new modified value when the client modifies
+    a user. In the following client session, we''re changing the user, while also
+    making sure that we get a `304` response when providing the new `ETag` value:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: This demonstration is a toy implementation that might not work well in production;
+    relying on a server clock to store `ETag` values means you are sure that the clock
+    is never set back in time and that if you have several servers, their clocks are
+    all synchronized with a service, such as ntpdate.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There is also the problem of race conditions if two requests change the same
+    entry within the same millisecond. Depending on your app, it may not be an issue,
+    but then again if it is, then it may be a big one. A cleaner option is to have
+    the modified field handled by your database system directly, and make sure its
+    changes are done in serialized transactions. Sending the `ETag` with a `POST`
+    request is also a good precaution against a race between concurrent updates—the
+    server can use the `ETag` to verify what version of the data the client wants
+    to update from, and if that version doesn't match, it is probably unsafe to update
+    the data, as someone else has changed it first.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Some developers use hash functions for their `ETag` value because it's easy
+    to compute in a distributed architecture, and it doesn't introduce any of the
+    problems timestamps have. But calculating a hash has a CPU cost, and it means
+    you need to pull the whole entry to do it—so it might be as slow as if you were
+    sending back the actual data. That said, with a dedicated table in your database
+    for all your hashes, you can probably come up with a solution that makes your
+    `304` response fast in its return.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As we said earlier, there is no generic solution to implement an efficient HTTP
+    cache logic—but it's worth implementing one if your client is doing a lot of reads
+    on your service. When you have no choice but to send some data back, there are
+    several ways to make it as efficient as possible, as we will see in the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: GZIP compression
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Compression is an overarching term for reducing the size of data in such a way
+    that the original data can be recovered. There are many different compression
+    algorithms—some of them are general-purpose algorithms that can be used on any
+    sort of data, while some of them are specialized to particular data formats and
+    achieve very good results due to them making assumptions about how the data is
+    structured.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are trade-offs to make between the size of the compressed data, the speed
+    of compression and decompression, and how widely implemented the compression algorithm
+    is. It might be acceptable to spend a few minutes compressing a large data file
+    if it spends most of its time being stored, as the space savings outweigh the
+    access time taken, but for data that is short-lived or regularly accessed, then
+    the overhead of compression and decompression is more important. For our purposes,
+    we need a compression algorithm that is widely understood by different environments,
+    even if it doesn't always achieve the smallest end result.
+  prefs: []
+  type: TYPE_NORMAL
+- en: GZIP compression is available on almost every single system, and web servers
+    such as Apache or nginx provide native support to compress responses that pass
+    through them—which is far better than implementing your own ad hoc compression
+    at the level of Python. It's important to remember that while this will save network
+    bandwidth, it will use more CPU, and so experimenting with metrics collection
+    activated will let us see the results—and decide whether this option is a good
+    idea.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For example, this nginx configuration will enable GZIP compression for any
+    response produced by the Quart app on port `5000`, with an `application/json`
+    content type:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'From the client side, making an HTTP request to the nginx server at `localhost:8080`,
+    proxying for the application at `localhost:5000` with an `Accept-Encoding: gzip`
+    header, will trigger the compression:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: In Python, requests made using the `aiohttp` and `requests` libraries will automatically
+    decompress responses that are GZIP-encoded, so you don't have to worry about doing
+    this when your service is calling another service.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Decompressing the data adds some processing, but Python''s GZIP module relies
+    on `zlib` (`http://www.zlib.net/`), which is very fast. To accept compressed responses to
+    HTTP queries, we just need to add a header indicating we can deal with a GZIP-encoded
+    response:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To compress the data that you are sending to the server, you can use the `gzip`
+    module and specify a `Content-Encoding` header:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: In that case, however, you will get the zipped content in your Quart application,
+    and you will need to decompress it in your Python code, or if you are using an
+    nginx proxy that handles incoming web connections, nginx can decompress the requests
+    for you. We discuss nginx in more detail in *Chapter 10*, *Deploying on AWS*.
+    To summarize, setting up GZIP compression for all your service responses is a
+    low-effort change with nginx, and your Python client can benefit from it by setting
+    the right header. Sending compressed data is a little more complicated however,
+    because the work isn't done for you—but it may still have benefits for large data
+    transfers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you want to further reduce the size of HTTP request/response payloads, another
+    option is to switch from JSON to binary payloads. That way, you do not have to
+    deal with compression, and processing the data may be faster, but the message
+    size reduction is not as good.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Protocol Buffers
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: While it is usually not relevant, if your microservice deals with a lot of data,
+    using an alternative format can be an attractive option to increase performance,
+    and decrease the required network bandwidth without having to use extra processing
+    power and time compressing and decompressing the data. Two widely used binary
+    formats are **Protocol Buffers** (**protobuf**) ([https://developers.google.com/protocol-buffers](https://developers.google.com/protocol-buffers))
+    and **MessagePack**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Protocol Buffers requires you to describe data that's being exchanged into some
+    schema that will be used to index the binary content. The schemas add some work
+    because all data that is transferred will need to be described in a schema, and
+    you will need to learn a new **Domain-Specific Language** (**DSL**). In a typed
+    language, such as Rust, C++, or Go, defining these structures is something that
+    already has to be done, so the overhead is far less.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'However, the advantages are that the messages are well defined and can be easily
+    validated before either end of the network conversation attempts to use the information.
+    It is also possible to generate code for various languages—including Python—that
+    let you construct the data in a way that is more suitable for the language being
+    used. The following example is taken from the protobuf documentation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: The schema is not very Pythonic, as it is intended to support multiple languages
+    and environments. If you interact with statically typed languages or would like
+    a feature to do basic syntax checking on data for you, then a definition like
+    this may be helpful.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using Protocol Buffers with a framework such as gRPC ([https://grpc.io/](https://grpc.io/))
+    can abstract away the network interaction from your application, and instead provide
+    a client with a function call in Python and little need to consider how it generates
+    its return value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: MessagePack
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Unlike Protocol Buffers, MessagePack ([http://msgpack.org/](http://msgpack.org/))
+    is schemaless, and can serialize your data by just calling a function. It''s a
+    simple alternative to JSON, and has implementations in most languages. The `msgpack`
+    Python library (installed using the `pip install` `msgpack-python` command) offers
+    the same level of integration as JSON:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: Using MessagePack is simple compared to protobuf, but which one is faster and
+    provides the best compression ratio depends a lot on your data. In some rare cases,
+    plain JSON might be even quicker to serialize than a binary format.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In terms of compression, you can expect 10% to 20% compression with MessagePack,
+    but if your JSON contains a lot of strings—which is often the case in microservices—GZIP
+    will perform much better.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following example, a huge JSON payload of 48 KB that contains a lot
+    of strings is converted using MessagePack and JSON and then GZIPped in both cases:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: Using MessagePack reduces the size of the payload by approximately 14%, but
+    GZIP is making it 11 times smaller with both JSON and MessagePack payloads!
+  prefs: []
+  type: TYPE_NORMAL
+- en: It's clear that whatever format you are using, the best way to reduce the payload
+    sizes is to use GZIP—and if your web server does not deal with decompression,
+    it's straightforward in Python thanks to `gzip.uncompress()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Message serialization often only supports basic data types, as they must remain
+    unaware of what environment is running in both the source and destination. This
+    means that they cannot encode data that might be commonly used in Python, such
+    as `datetime` objects to represent time. While other languages have date and time
+    representation, it is not done in the same way, and so data like this and other
+    Python objects need to be converted into a serializable form that other platforms
+    can understand. For date and time, common options include an integer representing
+    epoch time (the number of seconds since 1^(st) January 1970) or a string in ISO8601
+    format, such as 2021-03-01T13:31:03+00:00.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In any case, in a world of microservices where JSON is the most accepted standard,
+    taking care of dates is a minor annoyance to stick with a universally adopted
+    standard.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Unless all your services are in Python with well-defined structures, and you
+    need to speed up the serialization steps as much as possible, it is probably simpler
+    to stick with JSON.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Putting it together
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Before moving on, we will quickly recall what we have covered so far:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing HTTP cache headers is a great way to speed up repeated requests
+    for data
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: GZIP compression is an efficient way to lessen the size of requests and responses
+    and is easy to set up
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Binary protocols are an attractive alternative to plain JSON, but it does depend
+    on the situation
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The next section will focus on asynchronous calls; everything your microservice
+    can do that goes beyond the request/response pattern.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Asynchronous messages
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In microservice architecture, asynchronous calls play a fundamental role when
+    a process that is used to be performed in a single application now implicates
+    several microservices. We touched briefly on this in the previous chapter with
+    our change to the Jeeves application, which now communicates with its workers
+    using an asynchronous message queue. To make the best use of these, we will investigate
+    these tools in more depth.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Asynchronous calls can be as simple as a separate thread or process within a
+    microservice app that is receiving some work to be done, and performs it without
+    interfering with the HTTP request/response round trips that are happening at the
+    same time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: But doing everything directly from the same Python process is not very robust.
+    What happens if the process crashes and gets restarted? How do we scale background
+    tasks if they are built like that?
+  prefs: []
+  type: TYPE_NORMAL
+- en: It's much more reliable to send a message that gets picked by another program,
+    and let the microservice focus on its primary goal, which is to serve responses
+    to clients. If a web request does not need an immediate answer, an endpoint in
+    our service can then become code that accepts an HTTP request, processes it, and
+    passes it on, and its response to the client is now whether or not our service
+    has successfully received the request rather than whether the request has been
+    processed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the previous chapter, we looked at how Celery could be used to build a microservice
+    that gets some work from a message broker like RabbitMQ. In that design, the Celery
+    worker blocks—that is, it halts operation while it is waiting—until a new message
+    is added to the RabbitMQ queue.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Message queue reliability
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: As with any distributed system, there are considerations with regard to reliability
+    and consistency. Ideally, we would like to add a message to the queue and have
+    it delivered—and acted upon—exactly once. In practice this is almost impossible
+    to achieve in a distributed system, as components fail, experiencing high latency
+    or packet loss, while all sorts of complex interactions occur.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We have two real choices, encoded in RabbitMQ''s delivery strategies: "at-most-once"
+    and "at-least-once."'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A strategy to deliver a message at most once will not account for any unreliability
+    in the message delivery system or failures in a worker. Once a worker has accepted
+    the message, that is it: the message queue forgets about it. If the worker then
+    suffers a failure and does not complete the chunk of work it has been given, that
+    is something the wider system needs to cope with.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: With a promise to deliver a message at least once, in the case of any failures
+    the deliveries will be attempted again until a worker both accepts the message
+    and acknowledges that it has acted upon it. This ensures that no data is lost,
+    but it does mean that there are situations where the message can be delivered
+    to more than one worker, and so some sort of **universally unique identifier**
+    (**UUID**) is a good idea, so that while some work may be duplicated, it can be
+    deduplicated when it is written to any database or storage. A wider discussion
+    of distributed system reliability and consensus protocols like PAXOS would require
+    a book of its own.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Basic queues
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The pattern used by Celery workers is a push-pull tasks queue. One service pushes
+    messages into a specific queue, and some workers pick them up from the other end
+    and perform an action on them. Each task goes to a single worker. Consider the
+    following diagram, shown in *Figure 6.1*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![image2.jpg](img/B17108_06_01.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 6.1: Tasks passing through a message queue'
+  prefs: []
+  type: TYPE_NORMAL
+- en: There is no bidirectional communication—the sender merely deposits a message
+    in the queue and leaves. The next available worker gets the next message. This
+    blind, unidirectional message passing is perfect when you want to perform some
+    asynchronous parallel tasks, which makes it easy to scale.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In addition, once the sender has confirmed that the message was added to the
+    broker, we can have message brokers—such as RabbitMQ—offer some message persistence.
+    In other words, if all workers go offline, we don't lose the messages that are
+    in the queue.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Topic exchanges and queues
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Topics are a way of filtering and classifying messages that travel through the
+    queue. When using topics, each message is sent with an extra label that helps
+    to identify what sort of message it is, and our workers can subscribe to specific
+    topics, or patterns that match several topics.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's imagine a scenario where we are releasing a mobile app to the Android
+    Play Store and the Apple App Store. When our automation tasks finish building
+    the Android app, we can send a message with a routing key of `publish.playstore`,
+    so that RabbitMQ can route this message to the right topics. The reason that there
+    is a difference between a routing key and a topic is that a topic can match a
+    pattern. The worker that is capable of publishing files to the Play Store can
+    subscribe to the topic `publish.playstore` and get its workload from those messages,
+    but we could also have a queue for messages matching `publish.*` and a worker
+    that sends notifications whenever something is about to be uploaded to the Play
+    Store, the App Store, or any other place you might publish software.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In our microservices, this means we can have specialized workers that all register
+    to the same messaging broker and get a subset of the messages that are added to
+    it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![image1.jpg](img/B17108_06_02.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 6.2: Tasks of different types passing through a message queue'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This sort of behavior exists in most message queue services, in slightly different
+    forms. Let's look at how to set this up in RabbitMQ.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To install a **RabbitMQ** broker, you can look at the download page at [http://www.rabbitmq.com/download.html](http://www.rabbitmq.com/download.html).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Running the container should be enough for any local experiments. RabbitMQ implements
+    the **Advanced Message Queuing Protocol** (**AMQP**). This protocol, described
+    at [http://www.amqp.org/](http://www.amqp.org/), is a complete standard that has
+    been developed for years by a group of companies working together.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'AMQP is organized into three concepts: queues, exchanges, and bindings:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A queue is a recipient that holds messages and waits for consumers to pick them
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: An exchange is an entry point for publishers to add new messages to the system
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A binding defines how messages are routed from exchanges to queues
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: For our topic queue, we need to set one exchange, so RabbitMQ accepts new messages,
+    and all the queues we want for workers to pick messages. Between those two ends,
+    we want to route the messages to the different queues, depending on the topics,
+    using a binding.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s look at how we would set up our app publishing example from earlier.
+    We will assume we have two workers: one that publishes Android applications, and
+    the other that sends notifications, such as updating a website or sending an email.
+    Using the `rabbitmqadmin` command line that gets installed with RabbitMQ, we can
+    create all the necessary parts. If the admin command does not come installed,
+    you can find instructions on installing it at [https://www.rabbitmq.com/management-cli.html](https://www.rabbitmq.com/management-cli.html):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: In this setup, whenever a message is sent to RabbitMQ—and if the topic starts
+    with `publish`—it will be sent to the notifications queue; and if it is `publish.playstore`,
+    then it will end up in both the notifications and playstore queues. Any other
+    topics will cause the message to be discarded.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To interact with RabbitMQ in the code, we can use **Pika**. This is a Python
+    RPC client that implements all the RPC endpoints that a Rabbit service publishes:
+    [https://pika.readthedocs.io](https://pika.readthedocs.io).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Everything we do with Pika can be done on the command line using `rabbitmqadmin`.
+    You can directly get the status of all parts of the system, send and receive messages,
+    and check what's in a queue. It is an excellent way to experiment with your messaging
+    setup.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following script shows how to publish two messages in RabbitMQ in the incoming
+    exchange. One concerns a new app being published, and the other is about a newsletter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'These RPC calls will each add one message to the incoming topic exchange. For
+    the first message, the exchange will then add one message to the `playstore` queue,
+    and for the second, two messages will be added—one to each queue. A worker script
+    that waits for work that needs to be published to the Play Store would look like
+    this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Notice that Pika sends back an ACK to RabbitMQ about the message, so it can
+    be safely removed from the queue once the worker has succeeded. This is the at-least-once
+    strategy approach to message delivery. The `notifications` receiver can be identical
+    apart from the queue it subscribes to and what it does with the message body:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'AMQP offers many patterns that you can investigate to exchange messages. The
+    tutorial page has many examples, and they are all implemented using Python and
+    Pika: [http://www.rabbitmq.com/getstarted.html](http://www.rabbitmq.com/getstarted.html).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: To integrate these examples in our microservices, the publisher phase is straightforward.
+    Your Quart application can create a connection to RabbitMQ using `pika.BlockingConnection`
+    and send messages through it. Projects such as pika-pool ([https://github.com/bninja/pika-pool](https://github.com/bninja/pika-pool))
+    implement simple connection pools so you can manage RabbitMQ channels without
+    having to connect/disconnect every time you are sending something through RPC.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The consumers, on the other hand, are trickier to integrate into microservices.
+    Pika can be embedded into an event loop running in the same process as the Quart
+    application, and trigger a function when a message is received. It will simply
+    be another entry point into the same code, and could be run alongside a RESTful
+    API if that's also required.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Publish/subscribe
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The previous pattern has workers that handle the specific topics of messages,
+    and the messages consumed by a worker are completely gone from the queue. We even
+    added code to acknowledge that the message was consumed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When you want a message to be published to several workers, however, the **Publish/Subscribe**
+    (**pubsub**) pattern needs to be used.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This pattern is the basis for building a general event system and is implemented
+    exactly like the previous one, in which there is one exchange and several queues.
+    The difference is that the exchange part has a fanout type.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In that setup, every queue that you bind to a fanout exchange will receive the
+    same message. With pubsub in place, you can broadcast messages to all your microservices
+    if necessary.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Putting it together
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In this section, we have covered the following about asynchronous messaging:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Non-blocking calls should be used every time a microservice can execute some
+    work out of band. There's no good reason to block a request if what you are doing
+    is not utilized in the response.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Service-to-service communication is not always limited to task queues.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Sending events through a message queue is a good way to prevent tightly coupled
+    components.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We can build a full event system around a broker—such as RabbitMQ—to make our
+    microservices interact with each other via messages.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: RabbitMQ can be used to coordinate all the message passing, with messages sent
+    using Pika.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Testing
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'As we learned in *Chapter 3*, *Coding, Testing, and Documentation: the Virtuous
+    Cycle*, the biggest challenge when writing functional tests for a service that
+    calls other services is to isolate all network calls. In this section, we''ll
+    see how we can mock asynchronous calls made using `aiohttp`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Testing `aiohttp` and its outgoing web requests involves a different approach
+    to traditional synchronous tests. The `aioresponses` project ([https://github.com/pnuckowski/aioresponses](https://github.com/pnuckowski/aioresponses))
+    allows you to easily create mocked responses to web requests made using an `aiohttp`
+    `ClientSession`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: In this example, we tell `aioresponses` that any GET request made to `http://test.example.com`
+    should return the data we specify. This way we can easily provide mocked responses
+    for several URLs, and even the same URL by invoking `mocked.get` more than once
+    to create multiple responses for the same endpoint.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you are using Requests to perform all the calls—or you are using a library
+    that is based on Requests that does not customize it too much—this isolation work
+    is also easy to do thanks to the `requests-mock` project ([https://requests-mock.readthedocs.io](https://requests-mock.readthedocs.io)),
+    which implements mocked calls in a similar way, and likely inspired `aioresponses`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: That said, mocking responses from other services is still a fair amount of work,
+    and can be difficult to maintain. It means that an eye needs to be kept on how
+    the other services are evolving over time, so your tests are not based on a mock
+    that's no longer a reflection of the real API.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using mocks is encouraged to build good functional tests coverage, but make
+    sure you are doing integration tests as well, where the service is tested in a
+    deployment where it calls other services for real.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using OpenAPI
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The OpenAPI Specification ([https://www.openapis.org/](https://www.openapis.org/)),
+    previously known as Swagger, is a standard way of describing a set of HTTP endpoints,
+    how they are used, and the structure of the data that is sent and received. By
+    describing an API using a JSON or YAML file, it allows the intent to become machine-readable—this
+    means that with an OpenAPI Specification, you can use a code generator to produce
+    a client library in a language of your choosing, or to automatically validate
+    data as it enters or leaves the system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: OpenAPI has the same goal that WSDL ([https://www.w3.org/TR/2001/NOTE-wsdl-20010315](https://www.w3.org/TR/2001/NOTE-wsdl-20010315))
+    had back in the XML web services era, but it's much lighter and straight to the
+    point.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following example is a minimal OpenAPI description file that defines one
+    single `/apis/users_ids` endpoint and supports the `GET` method to retrieve the
+    list of user IDs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The full OpenAPI Specification can be found on GitHub; it is very detailed
+    and will let you describe metadata about the API, its endpoints, and the data
+    types it uses: [https://github.com/OAI/OpenAPI-Specification](https://github.com/OAI/OpenAPI-Specification).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The data types described in the schema sections are following the JSON Schema
+    specification ([http://json-schema.org/latest/json-schema-core.html](http://json-schema.org/latest/json-schema-core.html)).
+    Here, we are describing that the `/get_ids` endpoint returns an array of integers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can provide a lot of detail about your API in that specification—things
+    such as what headers should be present in your requests, or what will be the content
+    type of some responses and can be added to it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Describing your HTTP endpoints with OpenAPI offers some excellent possibilities:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are a plethora of OpenAPI clients that can consume your description and
+    do something useful with it, such as building functional tests against your service,
+    or validating data that is sent to it.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It provides a standard, language-agnostic documentation for your API
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The server can check that the requests and responses follow the spec
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Some web frameworks even use the specification to create all the routing and
+    I/O data checks for your microservices; for instance, Connexion ([https://github.com/zalando/connexion](https://github.com/zalando/connexion))
+    does this for Flask. Support for this within Quart is limited at the time of writing,
+    but the situation is always improving. For this reason, we won't be using OpenAPI
+    a great deal in the examples presented here.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There are two schools of thought when people are building HTTP APIs with OpenAPI:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Specification-first, where you create a Swagger specification file and then
+    create your app on top of it, using all the information provided in that specification.
+    That's the principle behind Connexion.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Specification-extracted, where it is your code that generates the Swagger specification
+    file. Some toolkits out there will do this by reading your view docstrings, for
+    instance.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we've looked at how a service can interact with other services
+    synchronously, by using a Requests session, and asynchronously, by using Celery
+    workers or more advanced messaging patterns based on RabbitMQ.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We've also looked at some ways to test a service in isolation by mocking other
+    services, but without mocking the message brokers themselves.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Testing each service in isolation is useful, but when something goes wrong,
+    it's hard to know what happened, particularly if the bug happens in a series of
+    asynchronous calls.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In that case, tracking what's going on with a centralized logging system helps
+    a lot. The next chapter will explain how we can tool our microservices to follow
+    their activities.
+  prefs: []
+  type: TYPE_NORMAL
