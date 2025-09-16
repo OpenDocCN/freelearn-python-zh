@@ -1,0 +1,504 @@
+<html><head></head><body>
+  <div id="sbo-rt-content"><div class="chapter" title="Chapter 9. Network Monitoring and Security"><div class="titlepage"><div><div><h1 class="title"><a id="ch09"/>Chapter 9. Network Monitoring and Security</h1></div></div></div><p>In this chapter, we will cover the following recipes:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Sniffing packets on your network</li><li class="listitem" style="list-style-type: disc">Saving packets in the pcap format using the pcap dumper</li><li class="listitem" style="list-style-type: disc">Adding an extra header in HTTP packets</li><li class="listitem" style="list-style-type: disc">Scanning the ports of a remote host</li><li class="listitem" style="list-style-type: disc">Customizing the IP address of a packet</li><li class="listitem" style="list-style-type: disc">Replaying traffic by reading from a saved pcap file</li><li class="listitem" style="list-style-type: disc">Scanning the broadcast of packets</li></ul></div><div class="section" title="Introduction"><div class="titlepage"><div><div><h1 class="title"><a id="ch09lvl1sec84"/>Introduction</h1></div></div></div><p>This chapter presents some interesting Python recipes for network security monitoring and vulnerability scanning. We begin by sniffing packets on a network using the <code class="literal">pcap</code> library. Then, we start using <code class="literal">Scapy</code>, which is a Swiss knife type of library that can do many similar tasks. Some common tasks in packet analysis are presented using <code class="literal">Scapy</code>, such as saving a packet in the <code class="literal">pcap</code> format, adding an extra header, and modifying the IP address of a packet.</p><p>Some other advanced tasks on network intrusion detection are also included in this chapter, for example, replaying traffic from a saved <code class="literal">pcap</code> file and broadcast scanning.</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Sniffing packets on your network"><div class="titlepage"><div><div><h1 class="title"><a id="ch09lvl1sec85"/>Sniffing packets on your network</h1></div></div></div><p>If you are interested in sniffing packets<a id="id555" class="indexterm"/> on your local network, this<a id="id556" class="indexterm"/> recipe can be used as the starting point. Remember that you may not be able to sniff packets other than what is destined to your machine, as decent network switches will only forward traffic that is designated to your machine.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec182"/>Getting ready</h2></div></div></div><p>You need to install the <code class="literal">pylibpcap</code> library (Version 0.6.4 or greater) for this recipe to work. It's available at SourceForge (<a class="ulink" href="http://sourceforge.net/projects/pylibpcap/">http://sourceforge.net/projects/pylibpcap/</a>).</p><p>You also need to install the <code class="literal">construct</code> library, which can be installed from PyPI via <code class="literal">pip</code> or <code class="literal">easy_install</code>, as shown in <a id="id557" class="indexterm"/>the following command:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ easy_install construct</strong></span>
+</pre></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec183"/>How to do it...</h2></div></div></div><p>We can supply command-line arguments,<a id="id558" class="indexterm"/> for example, the network interface name and TCP port number, for sniffing.</p><p>Listing 9.1 gives the code for sniffing packets on your network, as follows:</p><div class="informalexample"><pre class="programlisting">#!/usr/bin/env python
+# Python Network Programming Cookbook -- Chapter - 9
+# This program is optimized for Python 2.6. 
+# It may run on any other version with/without modifications.
+ 
+import argparse
+import pcap
+from construct.protocols.ipstack import ip_stack
+ 
+ 
+def print_packet(pktlen, data, timestamp):
+  """ Callback for printing the packet payload"""
+  if not data:
+    return
+  
+  stack = ip_stack.parse(data)
+  payload = stack.next.next.next
+  print payload
+
+def main():
+  # setup commandline arguments
+  parser = argparse.ArgumentParser(description='Packet Sniffer')
+  parser.add_argument('--iface', action="store", dest="iface", 
+default='eth0')
+  parser.add_argument('--port', action="store", dest="port", 
+default=80, type=int)
+  # parse arguments
+  given_args = parser.parse_args()
+  iface, port =  given_args.iface, given_args.port
+  # start sniffing
+  pc = pcap.pcapObject()
+  pc.open_live(iface, 1600, 0, 100)
+  pc.setfilter('dst port %d' %port, 0, 0)
+  
+  print 'Press CTRL+C to end capture'
+  try:
+    while True:
+      pc.dispatch(1, print_packet)
+  except KeyboardInterrupt:
+    print 'Packet statistics: %d packets received, %d packets 
+dropped, %d packets dropped by the interface' % pc.stats()
+
+if __name__ == '__main__':
+  main()</pre></div><p>If you run this script passing the command-line arguments, <code class="literal">--iface=eth0</code> and <code class="literal">--port=80</code>, this script will <a id="id559" class="indexterm"/>sniff all the HTTP packets from your web browser.<a id="id560" class="indexterm"/> So, after running this script, if you access <a class="ulink" href="http://www.google.com">http://www.google.com</a> on your browser, you can then see a raw packet output like the following:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>python 9_1_packet_sniffer.py --iface=eth0 --port=80 </strong></span>
+<span class="strong"><strong>Press CTRL+C to end capture</strong></span>
+<span class="strong"><strong>''</strong></span>
+<span class="strong"><strong>0000   47 45 54 20 2f 20 48 54 54 50 2f 31 2e 31 0d 0a   GET / HTTP/1.1..</strong></span>
+<span class="strong"><strong>0010   48 6f 73 74 3a 20 77 77 77 2e 67 6f 6f 67 6c 65   Host: www.google</strong></span>
+<span class="strong"><strong>0020   2e 63 6f 6d 0d 0a 43 6f 6e 6e 65 63 74 69 6f 6e   .com..Connection</strong></span>
+<span class="strong"><strong>0030   3a 20 6b 65 65 70 2d 61 6c 69 76 65 0d 0a 41 63   : keep-alive..Ac</strong></span>
+<span class="strong"><strong>0040   63 65 70 74 3a 20 74 65 78 74 2f 68 74 6d 6c 2c   cept: text/html,</strong></span>
+<span class="strong"><strong>0050   61 70 70 6c 69 63 61 74 69 6f 6e 2f 78 68 74 6d   application/xhtm</strong></span>
+<span class="strong"><strong>0060   6c 2b 78 6d 6c 2c 61 70 70 6c 69 63 61 74 69 6f   l+xml,applicatio</strong></span>
+<span class="strong"><strong>0070   6e 2f 78 6d 6c 3b 71 3d 30 2e 39 2c 2a 2f 2a 3b   n/xml;q=0.9,*/*;</strong></span>
+<span class="strong"><strong>0080   71 3d 30 2e 38 0d 0a 55 73 65 72 2d 41 67 65 6e   q=0.8..User-Agen</strong></span>
+<span class="strong"><strong>0090   74 3a 20 4d 6f 7a 69 6c 6c 61 2f 35 2e 30 20 28   t: Mozilla/5.0 (</strong></span>
+<span class="strong"><strong>00A0   58 31 31 3b 20 4c 69 6e 75 78 20 69 36 38 36 29   X11; Linux i686)</strong></span>
+<span class="strong"><strong>00B0   20 41 70 70 6c 65 57 65 62 4b 69 74 2f 35 33 37    AppleWebKit/537</strong></span>
+<span class="strong"><strong>00C0   2e 33 31 20 28 4b 48 54 4d 4c 2c 20 6c 69 6b 65   .31 (KHTML, like</strong></span>
+<span class="strong"><strong>00D0   20 47 65 63 6b 6f 29 20 43 68 72 6f 6d 65 2f 32    Gecko) Chrome/2</strong></span>
+<span class="strong"><strong>00E0   36 2e 30 2e 31 34 31 30 2e 34 33 20 53 61 66 61   6.0.1410.43 Safa</strong></span>
+<span class="strong"><strong>00F0   72 69 2f 35 33 37 2e 33 31 0d 0a 58 2d 43 68 72   ri/537.31..X-Chr</strong></span>
+<span class="strong"><strong>0100   6f 6d 65 2d 56 61 72 69 61 74 69 6f 6e 73 3a 20   ome-Variations: </strong></span>
+<span class="strong"><strong>0110   43 50 71 31 79 51 45 49 6b 62 62 4a 41 51 69 59   CPq1yQEIkbbJAQiY</strong></span>
+<span class="strong"><strong>0120   74 73 6b 42 43 4b 4f 32 79 51 45 49 70 37 62 4a   tskBCKO2yQEIp7bJ</strong></span>
+<span class="strong"><strong>0130   41 51 69 70 74 73 6b 42 43 4c 65 32 79 51 45 49   AQiptskBCLe2yQEI</strong></span>
+<span class="strong"><strong>0140   2b 6f 50 4b 41 51 3d 3d 0d 0a 44 4e 54 3a 20 31   +oPKAQ==..DNT: 1</strong></span>
+<span class="strong"><strong>0150   0d 0a 41 63 63 65 70 74 2d 45 6e 63 6f 64 69 6e   ..Accept-Encodin</strong></span>
+<span class="strong"><strong>0160   67 3a 20 67 7a 69 70 2c 64 65 66 6c 61 74 65 2c   g: gzip,deflate,</strong></span>
+<span class="strong"><strong>0170   73 64 63 68 0d 0a 41 63 63 65 70 74 2d 4c 61 6e   sdch..Accept-Lan</strong></span>
+<span class="strong"><strong>0180   67 75 61 67 65 3a 20 65 6e 2d 47 42 2c 65 6e 2d   guage: en-GB,en-</strong></span>
+<span class="strong"><strong>0190   55 53 3b 71 3d 30 2e 38 2c 65 6e 3b 71 3d 30 2e   US;q=0.8,en;q=0.</strong></span>
+<span class="strong"><strong>01A0   36 0d 0a 41 63 63 65 70 74 2d 43 68 61 72 73 65   6..Accept-Charse</strong></span>
+<span class="strong"><strong>01B0   74 3a 20 49 53 4f 2d 38 38 35 39 2d 31 2c 75 74   t: ISO-8859-1,ut</strong></span>
+<span class="strong"><strong>01C0   66 2d 38 3b 71 3d 30 2e 37 2c 2a 3b 71 3d 30 2e   f-8;q=0.7,*;q=0.</strong></span>
+<span class="strong"><strong>01D0   33 0d 0a 43 6f 6f 6b 69 65 3a 20 50 52 45 46 3d   3..Cookie: PREF=</strong></span>
+
+<span class="strong"><strong>….</strong></span>
+
+<span class="strong"><strong>^CPacket statistics: 17 packets received, 0 packets dropped, 0 </strong></span>
+<span class="strong"><strong>packets dropped by the interface</strong></span>
+</pre></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec184"/>How it works...</h2></div></div></div><p>This recipe relies on the <code class="literal">pcapObject()</code> class<a id="id561" class="indexterm"/> from the <code class="literal">pcap</code> library to create an instance of sniffer. In the <code class="literal">main()</code> method, an instance of this class is created, and a filter is set using the <code class="literal">setfilter()</code> method<a id="id562" class="indexterm"/> so that only the HTTP packets are captured. Finally, the <code class="literal">dispatch()</code> method<a id="id563" class="indexterm"/> starts sniffing and sends the sniffed packet to the <code class="literal">print_packet()</code> function for postprocessing.</p><p>In the <code class="literal">print_packet()</code> function<a id="id564" class="indexterm"/>, if a<a id="id565" class="indexterm"/> packet has data, the payload is extracted<a id="id566" class="indexterm"/> using the <code class="literal">ip_stack.parse()</code> method<a id="id567" class="indexterm"/> from the <code class="literal">construct</code> library. This library is useful for low-level data processing.</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Saving packets in the pcap format using the pcap dumper"><div class="titlepage"><div><div><h1 class="title"><a id="ch09lvl1sec86"/>Saving packets in the pcap format using the pcap dumper</h1></div></div></div><p>The <span class="strong"><strong>pcap</strong></span> format, abbreviated from <span class="strong"><strong>packet capture</strong></span>, is a<a id="id568" class="indexterm"/> common file format<a id="id569" class="indexterm"/> for saving network data. More details on<a id="id570" class="indexterm"/> the pcap format can be found at <a class="ulink" href="http://wiki.wireshark.org/Development/LibpcapFileFormat">http://wiki.wireshark.org/Development/LibpcapFileFormat</a>.</p><p>If you want to save your captured <a id="id571" class="indexterm"/>network packets to a file and later re-use them for further processing, this recipe can be a working example for you.</p><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec185"/>How to do it...</h2></div></div></div><p>In this recipe, we use the <code class="literal">Scapy</code> library to sniff packets and write to a file. All utility functions and definitions of <code class="literal">Scapy</code> can be imported using the wild card import, as shown in the following command:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>from scapy.all import *</strong></span>
+</pre></div><p>This is only for demonstration purposes and not recommended for production code.</p><p>The <code class="literal">sniff()</code> function of <code class="literal">Scapy</code> takes the name of a callback function. Let's write a callback function that will write the packets onto a file.</p><p>Listing 9.2 gives the code for saving packets in the pcap format using the pcap dumper, as follows:</p><div class="informalexample"><pre class="programlisting">#!/usr/bin/env python
+# Python Network Programming Cookbook -- Chapter - 9
+# This program is optimized for Python 2.7. 
+# It may run on any other version with/without modifications.
+ 
+import os
+from scapy.all import *
+ 
+pkts = []
+iter = 0
+pcapnum = 0
+ 
+def write_cap(x):
+  global pkts
+  global iter
+  global pcapnum
+  pkts.append(x)
+  iter += 1
+  if iter == 3:
+    pcapnum += 1
+    pname = "pcap%d.pcap" % pcapnum
+    wrpcap(pname, pkts)
+    pkts = []
+    iter = 0
+ 
+if __name__ == '__main__':
+  print "Started packet capturing and dumping... Press CTRL+C to exit"
+  sniff(prn=write_cap)
+  
+  print "Testing the dump file..."
+  dump_file = "./pcap1.pcap"
+  if os.path.exists(dump_file):
+    print "dump fie %s found." %dump_file
+    pkts = sniff(offline=dump_file)
+    count = 0
+    while (count &lt;=2):
+      print "----Dumping pkt:%s----" %count
+      print hexdump(pkts[count])
+      count += 1    
+  else:
+    print "dump fie %s not found." %dump_file</pre></div><p>If you <a id="id572" class="indexterm"/>run this script, <a id="id573" class="indexterm"/>you will see an output<a id="id574" class="indexterm"/> similar to the following:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong># python 9_2_save_packets_in_pcap_format.py </strong></span>
+<span class="strong"><strong>^CStarted packet capturing and dumping... Press CTRL+C to exit</strong></span>
+<span class="strong"><strong>Testing the dump file...</strong></span>
+<span class="strong"><strong>dump fie ./pcap1.pcap found.</strong></span>
+<span class="strong"><strong>----Dumping pkt:0----</strong></span>
+<span class="strong"><strong>0000   08 00 27 95 0D 1A 52 54  00 12 35 02 08 00 45 00   ..'...RT..5...E.</strong></span>
+<span class="strong"><strong>0010   00 DB E2 6D 00 00 40 06  7C 9E 6C A0 A2 62 0A 00   ...m..@.|.l..b..</strong></span>
+<span class="strong"><strong>0020   02 0F 00 50 99 55 97 98  2C 84 CE 45 9B 6C 50 18   ...P.U..,..E.lP.</strong></span>
+<span class="strong"><strong>0030   FF FF 53 E0 00 00 48 54  54 50 2F 31 2E 31 20 32   ..S...HTTP/1.1 2</strong></span>
+<span class="strong"><strong>0040   30 30 20 4F 4B 0D 0A 58  2D 44 42 2D 54 69 6D 65   00 OK..X-DB-Time</strong></span>
+<span class="strong"><strong>0050   6F 75 74 3A 20 31 32 30  0D 0A 50 72 61 67 6D 61   out: 120..Pragma</strong></span>
+<span class="strong"><strong>0060   3A 20 6E 6F 2D 63 61 63  68 65 0D 0A 43 61 63 68   : no-cache..Cach</strong></span>
+<span class="strong"><strong>0070   65 2D 43 6F 6E 74 72 6F  6C 3A 20 6E 6F 2D 63 61   e-Control: no-ca</strong></span>
+<span class="strong"><strong>0080   63 68 65 0D 0A 43 6F 6E  74 65 6E 74 2D 54 79 70   che..Content-Typ</strong></span>
+<span class="strong"><strong>0090   65 3A 20 74 65 78 74 2F  70 6C 61 69 6E 0D 0A 44   e: text/plain..D</strong></span>
+<span class="strong"><strong>00a0   61 74 65 3A 20 53 75 6E  2C 20 31 35 20 53 65 70   ate: Sun, 15 Sep</strong></span>
+<span class="strong"><strong>00b0   20 32 30 31 33 20 31 35  3A 32 32 3A 33 36 20 47    2013 15:22:36 G</strong></span>
+<span class="strong"><strong>00c0   4D 54 0D 0A 43 6F 6E 74  65 6E 74 2D 4C 65 6E 67   MT..Content-Leng</strong></span>
+<span class="strong"><strong>00d0   74 68 3A 20 31 35 0D 0A  0D 0A 7B 22 72 65 74 22   th: 15....{"ret"</strong></span>
+<span class="strong"><strong>00e0   3A 20 22 70 75 6E 74 22  7D                        : "punt"}</strong></span>
+<span class="strong"><strong>None</strong></span>
+<span class="strong"><strong>----Dumping pkt:1----</strong></span>
+<span class="strong"><strong>0000   52 54 00 12 35 02 08 00  27 95 0D 1A 08 00 45 00   RT..5...'.....E.</strong></span>
+<span class="strong"><strong>0010   01 D2 1F 25 40 00 40 06  FE EF 0A 00 02 0F 6C A0   ...%@.@.......l.</strong></span>
+<span class="strong"><strong>0020   A2 62 99 55 00 50 CE 45  9B 6C 97 98 2D 37 50 18   .b.U.P.E.l..-7P.</strong></span>
+<span class="strong"><strong>0030   F9 28 1C D6 00 00 47 45  54 20 2F 73 75 62 73 63   .(....GET /subsc</strong></span>
+<span class="strong"><strong>0040   72 69 62 65 3F 68 6F 73  74 5F 69 6E 74 3D 35 31   ribe?host_int=51</strong></span>
+<span class="strong"><strong>0050   30 35 36 34 37 34 36 26  6E 73 5F 6D 61 70 3D 31   0564746&amp;ns_map=1</strong></span>
+<span class="strong"><strong>0060   36 30 36 39 36 39 39 34  5F 33 30 30 38 30 38 34   60696994_3008084</strong></span>
+<span class="strong"><strong>0070   30 37 37 31 34 2C 31 30  31 39 34 36 31 31 5F 31   07714,10194611_1</strong></span>
+<span class="strong"><strong>0080   31 30 35 33 30 39 38 34  33 38 32 30 32 31 31 2C   105309843820211,</strong></span>
+<span class="strong"><strong>0090   31 34 36 34 32 38 30 35  32 5F 33 32 39 34 33 38   146428052_329438</strong></span>
+<span class="strong"><strong>00a0   36 33 34 34 30 38 34 2C  31 31 36 30 31 35 33 31   6344084,11601531</strong></span>
+<span class="strong"><strong>00b0   5F 32 37 39 31 38 34 34  37 35 37 37 31 2C 31 30   _279184475771,10</strong></span>
+<span class="strong"><strong>00c0   31 39 34 38 32 38 5F 33  30 30 37 34 39 36 35 39   194828_300749659</strong></span>
+<span class="strong"><strong>00d0   30 30 2C 33 33 30 39 39  31 39 38 32 5F 38 31 39   00,330991982_819</strong></span>
+<span class="strong"><strong>00e0   33 35 33 37 30 36 30 36  2C 31 36 33 32 37 38 35   35370606,1632785</strong></span>
+<span class="strong"><strong>00f0   35 5F 31 32 39 30 31 32  32 39 37 34 33 26 75 73   5_12901229743&amp;us</strong></span>
+<span class="strong"><strong>0100   65 72 5F 69 64 3D 36 35  32 30 33 37 32 26 6E 69   er_id=6520372&amp;ni</strong></span>
+<span class="strong"><strong>0110   64 3D 32 26 74 73 3D 31  33 37 39 32 35 38 35 36   d=2&amp;ts=137925856</strong></span>
+<span class="strong"><strong>0120   31 20 48 54 54 50 2F 31  2E 31 0D 0A 48 6F 73 74   1 HTTP/1.1..Host</strong></span>
+<span class="strong"><strong>0130   3A 20 6E 6F 74 69 66 79  33 2E 64 72 6F 70 62 6F   : notify3.dropbo</strong></span>
+<span class="strong"><strong>0140   78 2E 63 6F 6D 0D 0A 41  63 63 65 70 74 2D 45 6E   x.com..Accept-En</strong></span>
+<span class="strong"><strong>0150   63 6F 64 69 6E 67 3A 20  69 64 65 6E 74 69 74 79   coding: identity</strong></span>
+<span class="strong"><strong>0160   0D 0A 43 6F 6E 6E 65 63  74 69 6F 6E 3A 20 6B 65   ..Connection: ke</strong></span>
+<span class="strong"><strong>0170   65 70 2D 61 6C 69 76 65  0D 0A 58 2D 44 72 6F 70   ep-alive..X-Drop</strong></span>
+<span class="strong"><strong>0180   62 6F 78 2D 4C 6F 63 61  6C 65 3A 20 65 6E 5F 55   box-Locale: en_U</strong></span>
+<span class="strong"><strong>0190   53 0D 0A 55 73 65 72 2D  41 67 65 6E 74 3A 20 44   S..User-Agent: D</strong></span>
+<span class="strong"><strong>01a0   72 6F 70 62 6F 78 44 65  73 6B 74 6F 70 43 6C 69   ropboxDesktopCli</strong></span>
+<span class="strong"><strong>01b0   65 6E 74 2F 32 2E 30 2E  32 32 20 28 4C 69 6E 75   ent/2.0.22 (Linu</strong></span>
+<span class="strong"><strong>01c0   78 3B 20 32 2E 36 2E 33  32 2D 35 2D 36 38 36 3B   x; 2.6.32-5-686;</strong></span>
+<span class="strong"><strong>01d0   20 69 33 32 3B 20 65 6E  5F 55 53 29 0D 0A 0D 0A    i32; en_US)....</strong></span>
+<span class="strong"><strong>None</strong></span>
+<span class="strong"><strong>----Dumping pkt:2----</strong></span>
+<span class="strong"><strong>0000   08 00 27 95 0D 1A 52 54  00 12 35 02 08 00 45 00   ..'...RT..5...E.</strong></span>
+<span class="strong"><strong>0010   00 28 E2 6E 00 00 40 06  7D 50 6C A0 A2 62 0A 00   .(.n..@.}Pl..b..</strong></span>
+<span class="strong"><strong>0020   02 0F 00 50 99 55 97 98  2D 37 CE 45 9D 16 50 10   ...P.U..-7.E..P.</strong></span>
+<span class="strong"><strong>0030   FF FF CA F1 00 00 00 00  00 00 00 00               ............</strong></span>
+<span class="strong"><strong>None</strong></span>
+</pre></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec186"/>How it works...</h2></div></div></div><p>This recipe uses the <code class="literal">sniff()</code> and <code class="literal">wrpacp()</code> utility functions of the <code class="literal">Scapy</code> library to capture all the network packets and dump them onto a file. After capturing a packet via <code class="literal">sniff()</code>, the <code class="literal">write_cap()</code> function<a id="id575" class="indexterm"/> is called on that packet. Some global variables are used to work on packets one after another. For example, packets are stored in a <code class="literal">pkts[]</code>list and packet and <a id="id576" class="indexterm"/>variable counts are used. When the value of the count is 3, the <code class="literal">pkts</code> list is dumped onto a file named <code class="literal">pcap1.pcap</code>, the count <a id="id577" class="indexterm"/>variable is reset so that we can<a id="id578" class="indexterm"/> continue capturing another three packets and dumped onto <code class="literal">pcap2.pcap</code>, and so on.</p><p>In the <code class="literal">test_dump_file()</code> function<a id="id579" class="indexterm"/>, assume the presence of the first dump file, <code class="literal">pcap1.dump</code>, in the working directory. Now, <code class="literal">sniff()</code> is used with an offline parameter, which captured packets from the file instead of network. Here, the packets are decoded one after another using the <code class="literal">hexdump()</code> function<a id="id580" class="indexterm"/>. The contents of the packets are then printed on the screen.</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Adding an extra header in HTTP packets"><div class="titlepage"><div><div><h1 class="title"><a id="ch09lvl1sec87"/>Adding an extra header in HTTP packets</h1></div></div></div><p>Sometimes, you would like to<a id="id581" class="indexterm"/> manipulate an application by supplying a <a id="id582" class="indexterm"/>custom HTTP header that contains custom information. For example, adding an authorization header can be useful to implement the HTTP basic authentication in your packet capture code.</p><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec187"/>How to do it...</h2></div></div></div><p>Let us sniff the packets using the <code class="literal">sniff()</code> function of <code class="literal">Scapy</code> and define a callback function, <code class="literal">modify_packet_header()</code>,<a id="id583" class="indexterm"/> which adds an extra header of certain packets.</p><p>Listing 9.3 gives the code for adding an extra header in HTTP packets, as follows:</p><div class="informalexample"><pre class="programlisting">#!/usr/bin/env python
+# Python Network Programming Cookbook -- Chapter - 9
+# This program is optimized for Python 2.7. 
+# It may run on any other version with/without modifications.
+
+from scapy.all import *
+
+def modify_packet_header(pkt):
+  """ Parse the header and add an extra header"""
+  if pkt.haslayer(TCP) and pkt.getlayer(TCP).dport == 80 and 
+pkt.haslayer(Raw):
+    hdr = pkt[TCP].payload.__dict__        
+    extra_item = {'Extra Header' : ' extra value'}
+    hdr.update(extra_item)     
+    send_hdr = '\r\n'.join(hdr)
+    pkt[TCP].payload = send_hdr
+  
+    pkt.show()
+  
+    del pkt[IP].chksum
+    send(pkt)
+
+if __name__ == '__main__':
+  # start sniffing
+  sniff(filter="tcp and ( port 80 )", prn=modify_packet_header)</pre></div><p>If you run this script, it will show<a id="id584" class="indexterm"/> a captured packet; print the<a id="id585" class="indexterm"/> modified version of it and send it to the network, as shown in the following output. This can be verified by other packet capturing tools such as <code class="literal">tcpdump</code> or <code class="literal">wireshark</code>:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ python 9_3_add_extra_http_header_in_sniffed_packet.py </strong></span>
+
+<span class="strong"><strong>###[ Ethernet ]###</strong></span>
+<span class="strong"><strong>  dst       = 52:54:00:12:35:02</strong></span>
+<span class="strong"><strong>  src       = 08:00:27:95:0d:1a</strong></span>
+<span class="strong"><strong>  type      = 0x800</strong></span>
+<span class="strong"><strong>###[ IP ]###</strong></span>
+<span class="strong"><strong>     version   = 4L</strong></span>
+<span class="strong"><strong>     ihl       = 5L</strong></span>
+<span class="strong"><strong>     tos       = 0x0</strong></span>
+<span class="strong"><strong>     len       = 525</strong></span>
+<span class="strong"><strong>     id        = 13419</strong></span>
+<span class="strong"><strong>     flags     = DF</strong></span>
+<span class="strong"><strong>     frag      = 0L</strong></span>
+<span class="strong"><strong>     ttl       = 64</strong></span>
+<span class="strong"><strong>     proto     = tcp</strong></span>
+<span class="strong"><strong>     chksum    = 0x171</strong></span>
+<span class="strong"><strong>     src       = 10.0.2.15</strong></span>
+<span class="strong"><strong>     dst       = 82.94.164.162</strong></span>
+<span class="strong"><strong>     \options   \</strong></span>
+<span class="strong"><strong>###[ TCP ]###</strong></span>
+<span class="strong"><strong>        sport     = 49273</strong></span>
+<span class="strong"><strong>        dport     = www</strong></span>
+<span class="strong"><strong>        seq       = 107715690</strong></span>
+<span class="strong"><strong>        ack       = 216121024</strong></span>
+<span class="strong"><strong>        dataofs   = 5L</strong></span>
+<span class="strong"><strong>        reserved  = 0L</strong></span>
+<span class="strong"><strong>        flags     = PA</strong></span>
+<span class="strong"><strong>        window    = 6432</strong></span>
+<span class="strong"><strong>        chksum    = 0x50f</strong></span>
+<span class="strong"><strong>        urgptr    = 0</strong></span>
+<span class="strong"><strong>        options   = []</strong></span>
+<span class="strong"><strong>###[ Raw ]###</strong></span>
+<span class="strong"><strong>           load      = 'Extra Header\r\nsent_time\r\nfields\r\naliastypes\r\npost_transforms\r\nunderlayer\r\nfieldtype\r\ntime\r\ninitialized\r\noverloaded_fields\r\npacketfields\r\npayload\r\ndefault_fields'</strong></span>
+<span class="strong"><strong>.</strong></span>
+<span class="strong"><strong>Sent 1 packets.</strong></span>
+</pre></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec188"/>How it works...</h2></div></div></div><p>First, we set up the packet sniffing using the <code class="literal">sniff()</code> function of <span class="strong"><strong>Scapy</strong></span>, specifying <code class="literal">modify_packet_header()</code> as the callback function for each packet. All TCP packets having TCP and a raw layer that are <a id="id586" class="indexterm"/>destined to port <code class="literal">80</code> (HTTP) are <a id="id587" class="indexterm"/>considered for modification. So, the current packet header is extracted from the packet's payload data.</p><p>The extra header is then appended to the existing header dictionary. The packet is then printed on screen using the <code class="literal">show()</code> method, and for avoiding the correctness checking failure, the packet checksum data is removed from the packet. Finally, the packet is sent over the network.</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Scanning the ports of a remote host"><div class="titlepage"><div><div><h1 class="title"><a id="ch09lvl1sec88"/>Scanning the ports of a remote host</h1></div></div></div><p>If you are trying to connect to a <a id="id588" class="indexterm"/>remote host using a particular port, sometimes you get the message saying that <code class="literal">Connection is refused</code>. The reason for this is that, most likely,<a id="id589" class="indexterm"/> the server is down on the remote host. In such a situation, you can try to see whether the port is open or in the listening state. You can scan multiple ports to identify the available services in a machine.</p><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec189"/>How to do it...</h2></div></div></div><p>Using Python's standard socket library, we can accomplish this port-scanning task. We can take three command-line arguments: target host, and start and end port numbers.</p><p>Listing 9.4 gives the code for scanning the ports of a remote host, as follows:</p><div class="informalexample"><pre class="programlisting">#!/usr/bin/env python
+# Python Network Programming Cookbook -- Chapter - 9
+# This program is optimized for Python 2.7. 
+# It may run on any other version with/without modifications.
+
+import argparse
+import socket
+import sys
+ 
+def scan_ports(host, start_port, end_port):
+  """ Scan remote hosts """
+  #Create socket
+  try:
+    sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+  except socket.error,err_msg:
+    print 'Socket creation failed. Error code: '+ str(err_msg[0]) 
++ ' Error mesage: ' + err_msg[1]
+    sys.exit()
+  
+  #Get IP of remote host
+  try:
+    remote_ip = socket.gethostbyname(host)
+  except socket.error,error_msg:
+    print error_msg
+  sys.exit()
+
+  #Scan ports
+  end_port += 1
+  for port in range(start_port,end_port):
+    try:
+      sock.connect((remote_ip,port))
+      print 'Port ' + str(port) + ' is open'
+      sock.close()
+      sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+    except socket.error:
+      pass # skip various socket errors
+
+if __name__ == '__main__':
+  # setup commandline arguments
+  parser = argparse.ArgumentParser(description='Remote Port 
+Scanner')
+  parser.add_argument('--host', action="store", dest="host", 
+default='localhost')
+  parser.add_argument('--start-port', action="store", 
+dest="start_port", default=1, type=int)
+  parser.add_argument('--end-port', action="store", 
+dest="end_port", default=100, type=int)
+  # parse arguments
+  given_args = parser.parse_args()
+  host, start_port, end_port =  given_args.host, 
+given_args.start_port, given_args.end_port
+  scan_ports(host, start_port, end_port)</pre></div><p>If you run this recipe to scan <a id="id590" class="indexterm"/>your local machine's port <code class="literal">1</code> to <code class="literal">100</code> to detect open ports, <a id="id591" class="indexterm"/>you will get an output similar to the following:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong># python 9_4_scan_port_of_a_remote_host.py --host=localhost --start-port=1 --end-port=100</strong></span>
+<span class="strong"><strong>Port 21 is open</strong></span>
+<span class="strong"><strong>Port 22 is open</strong></span>
+<span class="strong"><strong>Port 23 is open</strong></span>
+<span class="strong"><strong>Port 25 is open</strong></span>
+<span class="strong"><strong>Port 80 is open</strong></span>
+</pre></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec190"/>How it works...</h2></div></div></div><p>This recipe demonstrates how to scan open ports of a machine using Python's standard socket library. The <code class="literal">scan_port()</code> function<a id="id592" class="indexterm"/> takes three arguments: hostname, start port, and end port. Then, it scans the entire port range in three steps.</p><p>Create a TCP socket using the <code class="literal">socket()</code> function.</p><p>If the socket is created successfully, then resolve the IP address of the remote host using<a id="id593" class="indexterm"/> the <code class="literal">gethostbyname()</code> function.</p><p>If the target host's IP address is found, try to connect to the IP using the <code class="literal">connect()</code> function. If that's successful, then<a id="id594" class="indexterm"/> it implies that the port is open. Now, close the port<a id="id595" class="indexterm"/> with the <code class="literal">close()</code> function and repeat the first step for the next port.</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Customizing the IP address of a packet"><div class="titlepage"><div><div><h1 class="title"><a id="ch09lvl1sec89"/>Customizing the IP address of a packet</h1></div></div></div><p>If you ever need to create a<a id="id596" class="indexterm"/> network packet and customize the source and destination IP or ports, this recipe can serve as the starting point.</p><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec191"/>How to do it...</h2></div></div></div><p>We can take all the useful command-line arguments such as network interface name, protocol name, source IP, source port, destination IP, destination port, and optional TCP flags.</p><p>We can use the <code class="literal">Scapy</code> library to create a custom TCP or UDP packet and send it over the network.</p><p>Listing 9.5 gives the code for customizing the IP address of a packet, as follows:</p><div class="informalexample"><pre class="programlisting">#!/usr/bin/env python
+# Python Network Programming Cookbook -- Chapter - 9
+# This program is optimized for Python 2.7. 
+# It may run on any other version with/without modifications.
+
+import argparse
+import sys
+import re
+from random import randint
+
+from scapy.all import IP,TCP,UDP,conf,send
+
+
+def send_packet(protocol=None, src_ip=None, src_port=None, flags=None, dst_ip=None, dst_port=None, iface=None):
+  """Modify and send an IP packet."""
+  if protocol == 'tcp':
+    packet = IP(src=src_ip, dst=dst_ip)/TCP(flags=flags, 
+sport=src_port, dport=dst_port)
+  elif protocol == 'udp':
+  if flags: raise Exception(" Flags are not supported for udp")
+    packet = IP(src=src_ip, dst=dst_ip)/UDP(sport=src_port, 
+dport=dst_port)
+  else:
+    raise Exception("Unknown protocol %s" % protocol)
+
+  send(packet, iface=iface)
+  
+
+if __name__ == '__main__':
+  # setup commandline arguments
+  parser = argparse.ArgumentParser(description='Packet Modifier')
+  parser.add_argument('--iface', action="store", dest="iface", 
+default='eth0')
+  parser.add_argument('--protocol', action="store", 
+dest="protocol", default='tcp')
+  parser.add_argument('--src-ip', action="store", dest="src_ip", 
+default='1.1.1.1')
+  parser.add_argument('--src-port', action="store", 
+dest="src_port", default=randint(0, 65535))
+  parser.add_argument('--dst-ip', action="store", dest="dst_ip", 
+default='192.168.1.51')
+  parser.add_argument('--dst-port', action="store", 
+dest="dst_port", default=randint(0, 65535))
+  parser.add_argument('--flags', action="store", dest="flags", 
+default=None)
+  # parse arguments
+  given_args = parser.parse_args()
+  iface, protocol, src_ip,  src_port, dst_ip, dst_port, flags =  
+given_args.iface, given_args.protocol, given_args.src_ip,\
+  given_args.src_port, given_args.dst_ip, given_args.dst_port, 
+given_args.flags
+  send_packet(protocol, src_ip, src_port, flags, dst_ip, 
+dst_port, iface)</pre></div><p>In order to run<a id="id597" class="indexterm"/> this script, enter the following commands:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>tcpdump src 192.168.1.66</strong></span>
+<span class="strong"><strong>tcpdump: verbose output suppressed, use -v or -vv for full protocol decode</strong></span>
+<span class="strong"><strong>listening on eth0, link-type EN10MB (Ethernet), capture size 65535 bytes</strong></span>
+<span class="strong"><strong>^C18:37:34.309992 IP 192.168.1.66.60698 &gt; 192.168.1.51.666: Flags [S], seq 0, win 8192, length 0</strong></span>
+
+<span class="strong"><strong>1 packets captured</strong></span>
+<span class="strong"><strong>1 packets received by filter</strong></span>
+<span class="strong"><strong>0 packets dropped by kernel</strong></span>
+
+<span class="strong"><strong>$ sudo python 9_5_modify_ip_in_a_packet.py </strong></span>
+<span class="strong"><strong>WARNING: No route found for IPv6 destination :: (no default route?)</strong></span>
+<span class="strong"><strong>.</strong></span>
+<span class="strong"><strong>Sent 1 packets.</strong></span>
+</pre></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec192"/>How it works...</h2></div></div></div><p>This script defines a <code class="literal">send_packet()</code> function<a id="id598" class="indexterm"/> to construct the IP packet using <code class="literal">Scapy</code>. The source and destination addresses and ports are supplied to it. Depending on the protocol, for example, <a id="id599" class="indexterm"/>TCP or UDP, it constructs the correct type of packet. If the packet is TCP, the flags argument is used; if not, an exception is raised.</p><p>In order to construct a TCP packet, <code class="literal">Sacpy</code> supplies the <code class="literal">IP()</code>/<code class="literal">TCP()</code> function<a id="id600" class="indexterm"/>. Similarly, in order to create a UDP packet, the <code class="literal">IP()</code>/<code class="literal">UDP()</code> function is used.</p><p>Finally, the modified packet is sent using the <code class="literal">send()</code> function.</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Replaying traffic by reading from a saved pcap file"><div class="titlepage"><div><div><h1 class="title"><a id="ch09lvl1sec90"/>Replaying traffic by reading from a saved pcap file</h1></div></div></div><p>While playing with network packets, <a id="id601" class="indexterm"/>you may need to replay traffic <a id="id602" class="indexterm"/>by reading from a previously saved <code class="literal">pcap</code> file. In that case, you'd like to read the <code class="literal">pcap</code> file and modify the source or destination IP addresses before sending them.</p><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec193"/>How to do it...</h2></div></div></div><p>Let us use <code class="literal">Scapy</code> to read a previously saved <code class="literal">pcap</code> file. If you don't have a <code class="literal">pcap</code> file, you can use the <span class="emphasis"><em>Saving packets in the pcap format using pcap dumper</em></span> recipe of this chapter to do that.</p><p>Then, parse the arguments from the command line and pass them to a <code class="literal">send_packet()</code>function along with the parsed raw packets.</p><p>Listing 9.6 gives the code for replaying traffic by reading from a saved <code class="literal">pcap</code> file, as follows:</p><div class="informalexample"><pre class="programlisting">#!/usr/bin/env python
+# Python Network Programming Cookbook -- Chapter - 9
+# This program is optimized for Python 2.7. 
+# It may run on any other version with/without modifications.
+
+import argparse
+from scapy.all import *
+
+
+def send_packet(recvd_pkt, src_ip, dst_ip, count):
+  """ Send modified packets"""
+  pkt_cnt = 0
+  p_out = []
+
+  for p in recvd_pkt:
+    pkt_cnt += 1
+    new_pkt = p.payload
+    new_pkt[IP].dst = dst_ip
+    new_pkt[IP].src = src_ip
+    del new_pkt[IP].chksum
+    p_out.append(new_pkt)
+    if pkt_cnt % count == 0:
+      send(PacketList(p_out))
+      p_out = []
+
+  # Send rest of packet
+  send(PacketList(p_out))
+  print "Total packets sent: %d" %pkt_cnt
+
+if __name__ == '__main__':
+  # setup commandline arguments
+  parser = argparse.ArgumentParser(description='Packet Sniffer')
+  parser.add_argument('--infile', action="store", dest="infile", 
+default='pcap1.pcap')
+  parser.add_argument('--src-ip', action="store", dest="src_ip", 
+default='1.1.1.1')
+  parser.add_argument('--dst-ip', action="store", dest="dst_ip", 
+default='2.2.2.2')
+  parser.add_argument('--count', action="store", dest="count", 
+default=100, type=int)
+  # parse arguments
+  given_args = ga = parser.parse_args()
+  global src_ip, dst_ip
+  infile, src_ip, dst_ip, count =  ga.infile, ga.src_ip, 
+ga.dst_ip, ga.count
+  try:
+    pkt_reader = PcapReader(infile)
+    send_packet(pkt_reader, src_ip, dst_ip, count)
+  except IOError:
+    print "Failed reading file %s contents" % infile
+    sys.exit(1)</pre></div><p>If you run this script, it will read the saved <code class="literal">pcap</code> file, <code class="literal">pcap1.pcap</code>, by default and send the packet after modifying the source and destination IP addresses to <code class="literal">1.1.1.1</code> and <code class="literal">2.2.2.2</code> respectively, as shown<a id="id603" class="indexterm"/> in the following output. If you use the <code class="literal">tcpdump</code> utility, you can see these packet transmissions.</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong># python 9_6_replay_traffic.py </strong></span>
+<span class="strong"><strong>...</strong></span>
+<span class="strong"><strong>Sent 3 packets.</strong></span>
+<span class="strong"><strong>Total packets sent 3</strong></span>
+<span class="strong"><strong>----</strong></span>
+<span class="strong"><strong># tcpdump src 1.1.1.1</strong></span>
+<span class="strong"><strong>tcpdump: verbose output suppressed, use -v or -vv for full protocol </strong></span>
+<span class="strong"><strong>decode</strong></span>
+<span class="strong"><strong>listening on eth0, link-type EN10MB (Ethernet), capture size 65535 </strong></span>
+<span class="strong"><strong>bytes</strong></span>
+<span class="strong"><strong>^C18:44:13.186302 IP 1.1.1.1.www &gt; ARennes-651-1-107-2.w2-</strong></span>
+<span class="strong"><strong>2.abo.wanadoo.fr.39253: Flags [P.], seq 2543332484:2543332663, ack </strong></span>
+<span class="strong"><strong>3460668268, win 65535, length 179</strong></span>
+<span class="strong"><strong>1 packets captured</strong></span>
+<span class="strong"><strong>3 packets received by filter</strong></span>
+<span class="strong"><strong>0 packets dropped by kernel</strong></span>
+</pre></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec194"/>How it works...</h2></div></div></div><p>This recipe<a id="id604" class="indexterm"/> reads a saved <code class="literal">pcap</code> file, <code class="literal">pcap1.pcap</code>, from the disk using the <code class="literal">PcapReader()</code> function<a id="id605" class="indexterm"/> of <code class="literal">Scapy</code> that returns an iterator of packets. The command-line arguments are parsed if they are supplied. Otherwise, the default value is used as shown in the preceding output.</p><p>The command-line arguments and the packet list are passed to the <code class="literal">send_packet()</code> function<a id="id606" class="indexterm"/>. This function places the new packets in the <code class="literal">p_out</code> list and keeps track of the processed packets. In each packet, the payload is modified, thus changing the source and destination IPs. In addition to this, the <code class="literal">checksum</code> packet is deleted as it was based on the original IP address.</p><p>After processing one of the packets, it is sent over the network immediately. After that, the remaining packets are sent in one go.</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Scanning the broadcast of packets"><div class="titlepage"><div><div><h1 class="title"><a id="ch09lvl1sec91"/>Scanning the broadcast of packets</h1></div></div></div><p>If you encounter the issue of detecting a network<a id="id607" class="indexterm"/> broadcast, this recipe is for you. We can learn how to find the information<a id="id608" class="indexterm"/> from the broadcast packets.</p><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec195"/>How to do it...</h2></div></div></div><p>We can use <code class="literal">Scapy</code> to sniff the packets arriving to a network interface. After each packet is captured, they can be processed by a callback function to get the useful information from it.</p><p>Listing 9.7 gives the code for scanning the broadcast of packets, as follows:</p><div class="informalexample"><pre class="programlisting">#!/usr/bin/env python
+# Python Network Programming Cookbook -- Chapter - 9
+# This program is optimized for Python 2.7. 
+# It may run on any other version with/without modifications.
+
+
+from scapy.all import *
+import os
+captured_data = dict()
+
+END_PORT = 1000
+ 
+def monitor_packet(pkt):
+  if IP in pkt:
+    if not captured_data.has_key(pkt[IP].src):
+      captured_data[pkt[IP].src] = []
+ 
+    if TCP in pkt:
+      if pkt[TCP].sport &lt;=  END_PORT:
+        if not str(pkt[TCP].sport) in captured_data[pkt[IP].src]:
+           captured_data[pkt[IP].src].append(str(pkt[TCP].sport))
+ 
+  os.system('clear')
+  ip_list = sorted(captured_data.keys())
+  for key in ip_list:
+    ports=', '.join(captured_data[key])
+    if len (captured_data[key]) == 0:
+      print '%s' % key
+    else:
+      print '%s (%s)' % (key, ports)
+
+if __name__ == '__main__':
+  sniff(prn=monitor_packet, store=0)</pre></div><p>If you run this script, you can list the broadcast traffic's source IP and ports. The following is a sample output from which the first octet of the IP is replaced:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong># python 9_7_broadcast_scanning.py</strong></span>
+<span class="strong"><strong>10.0.2.15</strong></span>
+<span class="strong"><strong>XXX.194.41.129 (80)</strong></span>
+<span class="strong"><strong>XXX.194.41.134 (80)</strong></span>
+<span class="strong"><strong>XXX.194.41.136 (443)</strong></span>
+<span class="strong"><strong>XXX.194.41.140 (80)</strong></span>
+<span class="strong"><strong>XXX.194.67.147 (80)</strong></span>
+<span class="strong"><strong>XXX.194.67.94 (443)</strong></span>
+<span class="strong"><strong>XXX.194.67.95 (80, 443)</strong></span>
+</pre></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec196"/>How it works...</h2></div></div></div><p>This recipe sniffs<a id="id609" class="indexterm"/> packets in a network using the <code class="literal">sniff()</code> function of <code class="literal">Scapy</code>. It has a <code class="literal">monitor_packet()</code>callback function<a id="id610" class="indexterm"/> that does the postprocessing of packets. Depending on the protocol, for example,<a id="id611" class="indexterm"/> IP or TCP, it sorts the packets in a dictionary called <code class="literal">captured_data</code>.</p><p>If an individual IP is not already present in the dictionary, it creates a new entry; otherwise, it updates the dictionary with the port number for that specific IP. Finally, it prints the IP addresses and ports in each line.</p></div></div></div>
+</body></html>

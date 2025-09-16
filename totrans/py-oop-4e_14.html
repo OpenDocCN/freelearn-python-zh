@@ -1,0 +1,960 @@
+<html><head></head><body>
+  <div id="_idContainer204">
+    <h1 class="chapterNumber">14</h1>
+    <h1 id="_idParaDest-299" class="chapterTitle">Concurrency</h1>
+    <p class="normal">Concurrency<a id="_idIndexMarker1069"/> is the art of making a computer do (or appear to do) multiple things at once. Historically, this meant inviting the processor to switch between different tasks many times per second. In modern systems, it can also literally mean doing two or more things simultaneously on separate processor cores.</p>
+    <p class="normal">Concurrency is not inherently an object-oriented topic, but Python's concurrent systems provide object-oriented interfaces, as we've covered throughout the book. This chapter will introduce you to the following topics:</p>
+    <ul>
+      <li class="bullet">Threads</li>
+      <li class="bullet">Multiprocessing</li>
+      <li class="bullet">Futures</li>
+      <li class="bullet">AsyncIO</li>
+      <li class="bullet">The dining philosophers benchmark</li>
+    </ul>
+    <p class="normal">The case study for this chapter will address ways we can speed up model testing and hyperparameter tuning. We can't make the computation go away, but we can leverage a modern, multi-core computer to get it done in less time.</p>
+    <p class="normal">Concurrent processes can become complicated. The basic concepts are fairly simple, but the bugs that can occur are notoriously difficult to track down when the sequence of state changes is unpredictable. However, for many projects, concurrency is the only way to get the performance we need. Imagine if a web server couldn't respond to a user's request until another user's request had been completed! We'll see how to implement concurrency in Python, and some common pitfalls to avoid. </p>
+    <p class="normal">The Python language explicitly executes statements in order. To consider concurrent execution of statements, we'll need to take a step away from Python. </p>
+    <h2 id="_idParaDest-300" class="title">Background on concurrent processing</h2>
+    <p class="normal">Conceptually, it can help to think of <a id="_idIndexMarker1070"/>concurrent processing by imagining a group of people who can't see each other and are trying to collaborate on a task. Perhaps their vision is impaired or blocked by screens, or their workspace has awkward doorways they can't quite see through. These people can, however, pass tokens, notes, and work-in-process to each other.</p>
+    <p class="normal">Imagine a small delicatessen in an old seaside resort city (on the Atlantic coast of the US) with an awkward countertop layout. The two sandwich chefs can't see or hear each other. While the owner can afford to pay two fine chefs, the owner can't afford more than one serving tray. Due to the awkward complications of the ancient building, the chefs can't really see the tray, either. They're forced to reach down below their counter to be sure the serving tray is in place. Then, assured the tray is there, they carefully place their work of art – complete with pickles and a few potato chips – onto the tray. (They can't see the tray, but they're spectacular chefs who can place a sandwich, pickles, and chips flawlessly.)</p>
+    <p class="normal">The owner, however, can see the chefs. Indeed, passers-by can watch the chefs work. It's a great show. The owner typically deals the order tickets out to each chef in strict alternation. And ordinarily, the one and only serving tray can be placed so the sandwich arrives, and is presented at the table with a flourish. The chefs, as we said, have to wait to feel the tray before their next creation warms someone's palate. </p>
+    <p class="normal">Then one day, one of the chefs (we'll call him Michael, but his friends call him Mo) is nearly done with an order, but has to run to the cooler for more of those dill pickles everyone loves. This delays Mo's prep time, and the owner sees that the other chef, Constantine, looks like he'll finish just a fraction of a second before Mo. Even though Mo has returned with the pickles, and is ready with the sandwich, the owner does something embarrassing. The rule is clear: check first, then place the sandwich. Everyone in the shop knows this. When the owner moves the tray from the opening below Mo's station to the opening below Constantine's, then Mo placed their creation – what would have been a delightful Reuben sandwich with extra sauerkraut – into the empty space where a tray should have been, where it splashes onto the delicatessen floor, embarrassing everyone.</p>
+    <p class="normal">How could the foolproof method of checking for the tray, then depositing the sandwich have failed to work? It had survived the test of many busy lunch hours, and yet, a small disruption in the regular sequence of events, and a mess ensues. The separation in time between testing for the tray and depositing the sandwich is an opportunity for the owner to make a state change. </p>
+    <p class="normal">There's a race between owner and chefs. Preventing unexpected state changes is the essential design problem for concurrent programming.</p>
+    <p class="normal">One solution could be to use a semaphore – a flag – to prevent unexpected changes to the tray. This is a kind of shared lock. Each chef is forced to seize the flag before plating; and once they have the flag, they can be confident the owner won't move the tray until they return the flag to the little flag-stand between the chef stations.</p>
+    <p class="normal">Concurrent <a id="_idIndexMarker1071"/>work requires some method for synchronizing access to shared resources. One essential power of large, modern computers is managing concurrency through operating system features, collectively called the kernel.</p>
+    <p class="normal">Older and smaller computers, with a single core in a single CPU, had to interleave everything. The clever coordination made things appear to be working at the same time. Newer multi-core computers (and large multi-processor computers) can actually perform operations concurrently, making the scheduling of work a bit more involved.</p>
+    <p class="normal">We have several ways to achieve concurrent processing:</p>
+    <ul>
+      <li class="bullet">The operating system lets us run more than one program at a time. The Python <code class="Code-In-Text--PACKT-">subprocess</code> module gives us ready access to these capabilities. The <code class="Code-In-Text--PACKT-">multiprocessing</code> module provides a number of convenient ways to work. This is relatively easy to start, but each program is carefully sequestered from all other programs. How can they share data?</li>
+      <li class="bullet">Some clever software libraries allow a single program to have multiple concurrent threads of operation. The Python <code class="Code-In-Text--PACKT-">threading</code> module gives us access to multi-threading. This is more complex to get started, and each thread has complete access to the data in all other threads. How can we coordinate updates to shared data structures?</li>
+    </ul>
+    <p class="normal">Additionally, <code class="Code-In-Text--PACKT-">concurrent.futures</code> and <code class="Code-In-Text--PACKT-">asyncio</code> provide easier-to-use wrappers around the underlying libraries. We'll start this chapter by looking at Python's use of the <code class="Code-In-Text--PACKT-">threading</code> library to allow many things to happen concurrently in a single OS process. This is simple, but has some challenges when working with shared data structures.</p>
+    <h1 id="_idParaDest-301" class="title">Threads</h1>
+    <p class="normal">A thread is a <a id="_idIndexMarker1072"/>sequence of Python byte-code instructions that may be interrupted and resumed. The idea is to create separate, concurrent threads to allow computation to proceed while the program is waiting for I/O to happen. </p>
+    <p class="normal">For example, a server can start processing a new network request while it waits for data from a previous request to arrive. Or an interactive program might render an animation or perform a calculation while waiting for the user to press a key. Bear in mind that while a person can type more than 500 characters per minute, a computer can perform billions of instructions per second. Thus, a ton of processing can happen between individual key presses, even when typing quickly.</p>
+    <p class="normal">It's theoretically possible to manage all this switching between activities within your program, but it would be virtually impossible to get right. Instead, we can rely on Python and the operating system to take care of the tricky switching part, while we create objects that appear to be running independently but simultaneously. These objects are called <strong class="keyword">threads</strong>. Let's<a id="_idIndexMarker1073"/> take a look at a basic example. We'll start with the essential definition of the thread's processing, as shown in the following class:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">Chef</span><span class="hljs-class">(</span><span class="hljs-params">Thread</span><span class="hljs-class">):</span>
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__init__</span><span class="hljs-function">(</span><span class="hljs-params">self, name: </span><span class="hljs-built_in">str</span><span class="hljs-function">) -&gt; </span><span class="hljs-keyword">None</span><span class="hljs-function">:</span>
+        <span class="hljs-built_in">super</span>().__init__(name=name)
+        self.total = <span class="hljs-number">0</span>
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">get_order</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">) -&gt; </span><span class="hljs-keyword">None</span><span class="hljs-function">:</span>
+        self.order = THE_ORDERS.pop(<span class="hljs-number">0</span>)
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">prepare</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">) -&gt; </span><span class="hljs-keyword">None</span><span class="hljs-function">:</span>
+        <span class="hljs-string">"""Simulate doing a lot of work with a BIG computation"""</span>
+        start = time.monotonic()
+        target = start + <span class="hljs-number">1</span> + random.random()
+        <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(<span class="hljs-number">1_000_000_000</span>):
+            self.total += math.factorial(i)
+            <span class="hljs-keyword">if</span> time.monotonic() &gt;= target:
+                <span class="hljs-keyword">break</span>
+        print(
+            <span class="hljs-string">f"</span><span class="hljs-subst">{time.monotonic():</span><span class="hljs-number">.3</span><span class="hljs-subst">f}</span><span class="hljs-string"> </span><span class="hljs-subst">{self.name}</span><span class="hljs-string"> made </span><span class="hljs-subst">{self.order}</span><span class="hljs-string">"</span>)
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">run</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">) -&gt; </span><span class="hljs-keyword">None</span><span class="hljs-function">:</span>
+        <span class="hljs-keyword">while</span> <span class="hljs-literal">True</span>:
+            <span class="hljs-keyword">try</span>:
+                self.get_order()
+                self.prepare()
+            <span class="hljs-keyword">except</span> IndexError:
+                <span class="hljs-keyword">break</span>  <span class="hljs-comment"># No more orders</span>
+</code></pre>
+    <p class="normal">A thread in our running application must extend the <code class="Code-In-Text--PACKT-">Thread</code> class and implement the <code class="Code-In-Text--PACKT-">run</code> method. Any code executed by the <code class="Code-In-Text--PACKT-">run</code> method is a separate thread of processing, scheduled independently. Our thread is relying on a global variable, <code class="Code-In-Text--PACKT-">THE_ORDERS</code>, which is a shared object:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">import</span> math
+<span class="hljs-keyword">import</span> random
+<span class="hljs-keyword">from</span> threading <span class="hljs-keyword">import</span> Thread, Lock
+<span class="hljs-keyword">import</span> time
+THE_ORDERS = [
+    <span class="hljs-string">"Reuben"</span>,
+    <span class="hljs-string">"Ham and Cheese"</span>,
+    <span class="hljs-string">"Monte Cristo"</span>,
+    <span class="hljs-string">"Tuna Melt"</span>,
+    <span class="hljs-string">"Cuban"</span>,
+    <span class="hljs-string">"Grilled Cheese"</span>,
+    <span class="hljs-string">"French Dip"</span>,
+    <span class="hljs-string">"BLT"</span>,
+]
+</code></pre>
+    <p class="normal">In this case, we've <a id="_idIndexMarker1074"/>defined the orders as a simple, fixed list of values. In a larger application, we might be reading these from a socket or a queue object. Here's the top-level program that starts things running:</p>
+    <pre class="programlisting code"><code class="hljs-code">Mo = Chef(<span class="hljs-string">"Michael"</span>)
+Constantine = Chef(<span class="hljs-string">"Constantine"</span>)
+<span class="hljs-keyword">if</span> __name__ == <span class="hljs-string">"__main__"</span>:
+    random.seed(<span class="hljs-number">42</span>)
+    Mo.start()
+    Constantine.start()
+</code></pre>
+    <p class="normal">This will create two threads. The new threads don't start running until we call the <code class="Code-In-Text--PACKT-">start()</code> method on the object. When the two threads have started, they both pop a value from the list of orders and then commence to perform a large computation and – eventually – report their status.</p>
+    <p class="normal">The output looks like this:</p>
+    <pre class="programlisting con"><code class="hljs-con">1.076 Constantine made Ham and Cheese
+1.676 Michael made Reuben
+2.351 Constantine made Monte Cristo
+2.899 Michael made Tuna Melt
+4.094 Constantine made Cuban
+4.576 Michael made Grilled Cheese
+5.664 Michael made BLT
+5.987 Constantine made French Dip
+</code></pre>
+    <p class="normal">Note that the sandwiches aren't completed in the exact order that they were presented in the <code class="Code-In-Text--PACKT-">THE_ORDERS</code> list. Each chef works at their own (randomized) pace. Changing the seed will change the times, and may adjust the order slightly.</p>
+    <p class="normal">What's important about this example is the threads are sharing data structures, and the concurrency is an illusion created by clever scheduling of the threads to interleave work from the two chef threads.</p>
+    <p class="normal">The only update to a shared data structure in this small example is to pop from a list. If we were to create our own class and implement more complex state changes, we could uncover a number of interesting and confusing issues with using threads.</p>
+    <h2 id="_idParaDest-302" class="title">The many problems with threads</h2>
+    <p class="normal">Threads can be<a id="_idIndexMarker1075"/> useful if appropriate care is taken to manage shared memory, but modern Python programmers tend to avoid them for several reasons. As we'll see, there are other ways to code concurrent programming that are receiving more attention from the Python community. Let's discuss some of the pitfalls before moving on to alternatives to multithreaded applications.</p>
+    <h3 id="_idParaDest-303" class="title">Shared memory</h3>
+    <p class="normal">The main problem with threads is<a id="_idIndexMarker1076"/> also their primary advantage. Threads have access to all the process memory and thus all the variables. A disregard for the shared state can too easily cause inconsistencies.</p>
+    <p class="normal">Have you ever encountered a room where a single light has two switches and two different people turn them on at the same time? Each person (thread) expects their action to turn the lamp (a variable) on, but the resulting value (the lamp) is off, which is inconsistent with those expectations. Now imagine if those two threads were transferring funds between bank accounts or managing the cruise control for a vehicle.</p>
+    <p class="normal">The solution to this problem in threaded programming is to <em class="italic">synchronize</em> access to any code that reads or (especially) writes a shared variable. Python's <code class="Code-In-Text--PACKT-">threading</code> library offers the <code class="Code-In-Text--PACKT-">Lock</code> class, which can be used via the <code class="Code-In-Text--PACKT-">with</code> statement to create a context where a single thread has access to update shared objects.</p>
+    <p class="normal">The synchronization solution works in general, but it is way too easy to forget to apply it to shared data in a specific application. Worse, bugs due to inappropriate use of synchronization are really hard to track down because the order in which threads perform operations is inconsistent. We can't easily reproduce the error. Usually, it is safest to force communication between threads to happen using a lightweight data structure that already uses locks appropriately. Python offers the <code class="Code-In-Text--PACKT-">queue.Queue</code> class to do this; a number of threads can write to a queue, where a single thread consumes the results. This gives us a tidy, reusable, proven technique for having multiple threads sharing a data structure. The <code class="Code-In-Text--PACKT-">multiprocessing.Queue</code> class is nearly identical; we will discuss this in the <em class="italic">Multiprocessing</em> section of this chapter.</p>
+    <p class="normal">In some cases, these<a id="_idIndexMarker1077"/> disadvantages might be outweighed by the one advantage of allowing shared memory: it's fast. If multiple threads need access to a huge data structure, shared memory can provide that access quickly. However, this advantage is usually nullified by the fact that, in Python, it is impossible for two threads running on different CPU cores to be performing calculations at exactly the same time. This brings us to our second problem with threads.</p>
+    <h3 id="_idParaDest-304" class="title">The global interpreter lock</h3>
+    <p class="normal">In order to efficiently <a id="_idIndexMarker1078"/>manage memory, garbage collection, and calls to machine code in native libraries, Python has a <strong class="keyword">global interpreter lock</strong>, or <strong class="keyword">GIL</strong>. It's <a id="_idIndexMarker1079"/>impossible to turn off, and it means that thread scheduling is constrained by the GIL preventing any two threads from doing computations at the exact same time; the work is interleaved artificially. When a thread makes an OS request – for example, to access the disk or network – the GIL is released as soon as the thread starts waiting for the OS request to complete.</p>
+    <p class="normal">The GIL is disparaged, mostly by people who don't understand what it is or the benefits it brings to Python. While it can interfere with multithreaded compute-intensive programming, the impact for other kinds of workloads is often minimal. When confronted with a compute-intensive algorithm, it may help to switch to using the <code class="Code-In-Text--PACKT-">dask</code> package to <a id="_idIndexMarker1080"/>manage the processing. See <a href="https://dask.org"><span class="url">https://dask.org</span></a> for more information on this alternative. The book <em class="italic">Scalable Data Analysis in Python with Dask</em> can be informative, also.</p>
+    <div class="note">
+      <p class="Information-Box--PACKT-">While the GIL can be a problem in the reference implementation of Python that most people use, it can be selectively disabled in IronPython. See <em class="italic">The IronPython Cookbook</em> for details on how to release the GIL for compute-intensive processing in IronPython.</p>
+    </div>
+    <h3 id="_idParaDest-305" class="title">Thread overhead</h3>
+    <p class="normal">One additional <a id="_idIndexMarker1081"/>limitation of threads, as compared to other asynchronous approaches we will be discussing later, is the cost of maintaining each thread. Each thread takes up a certain amount of memory (both in the Python process and the operating system kernel) to record the state of that thread. Switching between the threads also uses a (small) amount of CPU time. This work happens seamlessly without any extra coding (we just have to call <code class="Code-In-Text--PACKT-">start()</code> and the rest is taken care of), but the work still has to happen somewhere.</p>
+    <p class="normal">These costs can be<a id="_idIndexMarker1082"/> amortized over a larger workload by reusing threads to perform multiple jobs. Python provides a <code class="Code-In-Text--PACKT-">ThreadPool</code> feature to handle this. It behaves identically to <code class="Code-In-Text--PACKT-">ProcessPool</code>, which we will discuss shortly, so let's defer that discussion until later in this chapter. </p>
+    <p class="normal">In the next section, we'll look at the principal alternative to multi-threading. The <code class="Code-In-Text--PACKT-">multiprocessing</code> module lets us work with OS-level subprocesses.</p>
+    <h1 id="_idParaDest-306" class="title">Multiprocessing</h1>
+    <p class="normal">Threads exist within a single<a id="_idIndexMarker1083"/> OS process; that's why they can share access to common objects. We can do concurrent computing at the process level, also. Unlike threads, separate processes cannot directly access variables set up by other processes. This independence is helpful because each process has its own GIL and its own private pool of resources. On a modern multi-core processor, a process may have its own core, permitting concurrent work with other cores.</p>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">multiprocessing</code> API<a id="_idIndexMarker1084"/> was originally designed to mimic the <code class="Code-In-Text--PACKT-">threading</code> API. However, the <code class="Code-In-Text--PACKT-">multiprocessing</code> interface has evolved, and in recent versions of Python, it supports more features more robustly. The <code class="Code-In-Text--PACKT-">multiprocessing</code> library is designed for when CPU-intensive jobs need to happen in parallel and multiple cores are available. Multiprocessing is not as useful when the processes spend a majority of their time waiting on I/O (for example, network, disk, database, or keyboard), but it is the way to go for parallel computation.</p>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">multiprocessing</code> module<a id="_idIndexMarker1085"/> spins up new operating system processes to do the work. This means there is an entirely separate copy of the Python interpreter running for each process. Let's try to parallelize a compute-heavy operation using similar constructs to those provided by the <code class="Code-In-Text--PACKT-">threading</code> API, as follows:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">from</span> multiprocessing <span class="hljs-keyword">import</span> Process, cpu_count
+<span class="hljs-keyword">import</span> time
+<span class="hljs-keyword">import</span> os
+<span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">MuchCPU</span><span class="hljs-class">(</span><span class="hljs-params">Process</span><span class="hljs-class">):</span>
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">run</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">) -&gt; </span><span class="hljs-keyword">None</span><span class="hljs-function">:</span>
+        print(<span class="hljs-string">f"OS PID </span><span class="hljs-subst">{os.getpid()}</span><span class="hljs-string">"</span>)
+        s = <span class="hljs-built_in">sum</span>(
+            <span class="hljs-number">2</span>*i+<span class="hljs-number">1</span> <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(<span class="hljs-number">100_000_000</span>)
+        )
+<span class="hljs-keyword">if</span> __name__ == <span class="hljs-string">"__main__"</span>:
+    workers = [MuchCPU() <span class="hljs-keyword">for</span> f <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(cpu_count())]
+    t = time.perf_counter()
+    <span class="hljs-keyword">for</span> p <span class="hljs-keyword">in</span> workers:
+        p.start()
+    <span class="hljs-keyword">for</span> p <span class="hljs-keyword">in</span> workers:
+        p.join()
+    print(<span class="hljs-string">f"work took </span><span class="hljs-subst">{time.perf_counter() - t:</span><span class="hljs-number">.3</span><span class="hljs-subst">f}</span><span class="hljs-string"> seconds"</span>)
+</code></pre>
+    <p class="normal">This example just ties up the CPU computing the sum of 100 million odd numbers. You may not consider this to be useful work, but it can warm up your laptop on a chilly day!</p>
+    <p class="normal">The API should be familiar; we implement a subclass of <code class="Code-In-Text--PACKT-">Process</code> (instead of <code class="Code-In-Text--PACKT-">Thread</code>) and implement a <code class="Code-In-Text--PACKT-">run</code> method. This method prints out the OS <strong class="keyword">process ID</strong> (<strong class="keyword">PID</strong>), a unique number assigned to each process on the machine, before doing some intense (if misguided) work.</p>
+    <p class="normal">Pay special attention to the <code class="Code-In-Text--PACKT-">if __name__ == "__main__":</code> guard around the module-level code that prevents it from running if the module is being imported, rather than run as a program. This is good<a id="_idIndexMarker1086"/> practice in general, but when using the <code class="Code-In-Text--PACKT-">multiprocessing</code> module, it is essential. Behind the scenes, the <code class="Code-In-Text--PACKT-">multiprocessing</code> module may have to reimport our application module inside each of the new processes in order to create the class and execute the <code class="Code-In-Text--PACKT-">run()</code> method. If we allowed the entire module to execute at that point, it would start creating new processes recursively until the operating system ran out of resources, crashing your computer.</p>
+    <p class="normal">This demo constructs one process for each processor core on our machine, then starts and joins each of those processes. On a 2020-era MacBook Pro with a 2 GHz Quad-Core Intel Core i5, the output looks as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">%</span> python src/processes_1.py
+OS PID 15492
+OS PID 15493
+OS PID 15494
+OS PID 15495
+OS PID 15497
+OS PID 15496
+OS PID 15498
+OS PID 15499
+work took 20.711 seconds
+</code></pre>
+    <p class="normal">The first eight lines are the process ID that was printed inside each <code class="Code-In-Text--PACKT-">MuchCPU</code> instance. The last line shows that the 100 <a id="_idIndexMarker1087"/>million summations can run in about 20 seconds. During those 20 seconds, all eight cores were running at 100 percent, and the fans were buzzing away trying to dissipate the heat.</p>
+    <p class="normal">If we subclass <code class="Code-In-Text--PACKT-">threading.Thread</code> instead of <code class="Code-In-Text--PACKT-">multiprocessing.Process</code> in <code class="Code-In-Text--PACKT-">MuchCPU</code>, the output looks as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">%</span> python src/processes_1.py
+OS PID 15772
+OS PID 15772
+OS PID 15772
+OS PID 15772
+OS PID 15772
+OS PID 15772
+OS PID 15772
+OS PID 15772
+work took 69.316 seconds 
+</code></pre>
+    <p class="normal">This time, the threads are running inside the same OS process and take over three times as long to run. The display showed that no core was particularly busy, suggesting the work was being shunted around among the various cores. The general slowdown is the cost of the GIL interleaving compute-intensive work.</p>
+    <p class="normal">We might expect the single process version to be at least eight times as long as the eight-process version. The lack of a simple multiplier suggests there are a number of factors involved in how the low-level instructions are processed by Python, the OS schedulers, and even the hardware itself. This suggests that predictions are difficult, and it's best to plan on running multiple performance tests with multiple software architectures.</p>
+    <p class="normal">Starting and stopping individual <code class="Code-In-Text--PACKT-">Process</code> instances involves a lot of overhead. The most common use case is to have a pool of workers and assign tasks to them. We'll look at this next.</p>
+    <h2 id="_idParaDest-307" class="title">Multiprocessing pools</h2>
+    <p class="normal">Because each process is kept<a id="_idIndexMarker1088"/> meticulously separate by the operating system, interprocess communication becomes an important consideration. We need to pass data between these separate processes. One really common example is having one process write a file that another process can read. When the two processes are reading and writing a file, and running concurrently, we have to be sure the reader is waiting for the writer to produce data. The operating system <em class="italic">pipe</em> structure can accomplish this. Within the shell, we can write <code class="Code-In-Text--PACKT-">ps -ef | grep python</code> and pass output from the <code class="Code-In-Text--PACKT-">ps</code> command to the <code class="Code-In-Text--PACKT-">grep</code> command. The two commands run concurrently. For Windows PowerShell users, there are similar kinds of pipeline processing, using different<a id="_idIndexMarker1089"/> command names. (See <a href="https://docs.microsoft.com/en-us/powershell/scripting/learn/ps101/04-pipelines?view=powershell-7.1"><span class="url">https://docs.microsoft.com/en-us/powershell/scripting/learn/ps101/04-pipelines?view=powershell-7.1</span></a> for examples.)</p>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">multiprocessing</code> package <a id="_idIndexMarker1090"/>provides some additional ways to implement interprocess communication. Pools can seamlessly hide the way data is moved between processes. Using a pool looks much like a function call: you pass data into a function, it is executed in another process or processes, and when the work is done, a value is returned. It is important to understand how much work is being done to support this: objects in one process are pickled and passed into an operating system process pipe. Then, another process retrieves data from the pipe and unpickles it. The requested work is done in the subprocess and a result is produced. The result is pickled and passed back through the pipe. Eventually, the original process unpickles and returns it. Collectively, we call this pickling, transferring, and unpickling <em class="italic">serializing</em> the data. For more information, see <em class="chapterRef">Chapter 9</em>, <em class="italic">Strings, Serialization, and File Paths</em>.</p>
+    <p class="normal">The serialization to communicate between processes takes time and memory. We want to get as much useful computation done with the smallest serialization cost. The ideal mix depends on the size and complexity of the objects being exchanged, meaning that different data structure designs will have different performance levels.</p>
+    <div class="note">
+      <p class="Information-Box--PACKT-">Performance predictions are difficult to make. It's essential to profile the application to ensure the concurrency design is effective.</p>
+    </div>
+    <p class="normal">Armed with this knowledge, the code to make all this machinery work is surprisingly simple. Let's look at the problem of calculating all the prime factors of a list of random numbers. This is a common part of a variety of cryptography algorithms (not to mention attacks on those algorithms!). </p>
+    <p class="normal">It requires months, possibly years of processing power to factor the 232-digit numbers used by some encryption algorithms. The following implementation, while readable, is not at all efficient; it would take years to factor even a 100-digit number. That's okay because we want to see it using lots of CPU time factoring 9-digit numbers:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">from </span>__future__<span class="hljs-keyword"> import </span>annotations
+<span class="hljs-keyword">from </span>math<span class="hljs-keyword"> import </span>sqrt, ceil
+<span class="hljs-keyword">import </span>random
+<span class="hljs-keyword">from </span>multiprocessing.pool<span class="hljs-keyword"> import </span>Pool
+<span class="hljs-keyword">def </span><span class="hljs-title">prime_factors</span><span class="hljs-function">(</span><span class="hljs-params">value:</span><span class="hljs-keyword"> </span><span class="hljs-built_in">int</span><span class="hljs-function">)</span><span class="hljs-keyword"> </span><span class="hljs-function">-&gt;</span><span class="hljs-keyword"> </span><span class="hljs-function">list[int]:</span>
+<span class="hljs-keyword">    if </span>value<span class="hljs-keyword"> in </span>{<span class="hljs-number">2</span>,<span class="hljs-keyword"> </span><span class="hljs-number">3</span>}:
+<span class="hljs-keyword">        return </span>[value]
+<span class="hljs-keyword">    </span>factors:<span class="hljs-keyword"> </span>list[<span class="hljs-built_in">int</span>] = []
+<span class="hljs-keyword">    for </span>divisor<span class="hljs-keyword"> in </span><span class="hljs-built_in">range</span>(<span class="hljs-number">2</span>, ceil(sqrt(value)) +<span class="hljs-keyword"> </span><span class="hljs-number">1</span>):
+<span class="hljs-keyword">        </span>quotient, remainder = <span class="hljs-built_in">divmod</span>(value, divisor)
+<span class="hljs-keyword">        if not </span>remainder:
+<span class="hljs-keyword">            </span>factors.extend(prime_factors(divisor))
+            factors.extend(prime_factors(quotient))
+<span class="hljs-keyword">            break</span>
+<span class="hljs-keyword">    else</span>:
+<span class="hljs-keyword">        </span>factors = [value]
+<span class="hljs-keyword">    return </span>factors
+<span class="hljs-keyword">if</span> __name__ == <span class="hljs-string">"__main__"</span>:
+    to_factor = [
+        random.randint(<span class="hljs-number">100_000_000</span>, <span class="hljs-number">1_000_000_000</span>)
+        <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(<span class="hljs-number">40_960</span>)
+    ]
+    <span class="hljs-keyword">with</span> Pool() <span class="hljs-keyword">as</span> pool:
+        results = pool.<span class="hljs-built_in">map</span>(prime_factors, to_factor)
+    primes = [
+        value
+        <span class="hljs-keyword">for</span> value, factor_list <span class="hljs-keyword">in</span> <span class="hljs-built_in">zip</span>(to_factor, results)
+            <span class="hljs-keyword">if</span> <span class="hljs-built_in">len</span>(factor_list) == <span class="hljs-number">1</span>
+    ]
+    print(<span class="hljs-string">f"9-digit primes </span><span class="hljs-subst">{primes}</span><span class="hljs-string">"</span>)
+</code></pre>
+    <p class="normal">Let's focus on the <a id="_idIndexMarker1091"/>parallel processing aspects, as the brute force recursive algorithm for calculating factors is pretty clear. We create the <code class="Code-In-Text--PACKT-">to_factor</code> list of 40,960 individual numbers. Then we construct a multiprocessing <code class="Code-In-Text--PACKT-">pool</code> instance. </p>
+    <p class="normal">By default, this pool creates a separate process for each of the CPU cores in the machine it is running on.</p>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">map()</code> method of the pool accepts a function and an iterable. The pool pickles each of the values in the iterable and passes it to an available worker process in the pool, which executes the function on it. When that process is finished doing its work, it pickles the resulting list of factors and passes it back to the pool. Then, if the pool has more work available, the worker takes on the next job.</p>
+    <p class="normal">Once all the workers in the pool are finished processing (which could take some time), the <code class="Code-In-Text--PACKT-">results</code> list is passed back to the original process, which has been waiting patiently for all this work to complete. The results of <code class="Code-In-Text--PACKT-">map()</code> will be in the same order as the requests. This makes it sensible to use <code class="Code-In-Text--PACKT-">zip()</code> to match up the original value with the computed prime factors. </p>
+    <p class="normal">It is often more useful to use the similar <code class="Code-In-Text--PACKT-">map_async()</code> method, which returns immediately even though the processes are still working. In that case, the <code class="Code-In-Text--PACKT-">results</code> variable would not be a list of values, but a contract (or a deal or an obligation) to return a list of values in the future when the client calls <code class="Code-In-Text--PACKT-">results.get()</code>. This future object also has methods such as <code class="Code-In-Text--PACKT-">ready()</code> and <code class="Code-In-Text--PACKT-">wait()</code>, which allow us to check whether all the results are in yet. This is suitable for processing where the completion time is highly variable.</p>
+    <p class="normal">Alternatively, if we<a id="_idIndexMarker1092"/> don't know all the values we want to get results for in advance, we can use the <code class="Code-In-Text--PACKT-">apply_async()</code> method to queue up a single job. If the pool has a process that isn't already working, it will start immediately; otherwise, it will hold onto the task until there is a free worker process available.</p>
+    <p class="normal">Pools can also be <code class="Code-In-Text--PACKT-">closed</code>; they refuse to take any further tasks, but continue to process everything currently in the queue. They can also be <code class="Code-In-Text--PACKT-">terminated</code>, which goes one step further and refuses to start any jobs still in the queue, although any jobs currently running are still permitted to complete.</p>
+    <p class="normal">There are a number of constraints on how many workers make sense, including the following:</p>
+    <ul>
+      <li class="bullet">Only <code class="Code-In-Text--PACKT-">cpu_count()</code> processes can be computing simultaneously; any number can be waiting. If the workload is CPU-intensive, a larger pool of workers won't compute any faster. If the workload involves a lot of input/output, however, a large pool might improve the rate at which work is completed.</li>
+      <li class="bullet">For very large data structures, the number of workers in the pool may need to be reduced to make sure memory is used effectively.</li>
+      <li class="bullet">Communication between processes is expensive; easily serialized data is the best policy.</li>
+      <li class="bullet">Creating new processes takes a non-zero amount of time; a pool of a fixed size helps minimize the impact of this cost.</li>
+    </ul>
+    <p class="normal">The multiprocessing pool gives us a tremendous amount of computing power with relatively little work on our part. We need to define a function that can perform the parallelized computation, and we need to map arguments to that function using an instance of the <code class="Code-In-Text--PACKT-">multiprocessing.Pool</code> class.</p>
+    <p class="normal">In many applications, we <a id="_idIndexMarker1093"/>need to do more than a mapping from a parameter value to a complex result. For these applications, the simple <code class="Code-In-Text--PACKT-">poll.map()</code> may not be enough. For more complicated data flows, we can make use of explicit queues of pending work and computed results. We'll look at creating a network of queues next.</p>
+    <h2 id="_idParaDest-308" class="title">Queues</h2>
+    <p class="normal">If we need more <a id="_idIndexMarker1094"/>control over communication between processes, the <code class="Code-In-Text--PACKT-">queue</code>.<code class="Code-In-Text--PACKT-">Queue</code> data structure is useful. There are several variants offering ways to send messages from one process to one or more other processes. Any picklable object can be sent into a <code class="Code-In-Text--PACKT-">Queue</code>, but remember that pickling can be a costly operation, so keep such objects small. To illustrate queues, let's build a little search engine for text content that stores all relevant entries in memory.</p>
+    <p class="normal">This particular search engine scans all files in the current directory in parallel. A process is constructed for each core on the CPU. Each of these is instructed to load some of the files into memory. Let's look at the function that does the loading and searching:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">from</span> __future__ <span class="hljs-keyword">import</span> annotations
+<span class="hljs-keyword">from</span> pathlib <span class="hljs-keyword">import</span> Path
+<span class="hljs-keyword">from</span> typing <span class="hljs-keyword">import</span> List, Iterator, Optional, Union, TYPE_CHECKING
+<span class="hljs-keyword">if</span> TYPE_CHECKING:
+    Query_Q = Queue[Union[<span class="hljs-built_in">str</span>, <span class="hljs-literal">None</span>]]
+    Result_Q = Queue[List[<span class="hljs-built_in">str</span>]]
+<span class="hljs-keyword">def </span><span class="hljs-title">search</span><span class="hljs-function">(</span>
+<span class="hljs-keyword">        </span><span class="hljs-params">paths: list[Path], </span>
+<span class="hljs-params">        query_q: Query_Q, </span>
+<span class="hljs-params">        results_q: Result_Q</span>
+<span class="hljs-function">)</span><span class="hljs-keyword"> </span><span class="hljs-function">-&gt;</span><span class="hljs-keyword"> None</span><span class="hljs-function">:</span>
+    print(<span class="hljs-string">f"PID: </span><span class="hljs-subst">{os.getpid()}</span><span class="hljs-string">, paths </span><span class="hljs-subst">{</span><span class="hljs-built_in">len</span><span class="hljs-subst">(paths)}</span><span class="hljs-string">"</span>)
+    lines: List[<span class="hljs-built_in">str</span>] = []
+    <span class="hljs-keyword">for</span> path <span class="hljs-keyword">in</span> paths:
+        lines.extend(
+            l.rstrip() <span class="hljs-keyword">for</span> l <span class="hljs-keyword">in</span> path.read_text().splitlines())
+    <span class="hljs-keyword">while</span> <span class="hljs-literal">True</span>:
+        <span class="hljs-keyword">if</span> (query_text := query_q.get()) <span class="hljs-keyword">is</span> <span class="hljs-literal">None</span>:
+            <span class="hljs-keyword">break</span>
+        results = [l <span class="hljs-keyword">for</span> l <span class="hljs-keyword">in</span> lines <span class="hljs-keyword">if</span> query_text <span class="hljs-keyword">in</span> l]
+        results_q.put(results)
+</code></pre>
+    <p class="normal">Remember, the <code class="Code-In-Text--PACKT-">search()</code> function is run in a separate process (in fact, it is run in <code class="Code-In-Text--PACKT-">cpu_count()</code> separate processes) from the main process that created the queues. Each of these processes is started with a list of <code class="Code-In-Text--PACKT-">pathlib.Path</code> objects, and two <code class="Code-In-Text--PACKT-">multiprocessing.Queue</code> objects; one for incoming queries and one to send outgoing results. These queues automatically pickle the data in the queue and pass it into the subprocess over a pipe. These two queues are set up in the main process and passed through the pipes into the search function inside the child processes.</p>
+    <p class="normal">The type hints reflect <a id="_idIndexMarker1095"/>the way <strong class="" style="font-style: italic;">mypy</strong> wants details about the structure of data in each queue. When <code class="Code-In-Text--PACKT-">TYPE_CHECKING</code> is <code class="Code-In-Text--PACKT-">True</code>, it means <strong class="" style="font-style: italic;">mypy</strong> is running, and needs enough details to be sure the objects in the application match the descriptions of the objects in each of the queues. When <code class="Code-In-Text--PACKT-">TYPE_CHECKING</code> is <code class="Code-In-Text--PACKT-">False</code>, this is the ordinary runtime for the application, and the structural details of the queued messages can't be provided.</p>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">search()</code> function does two separate things:</p>
+    <ol>
+      <li class="numbered">When it starts, it opens and reads all the supplied files in the list of <code class="Code-In-Text--PACKT-">Path</code> objects. Each line of text in those files is accumulated into the <code class="Code-In-Text--PACKT-">lines</code> list. This preparation is relatively expensive, but it's done exactly once.</li>
+      <li class="numbered">The <code class="Code-In-Text--PACKT-">while</code> statement is the main event processing loop for search. It uses <code class="Code-In-Text--PACKT-">query_q.get()</code> to get a request from its queue. It searches lines. It uses <code class="Code-In-Text--PACKT-">results_q.put()</code> to put a response into the results queue.</li>
+    </ol>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">while</code> statement has the characteristic design pattern for queue-based processing. The process will get a value from a queue of some work to perform, perform the work, and then put the result into another queue. We can decompose very large and complex problems into processing steps and queues so that the work is done concurrently, producing more results in less time. This technique also lets us tailor the processing steps and the number of workers to make best use of a processor.</p>
+    <p class="normal">The main part of the application builds this pool of workers and their queues. We'll follow the <strong class="keyword">Façade</strong> design pattern (refer back to <em class="chapterRef">Chapter 12</em>, <em class="italic">Advanced Design Patterns</em> for more information). The idea here is to define a class, <code class="Code-In-Text--PACKT-">DirectorySearch</code>, to wrap the queues and the pool of worker processes into a single object. </p>
+    <p class="normal">This object can set up the queues and the workers, and an application can then interact with them by posting a query and consuming the replies.</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">from </span>__future__<span class="hljs-keyword"> import </span>annotations
+<span class="hljs-keyword">from</span> fnmatch <span class="hljs-keyword">import</span> fnmatch
+<span class="hljs-keyword">import</span> os
+<span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">DirectorySearch</span><span class="hljs-class">:</span>
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__init__</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">) -&gt; </span><span class="hljs-keyword">None</span><span class="hljs-function">:</span>
+        self.query_queues: List[Query_Q]
+        self.results_queue: Result_Q
+        self.search_workers: List[Process]
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">setup_search</span><span class="hljs-function">(</span>
+<span class="hljs-params">        self, paths: List[Path], cpus: Optional[</span><span class="hljs-built_in">int</span><span class="hljs-params">] = </span><span class="hljs-literal">None</span><span class="hljs-function">) -&gt; </span><span class="hljs-keyword">None</span><span class="hljs-function">:</span>
+        <span class="hljs-keyword">if</span> cpus <span class="hljs-keyword">is</span> <span class="hljs-literal">None</span>:
+            cpus = cpu_count()
+        worker_paths = [paths[i::cpus] <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(cpus)]
+        self.query_queues = [Queue() <span class="hljs-keyword">for</span> p <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(cpus)]
+        self.results_queue = Queue()
+        self.search_workers = [
+            Process(
+                target=search, args=(paths, q, self.results_queue))
+            <span class="hljs-keyword">for</span> paths, q <span class="hljs-keyword">in</span> <span class="hljs-built_in">zip</span>(worker_paths, self.query_queues)
+        ]
+        <span class="hljs-keyword">for</span> proc <span class="hljs-keyword">in</span> self.search_workers:
+            proc.start()
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">teardown_search</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">) -&gt; </span><span class="hljs-keyword">None</span><span class="hljs-function">:</span>
+        <span class="hljs-comment"># Signal process termination</span>
+        <span class="hljs-keyword">for</span> q <span class="hljs-keyword">in</span> self.query_queues:
+            q.put(<span class="hljs-literal">None</span>)
+        <span class="hljs-keyword">for</span> proc <span class="hljs-keyword">in</span> self.search_workers:
+            proc.join()
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">search</span><span class="hljs-function">(</span><span class="hljs-params">self, target: </span><span class="hljs-built_in">str</span><span class="hljs-function">) -&gt; Iterator[str]:</span>
+        <span class="hljs-keyword">for</span> q <span class="hljs-keyword">in</span> self.query_queues:
+            q.put(target)
+        <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(<span class="hljs-built_in">len</span>(self.query_queues)):
+            <span class="hljs-keyword">for</span> match <span class="hljs-keyword">in</span> self.results_queue.get():
+                <span class="hljs-keyword">yield</span> match
+</code></pre>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">setup_search()</code> method<a id="_idIndexMarker1096"/> prepares the worker subprocesses. The <code class="Code-In-Text--PACKT-">[i::cpus]</code> slice operation lets us break this list into a number of equally-sized parts. If the number of CPUs is 8, the step size will be 8, and we'll use 8 different offset values from 0 to 7. We also construct a list of <code class="Code-In-Text--PACKT-">Queue</code> objects to send data into each worker process. Finally, we construct a <strong class="keyword">single</strong> results queue. This is passed into all of the worker subprocesses. Each of them can put data into the queue and it will be aggregated in the main process.</p>
+    <p class="normal">Once the queues are created and the workers started, the <code class="Code-In-Text--PACKT-">search()</code> method provides the target to all the workers at one time. They can then all commence examining their separate collections of data to emit answers.</p>
+    <p class="normal">Since we're searching a fairly large number of directories, we use a generator function, <code class="Code-In-Text--PACKT-">all_source()</code>, to locate all the <code class="Code-In-Text--PACKT-">*.py</code> <code class="Code-In-Text--PACKT-">Path</code> objects under the given <code class="Code-In-Text--PACKT-">base</code> directory. Here's the function to find all the source files:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">all_source</span><span class="hljs-function">(</span><span class="hljs-params">path: Path, pattern: </span><span class="hljs-built_in">str</span><span class="hljs-function">) -&gt; Iterator[Path]:</span>
+    <span class="hljs-keyword">for</span> root, dirs, files <span class="hljs-keyword">in</span> os.walk(path):
+        <span class="hljs-keyword">for</span> skip <span class="hljs-keyword">in</span> {<span class="hljs-string">".tox"</span>, <span class="hljs-string">".mypy_cache"</span>, <span class="hljs-string">"__pycache__"</span>, <span class="hljs-string">".idea"</span>}:
+            <span class="hljs-keyword">if</span> skip <span class="hljs-keyword">in</span> dirs:
+                dirs.remove(skip)
+        <span class="hljs-keyword">yield</span> <span class="hljs-keyword">from</span> (
+            Path(root) / f <span class="hljs-keyword">for</span> f <span class="hljs-keyword">in</span> files <span class="hljs-keyword">if</span> fnmatch(f, pattern))
+</code></pre>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">all_source()</code> function uses the <code class="Code-In-Text--PACKT-">os.walk()</code> function to examine a directory tree, rejecting file directories <a id="_idIndexMarker1097"/>that are filled with files we don't want to look at. This function uses the <code class="Code-In-Text--PACKT-">fnmatch</code> module to match a file name against the kind of wild-card patterns the Linux shell uses. We can use a pattern parameter of <code class="Code-In-Text--PACKT-">'*.py'</code>, for example, to find all files with names ending in <code class="Code-In-Text--PACKT-">.py</code>. This seeds the <code class="Code-In-Text--PACKT-">setup_search()</code> method of the <code class="Code-In-Text--PACKT-">DirectorySearch</code> class.</p>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">teardown_search()</code> method of the <code class="Code-In-Text--PACKT-">DirectorySearch</code> class puts a special termination value into each queue. Remember, each worker is a separate process, executing the <code class="Code-In-Text--PACKT-">while</code> statement inside the <code class="Code-In-Text--PACKT-">search()</code> function and reading from a queue of requests. When it reads a <code class="Code-In-Text--PACKT-">None</code> object, it will break out of the <code class="Code-In-Text--PACKT-">while</code> statement and exit the function. We can then use the <code class="Code-In-Text--PACKT-">join()</code> to collect all the child processes, cleaning up politely. (If we don't do the <code class="Code-In-Text--PACKT-">join()</code>, some Linux distros can leave "zombie processes" – children not properly rejoined with their parent because the parent crashed; these consume system resources and often require a reboot.)</p>
+    <p class="normal">Now let's look at the code that makes a search actually happen:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">if</span> __name__ == <span class="hljs-string">"__main__"</span>:
+    ds = DirectorySearch()
+    base = Path.cwd().parent
+    all_paths = <span class="hljs-built_in">list</span>(all_source(base, <span class="hljs-string">"*.py"</span>))
+    ds.setup_search(all_paths)
+    <span class="hljs-keyword">for</span> target <span class="hljs-keyword">in</span> (<span class="hljs-string">"import"</span>, <span class="hljs-string">"class"</span>, <span class="hljs-string">"def"</span>):
+        start = time.perf_counter()
+        count = <span class="hljs-number">0</span>
+        <span class="hljs-keyword">for</span> line <span class="hljs-keyword">in</span> ds.search(target):
+            <span class="code-highlight"><strong class="hljs-slc"># print(line)</strong></span>
+            count += <span class="hljs-number">1</span>
+        milliseconds = <span class="hljs-number">1000</span>*(time.perf_counter()-start)
+        print(
+            <span class="hljs-string">f"Found </span><span class="hljs-subst">{count}</span><span class="hljs-string"> </span><span class="hljs-subst">{target!r}</span><span class="hljs-string"> in </span><span class="hljs-subst">{</span><span class="hljs-built_in">len</span><span class="hljs-subst">(all_paths)}</span><span class="hljs-string"> files "</span>
+            <span class="hljs-string">f"in </span><span class="hljs-subst">{milliseconds:</span><span class="hljs-number">.3</span><span class="hljs-subst">f}</span><span class="hljs-string">ms"</span>
+        )
+    ds.teardown_search()
+</code></pre>
+    <p class="normal">This code creates a <code class="Code-In-Text--PACKT-">DirectorySearch</code> object, <code class="Code-In-Text--PACKT-">ds</code>, and provides all of the source paths starting from the parent of the current working directory, via <code class="Code-In-Text--PACKT-">base = Path.cwd().parent</code>. Once the workers are prepared, the <code class="Code-In-Text--PACKT-">ds</code> object performs searches for a few common strings, <code class="Code-In-Text--PACKT-">"import"</code>, <code class="Code-In-Text--PACKT-">"class"</code>, and <code class="Code-In-Text--PACKT-">"def"</code>. Note that we've commented out the <code class="Code-In-Text--PACKT-">print(line)</code> statement<a id="_idIndexMarker1098"/> that shows the useful results. For now, we're interested in performance. The initial file reads take a fraction of a second to get started. Once all the files are read, however, the time to do the search is dramatic. On a MacBook Pro with 134 files of source code, the output looks like this:</p>
+    <pre class="programlisting con"><code class="hljs-con">python src/directory_search.py
+PID: 36566, paths 17
+PID: 36567, paths 17
+PID: 36570, paths 17
+PID: 36571, paths 17
+PID: 36569, paths 17
+PID: 36568, paths 17
+PID: 36572, paths 16
+PID: 36573, paths 16
+Found 579 'import' in 134 files in 111.561ms
+Found 838 'class' in 134 files in 1.010ms
+Found 1138 'def' in 134 files in 1.224ms
+</code></pre>
+    <p class="normal">The search for <code class="Code-In-Text--PACKT-">"import"</code> took about 111 milliseconds (0.111 seconds.) Why was this so slow compared with the other two searches? It's because the <code class="Code-In-Text--PACKT-">search()</code> function was still reading the files when the first request was put in the queue. The first request's performance reflects the one-time startup cost of loading the file content into memory. The next two requests run in about 1 millisecond each. That's amazing! Almost 1,000 searches per second on a laptop with only a few lines of Python code.</p>
+    <p class="normal">This example of queues to feed data among workers is a single-host version of what could become a <a id="_idIndexMarker1099"/>distributed system. Imagine the searches were being sent out to multiple host computers and then recombined. Now imagine you had access to the fleet of computers in Google's data centers and you might understand why they can return search results so quickly!</p>
+    <p class="normal">We won't discuss it here, but the <code class="Code-In-Text--PACKT-">multiprocessing</code> module includes a manager class that can take a lot of the boilerplate out of the preceding code. There is even a version of <code class="Code-In-Text--PACKT-">multiprocessing.Manager</code> that can manage subprocesses on remote systems to construct a rudimentary distributed application. Check the Python <code class="Code-In-Text--PACKT-">multiprocessing</code> documentation if you are interested in pursuing this further.</p>
+    <h2 id="_idParaDest-309" class="title">The problems with multiprocessing</h2>
+    <p class="normal">As with threads, multiprocessing<a id="_idIndexMarker1100"/> also has problems, some of which we have already discussed. Sharing data between processes is costly. As we have discussed, all communication between processes, whether by queues, OS pipes, or even shared memory, requires serializing the objects. Excessive serialization can dominate processing time. Shared memory objects can help by limiting the serialization to the initial setup of the shared memory. Multiprocessing works best when relatively small objects are passed between processes and a tremendous amount of work needs to be done on each one. </p>
+    <p class="normal">Using shared memory can avoid the cost of repeated serialization and deserialization. There are numerous limitations on the kinds of Python objects that can be shared. Shared memory can help performance, but can also lead to somewhat more complex-looking Python objects.</p>
+    <p class="normal">The other major problem with multiprocessing is that, like threads, it can be hard to tell which process a variable or method is being accessed in. In multiprocessing, the worker processes inherit a great deal of data from the parent process. This isn't shared, it's a one-time copy. A child can be given a copy of a mapping or a list and mutate the object. The parent won't see the effects of the child's mutation.</p>
+    <p class="normal">A big advantage of multiprocessing is the absolute independence of processes. We don't need to carefully manage locks, because the data is not shared. Additionally, the internal operating system limits on numbers of open files are allocated at the process level; we can have a large number of resource-intensive processes.</p>
+    <p class="normal">When designing concurrent applications, the focus is on maximizing the use of the CPU to do as much work in as short a time as possible. With so many choices, we always need to examine the problem to figure out which of the many available solutions is the best one for that problem.</p>
+    <div class="packt_tip">
+      <p class="Tip--PACKT-">The notion of concurrent processing is too broad for there to be one right way to do it. Each distinct problem has a best solution. It's important to write code in a way that permits adjustment, tuning, and optimization.</p>
+    </div>
+    <p class="normal">We've looked at the<a id="_idIndexMarker1101"/> two principal tools for concurrency in Python: threads and processes. Threads exist within a single OS process, sharing memory and other resources. Processes are independent of each other, which makes interprocess communication a necessary overhead. Both of these approaches are amenable to the concept of a pool of concurrent workers waiting to work and providing results at some unpredictable time in the future. This abstraction of results becoming available in the future is what shapes the <code class="Code-In-Text--PACKT-">concurrent.futures</code> module. We'll look at this next. </p>
+    <h1 id="_idParaDest-310" class="title">Futures</h1>
+    <p class="normal">Let's start looking at a more asynchronous way of implementing concurrency. The concept of a "future" or a "promise" is a handy abstraction for describing concurrent work. A <strong class="keyword">future</strong> is <a id="_idIndexMarker1102"/>an object that wraps a function call. That function call is run in the <em class="italic">background</em>, in a thread or a separate process. The <code class="Code-In-Text--PACKT-">future</code> object has methods to check whether the computation has completed and to get the results. We can think of it as a computation where the results will arrive in the future, and we can do something else while waiting for them.</p>
+    <p class="normal">See <a href="https://hub.packtpub.com/asynchronous-programming-futures-and-promises/"><span class="url">https://hub.packtpub.com/asynchronous-programming-futures-and-promises/</span></a> for some additional background.</p>
+    <p class="normal">In Python, the <code class="Code-In-Text--PACKT-">concurrent.futures</code> module wraps either <code class="Code-In-Text--PACKT-">multiprocessing</code> or <code class="Code-In-Text--PACKT-">threading</code> depending on what kind of concurrency we need. A future doesn't completely solve the problem of accidentally altering shared state, but using futures allows us to structure our code such that it can be easier to track down the cause of the problem when we do so.</p>
+    <p class="normal">Futures can help manage boundaries between the different threads or processes. Similar to the multiprocessing pool, they are useful for <strong class="keyword">call and answer</strong> type interactions, in which processing can happen in another thread (or process) and then at some point in the future (they are aptly named, after all), you can ask it for the result. It's a wrapper around multiprocessing pools and thread pools, but it provides a cleaner API and encourages nicer code.</p>
+    <p class="normal">Let's see another, more sophisticated file search and analyze example. In the last section, we implemented a version of the Linux <code class="Code-In-Text--PACKT-">grep</code> command. This time, we'll create a simple version of the <code class="Code-In-Text--PACKT-">find</code> command that bundles in a clever analysis of Python source code. We'll start with the analytical part since it's central to the work we need done concurrently:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">ImportResult</span><span class="hljs-class">(</span><span class="hljs-params">NamedTuple</span><span class="hljs-class">):</span>
+    path: Path
+    imports: Set[<span class="hljs-built_in">str</span>]
+<span class="hljs-meta">    @property</span>
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">focus</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">) -&gt; bool:</span>
+        <span class="hljs-keyword">return</span> <span class="hljs-string">"typing"</span> <span class="hljs-keyword">in</span> self.imports
+<span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">ImportVisitor</span><span class="hljs-class">(</span><span class="hljs-params">ast.NodeVisitor</span><span class="hljs-class">):</span>
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__init__</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">) -&gt; </span><span class="hljs-keyword">None</span><span class="hljs-function">:</span>
+        self.imports: Set[<span class="hljs-built_in">str</span>] = <span class="hljs-built_in">set</span>()
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">visit_Import</span><span class="hljs-function">(</span><span class="hljs-params">self, node: ast.Import</span><span class="hljs-function">) -&gt; </span><span class="hljs-keyword">None</span><span class="hljs-function">:</span>
+        <span class="hljs-keyword">for</span> alias <span class="hljs-keyword">in</span> node.names:
+            self.imports.add(alias.name)
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">visit_ImportFrom</span><span class="hljs-function">(</span><span class="hljs-params">self, node: ast.ImportFrom</span><span class="hljs-function">) -&gt; </span><span class="hljs-keyword">None</span><span class="hljs-function">:</span>
+        <span class="hljs-keyword">if</span> node.module:
+            self.imports.add(node.module)
+<span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">find_imports</span><span class="hljs-function">(</span><span class="hljs-params">path: Path</span><span class="hljs-function">) -&gt; ImportResult:</span>
+    tree = ast.parse(path.read_text())
+    iv = ImportVisitor()
+    iv.visit(tree)
+    <span class="hljs-keyword">return</span> ImportResult(path, iv.imports)
+</code></pre>
+    <p class="normal">We've defined a few things here. We<a id="_idIndexMarker1103"/> started with a named tuple, <code class="Code-In-Text--PACKT-">ImportResult</code>, which binds a <code class="Code-In-Text--PACKT-">Path</code> object and a set of strings together. It has a property, <code class="Code-In-Text--PACKT-">focus</code>, that looks for the specific string, <code class="Code-In-Text--PACKT-">"typing"</code>, in the set of strings. We'll see why this string is so important in a moment.</p>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">ImportVisitor</code> class is built using the <code class="Code-In-Text--PACKT-">ast</code> module in the standard library. An <strong class="keyword">Abstract Syntax Tree</strong> (<strong class="keyword">AST</strong>) is the parsed source code, usually from a formal programming language. Python code, after all, is just a bunch of characters; the AST for Python code groups the text into meaningful statements and expressions, variable names, and operators, all of the syntactic components of the language. A visitor has a method to examine the parsed code. We provided overrides for two methods of the <code class="Code-In-Text--PACKT-">NodeVisitor</code> class so we will visit only the two kinds of import statements: <code class="Code-In-Text--PACKT-">import x</code>, and <code class="Code-In-Text--PACKT-">from x import y</code>. The details of how each <code class="Code-In-Text--PACKT-">node</code> data structure works are a bit beyond this example, but the <code class="Code-In-Text--PACKT-">ast</code> module documentation in the Standard Library describes the unique structure of each Python language construct.</p>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">find_imports()</code> function <a id="_idIndexMarker1104"/>reads some source, parses the Python code, visits the <code class="Code-In-Text--PACKT-">import</code> statements, and then returns an <code class="Code-In-Text--PACKT-">ImportResult</code> with the original <code class="Code-In-Text--PACKT-">Path</code> and the set of names found by the visitor. This is – in many ways – a lot better than a simple pattern match for <code class="Code-In-Text--PACKT-">"import"</code>. For example, using an <code class="Code-In-Text--PACKT-">ast.NodeVisitor</code> will skip over comments and ignore the text inside character string literals, two jobs that are hard with regular expressions.</p>
+    <p class="normal">There isn't anything particularly special about the <code class="Code-In-Text--PACKT-">find_imports()</code> function, but note how it does not access any global variables. All interaction with the external environment is passed into the function or returned from it. This is not a technical requirement, but it is the best way to keep your brain inside your skull when programming with futures.</p>
+    <p class="normal">We want to process hundreds of files in dozens of directories, though. The best approach is to have lots and lots of these running all at the same time, clogging the cores of our CPU with lots and lots of computing.</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">main</span><span class="hljs-function">() -&gt; </span><span class="hljs-keyword">None</span><span class="hljs-function">:</span>
+    start = time.perf_counter()
+    base = Path.cwd().parent
+    <span class="hljs-keyword">with</span> futures.ThreadPoolExecutor(<span class="hljs-number">24</span>) <span class="hljs-keyword">as</span> pool:
+        analyzers = [
+           pool.submit(find_imports, path) 
+           <span class="hljs-keyword">for</span> path <span class="hljs-keyword">in</span> all_source(base, <span class="hljs-string">"*.py"</span>)
+        ]
+        analyzed = (
+            worker.result() 
+            <span class="hljs-keyword">for</span> worker <span class="hljs-keyword">in</span> futures.as_completed(analyzers)
+        )
+    <span class="hljs-keyword">for</span> example <span class="hljs-keyword">in</span> <span class="hljs-built_in">sorted</span>(analyzed):
+        print(
+            <span class="hljs-string">f"</span><span class="hljs-subst">{</span><span class="hljs-string">'-&gt;'</span><span class="hljs-subst"> </span><span class="hljs-keyword">if</span><span class="hljs-subst"> example.focus </span><span class="hljs-keyword">else</span><span class="hljs-subst"> </span><span class="hljs-string">''</span><span class="hljs-subst">:2s}</span><span class="hljs-string"> "</span> 
+            <span class="hljs-string">f"</span><span class="hljs-subst">{example.path.relative_to(base)}</span><span class="hljs-string"> </span><span class="hljs-subst">{example.imports}</span><span class="hljs-string">"</span>
+        )
+    end = time.perf_counter()
+    rate = <span class="hljs-number">1000</span> * (end - start) / <span class="hljs-built_in">len</span>(analyzers)
+    print(<span class="hljs-string">f"Searched </span><span class="hljs-subst">{</span><span class="hljs-built_in">len</span><span class="hljs-subst">(analyzers)}</span><span class="hljs-string"> files at </span><span class="hljs-subst">{rate:</span><span class="hljs-number">.3</span><span class="hljs-subst">f}</span><span class="hljs-string">ms/file"</span>)
+</code></pre>
+    <p class="normal">We're leveraging the same <code class="Code-In-Text--PACKT-">all_source()</code> function shown in the <em class="italic">Queues</em> section earlier in this chapter; this needs a base directory to start searching in, and a pattern, like <code class="Code-In-Text--PACKT-">"*.py"</code>, to find all the files with the <code class="Code-In-Text--PACKT-">.py</code> extension. We've created a <code class="Code-In-Text--PACKT-">ThreadPoolExecutor</code>, assigned to the <code class="Code-In-Text--PACKT-">pool</code> variable, with two dozen worker threads, all waiting for something to do. We create a list of <code class="Code-In-Text--PACKT-">Future</code> objects in the <code class="Code-In-Text--PACKT-">analyzers</code> object. This list is created by a list comprehension applying the <code class="Code-In-Text--PACKT-">pool.submit()</code> method to our search function, <code class="Code-In-Text--PACKT-">find_imports()</code>, and a <code class="Code-In-Text--PACKT-">Path</code> from the output of <code class="Code-In-Text--PACKT-">all_source()</code>.</p>
+    <p class="normal">The threads in the pool will immediately start working on the submitted list of tasks. As each thread finishes work, it saves the results in the <code class="Code-In-Text--PACKT-">Future</code> object and picks up some more work to do.</p>
+    <p class="normal">Meanwhile, in the foreground, the <a id="_idIndexMarker1105"/>application uses a generator expression to evaluate the <code class="Code-In-Text--PACKT-">result()</code> method of each <code class="Code-In-Text--PACKT-">Future</code> object. Note that the futures are visited using the <code class="Code-In-Text--PACKT-">futures.as_completed()</code> generator. The function starts providing complete <code class="Code-In-Text--PACKT-">Future</code> objects as they become available. This means the results may not be in the order they were originally submitted. There are other ways to visit the futures; we can, for example, wait until all are complete and then visit them in the order they were submitted, in case that's important.</p>
+    <p class="normal">We extract the result from each <code class="Code-In-Text--PACKT-">Future</code>. From the type hints, we can see that this will be an <code class="Code-In-Text--PACKT-">ImportResult</code> object with a <code class="Code-In-Text--PACKT-">Path</code> and a set of strings; these are the names of the imported modules. We can sort the results, so the files show up in some sensible order. </p>
+    <p class="normal">On a MacBook Pro, this takes about 1.689 milliseconds (0.001689 seconds) to process each file. The 24 individual threads easily fit in a single process without stressing the operating system. Increasing the number of threads doesn't materially affect the elapsed runtime, suggesting any remaining bottleneck is not concurrent computation, but the initial scan of the directory tree and the creation of the thread pool.</p>
+    <p class="normal">And the <code class="Code-In-Text--PACKT-">focus</code> feature of the <code class="Code-In-Text--PACKT-">ImportResult</code> class? Why is the <code class="Code-In-Text--PACKT-">typing</code> module special? We needed to review each chapter's type hints when a new release of <strong class="" style="font-style: italic;">mypy</strong> came out during the development of this book. It was helpful to separate the modules into those that required careful checking and those that didn't need to be revised.</p>
+    <p class="normal">And that's all that is required to develop a futures-based I/O-bound application. Under the hood, it's using the same thread or process APIs we've already discussed, but it provides a more understandable interface and makes it easier to see the boundaries between concurrently running functions (just don't try to access global variables from inside the future!).</p>
+    <div class="note">
+      <p class="Information-Box--PACKT-">Accessing outside <a id="_idIndexMarker1106"/>variables without proper synchronization can result in a problem called a <strong class="keyword">race</strong> <strong class="keyword">condition</strong>. For example, imagine two concurrent writes trying to increment an integer counter. They start at the same time and both read the current value of the shared variable as 5. One thread is first in the race; it increments the value and writes 6. The other thread comes in second; it increments what the variable was and also writes 6. But if two processes are trying to increment a variable, the expected result would be that it gets incremented by 2, so the result should be 7.</p>
+      <p class="Information-Box--PACKT-">Modern wisdom is that the easiest way to avoid doing this is to keep as much state as possible private and share them through known-safe constructs, such as queues or futures.<code class="Code-In-Text--PACKT-"> </code></p>
+    </div>
+    <p class="normal">For many applications, the <code class="Code-In-Text--PACKT-">concurrent.futures</code> module is the place to start with designing the Python code. The lower-level <code class="Code-In-Text--PACKT-">threading</code> and <code class="Code-In-Text--PACKT-">multiprocessing</code> modules offer some additional constructs for very complex cases. </p>
+    <p class="normal">Using <code class="Code-In-Text--PACKT-">run_in_executor()</code> allows an application to leverage the <code class="Code-In-Text--PACKT-">concurrent.futures</code> module's <code class="Code-In-Text--PACKT-">ProcessPoolExecutor</code> or <code class="Code-In-Text--PACKT-">ThreadPoolExecutor</code> classes to farm work out to multiple processes or multiple threads. This provides a lot of flexibility within a tidy, ergonomic API.</p>
+    <p class="normal">In some cases, we don't really need concurrent processes. In some cases, we simply need to be able to toggle back and forth between waiting for data and computing when data becomes available. The <code class="Code-In-Text--PACKT-">async</code> features of Python, including the <code class="Code-In-Text--PACKT-">asyncio</code> module, can interleave processing within a single thread. We'll look at this variation on the theme of concurrency next.</p>
+    <h1 id="_idParaDest-311" class="title">AsyncIO</h1>
+    <p class="normal">AsyncIO is <a id="_idIndexMarker1107"/>the current state of the art in Python concurrent programming. It combines the concept of futures and an event loop with coroutines. The result is about as elegant and easy to understand as it is possible to get when writing responsive applications that don't seem to waste time waiting for input.</p>
+    <p class="normal">For the purposes of working with Python's <code class="Code-In-Text--PACKT-">async</code> features, a <em class="italic">coroutine</em> is a function that is waiting for an event, and also can provide events to other<a id="_idIndexMarker1108"/> coroutines. In Python, we implement coroutines using <code class="Code-In-Text--PACKT-">async def</code>. A function with <code class="Code-In-Text--PACKT-">async</code> must work in the context of an <strong class="keyword">event loop</strong> which switches control among the coroutines waiting for events. We'll see a few Python constructs using <code class="Code-In-Text--PACKT-">await</code> expressions to show where the event loop can switch to another <code class="Code-In-Text--PACKT-">async</code> function.</p>
+    <p class="normal">It's crucial to recognize that <code class="Code-In-Text--PACKT-">async</code> operations are interleaved, and not – generally – parallel. At most one coroutine is in control and processing, and all the others are waiting for an event. The idea of interleaving is <a id="_idIndexMarker1109"/>described as <strong class="keyword">cooperative multitasking</strong>: an application can be processing data while also waiting for the next request message to arrive. As data becomes available, the event loop can transfer control to one of the waiting coroutines.</p>
+    <p class="normal">AsyncIO has <a id="_idIndexMarker1110"/>a bias toward network I/O. Most networking applications, especially on the server side, spend a lot of time waiting for data to come in from the network. AsyncIO can be more efficient than handling each client in a separate thread; then some threads can be working while others are waiting. The problem is the threads use up memory and other resources. AsyncIO uses coroutines to interleave processing cycles when the data becomes available.</p>
+    <p class="normal">Thread scheduling depends on OS requests the thread makes (and to an extent, the GIL's interleaving of threads). Process scheduling depends on the overall scheduler for the operating system. Both thread and process scheduling are <strong class="keyword">preemptive</strong> – the thread (or process) can be interrupted to allow a different, higher-priority thread or process to control the CPU. This means thread scheduling is unpredictable, and locks are important if multiple threads are going to update a shared resource. At the OS level, shared locks are required if two processes want to update a shared OS resource like a file. Unlike threads and processes, AsyncIO coroutines are <strong class="keyword">non-preemptive</strong>; they explicitly hand control to each other at specific points in the processing, removing the need for explicit locking of shared resources.</p>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">asyncio</code> library<a id="_idIndexMarker1111"/> provides a built-in <em class="italic">event loop</em>: this is the loop that handles interleaving control among the running coroutines. However, the event loop comes with a cost. When we run code in an <code class="Code-In-Text--PACKT-">async</code> task on the event loop, that code <em class="italic">must</em> return immediately, blocking neither on I/O nor on long-running calculations. This is a minor thing when writing our own code, but it means that any standard library or third-party functions that block on I/O must be wrapped with an <code class="Code-In-Text--PACKT-">async def</code> function that can handle the waiting politely.</p>
+    <p class="normal">When working with <code class="Code-In-Text--PACKT-">asyncio</code>, we'll write our application as a set of coroutines that use <code class="Code-In-Text--PACKT-">async</code> and <code class="Code-In-Text--PACKT-">await</code> syntax to interleave control via the event loop. The top-level "main" program's job, then, is simplified to running the event loop so the coroutines can then hand control back and forth, interleaving waiting and working.</p>
+    <h2 id="_idParaDest-312" class="title">AsyncIO in action</h2>
+    <p class="normal">A canonical example<a id="_idIndexMarker1112"/> of a blocking function is the <code class="Code-In-Text--PACKT-">time.sleep()</code> call. We can't call the <code class="Code-In-Text--PACKT-">time</code> module's <code class="Code-In-Text--PACKT-">sleep()</code> directly, because it would seize control, stalling the event loop. We'll use the version of <code class="Code-In-Text--PACKT-">sleep()</code> in the <code class="Code-In-Text--PACKT-">asyncio</code> module. Used in an <code class="Code-In-Text--PACKT-">await</code> expression, the event loop can interleave another coroutine while waiting for the <code class="Code-In-Text--PACKT-">sleep()</code> to finish. Let's use the asynchronous version of this call to illustrate the basics of an AsyncIO event loop, as follows:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">import</span> asyncio
+<span class="hljs-keyword">import</span> random
+<span class="hljs-keyword">async</span> <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">random_sleep</span><span class="hljs-function">(</span><span class="hljs-params">counter: </span><span class="hljs-built_in">float</span><span class="hljs-function">) -&gt; </span><span class="hljs-keyword">None</span><span class="hljs-function">:</span>
+    delay = random.random() * <span class="hljs-number">5</span>
+    print(<span class="hljs-string">f"</span><span class="hljs-subst">{counter}</span><span class="hljs-string"> sleeps for </span><span class="hljs-subst">{delay:</span><span class="hljs-number">.2</span><span class="hljs-subst">f}</span><span class="hljs-string"> seconds"</span>)
+    <span class="hljs-keyword">await</span> asyncio.sleep(delay)
+    print(<span class="hljs-string">f"</span><span class="hljs-subst">{counter}</span><span class="hljs-string"> awakens, refreshed"</span>)
+<span class="hljs-keyword">async</span> <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">sleepers</span><span class="hljs-function">(</span><span class="hljs-params">how_many: </span><span class="hljs-built_in">int</span><span class="hljs-params"> = </span><span class="hljs-number">5</span><span class="hljs-function">) -&gt; </span><span class="hljs-keyword">None</span><span class="hljs-function">:</span>
+    print(<span class="hljs-string">f"Creating </span><span class="hljs-subst">{how_many}</span><span class="hljs-string"> tasks"</span>)
+    tasks = [
+        asyncio.create_task(random_sleep(i)) 
+        <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(how_many)]
+    print(<span class="hljs-string">f"Waiting for </span><span class="hljs-subst">{how_many}</span><span class="hljs-string"> tasks"</span>)
+    <span class="hljs-keyword">await</span> asyncio.gather(*tasks)
+<span class="hljs-keyword">if</span> __name__ == <span class="hljs-string">"__main__"</span>:
+    asyncio.run(sleepers(<span class="hljs-number">5</span>))
+    print(<span class="hljs-string">"Done with the sleepers"</span>)
+</code></pre>
+    <p class="normal">This example covers several features of AsyncIO programming. The overall processing is started by the <code class="Code-In-Text--PACKT-">asyncio.run()</code> function. This starts the event loop, executing the <code class="Code-In-Text--PACKT-">sleepers()</code> coroutine. Within the <code class="Code-In-Text--PACKT-">sleepers()</code> coroutine, we create a handful of individual tasks; these are instances of the <code class="Code-In-Text--PACKT-">random_sleep()</code> coroutine with a given argument value. The <code class="Code-In-Text--PACKT-">random_sleep()</code> uses <code class="Code-In-Text--PACKT-">asyncio.sleep()</code> to simulate a long-running request.</p>
+    <p class="normal">Because this is built using <code class="Code-In-Text--PACKT-">async def</code> functions and an <code class="Code-In-Text--PACKT-">await</code> expression around <code class="Code-In-Text--PACKT-">asyncio.sleep()</code>, execution of the <code class="Code-In-Text--PACKT-">random_sleep()</code> functions and the overall <code class="Code-In-Text--PACKT-">sleepers()</code> function is interleaved. While the <code class="Code-In-Text--PACKT-">random_sleep()</code> requests are started in order of their <code class="Code-In-Text--PACKT-">counter</code> parameter value, they finish in a completely different order. Here's an example:</p>
+    <pre class="programlisting con"><code class="hljs-con">python src/async_1.py 
+Creating 5 tasks
+Waiting for 5 tasks
+0 sleeps for 4.69 seconds
+1 sleeps for 1.59 seconds
+2 sleeps for 4.57 seconds
+3 sleeps for 3.45 seconds
+4 sleeps for 0.77 seconds
+4 awakens, refreshed
+1 awakens, refreshed
+3 awakens, refreshed
+2 awakens, refreshed
+0 awakens, refreshed
+Done with the sleepers
+</code></pre>
+    <p class="normal">We can see the <code class="Code-In-Text--PACKT-">random_sleep()</code> function with a <code class="Code-In-Text--PACKT-">counter</code> value of <code class="Code-In-Text--PACKT-">4</code> had the shortest sleep time, and was given control first when it finished the <code class="Code-In-Text--PACKT-">await asyncio.sleep()</code> expression. The order of waking is strictly based on the random sleep interval, and the event loop's ability to hand control from coroutine to coroutine.</p>
+    <p class="normal">As asynchronous<a id="_idIndexMarker1113"/> programmers, we don't need to know too much about what happens inside that <code class="Code-In-Text--PACKT-">run()</code> function, but be aware that a lot is going on to track which of the coroutines is waiting and which should have control at the current moment.</p>
+    <p class="normal">A task, in this context, is an object that <code class="Code-In-Text--PACKT-">asyncio</code> knows how to schedule in the event loop. This includes the following:</p>
+    <ul>
+      <li class="bullet">Coroutines defined with the <code class="Code-In-Text--PACKT-">async def</code> statement.</li>
+      <li class="bullet"><code class="Code-In-Text--PACKT-">asyncio.Future</code> objects. These are almost identical to the <code class="Code-In-Text--PACKT-">concurrent.futures</code> you saw in the previous section, but for use with <code class="Code-In-Text--PACKT-">asyncio</code>.</li>
+      <li class="bullet">Any awaitable object, that is, one with an <code class="Code-In-Text--PACKT-">__await__()</code> function.</li>
+    </ul>
+    <p class="normal">In this example, all the tasks are coroutines; we'll see some of the others in later examples.</p>
+    <p class="normal">Look a little more closely at that <code class="Code-In-Text--PACKT-">sleepers()</code> coroutine. It first constructs instances of the <code class="Code-In-Text--PACKT-">random_sleep()</code> coroutine. These are each wrapped in an <code class="Code-In-Text--PACKT-">asyncio.create_task()</code> call, which adds these as futures to the loop's task queue so they can execute and start immediately when control is returned to the loop.</p>
+    <p class="normal">Control is returned to the event loop whenever we call <code class="Code-In-Text--PACKT-">await</code>. In this case, we call <code class="Code-In-Text--PACKT-">await asyncio.gather()</code> to yield control to other coroutines until all the tasks are finished.</p>
+    <p class="normal">Each of the <code class="Code-In-Text--PACKT-">random_sleep()</code> coroutines prints a starting message, then sends control back to the event loop for a specific amount of time using its own <code class="Code-In-Text--PACKT-">await</code> calls. When the sleep has completed, the event loop passes control back to the relevant <code class="Code-In-Text--PACKT-">random_sleep()</code> task, which prints its awakening message before returning.</p>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">async</code> keyword<a id="_idIndexMarker1114"/> acts as documentation notifying the Python interpreter (and coder) that the coroutine contains the <code class="Code-In-Text--PACKT-">await</code> calls. It also does some work to prepare the coroutine to run on the event loop. It behaves much like a decorator; in fact, back in Python 3.4, it used to be implemented as an <code class="Code-In-Text--PACKT-">@asyncio.coroutine</code> decorator.</p>
+    <h2 id="_idParaDest-313" class="title">Reading an AsyncIO future</h2>
+    <p class="normal">An AsyncIO coroutine <a id="_idIndexMarker1115"/>executes each line of code in order until it encounters an <code class="Code-In-Text--PACKT-">await</code> expression, at which point it returns control to the event loop. The event loop then executes any other tasks that are ready to run, including the one that the original coroutine was waiting on. Whenever that child task completes, the event loop sends the result back into the coroutine so that it can pick up execution until it encounters another <code class="Code-In-Text--PACKT-">await</code> expression or returns.</p>
+    <p class="normal">This allows us to write code that executes synchronously until we explicitly need to wait for something. As a result, there is no non-deterministic behavior of threads, so we don't need to worry nearly so much about shared state.</p>
+    <div class="note">
+      <p class="Information-Box--PACKT-">It's a good idea to limit shared state: a <em class="italic">share nothing</em> philosophy can prevent a ton of difficult bugs stemming from sometimes hard-to-imagine timelines of interleaved operations.</p>
+      <p class="Information-Box--PACKT-">Think of the OS schedulers as intentionally and wickedly evil; they will maliciously (somehow) find the worst possible sequence of operations among processes, threads, or coroutines.</p>
+    </div>
+    <p class="normal">The real value of AsyncIO is the way it allows us to collect logical sections of code together inside a single coroutine, even if we are waiting for other work elsewhere. As a specific instance, even though the <code class="Code-In-Text--PACKT-">await asyncio.sleep</code> call in the <code class="Code-In-Text--PACKT-">random_sleep()</code> coroutine is allowing a ton of stuff to happen inside the event loop, the coroutine itself looks like it's doing everything in order. This ability to read related pieces of asynchronous code without worrying about the machinery that waits for tasks to complete is the primary benefit of the AsyncIO module.</p>
+    <h2 id="_idParaDest-314" class="title">AsyncIO for networking</h2>
+    <p class="normal">AsyncIO was specifically <a id="_idIndexMarker1116"/>designed for use with network sockets, so let's implement a server using the <code class="Code-In-Text--PACKT-">asyncio</code> module. Looking back at <em class="chapterRef">Chapter 13</em>, <em class="italic">Testing Object-Oriented Programs</em>, we created a fairly complex server to catch log entries being sent from one process to another process using sockets. At the time, we used it as an example of a complex resource we didn't want to set up and tear down for each test.</p>
+    <p class="normal">We'll rewrite that example, creating an <code class="Code-In-Text--PACKT-">asyncio</code>-based server that can handle requests from a (large) number of clients. It can do this by having lots of coroutines, all waiting for log records to arrive. When a record arrives, one coroutine can save the record, doing some computation, while the remaining coroutines wait.</p>
+    <p class="normal">In <em class="chapterRef">Chapter 13</em>, we were interested in writing a test for the integration of a log catcher process with separate log-writing client application processes. Here's an illustration of the relationships involved:</p>
+    <figure class="mediaobject"><img src="../Images/B17070_14_01.png" alt="Diagram  Description automatically generated"/></figure>
+    <p class="packt_figref">Figure 14.1: The Log Catcher in the Sky</p>
+    <p class="normal">The log catcher process creates a socket server to wait for connections from all client applications. Each of the client applications uses <code class="Code-In-Text--PACKT-">logging.SocketHandler</code> to direct log messages to the waiting server. The server collects the messages and writes them to a single, central log file.</p>
+    <p class="normal">This test was based on an example back in <em class="chapterRef">Chapter 12</em>, which suffered from a weak implementation. To keep things simple in that chapter, the log server only worked with one application client at a time. We want to revisit the idea of a server that collects log messages. This improved implementation will handle a very large number of concurrent clients because it uses AsyncIO techniques.</p>
+    <p class="normal">The central part of this<a id="_idIndexMarker1117"/> design is a coroutine that reads log entries from a socket. This involves waiting for the bytes that comprise a header, then decoding the header to compute the size of the payload. The coroutine can read the right number of bytes for the log message payload, and then use a separate coroutine to process the payload. Here's the <code class="Code-In-Text--PACKT-">log_catcher()</code> function:</p>
+    <pre class="programlisting code"><code class="hljs-code">SIZE_FORMAT = <span class="hljs-string">"&gt;L"</span>
+SIZE_BYTES = struct.calcsize(SIZE_FORMAT)
+<span class="hljs-keyword">async</span> <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">log_catcher</span><span class="hljs-function">(</span>
+<span class="hljs-params">    reader: asyncio.StreamReader, writer: asyncio.StreamWriter</span>
+<span class="hljs-function">) -&gt; </span><span class="hljs-keyword">None</span><span class="hljs-function">:</span>
+    count = <span class="hljs-number">0</span>
+    client_socket = writer.get_extra_info(<span class="hljs-string">"socket"</span>)
+    size_header = <span class="hljs-keyword">await</span> reader.read(SIZE_BYTES)
+    <span class="hljs-keyword">while</span> size_header:
+        payload_size = struct.unpack(SIZE_FORMAT, size_header)
+        bytes_payload = <span class="hljs-keyword">await</span> reader.read(payload_size[<span class="hljs-number">0</span>])
+        <span class="hljs-keyword">await</span> log_writer(bytes_payload)
+        count += <span class="hljs-number">1</span>
+        size_header = <span class="hljs-keyword">await</span> reader.read(SIZE_BYTES)
+    print(<span class="hljs-string">f"From </span><span class="hljs-subst">{client_socket.getpeername()}</span><span class="hljs-string">: </span><span class="hljs-subst">{count}</span><span class="hljs-string"> lines"</span>)
+</code></pre>
+    <p class="normal">This <code class="Code-In-Text--PACKT-">log_catcher()</code> function implements the protocol used by the <code class="Code-In-Text--PACKT-">logging</code> module's <code class="Code-In-Text--PACKT-">SocketHandler</code> class. Each log entry is a block of bytes we can decompose into a header and a payload. We need to read the first few bytes, saved in <code class="Code-In-Text--PACKT-">size_header</code>, to get the size of the message which follows. Once we have the size, we can wait for the payload bytes to arrive. Since the two reads are both <code class="Code-In-Text--PACKT-">await</code> expressions, other coroutines can work while this function is waiting for the header and payload bytes to arrive.</p>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">log_catcher()</code> function is invoked by a server that provides the coroutine with a <code class="Code-In-Text--PACKT-">StreamReader</code> and <code class="Code-In-Text--PACKT-">StreamWriter</code>. These two objects wrap the socket pair that is created by the TCP/IP protocol. The stream reader (and the writer) are properly async-aware objects, and we can use <code class="Code-In-Text--PACKT-">await</code> when waiting to read bytes from the client.</p>
+    <p class="normal">This <code class="Code-In-Text--PACKT-">log_catcher()</code> function waits for socket data, then provides data to another coroutine, <code class="Code-In-Text--PACKT-">log_writer()</code>, for conversion and writing. The <code class="Code-In-Text--PACKT-">log_catcher()</code> function's job is to do a lot of waiting, and then shuttle the data from reader to writer; it also does an internal computation to count messages from a client. Incrementing a counter is not much, but it is work that can be done while waiting for data to arrive.</p>
+    <p class="normal">Here's a function, <code class="Code-In-Text--PACKT-">serialize()</code>, and a coroutine, <code class="Code-In-Text--PACKT-">log_writer()</code>, to convert log entries to JSON notation and write them to a file:</p>
+    <pre class="programlisting code"><code class="hljs-code">TARGET: TextIO
+LINE_COUNT = <span class="hljs-number">0</span>
+<span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">serialize</span><span class="hljs-function">(</span><span class="hljs-params">bytes_payload: </span><span class="hljs-built_in">bytes</span><span class="hljs-function">) -&gt; str:</span>
+    object_payload = pickle.loads(bytes_payload)
+    text_message = json.dumps(object_payload)
+    TARGET.write(text_message)
+    TARGET.write(<span class="hljs-string">"\n"</span>)
+    <span class="hljs-keyword">return</span> text_message
+<span class="hljs-keyword">async</span> <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">log_writer</span><span class="hljs-function">(</span><span class="hljs-params">bytes_payload: </span><span class="hljs-built_in">bytes</span><span class="hljs-function">) -&gt; </span><span class="hljs-keyword">None</span><span class="hljs-function">:</span>
+    <span class="hljs-keyword">global</span> LINE_COUNT
+    LINE_COUNT += <span class="hljs-number">1</span>
+    text_message = <span class="hljs-keyword">await</span> asyncio.to_thread(serialize, bytes_payload)
+</code></pre>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">serialize()</code> function <a id="_idIndexMarker1118"/>needs to have an open file, <code class="Code-In-Text--PACKT-">TARGET</code>, to which the log messages are written. The file open (and close) needs to be taken care of elsewhere in the application; we'll look at these operations below. The <code class="Code-In-Text--PACKT-">serialize()</code> function is used by the <code class="Code-In-Text--PACKT-">log_writer()</code> coroutine. Because <code class="Code-In-Text--PACKT-">log_writer()</code> is an <code class="Code-In-Text--PACKT-">async</code> coroutine, other coroutines will be waiting to read and decode input messages while this coroutine is writing them.</p>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">serialize()</code> function actually does a fair amount of computation. It also harbors a profound problem. The file write operation can be blocked, that is, stuck waiting for the operating system to finish the work. Writing to a disk means handing the work to a disk device and waiting until the device responds that the write operation is complete. While a microsecond to write a 1,000-character line of data may seem fast, it's forever to a CPU. This means all file operations will block their thread waiting for the operation to complete. To work politely with the other coroutines in the main thread, we assign this blocking work to a separate thread. This is why the <code class="Code-In-Text--PACKT-">log_writer()</code> coroutine uses the <code class="Code-In-Text--PACKT-">asyncio.to_thread()</code> to allocate this work to a separate thread. </p>
+    <p class="normal">Because the <code class="Code-In-Text--PACKT-">log_writer()</code> coroutine uses <code class="Code-In-Text--PACKT-">await</code> on this separate thread, it returns control to the event loop while the thread waits for the write to complete. This polite <code class="Code-In-Text--PACKT-">await</code> allows other coroutines to work while the <code class="Code-In-Text--PACKT-">log_writer()</code> coroutine is waiting for <code class="Code-In-Text--PACKT-">serialize()</code> to complete.</p>
+    <p class="normal">We've passed two kinds of work to a separate thread:</p>
+    <ul>
+      <li class="bullet">A compute-intensive operation. These are the <code class="Code-In-Text--PACKT-">pickle.loads()</code> and <code class="Code-In-Text--PACKT-">json.dumps()</code> operations.</li>
+      <li class="bullet">A blocking OS operation. This is <code class="Code-In-Text--PACKT-">TARGET.write()</code>. These blocking operations include most operating system requests, including file operations. They do not include the various network streams that are already part of the <code class="Code-In-Text--PACKT-">asyncio</code> module. As we saw in the <code class="Code-In-Text--PACKT-">log_catcher()</code> function above, the streams are already polite users of the event loop.</li>
+    </ul>
+    <p class="normal">This technique of <a id="_idIndexMarker1119"/>passing work to a thread is how we can make sure the event loop is spending as much time waiting as possible. If all the coroutines are waiting for an event, then whatever happens next will be responded to as quickly as possible. This principle of many waiters is the secret to a responsive service.</p>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">LINE_COUNT</code> global variable can raise some eyebrows. Recall from previous sections, we raised dire warnings about the consequences of multiple threads updating a shared variable concurrently. With <code class="Code-In-Text--PACKT-">asyncio</code>, we don't have preemption among threads. Because each coroutine uses explicit <code class="Code-In-Text--PACKT-">await</code> requests to give control to other coroutines via the event loop, we can update this variable in the <code class="Code-In-Text--PACKT-">log_writer()</code> coroutine knowing the state change will effectively be atomic – an indivisible update – among all the coroutines.</p>
+    <p class="normal">To make this example complete, here are the imports:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">from </span>__future__<span class="hljs-keyword"> import </span>annotations
+<span class="hljs-keyword">import</span> asyncio
+<span class="hljs-keyword">import</span> asyncio.exceptions
+<span class="hljs-keyword">import</span> json
+<span class="hljs-keyword">from</span> pathlib <span class="hljs-keyword">import</span> Path
+<span class="hljs-keyword">from</span> typing <span class="hljs-keyword">import</span> TextIO
+<span class="hljs-keyword">import</span> pickle
+<span class="hljs-keyword">import</span> signal
+<span class="hljs-keyword">import</span> struct
+<span class="hljs-keyword">import</span> sys
+</code></pre>
+    <p class="normal">Here's the top-level dispatcher that starts this service:</p>
+    <pre class="programlisting code"><code class="hljs-code">server: asyncio.AbstractServer
+<span class="hljs-keyword">async</span> <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">main</span><span class="hljs-function">(</span><span class="hljs-params">host: </span><span class="hljs-built_in">str</span><span class="hljs-params">, port: </span><span class="hljs-built_in">int</span><span class="hljs-function">) -&gt; </span><span class="hljs-keyword">None</span><span class="hljs-function">:</span>
+    <span class="hljs-keyword">global</span> server
+    server = <span class="hljs-keyword">await</span> asyncio.start_server(
+        log_catcher,
+        host=host,
+        port=port,
+    )
+    <span class="hljs-keyword">if</span> sys.platform != <span class="hljs-string">"win32"</span>:
+        loop = asyncio.get_running_loop()
+        loop.add_signal_handler(signal.SIGTERM, server.close)
+    <span class="hljs-keyword">if</span> server.sockets:
+        addr = server.sockets[<span class="hljs-number">0</span>].getsockname()
+        print(<span class="hljs-string">f"Serving on </span><span class="hljs-subst">{addr}</span><span class="hljs-string">"</span>)
+    <span class="hljs-keyword">else</span>:
+        <span class="hljs-keyword">raise</span> ValueError(<span class="hljs-string">"Failed to create server"</span>)
+    <span class="hljs-keyword">async</span> <span class="hljs-keyword">with</span> server:
+        <span class="hljs-keyword">await</span> server.serve_forever()
+</code></pre>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">main()</code> function <a id="_idIndexMarker1120"/>contains an elegant way to automatically create new <code class="Code-In-Text--PACKT-">asyncio.Task</code> objects for each network connection. The <code class="Code-In-Text--PACKT-">asyncio.start_server()</code> function listens at the given host address and port number for incoming socket connections. For each connection, it creates a new <code class="Code-In-Text--PACKT-">Task</code> instance using the <code class="Code-In-Text--PACKT-">log_catcher()</code> coroutine; this is added to the event loop's collection of coroutines. Once the server is started, the <code class="Code-In-Text--PACKT-">main()</code> function lets it provide services forever using the server's <code class="Code-In-Text--PACKT-">serve_forever()</code> method.</p>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">add_signal_handler()</code> method of a loop deserves some explanation. For non-Windows operating systems, a process is terminated via a signal from the operating system. The signals have small numeric identifiers and symbolic names. For example, the terminate signal has a numeric code of 15, and a name of <code class="Code-In-Text--PACKT-">signal.SIGTERM</code>. When a parent process terminates a child process, this signal is sent. If we do nothing special, this signal will simply stop the Python interpreter. When we use the <span class="keyStroke">Ctrl + C</span> sequence on the keyboard, this becomes a <code class="Code-In-Text--PACKT-">SIGINT</code> signal, which leads Python to raise a <code class="Code-In-Text--PACKT-">KeyboardInterrupt</code> exception. </p>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">add_signal_handler()</code> method of the loop lets us examine incoming signals and handle them as part of our AsyncIO processing loop. We don't want to simply stop with an unhandled exception. We want to finish the various coroutines, and allow any write threads executing the <code class="Code-In-Text--PACKT-">serialize()</code> function to complete normally. To make this happen, we connect the signal to the <code class="Code-In-Text--PACKT-">server.close()</code> method. This ends the <code class="Code-In-Text--PACKT-">serve_forever()</code> process cleanly, letting all the coroutines finish.</p>
+    <p class="normal">For Windows, we have to work outside the AsyncIO processing loop. This additional code is required to connect the low-level signals to a function that will close down the server cleanly.</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">if</span> sys.platform == <span class="hljs-string">"win32"</span>:
+    <span class="hljs-keyword">from</span> types <span class="hljs-keyword">import</span> FrameType
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">close_server</span><span class="hljs-function">(</span><span class="hljs-params">signum: </span><span class="hljs-built_in">int</span><span class="hljs-params">, frame: FrameType</span><span class="hljs-function">) -&gt; </span><span class="hljs-keyword">None</span><span class="hljs-function">:</span>
+        <span class="hljs-comment"># print(f"Signal {signum}")</span>
+        server.close()
+    signal.signal(signal.SIGINT, close_server)
+    signal.signal(signal.SIGTERM, close_server)
+    signal.signal(signal.SIGABRT, close_server)
+    signal.signal(signal.SIGBREAK, close_server)
+</code></pre>
+    <p class="normal">We've defined three standard signals, <code class="Code-In-Text--PACKT-">SIGINT</code>, <code class="Code-In-Text--PACKT-">SIGTERM</code>, and <code class="Code-In-Text--PACKT-">SIGABRT</code>, as well as a Windows-specific signal, <code class="Code-In-Text--PACKT-">SIGBREAK</code>. These will all close the server, ending the handling of requests and closing down the processing loop when all of the pending coroutines have completed.</p>
+    <p class="normal">As we saw in the previous <a id="_idIndexMarker1121"/>AsyncIO example, the main program is also a succinct way to start the event loop:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">if</span> __name__ == <span class="hljs-string">"__main__"</span>:
+    <span class="hljs-comment"># These often have command-line or environment overrides</span>
+    HOST, PORT = <span class="hljs-string">"localhost"</span>, <span class="hljs-number">18842</span>
+    <span class="hljs-keyword">with</span> Path(<span class="hljs-string">"one.log"</span>).<span class="hljs-built_in">open</span>(<span class="hljs-string">"w"</span>) <span class="hljs-keyword">as</span> TARGET:
+        <span class="hljs-keyword">try</span>:
+            <span class="hljs-keyword">if</span> sys.platform == <span class="hljs-string">"win32"</span>:
+                <span class="hljs-comment"># https://github.com/encode/httpx/issues/914</span>
+                loop = asyncio.get_event_loop()
+                loop.run_until_complete(main(HOST, PORT))
+                loop.run_until_complete(asyncio.sleep(<span class="hljs-number">1</span>))
+                loop.close()
+            <span class="hljs-keyword">else</span>:
+                asyncio.run(main(HOST, PORT))
+        <span class="hljs-keyword">except</span> (
+                asyncio.exceptions.CancelledError, 
+                KeyboardInterrupt):
+            ending = {<span class="hljs-string">"lines_collected"</span>: LINE_COUNT}
+            print(ending)
+            TARGET.write(json.dumps(ending) + <span class="hljs-string">"\n"</span>)
+</code></pre>
+    <p class="normal">This will open a file, setting the global <code class="Code-In-Text--PACKT-">TARGET</code> variable used by the <code class="Code-In-Text--PACKT-">serialize()</code> function. It uses the <code class="Code-In-Text--PACKT-">main()</code> function to create the server that waits for connections. When the <code class="Code-In-Text--PACKT-">serve_forever()</code> task is canceled with a <code class="Code-In-Text--PACKT-">CancelledError</code> or <code class="Code-In-Text--PACKT-">KeyboardInterrupt</code> exception, we can put a final summary line onto the log file. This line confirms that things completed normally, allowing us to verify that no lines were lost.</p>
+    <p class="normal">For Windows, we need to <a id="_idIndexMarker1122"/>use the <code class="Code-In-Text--PACKT-">run_until_complete()</code> method, instead of the more comprehensive <code class="Code-In-Text--PACKT-">run()</code> method. We also need to put one more coroutine, <code class="Code-In-Text--PACKT-">asyncio.sleep()</code>, into the event loop to wait for the final processing from any other coroutines. </p>
+    <p class="normal">Pragmatically, we might want to use the <code class="Code-In-Text--PACKT-">argparse</code> module to parse command-line arguments. We might want to use a more sophisticated file-handling mechanism in <code class="Code-In-Text--PACKT-">log_writer()</code> so we can limit the size of log files. </p>
+    <h3 id="_idParaDest-315" class="title">Design considerations</h3>
+    <p class="normal">Let's look at some of the<a id="_idIndexMarker1123"/> features of this design. First, the <code class="Code-In-Text--PACKT-">log_writer()</code> coroutine passes bytes into and out of the external thread running the <code class="Code-In-Text--PACKT-">serialize()</code> function. This is better than decoding the JSON in a coroutine in the main thread because the (relatively expensive) decoding can happen without stopping the main thread's event loop.</p>
+    <p class="normal">This call to <code class="Code-In-Text--PACKT-">serialize()</code> is, in effect, a future. In the <em class="italic">Futures</em> section, earlier in this chapter, we saw there are a few lines of boilerplate for using <code class="Code-In-Text--PACKT-">concurrent.futures</code>. However, when we use futures with AsyncIO, there are almost none at all! When we use <code class="Code-In-Text--PACKT-">await asyncio.to_thread()</code>, the <code class="Code-In-Text--PACKT-">log_writer()</code> coroutine wraps the function call in a future and submits it to the internal thread pool executor. Our code can then return to the event loop until the future completes, allowing the main thread to process other connections, tasks, or futures. It is particularly important to put blocking I/O requests into separate threads. When the future is done, the <code class="Code-In-Text--PACKT-">log_writer()</code> coroutine can finish waiting and can do any follow-up processing.</p>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">main()</code> coroutine used <code class="Code-In-Text--PACKT-">start_server()</code>; the server listens for connection requests. It will provide client-specific AsyncIO read and write streams to each task created to handle a distinct connection; the task will wrap the <code class="Code-In-Text--PACKT-">log_catcher()</code> coroutine. With the AsyncIO streams, reading from a stream is a potentially blocking call so we can call it with <code class="Code-In-Text--PACKT-">await</code>. This means politely returning to the event loop until bytes start arriving. </p>
+    <p class="normal">It can help to consider how the workload grows inside this server. Initially, the <code class="Code-In-Text--PACKT-">main()</code> function is the only coroutine. It creates the <code class="Code-In-Text--PACKT-">server</code>, and now both <code class="Code-In-Text--PACKT-">main()</code> and the <code class="Code-In-Text--PACKT-">server</code> are in the event loop's collection of waiting coroutines. When a connection is made, the server creates a new task, and the event loop now contains <code class="Code-In-Text--PACKT-">main()</code>, the <code class="Code-In-Text--PACKT-">server</code>, and an instance of the <code class="Code-In-Text--PACKT-">log_catcher()</code> coroutine. Most of the time, all of these coroutines are waiting for something to do: either a new connection for the server, or a message for the <code class="Code-In-Text--PACKT-">log_catcher()</code>. When a message arrives, it's decoded and handed to <code class="Code-In-Text--PACKT-">log_writer()</code>, and yet another coroutine is available. No matter what happens next, the application is ready to respond. The number of waiting coroutines is limited by available memory, so a lot<a id="_idIndexMarker1124"/> of individual coroutines can be patiently waiting for work to do.</p>
+    <p class="normal">Next, we'll take a quick look at a log-writing application that uses this log catcher. The application doesn't do anything useful, but it can tie up a lot of cores for a long period of time. This will show us how responsive AsyncIO applications can be.</p>
+    <h2 id="_idParaDest-316" class="title">A log writing demonstration</h2>
+    <p class="normal">To demonstrate how<a id="_idIndexMarker1125"/> this log catching works, this client application writes a bunch of messages and does an immense amount of computing. To see how responsive the log catcher is, we can start a bunch of copies of this application to stress-test the log catcher.</p>
+    <p class="normal">This client doesn't leverage <code class="Code-In-Text--PACKT-">asyncio</code>; it's a contrived example of compute-intensive work with a few I/O requests wrapped around it. Using coroutines to perform the I/O requests concurrently with the computation is – by design – unhelpful in this example. </p>
+    <p class="normal">We've written an application that applies a variation on the bogosort algorithm to some random data. Here's some information on this <a id="_idIndexMarker1126"/>sorting algorithm: <a href="https://rosettacode.org/wiki/Sorting_algorithms/Bogosort"><span class="url">https://rosettacode.org/wiki/Sorting_algorithms/Bogosort</span></a>. This isn't a practical algorithm, but it's simple: it enumerates all possible orderings, searching for one that is the desired, ascending order. Here are the imports and an abstract superclass, <code class="Code-In-Text--PACKT-">Sorter</code>, for sorting algorithms:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">from </span>__future__<span class="hljs-keyword"> import </span>annotations
+<span class="hljs-keyword">import </span>abc
+<span class="hljs-keyword">from </span>itertools<span class="hljs-keyword"> import </span>permutations
+<span class="hljs-keyword">import </span>logging
+<span class="hljs-keyword">import </span>logging.handlers
+<span class="hljs-keyword">import </span>os
+<span class="hljs-keyword">import </span>random
+<span class="hljs-keyword">import </span>time
+<span class="hljs-keyword">import </span>sys
+<span class="hljs-keyword">from </span>typing<span class="hljs-keyword"> import </span>Iterable
+logger = logging.getLogger(<span class="hljs-string">f"app_</span><span class="hljs-subst">{os.getpid()}</span><span class="hljs-string">"</span>)
+<span class="hljs-keyword">class </span><span class="hljs-title">Sorter</span><span class="hljs-class">(</span><span class="hljs-params">abc.ABC</span><span class="hljs-class">):</span>
+<span class="hljs-keyword">    def </span><span class="hljs-title">__init__</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">)</span><span class="hljs-keyword"> </span><span class="hljs-function">-&gt;</span><span class="hljs-keyword"> None</span><span class="hljs-function">:</span>
+<span class="hljs-keyword">        </span><span class="hljs-built_in">id</span><span class="hljs-keyword"> </span>= os.getpid()
+<span class="hljs-keyword">        </span>self.logger = logging.getLogger(            <span class="hljs-string">f"app_</span><span class="hljs-subst">{id}</span><span class="hljs-string">.</span><span class="hljs-subst">{self.__class__.__name__}</span><span class="hljs-string">"</span>)
+<span class="hljs-keyword">    </span><span class="hljs-meta">@abc.abstractmethod</span>
+<span class="hljs-keyword">    def </span><span class="hljs-title">sort</span><span class="hljs-function">(</span><span class="hljs-params">self, data: list[</span><span class="hljs-built_in">float</span><span class="hljs-params">]</span><span class="hljs-function">)</span><span class="hljs-keyword"> </span><span class="hljs-function">-&gt; list[float]:</span>
+<span class="hljs-keyword">        </span>...
+</code></pre>
+    <p class="normal">Next, we'll define a <a id="_idIndexMarker1127"/>concrete implementation of the abstract <code class="Code-In-Text--PACKT-">Sorter</code> class:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">BogoSort</span><span class="hljs-class">(</span><span class="hljs-params">Sorter</span><span class="hljs-class">):</span>
+<span class="hljs-meta">    @staticmethod</span>
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">is_ordered</span><span class="hljs-function">(</span><span class="hljs-params">data: tuple[</span><span class="hljs-built_in">float</span><span class="hljs-params">, ...]</span><span class="hljs-function">) -&gt; bool:</span>
+        pairs: Iterable[Tuple[<span class="hljs-built_in">float</span>, <span class="hljs-built_in">float</span>]] = <span class="hljs-built_in">zip</span>(data, data[<span class="hljs-number">1</span>:])
+        <span class="hljs-keyword">return</span> <span class="hljs-built_in">all</span>(a &lt;= b <span class="hljs-keyword">for</span> a, b <span class="hljs-keyword">in</span> pairs)
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">sort</span><span class="hljs-function">(</span><span class="hljs-params">self, data: list[</span><span class="hljs-built_in">float</span><span class="hljs-params">]</span><span class="hljs-function">) -&gt; list[float]:</span>
+        self.logger.info(<span class="hljs-string">"Sorting %d"</span>, <span class="hljs-built_in">len</span>(data))
+        start = time.perf_counter()
+        ordering: Tuple[<span class="hljs-built_in">float</span>, ...] = <span class="hljs-built_in">tuple</span>(data[:])
+        permute_iter = permutations(data)
+        steps = <span class="hljs-number">0</span>
+        <span class="hljs-keyword">while</span> <span class="hljs-keyword">not</span> BogoSort.is_ordered(ordering):
+            ordering = <span class="hljs-built_in">next</span>(permute_iter)
+            steps += <span class="hljs-number">1</span>
+        duration = <span class="hljs-number">1000</span> * (time.perf_counter() - start)
+        self.logger.info(
+            <span class="hljs-string">"Sorted %d items in %d steps, %.3f ms"</span>, 
+            <span class="hljs-built_in">len</span>(data), steps, duration)
+        <span class="hljs-keyword">return</span> <span class="hljs-built_in">list</span>(ordering)
+</code></pre>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">is_ordered()</code> method of the <code class="Code-In-Text--PACKT-">BogoSort</code> class checks to see if the list of objects has been sorted properly. The <code class="Code-In-Text--PACKT-">sort()</code> method generates all permutations of the data, searching for a permutation that satisfies the constraint defined by <code class="Code-In-Text--PACKT-">is_sorted()</code>. </p>
+    <p class="normal">Note that a set of <em class="italic">n</em> values has <em class="italic">n!</em> permutations, so this is a spectacularly inefficient sort algorithm. There are over six billion permutations of 13 values; on most computers, this algorithm can take years to sort 13 items into order.</p>
+    <p class="normal">A <code class="Code-In-Text--PACKT-">main()</code> function <a id="_idIndexMarker1128"/>handles the sorting and writes a few log messages. It does a lot of computation, tying up CPU resources doing nothing particularly useful. Here's a <code class="Code-In-Text--PACKT-">main</code> program we can use to make log requests while our inefficient sort is grinding up processing time:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">main</span><span class="hljs-function">(</span><span class="hljs-params">workload: </span><span class="hljs-built_in">int</span><span class="hljs-params">, sorter: Sorter = BogoSort()</span><span class="hljs-function">) -&gt; int:</span>
+    total = <span class="hljs-number">0</span>
+    <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(workload):
+        samples = random.randint(<span class="hljs-number">3</span>, <span class="hljs-number">10</span>)
+        data = [random.random() <span class="hljs-keyword">for</span> _ <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(samples)]
+        ordered = sorter.sort(data)
+        total += samples
+    <span class="hljs-keyword">return</span> total
+<span class="hljs-keyword">if</span> __name__ == <span class="hljs-string">"__main__"</span>:
+    LOG_HOST, LOG_PORT = <span class="hljs-string">"localhost"</span>, <span class="hljs-number">18842</span>
+    socket_handler = logging.handlers.SocketHandler(
+        LOG_HOST, LOG_PORT)
+    stream_handler = logging.StreamHandler(sys.stderr)
+    logging.basicConfig(
+        handlers=[socket_handler, stream_handler], 
+        level=logging.INFO)
+    start = time.perf_counter()
+    workload = random.randint(<span class="hljs-number">10</span>, <span class="hljs-number">20</span>)
+    logger.info(<span class="hljs-string">"sorting %d collections"</span>, workload)
+    samples = main(workload, BogoSort())
+    end = time.perf_counter()
+    logger.info(
+        <span class="hljs-string">"sorted %d collections, taking %f s"</span>, workload, end - start)
+    logging.shutdown()
+</code></pre>
+    <p class="normal">The top-level script starts by creating a <code class="Code-In-Text--PACKT-">SocketHandler</code> instance; this writes log messages to the log catcher service shown above. A <code class="Code-In-Text--PACKT-">StreamHandler</code> instance writes message to console. Both of these are provided as handlers for all the defined loggers. Once the logging is configured, the <code class="Code-In-Text--PACKT-">main()</code> function is invoked with a random workload.</p>
+    <p class="normal">On an 8-core MacBook Pro, this was run with 128 workers, all inefficiently sorting random numbers. The internal OS <code class="Code-In-Text--PACKT-">time</code> command describes the workload as using 700% of a core; that is, seven of the eight cores were completely occupied. And yet, there's still plenty of time left over to handle the log messages, edit this document, and play music in the background. Using a faster sort algorithm, we started 256 workers and generated 5,632 log messages in about 4.4 seconds. This is 1,280 transactions per second and we were still only using 628% of the available 800%. Your performance may vary. For network-intensive workloads, AsyncIO seems to do a marvelous job of allocating precious CPU time to the coroutine with work to be done, and minimizing the time threads are blocked waiting for something to do.</p>
+    <p class="normal">It's important to <a id="_idIndexMarker1129"/>observe that AsyncIO is heavily biased toward network resources including sockets, queues, and OS pipes. The file system is not a first-class part of the <code class="Code-In-Text--PACKT-">asyncio</code> module, and therefore requires us to use the associated thread pool to handle processing that will be blocked until it's finished by the operating system.</p>
+    <p class="normal">We'll take a diversion to look at AsyncIO to write a client-side application. In this case, we won't be creating a server, but instead leveraging the event loop to make sure a client can process data very quickly.</p>
+    <h2 id="_idParaDest-317" class="title">AsyncIO clients</h2>
+    <p class="normal">Because it is capable<a id="_idIndexMarker1130"/> of handling many thousands of simultaneous connections, AsyncIO is very common for implementing servers. However, it is a generic networking library and provides full support for client processes as well. This is pretty important, since many microservices act as clients to other servers.</p>
+    <p class="normal">Clients can be much simpler than servers, as they don't have to be set up to wait for incoming connections. We can leverage the <code class="Code-In-Text--PACKT-">await</code> <code class="Code-In-Text--PACKT-">asyncio.gather()</code> function to parcel out a lot of work, and wait to process the results when they've completed. This can work well with <code class="Code-In-Text--PACKT-">asyncio.to_thread()</code> which assigns blocking requests to separate threads, permitting the main thread to interleave work among the coroutines. </p>
+    <p class="normal">We can also create individual tasks that can be interleaved by the event loop. This allows the coroutines that implement the tasks to cooperatively schedule reading data along with computing the data that was read.</p>
+    <p class="normal">For this example, we'll use the <code class="Code-In-Text--PACKT-">httpx</code> library to provide an AsyncIO-friendly HTTP request. This additional package needs to be installed with <code class="Code-In-Text--PACKT-">conda install https</code> (if you're using <em class="italic">conda</em> as a virtual environment manager) or <code class="Code-In-Text--PACKT-">python -m pip install httpx</code>.</p>
+    <p class="normal">Here's an application to<a id="_idIndexMarker1131"/> make requests to the US weather service, implemented using <code class="Code-In-Text--PACKT-">asyncio</code>. We'll focus on forecast zones useful for sailors in the Chesapeake Bay area. We'll start with some definitions:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">import</span> asyncio
+<span class="hljs-keyword">import</span> httpx
+<span class="hljs-keyword">import</span> re
+<span class="hljs-keyword">import</span> time
+<span class="hljs-keyword">from</span> urllib.request <span class="hljs-keyword">import</span> urlopen
+<span class="hljs-keyword">from</span> typing <span class="hljs-keyword">import</span> Optional, NamedTuple
+<span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">Zone</span><span class="hljs-class">(</span><span class="hljs-params">NamedTuple</span><span class="hljs-class">):</span>
+    zone_name: <span class="hljs-built_in">str</span>
+    zone_code: <span class="hljs-built_in">str</span>
+    same_code: <span class="hljs-built_in">str</span>  <span class="hljs-comment"># Special Area Messaging Encoder</span>
+<span class="hljs-meta">    @property</span>
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">forecast_url</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">) -&gt; str:</span>
+        <span class="hljs-keyword">return</span> (
+            <span class="hljs-string">f"https://tgftp.nws.noaa.gov/data/forecasts"</span>
+            <span class="hljs-string">f"/marine/coastal/an/</span><span class="hljs-subst">{self.zone_code.lower()}</span><span class="hljs-string">.txt"</span>
+        )
+</code></pre>
+    <p class="normal">Given the <code class="Code-In-Text--PACKT-">Zone</code> named tuple, we can analyze the directory of marine forecast products, and create a list of <code class="Code-In-Text--PACKT-">Zone</code> instances that starts like this:</p>
+    <pre class="programlisting code"><code class="hljs-code">ZONES = [
+    Zone(<span class="hljs-string">"Chesapeake Bay from Pooles Island to Sandy Point, MD"</span>, 
+        <span class="hljs-string">"ANZ531"</span>, <span class="hljs-string">"073531"</span>),
+    Zone(<span class="hljs-string">"Chesapeake Bay from Sandy Point to North Beach, MD"</span>,      
+       <span class="hljs-string">"ANZ532"</span>, <span class="hljs-string">"073532"</span>),
+. . . 
+]
+</code></pre>
+    <p class="normal">Depending on where you're going to be sailing, you may want additional or different zones.</p>
+    <p class="normal">We need a <code class="Code-In-Text--PACKT-">MarineWX</code> class to describe the work to be done. This is an example of a <strong class="keyword">Command</strong> pattern, where each instance is another thing we wish to do. This class has a <code class="Code-In-Text--PACKT-">run()</code> method to gather data from a weather service:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">class</span><span class="hljs-class"> </span><span class="hljs-title">MarineWX</span><span class="hljs-class">:</span>
+    advisory_pat = re.<span class="hljs-built_in">compile</span>(<span class="hljs-string">r"\n\.\.\.(.*?)\.\.\.\n"</span>, re.M | re.S)
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__init__</span><span class="hljs-function">(</span><span class="hljs-params">self, zone: Zone</span><span class="hljs-function">) -&gt; </span><span class="hljs-keyword">None</span><span class="hljs-function">:</span>
+        <span class="hljs-built_in">super</span>().__init__()
+        self.zone = zone
+        self.doc = <span class="hljs-string">""</span>
+    <span class="hljs-keyword">async</span> <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">run</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">) -&gt; </span><span class="hljs-keyword">None</span><span class="hljs-function">:</span>
+        <span class="hljs-keyword">async</span> <span class="hljs-keyword">with</span> httpx.AsyncClient() <span class="hljs-keyword">as</span> client:
+            response = <span class="hljs-keyword">await</span> client.get(self.zone.forecast_url)
+        self.doc = response.text
+<span class="hljs-meta">    @property</span>
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">advisory</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">) -&gt; str:</span>
+        <span class="hljs-keyword">if</span> (match := self.advisory_pat.search(self.doc)):
+            <span class="hljs-keyword">return</span> match.group(<span class="hljs-number">1</span>).replace(<span class="hljs-string">"\n"</span>, <span class="hljs-string">" "</span>)
+        <span class="hljs-keyword">return</span> <span class="hljs-string">""</span>
+    <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">__repr__</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">) -&gt; str:</span>
+        <span class="hljs-keyword">return</span> <span class="hljs-string">f"</span><span class="hljs-subst">{self.zone.zone_name}</span><span class="hljs-string"> </span><span class="hljs-subst">{self.advisory}</span><span class="hljs-string">"</span>
+</code></pre>
+    <p class="normal">In this example, the <code class="Code-In-Text--PACKT-">run()</code> method <a id="_idIndexMarker1132"/>downloads the text document from the weather service via an instance of the <code class="Code-In-Text--PACKT-">httpx</code> module's <code class="Code-In-Text--PACKT-">AsyncClient</code> class. A separate property, <code class="Code-In-Text--PACKT-">advisory()</code>, parses the text, looking for a pattern that marks a marine weather advisory. The sections of the weather service document really are marked by three periods, a block of text, and three periods. The Marine Forecast system is designed to provide an easy-to-process format with a tiny document size.</p>
+    <p class="normal">So far, this isn't unique or remarkable. We've defined a repository of zone information, and a class that gathers data for a zone. Here's the important part: a <code class="Code-In-Text--PACKT-">main()</code> function that uses the AsyncIO tasks to gather as much data as quickly as possible.</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">async</span> <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">task_main</span><span class="hljs-function">() -&gt; </span><span class="hljs-keyword">None</span><span class="hljs-function">:</span>
+    start = time.perf_counter()
+    forecasts = [MarineWX(z) <span class="hljs-keyword">for</span> z <span class="hljs-keyword">in</span> ZONES]
+    <span class="hljs-keyword">await</span> asyncio.gather(
+        *(asyncio.create_task(f.run()) <span class="hljs-keyword">for</span> f <span class="hljs-keyword">in</span> forecasts))
+    <span class="hljs-keyword">for</span> f <span class="hljs-keyword">in</span> forecasts:
+        print(f)
+    print(
+        <span class="hljs-string">f"Got </span><span class="hljs-subst">{</span><span class="hljs-built_in">len</span><span class="hljs-subst">(forecasts)}</span><span class="hljs-string"> forecasts "</span>
+        <span class="hljs-string">f"in </span><span class="hljs-subst">{time.perf_counter() - start:</span><span class="hljs-number">.3</span><span class="hljs-subst">f}</span><span class="hljs-string"> seconds"</span>
+    )
+<span class="hljs-keyword">if</span> __name__ == <span class="hljs-string">"__main__"</span>:
+    asyncio.run(main())
+</code></pre>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">main()</code> function, when <a id="_idIndexMarker1133"/>run in the <code class="Code-In-Text--PACKT-">asyncio</code> event loop, will launch a number of tasks, each of which is executing the <code class="Code-In-Text--PACKT-">MarineWX.run()</code> method for a different zone. The <code class="Code-In-Text--PACKT-">gather()</code> function waits until all of them have finished to return the list of futures.</p>
+    <p class="normal">In this case, we don't really want the future result from the created threads; we want the state changes that have been made to all of the <code class="Code-In-Text--PACKT-">MarineWX</code> instances. These will be a collection of <code class="Code-In-Text--PACKT-">Zone</code> objects and the forecast details. This client runs pretty quickly – we got all thirteen forecasts in about 300 milliseconds. </p>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">httpx</code> project supports the decomposition of fetching the raw data and processing the data into separate coroutines. This permits the waiting for data to be interleaved with processing.</p>
+    <p class="normal">We've hit most of the high points of AsyncIO in this section, and the chapter has covered many other concurrency primitives. Concurrency is a hard problem to solve, and no one solution fits all use cases. The most important part of designing a concurrent system is deciding which of the available tools is the correct one to use for the problem. We have seen the advantages and disadvantages of several concurrent systems, and now have some insight into which are the better choices for different types of requirements.</p>
+    <p class="normal">The next topic touches on the question of how "expressive" a concurrency framework or package can be. We'll see how <code class="Code-In-Text--PACKT-">asyncio</code> solves a classic computer science problem with a short, clean-looking application program.</p>
+    <h1 id="_idParaDest-318" class="title">The dining philosophers benchmark</h1>
+    <p class="normal">The faculty of the <a id="_idIndexMarker1134"/>College of Philosophy in an old seaside resort city (on the Atlantic coast of the US) has a long-standing tradition of dining together every Sunday night. The food is catered from Mo's Deli, but is always – always – a heaping bowl of spaghetti. No one can remember why, but Mo's a great chef, and each week's spaghetti is a unique experience.</p>
+    <p class="normal">The philosophy department is small, having five tenured faculty members. They're also impoverished and can only afford five forks. Because the dining philosophers each require two forks to enjoy their pasta, they sit around a circular table, so each philosopher has access to two nearby forks.</p>
+    <p class="normal">This requirement for two forks to eat leads to an interesting resource contention problem, shown in the following diagram:</p>
+    <figure class="mediaobject"><img src="../Images/B17070_14_02.png" alt="Diagram  Description automatically generated"/></figure>
+    <p class="packt_figref">Figure 14.2: The dining philosophers</p>
+    <p class="normal">Ideally, a philosopher, say Philosopher 4, the department chairperson, and an Ontologist, will acquire the two closest forks, Fork 4 and Fork 0, required to eat. Once they've eaten, they release the forks so they can spend some time on philosophy. </p>
+    <p class="normal">There's a problem waiting to be solved. If each philosopher is right-handed, they will reach out, grab the fork on their right, and – unable to grab another fork – are stopped. The system is <strong class="keyword">deadlocked</strong> because no philosopher can acquire the resources to eat.</p>
+    <p class="normal">One possible<a id="_idIndexMarker1135"/> solution could break the deadlock by using a timeout: if a philosopher can't acquire a second fork in a few seconds, they set their first fork down, wait a few seconds, and try again. If they all proceed at the same tempo, this results in a cycle of each philosopher getting one fork, waiting a few seconds, setting their forks down, and trying again. Funny, but unsatisfying.</p>
+    <p class="normal">A better solution is to permit only four philosophers at a time to sit at the table. This ensures that at least one philosopher can acquire two forks and eat. While that philosopher is philosophizing, the forks are now available to their two neighbors. Additionally, the first to finish philosophizing can leave the table, allowing the fifth to be seated and join the conversation.</p>
+    <p class="normal">How does this look in code? Here's the philosopher, defined as a coroutine:</p>
+    <pre class="programlisting code"><code class="hljs-code">FORKS: List[asyncio.Lock]
+<span class="hljs-keyword">async def </span><span class="hljs-title">philosopher</span><span class="hljs-function">(</span>
+<span class="hljs-keyword">        </span><span class="hljs-built_in">id</span><span class="hljs-params">:</span><span class="hljs-keyword"> </span><span class="hljs-built_in">int</span><span class="hljs-params">,</span>
+<span class="hljs-keyword">        </span><span class="hljs-params">footman: asyncio.Semaphore</span>
+<span class="hljs-function">) -&gt;</span><span class="hljs-keyword"> </span><span class="hljs-function">tuple[int, float, float]:</span>
+    <span class="hljs-keyword">async</span> <span class="hljs-keyword">with</span> footman:
+        <span class="hljs-keyword">async</span> <span class="hljs-keyword">with</span> FORKS[<span class="hljs-built_in">id</span>], FORKS[(<span class="hljs-built_in">id</span> + <span class="hljs-number">1</span>) % <span class="hljs-built_in">len</span>(FORKS)]:
+            eat_time = <span class="hljs-number">1</span> + random.random()
+            print(<span class="hljs-string">f"</span><span class="hljs-subst">{</span><span class="hljs-built_in">id</span><span class="hljs-subst">}</span><span class="hljs-string"> eating"</span>)
+            <span class="hljs-keyword">await</span> asyncio.sleep(eat_time)
+        think_time = <span class="hljs-number">1</span> + random.random()
+        print(<span class="hljs-string">f"</span><span class="hljs-subst">{</span><span class="hljs-built_in">id</span><span class="hljs-subst">}</span><span class="hljs-string"> philosophizing"</span>)
+        <span class="hljs-keyword">await</span> asyncio.sleep(think_time)
+    <span class="hljs-keyword">return</span> <span class="hljs-built_in">id</span>, eat_time, think_time
+</code></pre>
+    <p class="normal">Each philosopher needs to know a few things:</p>
+    <ul>
+      <li class="bullet">Their own unique identifier. This directs them to the two adjacent forks they're permitted to use.</li>
+      <li class="bullet">A <code class="Code-In-Text--PACKT-">Semaphore</code> – the footman – who seats them at the table. It's the footman's job to have an upper bound on how many can be seated, thereby avoiding deadlock.</li>
+      <li class="bullet">A global collection of forks, represented by a sequence of <code class="Code-In-Text--PACKT-">Lock</code> instances, that will be shared by the philosophers.</li>
+    </ul>
+    <p class="normal">The philosopher's mealtime is described by acquiring and using resources. This is implemented with <a id="_idIndexMarker1136"/>the <code class="Code-In-Text--PACKT-">async with</code> statements. The sequence of events looks like this:</p>
+    <ol>
+      <li class="numbered" value="1">A philosopher acquires a seat at the table from the footman, a <code class="Code-In-Text--PACKT-">Semaphore</code>. We can think of the footman as holding a silver tray with four "you may eat" tokens. A philosopher must have a token before they can sit. Leaving the table, a philosopher drops their token on the tray. The fifth philosopher is eagerly waiting for the token drop from the first philosopher who finishes eating.</li>
+      <li class="numbered">A philosopher acquires the fork with their ID number and the next higher-numbered fork. The modulo operator assures that the counting of "next" wraps around to zero; <code class="Code-In-Text--PACKT-">(4+1) % 5</code> is 0.</li>
+      <li class="numbered">With a seat at the table and with two forks, the philosopher may enjoy their pasta. Mo often uses kalamata olives and pickled artichoke hearts; it's delightful. Once a month there might be some anchovies or feta cheese.</li>
+      <li class="numbered">After eating, a philosopher releases the two fork resources. They're not done with dinner, however. Once they've set the forks down, they then spend time philosophizing about life, the universe, and everything.</li>
+      <li class="numbered">Finally, they relinquish their seat at the table, returning their "you may eat" token to the footman, in case another philosopher is waiting for it.</li>
+    </ol>
+    <p class="normal">Looking at the <code class="Code-In-Text--PACKT-">philosopher()</code> function, we can see that the forks are a global resource, but the semaphore is a parameter. There's no compelling technical reason to distinguish between the global collection of <code class="Code-In-Text--PACKT-">Lock</code> objects to represent the forks and the <code class="Code-In-Text--PACKT-">Semaphore</code> as a parameter. We showed both to illustrate the two common choices for providing data to coroutines.</p>
+    <p class="normal">Here are the imports for this code:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">from </span>__future__<span class="hljs-keyword"> import </span>annotations
+<span class="hljs-keyword">import</span> asyncio
+<span class="hljs-keyword">import</span> collections
+<span class="hljs-keyword">import</span> random
+<span class="hljs-keyword">from</span> typing <span class="hljs-keyword">import</span> List, Tuple, DefaultDict, Iterator
+</code></pre>
+    <p class="normal">The overall dining room is organized like this:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">async</span> <span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">main</span><span class="hljs-function">(</span><span class="hljs-params">faculty: </span><span class="hljs-built_in">int</span><span class="hljs-params"> = </span><span class="hljs-number">5</span><span class="hljs-params">, servings: </span><span class="hljs-built_in">int</span><span class="hljs-params"> = </span><span class="hljs-number">5</span><span class="hljs-function">) -&gt; </span><span class="hljs-keyword">None</span><span class="hljs-function">:</span>
+    <span class="hljs-keyword">global</span> FORKS
+    FORKS = [asyncio.Lock() <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(faculty)]
+    footman = asyncio.BoundedSemaphore(faculty - <span class="hljs-number">1</span>)
+    <span class="hljs-keyword">for</span> serving <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(servings):
+        department = (
+            philosopher(p, footman) <span class="hljs-keyword">for</span> p <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(faculty))
+        results = <span class="hljs-keyword">await</span> asyncio.gather(*department)
+        print(results)
+<span class="hljs-keyword">if</span> __name__ == <span class="hljs-string">"__main__"</span>:
+    asyncio.run(main())
+</code></pre>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">main()</code> coroutine creates the collection of forks; these are modeled as <code class="Code-In-Text--PACKT-">Lock</code> objects that a philosopher can acquire. The footman is a <code class="Code-In-Text--PACKT-">BoundedSemaphore</code> object with a limit one fewer than the size of the faculty; this avoids a deadlock. For each serving, the department is <a id="_idIndexMarker1137"/>represented by a collection of <code class="Code-In-Text--PACKT-">philosopher()</code> coroutines. The <code class="Code-In-Text--PACKT-">asyncio.gather()</code> waits for all of the department's coroutines to complete their work – eating and philosophizing.</p>
+    <p class="normal">The beauty of this benchmark problem is to show how well the processing can be stated in the given programming language and library. With the <code class="Code-In-Text--PACKT-">asyncio</code> package, the code is extremely elegant, and seems to be a succinct and expressive representation of a solution to the problem.</p>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">concurrent.futures</code> library can make use of an explicit <code class="Code-In-Text--PACKT-">ThreadPool</code>. It can approach this level of clarity but involves a little bit more technical overhead.</p>
+    <p class="normal">The <code class="Code-In-Text--PACKT-">threading</code> and <code class="Code-In-Text--PACKT-">multiprocessing</code> libraries can also be used directly to provide a similar implementation. Using either of these involves even more technical overhead than the <code class="Code-In-Text--PACKT-">concurrent.futures</code> library. If the eating or philosophizing involved real computational work – not simply sleeping – we would see that a <code class="Code-In-Text--PACKT-">multiprocessing</code> version would finish the soonest because the computation can be spread among several cores. If the eating or philosophizing was mostly waiting for I/O to complete, it would be more like the implementation shown here, and using <code class="Code-In-Text--PACKT-">asyncio</code> or using <code class="Code-In-Text--PACKT-">concurrent.futures</code> with a thread pool would work out nicely.</p>
+    <h1 id="_idParaDest-319" class="title">Case study</h1>
+    <p class="normal">One of the <a id="_idIndexMarker1138"/>problems that often plagues data scientists working on machine learning applications is the amount of time it takes to "train" a model. In our specific example of the <em class="italic">k</em>-nearest neighbors implementation, training means performing the hyperparameter tuning to find an optimal value of <em class="italic">k</em> and the right distance algorithm. In the previous chapters of our case study, we've tacitly assumed there will be an optimal set of hyperparameters. In this chapter, we'll look at one way to locate the optimal parameters.</p>
+    <p class="normal">In more complex and less well-defined problems, the time spent training the model can be quite long. If the volume of data is immense, then very expensive compute and storage resources are required to build and train the model.</p>
+    <p class="normal">As an example of a more complex model, look at the MNIST dataset. See <a href="http://yann.lecun.com/exdb/mnist/"><span class="url">http://yann.lecun.com/exdb/mnist/</span></a> for the source data for this dataset and some kinds of analysis that have been performed. This problem requires considerably more time to locate optimal hyperparameters than our small Iris classification problem.</p>
+    <p class="normal">In our case study, hyperparameter tuning is an example of a compute-intensive application. There's very little I/O; if we use shared memory, there's no I/O. This means that a process pool to allow parallel computation is essential. We can wrap the process pool in AsyncIO coroutines, but the extra <code class="Code-In-Text--PACKT-">async</code> and <code class="Code-In-Text--PACKT-">await</code> syntax seems unhelpful for this kind of compute-intensive example. Instead, we'll use the <code class="Code-In-Text--PACKT-">concurrent.futures</code> module to build our hyperparameter tuning function. The design pattern for <code class="Code-In-Text--PACKT-">concurrent.futures</code> is to make use of a processing pool to farm out the various testing computations to a number of workers, and gather the results to determine which combination is<a id="_idIndexMarker1139"/> optimal. A process pool means each worker can occupy a separate core, maximizing compute time. We'll want to run as many tests of <code class="Code-In-Text--PACKT-">Hyperparameter</code> instances at the same time as possible.</p>
+    <p class="normal">In previous chapters, we looked at several ways to define the training data and the hyperparameter tuning values. In this case study, we'll use some model classes from <em class="chapterRef">Chapter 7</em>, <em class="italic">Python Data Structures</em>. From this chapter, we'll be using the <code class="Code-In-Text--PACKT-">TrainingKnownSample</code> and the <code class="Code-In-Text--PACKT-">TestingKnownSample</code> class definitions. We'll need to keep these in a <code class="Code-In-Text--PACKT-">TrainingData</code> instance. And, most importantly, we'll need <code class="Code-In-Text--PACKT-">Hyperparameter</code> instances.</p>
+    <p class="normal">We can <a id="_idIndexMarker1140"/>summarize the model like this:</p>
+    <figure class="mediaobject"><img src="../Images/B17070_14_03.png" alt="Diagram  Description automatically generated"/></figure>
+    <p class="packt_figref">Figure 14.3: The Hyperparameter model</p>
+    <p class="normal">We want to emphasize the <code class="Code-In-Text--PACKT-">KnownTestingSample</code> and <code class="Code-In-Text--PACKT-">KnownTrainingSample</code> classes. We are looking at testing, and won't be doing anything with <code class="Code-In-Text--PACKT-">UnknownSample</code> instances.</p>
+    <p class="normal">Our tuning strategy can be described <a id="_idIndexMarker1141"/>as <strong class="keyword">grid search</strong>. We can imagine a grid with the alternative values for <em class="italic">k</em> across the top and the different distance algorithms down the side. We'll fill in each cell of the grid with a result:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">for</span> k <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(<span class="hljs-number">1</span>, <span class="hljs-number">41</span>, <span class="hljs-number">2</span>):
+    <span class="hljs-keyword">for</span> algo <span class="hljs-keyword">in</span> ED(), MD(), CD(), SD():
+        h = Hyperparameter(k, algo, td)
+        print(h.test())
+</code></pre>
+    <p class="normal">This lets us<a id="_idIndexMarker1142"/> compare a range of <em class="italic">k</em> values and distance algorithms to see which combination is best. We don't really want to print the results, though. We want to save them in a list, sort them to find the highest-quality result, and use that as the preferred <code class="Code-In-Text--PACKT-">Hyperparameter</code> configuration for classifying unknown samples.</p>
+    <p class="normal">(Spoiler alert: for this Iris dataset, they're all pretty good.)</p>
+    <p class="normal">Each test run is completely independent. We can, therefore, do them all concurrently.</p>
+    <p class="normal">To show what we'll be running concurrently, here's the test method of the <code class="Code-In-Text--PACKT-">Hyperparameter</code> class:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">test</span><span class="hljs-function">(</span><span class="hljs-params">self</span><span class="hljs-function">) -&gt; "Hyperparameter":</span>
+    <span class="hljs-string">"""Run the entire test suite."""</span>
+    pass_count, fail_count = <span class="hljs-number">0</span>, <span class="hljs-number">0</span>
+    <span class="hljs-keyword">for</span> sample <span class="hljs-keyword">in</span> self.data.testing:
+        sample.classification = self.classify(sample)
+        <span class="hljs-keyword">if</span> sample.matches():
+            pass_count += <span class="hljs-number">1</span>
+        <span class="hljs-keyword">else</span>:
+            fail_count += <span class="hljs-number">1</span>
+    self.quality = pass_count / (pass_count + fail_count)
+    <span class="hljs-keyword">return</span> self
+</code></pre>
+    <p class="normal">We'll use each test sample, performing the classification algorithm. If the known result matches the species assigned by the <code class="Code-In-Text--PACKT-">classify()</code> algorithm, we'll count this as a pass. If the classification algorithm doesn't match the known result, we'll count this as a failure. The percentage of correct matches is one way to gauge the quality of a classification.</p>
+    <p class="normal">Here's an overall testing function, <code class="Code-In-Text--PACKT-">load_and_tune()</code>. This function loads the raw data into memory from the <code class="Code-In-Text--PACKT-">bezdekiris.data</code> file, which can be found in the code repository for this book. The function includes the use of a <code class="Code-In-Text--PACKT-">ProcessPoolExecutor</code> to run a number of workers concurrently:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">grid_search_1</span><span class="hljs-function">() -&gt; </span><span class="hljs-keyword">None</span><span class="hljs-function">:</span>
+    td = TrainingData(<span class="hljs-string">"Iris"</span>)
+    source_path = Path.cwd().parent / <span class="hljs-string">"bezdekiris.data"</span>
+    reader = CSVIrisReader(source_path)
+    td.load(reader.data_iter())
+    tuning_results: List[Hyperparameter] = []
+    <span class="hljs-keyword">with</span> futures.ProcessPoolExecutor(<span class="hljs-number">8</span>) <span class="hljs-keyword">as</span> workers:
+        test_runs: List[futures.Future[Hyperparameter]] = []
+        <span class="hljs-keyword">for</span> k <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(<span class="hljs-number">1</span>, <span class="hljs-number">41</span>, <span class="hljs-number">2</span>):
+            <span class="hljs-keyword">for</span> algo <span class="hljs-keyword">in</span> ED(), MD(), CD(), SD():
+                h = Hyperparameter(k, algo, td)
+                test_runs.append(workers.submit(h.test))
+        <span class="hljs-keyword">for</span> f <span class="hljs-keyword">in</span> futures.as_completed(test_runs):
+            tuning_results.append(f.result())
+    <span class="hljs-keyword">for</span> result <span class="hljs-keyword">in</span> tuning_results:
+        print(
+            <span class="hljs-string">f"</span><span class="hljs-subst">{result.k:2d}</span><span class="hljs-string"> </span><span class="hljs-subst">{result.algorithm.__class__.__name__:2s}</span><span class="hljs-string">"</span>
+            <span class="hljs-string">f" </span><span class="hljs-subst">{result.quality:</span><span class="hljs-number">.3</span><span class="hljs-subst">f}</span><span class="hljs-string">"</span>
+        )
+</code></pre>
+    <p class="normal">We've used the <code class="Code-In-Text--PACKT-">workers.submit()</code> to provide a function, the <code class="Code-In-Text--PACKT-">test()</code> method of a <code class="Code-In-Text--PACKT-">Hyperparameter</code> instance, <code class="Code-In-Text--PACKT-">h</code>, to the pool of workers. The result is a <code class="Code-In-Text--PACKT-">Future[Hyperparameter]</code> that will (eventually) have a <code class="Code-In-Text--PACKT-">Hyperparameter</code> as a result. Each submitted future, managed by the <code class="Code-In-Text--PACKT-">ProcessPoolExecutor</code>, will evaluate this function, saving the resulting <code class="Code-In-Text--PACKT-">Hyperparameter</code> object as the future's result.</p>
+    <p class="normal">Is this use of <a id="_idIndexMarker1143"/>the <code class="Code-In-Text--PACKT-">ProcessPoolExecutor</code> optimal? Because we have such a small pool of data, it seems to work well. The overhead of serializing the training data for each submission is minimal. For a larger set of training and testing samples, we will run into performance problems serializing all the data. Since the samples are string and float objects, we can change the data structure to use shared memory. This is a radical restructuring that needs to exploit the Flyweight design pattern from <em class="chapterRef">Chapter 12</em>, <em class="italic">Advanced Design Patterns</em>.</p>
+    <p class="normal">We used the <code class="Code-In-Text--PACKT-">Future[Hyperparameter]</code> type hint to remind the <strong class="" style="font-style: italic;">mypy</strong> tool that we expect the <code class="Code-In-Text--PACKT-">test()</code> method to return a <code class="Code-In-Text--PACKT-">Hyperparameter</code> result. It's important to make sure the expected result type matches the result type from the function actually provided to <code class="Code-In-Text--PACKT-">submit()</code>.</p>
+    <p class="normal">When we examine the <code class="Code-In-Text--PACKT-">Future[Hyperparameter]</code> object, the <code class="Code-In-Text--PACKT-">result</code> function will provide the <code class="Code-In-Text--PACKT-">Hyperparameter</code> that was processed in the worker thread. We can collect these to locate an optimal hyperparameter set.</p>
+    <p class="normal">Interestingly, they're<a id="_idIndexMarker1144"/> all quite good, varying between 97% and 100% accuracy. Here's a short snippet of the output:</p>
+    <pre class="programlisting con"><code class="hljs-con"> 5 ED 0.967
+ 5 MD 0.967
+ 5 CD 0.967
+ 5 SD 0.967
+ 7 ED 0.967
+ 7 MD 0.967
+ 7 CD 1.000
+ 7 SD 0.967
+ 9 ED 0.967
+ 9 MD 0.967
+ 9 CD 1.000
+ 9 SD 0.967
+</code></pre>
+    <p class="normal">Why is the quality so consistently high? There are a number of reasons:</p>
+    <ul>
+      <li class="bullet">The source data was carefully curated and prepared by the authors of the original study.</li>
+      <li class="bullet">There are only four features for each sample. The classification isn't complex and there aren't a lot of opportunities for near-miss classifications.</li>
+      <li class="bullet">Of the four features, two are very strongly correlated with the resulting species. The other two have weaker correlations between a feature and the species.</li>
+    </ul>
+    <p class="normal">One of the reasons for choosing this example is because the data allows us to enjoy a success without the complications of struggling with a poorly-designed problem, data that's difficult to work with, or a high level of noise that drowns out the import signal hidden in the data.</p>
+    <p class="normal">Looking at the <code class="Code-In-Text--PACKT-">iris.names</code> file, section 8, we see the following summary statistics:</p>
+    <pre class="programlisting con"><code class="hljs-con">Summary Statistics:
+                 Min  Max   Mean    SD    Class Correlation
+   sepal length: 4.3  7.9   5.84  0.83    0.7826   
+    sepal width: 2.0  4.4   3.05  0.43   -0.4194
+   petal length: 1.0  6.9   3.76  1.76    0.9490  (high!)
+    petal width: 0.1  2.5   1.20  0.76    0.9565  (high!)
+</code></pre>
+    <p class="normal">These statistics suggest that using only two of the features would be better than using all four features. Indeed, ignoring the sepal width might provide even better results.</p>
+    <p class="normal">Moving on to more sophisticated problems will introduce new challenges. The essential Python programming shouldn't be part of the problem anymore. It should help to craft workable solutions.</p>
+    <h1 id="_idParaDest-320" class="title">Recall</h1>
+    <p class="normal">We've looked closely at a variety of topics related to concurrent processing in Python:</p>
+    <ul>
+      <li class="bullet">Threads have an advantage of simplicity for many cases. This has to be balanced against the GIL interfering with compute-intensive multi-threading.</li>
+      <li class="bullet">Multiprocessing has an advantage of making full use of all cores of a processor. This has to be balanced against interprocess communication costs. If shared memory is used, there is the complication of encoding and accessing the shared objects.</li>
+      <li class="bullet">The <code class="Code-In-Text--PACKT-">concurrent.futures</code> module defines an abstraction – the future – that can minimize the differences in application programming used for accessing threads or processes. This makes it easy to switch and see which approach is fastest.</li>
+      <li class="bullet">The <code class="Code-In-Text--PACKT-">async</code>/<code class="Code-In-Text--PACKT-">await</code> features of the Python language are supported by the AsyncIO package. Because these are coroutines, there isn't true parallel processing; control switches among the coroutines allow a single thread to interleave between waiting for I/O and computing.</li>
+      <li class="bullet">The dining philosophers benchmark can be helpful for comparing different kinds of concurrency language features and libraries. It's a relatively simple problem with some interesting complexities.</li>
+      <li class="bullet">Perhaps the most important observation is the lack of a trivial one-size-fits-all solution to concurrent processing. It's essential to create – and measure – a variety of solutions to determine a design that makes best use of the computing hardware.</li>
+    </ul>
+    <h1 id="_idParaDest-321" class="title">Exercises</h1>
+    <p class="normal">We've covered several different concurrency paradigms in this chapter and still don't have a clear idea of when each one is useful. In the case study, we hinted that it's generally best to develop a few different strategies before committing to one that is measurably better than the others. The final choice must be based on measurements of the performance of multi-threaded and multi-processing solutions. </p>
+    <p class="normal">Concurrency is a huge topic. As your first exercise, we encourage you to search the web to discover what are considered to be the latest Python concurrency best practices. It can help to investigate material that isn't Python-specific to understand the operating system primitives like semaphores, locks, and queues.</p>
+    <p class="normal">If you have used threads in a recent application, take a look at the code and see how you can make it more readable and less bug-prone by using futures. Compare thread and multiprocessing futures to see whether you can gain anything by using multiple CPUs.</p>
+    <p class="normal">Try implementing an AsyncIO service for some basic HTTP requests. If you can get it to the point that a web browser can render a simple GET request, you'll have a good understanding of AsyncIO network transports and protocols.</p>
+    <p class="normal">Make sure you understand the race conditions that happen in threads when you access shared data. Try to come up with a program that uses multiple threads to set shared values in such a way that the data deliberately becomes corrupt or invalid.</p>
+    <p class="normal">In <em class="chapterRef">Chapter 8</em>, <em class="italic">The Intersection of Object-Oriented and Functional Programming</em>, we looked at an example that used <code class="Code-In-Text--PACKT-">subprocess.run()</code> to execute a number of <code class="Code-In-Text--PACKT-">python -m doctest</code> commands on files within a directory. Review that example and rewrite the code to run each subprocess in parallel using a <code class="Code-In-Text--PACKT-">futures.ProcessPoolExecutor</code>. </p>
+    <p class="normal">Looking back at <em class="chapterRef">Chapter 12</em>, <em class="italic">Advanced Design Patterns</em>, there's an example that runs an external command to create the figures for each chapter. This relies on an external application, <code class="Code-In-Text--PACKT-">java</code>, which tends to consume a lot of CPU resources when it runs. Does concurrency help with this example? Running multiple, concurrent Java programs seems to be a terrible burden. Is this a case where the default value for the size of a process pool is too large?</p>
+    <p class="normal">When looking at the case study, an important alternative is to use shared memory to allow multiple concurrent processes sharing a common set of raw data. Using shared memory means either sharing bytes or sharing a list of simple objects. Sharing bytes works well for packages like NumPy, but doesn't work well for our Python class definitions. This suggests that we can create a <code class="Code-In-Text--PACKT-">SharedList</code> object that contains all of the sample values. We'll need to apply the Flyweight design pattern to present attributes with useful names extracted from the list in shared memory. An individual <code class="Code-In-Text--PACKT-">FlyweightSample</code>, then, will extract four measurements and a species assignment. Once the data is prepared, what are the performance differences among concurrent processes and threads within a process? What changes are required to the <code class="Code-In-Text--PACKT-">TrainingData</code> class to avoid loading testing and training samples until they're needed?</p>
+    <h1 id="_idParaDest-322" class="title">Summary</h1>
+    <p class="normal">This chapter ends our exploration of object-oriented programming with a topic that isn't very object-oriented. Concurrency is a difficult problem, and we've only scratched the surface. While the underlying OS abstractions of processes and threads do not provide an API that is remotely object-oriented, Python offers some really good object-oriented abstractions around them. The threading and multiprocessing packages both provide an object-oriented interface to the underlying mechanics. Futures are able to encapsulate a lot of the messy details into a single object. AsyncIO uses coroutine objects to make our code read as though it runs synchronously, while hiding ugly and complicated implementation details behind a very simple loop abstraction.</p>
+    <p class="normal">Thank you for reading <em class="italic">Python Object-Oriented Programming</em>, <em class="italic">Fourth Edition</em>. We hope you've enjoyed the ride and are eager to start implementing object-oriented software in all your future projects!</p>
+  </div>
+
+
+  <div id="_idContainer206">
+    <p class="PACKTPage-Logo"><img src="../Images/Image18112.png" alt=""/></p>
+    <p class="Normal"><a href="http://packt.com"><span class="url">packt.com</span></a></p>
+    <p class="normal">Subscribe to our online digital library for full access to over 7,000 books and videos, as well as industry leading tools to help you plan your personal development and advance your career. For more information, please visit our website.</p>
+    <h1 id="_idParaDest-323" class="title">Why subscribe?</h1>
+    <ul>
+      <li class="bullet">Spend less time learning and more time coding with practical eBooks and Videos from over 4,000 industry professionals</li>
+      <li class="bullet">Learn better with Skill Plans built especially for you</li>
+      <li class="bullet">Get a free eBook or video every month</li>
+      <li class="bullet">Fully searchable for easy access to vital information</li>
+      <li class="bullet">Copy and paste, print, and bookmark content</li>
+    </ul>
+    <p class="normal">Did you know that Packt offers eBook versions of every book published, with PDF and ePub files available? You can upgrade to the eBook version at <a href="http://www.Packt.com"><span class="url">www.Packt.com</span></a> and as a print book customer, you are entitled to a discount on the eBook copy. Get in touch with us at <a href="http://customercare@packtpub.com"><span class="url">customercare@packtpub.com</span></a> for more details.</p>
+    <p class="normal">At <a href="http://www.Packt.com"><span class="url">www.Packt.com</span></a>, you can also read a collection of free technical articles, sign up for a range of free newsletters, and receive exclusive discounts and offers on Packt books and eBooks.</p>
+  </div>
+</body></html>
