@@ -1,0 +1,655 @@
+<html><head></head><body><div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Working with Asynchronous Code, Testing, and Deploying an API with Tornado</h1>
+                </header>
+            
+            <article>
+                
+<p>In this chapter, we will take advantage of the non-blocking features combined with asynchronous operations in Tornado 5.1.1 in a new version of the API we built in the previous chapter. We will configure, write, and execute unit tests, and learn a few things related to deployment. We will do the following:</p>
+<ul>
+<li>Understand synchronous and asynchronous execution</li>
+<li>Work with asynchronous code</li>
+<li>Refactor code to take advantage of asynchronous decorators</li>
+<li>Map URL patterns to asynchronous and non-blocking request handlers</li>
+<li>Make HTTP requests to the Tornado non-blocking API</li>
+<li>Set up unit tests with <kbd>pytest</kbd></li>
+<li>Write the first round of unit tests</li>
+<li>Run unit tests with <kbd>pytest</kbd> and check testing ...</li></ul></article></section></div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Understanding synchronous and asynchronous execution</h1>
+                </header>
+            
+            <article>
+                
+<p>In our current version of the RESTful API built with Tornado 5.1.1, each HTTP request is blocking. Hence, whenever the Tornado HTTP server receives an HTTP request, it doesn't start working on any other HTTP requests in the incoming queue until the server sends the response for the first HTTP request is received. The methods we coded in the request handlers are working with a synchronous execution and don't take advantage of the non-blocking features included in Tornado when combined with asynchronous executions.</p>
+<p>In order to set the brightness level for the red, green, and blue LEDs, we have to make three HTTP <kbd>PATCH</kbd> requests. We will make these requests to understand how our current version of the API processes three incoming requests.</p>
+<p>Make sure the Tornado 5.1.1 development server is running. Open three additional Terminals in macOS or Linux, or Command Prompt or Windows PowerShell windows in Windows. Activate the virtual environment in which we have been working for our RESTful API with Tornado in each of the windows. We will run commands in the three windows.</p>
+<p>Write the following command in the first window. The command will compose and send an HTTP <kbd>PATCH</kbd> request to set the brightness level for the red LED to <kbd>255</kbd>. Write the line in the first window but don't press <em><span class="KeyPACKT">Enter</span></em> yet, as we will try to launch three commands at almost the same time in three windows. The code file for the sample is included in the <kbd>restful_python_2_11_01</kbd> folder, in the <kbd>Tornado01/cmd/cmd1201.txt</kbd> file:</p>
+<pre>    <strong>http PATCH ":8888/leds/1" brightness_level=255</strong></pre>
+<p class="mceNonEditable"/>
+<p>The following is the equivalent <kbd>curl</kbd> command. The code file for the sample is included in the <kbd>restful_python_2_11_01</kbd> folder, in the <kbd>Tornado01/cmd/cmd1202.txt</kbd> file:</p>
+<pre> <strong>curl -iX PATCH -H "Content-Type: application/json" -d '{"brightness_level":255}' "localhost:8888/leds/1"</strong></pre>
+<p>Now, go to the second window and write the following command. The command will compose and send an HTTP <kbd>PATCH</kbd> request to set the brightness level for the green LED to <kbd>128</kbd>. Write the line in the second window but don't press <em><span class="KeyPACKT">Enter</span></em> yet, as we will try to launch two commands at almost the same time in three windows. The code file for the sample is included in the <kbd>restful_python_2_11_01</kbd> folder, in the <kbd>Tornado01/cmd/cmd1203.txt</kbd> file:</p>
+<pre>    <strong>http PATCH ":8888/leds/2" brightness_level=128</strong></pre>
+<p>The following is the equivalent <kbd>curl</kbd> command. The code file for the sample is included in the <kbd>restful_python_2_11_01</kbd> folder, in the <kbd>Tornado01/cmd/cmd1204.txt</kbd> file:</p>
+<pre> <strong>curl -iX PATCH -H "Content-Type: application/json" -d '{"brightness_level":128}' "localhost:8888/leds/2"</strong></pre>
+<p>Now, go to the third window and write the following command. The command will compose and send an HTTP <kbd>PATCH</kbd> request to set the brightness level for the blue LED to <kbd>64</kbd>. Write the line in the third window but don't press <em><span class="KeyPACKT">Enter</span></em> yet, as we will try to launch two commands at almost the same time in three windows. The code file for the sample is included in the <kbd>restful_python_2_11_01</kbd> folder, in the <kbd>Tornado01/cmd/cmd1205.txt</kbd> file:</p>
+<pre>    <strong>http PATCH ":8888/leds/3" brightness_level=64</strong></pre>
+<p>The following is the equivalent <kbd>curl</kbd> command. The code file for the sample is included in the <kbd>restful_python_2_11_01</kbd> folder, in the <kbd>Tornado01/cmd/cmd1206.txt</kbd> file:</p>
+<pre> <strong>curl -iX PATCH -H "Content-Type: application/json" -d '{"brightness_level":64}' "localhost:8888/leds/3"</strong></pre>
+<p>Now, go to each window, from the first to the third, and press <em><span class="KeyPACKT">Enter</span></em> quickly in each of them. You will see the following line in the window that is running the Tornado HTTP server for a few seconds:</p>
+<pre>    <strong>I've started setting the Red LED's brightness level</strong></pre>
+<p>After a few seconds, you will see the following lines, which show the results of executing the print statements that describe when the code finished and then start setting the brightness levels for the LEDs:</p>
+<pre>    <strong>I've started setting the Red LED's brightness level</strong>
+    <strong>I've finished setting the Red LED's brightness level</strong>
+    <strong>I've started setting the Green LED's brightness level</strong>
+    <strong>I've finished setting the Green LED's brightness level</strong>
+    <strong>I've started setting the Blue LED's brightness level</strong>
+    <strong>I've finished setting the Blue LED's brightness level</strong></pre>
+<p>It was necessary to wait for the request that changed the brightness level for the red LED to finish before the server could process the HTTP request that changes the brightness level for the green LED. The HTTP request that changes the brightness level for the blue LED had to wait for the other two requests to finish their execution first.</p>
+<p class="mce-root"/>
+<p>The following screenshot shows four Terminal windows on macOS. The window on the left-hand side is running the Tornado 5.1.1 HTTP server and displays the messages printed in the methods that process the HTTP requests. The three windows on the right run the <kbd>http</kbd> command to generate the HTTP <kbd>PATCH</kbd> request that changes the brightness levels for the red, green, and blue LEDs. It is a good idea to use a similar configuration to check the output while we compose and send the HTTP requests, and thus understand how the synchronous execution is working in the current version of the API:</p>
+<p class="CDPAlignCenter CDPAlign"><img src="Images/db46ba34-9666-49c1-83b4-f5c72f8af9fb.png" width="1219" height="759"/></p>
+<div class="packt_tip">Remember that the different methods we coded in the request handler classes end up calling <kbd>time.sleep</kbd> to simulate it taking some time for the operations to complete their execution.</div>
+<p class="mce-root"/>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Refactoring code to take advantage of asynchronous decorators</h1>
+                </header>
+            
+            <article>
+                
+<p>As each operation takes some time and blocks the possibility to process other incoming HTTP requests, we will create a new version of this API that will use asynchronous execution, and we will understand the advantages of Tornado's non-blocking features. This way, it will be possible to change the brightness level for the red LED while another request is changing the brightness level for the green LED. Tornado will be able to start processing requests while the I/O operations with the drone take some time to complete.</p>
+<p>Make sure you quit the Tornado HTTP server. You just need to press <span class="KeyPACKT"><em>Ctrl</em> + <em>C</em></span> in the Terminal or Command Prompt window in which it is running.</p>
+<p>Tornado 5.1.1 provides ...</p></article></section></div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Mapping URL patterns to asynchronous request handlers</h1>
+                </header>
+            
+            <article>
+                
+<p>Stay in the <kbd>async_drone_service.py</kbd> file in the root folder for the virtual environment (<kbd>Tornado01</kbd>). Add the following lines to map URL patterns to our previously coded subclasses of the <kbd>RequestHandler</kbd> superclass, which provide us with asynchronous methods for our request handlers. The following lines create the main entry point for the application, initialize it with the URL patterns for the API, and start listening for requests. The lines that are new or edited, compared to the synchronous version, are highlighted. The code file for the sample is included in the <kbd>restful_python_2_11_01</kbd> folder, in the <kbd>Django01/async_drone_service.py</kbd> file:</p>
+<pre>class Application(web.Application): 
+    def __init__(self, **kwargs): 
+        handlers = [ 
+           <strong> (r"/hexacopters/([0-9]+)", AsyncHexacopterHandler), 
+            (r"/leds/([0-9]+)", AsyncLedHandler), 
+            (r"/altimeters/([0-9]+)", AsyncAltimeterHandler),</strong> 
+        ] 
+        super(Application, self).__init__(handlers, **kwargs) 
+ 
+ 
+if __name__ == "__main__": 
+    application = Application() 
+    port = 8888 
+    print("Listening at port {0}".format(port)) 
+    application.listen(port) 
+    tornado_ioloop = ioloop.IOLoop.instance() 
+    periodic_callback = ioloop.PeriodicCallback(lambda: None, 500) 
+    periodic_callback.start() 
+    tornado_ioloop.start() </pre>
+<p>The code creates an instance of <kbd>tornado.web.Application</kbd>, named <kbd>application</kbd>, with the collection of request handlers that make up the web application. We just changed the name of the handlers for the new names that have the <kbd>Async</kbd> prefix.</p>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Making HTTP requests to the Tornado non-blocking API</h1>
+                </header>
+            
+            <article>
+                
+<p>Now, we can run the <kbd>drone_service.py</kbd> script, which launches the development server for Tornado 5.1.1 to our new version of the web API that uses the non-blocking features of Tornado, combined with an asynchronous execution. Make sure that the <kbd>drone_service.py</kbd> script is not running anymore. Execute the following command:</p>
+<pre>    <strong>python async_drone_service.py</strong></pre>
+<p>The following line shows the output after we execute the previous command. The Tornado HTTP development server is listening at port <kbd>8888</kbd>:</p>
+<pre>    <strong>Listening at port 8888</strong></pre>
+<p>In our new version of the API, each HTTP request is non-blocking. Thus, whenever the Tornado HTTP server receives an HTTP request and makes an asynchronous call, it is able to start ...</p></article></section></div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Setting up unit tests with pytest</h1>
+                </header>
+            
+            <article>
+                
+<p>Make sure you quit the Django development server. You just need to press <span class="KeyPACKT"><em>Ctrl</em> + <em>C</em></span> in the Terminal or Command Prompt window in which it is running.</p>
+<p>Now, we will install many additional packages to be able to easily run tests and measure their code coverage. Make sure you have activated the virtual environment that we created in the previous chapter, named <kbd>Tornado01</kbd>. After you activate the virtual environment, it is time to run many commands that will be the same for macOS, Linux, and Windows.</p>
+<p>Now, we will edit the existing <kbd>requirements.txt</kbd> file to specify the additional packages that our application requires to be installed on any supported platform. This way, it will be extremely easy to repeat the installation of the specified packages with their versions in any new virtual environment.</p>
+<p>Use your favorite editor to edit the existing text file, named <kbd>requirements.txt</kbd>, within the root folder for the virtual environment. Add the following lines after the last line to declare the additional packages that we require. The code file for the sample is included in the <kbd>restful_python_2_11_01</kbd> folder, in the <kbd>Tornado01/requirements.txt</kbd> file:</p>
+<pre>pytest==3.9.3 
+coverage==4.5.1 
+pytest-cov==2.6.0 
+pytest-tornasync==0.5.0 </pre>
+<p>Each additional line added to the <kbd>requirements.txt</kbd> file indicates the package and the version that need to be installed.</p>
+<p>The following table summarizes the packages and the version numbers that we specified as additional requirements to the previously included packages:</p>
+<table style="border-collapse: collapse" border="1">
+<tbody>
+<tr>
+<td>
+<p>Package name</p>
+</td>
+<td>
+<p>Version to be installed</p>
+</td>
+</tr>
+<tr>
+<td>
+<p><kbd>pytest</kbd></p>
+</td>
+<td>
+<p>4.0.2</p>
+</td>
+</tr>
+<tr>
+<td>
+<p><kbd>coverage</kbd></p>
+</td>
+<td>
+<p>4.5.2</p>
+</td>
+</tr>
+<tr>
+<td>
+<p><kbd>pytest-cov</kbd></p>
+</td>
+<td>
+<p>2.6.0</p>
+</td>
+</tr>
+<tr>
+<td>
+<p><kbd>pytest-tornasync</kbd></p>
+</td>
+<td>
+<p>0.5.0</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p> </p>
+<p>We will install the following Python packages in our virtual environment:</p>
+<ul>
+<li><kbd>pytest</kbd>: This is a very popular Python unit test framework that makes testing easy and reduces boilerplate code.</li>
+<li><kbd>coverage</kbd>: This tool measures code coverage of Python programs and we will use it to determine which parts of the code are being executed by unit tests and which parts aren't.</li>
+<li><kbd>pytest-cov</kbd>: This plugin for <kbd>pytest</kbd> makes it easy to produce coverage reports that use the <kbd>coverage</kbd> tool under the hood and provides some additional features.</li>
+<li><kbd>pytest-tornasync</kbd>: This plugin for <kbd>pytest</kbd> provides fixtures to make it easier to test Tornado asynchronous code with <kbd>pytest</kbd>.</li>
+</ul>
+<p>Now, we must run the following command on macOS, Linux, or Windows to install the additional packages and the versions outlined in the previous table with <kbd>pip</kbd>, using the recently edited <kbd>requirements.txt</kbd> file. Make sure you are located in the folder that has the <kbd>requirements.txt</kbd> file before running the command:</p>
+<pre><strong>pip install -r requirements.txt</strong> </pre>
+<p>The last lines for the output will indicate whether all the new packages and their dependencies have been successfully installed. If you downloaded the source code for the example and you didn't work with the previous version of the API, <kbd>pip</kbd> will also install the other packages included in the <kbd>requirements.txt</kbd> file:</p>
+<pre><strong>Installing collected packages: pytest, coverage, pytest-cov, pytest-tornasync</strong>
+<strong>Successfully installed coverage-4.5.2 pytest-4.0.2 pytest-cov-2.6.0 pytest-tornasync-0.5.0</strong>
+  </pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mceNonEditable"/>
+<p class="mceNonEditable"/>
+<p>Create a new <kbd>setup.cfg</kbd> file in the root folder for the virtual environment (<kbd>Tornado01</kbd>). The following lines show the code that specifies the desired configuration for <kbd>pytest</kbd> and the <kbd>coverage</kbd> tools. The code file for the sample is included in the <kbd>restful_python_2_11_01</kbd> folder, in the <kbd>Tornado01/setup.cfg</kbd> file:</p>
+<pre>[tool:pytest] 
+testpaths = tests.py 
+ 
+[coverage:run] 
+branch = True 
+source =  
+    drone 
+    async_drone_service </pre>
+<p>The <kbd>tool:pytest</kbd> section specifies the configuration for <kbd>pytest</kbd>. The <kbd>testpaths</kbd> setting assigns the <kbd>tests.py</kbd> value to indicate that the tests are located in the <kbd>tests.py</kbd> file.</p>
+<p>The <kbd>coverage:run</kbd> section specifies the configuration for the <kbd>coverage</kbd> tool. The <kbd>branch</kbd> setting is set to <kbd>True</kbd> to enable branch coverage measurement in addition to the default statement coverage. The <kbd>source</kbd> setting specifies the modules that we want to be considered for coverage measurement. We just want to include the <kbd>drone</kbd> and <kbd>async_drone_service</kbd> modules.</p>
+<div class="packt_tip">In this case, we won't be using configuration files for each environment. However, in more complex applications, you will definitely want to use configuration files.</div>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Writing the first round of unit tests</h1>
+                </header>
+            
+            <article>
+                
+<p>Now, we will write the first round of unit tests. Specifically, we will write unit tests related to the LED resources. Test fixtures provide a fixed baseline to enable us to reliably and repeatedly execute tests. Pytest makes it easy to declare a test fixture function by marking a function with the <kbd>@pytest.fixture</kbd> decorator. Then, whenever we use the fixture function name as an argument in a test function declaration, <kbd>pytest</kbd> will make the fixture function provide the fixture object.</p>
+
+
+<p>The <kbd>pytest-tornasync</kbd> plugin provides us with many fixtures that we will use to easily write tests for our Tornado API. In order to work with this plugin, we must declare a fixture function, named <kbd>app</kbd>, that returns a <kbd>tornado.web.Application ...</kbd></p></article></section></div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Improving testing coverage</h1>
+                </header>
+            
+            <article>
+                
+<p>Now, we will write additional unit tests to improve the testing coverage. Specifically, we will write unit tests related to the hexacopter motor and the altimeter.</p>
+<p class="mce-root"/>
+<p>Open the <kbd>tests.py</kbd> file in the root folder for the virtual environment (<kbd>Tornado01</kbd>). Insert the following lines after the last line. The code file for the sample is included in the <kbd>restful_python_2_11_02</kbd> folder, in the <kbd>Django01/tests.py</kbd> file:</p>
+<pre><strong>async def </strong><br/><strong>test_set_and_get_hexacopter_motor_speed(http_server_client):</strong> 
+    """ 
+    Ensure we can set and get the hexacopter's motor speed 
+    """ 
+    patch_args = {'motor_speed_in_rpm': 200} 
+    patch_response = await http_server_client.fetch( 
+        '/hexacopters/1',  
+        method='PATCH',  
+        body=json.dumps(patch_args)) 
+    assert patch_response.code == HTTPStatus.OK 
+    get_response = await http_server_client.fetch( 
+        '/hexacopters/1', 
+        method='GET') 
+    assert get_response.code == HTTPStatus.OK 
+    get_response_data = escape.json_decode(get_response.body) 
+    assert 'motor_speed_in_rpm' in get_response_data.keys() 
+    assert 'is_turned_on' in get_response_data.keys() 
+    assert get_response_data['motor_speed_in_rpm'] == patch_args['motor_speed_in_rpm'] 
+    assert get_response_data['is_turned_on'] 
+ 
+ 
+<strong>async def </strong><br/><strong>test_get_altimeter_altitude_in_feet(http_server_client):</strong> 
+    """ 
+    Ensure we can get the altimeter's altitude in feet 
+    """ 
+    get_response = await http_server_client.fetch( 
+        '/altimeters/1', 
+        method='GET') 
+    assert get_response.code == HTTPStatus.OK 
+    get_response_data = escape.json_decode(get_response.body) 
+    assert 'altitude' in get_response_data.keys() 
+    assert 'unit' in get_response_data.keys() 
+    assert get_response_data['altitude'] &gt;= 0 
+    assert get_response_data['altitude'] &lt;= 3000 
+    assert get_response_data['unit'] == 'feet' 
+ 
+ 
+<strong>async def </strong><br/><strong>test_get_altimeter_altitude_in_meters(http_server_client):</strong> 
+    """ 
+    Ensure we can get the altimeter's altitude in meters 
+    """ 
+    get_response = await http_server_client.fetch( 
+        '/altimeters/1?unit=meters', 
+        method='GET') 
+    assert get_response.code == HTTPStatus.OK 
+    get_response_data = escape.json_decode(get_response.body) 
+    assert 'altitude' in get_response_data.keys() 
+    assert 'unit' in get_response_data.keys() 
+    assert get_response_data['altitude'] &gt;= 0 
+    assert get_response_data['altitude'] &lt;= 914.4 
+    assert get_response_data['unit'] == 'meters'</pre>
+<p>The previous code added the following three test functions, whose names start with the <kbd>test_</kbd> prefix and who receive the <kbd>http_server_client</kbd> argument to use this test fixture:</p>
+<ul>
+<li><kbd>test_set_and_get_hexacopter_motor_speed</kbd>: This test function tests whether we can set and get the hexacopter's motor speed</li>
+<li><kbd>test_get_altimeter_altitude_in_feet</kbd>: This test function tests whether we can retrieve the altitude value from the altimeter, expressed in feet</li>
+<li><kbd>test_get_altimeter_altitude_in_meters</kbd>: This test function tests whether we can retrieve the altitude value from the altimeter, expressed in meters</li>
+</ul>
+<p>We just coded a few tests related to the hexacopter and the altimeter in order to improve test coverage and note the impact on the test coverage report.</p>
+<p>Now, we will use the <kbd>pytest</kbd> command to run tests and measure their code coverage. Make sure you run the command in the Terminal or Command Prompt window in which you have activated the virtual environment, and that you are located within its root folder (<kbd>Tornado01</kbd>). Run the following command:</p>
+<pre>    <strong>pytest --cov -s</strong></pre>
+<p>The following lines show the sample output:</p>
+<pre><strong>================================================ test session starts =================================================</strong>
+<strong>platform darwin -- Python 3.7.1 pytest-4.0.2, py-1.7.0, pluggy-0.8.0 -- /Users/gaston/HillarPythonREST2/Tornado01/bin/python3</strong>
+<strong>cachedir: .pytest_cache</strong>
+<strong>rootdir: /Users/gaston/HillarPythonREST2/Tornado01, inifile: <br/>setup.cfg</strong>
+<strong>plugins: tornasync-0.5.0, cov-2.6.0</strong>
+<strong>collected 4 items                                                                                                    </strong>
+    
+<strong>tests.py::test_set_and_get_leds_brightness_levels PASSED                                                       [ 25%]</strong>
+<strong>tests.py::test_set_and_get_hexacopter_motor_speed PASSED                                                       [ 50%]</strong>
+<strong>tests.py::test_get_altimeter_altitude_in_feet PASSED                                                           [ 75%]</strong>
+<strong>tests.py::test_get_altimeter_altitude_in_meters PASSED                                                         [100%]</strong>
+    
+ <strong>---------- coverage: platform darwin, python 3.7.1-final-0 -----------</strong>
+    <strong>Name                     Stmts   Miss Branch BrPart  Cover</strong>
+    <strong>----------------------------------------------------------</strong>
+    <strong>async_drone_service.py     142     41     20      8    69%</strong>
+    <strong>drone.py                    63     10     10      5    79%</strong>
+    <strong>----------------------------------------------------------</strong>
+    <strong>TOTAL                      205     51     30     13    72%</strong></pre>
+<p>The output provided details indicating that the test runner executed four tests and all of them passed. The test code coverage measurement report provided by the <kbd>coverage</kbd> package increased the <kbd>Cover</kbd> percentage of the <kbd>async_drone_service.py</kbd> module from 40% to 69%. In addition, the <kbd>Cover</kbd> percentage of the <kbd>drone.py</kbd> module increased from 59% in the previous run to 79%. The new tests we wrote executed additional code in different modules, and therefore there is an important impact in the coverage report. The total coverage increased from 46% to 72%.</p>
+<p>If we take a look at the missing statements, we will notice that we aren't testing scenarios where validations fail. Now, we will write additional unit tests to improve the testing coverage further. Specifically, we will write unit tests to make sure that we cannot set invalid brightness levels for the LEDs, we cannot set invalid motor speeds for the hexacopter, and that we receive an HTTP <kbd>404 Not Found</kbd> status code when we try to access a resource that doesn't exist.</p>
+<p>Open the <kbd>tests.py</kbd> file in the root folder for the virtual environment (<kbd>Tornado01</kbd>). Insert the following lines after the last line. The code file for the sample is included in the <kbd>restful_python_2_11_03</kbd> folder, in the <kbd>Django01/tests.py</kbd> file:</p>
+<pre><strong>async def test_set_invalid_brightness_level(http_server_client):</strong> 
+    """ 
+    Ensure we cannot set an invalid brightness level for a LED 
+    """ 
+    patch_args_led_1 = {'brightness_level': 256} 
+    try: 
+        patch_response_led_1 = await http_server_client.fetch( 
+            '/leds/1',  
+            method='PATCH',  
+            body=json.dumps(patch_args_led_1)) 
+    except HTTPClientError as err: 
+        assert err.code == HTTPStatus.BAD_REQUEST 
+    patch_args_led_2 = {'brightness_level': -256} 
+    try: 
+        patch_response_led_2 = await http_server_client.fetch( 
+            '/leds/2',  
+            method='PATCH',  
+            body=json.dumps(patch_args_led_2)) 
+    except HTTPClientError as err: 
+        assert err.code == HTTPStatus.BAD_REQUEST 
+    patch_args_led_3 = {'brightness_level': 512} 
+    try: 
+        patch_response_led_3 = await http_server_client.fetch( 
+            '/leds/3',  
+            method='PATCH',  
+            body=json.dumps(patch_args_led_3)) 
+    except HTTPClientError as err: 
+        assert err.code == HTTPStatus.BAD_REQUEST 
+ 
+ 
+<strong>async def </strong><br/><strong>test_set_brightness_level_invalid_led_id(http_server_client):</strong> 
+    """ 
+    Ensure we cannot set the brightness level for an invalid LED id 
+    """ 
+    patch_args_led_1 = {'brightness_level': 128} 
+    try: 
+        patch_response_led_1 = await http_server_client.fetch( 
+            '/leds/100',  
+            method='PATCH',  
+            body=json.dumps(patch_args_led_1)) 
+    except HTTPClientError as err: 
+        assert err.code == HTTPStatus.NOT_FOUND 
+ 
+ 
+<strong>async def </strong><br/><strong>test_get_brightness_level_invalid_led_id(http_server_client):</strong> 
+    """ 
+    Ensure we cannot get the brightness level for an invalid LED id 
+    """ 
+    try: 
+        patch_response_led_1 = await http_server_client.fetch( 
+            '/leds/100',  
+            method='GET') 
+    except HTTPClientError as err: 
+        assert err.code == HTTPStatus.NOT_FOUND</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mceNonEditable"/>
+<p class="mceNonEditable"/>
+<p>The previous code added the following three test functions, whose names start with the <kbd>test_</kbd> prefix and receive the <kbd>http_server_client</kbd> argument to use this test fixture:</p>
+<ul>
+<li><kbd>test_set_invalid_brightness_level</kbd>: This test function makes sure that we cannot set an invalid brightness level for an LED through an HTTP <kbd>PATCH</kbd> request. In this method, many <kbd>try...except</kbd> blocks capture an <kbd>HTTPClientError</kbd> exception as <kbd>err</kbd> and use <kbd>assert</kbd> to make sure the <kbd>err.code</kbd> attribute matches <kbd>HTTPStatus.BAD_REQUEST</kbd>. This way, the test makes sure that each HTTP <kbd>PATCH</kbd> request generates an HTTP <kbd>400 Bad Request</kbd> status code.</li>
+<li><kbd>test_set_brightness_level_invalid_led_id</kbd>: This test function makes sure that we cannot set the brightness level for an invalid LED <kbd>id</kbd> through an HTTP <kbd>PATCH</kbd> request.</li>
+<li><kbd>test_get_brightness_level_invalid_led_id</kbd>: This test function makes sure that we cannot get the brightness level for an invalid LED <kbd>id</kbd> through an HTTP <kbd>GET</kbd> request.</li>
+</ul>
+<p>In the last two methods, a <kbd>try...except</kbd> block captures an <kbd>HTTPClientError</kbd> exception as <kbd>err</kbd>. The <kbd>except</kbd> block uses <kbd>assert</kbd> to make sure the <kbd>err.code</kbd> attribute matches <kbd>HTTPStatus.NOT_FOUND</kbd>. This way, the test makes sure that the HTTP <kbd>PATCH</kbd> and HTTP <kbd>GET</kbd> requests to generate an HTTP <kbd>404 Not Found</kbd> status code.</p>
+<div class="packt_tip">When an HTTP request is unsuccessful, the <kbd>http_server_client.fetch</kbd> method raises a <kbd>tornado.httpclient.HTTPClientError</kbd> exception and the status code is available in the <kbd>code</kbd> attribute for the instance.</div>
+<p>Stay in the <kbd>tests.py</kbd> file in the root folder for the virtual environment (<kbd>Tornado01</kbd>). Insert the following lines after the last line. The code file for the sample is included in the <kbd>restful_python_2_11_03</kbd> folder, in the <kbd>Django01/tests.py</kbd> file:</p>
+<pre><strong>async def test_set_invalid_motor_speed(http_server_client):</strong> 
+    """ 
+    Ensure we cannot set an invalid motor speed for the hexacopter 
+    """ 
+    patch_args_hexacopter_1 = {'motor_speed': 89000} 
+    try: 
+        patch_response_hexacopter_1 = await http_server_client.fetch( 
+            '/hexacopters/1',  
+            method='PATCH',  
+            body=json.dumps(patch_args_hexacopter_1)) 
+    except HTTPClientError as err: 
+        assert err.code == HTTPStatus.BAD_REQUEST 
+    patch_args_hexacopter_2 = {'motor_speed': -78600} 
+    try: 
+        patch_response_hexacopter_2 = await http_server_client.fetch( 
+            '/hexacopters/1',  
+            method='PATCH',  
+            body=json.dumps(patch_args_hexacopter_2)) 
+    except HTTPClientError as err: 
+        assert err.code == HTTPStatus.BAD_REQUEST 
+    patch_args_hexacopter_3 = {'motor_speed': 8900} 
+    try: 
+        patch_response_hexacopter_3 = await http_server_client.fetch( 
+            '/hexacopters/1',  
+            method='PATCH',  
+            body=json.dumps(patch_args_hexacopter_3)) 
+    except HTTPClientError as err: 
+        assert err.code == HTTPStatus.BAD_REQUEST 
+ 
+ 
+<strong>async def test_set_motor_speed_invalid_hexacopter_id(http_server_client):</strong> 
+    """ 
+    Ensure we cannot set the motor speed for an invalid hexacopter id 
+    """ 
+    patch_args_hexacopter_1 = {'motor_speed': 128} 
+    try: 
+        patch_response_hexacopter_1 = await http_server_client.fetch( 
+            '/hexacopters/100',  
+            method='PATCH',  
+            body=json.dumps(patch_args_hexacopter_1)) 
+    except HTTPClientError as err: 
+        assert err.code == HTTPStatus.NOT_FOUND 
+ 
+ 
+<strong>async def test_get_motor_speed_invalid_hexacopter_id(http_server_client):</strong> 
+    """ 
+    Ensure we cannot get the motor speed for an invalid hexacopter id 
+    """ 
+    try: 
+        patch_response_hexacopter_1 = await http_server_client.fetch( 
+            '/hexacopters/5',  
+            method='GET') 
+    except HTTPClientError as err: 
+        assert err.code == HTTPStatus.NOT_FOUND 
+ 
+ 
+<strong>async def test_get_altimeter_altitude_invalid_altimeter_id(http_server_clie<br/>nt):</strong> 
+    """ 
+    Ensure we cannot get the altimeter's altitude for an invalid altimeter id 
+    """ 
+    try: 
+        get_response = await http_server_client.fetch( 
+            '/altimeters/5', 
+            method='GET') 
+    except HTTPClientError as err: 
+        assert err.code == HTTPStatus.NOT_FOUND         </pre>
+<p>The previous code added the following four test functions, whose names start with the <kbd>test_</kbd> prefix and receive the <kbd>http_server_client</kbd> argument to use this test fixture:</p>
+<ul>
+<li><kbd>test_set_invalid_brightness_level</kbd>: This test function makes sure that we cannot set an invalid brightness level for the LED through an HTTP <kbd>PATCH</kbd> request</li>
+<li><kbd>test_set_motor_speed_invalid_hexacopter_id</kbd>: This test function makes sure that we cannot set the motor speed for an invalid hexacopter <kbd>id</kbd> through an HTTP <kbd>PATCH</kbd> request</li>
+<li><kbd>test_get_motor_speed_invalid_hexacopter_id</kbd>: This test function makes sure that we cannot get the motor speed for an invalid hexacopter <kbd>id</kbd></li>
+<li><kbd>test_get_altimeter_altitude_invalid_altimeter_id</kbd>: This test function makes sure that we cannot get the altitude value for an invalid altimeter <kbd>id</kbd></li>
+</ul>
+<p>We coded many additional tests that will make sure that all the validations work as expected. Now, we will use the <kbd>pytest</kbd> command again to run the tests and measure their code coverage. Make sure you run the command in the Terminal or Command Prompt window in which you have activated the virtual environment, and that you are located within its root folder (<kbd>Tornado01</kbd>). Run the following command:</p>
+<pre>    <strong>pytest --cov -v</strong></pre>
+<p>The following lines show the sample output:</p>
+<pre><strong>================================================ test session starts =================================================</strong>
+<strong>platform darwin -- Python 3.7.1, pytest-4.0.2, py-1.7.0, pluggy-0.8.0 -- /Users/gaston/HillarPythonREST2/Tornado01/bin/python3</strong>
+<strong>cachedir: .pytest_cache</strong>
+<strong>rootdir: /Users/gaston/HillarPythonREST2/Tornado01, inifile: <br/>setup.cfg</strong>
+<strong>plugins: tornasync-0.5.0, cov-2.6.0</strong>
+<strong>collected 11 items                                                                                                   </strong>
+    
+<strong>tests.py::test_set_and_get_leds_brightness_levels PASSED                                                       [  9%]</strong>
+<strong>tests.py::test_set_and_get_hexacopter_motor_speed PASSED                                                       [ 18%]</strong>
+<strong>tests.py::test_get_altimeter_altitude_in_feet PASSED                                                           [ 27%]</strong>
+<strong>tests.py::test_get_altimeter_altitude_in_meters PASSED                                                         [ 36%]</strong>
+<strong>tests.py::test_set_invalid_brightness_level PASSED                                                             [ 45%]</strong>
+<strong>tests.py::test_set_brightness_level_invalid_led_id PASSED                                                      [ 54%]</strong>
+<strong>tests.py::test_get_brightness_level_invalid_led_id PASSED                                                      [ 63%]</strong>
+<strong>tests.py::test_set_invalid_motor_speed PASSED                                                                  [ 72%]</strong>
+<strong>tests.py::test_set_motor_speed_invalid_hexacopter_id PASSED                                                    [ 81%]</strong>
+<strong>tests.py::test_get_motor_speed_invalid_hexacopter_id PASSED                                                    [ 90%]</strong>
+<strong>tests.py::test_get_altimeter_altitude_invalid_altimeter_id PASSED                                              [100%]</strong>
+    
+<strong>------------ coverage: platform darwin, python 3.7.1-final-0 -----------</strong>
+    <strong>Name                     Stmts   Miss Branch BrPart  Cover</strong>
+    <strong>----------------------------------------------------------</strong>
+    <strong>async_drone_service.py     142     17     20      2    87%</strong>
+    <strong>drone.py                    63      8     10      3    85%</strong>
+    <strong>----------------------------------------------------------</strong>
+    <strong>TOTAL                      205     25     30      5    86%</strong>
+  </pre>
+<p>The output provided details indicating that the test runner executed <kbd>11</kbd> tests and all of them passed. The test code coverage measurement report provided by the <kbd>coverage</kbd> package increased the <kbd>Cover</kbd> percentage of the <kbd>async_drone_service.py</kbd> module from 69% to 87%. In addition, the <kbd>Cover</kbd> percentage of the <kbd>drone.py</kbd> module increased from 79% in the previous run to 85%. The new tests we wrote executed additional code in different modules, and therefore there is an important impact in the coverage report. The total coverage increased from 72% to 86%.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Understanding strategies for deploying Tornado APIs to the cloud</h1>
+                </header>
+            
+            <article>
+                
+<p>Tornado supplies its own HTTP server, and therefore it can run without a WSGI container. However, some cloud providers, such as Google App Engine, only enable the running of Tornado in a WSGI-only environment. When Tornado runs in a WSGI-only environment, it doesn't support asynchronous operations. Hence, we must take into account this important limitation when selecting our cloud platform for Tornado.</p>
+
+
+
+<p>We must make sure that the API runs under HTTPS in production environments. In addition, we have to make sure we add some authentication and throttling policies. Our Tornado sample is a simple RESTful API that provides some features we can use as a baseline to generate a more ...</p></article></section></div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Test your knowledge</h1>
+                </header>
+            
+            <article>
+                
+<p>Let's see whether you can answer the following questions correctly:</p>
+<ol>
+<li><kbd>Future</kbd> does which of the following?
+<ol>
+<li>Encapsulates the asynchronous execution of a callable</li>
+<li>Encapsulates the synchronous execution of a callable</li>
+<li>Runs an asynchronous method synchronously on the executor specified as an argument</li>
+</ol>
+</li>
+</ol>
+<ol start="2">
+<li>The <kbd>concurrent.futures.ThreadPoolExecutor</kbd> class provides us with which of the following?
+<ol>
+<li>A high-level interface for synchronously executing callables</li>
+<li>A high-level interface for asynchronously executing callables</li>
+<li>A high-level interface for composing HTTP requests</li>
+</ol>
+</li>
+</ol>
+<ol start="3">
+<li>The <kbd>@tornado.concurrent.run_on_executor</kbd> decorator allows us to do which of the following?
+<ol>
+<li>Run an asynchronous method synchronously on an executor</li>
+<li>Run an asynchronous method on an executor without generating <kbd>Future</kbd></li>
+<li>Run a synchronous method asynchronously on an executor</li>
+</ol>
+</li>
+</ol>
+<ol start="4">
+<li>The recommended way to write asynchronous code in Tornado is to use which of the following?
+<ol>
+<li>Coroutines</li>
+<li>Chained callbacks</li>
+<li>Subroutines</li>
+</ol>
+</li>
+</ol>
+<ol start="5">
+<li>Which of the following fixtures, defined by the <kbd>pytest-tornasync pytest</kbd> plugin, provide an asynchronous HTTP client for tests?
+<ol>
+<li><kbd>tornado_client</kbd></li>
+<li><kbd>http_client</kbd></li>
+<li><kbd>http_server_client</kbd></li>
+</ol>
+</li>
+</ol>
+<ol start="6">
+<li>If we want to convert the bytes in a JSON response body into a Python dictionary, we can use which of the following functions?
+<ol>
+<li><kbd>tornado.escape.json_decode</kbd></li>
+<li><kbd>tornado.escape.byte_decode</kbd></li>
+<li><kbd>tornado.escape.response_body_decode</kbd></li>
+</ol>
+</li>
+</ol>
+<p> </p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Summary</h1>
+                </header>
+            
+            <article>
+                
+<p>In this chapter, we understood the difference between synchronous and asynchronous execution. We created a new version of the RESTful API that takes advantage of the non-blocking features in Tornado, combined with an asynchronous execution. We improved the scalability of our existing API and made it possible to start executing other requests while waiting for slow I/O operations with sensors and actuators. We avoided splitting our methods into multiple methods with callbacks by using the <kbd>tornado.gen</kbd> generator-based interface that Tornado provides, to make it easier to work in an asynchronous environment.</p>
+<p>Then, we set up a testing environment. We installed <kbd>pytest</kbd>, along with many plugins, to make it easy to discover and execute unit ...</p></article></section></div>
+
+
+
+  </body></html>

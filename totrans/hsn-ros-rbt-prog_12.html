@@ -1,0 +1,611 @@
+<html><head></head><body>
+        <section>
+
+                            <header>
+                    <h1 class="header-title">SLAM for Robot Navigation</h1>
+                </header>
+            
+            <article>
+                
+<p>In this chapter, you will deep dive into robot navigation, a ubiquitous task in robotics engineering. Typical use cases include self-driving cars and transporting materials in a factory. You will find that the map we generated previously by applying <strong>SLAM (<span>Simultaneous localization and mapping)</span></strong> is used for path planning along the way. Given an initial pose, the robot will travel along the optimal path and should be capable of reacting to dynamic events, that is, it should be able to avoid the obstacles (static or dynamic) that appeared after the map was built.</p>
+<p>This chapter is a natural extension of the previous one. In the previous chapter, you gained a practical understanding of SLAM and navigation, and you did that inside the Gazebo simulator using a virtual model of GoPiGo3. Now, you are ready to complete the exercise again with a physical robot. By doing so, you will discover how many details and practical questions arise when you complete a robotic task in a real environment. Simulation is a good start, but the real proof that your robot performs as expected is by executing the task in an actual scenario.</p>
+<p>In this chapter, we will be covering the following topics:</p>
+<ul>
+<li>Preparing <span><strong>Laser Distance Sensor</strong> (</span><strong>LDS</strong><span>)</span> for your robot</li>
+<li>Creating a navigation application in ROS, including explanations about common algorithms that are used in navigation</li>
+<li><span>Practicing navigation with GoPiGo3</span></li>
+</ul>
+<p>The main sensor for the navigation task will be the <span>low-cost</span><span> </span>LDS by EAI model YDLIDAR X4 (<a href="https://es.aliexpress.com/item/32908156152.html">https://www.aliexpress.com/item/32908156152.html</a>), which we've simulated already within Gazebo. We will dedicate a large portion of this chapter to learning how to set up the LDS, understand how it works, and what practical information it provides to the robot.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Technical requirements</h1>
+                </header>
+            
+            <article>
+                
+<p>In this chapter, we will make use of the code located in the <kbd>Chapter9_GoPiGo_SLAM</kbd> folder (<a href="https://github.com/PacktPublishing/Hands-On-ROS-for-Robotics-Programming/tree/master/Chapter9_GoPiGo3_SLAM">https://github.com/PacktPublishing/Hands-On-ROS-for-Robotics-Programming/tree/master/Chapter9_GoPiGo_SLAM</a>). Copy its files to the ROS workspace so that they're available and leave the rest outside the <kbd>src</kbd> folder. This way, you will have a cleaner ROS environment:</p>
+<pre><strong>$ cp -R ~/Hands-On-ROS-for-Robotics-Programming/Chapter9_GoPiGo_SLAM ~/catkin_ws/src/</strong></pre>
+<p><span>The code in the aforementioned folder contains two new ROS packages, each one located within a folder that has the same name:</span></p>
+<ul>
+<li><kbd>ydlidar</kbd>, the officially supported ROS package for the selected LDS.</li>
+<li><kbd>gopigo3_navigation</kbd>, the top-level<span> package for performing navigation with GoPiGo3.</span></li>
+</ul>
+<p>You will use both on the laptop environment, but in the robot <span>–</span> that is, the Raspberry Pi <span>– </span>you will only need <kbd>ydlidar</kbd> since the computationally expensive task of navigation is recommended to be run on the laptop. This way, GoPiGo3 will receive the drive command through the familiar <kbd>cmd_vel</kbd> topic and publish a 360° range scan from the LDS through the <kbd>/scan</kbd> topic.</p>
+<p>As usual, you need to rebuild the workspace separately, both for the robot and the laptop:</p>
+<pre><strong>$ cd ~/catkin_ws</strong><br/><strong>$ catkin_make</strong></pre>
+<p>Check that the packages have been installed correctly by selecting them and listing the files:</p>
+<pre><strong>$ rospack list | grep gopigo3</strong><br/><strong>$ rospack list | grep ydlidar</strong></pre>
+<p>Next, we have to point the ROS master to the robot.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Setting the ROS master to be in the robot</h1>
+                </header>
+            
+            <article>
+                
+<p>Since you'll be working with the physical robot once more, you need to reconfigure the ROS master URI so that it points to GoPiGo3. So that your laptop reflects such a configuration, open your local<span> </span><kbd>.bashrc</kbd> file and uncomment the line at the end that specifies what URL to point to in order to find the ROS master:</p>
+<pre><strong>$ nano ~./bashrc</strong><br/><strong>   ...</strong><br/><strong>   export ROS_HOSTNAME=rosbot.local</strong><br/><strong>   export ROS_MASTER_URI=http://gopigo3.local:11311</strong></pre>
+<p>Close any open Terminals, open a new one, and check the <kbd>ROS_MASTER_URI</kbd><span> </span>variable:</p>
+<pre><strong>$ echo $ROS_MASTER_URI</strong><br/><strong>    http://gopigo3.local:11311</strong></pre>
+<p>You should find that the environment variable has reverted to the default server (localhost) and default port (<kbd>11311</kbd>). Now, we are ready to switch to the virtual robot. If, for some reason, <kbd>gopigo3.local</kbd> does not resolve the robot IP, set up its IPv4 address directly. You can get it from the robot OS like so:</p>
+<pre><strong>$ ip addr # or 'ifconfig' instead</strong><br/><strong>    192.168.1.51</strong></pre>
+<p>Then, in the <kbd>.bashrc</kbd> file, modify the following line accordingly:</p>
+<pre><strong>export ROS_MASTER_URI=http://192.168.1.51:11311</strong></pre>
+<p>Close the Terminal on your laptop and open a new one so that the configuration takes effect. Then, check for the following:</p>
+<pre><strong>$ echo $ROS_MASTER_URI</strong><br/><strong>   http://192.168.1.51:11311</strong></pre>
+<p>Now, we can get familiar with our new sensor.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Preparing an LDS for your robot</h1>
+                </header>
+            
+            <article>
+                
+<p>Before you begin, you should take some time to review all the documentation provided by the manufacturer EAI. You can find all the resources at <a href="http://www.ydlidar.com/download">http://www.ydlidar.com/download</a>. Pay special attention to the following items:</p>
+<ul>
+<li>The YDLIDAR X4 user manual, to get familiar with the hardware and install it safely with your robot.</li>
+<li>The YDLIDAR X4 ROS manual, located within the compressed <kbd>ROS.zip</kbd> file. The <kbd>ros</kbd> folder inside corresponds to the ROS package, but you should clone it from GitHub to make sure you get the latest version and stay updated. Follow the instructions at <a href="https://github.com/EAIBOT/ydlidar">https://github.com/EAIBOT/ydlidar</a> to get the most recent version of the code.</li>
+</ul>
+<div class="packt_infobox">EAI has removed<strong> CAD<span> (</span></strong>short for <strong><span>Computer-Aided Design)</span></strong> models from the download page.</div>
+<ul>
+<li>The YDLIDAR X4 development manual, <span>which describes the communication protocol so that you can build your own driver to control the device.</span></li>
+</ul>
+<p>Now, you are ready to get started with the hardware.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Setting up YDLIDAR</h1>
+                </header>
+            
+            <article>
+                
+<p>Follow the instructions provided in the user manual to physically connect the device to your laptop or to the robot. The following screenshot shows what it looks like once the sensor itself has been wired to the control board via the set of five colored cables:</p>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/24067c30-5a0b-49fa-8260-a9c9115d8499.png" style="width:29.33em;height:21.83em;"/></p>
+<p>Although the software instructions are also provided in the manual, we will list all the steps here since they refer to the core integration with ROS. First, we will integrate with the laptop, and then with the Raspberry Pi of the robot.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Integrating with the remote PC</h1>
+                </header>
+            
+            <article>
+                
+<div>
+<p>As with any other hardware we integrate with ROS, we follow the standard procedure of cloning the package supplied by the manufacturer and building it with our workspace:</p>
+</div>
+<pre><strong>$ cd catkin_ws/src</strong><br/><strong>$ git clone https://github.com/EAIBOT/ydlidar</strong><br/><strong>$ cd ..</strong><br/><strong>$ catkin_make</strong></pre>
+<div>
+<p>By running <kbd>catkin_make</kbd>, the <kbd><span>ydlidar_client</span></kbd> and  <kbd><span><span>ydlidar_node</span></span></kbd> <span><span>nodes will be available.</span></span></p>
+<div class="packt_infobox"><span>This code is also bundled with the rest of the YDLIDAR models at <a href="https://github.com/YDLIDAR/ydlidar_ros">https://github.com/YDLIDAR/ydlidar_ros</a>. For a specific model, you just have to select the corresponding branch, X4. In our case, this is <kbd>git clone https://github.com/YDLIDAR/ydlidar_ros -b X4 --single-branch</kbd>.</span></div>
+<p><span>After connecting X4 to a USB port of the laptop, change the permissions in order to access the new LDS:</span></p>
+<pre><strong><span>$ sudo chown ubuntu:dialout /dev/ttyUSB0</span></strong></pre>
+<p><span>The preceding command assumes that your user is <kbd>ubuntu</kbd>. If it isn't, replace it with your actual user. Then, initiate the device:</span></p>
+<pre><strong><span>$ roscd ydlidar/startup<br/></span><span>$ sudo chmod 777 ./*<br/></span><span>$ sudo sh initenv.sh</span></strong></pre>
+<p><span>This script creates a symbolic link to the</span> <kbd><span>/dev/ydlidar--&gt; /dev/ttyUSB0</span></kbd><span> device. The next step is to run a test inside ROS to check everything works as expected.</span></p>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Running the YDLIDAR ROS package</h1>
+                </header>
+            
+            <article>
+                
+<p><span>Now, we are going to launch the laser scan node and visualize the results with a console client, before doing the same with RViz. </span></p>
+<div><span>Follow these steps to do so:</span></div>
+<ol>
+<li>Launch the YDLIDAR node with the following command:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>T1 $ roslaunch ydlidar lidar.launch<span><br/></span></strong></pre>
+<div class="packt_infobox"><span>For this part of this chapter, you sho</span>uld temporarily point the ROS master to the laptop, n<span>ot the robot. Remember that you can do this for single Terminals by specifying </span><kbd><span>$ </span><span>export ROS_MASTER_URI=http://localhost:11311</span></kbd><span> in each. Once you close any of these, the temporal definition will be thrown away.</span></div>
+<ol start="2">
+<li>From another Terminal, list the <span><span>scan data using a client node:</span></span></li>
+</ol>
+<pre style="padding-left: 60px"><strong><span>T2 $ rosrun ydlidar ydlidar_client</span></strong></pre>
+<p style="padding-left: 90px"><span><span>You should see the YDLIDAR node's scan result in the console, as well as </span></span><span>the ROS graph (obtained by running <kbd>rqt_graph</kbd> in a separate Terminal, </span><kbd>T3</kbd><span>):</span></p>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/0d7ecd57-76e2-4e01-9739-feaa02a10687.png" style="width:24.42em;height:7.33em;"/></p>
+<p style="padding-left: 90px">Note that <kbd>base_link_to_laser4</kbd> provides the coordinate frame transformation in the <kbd>/tf</kbd> topic, while <kbd>ydlidar_node</kbd> provides the sensor data feed in the <kbd>/scan</kbd> topic, which is visualized in the Terminal thanks to the <kbd>ydlidar_client</kbd> node.</p>
+<ol start="3">
+<li>Finally, launch RViz to see the distribution of red points at the positions where obstacles were found:</li>
+</ol>
+<pre style="padding-left: 60px"><strong><span>T3 $ roslaunch ydlidar display_scan.launch</span></strong></pre>
+<p>Now, we will repeat this exercise with the LDS<span> </span>connected to the robot.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Integrating with Raspberry Pi</h1>
+                </header>
+            
+            <article>
+                
+<p>We will repeat the process we described in the preceding section, <em>Setting up YDLIDAR</em>, in order to connect the LDS to the Raspberry Pi. After <span>attaching the sensor to a USB port of the Raspberry Pi</span>, open a Terminal in the robot and follow these steps:</p>
+<ol>
+<li><span>Clone the repository and rebuild the workspace:</span></li>
+</ol>
+<pre style="padding-left: 60px"><strong>$ cd catkin_ws/src</strong><br/><strong>$ git clone https://github.com/EAIBOT/ydlidar</strong><br/><strong>$ cd ..</strong><br/><strong>$ catkin_make</strong></pre>
+<ol start="2">
+<li>When you've connected YDLIDAR to a USB port, check that the connection has been establish<span>ed properly:</span></li>
+</ol>
+<pre style="padding-left: 60px"><strong>$ ls -la /dev | grep USB</strong><br/><strong>    crw-rw----  1 root dialout 188,   0 ene 28  2018 ttyUSB0</strong></pre>
+<div>
+<ol start="3">
+<li><span>T</span>hen, change the permissions so that your normal user, <kbd>pi</kbd>, has access to the new device:</li>
+</ol>
+<pre style="padding-left: 60px"><strong><span>$ sudo chown pi:dialout /dev/ttyUSB0</span></strong></pre>
+<ol start="4">
+<li><span>No</span>w, initiate the device:</li>
+</ol>
+<pre style="padding-left: 60px"><strong><span>$ roscd ydlidar/startup<br/></span><span>$ sudo chmod 777 ./*<br/></span><span>$ sudo sh initenv.sh</span></strong></pre>
+<p style="padding-left: 60px"><span>This script creates a symbolic link to the</span> <kbd><span>/dev/ydlidar--&gt; /dev/ttyUSB0</span></kbd> device. If this is not the case, you can do this by hand, like so:</p>
+<pre style="padding-left: 60px"><strong>$ cd /dev</strong><br/><strong>$ sudo ln -s ttyUSB0 ydlidar</strong></pre></div>
+<p>This way, you make sure that the <span><kbd>ydlidar_node</kbd> node </span>finds the device.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Checking that YDLIDAR works with GoPiGo3</h1>
+                </header>
+            
+            <article>
+                
+<p>Just like we did with the laptop, use the <span><kbd>ydlidar_client</kbd> script to check that you have received data from the sensor:</span></p>
+<pre><strong><span>r1 $ roslaunch ydlidar lidar.launch<br/></span><span>r2 $ rosrun ydlidar ydlidar_client</span></strong></pre>
+<p><span>The lette</span>r <kbd>r</kbd> in the preceding code snippet stands for the Terminals in the Raspberry Pi. If you receive data in <kbd>r2</kbd>, then this <span>will be proof that the sensor is sending its readings to ROS.</span></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Visualizing scan data in the Raspberry Pi desktop</h1>
+                </header>
+            
+            <article>
+                
+<p>Now, let's check the RViz visualization in the Raspberry Pi, just like we did for the laptop. For this, you need to use <strong>VNC (Virtual Network Computing)</strong>, as we explained in <a href="0b20bdff-f1dc-42e8-ae83-fc290da31381.xhtml" target="_blank">Chapter 6</a>, <em>Programming in ROS <span>–</span> Commands and Tools</em>, in the <em>Setting up the physical robot</em> section. Set up a VNC server (<kbd>x11vnc</kbd>). Once connected from the remote laptop, launch the following four Terminals in the Raspberry Pi desktop:</p>
+<pre><strong><span>r1 $ roslaunch ydlidar lidar_view.launch<br/>r2 $ roslaunch mygopigo gopigo3.launch<br/>r3 $ rosrun key_teleop key_teleop.py /key_vel:=/cmd_vel<br/>r4 $ rqt_graph</span></strong></pre>
+<p>This is the whole screen:</p>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/44cabf11-2872-45b7-991d-47c7d85181e6.png" style="width:45.83em;height:26.92em;"/></p>
+<p>The laser scan view in RViz (top-right window in the preceding screenshot) is provided by <span><kbd>lidar_view.launch</kbd>. T</span>he ROS graph (<span>bottom-right window) shows that the <kbd>key_teleop</kbd> node allows you to teleoperate the robot with the arrow keys by publishing messages in the <kbd>/cmd_vel</kbd> topic:</span></p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1409 image-border" src="assets/4c3c1b3a-1548-472d-8e2b-e9235f9533e7.png" style="width:37.00em;height:6.92em;"/></p>
+<p class="CDPAlignLeft CDPAlign"><span>Let's take a look at what the RViz window is showing:</span></p>
+<div>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/bd42aa49-815b-402b-8637-8418a7cb70c1.png" style="text-align: center;font-size: 1em;width:37.42em;height:22.17em;"/></p>
+</div>
+<p>The arrow marked as <strong>GoPiGo3</strong> shows the location of the robot in a corner of the room. The external straight red lines stand for the walls, while the arrow pointing to <strong>me</strong> shows the contour of myself as I am leaving the room through the access door (the free space <span>–</span> no red points <span>–</span> in front of me).</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Grouping launch files</h1>
+                </header>
+            
+            <article>
+                
+<p><span>For efficiency, we should offload the Raspberry Pi from visualization tasks and move them to the remote laptop. In order to so, we need to rework the launch files so that </span><span>GoPiGo3 strictly runs the code that's necessary for the robot to work, that is, the </span><span><kbd>gopigo3_driver.py</kbd> part of the <kbd>mygopipo</kbd> package we described in <a href="0b20bdff-f1dc-42e8-ae83-fc290da31381.xhtml" target="_blank">Chapter 6</a>, <em>Programming in ROS – Commands and Tools</em>, plus the <kbd>lidar.launch</kbd> part of the <kbd>ydlidar</kbd> package. These two components can be launched with the following commands:</span></p>
+<pre><strong><span>r1 $ roslaunch mygopigo gopigo3.launch<br/></span>r2 $ roslaunch ydlidar <span>ydlidar</span>.launch</strong></pre>
+<p><span>The launch files i</span>n <kbd>r1</kbd> and <kbd>r2</kbd> can be gr<span>ouped into one, like so. We will call this script <kbd>gopigo3_ydlidar.launch</kbd>:</span></p>
+<pre><span>&lt;launch&gt;<br/>  &lt;include </span><span>file="$(find mygopigo)/launch/</span><span>gopigo3.launch" /&gt;<br/>  </span>&lt;<span>node</span><span> </span><span>name</span><span>=</span><span>"ydlidar_node"</span><span> </span><span>pkg</span><span>=</span><span>"ydlidar"</span><span> </span><span>type</span><span>=</span><span>"ydlidar_node"</span><span> </span><span>output</span><span>=</span><span>"screen"</span><span> </span><span>respawn</span><span>=</span><span>"false"</span><span> </span><span>&gt;<br/></span><span>     &lt;</span><span>param</span><span> </span><span>name</span><span>=</span><span>"port"</span><span> </span><span>type</span><span>=</span><span>"string"</span><span> </span><span>value</span><span>=</span><span>"/dev/ydlidar"</span><span>/&gt;<br/></span><span>     &lt;</span><span>param</span><span> </span><span>name</span><span>=</span><span>"baudrate"</span><span> </span><span>type</span><span>=</span><span>"int"</span><span> </span><span>value</span><span>=</span><span>"115200"</span><span>/&gt;<br/>     </span><span>&lt;</span><span>param</span><span> </span><span>name</span><span>=</span><span>"frame_id"</span><span> </span><span>type</span><span>=</span><span>"string"</span><span> </span><span>value</span><span>=</span><span>"laser_frame"</span><span>/&gt;<br/>      ...<br/>     &lt;param name="angle_min" type="double" value="-180" /&gt;<br/>     &lt;param name="angle_max" type="double" value="180" /&gt;<br/>     &lt;param name="range_min" type="double" value="0.1" /&gt;<br/>     &lt;param name="range_max" type="double" value="16.0" /&gt;<br/>  &lt;/node&gt;<br/>  &lt;node pkg="tf" type="static_transform_publisher" name="base_link_to_laser4"<br/>   args="0.2245 0.0 0.2 0.0 0.0 0.0 /base_footprint /laser_frame 40" /&gt;<br/>&lt;/launch&gt;</span><span><br/></span></pre>
+<p>Thanks to this grouping, all the code of GoPiGo3 can be run with the following command:</p>
+<div>
+<pre><strong>r1 $ roslaunch ydlidar gopigo3_ydlidar.launch</strong></pre></div>
+<p>This launches the <kbd>ydlidar</kbd> and <kbd>gopigo3</kbd><span> </span>nodes, which provide a software interface so that we can talk to the robot sensors and actuators. This also creates the following ROS graph:</p>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/30a81460-081c-4b52-b632-fda7b362a4b6.png" style="width:12.58em;height:11.25em;"/></p>
+<p>Next, to listen for the scan data, you need to execute the YDLIDAR client in the robot:</p>
+<div>
+<pre><strong>r2 $ rosrun ydlidar ydlidar_client</strong></pre></div>
+<p>This results in the following output:</p>
+<pre><strong>[YDLIDAR INFO]: I heard a laser scan laser_frame[720]:</strong><br/><strong>[YDLIDAR INFO]: angle_range : [-180.000005, 180.000005]</strong><br/><strong>[YDLIDAR INFO]: angle-distance : [-4.500002, 0.000000, 351]</strong><br/><strong>[YDLIDAR INFO]: angle-distance : [-4.000005, 0.750000, 352]</strong><br/><strong>[YDLIDAR INFO]: angle-distance : [-3.500007, 0.765000, 353]</strong><br/><strong>[YDLIDAR INFO]: angle-distance : [-3.000010, 0.782000, 354]</strong><br/><strong>[YDLIDAR INFO]: angle-distance : [-2.500013, 0.000000, 355]</strong><br/><strong>[YDLIDAR INFO]: angle-distance : [-2.000002, 0.799000, 356]</strong><br/><strong>[YDLIDAR INFO]: angle-distance : [-1.500005, 0.816000, 357]</strong><br/><strong>[YDLIDAR INFO]: angle-distance : [-1.000008, 0.834000, 358]</strong><br/><strong>[YDLIDAR INFO]: angle-distance : [-0.500011, 0.000000, 359]</strong><br/><strong>[YDLIDAR INFO]: angle-distance : [0.000000, 0.853000, 360]</strong></pre>
+<p>The ROS graph looks like this:</p>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/29e2c41b-4c9f-422e-9cd4-1a4423258768.png" style="width:26.08em;height:10.42em;"/></p>
+<div class="packt_tip">The <kbd>rqt_graph</kbd> command that throws the preceding graph can be executed either from the Raspberry Pi or a remote laptop. Since our goal is to offload the Raspberry Pi, you should run it from the laptop. In such cases, you won't need the desktop interface of the Raspberry Pi anymore.</div>
+<p>The preceding graph shows that<span> </span><kbd>ydlidar_node</kbd><span> </span>publishes laser scan data in the <kbd>/scan</kbd> topic, which it is read by the <kbd>ydlidar_client</kbd><span> node </span>and is printed in the Terminal where the node was launched from, that is, <kbd>r2</kbd>.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Visualizing scan data from the remote laptop</h1>
+                </header>
+            
+            <article>
+                
+<p>The final step is to get the RViz laser scan data on the desktop of the laptop. This is what we will accomplish in this section.</p>
+<div class="packt_infobox"><span>In the following par</span>agraphs, the letter <kbd>r</kbd> in the code snippets stands for the Terminals in the robot, while <kbd>T</kbd> <span>refers to the Terminals in the laptop.</span></div>
+<p>Follow these steps to build the ROS environment:</p>
+<ol>
+<li><span>First, launch the processes in the robot using the unified launch file that we built in the previous section:</span></li>
+</ol>
+<pre style="padding-left: 60px"><strong>r1 $ roslaunch ydlidar <span>gopigo3_ydlidar</span>.launch</strong></pre>
+<ol start="2">
+<li>From the laptop, find the content of the last message that was published in the <kbd>/scan</kbd> topic:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>T1 $ rostopic echo /scan -n1</strong><br/><strong>    header: </strong><br/><strong>    seq: 2118</strong><br/><strong>    stamp: </strong><br/><strong>      secs: 1570384635</strong><br/><strong>      nsecs: 691668000</strong><br/><strong>      frame_id: "laser_frame"</strong><br/><strong>    angle_min: -3.14159274101</strong><br/><strong>    angle_max: 3.14159274101</strong><br/><strong>    angle_increment: 0.00872664619237</strong><br/><strong>    time_increment: 154166.671875</strong><br/><strong>    scan_time: 111000000.0</strong><br/><strong>    range_min: 0.10000000149</strong><br/><strong>    range_max: 16.0</strong><br/><strong>    ranges: [array of 720 items]</strong><br/><strong>    intensities: [array of 720 items]</strong></pre>
+<ol start="3">
+<li>Ranges are provided in the <kbd>ranges</kbd> array field for 720 orientations, corresponding to an angle resolution of 0.5° for a 360° coverage. Then, find which message type it is:</li>
+</ol>
+<pre style="padding-left: 60px"><strong> $ rostopic info scan</strong><br/><strong> Type: sensor_msgs/LaserScan</strong></pre>
+<ol start="4">
+<li>Finally, inspect the message structure:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>T1 $ rosmsg info sensor_msgs/LaserScan</strong><br/><strong>    std_msgs/Header header</strong><br/><strong>    uint32 seq</strong><br/><strong>    time stamp</strong><br/><strong>    string frame_id</strong><br/><strong>    float32 angle_min</strong><br/><strong>    float32 angle_max</strong><br/><strong>    float32 angle_increment</strong><br/><strong>    float32 time_increment</strong><br/><strong>    float32 scan_time</strong><br/><strong>    float32 range_min</strong><br/><strong>    float32 range_max</strong><br/><strong>    float32[] ranges</strong><br/><strong>    float32[] intensities</strong></pre>
+<ol start="5">
+<li>Next, run the ROS <span>visualization </span>node in the laptop:</li>
+</ol>
+<pre style="padding-left: 60px"><span><strong>T1 $ roslaunch ydlidar display.launch</strong><br/><strong>T2 $ rosrun key_teleop key_teleop.py /key_vel:=/cmd_vel</strong><br/></span></pre>
+<p>The <kbd>T1</kbd> Terminal will launch the visualization in RViz, while <kbd>T2</kbd> will let you teleoperate the robot to check how its perception of the environment changes as it moves by modifying the ranges of the laser scan. The visualization provided by <kbd>display.launch</kbd> adds the URDF model of YDLIDAR to RViz. <span>The black circle in the following diagram represents the sensor:</span></p>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/73dd3803-f380-454d-8536-a2a93e6e1b7a.png" style="width:38.92em;height:33.25em;"/></p>
+<div class="packt_infobox">Be aware that since the URDF model only includes the sensor, it doesn't move like the physical GoPiGo3 robot moves. The scan data <span>– the </span>red points <span>– </span>will change according to the robot's motion, but the virtual sensor will remain in the initial position, which is not its actual location anymore (unless you stop <kbd>T1</kbd> and launch it again). Hence, at this point, it is more coherent that you use <kbd>display_scan.launch</kbd> (which does not include a URDF model, just the scan data), instead of <kbd>display.launch</kbd>. In the <em>Practising navigation with GoPiGo3</em> section, you will link the URDF models of GoPiGo3 and the LDS sensor so that RViz shows the motion of the robot.</div>
+<div>
+<p><span>In the</span> <em>Running the YDLIDAR ROS package</em> section, yo<span>u will run a distributed system, where the Raspberry Pi collects sensor data and the remote laptop provides a visualization of it.</span></p>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Processing YDLIDAR data from a remote laptop</h1>
+                </header>
+            
+            <article>
+                
+<p>Now, it's time to interpret the scan data. This can be accomplished with a simple snippet called <kbd>scan.py</kbd>, which is provided with the ROS package:</p>
+<div>
+<pre><span>#! /usr/bin/env python<br/></span><span>import</span><span> rospy<br/></span><span>from</span><span> sensor_msgs.msg </span><span>import</span><span> LaserScan<br/></span><span><br/>def</span><span> </span><strong><span>callback</span></strong><span>(</span><span>msg</span><span>):<br/></span><span> </span><span>print</span><span> </span><span>"\nNumber of points ="</span><span>, </span><span>len</span><span>(msg.ranges)<br/></span><span> </span><span>print</span><span> </span><span>"------------------"<br/></span><span> </span><span>print</span><span> </span><span>"Range (m) at 0 deg = "</span><span>, </span><span>round</span><span>(msg.ranges[</span><span>360</span><span>] , </span><span>1</span><span>)<br/></span><span> </span><span>print</span><span> </span><span>"Range (m) at 90 deg = "</span><span>, </span><span>round</span><span>(msg.ranges[</span><span>540</span><span>] , </span><span>1</span><span>)<br/></span><span> </span><span>print</span><span> </span><span>"Range (m) at 180 deg = "</span><span>, </span><span>round</span><span>(msg.ranges[</span><span>719</span><span>] , </span><span>1</span><span>)<br/></span><span> </span><span>print</span><span> </span><span>"Range (m) at -90 deg = "</span><span>, </span><span>round</span><span>(msg.ranges[</span><span>180</span><span>] , </span><span>1</span><span>), </span><span>" or 270 deg"<br/></span><span><br/></span><span>rospy.init_node(</span><span>'scan_values'</span><span>)<br/></span><span>sub </span><span>=</span><span> rospy.Subscriber(</span><span>'/scan'</span><span>, LaserScan, callback)<br/></span><span>rospy.spin()</span></pre></div>
+<p>Type the following command into a Terminal on a laptop to see it in action:</p>
+<pre><strong><span>T3 $ rosrun ydlidar scan.py</span></strong></pre>
+<p>The preceding code lists the detected range along the main axes, <em>X</em> and <em>Y</em>, on the screen. Keep the following photograph in mind <span>regarding the reference frame of the sensor</span>, which was extracted from the X4 documentation. The angle is measured clockwise, taking the <em>X</em> axis as its origin<span>. In the following photograph, you can see the LDS mounted on the GoPiGo3 and the <em>X</em> and <em>Y</em> axes directions drawn on top:</span></p>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/f21d8ec6-c80b-46e7-a667-be60c3ebd066.png" style="width:29.75em;height:38.42em;"/></p>
+<p>Going back to the screenshot in the <em>Visualizing data from the remote laptop </em>section, you can guess how the robot is oriented in the room. Take into account that the green axis corresponds to <em>X</em> and that the red lines corresponds to <em>Y</em>:</p>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/73c88c4e-7c9e-4689-8521-e4c74a1b5c73.png" style="width:35.17em;height:30.00em;"/></p>
+<p><span>The callback function ranges along the main axes (</span><em>+X (0°)</em>, <em>+Y (-90°)</em>, <em>-X (180°)</em>, <em>-Y (90)°</em><span>), where you can detect obstacle</span>s for the right (<em>+X</em>), front (<em>+Y</em>), left (<em>-X</em>), or back (<em>-Y</em>), respectivel<span>y. </span></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Creating a navigation application in ROS</h1>
+                </header>
+            
+            <article>
+                
+<p>An application that provides a robot with navigation capabilities has to take into account the following points:</p>
+<ul>
+<li><strong>Sensing</strong>: This provides us with the ability to acquire motion data so that the robot is able to estimate its position in real time. This kind of information is known as <strong>robot</strong> <strong>odometry</strong>. There are two main sources of sensor data: the encoders, which let us know the rotation of the robot wheels, and the IMU sensor, which provides acceleration and rotation information about the robot as a whole. Generally speaking, data from encoders is used the most, although it may be combined with IMU data to improve the accuracy of the pose estimation. This is an advanced topic called <strong>fusion sensor</strong>, which is out of the scope of this book.</li>
+</ul>
+<ul>
+<li><strong>Localization/pose estimation</strong>: As a result of odometry and the current map of the environment, the <strong>AMCL (Adaptive Monte Carlo localization)</strong> algorithm allows us to update the robot pose estimation in real time, as we introduced in the previous chapter.</li>
+<li><strong>Path planning</strong>: Given a target pose, such planning consists of creating a global optimum path of the whole map and a local path that covers a small area around the robot so that it is able to follow a precise path while avoiding obstacles. Local path planning is dynamic; that is, as the robot moves, the area around the robot changes accordingly.</li>
+<li><strong>Move/obstacle avoidance</strong>: As we previously, there is a global optimum path that is combined with a local path, and this happens for every position of the robot as it moves to the target location. This is like making a zoom window of the surroundings. Hence, the local path is calculated by taking the global path and the close obstacles into account (for example, a person crossing in front of the robot). Local path planning<span> is able to avoid such obstacles without losing the global path. This local zoom window is built using the real-time information provided by the LDS. </span></li>
+</ul>
+<p>As a result of the aforementioned points, the following data has to be available to ROS so that navigation is possible:</p>
+<ul>
+<li><strong>Odometry</strong>: It is published by the <kbd>gopigo3</kbd> node in the <kbd>/odom</kbd> topic.</li>
+<li><strong>Coordinate transformation</strong>: The position of the sensors in the robot frame of reference is published in the <kbd>/tf</kbd> topic. </li>
+<li><strong>Scan data</strong>: The distances from the robot to the obstacles around it are obtained from the LDS and made available in the <kbd>/scan</kbd> topic.</li>
+<li><strong>Map</strong>: The occupancy grid that's built when executing SLAM is saved to a <kbd>map.pgm</kbd> file, with the configuration in the <span><kbd>map.yml</kbd></span> file.</li>
+<li><strong>Target pose</strong>: This will be specified by the user in an RViz window once the ROS navigation's setup has been launched.</li>
+<li><strong>Velocity commands</strong>: This is the final output of the algorithm. Commands are published in the <kbd>/cmd_vel</kbd> topic that the <kbd>gopigo3</kbd> node is subscribed to. Then, the robot moves accordingly to follow the planned path.</li>
+</ul>
+<p class="mce-root">Given the preceding topics and concepts, the steps to create a navigation application in ROS are as follows:</p>
+<ol>
+<li>Build a map of the environment. Taking the data from the LDS, the robot will create a map of the environment based on the range of data coming from the sensor. It will use the SLAM technique we discussed in the previous chapter to do so. This process of building the map follows a practical sequence:
+<ul>
+<li>Start ROS in the physical robot, meaning that the necessary nodes will be exposing the topics where sensor data is published, as well as the topic that will receive motion commands. The set of rules to publish the motion commands as a function of the acquired sensor data conforms to what we will call the <strong>robot application logic</strong>.</li>
+<li>Establish the connection from the remote PC. If it's been configured properly, it should be automatic when launching ROS in the laptop. This topic was covered in the <em>Technical requirements</em> section at the beginning of this chapter.</li>
+<li>Launch the SLAM process from the laptop. This will allow ROS to acquire real-time range data from the LDS so that it can start building a map of the environment.</li>
+<li>Teleoperate the robot and check the zones that are mapped and the ones to be scanned in an RViz visualization. In this case, the robot application logic named in the first bullet is driven by you as a human, where you decide what motion GoPiGo3 has to perform at every instance. You may also automate teleoperation by letting the robot wander around randomly (remember the <em>Simulating the LDS</em> section of the previous chapter, where you let GoPiGo3 autonomously explore the environment while applying a set of rules to surround the obstacles it might encounter on its way). In this case, the robot application logic is implemented in a Python script and there is no human intervention.</li>
+</ul>
+</li>
+<li>Once the environment has been fully explored, you have to save the map so that it can be used in the next step for autonomous navigation.</li>
+</ol>
+<ol start="3">
+<li>Launch the navigation task by telling the robot the target location you want it to move to. <span>This process of autonomous navigation follows the following sequence:</span>
+<ul>
+<li>Start ROS in the physical robot. In this case, the robot application logic is part of the navigation task, which is intended to be performed autonomously by GoPiGo3, without any human intervention.</li>
+<li>Load the map of the environment that was created in the first part of the navigation application.</li>
+<li>Indicate a target pose to the robot, something you can directly perform on an RViz visualization, which shows the map of the environment.</li>
+<li>Let the robot navigate by itself to the target location, checking that it is able to plan an optimum path while avoiding the obstacles it may encounter.</li>
+</ul>
+</li>
+</ol>
+<p>We will illustrate this process with a real-world example in the next section.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Practicing navigation with GoPiGo3</h1>
+                </header>
+            
+            <article>
+                
+<p>In this section, we'll cover the steps that we followed in the <em>Practising SLAM and navigation with GoPiGo3</em> section of the previous chapter by substituting the virtual robot and the Gazebo simulator with the actual GoPiGo3 and the physical environment, respectively.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Building a map of the environment</h1>
+                </header>
+            
+            <article>
+                
+<p>First, let's consider a physical environment that's simple enough for our learning purposes. This can be seen in the following photograph:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1410 image-border" src="assets/d993b2ff-272a-45a0-ba4e-1b21bdc59ddd.jpg" style="width:46.25em;height:56.25em;"/></p>
+<p>Be aware that this almost-square space has three limiting sides and one step that cannot be detected by the laser sensor because it is below the floor level of the robot.</p>
+<p>Going to ROS, the first step consists of mapping the environment so that the robot can localize its surroundings and navigate around it. Follow these steps:</p>
+<ol>
+<li>Launch all the ROS nodes in the robot. From a remote Terminal connected to the Raspberry Pi, this means running the ROS launch files that control the drives and the LDS:</li>
+</ol>
+<div>
+<pre style="padding-left: 60px"><strong><span>r1 $ roslaunch ydlidar gopigo3_ydlidar.launch</span></strong></pre></div>
+<p style="padding-left: 60px">Recall the <em>Integrating with Raspberry Pi</em> section: grouping launch files is how we built a unique launch file to run the robot configuration in one shot. This ensures that GoPiGo3 is ready to interact with ROS in the laptop, where all the processing related to the map of the environment and the navigation command will be done.</p>
+<ol start="2">
+<li>Launch the SLAM mapping ROS package, whose launch file includes a RViz visualization that overimposes the virtual model of the robot with the actual scan data:</li>
+</ol>
+<div>
+<pre style="padding-left: 60px"><strong><span>T1 $ roslaunch gopigo3_navigation gopigo3_slam.launch</span></strong></pre></div>
+<ol start="3">
+<li>Teleoperate the robot to make it cover as much of the surface of the virtual environment as possible. We can do this as follows:</li>
+</ol>
+<div>
+<pre style="padding-left: 60px"><strong><span>T3 $ rosrun key_teleop key_teleop.py /key_vel:=/cmd_vel</span></strong></pre></div>
+<p style="padding-left: 60px">As you explore the robot's surroundings, you should see something similar to the following in the RViz window:</p>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/ca2f5b14-4c2f-43dc-8a7b-a404317152cf.png" style="width:34.33em;height:27.92em;"/></p>
+<p style="padding-left: 60px">Here, you can see the three limiting walls of the square space. The rest of the map shows the first obstacles the laser finds in the remaining directions. Remember that the <span>step in the fourth side cannot be detected because it is below the floor level of the robot.</span></p>
+<ol start="4">
+<li>Once you've finished exploring, save the map we generated into the two files we specified previously, that is,<span> </span><kbd>.pgm</kbd><span> </span>and<span> </span><kbd>.yaml</kbd>:</li>
+</ol>
+<div>
+<pre style="padding-left: 60px"><strong><span>T4 $ rosrun map_server map_saver -f ~/catkin_ws/test_map</span></strong></pre></div>
+<p>Again, you will have the map files in the root folders of your workspace, that is, <kbd>test_map.pgm</kbd> and <kbd>test_map.yaml</kbd>. Now, we ar<span>e ready to make GoPiGo3 navigate in the physical environment.</span></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Navigating GoPiGo3 in the real world</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">This second part requires that you stop all ROS processes on the laptop, but not necessarily on GoPiGo3. Remember that, in the robot, you have the minimum ROS configuration so that the robot is able to perceive the environment (LDS X4 sensor) and move around (drives). All the remaining logic for navigation will run in the laptop. Hence, close any open Terminals in your PC and start the new phase by following these steps:</p>
+<ol>
+<li>Launch the ROS nodes in the robot if you stopped the Terminal previously:</li>
+</ol>
+<div>
+<pre style="padding-left: 60px"><strong><span>r1 $ roslaunch ydlidar gopigo3_ydlidar.launch</span></strong></pre></div>
+<ol start="2">
+<li>Launch the AMCL navigation by providing the cost map that the robot built previously. To do so, you have to reference the<span> </span><kbd>.yaml</kbd><span> </span>map file you created previously. <span>Make sure that the corresponding </span><kbd>.pgm</kbd><span> file has the same name and is placed in the same location:</span></li>
+</ol>
+<div>
+<pre style="padding-left: 60px"><strong><span>T1 $ roslaunch </span><span>gopigo3_navigation </span><span>amcl.launch map_file:=/home/ubuntu/catkin_ws/test_map.yaml</span></strong></pre></div>
+<p style="padding-left: 60px">This launch file includes an RViz visualization<span> </span>that will let<span> us interact with the map so that we can set a target location, as shown in the following screenshot:</span></p>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/10af7274-4e17-49a2-8085-c039ec9303ec.png" style="width:30.42em;height:25.67em;"/></p>
+<p class="CDPAlignLeft CDPAlign">As in the case of the Gazebo simulation, the goal location is set by pressing<span> the </span><strong><span class="packt_screen">2D Nav Goal</span></strong><span> </span><span>button </span><span>at the top right of the RViz window and selecting the target pose, which is composed of both the position and orientation (a green arrow in RViz lets you define it graphically). As soon as you pick such a location, the AMCL algorithm starts path planning and sends motion commands via the <kbd>/cmd_vel</kbd> topic.</span> Consequently, the robot moves to the specified location as the sequence of commands is executed.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Summary</h1>
+                </header>
+            
+            <article>
+                
+<p>In this chapter, you finally completed an autonomous task using GoPiGo3. This is only the entry point to the fascinating field of artificial intelligence applied to robotics. The most obvious functionality to be built on top of robot navigation is self-driving, which is the functionality that is currently being implemented by many vehicle manufacturers to make safer and more comfortable vehicles for the end users.</p>
+<p>In the fourth and last part of this book, you will learn how machine learning techniques are applied nowadays to build smarter robots.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Questions</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Which of these sensors is of the LDS type?</li>
+</ol>
+<p style="padding-left: 60px">A) LIDAR<br/>
+B) Ultrasonic distance sensor<br/>
+C) Capacitive sensors</p>
+<ol start="2">
+<li>Where does the ROS master node have to live to perform navigation?</li>
+</ol>
+<p style="padding-left: 60px">A) In the robot<br/>
+B) In the robot and the laptop<br/>
+C) <span>In either</span><span> the robot or the laptop</span></p>
+<ol start="3">
+<li>What will happen if an obstacle is placed in the environment after the map has been built?</li>
+</ol>
+<p style="padding-left: 60px">A) The robot will not detect it and may crash with it if it interferes with the planned path.<br/>
+B) The local path planning will be taken into account to provide a modified path that avoids the obstacle.<br/>
+<span>C) You should rebuild the map with the new conditions before proceeding to the navigation task.</span></p>
+<ol start="4">
+<li>Can you perform navigation without previously running SLAM with the robot?</li>
+</ol>
+<p style="padding-left: 60px">A) No, because you have to build the map with the same robot that you will use for navigation.<br/>
+B) <span>Yes, the only condition is that you provide a premade map of the environment.<br/></span><span>C) No, SLAM and navigation are two sides of the same coin.</span></p>
+<ol start="5">
+<li>What is the odometry of a robot?</li>
+</ol>
+<p style="padding-left: 60px">A) The total distance it has covered since the ROS application was started.<br/>
+B<span>) </span><span>T</span><span>he use of data from motion sensors to estimate the changes in the robot's pose over time.</span><span><br/></span><span>C) The use of data from motion sensors to estimate the current robot's pose.</span></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Further reading</h1>
+                </header>
+            
+            <article>
+                
+<p>The main resource that you can read in order to deepen your knowledge of SLAM is the official documentation of the ROS Navigation Stack, which is located at <a href="http://wiki.ros.org/navigation">http://wiki.ros.org/navigation</a>. For those of you who are interested, here are some additional references:</p>
+<ul>
+<li><em>ROS Navigation: Concepts and Tutorial, Federal University of Technology</em>, Longhi R., Schneider A., Fabro J., Becker T., and Amilgar V. (2018), Parana, <span>Curitiba, Brazil.</span></li>
+<li><em>Lidar design, use, and calibration concepts for correct environmental detection</em><span>, i</span>n IEEE Transactions on Robotics and Automation,<span> M. D. Adams (2000) vol. 16, no. 6, pp. 753-761, Dec. 2000, </span><span>doi: 10.1109/70.897786. </span><span>URL: </span><a href="http://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&amp;arnumber=897786&amp;isnumber=19436">http://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&amp;arnumber=897786&amp;isnumber=19436</a>.</li>
+<li><em>The LIDAR Odometry in the SLAM</em>, V. <span>Kirnos, V. Antipov, A. Priorov, and V. Kokovkina</span>, 23rd Conference of Open Innovations Association (FRUCT), Bologna, 2<span>018, pp. 180-185. </span><span>doi: 10.23919/FRUCT.2018.8588026, </span><span>URL: </span><a href="http://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&amp;arnumber=8588026&amp;isnumber=8587913">http://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&amp;arnumber=8588026&amp;isnumber=8587913</a>.</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    </body></html>
