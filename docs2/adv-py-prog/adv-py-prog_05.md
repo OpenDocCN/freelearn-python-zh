@@ -1,4 +1,4 @@
-# *第四章*：使用 Cython 的 C 性能
+# 第四章：*第四章*：使用 Cython 的 C 性能
 
 Cython 是一种扩展 Python 的语言，它通过支持函数、变量和类的类型声明来扩展 Python。这些类型声明使 Cython 能够将 Python 脚本编译成高效的 C 代码。Cython 还可以作为 Python 和 C 之间的桥梁，因为它提供了易于使用的结构来编写对外部 C 和 C++ 例程的接口。
 

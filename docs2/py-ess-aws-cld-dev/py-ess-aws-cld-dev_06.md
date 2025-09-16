@@ -1,6 +1,6 @@
-# 6
 
-# 在 Elastic Beanstalk 上部署 Python 应用程序
+
+# 第六章：在 Elastic Beanstalk 上部署 Python 应用程序
 
 在本章中，我们将学习如何在 Elastic Beanstalk 上部署 Python 应用程序。Elastic Beanstalk 是 AWS 服务，允许您在云中部署网络应用程序。基本上，您不需要配置服务器；Elastic Beanstalk 在后台配置基础设施并部署您的网络应用程序。Elastic Beanstalk 的另一个优点是在用户请求量大时能够扩展您的网络应用程序。
 

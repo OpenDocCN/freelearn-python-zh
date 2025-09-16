@@ -1,6 +1,6 @@
-# 10
 
-# 将 FastAPI 与其他 Python 库集成
+
+# 第十章：将 FastAPI 与其他 Python 库集成
 
 在本章中，我们将深入探讨通过将 FastAPI 与其他 **Python** 库集成来扩展 **FastAPI** 功能的过程。通过利用外部工具和库的力量，您可以增强 FastAPI 应用程序的功能，并为创建动态和功能丰富的 Web 服务解锁新的可能性。
 

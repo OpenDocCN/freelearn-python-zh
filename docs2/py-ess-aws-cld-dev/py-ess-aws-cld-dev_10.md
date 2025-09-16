@@ -1,6 +1,6 @@
-# 10
 
-# 使用 Python 与 NoSQL（DynamoDB）
+
+# 第十章：使用 Python 与 NoSQL（DynamoDB）
 
 在本章中，我们将学习如何使用 DynamoDB 创建 NoSQL 数据库。在创建数据库后，我们将使用 Python 在 DynamoDB 中执行数据库操作。**NoSQL**是一种数据库类型，它比关系型数据库更灵活地管理数据。在关系型数据库中，有表和预定义的数据类型，可用于数据库操作。在 NoSQL 中，你可以根据 NoSQL 数据库存储 JSON、原始数据或键值数据。让我们深入了解 NoSQL 数据库。
 

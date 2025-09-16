@@ -1,6 +1,6 @@
-# 16
 
-# 使用 PyCharm 的下一步
+
+# 第十六章：使用 PyCharm 的下一步
 
 PyCharm 的功能非常广泛，JetBrains 的改进又如此迅速，以至于很难跟上。
 

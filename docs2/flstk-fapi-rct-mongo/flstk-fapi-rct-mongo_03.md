@@ -1,6 +1,6 @@
-# 3
 
-# Python 类型提示和 Pydantic
+
+# 第三章：Python 类型提示和 Pydantic
 
 在探索 FastAPI 之前，了解一些将在 FastAPI 旅程中大量使用的 Python 概念是有用的。
 

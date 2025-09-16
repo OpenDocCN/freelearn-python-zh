@@ -1,6 +1,6 @@
-# 7
 
-# 通过 CloudWatch 监控应用程序
+
+# 第七章：通过 CloudWatch 监控应用程序
 
 在本章中，我们将学习 AWS 的一个重要服务之一，CloudWatch。CloudWatch 是一个无服务器服务，允许你在 AWS 内部收集和监控应用程序日志。它与大多数 AWS 服务有广泛的集成。当你开始使用任何 AWS 服务时，它有助于通过 CloudWatch 工具观察应用程序。
 

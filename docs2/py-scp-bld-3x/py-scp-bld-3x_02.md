@@ -1,6 +1,6 @@
-# 2
 
-# Python 实体和 API
+
+# 第二章：Python 实体和 API
 
 Blender 通过使其**应用程序编程接口**（**API**）的**模块**在应用程序内部可用来扩展 Python。
 

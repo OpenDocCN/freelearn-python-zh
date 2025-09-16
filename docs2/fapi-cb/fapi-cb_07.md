@@ -1,6 +1,6 @@
-# 7
 
-# 将 FastAPI 与 NoSQL 数据库集成
+
+# 第七章：将 FastAPI 与 NoSQL 数据库集成
 
 在本章中，我们将探讨 FastAPI 与 **NoSQL** 数据库的集成。通过构建音乐流媒体平台应用程序的后端，您将学习如何使用 FastAPI 设置和使用流行的 NoSQL 数据库 **MongoDB**。
 

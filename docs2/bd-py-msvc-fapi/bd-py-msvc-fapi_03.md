@@ -1,6 +1,6 @@
-# 3
 
-# 调查依赖注入
+
+# 第三章：调查依赖注入
 
 自从第一章以来，`BaseModel`、`Request`、`Response` 和 `BackgroundTasks` 在其过程中应用 DI。应用 DI 证明实例化一些 FastAPI 类并不总是理想的方法，因为框架有一个内置的容器可以提供这些类的对象给 API 服务。这种对象管理方法使得 FastAPI 使用起来既简单又高效。
 

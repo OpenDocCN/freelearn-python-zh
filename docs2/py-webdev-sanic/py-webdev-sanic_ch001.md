@@ -1,4 +1,4 @@
-# 使用 Sanic 进行 Python Web 开发
+# 第一章：使用 Sanic 进行 Python Web 开发
 
 版权所有 © 2022 Packt Publishing
 

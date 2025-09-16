@@ -1,6 +1,6 @@
-# 16
 
-# Odoo Web Library (OWL)
+
+# 第十六章：Odoo Web Library (OWL)
 
 Odoo V17 JavaScript 框架使用一个名为 **OWL**（代表 **Odoo Web Library**）的自定义组件框架。它是一个受 **Vue** 和 **React** 灵感启发的声明式组件系统。**OWL** 是一个基于组件的 UI 框架，并使用 QWeb 模板进行结构。与 Odoo 的传统小部件系统相比，OWL 非常快，并引入了大量的新功能，包括 **hooks**、**reactivity**、**子组件**的 **自动实例化**以及更多。
 

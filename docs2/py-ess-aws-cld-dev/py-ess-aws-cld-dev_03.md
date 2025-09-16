@@ -1,6 +1,6 @@
-# 3
 
-# 使用 Lambda 的云计算
+
+# 第三章：使用 Lambda 的云计算
 
 在本章中，我们将学习 Lambda 的基础知识，并实现一个将在 AWS Lambda 中运行的 Python 应用程序。为此，我们将使用我们的 AWS 账户。
 

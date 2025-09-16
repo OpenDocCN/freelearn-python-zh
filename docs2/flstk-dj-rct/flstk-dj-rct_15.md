@@ -1,6 +1,6 @@
-# 15
 
-# 在 AWS 上部署我们的 React 应用程序
+
+# 第十五章：在 AWS 上部署我们的 React 应用程序
 
 在上一章中，我们使用 GitHub Actions 和 AWS EC2 实例的一些配置自动化了 Django 应用程序的部署。Postagram API 现在是实时状态，现在我们必须部署 React 应用程序，以便在互联网上提供完整的 Postagram 应用程序。
 

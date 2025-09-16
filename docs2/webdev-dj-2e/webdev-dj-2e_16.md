@@ -1,4 +1,4 @@
-# 16. 使用前端 JavaScript 库与 Django 结合
+# 第十六章：16. 使用前端 JavaScript 库与 Django 结合
 
 概述
 

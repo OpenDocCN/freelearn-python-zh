@@ -1,4 +1,4 @@
-# *第三章*: 使用 NumPy、Pandas 和 Xarray 进行快速数组操作
+# 第三章：*第三章*: 使用 NumPy、Pandas 和 Xarray 进行快速数组操作
 
 NumPy 是 Python 中科学计算的*事实上的*标准。它提供了灵活的多维数组，允许您进行快速简洁的数学计算。
 

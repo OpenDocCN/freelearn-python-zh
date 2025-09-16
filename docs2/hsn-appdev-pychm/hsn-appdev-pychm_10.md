@@ -1,6 +1,6 @@
-# 10
 
-# 更多全栈框架 - Django 和 Pyramid
+
+# 第十章：更多全栈框架 - Django 和 Pyramid
 
 我们到目前为止所讨论的 Web 框架在工作方式上都是典范。Flask 是一个无意见的微框架。这意味着 Flask 只处理端点路由，并且可选地提供模板页面内容。FastAPI 提供了一个专门用于构建 RESTful API 的框架，而不是提供超出数据的服务。它还提供了一个类似于在现代 NodeJS 框架中运行的 JavaScript 框架的异步编程模型。
 
