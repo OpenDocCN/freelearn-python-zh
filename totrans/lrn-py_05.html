@@ -1,0 +1,544 @@
+<html><head></head><body><div class="chapter" title="Chapter&#xA0;5.&#xA0;Saving Time and Memory"><div class="titlepage"><div><div><h1 class="title"><a id="ch05"/>Chapter 5. Saving Time and Memory</h1></div></div></div><div class="blockquote"><table border="0" width="100%" cellspacing="0" cellpadding="0" class="blockquote" summary="Block quote"><tr><td valign="top"> </td><td valign="top"><p><span class="emphasis"><em>"It's not the daily increase but daily decrease. Hack away at the unessential."</em></span></p></td><td valign="top"> </td></tr><tr><td valign="top"> </td><td colspan="2" align="right" valign="top" style="text-align: center">--<span class="attribution"><span class="emphasis"><em>Bruce Lee</em></span></span></td></tr></table></div><p>I love this quote from Bruce Lee, he was such a wise man! Especially, the second part, <span class="emphasis"><em>hack away at the unessential</em></span>, is to me what makes a computer program elegant. After all, if there is a better way of doing things so that we don't waste time or memory, why not?</p><p>Sometimes, there are valid reasons for not pushing our code up to the maximum limit: for example, sometimes to achieve a negligible improvement, we have to sacrifice on readability or maintainability. Does it make any sense to have a web page served in 1 second with unreadable, complicated code, when we can serve it in 1.05 seconds with readable, clean code? No, it makes no sense.</p><p>On the other hand, sometimes it's perfectly licit to try and shave off a millisecond from a function, especially when the function is meant to be called thousands of times. Every millisecond you save there means one second saved per thousand of calls, and this could be meaningful for your application.</p><p>In light of these considerations, the focus of this chapter will not be to give you the tools to push your code to the absolute limits of performance and optimization "no matter what", but rather, to give you the tools to write efficient, elegant code that reads well, runs fast, and doesn't waste resources in an obvious way.</p><p>In this chapter, I will perform several measurements and comparisons, and cautiously draw some conclusions. Please do keep in mind that on a different box with a different setup or a different operating system, results may vary. Take a look at this code:</p><p>
+<code class="literal">squares.py</code>
+</p><div class="informalexample"><pre class="programlisting">def square1(n):
+    return n ** 2  # squaring through the power operator
+
+def square2(n):
+    return n * n  # squaring through multiplication</pre></div><p>Both functions return the square of <span class="emphasis"><em>n</em></span>, but which is faster? From a simple benchmark I ran on them, it looks like the second is slightly faster. If you think about it, it makes sense: calculating the power of a number involves multiplication and therefore, whatever algorithm you may use to perform the power operation, it's not likely to beat a simple multiplication like the one in <code class="literal">square2</code>.</p><p>Do we care about this result? In most cases no. If you're coding an e-commerce website, chances are you won't ever even need to raise a number to the second power, and if you do, you probably will have to do it a few times per page. You don't need to concern yourself on saving a few microseconds on a function you call a few times.</p><p>So, when does optimization become important? One very common case is when you have to deal with huge collections of data. If you're applying the same function on a million <code class="literal">customer</code> objects, then you want your function to be tuned up to its best. Gaining 1/10 of a second on a function called one million times saves you 100,000 seconds, which are about 27.7 hours. That's not the same, right? So, let's focus on collections, and let's see which tools Python gives you to handle them with efficiency and grace.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note35"/>Note</h3><p>Many<a id="id307" class="indexterm"/> of the concepts we will see in this chapter are based on those<a id="id308" class="indexterm"/> of <span class="strong"><strong>iterator</strong></span> and <span class="strong"><strong>iterable</strong></span>. Simply put, the ability for an object to return its next element when asked, and to raise a <code class="literal">StopIteration</code> exception when exhausted. We'll see how to code a custom iterator and iterable objects in the next chapter.</p></div></div><div class="section" title="map, zip, and filter"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec50"/>map, zip, and filter</h1></div></div></div><p>We'll<a id="id309" class="indexterm"/> start by<a id="id310" class="indexterm"/> reviewing <code class="literal">map</code>, <code class="literal">filter</code>, and <code class="literal">zip</code>, which are the<a id="id311" class="indexterm"/> main built-in functions one can employ when handling collections, and <a id="id312" class="indexterm"/>then we'll learn how to achieve the same results using <a id="id313" class="indexterm"/>two very important constructs: <span class="strong"><strong>comprehensions</strong></span> and <span class="strong"><strong>generators</strong></span>. Fasten your seat belt!</p><div class="section" title="map"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec68"/>map</h2></div></div></div><p>According<a id="id314" class="indexterm"/> to the official Python documentation:</p><div class="blockquote"><blockquote class="blockquote"><p><span class="emphasis"><em>
+<code class="literal">map(function, iterable, ...)</code> returns an iterator that applies function to every item of iterable, yielding the results. If additional iterable arguments are passed, function must take that many arguments and is applied to the items from all iterables in parallel. With multiple iterables, the iterator stops when the shortest iterable is exhausted.</em></span></p></blockquote></div><p>We will explain the concept of yielding later on in the chapter. For now, let's translate this into code: we'll use a <span class="emphasis"><em>lambda</em></span> function that takes a variable number of positional arguments, and just returns them as a tuple. Also, as <code class="literal">map</code> returns an iterator, we'll need to wrap each call to it within a <code class="literal">list</code> constructor so that we exhaust the iterable by putting all of its elements into a list (you'll see an example of this in the code):</p><p>
+<code class="literal">map.example.py</code>
+</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; map(lambda *a: a, range(3))  # without wrapping in list...</strong></span>
+<span class="strong"><strong>&lt;map object at 0x7f563513b518&gt;  # we get the iterator object</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; list(map(lambda *a: a, range(3)))  # wrapping in list...</strong></span>
+<span class="strong"><strong>[(0,), (1,), (2,)]  # we get a list with its elements</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; list(map(lambda *a: a, range(3), 'abc'))  # 2 iterables</strong></span>
+<span class="strong"><strong>[(0, 'a'), (1, 'b'), (2, 'c')]</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; list(map(lambda *a: a, range(3), 'abc', range(4, 7)))  # 3</strong></span>
+<span class="strong"><strong>[(0, 'a', 4), (1, 'b', 5), (2, 'c', 6)]</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; # map stops at the shortest iterator</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; list(map(lambda *a: a, (), 'abc'))  # empty tuple is shortest</strong></span>
+<span class="strong"><strong>[]</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; list(map(lambda *a: a, (1, 2), 'abc'))  # (1, 2) shortest</strong></span>
+<span class="strong"><strong>[(1, 'a'), (2, 'b')]</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; list(map(lambda *a: a, (1, 2, 3, 4), 'abc'))  # 'abc' shortest</strong></span>
+<span class="strong"><strong>[(1, 'a'), (2, 'b'), (3, 'c')]</strong></span>
+</pre></div><p>In the <a id="id315" class="indexterm"/>preceding code you can see why, in order to present you with the results, I have to wrap the calls to <code class="literal">map</code> within a <code class="literal">list</code> constructor, otherwise I get the string representation of a <code class="literal">map</code> object, which is not really useful in this context, is it?</p><p>You can also notice how the elements of each iterable are applied to the function: at first, the first element of each iterable, then the second one of each iterable, and so on. Notice also that map stops when the shortest of the iterables we called it with is exhausted. This is actually a very nice behavior: it doesn't force us to level off all the iterables to a common length, and it doesn't break if they aren't all the same length.</p><p>
+<code class="literal">map</code> is very useful when you have to apply the same function to one or more collections of objects. As<a id="id316" class="indexterm"/> a more interesting example, let's see the <span class="strong"><strong>decorate-sort-undecorate</strong></span> idiom (also known as <span class="strong"><strong>Schwartzian transform</strong></span>). It's a technique<a id="id317" class="indexterm"/> that was extremely popular when Python sorting wasn't providing <span class="emphasis"><em>key-functions</em></span>, and therefore today is less used, but it's a cool trick that still comes at hand once in a while.</p><p>Let's see a variation of it in the next example: we want to sort in descending order by the sum of credits accumulated by students, so to have the best student at position 0. We write a function to produce a decorated object, we sort, and then we undecorate. Each student has credits in three (possibly different) subjects. To decorate an object means to transform it, either adding extra data to it, or putting it into another object, in a way that allows us to be able to sort the original objects the way we want. After the sorting, we revert the decorated objects to get the original ones from them. This is called to undecorate.</p><p>
+<code class="literal">decorate.sort.undecorate.py</code>
+</p><div class="informalexample"><pre class="programlisting">students = [
+    dict(id=0, credits=dict(math=9, physics=6, history=7)),
+    dict(id=1, credits=dict(math=6, physics=7, latin=10)),
+    dict(id=2, credits=dict(history=8, physics=9, chemistry=10)),
+    dict(id=3, credits=dict(math=5, physics=5, geography=7)),
+]
+
+def decorate(student):
+    # create a 2-tuple (sum of credits, student) from student dict
+    return (<span class="strong"><strong>sum(student['credits'].values())</strong></span>, student)
+
+def undecorate(decorated_student):
+    # discard sum of credits, return original student dict
+    return decorated_student[1]
+
+students = sorted(<span class="strong"><strong>map(decorate, students)</strong></span>, reverse=True)
+students = list(<span class="strong"><strong>map(undecorate, students)</strong></span>)</pre></div><p>In the<a id="id318" class="indexterm"/> preceding code, I highlighted the tricky and important parts. Let's start by understanding what each student object is. In fact, let's print the first one:</p><p>
+<code class="literal">{'credits': {'history': 7, 'math': 9, 'physics': 6}, 'id': 0}</code>
+</p><p>You can see that it's a dictionary with two keys: <code class="literal">id</code> and <code class="literal">credit</code>. The value of <code class="literal">credit</code> is also a dictionary in which there are three subject/grade key/value pairs. As I'm sure you recall from our visit in the data structures world, calling <code class="literal">dict.values()</code> returns an object similar to an <code class="literal">iterable</code>, with only the values. Therefore, <code class="literal">sum(student['credits'].values())</code>, for the first student is equivalent to <code class="literal">sum(9, 6, 7)</code> (or any permutation of those numbers because dictionaries don't retain order, but luckily for us, addition is commutative).</p><p>With that out of the way, it's easy to see what is the result of calling decorate with any of the students. Let's print the result of <code class="literal">decorate(students[0])</code>:</p><p>
+<code class="literal">(22, {'credits': {'history': 7, 'math': 9, 'physics': 6}, 'id': 0})</code>
+</p><p>That's nice! If we decorate all the students like this, we can sort them on their total amount of credits but just sorting the list of tuples. In order to apply the decoration to each item in students, we call <code class="literal">map(decorate, students)</code>. Then we sort the result, and then we undecorate in a similar fashion. If you have gone through the previous chapters correctly, understanding this code shouldn't be too hard.</p><p>Printing students after running the whole code yields:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ python decorate.sort.undecorate.py</strong></span>
+<span class="strong"><strong>[{'credits': {'chemistry': 10, 'history': 8, 'physics': 9}, 'id': 2},</strong></span>
+<span class="strong"><strong> {'credits': {'latin': 10, 'math': 6, 'physics': 7}, 'id': 1},</strong></span>
+<span class="strong"><strong> {'credits': {'history': 7, 'math': 9, 'physics': 6}, 'id': 0},</strong></span>
+<span class="strong"><strong> {'credits': {'geography': 7, 'math': 5, 'physics': 5}, 'id': 3}]</strong></span>
+</pre></div><p>And you can see, by the order of the student objects, that they have indeed been sorted by the sum of their credits.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note36"/>Note</h3><p>For more <a id="id319" class="indexterm"/>on the <span class="emphasis"><em>decorate-sort-undecorate</em></span> idiom, there's a very nice introduction in the sorting how-to section of the official Python documentation (<a class="ulink" href="https://docs.python.org/3.4/howto/sorting.html#the-old-way-using-decorate-sort-undecorate">https://docs.python.org/3.4/howto/sorting.html#the-old-way-using-decorate-sort-undecorate</a>).</p></div></div><p>One thing<a id="id320" class="indexterm"/> to notice about the sorting part: what if two or more students share the same total sum? The sorting algorithm would then proceed sorting the tuples by comparing the <code class="literal">student</code> objects with each other. This doesn't make any sense, and in more complex cases could lead to unpredictable results, or even errors. If you want to be sure to avoid this issue, one simple solution is to create a 3-tuple instead of a 2-tuple, having the sum of credits in the first position, the position of the <code class="literal">student</code> object in the <code class="literal">students</code> list in the second one, and the <code class="literal">student</code> object itself in the third one. This way, if the sum of credits is the same, the tuples will be sorted against the position, which will always be different and therefore enough to resolve the sorting between any pair of tuples. For more considerations on this topic, please check out the sorting how-to section on the official Python documentation.</p></div><div class="section" title="zip"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec69"/>zip</h2></div></div></div><p>We've already<a id="id321" class="indexterm"/> covered <code class="literal">zip</code> in the previous chapters, so let's just define it properly and then I want to show you how you could combine it with <code class="literal">map</code>.</p><p>According to the Python documentation:</p><div class="blockquote"><blockquote class="blockquote"><p><span class="emphasis"><em>
+<code class="literal">zip(*iterables)</code> returns an iterator of tuples, where the i-th tuple contains the i-th element from each of the argument sequences or iterables. The iterator stops when the shortest input iterable is exhausted. With a single iterable argument, it returns an iterator of 1-tuples. With no arguments, it returns an empty iterator.</em></span></p></blockquote></div><p>Let's see an example:</p><p>
+<code class="literal">zip.grades.py</code>
+</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; grades = [18, 23, 30, 27, 15, 9, 22]</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; avgs = [22, 21, 29, 24, 18, 18, 24]</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; list(zip(avgs, grades))</strong></span>
+<span class="strong"><strong>[(22, 18), (21, 23), (29, 30), (24, 27), (18, 15), (18, 9), (24, 22)]</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; list(map(lambda *a: a, avgs, grades))  # equivalent to zip</strong></span>
+<span class="strong"><strong>[(22, 18), (21, 23), (29, 30), (24, 27), (18, 15), (18, 9), (24, 22)]</strong></span>
+</pre></div><p>In the preceding code, we're zipping together the average and the grade for the last exam, per each student. Notice how the code inside the two list calls produces exactly the same result, showing how easy it is to reproduce <code class="literal">zip</code> using <code class="literal">map</code>. Notice also that, as we do for <code class="literal">map</code>, we have to feed the result of the <code class="literal">zip</code> call to a <code class="literal">list</code> constructor.</p><p>A simple<a id="id322" class="indexterm"/> example on the combined use of <code class="literal">map</code> and <code class="literal">zip</code> could be a way of calculating the element-wise maximum amongst sequences, that is, the maximum of the first element of each sequence, then the maximum of the second one, and so on:</p><p>
+<code class="literal">maxims.py</code>
+</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; a = [5, 9, 2, 4, 7]</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; b = [3, 7, 1, 9, 2]</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; c = [6, 8, 0, 5, 3]</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; maxs = map(lambda n: max(*n), zip(a, b, c))</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; list(maxs)</strong></span>
+<span class="strong"><strong>[6, 9, 2, 9, 7]</strong></span>
+</pre></div><p>Notice how easy it is to calculate the max values of three sequences. <code class="literal">zip</code> is not strictly needed of course, we could just use <code class="literal">map</code>, but this would require us to write a much more complicated function to feed <code class="literal">map</code> with. Sometimes we may be in a situation where changing the function we feed to <code class="literal">map</code> is not even possible. In cases like these, being able to massage the data (like we're doing in this example with <code class="literal">zip</code>) is very helpful.</p></div><div class="section" title="filter"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec70"/>filter</h2></div></div></div><p>According to<a id="id323" class="indexterm"/> the Python documentation:</p><div class="blockquote"><blockquote class="blockquote"><p><span class="emphasis"><em>
+<code class="literal">filter(function, iterable)</code> construct an iterator from those elements of iterable for which function returns True. iterable may be either a sequence, a container which supports iteration, or an iterator. If function is <code class="literal">None</code>, the identity function is assumed, that is, all elements of iterable that are false are removed.</em></span></p></blockquote></div><p>Let's see a very quick example:</p><p>
+<code class="literal">filter.py</code>
+</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; test = [2, 5, 8, 0, 0, 1, 0]</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; list(filter(None, test))</strong></span>
+<span class="strong"><strong>[2, 5, 8, 1]</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; list(filter(lambda x: x, test))  # equivalent to previous one</strong></span>
+<span class="strong"><strong>[2, 5, 8, 1]</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; list(filter(lambda x: x &gt; 4, test))  # keep only items &gt; 4</strong></span>
+<span class="strong"><strong>[5, 8]</strong></span>
+</pre></div><p>In the preceding code, notice how the second call to filter is equivalent to the first one. If we pass a function that takes one argument and returns the argument itself, only those arguments that are <code class="literal">True</code> will make the function return <code class="literal">True</code>, therefore this behavior is exactly the same as passing <code class="literal">None</code>. It's often a very good exercise to mimic some of the built-in Python behaviors. When you succeed you can say you fully understand how Python behaves in a specific situation.</p><p>Armed <a id="id324" class="indexterm"/>with <code class="literal">map</code>, <code class="literal">zip</code>, and <code class="literal">filter</code> (and several other functions from the Python standard library) we can massage sequences very effectively. But those functions are not the only way to do it. So let's see one of the nicest features of Python: comprehensions.</p></div></div></div>
+<div class="section" title="Comprehensions"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec51"/>Comprehensions</h1></div></div></div><p>Python<a id="id325" class="indexterm"/> offers you different types of comprehensions: <code class="literal">list</code>, <code class="literal">dict</code>, and <code class="literal">set</code>.</p><p>We'll concentrate on the first one for now, and then it will be easy to explain the other two.</p><p>A <code class="literal">list</code> comprehension is a quick way of making a list. Usually the list is the result of some operation that may involve applying a function, filtering, or building a different data structure.</p><p>Let's start with a very simple example I want to calculate a list with the squares of the first 10 natural numbers. How would you do it? There are a couple of equivalent ways:</p><p>
+<code class="literal">squares.map.py</code>
+</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong># If you code like this you are not a Python guy! ;)</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; squares = []</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; for n in range(10):</strong></span>
+<span class="strong"><strong>...     squares.append(n ** 2)</strong></span>
+<span class="strong"><strong>...</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; list(squares)</strong></span>
+<span class="strong"><strong>[0, 1, 4, 9, 16, 25, 36, 49, 64, 81]</strong></span>
+
+<span class="strong"><strong># This is better, one line, nice and readable</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; squares = map(lambda n: n**2, range(10))</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; list(squares)</strong></span>
+<span class="strong"><strong>[0, 1, 4, 9, 16, 25, 36, 49, 64, 81]</strong></span>
+</pre></div><p>The preceding example should be nothing new for you. Let's see how to achieve the same result using a list comprehension:</p><p>
+<code class="literal">squares.comprehension.py</code>
+</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; [n ** 2 for n in range(10)]</strong></span>
+<span class="strong"><strong>[0, 1, 4, 9, 16, 25, 36, 49, 64, 81]</strong></span>
+</pre></div><p>As simple as that. Isn't it elegant? Basically we have put a <code class="literal">for</code> loop within square brackets. Let's now filter out the odd squares. I'll show you how to do it with <code class="literal">map</code> and <code class="literal">filter</code>, and then using a <code class="literal">list</code> comprehension again.</p><p>
+<code class="literal">even.squares.py</code>
+</p><div class="informalexample"><pre class="programlisting"># using map and filter
+sq1 = list(
+    filter(lambda n: not n % 2, map(lambda n: n ** 2, range(10)))
+)
+# equivalent, but using list comprehensions
+sq2 = [n ** 2 for n in range(10) if not n % 2]
+
+print(sq1, sq1 == sq2)  # prints: [0, 4, 16, 36, 64] True</pre></div><p>I think <a id="id326" class="indexterm"/>that now the difference in readability is evident. The list comprehension reads much better. It's almost English: give me all squares (<span class="emphasis"><em>n ** 2</em></span>) for <span class="emphasis"><em>n</em></span> between 0 and 9 if n is even.</p><p>According to the Python documentation:</p><div class="blockquote"><blockquote class="blockquote"><p><span class="emphasis"><em>A list comprehension consists of brackets containing an expression followed by a <code class="literal">for</code> clause, then zero or more <code class="literal">for</code> or <code class="literal">if</code> clauses. The result will be a new list resulting from evaluating the expression in the context of the <code class="literal">for</code> and <code class="literal">if</code> clauses which follow it".</em></span></p></blockquote></div><div class="section" title="Nested comprehensions"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec71"/>Nested comprehensions</h2></div></div></div><p>Let's <a id="id327" class="indexterm"/>see an example of nested loops. It's very common when dealing with algorithms to have to iterate on a sequence using two placeholders. The first one runs through the whole sequence, left to right. The second one as well, but it starts from the first one, instead of 0. The concept is that of testing all pairs without duplication. Let's see the classical <code class="literal">for</code> loop equivalent.</p><p>
+<code class="literal">pairs.for.loop.py</code>
+</p><div class="informalexample"><pre class="programlisting">items = 'ABCDE'
+pairs = []
+for a in range(len(items)):
+    for b in range(a, len(items)):
+        pairs.append((items[a], items[b]))</pre></div><p>If you print pairs at the end, you get:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>[('A', 'A'), ('A', 'B'), ('A', 'C'), ('A', 'D'), ('A', 'E'), ('B', 'B'), ('B', 'C'), ('B', 'D'), ('B', 'E'), ('C', 'C'), ('C', 'D'), ('C', 'E'), ('D', 'D'), ('D', 'E'), ('E', 'E')]</strong></span>
+</pre></div><p>All the tuples with the same letter are those for which <code class="literal">b</code> is at the same position as <code class="literal">a</code>. Now, let's see how we can translate this in a list comprehension:</p><p>
+<code class="literal">pairs.list.comprehension.py</code>
+</p><div class="informalexample"><pre class="programlisting">items = 'ABCDE'
+pairs = [(items[a], items[b])
+    for a in range(len(items)) for b in range(a, len(items))]</pre></div><p>This <a id="id328" class="indexterm"/>version is just two lines long and achieves the same result. Notice that in this particular case, because the <code class="literal">for</code> loop over <code class="literal">b</code> has a dependency on <code class="literal">a</code>, it must follow the <code class="literal">for</code> loop over <code class="literal">a</code> in the comprehension. If you swap them around, you'll get a name error.</p></div><div class="section" title="Filtering a comprehension"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec72"/>Filtering a comprehension</h2></div></div></div><p>We can<a id="id329" class="indexterm"/> apply filtering to a comprehension. Let's first do it with <code class="literal">filter</code>. Let's find all Pythagorean triples whose short sides are numbers smaller than 10. We obviously don't want to test a combination twice, and therefore we'll use a trick like the one we saw in the previous example.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note37"/>Note</h3><p>A <a id="id330" class="indexterm"/>
+<span class="strong"><strong>Pythagorean triple</strong></span> is a triple (<span class="emphasis"><em>a</em></span>, <span class="emphasis"><em>b</em></span>, <span class="emphasis"><em>c</em></span>) of integer numbers satisfying the equation <span class="inlinemediaobject"><img src="graphics/4715_05_03.jpg" alt="Filtering a comprehension"/></span>.</p></div></div><p>
+<code class="literal">pythagorean.triple.py</code>
+</p><div class="informalexample"><pre class="programlisting">from math import sqrt
+# this will generate all possible pairs
+mx = 10
+legs = [(a, b, sqrt(a**2 + b**2))
+    for a in range(1, mx) for b in range(a, mx)]
+# this will filter out all non pythagorean triples
+legs = list(
+    filter(<span class="strong"><strong>lambda triple: triple[2].is_integer()</strong></span>, legs))
+print(legs)  # prints: [(3, 4, 5.0), (6, 8, 10.0)]</pre></div><p>In the preceding code, we generated a list of <span class="emphasis"><em>3-tuples</em></span>, legs. Each tuple contains two integer numbers (the legs) and the hypotenuse of the Pythagorean triangle whose legs are the first two numbers in the tuple. For example, when a = 3 and b = 4, the tuple will be (3, 4, 5.0), and when a = 5 and b = 7, the tuple will be (5, 7, 8.602325267042627).</p><p>After having all the triples done, we need to filter out all those that don't have a hypotenuse that is an integer number. In order to do this, we filter based on <code class="literal">float_number.is_integer()</code> being <code class="literal">True</code>. This means that of the two example tuples I showed you before, the one with hypotenuse 5.0 will be retained, while the one with hypotenuse 8.602325267042627 will be discarded.</p><p>This is good, but I don't like that the triple has two integer numbers and a float. They are supposed to be all integers, so let's use map to fix this:</p><p>
+<code class="literal">pythagorean.triple.int.py</code>
+</p><div class="informalexample"><pre class="programlisting">from math import sqrt
+mx = 10
+legs = [(a, b, sqrt(a**2 + b**2))
+    for a in range(1, mx) for b in range(a, mx)]
+legs = filter(lambda triple: triple[2].is_integer(), legs)
+# this will make the third number in the tuples integer
+legs = list(
+    map(<span class="strong"><strong>lambda triple: triple[:2] + (int(triple[2]), )</strong></span>, legs))
+print(legs)  # prints: [(3, 4, 5), (6, 8, 10)]</pre></div><p>Notice <a id="id331" class="indexterm"/>the step we added. We take each element in legs and we slice it, taking only the first two elements in it. Then, we concatenate the slice with a 1-tuple, in which we put the integer version of that float number that we didn't like.</p><p>Seems like a lot of work, right? Indeed it is. Let's see how to do all this with a list comprehension:</p><p>
+<code class="literal">pythagorean.triple.comprehension.py</code>
+</p><div class="informalexample"><pre class="programlisting">from math import sqrt
+# this step is the same as before
+mx = 10
+legs = [(a, b, sqrt(a**2 + b**2))
+    for a in range(1, mx) for b in range(a, mx)]
+# here we combine filter and map in one CLEAN list comprehension
+<span class="strong"><strong>legs = [(a, b, int(c)) for a, b, c in legs if c.is_integer()]</strong></span>
+print(legs)  # prints: [(3, 4, 5), (6, 8, 10)]</pre></div><p>I know. It's much better, isn't it? It's clean, readable, shorter. In other words, elegant.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="tip13"/>Tip</h3><p>I'm going quite fast here, as anticipated in the summary of the last chapter. Are you playing with this code? If not, I suggest you do. It's very important that you play around, break things, change things, see what happens. Make sure you have a clear understanding of what is going on. You want to become a ninja, right?</p></div></div></div><div class="section" title="dict comprehensions"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec73"/>dict comprehensions</h2></div></div></div><p>Dictionary <a id="id332" class="indexterm"/>and set comprehensions work exactly like the list ones, only there is a little difference in the syntax. The following example will suffice to explain everything you need to know:</p><p>
+<code class="literal">dictionary.comprehensions.py</code>
+</p><div class="informalexample"><pre class="programlisting">from string import ascii_lowercase
+lettermap = dict((c, k) for k, c in enumerate(ascii_lowercase, 1))</pre></div><p>If you print <code class="literal">lettermap</code>, you will see the following (I omitted the middle results, you get the gist):</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>{'a': 1,</strong></span>
+<span class="strong"><strong> 'b': 2,</strong></span>
+<span class="strong"><strong> 'c': 3,</strong></span>
+<span class="strong"><strong> ... omitted results ...</strong></span>
+<span class="strong"><strong> 'x': 24,</strong></span>
+<span class="strong"><strong> 'y': 25,</strong></span>
+<span class="strong"><strong> 'z': 26}</strong></span>
+</pre></div><p>What happens in the preceding code is that we're feeding the <code class="literal">dict</code> constructor with a comprehension (technically, a generator expression, we'll see it in a bit). We tell the <code class="literal">dict</code> constructor to make <span class="emphasis"><em>key/value</em></span> pairs from each tuple in the comprehension. We enumerate the sequence of all lowercase ASCII letters, starting from <span class="emphasis"><em>1</em></span>, using <code class="literal">enumerate</code>. Piece of cake. There is also another way to do the same thing, which is closer to the other dictionary syntax:</p><div class="informalexample"><pre class="programlisting">lettermap = {c: k for k, c in enumerate(ascii_lowercase, 1)}</pre></div><p>It does exactly the same thing, with a slightly different syntax that highlights a bit more of the <span class="emphasis"><em>key: value</em></span> part.</p><p>Dictionaries do not allow duplication in the keys, as shown in the following example:</p><p>
+<code class="literal">dictionary.comprehensions.duplicates.py</code>
+</p><div class="informalexample"><pre class="programlisting">word = 'Hello'
+swaps = {c: c.swapcase() for c in word}
+print(swaps)  # prints: {'o': 'O', <span class="strong"><strong>'l': 'L'</strong></span>, 'e': 'E', 'H': 'h'}</pre></div><p>We create a dictionary with keys, the letters in the string <code class="literal">'Hello'</code>, and values of the same letters, but with the case swapped. Notice there is only one <code class="literal">'l': 'L'</code> pair. The constructor doesn't complain, simply reassigns duplicates to the latest value. Let's make this clearer with another example; let's assign to each key its position in the string:</p><p>
+<code class="literal">dictionary.comprehensions.positions.py</code>
+</p><div class="informalexample"><pre class="programlisting">word = 'Hello'
+positions = {c: k for k, c in enumerate(word)}
+print(positions)  # prints: {<span class="strong"><strong>'l': 3</strong></span>, 'o': 4, 'e': 1, 'H': 0}</pre></div><p>Notice the value associated to the letter <code class="literal">'l': 3</code>. The pair <code class="literal">'l': 2</code> isn't there, it has been overridden<a id="id333" class="indexterm"/> by <code class="literal">'l': 3</code>.</p></div><div class="section" title="set comprehensions"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec74"/>set comprehensions</h2></div></div></div><p>Set comprehensions <a id="id334" class="indexterm"/>are very similar to list and dictionary ones. Python allows both the <code class="literal">set()</code> constructor to be used, or the explicit <code class="literal">{}</code> syntax. Let's see one quick example:</p><p>
+<code class="literal">set.comprehensions.py</code>
+</p><div class="informalexample"><pre class="programlisting">word = 'Hello'
+letters1 = <span class="strong"><strong>set(c for c in word)</strong></span>
+letters2 = <span class="strong"><strong>{c for c in word}</strong></span>
+print(letters1)  # prints: {'l', 'o', 'H', 'e'}
+print(letters1 == letters2)  # prints: True</pre></div><p>Notice how for set comprehensions, as for dictionaries, duplication is not allowed and therefore the resulting set has only four letters. Also, notice that the expressions assigned to <code class="literal">letters1</code> and <code class="literal">letters2</code> produce equivalent sets.</p><p>The syntax used to create <code class="literal">letters2</code> is very similar to the one we can use to create a dictionary comprehension. You can spot the difference only by the fact that dictionaries require keys and values, separated by columns, while sets don't.</p></div></div>
+<div class="section" title="Generators"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec52"/>Generators</h1></div></div></div><p>
+<span class="strong"><strong>Generators</strong></span> are one <a id="id335" class="indexterm"/>very powerful tool that Python gifts us with. They are based on the concepts of <span class="emphasis"><em>iteration</em></span>, as we said before, and they allow for coding patterns that combine elegance with efficiency.</p><p>Generators are of two types:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>Generator functions</strong></span>: These are very similar to regular functions, but instead of <a id="id336" class="indexterm"/>returning results through return statements, they use yield, which allows them to suspend and resume their state between each call</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>Generator expressions</strong></span>: These are very similar to the list comprehensions we've <a id="id337" class="indexterm"/>seen in this chapter, but instead of returning a list they return an object that produces results one by one</li></ul></div><div class="section" title="Generator functions"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec75"/>Generator functions</h2></div></div></div><p>
+<span class="strong"><strong>Generator functions</strong></span> come <a id="id338" class="indexterm"/>under all aspects like regular functions, with one difference: instead of collecting results and returning them at once, they can start the computation, yield one value, suspend their state saving everything they need to be able to resume and, if called again, resume and perform another step. Generator functions are automatically turned into their own iterators by Python, so you can call <code class="literal">next</code> on them.</p><p>This is all very theoretical so, let's make it clear why such a mechanism is so powerful, and then let's see an example.</p><p>Say I asked you to count out loud from 1 to a million. You start, and at some point I ask you to stop. After some time, I ask you to resume. At this point, what is the minimum information you need to be able to resume correctly? Well, you need to remember the last number <a id="id339" class="indexterm"/>you called. If I stopped you after 31415, you will just go on with 31416, and so on.</p><p>The point is, you don't need to remember all the numbers you said before 31415, nor do you need them to be written down somewhere. Well, you may not know it, but you're behaving like a generator already!</p><p>Take a good look at the following code:</p><p>
+<code class="literal">first.n.squares.py</code>
+</p><div class="informalexample"><pre class="programlisting">def get_squares(n):  # classic function approach
+    <span class="strong"><strong>return</strong></span> [x ** 2 for x in range(n)]
+print(get_squares(10))
+
+def get_squares_gen(n):  # generator approach
+    for x in range(n):
+        <span class="strong"><strong>yield</strong></span> x ** 2  # we yield, we don't return
+print(list(get_squares_gen(10)))</pre></div><p>The result of the prints will be the same: <code class="literal">[0, 1, 4, 9, 16, 25, 36, 49, 64, 81]</code>. But there is a huge difference between the two functions. <code class="literal">get_squares</code> is a classic function that collects all the squares of numbers in [0, <span class="emphasis"><em>n</em></span>) in a list, and returns it. On the other hand, <code class="literal">get_squares_gen</code> is a generator, and behaves very differently. Each time the interpreter reaches the <code class="literal">yield</code> line, its execution is suspended. The only reason those prints return the same result is because we fed <code class="literal">get_squares_gen</code> to the <code class="literal">list</code> constructor, which when called like that exhausts the generator completely by asking the next element until a <code class="literal">StopIteration</code> is raised. Let's see this in detail:</p><p>
+<code class="literal">first.n.squares.manual.py</code>
+</p><div class="informalexample"><pre class="programlisting">def get_squares_gen(n):
+    for x in range(n):
+        yield x ** 2
+
+<span class="strong"><strong>squares = get_squares_gen(4)</strong></span>  # this creates a generator object
+print(squares)  # &lt;generator object get_squares_gen at 0x7f158...&gt;
+print(<span class="strong"><strong>next(squares)</strong></span>)  # prints: 0
+print(next(squares))  # prints: 1
+print(next(squares))  # prints: 4
+print(next(squares))  # prints: 9
+# the following raises StopIteration, the generator is exhausted,
+# any further call to next will keep raising StopIteration
+print(<span class="strong"><strong>next(squares)</strong></span>)</pre></div><p>In the preceding code, each time we call <code class="literal">next</code> on the generator object, we either start it (first <code class="literal">next</code>) or make it resume from the last suspension point (any other <code class="literal">next</code>).</p><p>The first time we call <code class="literal">next</code> on it, we get <code class="literal">0</code>, which is the square of <code class="literal">0</code>, then <code class="literal">1</code>, then <code class="literal">4</code>, then <code class="literal">9</code> and since the <code class="literal">for</code> loop stops after that (<code class="literal">n</code> is <code class="literal">4</code>), then the generator naturally ends. A classic function would at that point just return <code class="literal">None</code>, but in order to comply with the iteration protocol, a generator will instead raise a <code class="literal">StopIteration</code> exception.</p><p>This <a id="id340" class="indexterm"/>explains how a <code class="literal">for</code> loop works for example. When you call <code class="literal">for k in range(n)</code>, what happens under the hood is that the <code class="literal">for</code> loop gets an iterator out of <code class="literal">range(n)</code> and starts calling <code class="literal">next</code> on it, until <code class="literal">StopIteration</code> is raised, which tells the <code class="literal">for</code> loop that the iteration has reached its end.</p><p>Having this behavior built-in in every iteration aspect of Python makes generators even more powerful because once we write them, we'll be able to plug them in whatever iteration mechanism we want.</p><p>At this point, you're probably asking yourself why would you want to use a generator instead of a regular function. Well, the title of this chapter should suggest the answer. I'll talk about performances later, so for now let's concentrate on another aspect: sometimes generators allow you to do something that wouldn't be possible with a simple list. For example, say you want to analyze all permutations of a sequence. If the sequence has length <span class="emphasis"><em>N</em></span>, then the number of its permutations is <span class="emphasis"><em>N!</em></span>. This means that if the sequence is 10 elements long, the number of permutations is 3628800. But a sequence of 20 elements would have 2432902008176640000 permutations. They grow factorially.</p><p>Now imagine you have a classic function that is attempting to calculate all permutations, put them in a list, and return it to you. With 10 elements, it would require probably a few tens of seconds, but for 20 elements there is simply no way that it can be done.</p><p>On the other hand, a generator function will be able to start the computation and give you back the first permutation, then the second, and so on. Of course you won't have the time to parse them all, they are too many, but at least you'll be able to work with some of them.</p><p>Remember when we were talking about the <code class="literal">break</code> statement in <code class="literal">for</code> loops? When we found a number dividing a <span class="emphasis"><em>candidate prime </em></span>we were breaking the loop, no need to go on.</p><p>Sometimes it's exactly the same, only the amount of data you have to iterate over is so huge that you cannot keep it all in memory in a list. In this case, generators are invaluable: they make possible what wouldn't be possible otherwise.</p><p>So, in order to save memory (and time), use generator functions whenever possible.</p><p>It's also worth noting that you can use the return statement in a generator function. It will produce a <code class="literal">StopIteration</code> exception to be raised, effectively ending the iteration. This is extremely important. If a <code class="literal">return</code> statement were actually to make the function return something, it would break the iteration protocol. Python consistency prevents this, and allows us great ease when coding. Let's see a quick example:</p><p>
+<code class="literal">gen.yield.return.py</code>
+</p><div class="informalexample"><pre class="programlisting">def geometric_progression(a, q):
+    k = 0
+    while True:
+        result = a * q**k
+        if result &lt;= 100000:
+            yield result
+        else:
+            return
+        k += 1
+
+for n in geometric_progression(2, 5):
+    print(n)</pre></div><p>The <a id="id341" class="indexterm"/>preceding code yields all terms of the geometric progression <span class="emphasis"><em>a</em></span>, <span class="emphasis"><em>aq</em></span>, <span class="inlinemediaobject"><img src="graphics/4715_05_01.jpg" alt="Generator functions"/></span>, <span class="inlinemediaobject"><img src="graphics/4715_05_02.jpg" alt="Generator functions"/></span>, .... When the progression produces a term that is greater than 100,000, the generator stops (with a <code class="literal">return</code> statement). Running the code produces the following result:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ python gen.yield.return.py</strong></span>
+<span class="strong"><strong>2</strong></span>
+<span class="strong"><strong>10</strong></span>
+<span class="strong"><strong>50</strong></span>
+<span class="strong"><strong>250</strong></span>
+<span class="strong"><strong>1250</strong></span>
+<span class="strong"><strong>6250</strong></span>
+<span class="strong"><strong>31250</strong></span>
+</pre></div><p>The next term would have been 156250, which is too big.</p></div><div class="section" title="Going beyond next"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec76"/>Going beyond next</h2></div></div></div><p>At the <a id="id342" class="indexterm"/>beginning of this chapter, I told you that generator objects are based on the iteration protocol. We'll see in the next chapter a complete example of how to write a custom iterator/iterable object. For now, I just want you to understand how <code class="literal">next()</code> works.</p><p>What happens when you call <code class="literal">next(generator)</code> is that you're calling the <code class="literal">generator.__next__()</code> method. Remember, a <span class="strong"><strong>method</strong></span> is just a function that belongs to an object, and<a id="id343" class="indexterm"/> objects in Python can have special methods. Our friend <code class="literal">__next__()</code> is just one of these and its purpose is to return the next element of the iteration, or to raise <code class="literal">StopIteration</code> when the iteration is over and there are no more elements to return.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note38"/>Note</h3><p>In <a id="id344" class="indexterm"/>Python, an <a id="id345" class="indexterm"/>object's special methods are also called <span class="strong"><strong>magic methods</strong></span>, or <span class="strong"><strong>dunder</strong></span> (from "double underscore") <span class="strong"><strong>methods</strong></span>.</p></div></div><p>When we <a id="id346" class="indexterm"/>write a generator function, Python automatically transforms it into an object that is very similar to an iterator, and when we call <code class="literal">next(generator)</code>, that call is transformed in <code class="literal">generator.__next__()</code>. Let's revisit the previous example about generating squares:</p><p>
+<code class="literal">first.n.squares.manual.method.py</code>
+</p><div class="informalexample"><pre class="programlisting">def get_squares_gen(n):
+    for x in range(n):
+        yield x ** 2
+
+squares = get_squares_gen(3)
+print(<span class="strong"><strong>squares.__next__()</strong></span>)  # prints: 0
+print(squares.__next__())  # prints: 1
+print(squares.__next__())  # prints: 4
+# the following raises StopIteration, the generator is exhausted,
+# any further call to next will keep raising StopIteration
+print(squares.__next__())</pre></div><p>The result is exactly as the previous example, only this time instead of using the proxy call <code class="literal">next(squares)</code>, we're directly calling <code class="literal">squares.__next__()</code>.</p><p>Generator objects have also three other methods that allow controlling their behavior: <code class="literal">send</code>, <code class="literal">throw</code>, and <code class="literal">close</code>. <code class="literal">send</code> allows us to communicate a value back to the generator object, while <code class="literal">throw</code> and <code class="literal">close</code> respectively allow raising an exception within the generator and closing it. Their use is quite advanced and I won't be covering them here in detail, but I want to spend a few words at least about <code class="literal">send</code>, with a simple example.</p><p>Take a look at the following code:</p><p>
+<code class="literal">gen.send.preparation.py</code>
+</p><div class="informalexample"><pre class="programlisting">def counter(start=0):
+    n = start
+    <span class="strong"><strong>while True</strong></span>:
+        yield n
+        n += 1
+
+c = counter()
+print(next(c))  # prints: 0
+print(next(c))  # prints: 1
+print(next(c))  # prints: 2</pre></div><p>The preceding iterator creates a generator object that will run forever. You can keep calling it, it will never stop. Alternatively, you can put it in a <code class="literal">for</code> loop, for example, <code class="literal">for n in counter(): ...</code> and it will go on forever as well.</p><p>Now, what if<a id="id347" class="indexterm"/> you wanted to stop it at some point? One solution is to use a variable to control the <code class="literal">while</code> loop. Something like this:</p><p>
+<code class="literal">gen.send.preparation.stop.py</code>
+</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>stop = False</strong></span>
+def counter(start=0):
+    n = start
+    <span class="strong"><strong>while not stop</strong></span>:
+        yield n
+        n += 1
+
+c = counter()
+print(next(c))  # prints: 0
+print(next(c))  # prints: 1
+<span class="strong"><strong>stop = True</strong></span>
+print(next(c))  # raises StopIteration</pre></div><p>This will do it. We start with <code class="literal">stop = False</code>, and until we change it to <code class="literal">True</code>, the generator will just keep going, like before. The moment we change stop to <code class="literal">True</code> though, the <code class="literal">while</code> loop will exit, and the next call will raise a <code class="literal">StopIteration</code> exception. This trick works, but I don't like it. We depend on an external variable, and this can lead to issues: what if another function changes that <code class="literal">stop</code>? Moreover, the code is scattered. In a nutshell, this isn't good enough.</p><p>We can make it better by using <code class="literal">generator.send()</code>. When we call <code class="literal">generator.send()</code>, the value that we feed to <code class="literal">send</code> will be passed in to the generator, execution is resumed, and we can fetch it via the <code class="literal">yield</code> expression. This is all very complicated when explained with words, so let's see an example:</p><p>
+<code class="literal">gen.send.py</code>
+</p><div class="informalexample"><pre class="programlisting">def counter(start=0):
+    n = start
+    while True:
+        <span class="strong"><strong>result = yield n</strong></span>             # A
+        print(type(result), result)  # B
+        <span class="strong"><strong>if result == 'Q':</strong></span>
+<span class="strong"><strong>            break</strong></span>
+        n += 1
+
+c = counter()
+print(<span class="strong"><strong>next(c)</strong></span>)         # C
+print(<span class="strong"><strong>c.send('Wow!')</strong></span>)  # D
+print(<span class="strong"><strong>next(c)</strong></span>)         # E
+print(<span class="strong"><strong>c.send('Q')</strong></span>)     # F</pre></div><p>Execution <a id="id348" class="indexterm"/>of the preceding code produces the following:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ python gen.send.py</strong></span>
+<span class="strong"><strong>0</strong></span>
+<span class="strong"><strong>&lt;class 'str'&gt; Wow!</strong></span>
+<span class="strong"><strong>1</strong></span>
+<span class="strong"><strong>&lt;class 'NoneType'&gt; None</strong></span>
+<span class="strong"><strong>2</strong></span>
+<span class="strong"><strong>&lt;class 'str'&gt; Q</strong></span>
+<span class="strong"><strong>Traceback (most recent call last):</strong></span>
+<span class="strong"><strong>  File "gen.send.py", line 14, in &lt;module&gt;</strong></span>
+<span class="strong"><strong>    print(c.send('Q'))     # F</strong></span>
+<span class="strong"><strong>StopIteration</strong></span>
+</pre></div><p>I think it's worth going through this code line by line, like if we were executing it, and see if we can understand what's going on.</p><p>We start the generator execution with a call to <code class="literal">next</code> (<code class="literal">#C</code>). Within the generator, <code class="literal">n</code> is set to the same value of <code class="literal">start</code>. The <code class="literal">while</code> loop is entered, execution stops (<code class="literal">#A</code>) and <code class="literal">n</code> (0) is yielded back to the caller. 0 is printed on the console.</p><p>We then call <code class="literal">send</code> (<code class="literal">#D</code>), execution resumes and <code class="literal">result</code> is set to <code class="literal">'Wow!'</code> (still <code class="literal">#A</code>), then its type and value are printed on the console (<code class="literal">#B</code>). <code class="literal">result</code> is not <code class="literal">'Q'</code>, therefore <code class="literal">n</code> is incremented by 1 and execution goes back to the <code class="literal">while</code> condition, which, being <code class="literal">True</code>, evaluates to <code class="literal">True</code> (that wasn't hard to guess, right?). Another loop cycle begins, execution stops again (<code class="literal">#A</code>), and <code class="literal">n</code> (1) is yielded back to the caller. 1 is printed on the console.</p><p>At this point, we call <code class="literal">next</code> (<code class="literal">#E</code>), execution is resumed again (<code class="literal">#A</code>), and because we are not sending anything to the generator explicitly, Python behaves exactly like functions that are not using the <code class="literal">return</code> statement: the <code class="literal">yield n</code> expression (<code class="literal">#A</code>) returns <code class="literal">None</code>. <code class="literal">result</code> therefore is set to <code class="literal">None</code>, and its type and value are yet again printed on the console (<code class="literal">#B</code>). Execution continues, <code class="literal">result</code> is not <code class="literal">'Q'</code> so <code class="literal">n</code> is incremented by 1, and we start another loop again. Execution stops again (<code class="literal">#A</code>) and <code class="literal">n</code> (2) is yielded back to the caller. 2 is printed on the console.</p><p>And now for the grand finale: we call <code class="literal">send</code> again (<code class="literal">#F</code>), but this time we pass in <code class="literal">'Q'</code>, therefore when execution is resumed, <code class="literal">result</code> is set to <code class="literal">'Q'</code> (<code class="literal">#A</code>). Its type and value are printed on the console (<code class="literal">#B</code>), and then finally the <code class="literal">if</code> clause evaluates to <code class="literal">True</code> and the <code class="literal">while</code> loop is stopped by the <code class="literal">break</code> statement. The generator naturally terminates and this means a <code class="literal">StopIteration</code> exception is raised. You can see the print of its traceback on the last few lines printed on the console.</p><p>This is not at all simple to understand at first, so if it's not clear to you, don't be discouraged. You can keep reading on and then you can come back to this example after some time.</p><p>Using <code class="literal">send</code> allows <a id="id349" class="indexterm"/>for interesting patterns, and it's worth noting that <code class="literal">send</code> can only be used to resume the execution, not to start it. Only <code class="literal">next</code> starts the execution of a generator.</p></div><div class="section" title="The yield from expression"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec77"/>The yield from expression</h2></div></div></div><p>Another interesting construct is the <code class="literal">yield from</code> expression. This expression allows you to yield <a id="id350" class="indexterm"/>values from a subiterator. Its use allows for quite advanced patterns, so let's just see a very quick example of it:</p><p>
+<code class="literal">gen.yield.for.py</code>
+</p><div class="informalexample"><pre class="programlisting">def print_squares(start, end):
+    <span class="strong"><strong>for n in range(start, end):</strong></span>
+<span class="strong"><strong>        yield n ** 2</strong></span>
+
+for n in print_squares(2, 5):
+    print(n)</pre></div><p>The previous code prints the numbers <code class="literal">4</code>, <code class="literal">9</code>, <code class="literal">16</code> on the console (on separate lines). By now, I expect you to be able to understand it by yourself, but let's quickly recap what happens. The <code class="literal">for</code> loop outside the function gets an iterator from <code class="literal">print_squares(2, 5)</code> and calls <code class="literal">next</code> on it until iteration is over. Every time the generator is called, execution is suspended (and later resumed) on <code class="literal">yield n ** 2</code>, which returns the square of the current <code class="literal">n</code>.</p><p>Let's see how we can transform this code benefiting from the <code class="literal">yield from</code> expression:</p><p>
+<code class="literal">gen.yield.from.py</code>
+</p><div class="informalexample"><pre class="programlisting">def print_squares(start, end):
+    <span class="strong"><strong>yield from (n ** 2 for n in range(start, end))</strong></span>
+
+for n in print_squares(2, 5):
+    print(n)</pre></div><p>This code produces the same result, but as you can see the <code class="literal">yield from</code> is actually running a subiterator <code class="literal">(n ** 2 …)</code>. The <code class="literal">yield from</code> expression returns to the caller each value the subiterator is producing. It's shorter and it reads better.</p></div><div class="section" title="Generator expressions"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec78"/>Generator expressions</h2></div></div></div><p>Let's<a id="id351" class="indexterm"/> now talk about the other techniques to generate values one at a time.</p><p>The syntax is exactly the same as list comprehensions, only, instead of wrapping the comprehension with square brackets, you wrap it with round braces. That is called a <span class="strong"><strong>generator expression</strong></span>.</p><p>In general, generator expressions behave like equivalent list comprehensions, but there is one very important thing to remember: generators allow for one iteration only, then they will be exhausted. Let's see an example:</p><p>
+<code class="literal">generator.expressions.py</code>
+</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; cubes = [k**3 for k in range(10)]  # regular list</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; cubes</strong></span>
+<span class="strong"><strong>[0, 1, 8, 27, 64, 125, 216, 343, 512, 729]</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; type(cubes)</strong></span>
+<span class="strong"><strong>&lt;class 'list'&gt;</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; cubes_gen = (k**3 for k in range(10))  # create as generator</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; cubes_gen</strong></span>
+<span class="strong"><strong>&lt;generator object &lt;genexpr&gt; at 0x7ff26b5db990&gt;</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; type(cubes_gen)</strong></span>
+<span class="strong"><strong>&lt;class 'generator'&gt;</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; list(cubes_gen)  # this will exhaust the generator</strong></span>
+<span class="strong"><strong>[0, 1, 8, 27, 64, 125, 216, 343, 512, 729]</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; list(cubes_gen)  # nothing more to give</strong></span>
+<span class="strong"><strong>[]</strong></span>
+</pre></div><p>Look at the line in which the generator expression is created and assigned the name <code class="literal">cubes_gen</code>. You can see it's a generator object. In order to see its elements, we can use a <code class="literal">for</code> loop, a manual set of calls to <code class="literal">next</code>, or simply, feed it to a <code class="literal">list</code> constructor, which is what I did.</p><p>Notice how, once the generator has been exhausted, there is no way to recover the same elements from it again. We need to recreate it, if we want to use it from scratch again.</p><p>In the next few examples, let's see how to reproduce <code class="literal">map</code> and <code class="literal">filter</code> using generator expressions:</p><p>
+<code class="literal">gen.map.py</code>
+</p><div class="informalexample"><pre class="programlisting">def adder(*n):
+    return sum(n)
+s1 = sum(map(lambda n: adder(*n), zip(range(100), range(1, 101))))
+s2 = sum(adder(*n) for n in zip(range(100), range(1, 101)))</pre></div><p>In the previous example, <code class="literal">s1</code> and <code class="literal">s2</code> are exactly the same: they are the sum of <code class="literal">adder(0, 1), adder(1, 2), adder(2, 3)</code>, and so on, which translates to <code class="literal">sum(1, 3, 5, ...)</code>. The syntax is different though, I find the generator expression to be much more readable:</p><p>
+<code class="literal">gen.filter.py</code>
+</p><div class="informalexample"><pre class="programlisting">cubes = [x**3 for x in range(10)]
+odd_cubes1 = filter(lambda cube: cube % 2, cubes)
+odd_cubes2 = (cube for cube in cubes if cube % 2)</pre></div><p>In the previous example, <code class="literal">odd_cubes1</code> and <code class="literal">odd_cubes2</code> are the same: they generate a sequence <a id="id352" class="indexterm"/>of odd cubes. Yet again, I prefer the generator syntax. This should be evident when things get a little more complicated:</p><p>
+<code class="literal">gen.map.filter.py</code>
+</p><div class="informalexample"><pre class="programlisting">N = 20
+cubes1 = map(
+    lambda n: (n, n**3),
+    filter(lambda n: n % 3 == 0 or n % 5 == 0, range(N))
+)
+cubes2 = (
+    (n, n**3) for n in range(N) if n % 3 == 0 or n % 5 == 0)</pre></div><p>The preceding code creates to generators <code class="literal">cubes1</code> and <code class="literal">cubes2</code>. They are exactly the same, and return 2-tuples (<span class="emphasis"><em>n</em></span>, <span class="inlinemediaobject"><img src="graphics/4715_05_04.jpg" alt="Generator expressions"/></span>) when <span class="emphasis"><em>n</em></span> is a multiple of 3 or 5.</p><p>If you print the list (<code class="literal">cubes1</code>), you get: <code class="literal">[(0, 0), (3, 27), (5, 125), (6, 216), (9, 729), (10, 1000), (12, 1728), (15, 3375), (18, 5832)]</code>.</p><p>See how much better the generator expression reads? It may be debatable when things are very simple, but as soon as you start nesting functions a bit, like we did in this example, the superiority of the generator syntax is evident. Shorter, simpler, more elegant.</p><p>Now, let me ask you a question: what is the difference between the following lines of code?</p><p>
+<code class="literal">sum.example.py</code>
+</p><div class="informalexample"><pre class="programlisting">s1 = sum([n**2 for n in range(10**6)])
+s2 = sum((n**2 for n in range(10**6)))
+s3 = sum(n**2 for n in range(10**6))</pre></div><p>Strictly speaking, they all produce the same sum. The expressions to get <code class="literal">s2</code> and <code class="literal">s3</code> are exactly the same because the braces in <code class="literal">s2</code> are redundant. They are both generator expressions inside the <code class="literal">sum</code> function. The expression to get <code class="literal">s1</code> is different though. Inside <code class="literal">sum</code>, we find a list comprehension. This means that in order to calculate <code class="literal">s1</code>, the <code class="literal">sum</code> function has to call <code class="literal">next</code> on a list, a million times.</p><p>Do you see where we're loosing time and memory? Before <code class="literal">sum</code> can start calling <code class="literal">next</code> on that list, the list needs to have been created, which is a waste of time and space. It's much better for <code class="literal">sum</code> to call <code class="literal">next</code> on a simple generator expression. There is no need to have all the numbers from <code class="literal">range(10**6)</code> stored in a list.</p><p>So, <span class="emphasis"><em>watch out for extra parentheses when you write your expressions</em></span>: sometimes it's easy to skip on these details, which makes our code much different. Don't believe me?</p><p>
+<code class="literal">sum.example.2.py</code>
+</p><div class="informalexample"><pre class="programlisting">s = sum(<span class="strong"><strong>[</strong></span>n**2 for n in range(10**8)<span class="strong"><strong>]</strong></span>)  # this is killed
+# s = sum(n**2 for n in range(10**8))  # this succeeds
+print(s)</pre></div><p>Try running the preceding example. If I run the first line, this is what I get:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ python sum.example.2.py</strong></span>
+<span class="strong"><strong>Killed</strong></span>
+</pre></div><p>On the other hand, if I comment out the first line, and uncomment the second one, this is the result:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ python sum.example.2.py</strong></span>
+<span class="strong"><strong>333333328333333350000000</strong></span>
+</pre></div><p>Sweet generator expressions. The difference between the two lines is that in the first one, a list with<a id="id353" class="indexterm"/> the squares of the first hundred million numbers must be made before being able to sum them up. That list is huge, and we run out of memory (at least, my box did, if yours doesn't try a bigger number), therefore Python kills the process for us. Sad face.</p><p>But when we remove the square brackets, we don't make a list any more. The sum function receives 0, 1, 4, 9, and so on until the last one, and sums them up. No problems, happy face.</p></div></div>
+<div class="section" title="Some performance considerations"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec53"/>Some performance considerations</h1></div></div></div><p>So, we've<a id="id354" class="indexterm"/> seen that we have many different ways to achieve the same result. We can use any combination of <code class="literal">map</code>, <code class="literal">zip</code>, <code class="literal">filter</code>, or choose to go with a comprehension, or maybe choose to use a generator, either function or expression. We may even decide to go with <code class="literal">for</code> loops: when the logic to apply to each running parameter isn't simple, they may be the best option.</p><p>Other than readability concerns though, let's talk about performances. When it comes to performances, <a id="id355" class="indexterm"/>usually <a id="id356" class="indexterm"/>there are two factors which play a major role: <span class="strong"><strong>space</strong></span> and <span class="strong"><strong>time</strong></span>.</p><p>Space means the size of the memory that a data structure is going to take up. The best way to choose is to ask yourself if you really need a list (or tuple) or if a simple generator function would work as well. If the answer is yes, go with the generator, it'll save a lot of space. Same goes with functions: if you don't actually need them to return a list or tuple, then you can transform them in generator functions as well.</p><p>Sometimes, you will have to use lists (or tuples), for example there are algorithms that scan sequences using multiple pointers or maybe they run over the sequence more than once. A generator function (or expression) can be iterated over only once and then it's exhausted, so in these situations, it wouldn't be the right choice.</p><p>Time is a bit harder than space because it depends on more variables and therefore it isn't possible to state that <span class="emphasis"><em>X is faster than Y</em></span> with absolute certainty for all cases. However, based on tests run on Python today, we can say that <code class="literal">map</code> calls can be twice as fast as equivalent <code class="literal">for</code> loops, and list comprehensions can be (always generally speaking) even faster than equivalent <code class="literal">map</code> calls.</p><p>In order<a id="id357" class="indexterm"/> to fully appreciate the reason behind these statements, we need to understand how Python works, and this is a bit outside the scope of this book, for it's too technical in detail. Let's just say that <code class="literal">map</code> and <code class="literal">list</code> comprehensions run at C language speed within the interpreter, while a Python <code class="literal">for</code> loop is run as Python bytecode within the Python Virtual Machine, which is often much slower.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note39"/>Note</h3><p>There are several different implementations of Python. The original one, and still the most common one, is the one written in C. C is one of the most powerful and popular programming languages still used today.</p></div></div><p>These claims I made come from books and articles that you can find on the Web, but how about we do a small exercise and try to find out for ourselves? I will write a small piece of code that collects the results of <code class="literal">divmod(a, b)</code> for a certain set of integer pairs <code class="literal">(a, b)</code>. I will use the <code class="literal">time</code> function from the <code class="literal">time</code> module to calculate the elapsed time of the operations that I will perform. Let's go!</p><p>
+<code class="literal">performances.py</code>
+</p><div class="informalexample"><pre class="programlisting">from <span class="strong"><strong>time</strong></span> import <span class="strong"><strong>time</strong></span>
+mx = 5500  # this is the max I could reach with my computer...
+
+<span class="strong"><strong>t = time()</strong></span>  # start time for the for loop
+dmloop = []
+for a in range(1, mx):
+    for b in range(a, mx):
+        dmloop.append(divmod(a, b))
+print('for loop: {:.4f} s'.format(<span class="strong"><strong>time() - t)</strong></span>)  # elapsed time
+
+t = time()  # start time for the list comprehension
+dmlist = [
+    divmod(a, b) for a in range(1, mx) for b in range(a, mx)]
+print('list comprehension: {:.4f} s'.format(time() - t))
+
+t = time()  # start time for the generator expression
+dmgen = list(
+    divmod(a, b) for a in range(1, mx) for b in range(a, mx))
+print('generator expression: {:.4f} s'.format(time() - t))
+
+# verify correctness of results and number of items in each list
+print(dmloop == dmlist == dmgen, len(dmloop))</pre></div><p>As you can see, we're creating three lists: <code class="literal">dmloop</code>, <code class="literal">dmlist</code>, <code class="literal">dmgen</code> (<code class="literal">divmod</code>-<code class="literal">for</code> loop, <code class="literal">divmod</code>-<code class="literal">list</code> comprehension, <code class="literal">divmod</code>-generator expression). We start with the slowest option, the <code class="literal">for</code> loops. Then we have a <code class="literal">list</code> comprehension, and finally a generator expression. Let's see the output:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ python performances.py</strong></span>
+<span class="strong"><strong>for loop: 4.3433 s</strong></span>
+<span class="strong"><strong>list comprehension: 2.7238 s</strong></span>
+<span class="strong"><strong>generator expression: 3.1380 s</strong></span>
+<span class="strong"><strong>True 15122250</strong></span>
+</pre></div><p>The <code class="literal">list</code> comprehension<a id="id358" class="indexterm"/> runs in 63% of the time taken by the <code class="literal">for</code> loop. That's impressive. The generator expression came quite close to that, with a good 72%. The reason the generator expression is slower is that we need to feed it to the <code class="literal">list()</code> constructor and this has a little bit more overhead compared to a sheer list comprehension.</p><p>I would never go with a generator expression in a similar case though, there is no point if at the end we want a list. I would just use a list comprehension, and the result of the previous example proves me right. On the other hand, if I just had to do those <code class="literal">divmod</code> calculations without retaining the results, then a generator expression would be the way to go because in such a situation a list comprehension would unnecessarily consume a lot of space.</p><p>So, to recap: generators are very fast and allow you to save on space. List comprehensions are in general even faster, but don't save on space. Pure Python <code class="literal">for</code> loops are the slowest option. Let's see a similar example that compares a <code class="literal">for</code> loop and a <code class="literal">map</code> call:</p><p>
+<code class="literal">performances.map.py</code>
+</p><div class="informalexample"><pre class="programlisting">from time import time
+mx = 2 * 10 ** 7
+
+t = time()
+absloop = []
+for n in range(mx):
+    absloop.append(abs(n))
+print('for loop: {:.4f} s'.format(time() - t))
+
+t = time()
+abslist = [abs(n) for n in range(mx)]
+print('list comprehension: {:.4f} s'.format(time() - t))
+
+t = time()
+absmap = list(map(abs, range(mx)))
+print('map: {:.4f} s'.format(time() - t))
+
+print(absloop == abslist == absmap)</pre></div><p>This code is conceptually very similar to the previous example. The only thing that has changed is<a id="id359" class="indexterm"/> that we're applying the <code class="literal">abs</code> function instead of the <code class="literal">divmod</code> one, and we have only one loop instead of two nested ones. Execution gives the following result:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ python performances.map.py</strong></span>
+<span class="strong"><strong>for loop: 3.1283 s</strong></span>
+<span class="strong"><strong>list comprehension: 1.3966 s</strong></span>
+<span class="strong"><strong>map: 1.2319 s</strong></span>
+<span class="strong"><strong>True</strong></span>
+</pre></div><p>And <code class="literal">map</code> wins the race! As I told you before, giving a statement of <span class="emphasis"><em>what is faster than what</em></span> is very tricky. In this case, the <code class="literal">map</code> call is faster than the list comprehension.</p><p>Apart from the case by case little differences though, it's quite clear that the <code class="literal">for</code> loop option is the slowest one, so let's see what are the reasons we still want to use it.</p></div>
+<div class="section" title="Don't overdo comprehensions and generators"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec54"/>Don't overdo comprehensions and generators</h1></div></div></div><p>We've <a id="id360" class="indexterm"/>seen how powerful list comprehensions <a id="id361" class="indexterm"/>and generator expressions can be. And they are, don't get me wrong, but the feeling that I have when I deal with them is that their complexity grows exponentially. The more you try to do within a single comprehension or a generator expression, the harder it becomes to read, understand, and therefore to maintain or change.</p><p>Open a Python console and type in <code class="literal">import this</code>, let's read the Zen of Python again, in particular, there are a few lines that I think are very important to keep in mind:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; import this</strong></span>
+<span class="strong"><strong>The Zen of Python, by Tim Peters</strong></span>
+
+<span class="strong"><strong>Beautiful is better than ugly.</strong></span>
+<span class="strong"><strong>Explicit is better than implicit.  #</strong></span>
+<span class="strong"><strong>Simple is better than complex.  #</strong></span>
+<span class="strong"><strong>Complex is better than complicated.</strong></span>
+<span class="strong"><strong>Flat is better than nested.</strong></span>
+<span class="strong"><strong>Sparse is better than dense.</strong></span>
+<span class="strong"><strong>Readability counts.  #</strong></span>
+<span class="strong"><strong>Special cases aren't special enough to break the rules.</strong></span>
+<span class="strong"><strong>Although practicality beats purity.</strong></span>
+<span class="strong"><strong>Errors should never pass silently.</strong></span>
+<span class="strong"><strong>Unless explicitly silenced.</strong></span>
+<span class="strong"><strong>In the face of ambiguity, refuse the temptation to guess.</strong></span>
+<span class="strong"><strong>There should be one-- and preferably only one --obvious way to do it.</strong></span>
+<span class="strong"><strong>Although that way may not be obvious at first unless you're Dutch.</strong></span>
+<span class="strong"><strong>Now is better than never.</strong></span>
+<span class="strong"><strong>Although never is often better than *right* now.</strong></span>
+<span class="strong"><strong>If the implementation is hard to explain, it's a bad idea.  #</strong></span>
+<span class="strong"><strong>If the implementation is easy to explain, it may be a good idea.</strong></span>
+<span class="strong"><strong>Namespaces are one honking great idea -- let's do more of those!</strong></span>
+</pre></div><p>I have put a comment sign on the right of <a id="id362" class="indexterm"/>the main focus points here. Comprehensions <a id="id363" class="indexterm"/>and generator expressions become hard to read, more implicit than explicit, complex, and they can be hard to explain. Sometimes you have to break them apart using the inside-out technique, to understand why they produce the result they produce.</p><p>To give you an example, let's talk a bit more about Pythagorean triples. Just to remind you, a Pythagorean triple is a tuple of positive integers (<span class="emphasis"><em>a</em></span>, <span class="emphasis"><em>b</em></span>, <span class="emphasis"><em>c</em></span>) such that <span class="inlinemediaobject"><img src="graphics/4715_05_05.jpg" alt="Don't overdo comprehensions and generators"/></span>.</p><p>We saw earlier in this chapter how to calculate them, but we did it in a very inefficient way because we were scanning all pairs of numbers below a certain threshold, calculating the hypotenuse, and filtering out those that were not producing a triple.</p><p>A better way to get a list of Pythagorean triples is to directly generate them. There are many <a id="id364" class="indexterm"/>different formulas to do this and we'll use one of them: the <span class="strong"><strong>Euclidean formula</strong></span>.</p><p>This formula says that any triple (<span class="emphasis"><em>a</em></span>, <span class="emphasis"><em>b</em></span>, <span class="emphasis"><em>c</em></span>), where <span class="inlinemediaobject"><img src="graphics/4715_05_06.jpg" alt="Don't overdo comprehensions and generators"/></span>, <span class="emphasis"><em>b = 2mn</em></span>, <span class="inlinemediaobject"><img src="graphics/4715_05_07.jpg" alt="Don't overdo comprehensions and generators"/></span>, with <span class="emphasis"><em>m</em></span> and <span class="emphasis"><em>n</em></span> positive integers such that <span class="emphasis"><em>m &gt; n</em></span>, is a Pythagorean triple. For example, when <span class="emphasis"><em>m = 2</em></span> and <span class="emphasis"><em>n = 1</em></span>, we find the smallest triple: (3, 4, 5).</p><p>There is one catch though: consider the triple (6, 8, 10), that is just like (3, 4, 5) with all the numbers multiplied by 2. This triple is definitely Pythagorean, since <span class="inlinemediaobject"><img src="graphics/4715_05_08.jpg" alt="Don't overdo comprehensions and generators"/></span>, but we can derive it from (3, 4, 5) simply by multiplying each of its elements by <span class="emphasis"><em>2</em></span>. Same goes for (9, 12, 15), (12, 16, 20), and in general for all the triples that we can write as (3k, 4k, 5k), with <span class="emphasis"><em>k</em></span> being a positive integer greater than 1.</p><p>A triple that cannot be obtained by multiplying the elements of another one by some factor <span class="emphasis"><em>k</em></span>, is <a id="id365" class="indexterm"/>called <span class="strong"><strong>primitive</strong></span>. Another way of stating this is: if the three elements of a triple are <span class="strong"><strong>coprime</strong></span>, then the triple is primitive. Two numbers are coprime when they don't share any prime factor amongst their divisors, that is, their <span class="strong"><strong>greatest common divisor</strong></span> (<span class="strong"><strong>GCD</strong></span>) is 1. For example, 3 and 5 are coprime, while 3 and 6 are not, because <a id="id366" class="indexterm"/>they are both divisible by 3.</p><p>So, the Euclidean formula tells us that if <span class="emphasis"><em>m</em></span> and <span class="emphasis"><em>n</em></span> are coprime, and <span class="emphasis"><em>m – n</em></span> is odd, the triple they generate is <span class="emphasis"><em>primitive</em></span>. In the following example, we will write a generator expression to calculate all the primitive Pythagorean triples whose hypotenuse (<span class="emphasis"><em>c</em></span>) is less than or equal to some integer <span class="emphasis"><em>N</em></span>. This means we want all triples for which <span class="inlinemediaobject"><img src="graphics/4715_05_09.jpg" alt="Don't overdo comprehensions and generators"/></span>. When <span class="emphasis"><em>n</em></span> is <span class="emphasis"><em>1</em></span>, the formula looks like this: <span class="inlinemediaobject"><img src="graphics/4715_05_10.jpg" alt="Don't overdo comprehensions and generators"/></span>, which means we can approximate the calculation with an upper bound of <span class="inlinemediaobject"><img src="graphics/4715_05_11.jpg" alt="Don't overdo comprehensions and generators"/></span>.</p><p>So, to recap: <span class="emphasis"><em>m</em></span> must be greater than <span class="emphasis"><em>n</em></span>, they must also be coprime, and their difference <span class="emphasis"><em>m - n</em></span> must be odd. Moreover, in order to avoid useless calculations we'll put the upper bound for <span class="emphasis"><em>m</em></span> at <span class="emphasis"><em>floor(sqrt(N)) + 1</em></span>.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note40"/>Note</h3><p>The function <code class="literal">floor</code> for a real number <span class="emphasis"><em>x</em></span> gives the maximum integer <span class="emphasis"><em>n</em></span> such that <span class="emphasis"><em>n &lt; x</em></span>, for example, <span class="emphasis"><em>floor(3.8) = 3</em></span>, <span class="emphasis"><em>floor(13.1) = 13</em></span>. Taking the <span class="emphasis"><em>floor(sqrt(N)) + 1</em></span> means taking the integer part of the square root of <span class="emphasis"><em>N</em></span> and adding a minimal margin just to make sure we don't miss out any number.</p></div></div><p>Let's put <a id="id367" class="indexterm"/>all of this into code, step by step. Let's start by <a id="id368" class="indexterm"/>writing a simple <code class="literal">gcd</code> function that uses <span class="strong"><strong>Euclid's algorithm</strong></span>:</p><p>
+<code class="literal">functions.py</code>
+</p><div class="informalexample"><pre class="programlisting">def gcd(a, b):
+    """Calculate the Greatest Common Divisor of (a, b). """
+    while b != 0:
+        a, b = b, a % b
+    return a</pre></div><p>The <a id="id369" class="indexterm"/>explanation of Euclid's algorithm is available on the Web, so I won't spend any time here talking about it; we need to concentrate on the generator expression. The next step is to use the knowledge we gathered before to generate a list of primitive Pythagorean triples:</p><p>
+<code class="literal">pythagorean.triple.generation.py</code>
+</p><div class="informalexample"><pre class="programlisting">from functions import gcd
+N = 50
+
+triples = sorted(                                      # 1
+    ((a, b, c) for a, b, c in (                        # 2
+        ((m**2 - n**2), (2 * m * n), (m**2 + n**2))    # 3
+        for m in range(1, int(N**.5) + 1)              # 4
+        for n in range(1, m)                           # 5
+        if (m - n) % 2 and gcd(m, n) == 1              # 6
+    ) if c &lt;= N), key=lambda *triple: sum(*triple)     # 7
+)
+
+print(triples)</pre></div><p>There you go. It's not easy to read, so let's go through it line by line. At <code class="literal">#3</code>, we start a generator expression that is creating triples. You can see from <code class="literal">#4</code> and <code class="literal">#5</code> that we're looping on <code class="literal">m</code> in <span class="emphasis"><em>[1, M]</em></span> with <span class="emphasis"><em>M</em></span> being the integer part of <span class="emphasis"><em>sqrt(N)</em></span>, plus 1. On the other hand, <code class="literal">n</code> loops within <span class="emphasis"><em>[1, m)</em></span>, to respect the <span class="emphasis"><em>m &gt; n</em></span> rule. Worth noting how I calculated <span class="emphasis"><em>sqrt(N)</em></span>, that is, <code class="literal">N**.5</code>, which is just another way to do it that I wanted to show you.</p><p>At <code class="literal">#6</code>, you<a id="id370" class="indexterm"/> can see the filtering conditions to make the <a id="id371" class="indexterm"/>triples primitive: <code class="literal">(m - n) % 2</code> evaluates to <code class="literal">True</code> when <code class="literal">(m - n)</code> is odd, and <code class="literal">gcd(m, n) == 1</code> means <code class="literal">m</code> and <code class="literal">n</code> are coprime. With these in place, we know the triples will be primitive. This takes care of the innermost generator expression. The outermost one starts at <code class="literal">#2</code>, and finishes at <code class="literal">#7</code>. We take the triples (<span class="emphasis"><em>a</em></span>, <span class="emphasis"><em>b</em></span>, <span class="emphasis"><em>c</em></span>) in (...innermost generator...) such that <code class="literal">c &lt;= N</code>. This is necessary because <span class="inlinemediaobject"><img src="graphics/4715_05_11.jpg" alt="Don't overdo comprehensions and generators"/></span> is the lowest upper bound that we can apply, but it doesn't guarantee that <span class="emphasis"><em>c</em></span> will actually be less than or equal to <span class="emphasis"><em>N</em></span>.</p><p>Finally, at <code class="literal">#1</code> we apply sorting, to present the list in order. At <code class="literal">#7</code>, after the outermost generator expression is closed, you can see that we specify the sorting key to be the sum <span class="emphasis"><em>a + b + c</em></span>. This is just my personal preference, there is no mathematical reason behind it.</p><p>So, what do you think? Was it straightforward to read? I don't think so. And believe me, this is still a simple example; I have seen expressions way more complicated than this one.</p><p>Unfortunately some programmers think that writing code like this is cool, that it's some sort of demonstration of their superior intellectual powers, of their ability to quickly read and digest intricate code.</p><p>Within a professional environment though, I find myself having much more respect for those who write efficient, clean code, and manage to keep ego out the door. Conversely, those who don't, will produce lines at which you will stare for a long time while swearing in three languages (at least this is what I do).</p><p>Now, let's see if we can rewrite this code into something easier to read:</p><p>
+<code class="literal">pythagorean.triple.generation.for.py</code>
+</p><div class="informalexample"><pre class="programlisting">from functions import gcd
+
+def gen_triples(N):
+    for m in range(1, int(N**.5) + 1):            # 1
+        for n in range(1, m):                     # 2
+            if (m - n) % 2 and gcd(m, n) == 1:    # 3
+                c = m**2 + n**2                   # 4
+                if c &lt;= N:                        # 5
+                    a = m**2 - n**2               # 6
+                    b = 2 * m * n                 # 7
+                    yield (a, b, c)               # 8
+
+triples = sorted(
+    gen_triples(50), key=lambda *triple: sum(*triple))  # 9
+print(triples)</pre></div><p>I feel so much better already. Let's go through this code as well, line by line. You'll see how easier it is to understand.</p><p>We<a id="id372" class="indexterm"/> start looping at <code class="literal">#1</code> and <code class="literal">#2</code>, in exactly the same way <a id="id373" class="indexterm"/>we were looping in the previous example. On line <code class="literal">#3</code>, we have the filtering for primitive triples. On line <code class="literal">#4</code>, we deviate a bit from what we were doing before: we calculate <code class="literal">c</code>, and on line <code class="literal">#5</code>, we filter on <code class="literal">c</code> being less than or equal to <code class="literal">N</code>. Only when <code class="literal">c</code> satisfies that condition, we calculate <code class="literal">a</code> and <code class="literal">b</code>, and yield the resulting tuple. It's always good to delay all calculations for as much as possible so that we don't waste time, in case eventually we have to discard those results.</p><p>On the last line, before printing the result, we apply sorting with the same key we were using in the generator expression example.</p><p>I hope you agree, this example is easier to understand. And I promise you, if you have to modify the code one day, you'll find that modifying this one is easy, while to modify the other version will take much longer (and it will be more error prone).</p><p>Both examples, when run, print the following:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ python pythagorean.triple.generation.py</strong></span>
+<span class="strong"><strong>[(3, 4, 5), (5, 12, 13), (15, 8, 17), (7, 24, 25), (21, 20, 29), (35, 12, 37), (9, 40, 41)]</strong></span>
+</pre></div><p>The moral of the story is, try and use comprehensions and generator expressions as much as you can, but if the code starts to be complicated to modify or to read, you may want to refactor into something more readable. There is nothing wrong with this.</p></div>
+<div class="section" title="Name localization"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec55"/>Name localization</h1></div></div></div><p>Now that <a id="id374" class="indexterm"/>we are familiar with all types of comprehensions and generator expression, let's talk about name localization within them. Python 3.* localizes loop variables in all four forms of comprehensions: <code class="literal">list</code>, <code class="literal">dict</code>, <code class="literal">set</code>, and generator expressions. This behavior is therefore different from that of the <code class="literal">for</code> loop. Let's see a simple example to show all the cases:</p><p>
+<code class="literal">scopes.py</code>
+</p><div class="informalexample"><pre class="programlisting">A = 100
+ex1 = [A for A in range(5)]
+print(A)  # prints: 100
+
+ex2 = list(A for A in range(5))
+print(A)  # prints: 100
+
+ex3 = dict((A, 2 * A) for A in range(5))
+print(A)  # prints: 100
+
+ex4 = set(A for A in range(5))
+print(A)  # prints: 100
+
+s = 0
+for A in range(5):
+    s += A
+print(A)  # prints: 4</pre></div><p>In the preceding code, we declare a global name <code class="literal">A = 100</code>, and then we exercise the four comprehensions: list, generator expression, dictionary, and set. None of them alter the global name <code class="literal">A</code>. Conversely, you can see at the end that the <code class="literal">for</code> loop modifies it. The last print statement prints 4.</p><p>Let's see what happens if <code class="literal">A</code> wasn't there:</p><p>
+<code class="literal">scopes.noglobal.py</code>
+</p><div class="informalexample"><pre class="programlisting">ex1 = [A for A in range(5)]
+print(A)  # breaks: NameError: name 'A' is not defined</pre></div><p>The preceding code would work the same with any of the four types of comprehensions. After we run the first line, <code class="literal">A</code> is not defined in the global namespace.</p><p>Once again, the <code class="literal">for</code> loop behaves differently:</p><p>
+<code class="literal">scopes.for.py</code>
+</p><div class="informalexample"><pre class="programlisting">s = 0
+for A in range(5):
+    s += A
+print(A)  # prints: 4
+print(globals())</pre></div><p>The preceding code shows that after a <code class="literal">for</code> loop, if the loop variable wasn't defined before it, we can find it in the global frame. To make sure of it, let's take a peek at it by calling the <code class="literal">globals()</code> built-in function:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ python scopes.for.py</strong></span>
+<span class="strong"><strong>4</strong></span>
+<span class="strong"><strong>{'__spec__': None, '__name__': '__main__', 's': 10, 'A': 4, '__doc__': None, '__cached__': None, '__package__': None, '__file__': 'scopes.for.py', '__loader__': &lt;_frozen_importlib.SourceFileLoader object at 0x7f05a5a183c8&gt;, '__builtins__': &lt;module 'builtins' (built-in)&gt;}</strong></span>
+</pre></div><p>Together <a id="id375" class="indexterm"/>with a lot of other boilerplate stuff, we can spot <code class="literal">'A': 4</code>.</p></div>
+<div class="section" title="Generation behavior in built-ins"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec56"/>Generation behavior in built-ins</h1></div></div></div><p>Amongst the built-in types, the generation behavior is now quite common. This is a major difference <a id="id376" class="indexterm"/>between Python 2 and Python 3. A lot of functions such as <code class="literal">map</code>, <code class="literal">zip</code>, and <code class="literal">filter</code> have been transformed so that they return objects that behave like iterables. The idea behind this change is that if you need to make a list of those results you can always wrap the call in a <code class="literal">list()</code> class, and you're done. On the other hand, if you just need to iterate and want to keep the impact on memory as light as possible, you can use those functions safely.</p><p>Another notable example is the <code class="literal">range</code> function. In Python 2 it returns a list, and there is another function called <code class="literal">xrange</code> that returns an object that you can iterate on, which generates the numbers on the fly. In Python 3 this function has gone, and <code class="literal">range</code> now behaves like it.</p><p>But this concept in general is now quite widespread. You can find it in the <code class="literal">open()</code> function, which is used to operate on file objects (we'll see it in one of the next chapters), but also in <code class="literal">enumerate</code>, in the dictionary <code class="literal">keys</code>, <code class="literal">values</code>, and <code class="literal">items</code> methods, and several other places.</p><p>It all makes sense: Python's aim is to try and reduce the memory footprint by avoiding wasting space wherever is possible, especially in those functions and methods that are used extensively in most situations.</p><p>Do you remember at the beginning of this chapter? I said that it makes more sense to optimize the performances of code that has to deal with a lot of objects, rather than shaving off a few milliseconds from a function that we call twice a day.</p></div>
+<div class="section" title="One last example"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec57"/>One last example</h1></div></div></div><p>Before <a id="id377" class="indexterm"/>we part from this chapter, I'll show you a simple problem that I submitted to candidates for a Python developer role in a company I used to work for.</p><p>The problem is the following: given the sequence <code class="literal">0 1 1 2 3 5 8 13 21 ...</code> write a function that would return the terms of this sequence up to some limit <code class="literal">N</code>.</p><p>If you haven't recognized it, that is the Fibonacci sequence, which is defined as <span class="emphasis"><em>F(0) = 0</em></span>, <span class="emphasis"><em>F(1) = 1</em></span> and, for any <span class="emphasis"><em>n &gt; 1</em></span>, <span class="emphasis"><em>F(n) = F(n-1) + F(n-2)</em></span>. This sequence is excellent to test knowledge about recursion, memoization techniques and other technical details, but in this case it was a good opportunity to check whether the candidate knew about generators (and too many so called Python coders didn't, when I was interviewing them).</p><p>Let's start from a rudimentary version of a function, and then improve on it:</p><p>
+<code class="literal">fibonacci.first.py</code>
+</p><div class="informalexample"><pre class="programlisting">def fibonacci(N):
+    """Return all fibonacci numbers up to N. """
+    result = [0]
+    next_n = 1
+    while next_n &lt;= N:
+        result.append(next_n)
+        <span class="strong"><strong>next_n = sum(result[-2:])</strong></span>
+    return result
+
+print(fibonacci(0))  # [0]
+print(fibonacci(1))  # [0, 1, 1]
+print(fibonacci(50))  # [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]</pre></div><p>From the top: we set up the <code class="literal">result</code> list to a starting value of <code class="literal">[0]</code>. Then we start the iteration from the next element (<code class="literal">next_n</code>), which is <code class="literal">1</code>. While the next element is not greater than <code class="literal">N</code>, we keep appending it to the list and calculating the next. We calculate the next element by taking a slice of the last two elements in the <code class="literal">result</code> list and passing it to the <code class="literal">sum</code> function. Add some <code class="literal">print</code> statements here and there if this is not clear to you, but by now I would expect it not to be an issue.</p><p>When the condition of the <code class="literal">while</code> loop evaluates to <code class="literal">False</code>, we exit the loop and return <code class="literal">result</code>. You can see the result of those <code class="literal">print</code> statements in the comments next to each of them.</p><p>At this point, I would ask the candidate the following question: "What if I just wanted to iterate over those numbers?" A good candidate would then change the code like the next listing (an excellent candidate would have started with it!):</p><p>
+<code class="literal">fibonacci.second.py</code>
+</p><div class="informalexample"><pre class="programlisting">def fibonacci(N):
+    """Return all fibonacci numbers up to N. """
+    <span class="strong"><strong>yield 0</strong></span>
+    if N == 0:
+        return
+    a = 0
+    b = 1
+    while b &lt;= N:
+        <span class="strong"><strong>yield b</strong></span>
+        <span class="strong"><strong>a, b = b, a + b</strong></span>
+
+
+print(list(fibonacci(0)))  # [0]
+print(list(fibonacci(1)))  # [0, 1, 1]
+print(list(fibonacci(50))) # [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]</pre></div><p>This is actually one of the solutions I was given. I don't know why I kept it, but I'm glad I did so I can show it to you. Now, the <code class="literal">fibonacci</code> function is a <span class="emphasis"><em>generator function</em></span>. First we yield <code class="literal">0</code>, then if <code class="literal">N</code> is <code class="literal">0</code> we return (this will cause a <code class="literal">StopIteration</code> exception to be raised). If that's not the case, we start iterating, yielding <code class="literal">b</code> at every loop cycle, and then updating <code class="literal">a</code> and <code class="literal">b</code>. All we need in order to be able to produce the next element of the sequence is the past two: <code class="literal">a</code> and <code class="literal">b</code>, respectively.</p><p>This code<a id="id378" class="indexterm"/> is much better, has a lighter memory footprint and all we have to do to get a list of Fibonacci numbers is to wrap the call with <code class="literal">list()</code>, as usual.</p><p>But what about elegance? I cannot leave the code like that. It was decent for an interview, where the focus is more on functionality than elegance, but here I'd like to show you a nicer version:</p><p>
+<code class="literal">fibonacci.elegant.py</code>
+</p><div class="informalexample"><pre class="programlisting">def fibonacci(N):
+    """Return all fibonacci numbers up to N. """
+    a, b = 0, 1
+    while a &lt;= N:
+        yield a
+        a, b = b, a + b</pre></div><p>Much better. The whole body of the function is four lines, five if you count the docstring. Notice how in this case using tuple assignment (<code class="literal">a, b = 0, 1</code> and <code class="literal">a, b = b, a + b</code>) helps in making the code shorter, and more readable. It's one of the features of Python I like a lot.</p></div>
+<div class="section" title="Summary"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec58"/>Summary</h1></div></div></div><p>In this chapter, we explored the concept of iteration and generation a bit more deeply. We saw the <code class="literal">map</code>, <code class="literal">zip</code> and <code class="literal">filter</code> functions quite in detail, and how to use them as an alternative to a regular <code class="literal">for</code> loop approach.</p><p>Then we saw the concept of comprehensions, for lists, dictionaries, and sets. We saw their syntax and how to use them as an alternative to both the classic <code class="literal">for</code> loop approach and also to the use of <code class="literal">map</code>, <code class="literal">zip</code>, and <code class="literal">filter</code> functions.</p><p>Finally, we talked about the concept of generation, in two forms: generator functions and expressions. We learned how to save time and space by using generation techniques and saw how they can make possible what wouldn't normally be if we used a conventional approach based on lists.</p><p>We talked about performances, and saw that <code class="literal">for</code> loops are last in terms of speed, but they provide the best readability and flexibility to change. On the other hand, functions such as <code class="literal">map</code> and <code class="literal">filter</code> can be much faster, and comprehensions may be even better.</p><p>The complexity of the code written using these techniques grows exponentially so, in order to favor readability and ease of maintainability, we still need to use the classic <code class="literal">for</code> loop approach at times. Another difference is in the name localization, where the <code class="literal">for</code> loop behaves differently from all other types of comprehensions.</p><p>The next chapter will be all about objects and classes. Structurally similar to this one, in that we won't explore many different subjects, rather, just a few of them, but we'll try to dive a little bit more deeply.</p><p>Make sure you understand well the concepts of this chapter before jumping to the next one. We're building a wall brick by brick, and if the foundation is not solid, we won't get very far.</p></div></body></html>
