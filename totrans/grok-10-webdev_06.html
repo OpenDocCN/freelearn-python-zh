@@ -1,0 +1,219 @@
+<html><head></head><body>
+  <div id="sbo-rt-content"><div class="chapter" title="Chapter 6. The Catalog: An Object-Oriented Search Engine"><div class="titlepage"><div><div><h1 class="title"><a id="ch06"/>Chapter 6. The Catalog: An Object-Oriented Search Engine</h1></div></div></div><p>We now have an application with multiple projects and lists. As we start adding more lists, there will come a time when we'll need to find a particular list item. We might want to find all items containing a specific word, or maybe all of the items completed on a specific date. Since all of the application data is stored in the ZODB, we need a tool to help us look for specific objects contained therein. This tool comes with Grok by default and is called the catalog.</p><p>In this chapter, we are going to learn how to use the catalog. In particular, we will look at the following concepts:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">What a catalog is and how it works</li><li class="listitem" style="list-style-type: disc">What indexes are and how they work</li><li class="listitem" style="list-style-type: disc">Storing data in the catalog</li><li class="listitem" style="list-style-type: disc">Performing simple queries on the catalog</li><li class="listitem" style="list-style-type: disc">Creating a search interface for our application</li></ul></div><div class="section" title="Catalogs and indexes"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec01"/>Catalogs and indexes</h1></div></div></div><p>When we work with small amounts of data, we can always look at all of the elements of a list, for example, to find the ones that we want. However, this approach obviously does not scale up when we are dealing with thousands or millions of objects. A common way of attacking this problem is to use some sort of lookup table that will allow us to quickly and easily find a specific object by using one of its attributes. This is known as an<span class="strong"><strong> index</strong></span>.<a id="id170" class="indexterm"/>
+</p><p>A<span class="strong"><strong> catalog</strong></span> is a tool that allows us to manage a collection of related indexes and perform queries against the catalog by using one or more of them. We can add indexes to the catalog that will keep track of a specific attribute of an object. From then on, whenever we create a new object, we can call the catalog to index it, and it will take all of the objects' attributes that have an index setup and includes them in the corresponding index. Once they are there, we can query the catalog by using specific attribute values, and get back the objects that match the query.<a id="id171" class="indexterm"/>
+</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Adding a simple search function to the application"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec02"/>Adding a simple search function to the application</h1></div></div></div><p>The catalog contains references to the actual objects that are stored in the ZODB, and each index is related to one attribute of these objects.<a id="id172" class="indexterm"/>
+</p><p>To be able to search for an object in the catalog, the object needs to be indexed by the catalog. This works better if it happens at specific events in the lifetime of the object, so that it gets indexed at creation time and when it gets modified.</p><p>Since working with the catalog is the best way of dealing with searches when using the ZODB, Grok comes with a class that allows us to easily hook into the catalog, create indexes, and perform searches. This class is called<code class="literal"> grok.Indexes</code>, and allows us to define indexes and hook our application objects with the appropriate life cycle events, for automatic indexing.</p><div class="section" title="Defining a simple index"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec01"/>Defining a simple index</h2></div></div></div><p>Let's define a simple index for the<code class="literal"> title</code> attribute of a project, and show how to perform a search on the catalog by using it:<a id="id173" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">class ProjectIndexes(grok.Indexes):
+grok.site(ITodo)
+grok.context(IProject)
+title = grok.index.Text()
+</pre></div><p>We are going to create an index for the<code class="literal"> Project</code> class, so we name our class<code class="literal"> ProjectIndexes</code>. The name is not important, as the key is using<code class="literal"> grok.Indexes</code> as a base for the class. The<code class="literal"> grok.site</code> class annotation is used to signal to Grok which type of object in our application is going to use the indexes defined here.</p><p>Next, we need to tell Grok which objects will be automatically indexed when they are modified. This is done by using<code class="literal"> grok.context</code> with either a class or an interface as the parameter. In this case, we select<code class="literal"> IProject</code> as the interface that will mark the objects to be indexed.</p><p>Finally, we define the indexes themselves. In this example, we want the whole text of the<code class="literal"> title</code> attribute to be searchable, so we will use a<code class="literal"> Text</code> index. We'll have more to say about the types of indexes shortly. For now, just note that the attribute that will be indexed is the same as the name of the index, which in this case means that the<code class="literal"> title</code> attribute from the project model will be indexed in this catalog. It is possible to have an index named differently than the attribute to be indexed, but then we need to specify the real attribute name with the keyword parameter<code class="literal"> attribute</code>, like this:</p><div class="informalexample"><pre class="programlisting">project_title = grok.index.Text(attribute='title')
+</pre></div><p>That's it. Simply by declaring the indexes in this class, Grok will take it upon itself to create the catalog and append the indexes to it, as well as keeping track of when an object needs to be reindexed.<a id="id174" class="indexterm"/>
+</p></div><div class="section" title="Creating the search view"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec02"/>Creating the search view</h2></div></div></div><p>We will now create the search view that will allow us to see the catalog in action. First, let's take a look at the view code:<a id="id175" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">class TodoSearch(grok.View):
+grok.context(Todo)
+grok.name('search')
+def update(self,query):
+if query:
+catalog = getUtility(ICatalog)
+self.results = catalog.searchResults(title=query)
+</pre></div><p>This is a view for the main application, and is named search. The important bit is in the<code class="literal"> update</code> method. We receive a query as a parameter, which represents the text that the user is looking for inside the title of the projects. We then have to get the actual catalog before we can perform a search. Note that the catalog at this point will already contain the indexes that we defined earlier for<code class="literal"> Project</code>. We don't have to do anything else to connect them with the catalog; Grok takes care of all the plumbing.</p><p>After we get the<code class="literal"> catalog</code> object, we can search it by using the<code class="literal"> searchResults</code> method, which accepts key/value pairs with index names and query values. In this case, we pass the query that came in the request to the<code class="literal"> title</code> index, so that we get all of the projects that match this query text in their titles, as results.</p><p>You might recall that earlier we mentioned that interfaces, besides being useful for documentation and attribute introspection, are very helpful for working with component architectures. Under the hood, Grok contains a registry, which keeps track of all of the interface declarations for objects, so that it's possible to find an object by querying its interface. A catalog always implements the interface<code class="literal"> ICatalog</code>, which is found in the<code class="literal"> zope.app.catalog.interfaces</code> package included with Grok.</p><p>As Grok is making our lives simpler by not forcing us to instantiate a catalog and manually add and populate indexes to it, we do not control the code where this happens. So how do we find it? By using the registry, we can query it for an object that implements the<code class="literal"> ICatalog</code> interface and that will be the catalog that we are looking for.</p><p>That's precisely what the<code class="literal"> getUtility</code> method from the<code class="literal"> zope.component</code> package does. So, after calling this method we will have the catalog referenced by our<code class="literal"> catalog</code> variable. This might seem to be a roundabout mechanism for getting at the catalog. Why not simply have Grok define a global catalog and use that directly? Well, we can answer that with another question or two: what if we need more than one catalog? Or what if we decide to replace the catalog that Grok creates with our own? When using interfaces and component registration we can cover these cases and the code barely needs to be changed.<a id="id176" class="indexterm"/>
+</p></div><div class="section" title="Creating a template to display the search results"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec03"/>Creating a template to display the search results</h2></div></div></div><p>Once we have the results placed in the view in the last line of the<code class="literal"> update</code> method, we need a template to show this result. Create a template called<code class="literal"> todosearch.pt</code> inside the<code class="literal"> app_templates</code> directory. First comes the header, with our stylesheet:<a id="id177" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">&lt;html&gt;
+&lt;head&gt;
+&lt;title tal:content="context/title"&gt;To-Do list manager&lt;/title&gt;
+&lt;link rel="stylesheet" type="text/css" tal:attributes="href static/styles.css" /&gt;
+&lt;/head&gt;
+</pre></div><p>Next, we are going to add a search box inside our top header. We use<code class="literal"> tal:attributes</code> to set the text input value to whatever we searched for before, or leave it empty if there was no previous search.</p><p>The form action is set to call the search view that we defined earlier:</p><div class="informalexample"><pre class="programlisting">&lt;body&gt;
+&lt;div id="appheader"&gt;
+&lt;form id="search" tal:attributes="action python:view.url('search')"&gt;
+&lt;input type="text" name="query" tal:attributes="value request/query|nothing" /&gt;
+&lt;input class="new_button" type="submit" value="search" /&gt;
+&lt;/form&gt;
+&lt;h1 id="apptitle" tal:content="string:${context/title}: search"&gt; To-Do list manager &lt;/h1&gt;
+&lt;/div&gt;
+&lt;p class="create"&gt;
+&lt;a tal:attributes="href python:view.url(context)"&gt; Go back to main page &lt;/a&gt;
+&lt;/p&gt;
+</pre></div><p>We now come to the heart of the matter. Recall that in the view we performed a search by title, and defined an attribute named<code class="literal"> results</code>. Now we can use those results in the template. First, we need to make sure that we have something to show, and if we don't, we will display a message saying so:</p><div class="informalexample"><pre class="programlisting">&lt;h2 tal:condition="not:view/results|nothing"&gt;There were no results.&lt;/h2&gt;
+</pre></div><p>Next, if there are results, we prepare a table with the correct headings, and use<code class="literal"> tal:repeat</code> to loop through the results. The view variable<code class="literal"> results</code> contains all of the projects whose title matched the query, so we iterate through these results and simply show all of their attributes in a table similar to the one that we used for the dashboard.<a id="id178" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">&lt;div class="projects" tal:condition="view/results|nothing"&gt;
+&lt;h2&gt;These are the results for "&lt;i tal:content="request/query"&gt;&lt;/i&gt;":&lt;/h2 &gt;
+&lt;table&gt;
+&lt;tr&gt;
+&lt;th&gt;Project name&lt;/th&gt;
+&lt;th&gt;Kind&lt;/th&gt;
+&lt;th&gt;Description&lt;/th&gt;
+&lt;th&gt;Created on&lt;/th&gt;
+&lt;th&gt;Last modified&lt;/th&gt;
+&lt;th&gt;Owner&lt;/th&gt;
+&lt;/tr&gt;
+&lt;tr tal:repeat="project view/results"&gt;
+&lt;td&gt;
+&lt;a href="" tal:attributes="href python:view.url(project)" tal:content="project/title"&gt;title&lt;/a&gt;
+&lt;/td&gt;
+&lt;td tal:content="project/kind"&gt;type&lt;/td&gt;
+&lt;td tal:content="project/description"&gt;type&lt;/td&gt;
+&lt;td tal:content="project/creation_date"&gt;type&lt;/td&gt;
+&lt;td tal:content="project/modification_date"&gt;type&lt;/td&gt;
+&lt;td tal:content="project/creator"&gt;type&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</pre></div><p>Now we can create a new application instance in the Grok admin UI and define some projects so that we can see how the search works. The reason why we need to define a new application is that indexes only get created when an application is installed. Our<code class="literal"> ProjectIndexes</code> class will actually do nothing if it gets added after the application was created. Take a look at the following screenshot, to see how the search results are displayed:</p><div class="mediaobject"><img src="images/7481_06_01.jpg" alt="Creating a template to display the search results"/></div></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="A brief diversion: Structuring our application for search"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec03"/>A brief diversion: Structuring our application for search</h1></div></div></div><p>Now that we have experimented with the basics of catalog searches, we'll need to refactor our application a little to play well with the catalog, because our to-do items don't have all the attributes we will likely need to make the search powerful enough. For instance, we are certainly going to be interested in searching for them by date and eventually by user.</p><p>Let's pause a bit and reflect on where we want our application to go. If we are going to be managing 'projects', we'll need to add some more attributes to our models. We have not bothered about this until now, but as the complexity of our application grows, it becomes more important to have a clear plan.<a id="id179" class="indexterm"/>
+</p><p>The top-level unit of our application will be a project. For our purposes, a<span class="emphasis"><em> project</em></span> is a collection of related to-do lists. We will need to store the project's creation date as well as the last time it was modified. A project is 'done' when all of the items in all of its lists are checked off.</p><p>The project can have owners and members. Members are users who have one or more items assigned; owners are members who can also add, edit, or remove lists and items. We haven't seen yet how user management works in Grok, but we will see it in the next chapter, so for now we'll just store the project's creator.</p><p>A to-do list can have any number of items. We'll also store the list's creation date. An item will have a completed date as well as a creation date. We'll also keep track of who performed each of these.</p><p>In the previous chapter, we worked with forms that were automatically constructed by using interface schemas as a base. At that time, we only added an interface for the<code class="literal"> Project</code> class. Let's finish that work and do the same for the other classes.</p><p>We are dealing with different kinds of objects, but surely there will be some attributes that are used in most of them. For example, every project, list, and item will have a creator and a creation date. We'd like to avoid repeating these attributes on every interface definition, so we'll create a general interface for them and make all other classes implement this.</p><p>We discussed interfaces briefly before, when working with forms, and saw that a class can promise to implement an interface simply by saying that it does so by using the<code class="literal"> grok.implements</code> class annotation. However, a class is not limited to implementing a single interface. In fact, there's no limit to the number of interfaces that a class can implement. This will be useful for us because all of our classes can implement both the general metadata interfaces as well as their own particular interfaces.<a id="id180" class="indexterm"/>
+</p><p>Our refactored models will look like the code below. First, our shared attributes interface:</p><div class="informalexample"><pre class="programlisting">class IMetadata(interface.Interface):
+creator = schema.TextLine(title=u'Creator')
+creation_date = schema.Datetime(title=u'Creation date')
+modification_date = schema.Datetime(title=u'Modification date')
+</pre></div><p>The main application class does not need to use the metadata schema; only its own schema will be used:</p><div class="informalexample"><pre class="programlisting">class ITodo(interface.Interface):
+title = schema.TextLine(title=u'Title',required=True)
+next_id = schema.Int(title=u'Next id',default=0)
+class Todo(grok.Application, grok.Container):
+grok.implements(ITodo)
+title = u'To-do list manager'
+next_id = 0
+def deleteProject(self,project):
+del self[project]
+</pre></div><p>We added<code class="literal"> title</code> and<code class="literal"> next_id</code> to the schema and set default values for the class, after the<code class="literal"> grok.implements</code> call.</p><p>Now look at the<code class="literal"> Project</code> class:</p><div class="informalexample"><pre class="programlisting">class IProject(interface.Interface):
+title = schema.TextLine(title=u'Title', required=True, constraint=check_title)
+kind = schema.Choice(title=u'Kind of project', values=['personal', 'business'])
+description = schema.Text(title=u'Description', required=False)
+next_id = schema.Int(title=u'Next id', default=0)
+class Project(grok.Container):
+grok.implements(IProject, IMetadata)
+next_id = 0
+description = u''
+def addList(self, title, description):
+id = str(self.next_id)
+self.next_id = self.next_id+1
+self[id] = TodoList(title, description)
+def deleteList(self, list):
+del self[list]
+</pre></div><p>In this case, we define the<code class="literal"> Project</code> schema, and then tell Grok that this class will use both the schemas this one and the metadata schema that we defined earlier. This is fairly simple: we just pass the two interface definitions as arguments to<code class="literal"> grok.implements</code>.</p><p>We'll use the new attributes when a new project is added to the application, like this:<a id="id181" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">@grok.action('Add project')
+def add(self,**data):
+project = Project()
+self.applyData(project,**data)
+id = str(self.context.next_id)
+self.context.next_id = self.context.next_id+1
+self.context[id] = project
+project.creator = self.request.principal.title
+project.creation_date = datetime.datetime.now()
+project.modification_date = datetime.datetime.now()
+return self.redirect(self.url(self.context[id]))
+</pre></div><p>After creating a new project and applying the form data to it, we set values for the dates and creator. Keep in mind that interfaces are informative. We are never required to use all of the fields in an interface's schema, but it's very convenient to be able to refer to the schema for documentation purposes. In some cases, it is used to generate a form using one or more fields from it. Incidentally, it's probably very clear what's happening in the date assignments, but the<code class="literal"> self.request.principal.title</code> line may seem a bit odd. A<span class="strong"><strong> principal</strong></span> is a user in Grok, and its title is a string description of who this user is.</p><p>That's all there is to know for now about our model restructuring. Here are the final two models:</p><div class="informalexample"><pre class="programlisting">class ITodoList(interface.Interface):
+title = schema.TextLine(title=u'Title',required=True, constraint=check_title)
+description = schema.Text(title=u'Description',required=False)
+next_id = schema.Int(title=u'Next id',default=0)
+class TodoList(grok.Container):
+grok.implements(ITodoList, IMetadata)
+next_id = 0
+description = u''
+def __init__(self,title,description):
+super(TodoList, self).__init__()
+self.title = title
+self.description = description
+self.next_id = 0
+def addItem(self,description):
+id = str(self.next_id)
+self.next_id = self.next_id+1
+self[id] = TodoItem(description)
+def deleteItem(self,item):
+del self[item]
+def updateItems(self, items):
+for name,item in self.items():
+if name in items:
+self[item].checked = True
+else:
+self[item].checked = False
+class ITodoItem(interface.Interface):
+description = schema.Text(title=u'Description',required=True)
+checked = schema.Bool(title=u'Checked',default=False)
+class TodoItem(grok.Model):
+grok.implements(ITodoItem, IMetadata)
+checked = False
+def __init__(self,item_description):
+super(TodoItem, self).__init__()
+self.description = item_description
+self.checked = False
+def toggleCheck(self):
+self.checked = not self.checked
+</pre></div><p>Now that we have added the desired attributes and interfaces, let's create a home page template where we can see at a glance all our projects and their attributes, along with links to every project. This will be our application's dashboard. While we are at it, let's add a search box at the top, too. We'll start by adding a view for our dashboard:</p><div class="informalexample"><pre class="programlisting">class DashBoard(grok.View):
+grok.context(Todo)
+grok.name('index')
+</pre></div><p>Now, for the template, call the<code class="literal"> dashboard.pt</code> file and place it inside<code class="literal"> app_templates</code>. Notice how we use the name<code class="literal"> index</code>, so that this will be the default view for the application:<a id="id182" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">&lt;html&gt;
+&lt;head&gt;
+&lt;title tal:content="context/title"&gt;To-Do list manager&lt;/title&gt;
+&lt;link rel="stylesheet" type="text/css" tal:attributes="href static/styles.css" /&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;div id="appheader"&gt;
+&lt;form id="search" tal:attributes="action python:view.url('search')"&gt;
+&lt;input type="text" name="query" /&gt;
+&lt;input class="new_button" type="submit" value="search" /&gt;
+&lt;/form&gt;
+&lt;h1 id="apptitle" tal:content="context/title"&gt; To-Do list manager&lt;/h1&gt;
+&lt;/div&gt;
+&lt;p class="create"&gt;&lt;a href="add"&gt;Create a new project&lt;/a&gt;&lt;/p&gt;
+&lt;h2 tal:define="projects context/values" tal:condition="projects"&gt; These are your available projects&lt;/h2&gt;
+&lt;div class="projects"&gt;
+&lt;table&gt;
+&lt;tr&gt;
+&lt;th&gt;Project name&lt;/th&gt;
+&lt;th&gt;Kind&lt;/th&gt;
+&lt;th&gt;Description&lt;/th&gt;
+&lt;th&gt;Created on&lt;/th&gt;
+&lt;th&gt;Last modified&lt;/th&gt;
+&lt;th&gt;Owner&lt;/th&gt;
+&lt;th&gt;Delete&lt;/th&gt;
+&lt;/tr&gt;
+&lt;tr tal:repeat="project context/values"&gt;
+&lt;td&gt;
+&lt;a href="" tal:attributes="href python:view.url(project)" tal:content="project/title"&gt;title&lt;/a&gt;
+&lt;/td&gt;
+&lt;td tal:content="project/kind"&gt;type&lt;/td&gt;
+&lt;td tal:content="project/description"&gt;type&lt;/td&gt;
+&lt;td tal:content="project/creation_date"&gt;type&lt;/td&gt;
+&lt;td tal:content="project/modification_date"&gt;type&lt;/td&gt;
+&lt;td tal:content="project/creator"&gt;type&lt;/td&gt;
+&lt;td&gt;
+&lt;a tal:define="url python:view.url('deleteproject')" tal:attributes="href string:${url}?project=${project/__name__}"&gt;
+&lt;img border="0" tal:attributes="src static/bin_closed.png" /&gt;
+&lt;/a&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</pre></div><p><a id="id183" class="indexterm"/>
+The template is very straightforward. We just get all of the projects by using the<code class="literal"> context/values</code> call and then iterate through the results showing all of the attributes in a table. The template can be seen in the following screenshot:</p><div class="mediaobject"><img src="images/7481_06_02.jpg" alt="A brief diversion: Structuring our application for search"/></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Back to search: Using multiple indexes"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec04"/>Back to search: Using multiple indexes</h1></div></div></div><p>Let's recap briefly where we were with respect to the search before we set out to reorganize our code. The key thing to understand when using the catalog in Grok is that the indexes define the kinds of searches that we can perform. In our example, we used a<code class="literal"> Text</code> index for the<code class="literal"> title</code> attribute and the Grok context for that index was the<code class="literal"> Project</code> model. This means that even if a project has several attributes, we can only search inside the title, at this point.<a id="id184" class="indexterm"/>
+</p><p>We are not limited to using only one index, of course. We can add any number of indexes even one for every attribute of the object. Let's add one for<code class="literal"> description</code>, immediately after the title in the<code class="literal"> ProjectIndexes</code> class:</p><div class="informalexample"><pre class="programlisting">description = grok.index.Text()
+</pre></div><p>Note that the only thing that changes is the index name, which points to the actual attribute to be indexed. To keep things simple for now, we can use the following query:</p><div class="informalexample"><pre class="programlisting">self.results = catalog.searchResults(title=query, description=query)
+</pre></div><p>We pass the<code class="literal"> query</code> parameter to both indexes, because all we have is a text box with room for one parameter. The results will be all of the projects for which both the title and description match the values specified in the query. If we had several parameters, we could pass a different value to each index and we would get back all of the items where all indexes match.</p><p>Let's consider how we would like the search box to work in this application. The ideal thing would be for it to be as inclusive as possible, so that we could type a word or two and have the catalog look at different indexes to find results. For example, it would be good if a text search could be performed in such a way that the catalog returns all items that match the query either on the<code class="literal"> description</code> or the<code class="literal"> title</code> indexes. As this is a common situation, Grok offers a solution that is generally useful and also easy to implement. Basically, we can define a method that can collect information from all of the attributes and return the collected information as a single index.</p><p>First, we add an empty method definition to our interface. This is done both to document the method and to let the<code class="literal"> grok.Indexes</code> class find the attribute when we declare its name as an index. Remember, the project indexes are connected to the<code class="literal"> IProject</code> interface, so that every attribute or method defined here may be used as an index for searching.</p><div class="informalexample"><pre class="programlisting">class IProject(interface.Interface):
+title = schema.TextLine(title=u'Title', required=True, constraint=check_title)
+kind = schema.Choice(title=u'Kind of project', values=['personal', 'business'])
+description = schema.Text(title=u'Description', required=False)
+next_id = schema.Int(title=u'Next id', default=0)
+def searchableText():
+"""return concatenated string with all text fields to search"""
+</pre></div><p>Pay attention to the absence of a<code class="literal"> self</code> parameter inside the method definition. This parameter is not necessary because we are not defining a class, but an interface. It is customary to include a description of the method as a comment in the body of its definition.</p><p>We then add this method's name as an index in the<code class="literal"> ProjectIndexes</code> class, like this:</p><div class="informalexample"><pre class="programlisting">searchableText = grok.index.Text()
+</pre></div><p>Grok uses the interface definition to find a method or attribute with this name. If it's a method, it will be called at the time of indexing, so what is happening here is that we are informing Grok that the full-text entry for a project will be available by calling its own<code class="literal"> searchableText</code> method. This method is then defined in the<code class="literal"> Project</code> class:</p><div class="informalexample"><pre class="programlisting">def searchableText(self):
+return self.title+self.description
+</pre></div><p>The method is extremely simple. We just return the<code class="literal"> title</code> and<code class="literal"> description</code> attributes as a single string, so that the index will actually include both fields. In this way, we can search both of them at the same time by querying the catalog with the new<code class="literal"> searchableText</code> index:<a id="id185" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">self.results = catalog.searchResults(searchableText=query)
+</pre></div><p>That's all we need to cover this requirement, but as we can see, this approach can be used to have the<code class="literal"> index</code> method return any kind of content, which gives us enough freedom to create any number of combined indexes that we may need.</p></div></div>
+</body></html>
