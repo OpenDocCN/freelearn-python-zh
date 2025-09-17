@@ -1,0 +1,694 @@
+- en: Chapter 8. Exposing a REST API with Google Cloud Endpoints
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In [Chapter 1](ch01.html "Chapter 1. Getting Started"), *Getting Started*,
+    we provided the definition of a web application, and one chapter after another,
+    you learned to implement an application using App Engine. At this point, we know
+    enough about the anatomy of such kinds of software to understand the differences
+    between the backend and frontend components of a web application: the first provides
+    logic, definition, and access to data, and the latter provides the user interface.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We did not make a clear distinction between these two components in the previous
+    chapters, and the code we wrote so far provided both the frontend and the backend
+    components without too much separation. In this chapter, we will tear apart the
+    frontend component of our Notes application, implementing a standalone backend
+    server ready to exchange data with different clients, from mobile applications
+    to rich JavaScript clients running in a browser.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once again, to implement our application, we are going to leverage some tools
+    and services provided by the Google Cloud Platform, known as Google Cloud Endpoints.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: What REST is, and designing an API for the Notes application
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using Cloud Endpoints to implement the REST API
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The API explorer tool
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Protecting the API with OAuth2
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Reasons to use a REST API
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '**Representational State Transfer** (**REST**) is a simple stateless architecture
+    style usually running over the HTTP protocol. The idea behind REST is exposing
+    the state of the system as a collection of resources we can manipulate, addressing
+    them by their name or ID. The backend service is responsible for making a resource''s
+    data persist, usually through the use of a database server. Clients retrieve the
+    state of a resource performing HTTP requests to the server. The resource can be
+    manipulated and sent back to the server through an HTTP request as well. Resources
+    can be represented in several formats but we will use JSON, a lightweight, human-readable,
+    and widespread interchange format. We can see the manipulation of a resource state
+    a bit like a **Create, Retrieve, Update, Delete** (**CRUD**) system. What we are
+    going to do is map each of these operations to a specific HTTP verb. We will perform
+    an HTTP `POST` request to create a new resource, a `GET` request to retrieve an
+    existing one, a `PUT` request to update its state, and a `DELETE` request to remove
+    it from the system.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: REST is widely adopted these days, mainly because it allows a strong decoupling
+    of clients from servers, is easy to implement over HTTP, has a very good performance,
+    can be cached, and in general, can scale very well. Exposing a REST API makes
+    it extremely easy to provide a mobile client, a browser extension, or any piece
+    of software that needs to access and process application data; for these reasons,
+    we are going to provide a REST API for Notes. Using Cloud Endpoints, we'll be
+    able to add a REST API to the existing codebase of the webapp2 version of Notes
+    without touching the data models or the overall architecture of the application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Designing and building the API
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Before writing the code, we need to have a neat idea in mind of the resources
+    we are going to make available through the API, the methods we will provide to
+    manipulate such resources, and the response codes we will deliver to the clients.
+    After designing the API, we can start write some code to implement resources representation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Resources, URLs, HTTP verbs, and response code
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Defining a resource is very similar to defining a model class in an ORM system,
+    and it''s not uncommon for them to coincide, like in our case. In fact, we will
+    provide the following resources:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: NoteFile
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: ChecklistItem
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Every resource will be identified by a URL. We omit the hostname here for clarity:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**The** `/notes` **URL**: This identifies a collection of resources of type
+    Note'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**The** `/notes/:id` **URL**: This identifies a single resource of type Note
+    using its ID as the discriminator'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**The** `/notefiles` **URL**: This identifies a collection of resources of
+    type NoteFile'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**The** `/notefiles/:id` **URL**: This identifies a single resource of type
+    NoteFile'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We won't expose the `CheckListItem` resource through the API because in the
+    underlying data model, we defined the items as a `StructuredProperty` field of
+    the `Note` model. Since corresponding entities don't exist in the Datastore, we
+    cannot alter the state of a `ChecklistItem` resource without altering the Note
+    state as well. For this reason, exposing two different resources doesn't make
+    much sense.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A client specifies a certain HTTP verb, or method, in the request header when
+    contacting the backend server, and HTTP verbs tell the server what to do with
+    the data identified by the URL. We need to know that, depending on whether a URL
+    represents a single resources or a collection, a verb might have different meanings.
+    For the URLs exposed by our REST API, we will support the following verbs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**The** `GET` **request**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**On a collection**: This retrieves a list of resource representations'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**On a single resource**: This retrieves a resource representation'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**The** `POST` **request**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**On a collection**: This creates a new resource and returns its representation'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**On a single resource**: This is not applicable and returns an error'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**The** `PUT` **request**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**On a collection**: This updates a list of resources in a batch and returns
+    no payload'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**On a single resource**: This updates the single resource and returns the
+    updated representation'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**The** `DELETE` **request**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**On a collection**: This is not applicable and returns an error'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**On a single resource**: This deletes the resources and returns no payload'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Every time the server answers a request from a client, an HTTP status code
+    is transmitted along with a possible payload. Our API will provide the following
+    status codes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**200 OK**: This indicates that the request was successful.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**204 No Content**: This indicates that the request was successful but the
+    response contains no data, usually returned after a `DELETE` request.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**400 Bad Request**: This means the request was malformed; for example, the
+    data did not pass validation or is in the wrong format.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**404 Not Found**: This indicates that the requested resource could not be
+    found.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**401 Unauthorized**: This indicates that we need to perform authentication
+    before accessing the resource.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**405 Method Not Allowed**: This means that the HTTP method used is not supported
+    for this resource.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**409 Conflict**: This indicates a conflict occurred when updating the state
+    of the system, for example when we try to insert duplicates.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**503 Service Unavailable**: This indicates that the server is temporarily
+    unavailable. In particular, this occurs when our Cloud Endpoints application raises
+    an uncaught exception'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**500 Internal Server Error**: This occurs when everything else has failed.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Now that the design of the API is complete, it's time for us to write some code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Defining resource representations
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We have already mentioned that both requests and responses might contain representations
+    of one or more resources, and we have also stated that we will use the JSON format
+    to implement such representations. Now we need to define a resource in our code,
+    and Cloud Endpoints will take care of transforming our resources back and forth
+    in JSON format for us. This operation is known as serialization.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before we start coding, we need to spend some time on the Cloud Endpoints architecture
+    so that it'll be easier to understand why we use certain Python packages or data
+    structures.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Cloud Endpoints is built on top of the Google Protocol RPC Library, a framework
+    implementing **Remote Procedure Call** (**RPC**) services over the HTTP protocol.
+    A service is a collection of methods that can be invoked through regular HTTP
+    requests. A method receives an object of a message type in the request and returns
+    another message type in response. Message types are regular Python classes deriving
+    from the `protorpc.messages.Message` class, while services are methods of a Python
+    class deriving from `protorpc.remote.Service` class. Since Cloud Endpoints are
+    actually an RPC service under the hood, the representations of our REST resources
+    will be implemented as RPC messages.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We create a new module called `resources.py` on the application root, containing
+    the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: Defining message classes is a bit like defining model classes in an ORM; we
+    specify class attributes that correspond to each of the fields we want to use
+    to represent a resource. Fields have a type, and their constructors take an integer
+    parameter used as identifier that must be unique within the message class. The
+    `CheckListItemRepr` class will be used to serialize the checkable items attached
+    to a note. `NoteRepr` represents the note resource and is the core of our API.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We need a `key` field so that clients can have a reference if they want to get
+    details or modify the resource. The `checklist_items` field references the `CheckListItemRepr`
+    class, which will be nested into note representations. We represent the files
+    associated with a note as a list of strings called `files`, containing keys for
+    `models.NoteFile` instances. Finally, we define a representation for a collection
+    of notes called `NoteCollection`. It has only one field, `items`, containing single-note
+    representations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once serialized, a JSON representation of a note should look like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: As we can see, the JSON representation is very easy to read.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have representations for our REST resources, we can start implementing
+    the endpoints for our REST API.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing API endpoints
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'As we already mentioned, our REST API will be integrated with the existing
+    App Engine application without altering its behavior, so we need to specify a
+    new WSGI application that will handle the URLs we map to the API endpoints. Let''s
+    start with the `app.yaml` file, where we add the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The regular expression that matches API URLs is actually `/_ah/spi/.*`. Even
+    if we perform requests to an URL such as `https://example.com/_ah/api/v1/an-endpoint`,
+    Cloud Endpoints will take care of the proper redirects. The handler script of
+    the API URLs points to the `app` variable in the `notes_api` module, which we
+    are yet to create. In a new file called `notes_api.py`, we add the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is the very basic scaffold for our REST API. Now we need to define the
+    endpoints as methods of a Python class deriving from `protorpc.remote.Service`
+    class, and append this class to the list that was passed as a parameter to the
+    `api_server()` function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the `notes_api.py` module, we add the `NotesApi` class, which will contain
+    all the endpoints needed to retrieve and manipulate note resources. Let''s see
+    how to implement the endpoints operating on collections of notes, one at a time,
+    starting from the endpoint supporting `GET` requests:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The decorator we apply to the `NotesApi` class, the `@endpoints.api` decorator,
+    tells Cloud Endpoints that this class is a part of an API called `notes` with
+    version v1\. The `note_list()` method is decorated with the `@endpoints.method`
+    decorator, and this method expects the following parameters, in the order given:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The message class used for the request. In this case, we don't expect any input,
+    so we use, `message_types.VoidMessage`, a special message class provided by Cloud
+    Endpoints.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The message class we will return in the response, in this case our `resources.NoteCollection`
+    class.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The URL or path of the endpoint.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The HTTP method or verb supported by the endpoint.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: A string representing the name of the endpoint.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The logic of the endpoint is simple—we load all the Note instances from the
+    Datastore, and for each of them, we build a `NoteRepr` object. Representations
+    are then added to a collection using the `NoteCollection` class and returned to
+    the client.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now we add the endpoint supporting requests of the `POST` type:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: We name the method `note_create()` to better describe its semantics. It expects
+    a `NoteRepr` message in the request containing the information to create a new
+    resource, and will return a `NoteRepr` message in the response containing the
+    resource created. The `new_resource` parameter contains the `NoteRepr` instance
+    that arrived in the request and is used to build a new `Note` entity in the Datastore.
+    We need to pass a user as the owner of the note, so we call the `get_current_user`
+    method from the endpoints package. We will see later in the chapter how users
+    can authenticate to use our API. After calling the `PUT` type, we can access the
+    key of the newly created entity, so we update the `new_resource` message fields
+    and return it to the client.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is the code for the endpoint supporting requests of the `PUT` type:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: The method is called `note_batch_update()` because it's supposed to perform
+    updates on a collection of resources received in the request, returning no payload
+    to the clients. It expects a `NoteCollection` message class in the input, and
+    after performing all the updates needed, it returns a `VoidMessage` instance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The last endpoint operating on a collection of notes is actually a handler
+    for an error condition. In fact, performing a `DELETE` request on a collection
+    should result in an **HTTP error 405: method not allowed** message. To respond
+    to an API call with an error code, we can just raise a proper exception in the
+    Python method implementing the endpoint:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `note_list_delete()` method just raises an exception that we still have
+    to define. In a new `errors.py` module in our application, we add the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We need to define our own `MethodNotAllowed` exception because Cloud Endpoints
+    only provides exception classes for the most common HTTP error codes: `400`, `401`,
+    `403`, `404`, and `500`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The portion of the REST API operating on a collection of resources of type
+    `note` is now complete, so we can move on and start implementing the endpoints
+    operating on a single note. The path to single resources contains an argument,
+    the resource identifier. In such cases, as well as when there''s the need to pass
+    query string arguments, we cannot use a simple `Message` class for the request,
+    but we must use a special container, defined in the `endpoints.ResourceContainer`
+    parameter, that wraps both the message and the arguments in the path and in the
+    query string. In our case, since we''re going to use the container more than once,
+    we can define it as a field of our `NotesApi` class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: We pass the message we want to wrap to the constructor, along with the arguments
+    we need to receive through the request path or in the query string. Each argument
+    must be defined as a message field with a unique identifier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We then proceed to define the endpoint that handles `GET` requests for a single-note
+    resource:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: We expect the `NoteRequestContainer` parameter in the input for our endpoint,
+    `note_get()`, that will return a `NoteRepr` message. The path contains the `{key}`
+    argument, and whenever the requested URL matches, Cloud Endpoint will fill the
+    corresponding `key` field in the `NoteRequestContainer` instance with the parsed
+    value. We then use the key of the resource to retrieve the corresponding entity
+    from the Datastore, and finally fill and return a `NoteRepr` message object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We raise an error when clients make requests of type `POST` on a single resource,
+    so the endpoint is implemented as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `note_update()` method retrieves the `note` entity from the Datastore and
+    updates its fields accordingly with the content of the request. Finally, the method
+    returns a representation of the updated resource.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The last method we need to support for a single resource is `DELETE`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: The endpoint takes a request container, deletes the corresponding Datastore
+    entity, and returns an empty payload if everything is fine.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We finally have a complete REST API to deal with note entities. Now it's time
+    to play with it and check whether the results are as we expect.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Testing the API with API Explorer
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We can test our REST API on the local development environment by running the
+    `dev_appserver.py` script or deploying the application on App Engine. In both
+    cases, Cloud Endpoints provides a tool that let us explore our API; let's see
+    how.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'With the local development server running, we point the browser to the `http://localhost:8080/_ah/api/explorer`
+    URL, and we are immediately redirected to the API Explorer, where we can see our
+    API listed, as shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Testing the API with API Explorer](img/8194OS_08_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: When we click on our API name, the explorer lists all the endpoints exposed
+    through the Cloud Endpoints service. Before we begin our test, we should ensure
+    that some notes exist in the Datastore. We can use the Notes web application to
+    insert them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: By clicking on the notes **List** entry, we can access the details page for
+    the endpoint, where we can click on the **Execute** button to perform a `GET`
+    request and retrieve a collection of notes visible in the **Response** section,
+    represented in JSON format. We can also copy the **key** field of one of the notes
+    in the collection and access the details page for the `notesDetail` endpoint.
+    Here, we paste the key on the **key** field in the form and then press **Execute**
+    button. This time, the response should contain the resource representation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To see how to update this resource, we access the details page for the `notesUpdate`
+    endpoint. Here, we can again paste the key of the resource we want to update and
+    build a request body with the **Request body** editor, a very powerful tool that
+    let us compose complex JSON objects by just pointing and clicking on some HTML
+    controls.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Testing the API with API Explorer](img/8194OS_08_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: .
+  prefs: []
+  type: TYPE_NORMAL
+- en: The API Explorer is of great help while developing an API to immediately see
+    the results of a call to an endpoint, test endpoints with particular payloads
+    in the request, and check the behavior of different versions of the same API.
+    We could also use other clients to test our API, such as the `curl` program from
+    the command line, but the interactivity granted by the API Explorer is a great
+    value added.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next paragraph, we will see another functionality of the API Explorer
+    that will make our lives much easier—the opportunity to test our API with a client
+    authenticated with OAuth2.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Protecting an endpoint with OAuth2
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Even if our REST API seems quite complete, a critical component is missing
+    in our implementation: any client in fact is currently able to retrieve all the
+    notes stored in the Datastore without providing authentication and regardless
+    of being or not the owner of those notes. Moreover, until we don''t provide authentication
+    for our REST API, creating a note will be impossible because we need an authenticated
+    user to create an entity in the `note_create()` method of the `NotesApi` class.
+    We can easily fill this gap in our requirements because Cloud Endpoints provides
+    support to protect all or part of our API with the OAuth2 authorization framework.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first step to provide protection to our API is to specify which clients
+    we allow to access the API. Here, we use the term "client" to actually identify
+    a type of client, such as a JavaScript application running in a browser, a mobile
+    application running on Android or iOS, and so on. Each client is identified with
+    a string called client ID that we must generate using the Developer console:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the left menu, choose **APIs & auth**.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Select **credentials**.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on the **Create new Client ID** button.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: A guided procedure is then started, and all we have to do to generate a new
+    client ID is follow the instructions on the screen.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We then specify the list of authorized client IDs with the `@endpoints.api`
+    decorator of our `NotesApi` class, like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: To access the API from the explorer, we also list its client ID, which is provided
+    by the `endpoints` package. Since the client IDs are listed inside the Python
+    source code, we have to remember that we need to redeploy the application every
+    time we change the `allowed_client_ids` list.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we add an Android application to the list of allowed client IDs, we must
+    also specify the audience parameter in the `@endpoints.api` decorator. The value
+    of this parameter is the same as that of the client ID:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The last configuration step is the declaration of the OAuth2 scopes we want
+    a client to provide in order to access our API. For our Notes API, we will require
+    only the `endpoints.EMAIL_SCOPE` class, the minimum required by Cloud Endpoints
+    to provide OAuth2 authentication and authorization. We add the following to the
+    list of parameters we pass to the `@endpoints.api` decorator:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: From now on, the Cloud Endpoints framework will automatically authenticate users
+    and enforce the list of allowed clients, providing a valid `User` instance to
+    our application if the authentication procedure succeeds. To retrieve the authenticated
+    user, we call the `endpoints.get_current_user()` function the same way as we did
+    in the `create_note()` endpoint method. If the authentication procedure fails,
+    the `get_current_user()` function returns the `None` parameter. It's up to our
+    code to check whether the current user is valid inside the methods we want to
+    protect.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For example, we can add the following security check at the very beginning
+    of the `note_list()` method in our `NotesApi` class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, if we open the API Explorer and try to perform a `GET` request on the
+    `notesList` endpoint, we will get this response:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: Thanks to the API Explorer, we can authenticate ourselves with OAuth2 and try
+    to access the same endpoint to check whether we are allowed this time. Staying
+    on the page where we used to perform the failed request, we can see on the top-right
+    corner of the API Explorer interface a switch labeled **Authorize requests using
+    OAuth 2.0**. If we click on it, the explorer will start the authorization procedure
+    using OAuth2 with one of our Google accounts, and once it is finished, we will
+    be able to perform the request without authentication errors again.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Besides having authentication in place, now we can also filter Datastore queries
+    using the user instance so that each user can only access their own data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this final chapter, we took an in-depth look at the Cloud Endpoints framework,
+    and you now have the skills needed to complete the REST API and potentially support
+    a wide variety of clients: someone could write an Android version of Notes, some
+    other might provide a porting on iOS. We can write a JavaScript client and deliver
+    it as a Chrome or Firefox application through their respective marketplaces.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: You learned about REST in brief and why you should choose it among other solutions
+    to talk with miscellaneous clients. We accurately designed our API, providing
+    a comprehensive set of endpoints to retrieve and manipulate resources in our application.
+    We finally implemented the code and played with the API using the API Explorer,
+    an interactive exploring tool capable of executing API methods, showing request
+    and response data, and authenticating the client.
+  prefs: []
+  type: TYPE_NORMAL
+- en: REST is a language used in many places on the Internet, and thanks to the Cloud
+    Endpoints, we have the opportunity to easily provide a modern and powerful API
+    for every web application running on App Engine.
+  prefs: []
+  type: TYPE_NORMAL
+- en: I hope you have enjoyed this book as much as I've enjoyed writing it, and whether
+    your next Python application will be running on Google App Engine or not, I hope
+    this book has helped you in making that decision.
+  prefs: []
+  type: TYPE_NORMAL

@@ -1,0 +1,1183 @@
+- en: Chapter 9. Making a Shoot-Em-Up Game
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Welcome to the final chapter of Kivy Blueprints. In this tutorial, we're going
+    to build a shoot-em-up game (or *shmup* for short)—a fast-paced action game about
+    shooting things indefinitely.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is a small preview to pique your interest:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Making a Shoot-Em-Up Game](img/B01620_09_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The game: player (on the left-hand side) seeks to destroy the defenseless alien
+    saucer (on the right-hand side)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Building an app with lots of moving parts simultaneously presented on screen,
+    especially a mobile (or multi-platform) game, depends heavily on a capable renderer.
+    This is what we'll attempt to develop by the end of the book, partially based
+    on the source code from the starfield screensaver discussed in [Chapter 8](ch08.html
+    "Chapter 8. Introducing Shaders"), *Introducing Shaders*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This chapter will also cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Working with texture atlases in Kivy, complete with manual unpacking of texture
+    coordinates for use in low-level code
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Further development of a GLSL-based particle system and usage of particle systems
+    to create different in-game entities
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Implementing the game mechanics for a two-dimensional shooter—a control scheme
+    suitable for mouse and touch screen, basic collision detection for bullets, and
+    so on
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: As with all other code for this book, you can find the most up-to-date version
+    of all source code on GitHub, at [https://github.com/mvasilkov/kb](https://github.com/mvasilkov/kb).
+    Consult the full source code of the application periodically when following along,
+    because this puts things in context and makes the program flow more understandable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Limitations of the project
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The shoot-em-up game we''re writing is going to be very minimal, feature-wise.
+    In particular, here are the constraints:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The whole motivational part (winning and game over conditions) is omitted for
+    the sake of clarity. It should be easy to implement once you're happy with the
+    gameplay.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: There's just one enemy type in our version of the game, and one simple movement
+    pattern.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Many opportunities for optimization were purposefully missed to make the code
+    more concise and readable.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: These are left as an exercise for the reader, if you're willing to do a bit
+    more work. But first, let's review how texture maps work in Kivy—we'll rely on
+    them later in the particle system code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Texture atlases at a glance
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Texture atlases (also known as sprite sheets) are a method of combining images
+    used in the application into a larger composite texture. There are several advantages
+    of doing so, compared to just loading a bunch of individual images like we did
+    in previous projects:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The application should open faster; it''s usually cheaper to read one large
+    file than several smaller ones. This may sound negligible until you have hundreds
+    of textures, and then it becomes pretty noticeable—even more so over the network:
+    HTTP requests add sizable overhead, which may become a deal breaker on mobile
+    devices with constrained connectivity.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Rendering is also subtly quicker when there's no need to rebind textures. Using
+    a texture map effectively means that only the texture coordinates are affected
+    by any change that would otherwise lead to switching textures.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The previous point also makes atlases more suitable for use in situations when
+    there's a single large model, such as our GLSL-based renderer. Again, texture
+    coordinates are cheap and rebinding textures isn't.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: If you're coming from an HTML and CSS background, then you probably have heard
+    about a very similar approach used in web development, called CSS sprites. The
+    rationale is basically the same, sans the GLSL part. Since web apps are mostly
+    delivered over the network, the gain from using CSS sprites is substantial even
+    for a small number of images—every eliminated HTTP request counts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this section of the chapter, we''ll review the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating texture maps using Kivy's built-in CLI utility
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: File format and structure of an `.atlas` file
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The usage of texture atlases in Kivy-based apps
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: If you're already familiar with Kivy atlases, feel free to skip straight to
+    the *Ad hoc usage of atlases with GLSL* section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating an atlas
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Unlike in web development, where no standard tool has emerged for this particular
+    task, Kivy framework comes with a useful command-line utility for texture maps.
+    Its invocation looks like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: On a Mac, replace `python` with `kivy`—that's the conventional command provided
+    by `Kivy.app` for invoking a Kivy-aware Python interpreter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This creates two or more files, depending on whether all images fit into a single
+    composite texture of requested size. For the purpose of this tutorial, we assume
+    that the value of `texture_size` is large enough to include every last image.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'All output files are named after the `atlas_name` argument that you provide
+    on the command line:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The atlas index will be called `<atlas_name>.atlas`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Textures have an additional ordinal suffix—`<atlas_name>-0.png` (this one is
+    always created), `<atlas_name>-1.png`, and so on
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Atlas structure
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'An index of any given atlas, `.atlas`, is basically a **JavaScript Object Notation**
+    (**JSON**) file describing the positioning of individual textures on the map.
+    Its contents look like the following (formatted for readability):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Textures are named after their corresponding source images, without an extension:
+    a file `foo.png` becomes just `foo`. The numbers in each record describe a region
+    of the large texture: `[x, y, width, height]`, where all values are in pixels.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A composite texture is about what you'd expect from a concatenation of images,
+    as shown in the next figure. Usually, it will be tightly packed to efficiently
+    utilize most of its area.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: When creating an atlas, Kivy handles individual sprites' edges with precaution,
+    accounting for possible rendering artifacts related to rounding. This is why one
+    may notice extra pixels on the edges of a sprite. This effect isn't always visible,
+    but when it is, don't worry—it's by design and serves a good cause.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Atlas structure](img/B01620_09_09.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: A texture atlas is merely a concatenation of smaller images
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Using atlases in regular Kivy-based code is as simple as replacing file paths
+    with a special protocol, `atlas:` (conceptually similar to `http:`). As you''re
+    already aware, the usual file reference in Kivy language looks similar to the
+    next code snippet:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'An atlas reference, however, will use the following notation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: Continue reading for a complete (albeit very simple) example of creating and
+    using an atlas in a conventional Kivy app, a "hello world" of sorts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using Kivy atlases in an easy way
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'For the purpose of this example, let''s borrow two icons from our previous
+    projects and name them `icon_clock.png` and `icon_paint.png`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Using Kivy atlases in an easy way](img/B01620_09_10.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Individual icons used to craft a sample atlas
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To create an atlas, we crank open a terminal and issue the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: Remember to substitute the `kivy` command with `python` when not on a Mac. The
+    `kivy.atlas` part, however, stays the same on all systems.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The atlas utility should reply with something along the lines of the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: After a successful completion of the aforementioned command, a couple of new
+    files—`icons.atlas` and `icons-0.png`—should have appeared in the same folder.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: At this point, it is safe to remove source images. It's advised that you still
+    keep them around for the likely event that you'll need to rebuild the atlas later,
+    for example, when adding new images or replacing existing ones.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The atlas is ready. As for the usage, we can create a simple demo app in a few
+    lines of Python and the Kivy language.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The Python source, `basic.py`, contains a barebones Kivy app:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This is very simple and exists for the sole purpose of (automatically) loading
+    the layout, defined in the `basic.kv` file. The accompanying Kivy language file
+    reads as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This simple usage of an atlas results in the following layout, and it is pretty
+    much what you''d expect from looking at the source code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Using Kivy atlases in an easy way](img/B01620_09_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Basic usage of a Kivy atlas
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see, apart from the `atlas:` protocol described earlier, there is
+    nothing new or intriguing in this example. So, let's move on to parsing texture
+    atlases and their more advanced usage.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Ad hoc usage of atlases with GLSL
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The built-in support for atlases in Kivy works just fine for simple cases, but
+    not so much for our custom GLSL-based application, which manages all rendering,
+    textures and whatnot, on its own.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Thankfully, the `.atlas` file format is JSON, which means we can easily parse
+    it utilizing the `json` module from the Python standard library. Afterwards, we
+    should be able to translate pixel coordinates given in the file to UV coordinates
+    for use with OpenGL routines.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Since we know the absolute size of each texture, we can also effortlessly compute
+    the vertices' positions relative to center of each sprite. This facilitates easy
+    rendering of sprites in their "original form", keeping both the size and the aspect
+    ratio intact.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Data structure for UV mapping
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Put together, there are a lot of values per sprite. In order to keep things
+    maintainable we can define a lightweight record type (a named tuple) to hold these
+    together:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If you''re not familiar with named tuples in Python, from the user''s perspective
+    this amounts to basically the following logic-less type, similar in concept to
+    a `struct` compositional type in C:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note that this code is purely illustrative, and the preceding `namedtuple()`
+    definition does not actually expand to this—the user-facing interface, however,
+    is similar.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The meaning of each field is given in the following table:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Field(s) | Description |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `u0, v0` | UV coordinates of the sprite''s top-left corner |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `u1, v1` | UV coordinates of the sprite''s bottom-right corner |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `su` | Sprite width divided by 2; this value is useful when building an array
+    of vertices |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `sv` | Sprite height divided by 2; this is similar to the previous field
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: 'Named fields provide direct access to different values inside the record, which
+    dramatically improves readability: `tup.v1` reads much better than `tup[3]`. At
+    the same time, `UVMapping` is essentially a tuple, an immutable and memory-efficient
+    data structure with all fields still accessible by index, should the need arise.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Writing an atlas loader
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Now, let''s write a function that makes happen everything that was discussed
+    so far: JSON parsing, coordinates fixup, and so on. This function will also be
+    used in the final program:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Keep in mind that we''re supporting only the simplest case: an atlas with just
+    one composite texture. This is probably the most useful configuration anyway,
+    so this limitation shouldn''t affect our code in the slightest, especially since
+    the atlas generation is completely under our control.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We're reversing the ordinate axis since the coordinates are initially given
+    in Kivy's coordinate system, and we're better off using the OpenGL's coordinate
+    system with the origin at the top-left. Otherwise, sprites will be flipped upside
+    down (which, by the way, isn't a problem for most sprites in our little game.
+    This means that such bugs could have lived in the codebase for a long time—unnoticed
+    and practically harmless).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The call to `load_atlas(''icons.atlas'')` returns both the composite texture
+    loaded from `icons-0.png`, and the description of each texture included in the
+    atlas:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: (Numbers obviously may differ in your case.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: This data format is sufficient to pick out individual sprites from the texture
+    and render them on screen—and that's exactly what we'll do next.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Rendering sprites from atlas
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Armed with the above function, let's hack together a variation of the previous
+    demo that uses the same texture map with GLSL.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The source code, `tex_atlas.py`, is conceptually similar to simple GLSL examples
+    from [Chapter 8](ch08.html "Chapter 8. Introducing Shaders"), *Introducing Shaders*.
+    It makes use of the `load_atlas()` function to populate the array of vertices:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The code essentially just copies the output data from `load_atlas()` to the
+    `vertices` array, besides the usual GLSL initialization sequence. We pick two
+    different records: `icon_clock` (stored as an `a` variable for brevity) and `icon_paint`
+    (named `b`, similar to `a`), and then shove them into the array of vertices.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Our vertex format for this example is very minimal:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**vCenter**: This is the location of the sprite on the screen. It should be
+    the same value for all vertices of a given sprite'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**vPosition**: This is the vertex position relative to the center of the sprite,
+    unaffected by the previous value'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**vTexCoords0**: This is the texture coordinates (UV) for each vertex. It determines
+    which part of the large texture will be rendered.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: From these, only the sprite location (first two columns of raw numbers in the
+    listing) cannot be derived from the UV mapping; everything else comes from the
+    `load_atlas()` call.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is the corresponding shader code, `tex_atlas.glsl`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: This has only the minimal capabilities—positioning and texturing—baked in. A
+    similar shader will be used in the final game, with an addition of the relative
+    sizing attribute, `vScale`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: If you don't understand what's going on in the shader code, go back to [Chapter
+    8](ch08.html "Chapter 8. Introducing Shaders"), *Introducing Shaders:* it holds
+    a number of examples that you may find relevant to the discussion at hand.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The end result, however uninteresting it may look, is depicted here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Rendering sprites from atlas](img/B01620_09_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Rendering sprites from the atlas using GLSL
+  prefs: []
+  type: TYPE_NORMAL
+- en: With this, we can move on to the development of a generic sprite-based particle
+    system that will, in its turn, serve as a foundation for all in-game objects.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Designing a reusable particle system
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this section, we're going to write a particle system that will be later used
+    to create pretty much everything in the game—spaceships, bullets, and so on. This
+    is the generic approach used in situations where you have many similar objects
+    on the screen with very little logic for movement and interaction.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This topic will capitalize on the previous chapter's code. In fact, the starfield
+    screensaver from the previous chapter as a whole is a fine example of a particle
+    system; however, it lacks the necessary configurability and cannot be easily repurposed.
+    We're going to change that without significantly altering the GLSL and related
+    code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: It's worth mentioning that the chosen approach—rendering textured quads for
+    each particle—isn't the most optimal in terms of low-level rendering. On the plus
+    side, it's very straightforward, easy to reason about, and compatible with any
+    implementation of OpenGL that supports GLSL at all.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you choose to learn OpenGL more systematically, you will probably want to
+    replace quads with point sprites or do something similar in concept; these enhancements
+    are out of the scope of this book.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Class hierarchy
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The API of our particle system will consist of two classes: `PSWidget`, which
+    does all rendering, and a lightweight `Particle` class to represent individual
+    particles.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'These will be tightly coupled by design, which is usually frowned upon in terms
+    of classical OOP, but improves performance considerably in our case: particles
+    will access the vertices array in the renderer directly in order to alter the
+    mesh—less copying in this case, taking into account that many particles will be
+    active at the same time, can be a huge win.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The implementation of the particle system widget isn't substantially different
+    from other GLSL-based widgets we've seen so far, except for the fact that now
+    it's meant to be subclassed for actual use. Both `PSWidget` and `Particle` are
+    abstract base classes, that is, they cannot be instantiated directly by calling,
+    for example, `PSWidget()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are different ways to enforce this restriction. We could have used the
+    `abc` module from the Python standard library in order to create *true* abstract
+    base classes (`abc` actually stands for just that). While this may be deemed useful
+    by Java programmers and the like, it's not the approach routinely taken by Python
+    developers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For the sake of simplicity, we're going to write appropriate placeholders (stubs)
+    raising `NotImplementedError` for all methods that require overriding. This will
+    make the base class technically unusable without the use of metaclasses and complex
+    inheritance, as the `abc` module suggests.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The PSWidget renderer class
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Without further introduction, let''s take a look at the creation of `PSWidget`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is essentially the same familiar initialization we've seen in all GLSL
+    examples, with some fields left undefined (they are borrowed from the subclass,
+    which has to set these). The `self.glsl` property will hold the filename of the
+    shader, and `self.atlas` is the filename of the texture map that will serve as
+    the only source of textures for this renderer instance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Note how we don''t populate the vertices array here: this work is left for
+    the subclass to do. We should, however, provide an easy way for descendant classes
+    to work with our internal data structures. Hence, the following `PSWidget` method
+    that makes it easy to add a large number of similar particles is used:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: This instantiates the requested number of particles (`num`) of class `Cls`,
+    adding them to the widget's `self.particles` list and populating `self.vertices`
+    at the same time. Each particle type should expose a `tex_name` property that
+    is used to look up the correct sprite in the UV mapping, the data structure derived
+    earlier from the atlas (`PSWidget.uvmap`).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Strictly speaking, this helper function is optional, but very useful. Calls
+    to this method will be included in the initialization of the widget's concrete
+    class before rendering.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The last part of the widget base class is the rendering:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Starting from the `canvas.clear()` call, this is just about the same code used
+    in all GLSL-based examples. The beginning of the function is more interesting.
+    We iterate through all particles and call two methods on each: the `advance()`
+    method computes new state of the particle (it''s up to the particle to decide
+    what this does, not necessarily resembling any visible change), and `update()`
+    keeps the necessary data in the array of vertices in sync with the internal state,
+    if any.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Such separation of concerns, while not ideal for performance, helps readability
+    somewhat. When (if) optimizing, first consider the following points:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This loop can and should be parallelized, in full or partially
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: This code can also run on another thread completely, and not update every frame
+    (again, this optimization may apply to selected classes of particles, for example,
+    stuff in background that doesn't affect main program flow)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: These methods, along with other implementation details of particles, are described
+    in the forthcoming sections.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Particle class
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In the following code we review yet another base class, `Particle`, that represents
+    individual sprites. It resembles the `Star` class from the starfield project,
+    sans the logic for movement (this will be implemented later by subclasses):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: Storing a reference to the *parent* `PSWidget` in the constructor allows us
+    to interface with it later on. This primarily happens in the `update()` method,
+    also shown in the previous listing—it makes changes to all four vertices of a
+    polygon to keep those in sync with the particle's desired location and scale (`x`,
+    `y`, and `size` properties).
+  prefs: []
+  type: TYPE_NORMAL
+- en: There is at least one method in this new class that wasn't present in the `Star`
+    class, namely, `advance()`. This one has to be overridden, since there's no default
+    behavior for advancing the scene. It's up to a particle to decide how it should
+    change with time. As you will see shortly, particle systems can be used to create
+    substantially different effects.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `reset()` method is called to reinitialize a particle that ended its life
+    cycle (for example, has left the screen or exhausted its TTL). It's highly particle
+    system-specific, but generally any such system has some notion of a particle being
+    restored to a blank or randomized initial state. Again, there is no clever default
+    behavior we could invoke here, so there's only a stub in place.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Raising `NotImplementedError` from a virtual method is a way to inform the developer
+    that it would be nice to define this method on a derived class. We could have
+    omitted the last two methods altogether, but that would lead to a less relevant
+    error, `AttributeError`. Preserving method signatures, even in the absence of
+    a default implementation, is also nice and reduces guesswork for your peers (or
+    your future self, should you revisit the same code after a long delay).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The idea behind the new keyword argument, `created`, which is passed to `reset()`,
+    is simple. Some particle systems may need an additional (or merely different)
+    initialization routine when particles first spawn. A good example of such behavior
+    is the new starfield (we will get to it shortly), where stars spawn on the right-hand
+    side of the screen. If we don't account for the *just created* state, then all
+    stars will indeed appear on the rightmost edge of the screen with the same `x`
+    coordinate and thus form a straight line. This graphical glitch is clearly undesirable,
+    so we fully randomize the location of stars if `created` is set to `True`, which
+    gives us nice initial distribution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Calls to `reset()` will clearly mean subsequent respawning of particles much
+    more often than the first-time initialization, so the `created` flag defaults
+    to `False`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We're pretty much done with the base classes at this point. As you will see
+    shortly, the implementation of the game itself becomes very straightforward as
+    soon as *hard* technical details are abstracted out. For the rest of the chapter,
+    we'll employ particle system basics outlined here in creative ways to build various
+    stuff, from background to interactive in-game objects such as bullets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Writing the game
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Our application is structured around building blocks described earlier: our
+    root widget is a `PSWidget` subclass called `Game` and all in-game entities will
+    derive from the `Particle` class.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is the short and sweet base application:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following are the details about external files referenced here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `game.glsl` shader file is the same as `starfield.glsl` from the previous
+    chapter
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The `game.atlas` texture map hosts the following textures:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`star`: This texture resembles a star, similar to the one we''ve used in the
+    previous project'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`player`: This is a spaceship facing to the right (in the general direction
+    of movement)'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`trail`: This is a *fireball* (a single particle of flame) emitted from ship''s
+    rocket engine'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`bullet`: This is a projectile spawned by ship''s imaginary frontal cannon'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`ufo`: This is an alien saucer, facing to the left (and moving against the
+    current)'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The previous code renders nothing on screen yet, since we haven't populated
+    the vertices array. Let's start from the background and implement the stars first.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing stars
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Once again we build a simple star-field. This time it scrolls right-to-left
+    to imitate movement, similar in concept to the Kivy Bird game that we built earlier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To create a simple parallax effect (just like in Kivy Bird), we assign stars
+    to three planes and then set their size and speed to match. Stars on a plane with
+    a greater number are bigger and move faster than those from a lesser plane. The
+    moment a star goes off the screen, it's reborn at random position on a random
+    plane.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s review the particle system code implementing the new and improved starfield:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `tex_name` property is required and refers to a texture inside `game.atlas`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Resetting randomizes a star's plane and position, depending on whether the method
+    was called during the initialization (`created=True`) or not; the rationale for
+    this was described earlier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The last method, `advance()`, is simple: move the sprite to the left until
+    it''s out of screen, and then reset it.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In order to put our new particle system to use, we need to add a number of
+    stars using the `make_particles()` helper from `PSWidget`. This happens in `Game.initialize()`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, some visible fruits of our labor:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Implementing stars](img/B01620_09_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The starfield, revisited
+  prefs: []
+  type: TYPE_NORMAL
+- en: Making a spaceship
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We need exactly one spaceship at all times (since we're building a single-player
+    game), which means that the implementation will be a degenerate case of a particle
+    system having just one particle. This is done for the sake of unification with
+    the rest of the code. There is nothing we could gain by architecting this particular
+    object differently.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The player''s spacecraft will be glued to the pointer location at all times.
+    To achieve this effect, we store the position of the pointer in a pair of `Game`
+    properties, namely `player_x` and `player_y`, and then put the spaceship sprite
+    at those coordinates when updating the scene. To save the pointer location, we
+    can use the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Since the spaceship is under player''s complete control, there is no other
+    logic that we could implement in the particle class—apart from just moving the
+    sprite to the last pointer position accordingly:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: As you can see, `reset()` and `advance()` methods are the same. There is just
+    about nothing else we can do.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Don''t forget to actually spawn a particle of this type:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The end result so far resembles a lone spacecraft in the middle of an endless
+    void:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Making a spaceship](img/B01620_09_05.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The spaceship follows the mouse, putting the user in direct control
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a trail of fire
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Every respectable spacecraft in a sci-fi setting is followed by a flaming trail.
+    Particles composing such a trail use the following algorithm:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A particle spawns near the engine, its size randomized. The size of the particle
+    is also its **time to live** (**TTL**).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: It then travels away from the spacecraft at a constant speed, shrinking in size
+    while doing so.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Particles that have shrunk to about 10 percent of the normal size are reset
+    and begin their journey anew.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Given many particles, this effect may look nice in motion. Sadly, screenshots
+    cannot convey the dynamics, so be sure to run the example code to get a better
+    impression.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Long story short, the particle system implementation is given as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: This implements the aforementioned algorithm quite literally, while relying
+    on the same `player_x` and `player_y` properties to determine the current position
+    of the ship.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As mentioned earlier, we should assign many particles to the effect so that
+    it looks good:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here is the screenshot of the result:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Creating a trail of fire](img/B01620_09_06.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Fire burning in vacuum: looks neat while not making a case for realism'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The last two particle systems that remain unimplemented, namely enemies and
+    bullets, are different. Unlike other classes of particles we've seen previously,
+    where all instances are being displayed simultaneously at any given time, neither
+    bullets nor enemies spawn all at once; both wait for a special event to occur
+    and then increase the *population* of objects by one, firing a bullet or spawning
+    a single enemy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Nevertheless, we want to allocate a fixed number of such particles in advance,
+    because growing and shrinking the array of vertices unnecessarily complicates
+    the code and is not desirable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The catch is to add a new Boolean field to a particle to signify whether it's
+    active (shown on screen) or not, and then *activate* such particles on demand.
+    This approach will be demonstrated shortly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Making bullets
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We want our ship''s cannon to fire while we''re holding a mouse button or touching
+    the screen continuously. This setup is easy to implement using the newly added
+    `firing` property to denote that the trigger is being pulled:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To add a brief delay between shots, we introduce yet another property, `fire_delay`.
+    This variable decreases each frame until it reaches zero, then a new bullet spawns
+    and `fire_delay` is incremented. The cycle continues while `firing` is `True`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, let''s see the aforementioned active state of a particle. Initially, all
+    bullets are inactive (that is, `active=False`) and removed from the screen (the
+    coordinates `x=-100`, `y=-100` are set for the bullets, which effectively prevents
+    them from rendering). The code is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: When looping over bullets, we skip those that are inactive, unless `firing_delay`
+    has reached zero. In this case, we activate one bullet and put it in front of
+    the player, bumping the `firing_delay` variable to reset the countdown.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Active bullets move just like stars, albeit in the opposite direction. Unlike
+    stars, bullets that go off screen don''t auto-respawn. They return to the inactive
+    pool instead, vanishing from view. The code is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `fire_delay` property set to one-third of a second, which obviously leads
+    to an average rate of automatic fire of three **rounds per second** (**RPS**).
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Making bullets](img/B01620_09_07.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: A spacecraft with guns blazing
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing enemies
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Enemies are conceptually similar to bullets, but since they spawn continuously,
+    we don''t need a flag such as `firing`—a `spawn_delay` property is sufficient.
+    This is, by the way, the final evolution of the `update_glsl()` method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'During the initialization, we create a predefined number of enemies, initially
+    inactive. In order to implement collision detection with bullets later on, we
+    also store a list of bullets (a slice of the `Game.particles` list) separately:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: The corresponding particle class will be the most complex so far, mainly because
+    of the more involved movement pattern. In addition to a constant movement speed
+    along the `x` axis, each enemy also features randomized vertical movement vector,
+    `v`. When a particle of this type is about to leave the screen from the top or
+    bottom edge, the particle's `v` property changes its sign accordingly, reflecting
+    the enemy back into the visible screen space.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Other rules are similar to how bullets work: when an enemy reaches the opposite
+    edge of the screen, it resets and effectively disappears until spawned again.
+    The code is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This listing may appear relatively long but the algorithm is actually pretty
+    simple to grasp:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Check whether we're hit by a bullet and reset (see the next section).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Move horizontally, check whether we have left the view, and reset.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Move vertically, check whether we're leaving the view, and change the vector
+    sign.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Spawn another enemy if `spawn_delay` has ended and bump `spawn_delay`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Collision detection
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Another interesting aspect of the `Enemy` class that we haven''t seen before
+    is the `check_hit()` method. There are two things enemies can collide with: the
+    player''s spaceship and bullets. For the sake of simplicity, let''s say that the
+    protagonist is invincible and the collision simply destroys the enemy; a colliding
+    bullet, however, also despawns. The code is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This collision detection routine is as simple as possible: `math.hypot()` merely
+    computes distance between center points, so we assume that all objects are approximately
+    round for the purpose of this check. We also don''t try to collide with inactive
+    bullets for obvious reasons—logically inactive entities don''t exist and physically
+    they are located outside the visible screen space anyway. So, they probably don''t
+    collide with objects on screen.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This concludes the first (barely) playable version of the game.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Collision detection](img/B01620_09_08.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Enemies sighted
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finishing touches
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: There are many areas where this game can and should be improved, particularly
+    in terms of gameplay. It goes without saying that this prototype, as it stands,
+    isn't marketable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Some suggestions for *homework*, should you be interested in working on this
+    project further, are listed here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: First of all, the game needs a "game over" state, badly. Winning is optional,
+    but losing is a must; otherwise, it's just not competitive at all, like an interactive
+    screensaver.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Another obvious improvement is adding content—diversity is king. More enemies,
+    more attack patterns, and probably the ability for selected enemies to shoot back
+    at player. A progressive increase in difficulty level goes in the same bucket:
+    later stages of the game should bring bigger waves of enemies, faster spawn times,
+    and so on.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Adding sound effects is probably the simplest enhancement. Refer to [Chapter
+    7](ch07.html "Chapter 7. Writing a Flappy Bird Clone"), *Writing a Flappy Bird
+    Clone*, for details. The same `MultiAudio` class can be trivially reused in this
+    project too. Alternatively, take a look at the sample code accompanying this chapter.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The main point of this chapter is that a particle system can be used for vastly
+    different things. Perhaps this is not the most stunningly clever idea you've heard
+    today, so let's instead summarize the main points of the whole book, regardless
+    of small implementation details.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this lengthy write-up, we barely scratched the surface of what can be easily
+    done with Python and Kivy. The realm of possibilities is vast and diverse:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Utility apps for desktop and mobile
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Applications for content creation, be it a graphical or text editor, possibly
+    even a sound synthesizer
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Networked apps used for chatting, other ways of social networking, and remote
+    control programs
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Video games
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Over the course of this book, we also highlighted some useful principles of
+    working with any new technology efficiently:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Apply your experience from other problem domains, such as web development. Kivy
+    is different, but it's not that much different; many approaches are actually reusable
+    between substantially different environments.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Attempt to understand what's happening behind the scenes. Understanding the
+    inner workings of the framework will help immensely when debugging.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Related to the previous point, if docs are missing or unclear, read the source
+    code. It's Python after all, so naturally it's very readable.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Don't hesitate to search the Web for solutions to problems and topics of interest.
+    More often than not, someone already had this problem and found a workaround.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: All in all, I sincerely hope you enjoyed the ride. If you have any questions
+    or want to discuss something, by all means contact me at `<[mvasilkov@gmail.com](mailto:mvasilkov@gmail.com)>`
+    (and expect excruciatingly slow replies!).
+  prefs: []
+  type: TYPE_NORMAL

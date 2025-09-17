@@ -1,0 +1,518 @@
+- en: Chapter 6. Using Channels to Implement a Real-time Application
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Web applications use the request/response message exchange pattern to communicate
+    with the server. The communication flow always starts from the client (usually
+    a web browser), initiating a request and a server that provides a response and
+    closes the connection immediately after. This means that if we need to get information
+    from a server as soon as they are available, our client has to actively and repeatedly
+    request for them using a polling strategy, which is a simple but often ineffective
+    solution. In fact, if the poll interval is short, we need to perform a lot of
+    requests, which consumes time and bandwidth and overloads the server; on the other
+    hand, if the poll interval is long, we cannot consider the delivery of the information
+    as real time anymore.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Real-time interaction between clients and servers is a requirement for a large
+    set of web applications such as collaborative editors, online multiplayer games,
+    or instant messaging software. In general, anytime a client needs to get information
+    that is not systematic or predictable, similar to how it is when interacting with
+    human users, we better go real time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If our application runs on App Engine, we can use the **Channel** API to create
+    an apparently persistent connection between the browsers that access the application
+    and Google servers; this connection can be used at any time to send messages to
+    the connected clients nearly in real time, without having to take care of the
+    underlying communication mechanisms.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The technology behind the Channel API
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to implement the server part of a real-time application
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to implement the client part of a real-time application with JavaScript
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to deal with a client's disconnection
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Understanding how the Channel API works
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The Channel API basically consists of the following elements:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Channel**: This is a one-way communication path between the server and a
+    JavaScript client. There is exactly one channel for each client and the server
+    uses it to dispatch messages.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Client ID**: This is a string that identifies individual JavaScript clients
+    on the server. We can specify any string as the Client ID, for example, the identifier
+    of the current user.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**JavaScript client**: The client is responsible for connecting to a specific
+    channel, listening to updates on the channel itself, and sending messages to the
+    server via HTTP requests.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Server**: The server is responsible for creating channels for each JavaScript
+    client connected, providing access tokens to authenticate connections, receiving
+    messages from the client via HTTP requests, and sending updates through the channels.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The first step for using the Channel API is delivering the JavaScript client
+    to our users and building the code into the web pages served by the application.
+    After the browser receives and executes the client code, the following occurs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The JavaScript client asks the server with an HTTP request for a token to open
+    a channel providing its own Client ID.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The server creates a channel and assigns a token to it; the token is sent back
+    to the client.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The JavaScript client uses the token to connect to the channel.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Once the client is connected to the channel, the server can push messages through
+    the channel with the JavaScript client handling them in real time, as shown in
+    the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Understanding how the Channel API works](img/8194OS_06_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We have to keep in mind two important limitations when we design an application
+    that makes use of the Channel API:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Only one client at a time can connect to a channel using a given Client ID;
+    we cannot share the same channel among multiple clients.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A JavaScript client can connect only to one channel for each page; if we want
+    to send and receive multiple types of data from the server (for example, data
+    regarding different parts of the page), we need to multiplex them so that all
+    the information can flow through the same channel.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Making our application real time
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: To show how to use the Channel API, we will add a small feature to our Notes
+    application. If we open the main page in a browser, there is no way for us to
+    realize that a new note was created until we refresh the page. As a note can be
+    created using the inbound e-mail service, it'd be nice to immediately see the
+    change in our browser.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We are going to implement this feature using the Channel API: when we visit
+    the main page, our application will open a channel, which will wait for new notes
+    to be created. We will keep things as simple as possible for the scope of this
+    book, and to avoid writing too much JavaScript code, we won''t modify the **Document
+    Object Model** (**DOM**) of the page; we will only show a dialog that suggests
+    to refresh the page to see new content as soon as new notes are added.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing the server
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'We will start by adding the Python code needed to handle channels on the server
+    side. We expect the JavaScript client will make an HTTP `GET` request to request
+    a channel, so we add a request handler that will create a channel and return a
+    token in the JSON format to access it. We first import the modules needed at the
+    top of our `main.py` module:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, we add the code for the request handler:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We first check that the user is logged in and return an **HTTP 401: Unauthorized
+    error** page if this is not the case. Then, we create a Client ID for the current
+    JavaScript client using a `get_notification_client_id()` method that generates
+    a string that composes the identifier of the `user` instance we pass to it together
+    with an arbitrary prefix:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can add the preceding code to the `utils.py` module for convenience.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Back to the `GetTokenHandler` code; after we get a Client ID for the client,
+    we can proceed to creating the channel by calling the `create_channel()` method
+    and passing the identifier as the first argument. The second parameter we pass
+    to the function is the timeout for the channel expressed in minutes; when a channel
+    expires, an error is raised to the JavaScript client and the channel is closed.
+    The default value when we do not specify that parameter is 2 hours, after which
+    the client can ask for a new channel. We then set the `Content-Type` header for
+    the response to the `application/json` parameter and finally write the token in
+    the response body.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We finally map the `GetTokenHandler` handler to the `/notify_token` URL in
+    our `main.py` module:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can check whether the endpoint is working properly by visiting the `http://localhost:8080/notify_token`
+    URL with the local development server running. We should see something like this
+    in the browser window:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Implementing the server](img/8194OS_06_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The last part of the work we need to do on the server side is actually using
+    the channels we create to send messages to our users. In particular, we want to
+    notify a user as soon as a new note is created using the inbound e-mail service.
+    So, we are going to add some code to the `CreateNoteHandler` handler, modifying
+    the code of the `receive()` method as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: After a note is actually created, we use the `send_message()` method from the
+    channel module to send a message to a particular client. To get the Client ID
+    of the recipient, we use the `get_notification_client_id()` method as we did before
+    during channel creation. The second parameter we pass to the `send_message()`
+    method is the string that represents the message we want to send to our client;
+    in this case, we will show some simple text on a dialog in the browser as soon
+    as the message is delivered. In a real-world scenario, we would use a more complex
+    message than a plain string, adding some more data to let JavaScript clients identify
+    the type and the destination of the message; this is very useful if we have to
+    multiplex the channel to carry different information for different consumers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We have now completed all the required work on the server, so we can move to
+    the client side and write the JavaScript code we need to interact with the Channel
+    API.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The JavaScript code for clients
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: App Engine provides a small JavaScript library that simplifies some operations
+    needed to manage the socket connection for a channel, so the first thing we need
+    to do before proceeding is include this code in our HTML pages. The JavaScript
+    code must be included within the `<body></body>` tags, and we will put it just
+    before the closing tag so that its execution will not slow down the page-rendering
+    process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In our `main.html` template file, we add the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: The JavaScript code will be served by App Engine, both in the local development
+    environment and in production, at the `/_ah/channel/jsapi` URL.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The code required to provide the logic for the JavaScript client will be added
+    in a file called `client.js` that we will store in the `static/js/` path relative
+    to the application root folder. In this manner, the file will be uploaded to App
+    Engine servers together with the other static assets during the deployment process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We will write our JavaScript code inside a type of closure known as an **Immediately-Invoked
+    Function Expression** (**IIFE**), which is nothing more than a self-invoked anonymous
+    function executed in the context of the `window` parameter as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is a common JavaScript expression most useful when attempting to preserve
+    the global namespace; in fact, any variable declared within the function's body
+    will be local to the closure but will still live throughout runtime.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once we have created our `client.js` file, we need to include it within the
+    HTML pages served by our Notes application. In the `main.html` file, we add the
+    following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: The order of the `<script>` tags is important because the JavaScript client
+    must be available before executing our code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Thanks to the functionalities provided by the JavaScript client library, we
+    do not need to write much code. First of all, we need to retrieve the channel
+    token from our backend, so we add the following to the `client.js` file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: Here, we declare a function named `init` that will perform an **XMLHttpRequest**
+    (**XHR**) request to our backend in order to retrieve the token and will then
+    print its value on JavaScript Console.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Logging information on JavaScript Console is nonstandard, and it won''t work
+    for every user; this largely depends on the browser in use. For example, to enable
+    JavaScript Console on Google Chrome, we need to perform the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Go to the **View** menu.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Select **Developer.**
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **JavaScript Console**.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The first instruction on the function body creates an `XMLHttpRequest` object
+    that we will use to perform an HTTP `GET` request to our backend. Before firing
+    the request, we set the `onload` callback to an anonymous function that will be
+    executed once the response is correctly retrieved with no errors from the server.
+    The callback function parses the text in the response body into a `json` object
+    and logs it on JavaScript Console immediately after. After defining the callback,
+    we initialize the request that calls the `open()` method on the `XMLHttpRequest`
+    object and specify the HTTP method we want to use, the URL we want to reach, and
+    a Boolean flag that represents whether we want to perform the request asynchronously
+    or not. Later, we actually perform the request that calls the `send()` method.
+    We then call the `init()` function itself so that it is executed the first time
+    we visit the page and the script is loaded.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To check whether everything is working fine, we can start the local development
+    server and point the browser to the main page after enabling JavaScript Console
+    in our browser. If the request completed successfully, we should see the log message
+    that contains the token on the console, as shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![The JavaScript code for clients](img/8194OS_06_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We can now use the token retrieved from the backend to open a channel. In the
+    `client.js` file, we modify the code as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: We first add a function called `setupChannel()` that takes a valid token as
+    its only parameter. Using the JavaScript client code from App Engine, we then
+    create a `goog.appengine.Channel` object passing the token to the constructor.
+    We then call the `open` method that returns a `goog.appengine.Socket` object for
+    the channel. The socket object keeps track of the connection status and exposes
+    several callback functions with which we can perform operations in response to
+    channel activities. For the moment, we only provide callbacks for the `onopen`
+    and `onclose` socket events, logging a message on JavaScript Console. Notice that
+    we changed the `init()` function so that it now calls the `setupChannel()` function
+    instead of simply logging a message into JavaScript Console.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To test whether the callbacks work properly or not, we can set a very short
+    timeout for the channels when we create them in the backend so that we can see
+    what happens when a channel expires in a reasonable amount of time. In the `main.py`
+    module, we change the call to the `create_channel()` function in the `get()` method
+    of the `GetTokenHandler` class in this way:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, if we open the main page of the Notes application in the browser with
+    JavaScript Console open, we should see something similar to the following screenshot
+    after 1 minute:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![The JavaScript code for clients](img/8194OS_06_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: As we can see, the channel is opened and after 1 minute it expires, causing
+    an error in the JavaScript client and finally calling the callback we set to be
+    called for the `onclose` event of the socket object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To deal with expiring channels, we can add a callback for the `onerror` event
+    of the socket object. In our `client.js` file, we add the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The callback we added is executed when an error occurs in the channel management.
+    The callback receives an object as a parameter that contains the error message
+    and the error code. If we receive an **HTTP 401 error** page, we assume that the
+    channel expired and we call the `init` function to create and set up a new channel.
+    This time, if we hit the main page and wait for 1 minute, we can see something
+    like the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![The JavaScript code for clients](img/8194OS_06_05.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: As we can see, after the channel has expired, a new one is immediately created;
+    depending on how we use the channel, this can be completely transparent for our
+    users.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, we can proceed to adding the code to handle messages pushed by the server
+    through the channel. We have to provide a callback for the `onmessage` event of
+    the `goog.appengine.Socket` class. When the socket receives a message, the callback
+    is invoked and a parameter is passed: the message object. The `data` field of
+    this object contains the string passed to the `send_message()` method on the server.
+    We then add the following code to the `client.js` file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: As soon as a message arrives, we open a dialog on the browser using the `alert()`
+    method of the `window` object. The dialog displays the string contained in the
+    `data` field of the message object, stating that a new note was created and we
+    should refresh the page to see the updated list.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To see the code in action, we can point the browser to the main page of the
+    Notes application; then, using the local development console, we can simulate
+    an inbound e-mail as we did in [Chapter 3](ch03.html "Chapter 3. Storing and Processing
+    Users' Data"), *Storing and Processing Users' Data*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As soon as the e-mail is received and the new note created, we should see something
+    like this in our browser:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![The JavaScript code for clients](img/8194OS_06_06.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: We are assuming that the only messages that arrive through the channel involve
+    the creation of a new note, but we can send more structured data from the server;
+    the callback function can then implement more complex logic to distinguish the
+    content of the message and perform different operations according to this.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tracking connections and disconnections
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: An App Engine application is responsible for the creation of channels and the
+    transmission of the token, but it doesn't know whether the JavaScript client is
+    connected or not. For example, our Notes application sends a message upon the
+    creation of a new note through the inbound e-mail service, but on the other side,
+    the JavaScript client might or might not receive it. In some contexts, this is
+    not an issue, but there are several use cases where an App Engine application
+    needs to know when a client connects or disconnects from a channel.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To enable channel notifications, we first need to enable **inbound Channel
+    presence service**. To do this, we have to change our `app.yaml` configuration
+    file by adding the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now that the `presence` service is enabled, our Notes application will receive
+    HTTP `POST` requests to the following URLs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `/_ah/channel/connected/` URL: When a JavaScript client has connected to
+    the channel and can receive messages'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The `/_ah/channel/disconnected/` URL: When a client has disconnected from the
+    channel'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'To see how the service works, we can add two handlers to the `main.py` module:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: Each handler receives the `from` field into the `POST` request body. The field
+    contains the Client ID of the client that has connected or disconnected from the
+    channel. We can check out the application logs to see when the notifications take
+    place.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we learned the differences between an application that uses
+    the standard request/response exchange pattern to get data from a server and a
+    real-time application, where the clients are persistently connected to the server
+    and receive data as soon as it's available. Using the Channel API, we saw how
+    easy it can be to implement a real-time web application when it runs on App Engine.
+  prefs: []
+  type: TYPE_NORMAL
+- en: By adding a new feature to our Notes application, we should now have an idea
+    of the features offered by the Channel API and what we can do to get the most
+    out of its components.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We first implemented the server part, managing channel creation and message
+    sending. Then, we moved to the client side, where we managed to implement the
+    logic needed to interact with a channel by writing just a few lines of JavaScript
+    code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Notes application is almost complete now and we have enough familiarity
+    with Google Cloud Platform that we can stand to break it up and start over by
+    using another Python web framework instead of webapp2\. In the next chapter, we
+    will re-implement Notes using Django.
+  prefs: []
+  type: TYPE_NORMAL

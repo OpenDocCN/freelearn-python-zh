@@ -1,0 +1,849 @@
+- en: Chapter 3. Storing and Processing Users' Data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: There are several pieces of data that need to be persisted and that don't fit
+    very well into the Datastore or similar storage systems, such as images and media
+    files in general; these are usually big and their size impacts application costs
+    and how they should be uploaded, stored, and served back when requested. In addition,
+    sometimes we need to modify these contents on the server side and the operation
+    can take a long time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will add some features to the Notes application that will raise these kinds
+    of problems, and we will see how App Engine provides everything we need to face
+    them effectively.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Adding a form to our application to let users upload images
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Serving the files uploaded back to the clients
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Transforming images with the Images service
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Performing long jobs with the task queue
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Scheduling tasks
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Handling e-mail messages from our application
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Uploading files to Google Cloud Storage
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: It's extremely common for a web application to deal with image files or PDF
+    documents, and Notes is not an exception. It could be very useful for users to
+    attach an image or a document to one or more notes in addition to the title and
+    the description text.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Storing big chunks of binary data in the Datastore would be inefficient and
+    rather expensive, so we need to use a different, dedicated system: Google Cloud
+    Storage. Cloud Storage lets us store large files in locations called **buckets**.
+    An application can read and write from multiple buckets and we can set up an **Access
+    Control List** (**ACL**) to determine who can access a certain bucket and with
+    what permissions. Every App Engine application has its default bucket associated
+    but we can create, manage, and browse any number of them through the Developer
+    Console.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Installing Cloud Storage Client Library
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'To better interact with Cloud Storage, we need an external piece of software
+    that is not included in the App Engine runtime environment, which is the **GCS
+    Client Library**. This Python library implements functions to easily read and
+    write files inside buckets, handling errors and retries. The following is the
+    detailed list of these functions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**The** `open()` **method**: This allows us to operate with a file-like buffer
+    on bucket contents'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**The** `listbucket()` **method**: This retrieves the contents of a bucket'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**The** `stat()` **method**: This gets metadata for a file in a bucket'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**The** `delete()` **method**: This removes files from buckets'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'To install GCS Client Library, we can use pip:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: It's important to specify the destination directory for the package with the
+    `-t` option, as it is the only way to install third-party packages that are not
+    provided by App Engine on the production server. When we deploy the application,
+    all content in the application root will be copied on the remote server, including
+    the `cloudstorage` package.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It''s also possible to clone the **Subversion** (**SVN**) executable and check
+    out the latest version of the source code, provided that we have the `svn` repository
+    installed on our system:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To check whether the library is working, we can issue the following from the
+    command line and verify that no errors are printed out:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: An alternative way to interact with Google Cloud Storage is the **Blobstore
+    API**, bundled with the App Engine Environment. Blobstore was the first App Engine
+    service to provide cheap and effective storage for big files, and it's still available
+    even though Cloud Storage is more recent and more actively developed. Even if
+    we do not store any data in Blobstore, we will use the Blobstore API with Cloud
+    Storage later in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Adding a form to upload images
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We start adding a field in the HTML form that we use to create notes so that
+    the user can specify a file to upload. Before the submit button, we insert an
+    input tag:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We will store all the files for every user in the default bucket under a folder
+    named after the user ID; our application is the only way to access that file if
+    we do not alter the default access control list, so we can enforce security and
+    privacy at the application level. In order to access the uploaded file from the
+    `webapp2` request object, we need to rewrite the `post` method for the `MainHandler`
+    class, but first, we need these import statements at the top of the `main.py`
+    module:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We will see in a moment where to use these modules; this is the code that will
+    be added to the `MainHandler` class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: We first retrieve the name of the default bucket for our application through
+    the `app_identity` service by calling its `get_default_gcs_bucket_name()`method.
+    Then, we access the `request` object to get the value of the `uploaded_file` field.
+    When users specify a file to upload, `self.request.POST.get('uploaded_file')`
+    returns an instance of the `FileStorage` class defined in the `cgi` module of
+    the Python standard library. The `FieldStorage` object has two fields, `filename`
+    and `file`, that contain the name and the content of the uploaded file, respectively.
+    If users don't specify a file to be uploaded, the value of the `uploaded_file`
+    field becomes an empty string.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When dealing with an uploaded file, we try to guess its type with the help of
+    the `mimetypes` module from the Python standard library, and then we build the
+    full path of the file according to the `/<bucket_name>/<user_id>/<filename>` scheme.
+    The last part involves the GCS Client Library; in fact, it lets us open a file
+    for writing on Cloud Storage as we would do on a regular filesystem. We write
+    the content of the uploaded file by calling the `read` method on the `file_name`
+    object. We finally call the `_create_note` method, passing the name of the file
+    as well, so it will be stored inside a `Note` instance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: If users upload a file with the same name as another file that's already present
+    in Cloud Storage, the latter will be overwritten with the new data. If we want
+    to handle this issue, some logic should be added, such as either renaming the
+    new file or asking users how to proceed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Before refactoring the `_create_note()` method to accept and handle the name
+    of the file attached to a note, we need to add a property to our `Note` model
+    class to store the name of the files attached. The model becomes as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: Even if we only support the addition of a single file during the note creation,
+    we store a list of filenames so that we already provide support for multiple attachments
+    in a single note.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Back in the `main.py` module, we refactor the `_create_note()` method as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: When the `file_name` parameter is not set to the `None` value, we add the name
+    of the file and update the `Note` entity. We can now run the code and try to upload
+    a file when creating a note. The code we wrote so far only stores the uploaded
+    file without any feedback, so to check whether everything is working, we need
+    to use the Blobstore viewer on the local Development Console. If we're running
+    the application on production servers, we can use the Cloud Storage interface
+    on Google Developer Console to list the contents of the default bucket.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: At the time of writing this, the local development server emulates Cloud Storage
+    in the very same way as it emulates Blobstore, and this is why we will only find
+    a Blobstore viewer in the Development Console.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Serving files from Cloud Storage
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'As we didn''t specify an Access Control List for the default bucket, it is
+    only accessible from the Developer Console upon authentication or through the
+    Notes application. This is fine as long as we want to keep files private to the
+    user who performed the upload but we need to provide a URL for our application
+    where these files can be retrieved. For example, if a user wants to retrieve the
+    file named `example.png`, the URL could be `/media/example.png`. We need to provide
+    a request handler for such URLs, checking whether the currently logged-in user
+    has uploaded the requested file or not and provide a response accordingly. In
+    the `main.py` module, we add the following class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'After determining the currently logged-in user, we build the full path to the
+    requested file using the same scheme we used to store the `/<bucket_name>/<user_id>/<filename>`
+    file. If the file does not exist, GCS Client Library raises a `NotFoundError`
+    error and we serve a **404: Not Found** courtesy page using the `abort()` method
+    of the request handler. If the file is actually in Cloud Storage, we open it to
+    read with the usual file-like interface provided by GCS Client Library, and we
+    write its content in the response body after setting the right `Content-Type`
+    HTTP header. This way, we cannot access any file uploaded by other users even
+    if we know the name of the file, because our user ID will be used to determine
+    the full path of the file.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To use the `MediaHandler` class, we add a tuple to the `WSGIApplication` constructor:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: The regular expression tries to match any URL that starts with the `/media/`
+    path followed by a filename. When matching, the regular expression group named
+    `file_name` is passed to the `get()` method of the `MediaHandler` class as a parameter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The last step is to add a link for each file attached to a note in the main
+    page so that users can download them. We simply add a `for` iteration on the `main.html`
+    template right before the iteration of the checklist items:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We finally add the CSS `file` class to `li` elements to distinguish files from
+    checklist items; we add the corresponding styles to the `note.css` file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: With this updated style sheet, the background for file items has a different
+    color from checklist items and the link text color is white.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Serving files through Google's Content Delivery Network
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We are currently serving files attached to the notes with our WSGI application
+    through the `MediaHandler` request handler class, and this is very convenient
+    because we can perform security checks and ensure that users only get files they
+    have previously updated. This approach has several drawbacks, though: the application
+    is less efficient compared to a regular web server and we consume resources such
+    as memory and bandwidth, which could potentially cost us a lot of money.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There is an alternative, however; if we relax the requirements for our Notes
+    application and allow the contents to be publicly available, we can deliver such
+    files with low latency from a highly optimized and cookie-less infrastructure:
+    the **Google Content Delivery Network (CDN)**. How to do this depends on which
+    kind of files we have to deliver: images or any other **MIME** type.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Serving images
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'If we are dealing with an image file, we can use the Images service to generate
+    a URL, which is public but not guessable, to reach content stored in Cloud Storage.
+    First, we need to compute an encoded key representing the file in Cloud Storage
+    that we want to serve; to do this, we use the `create_gs_key()` method provided
+    by the Blobstore API. We then use the `get_serving_url()` method provided by the
+    Images service to generate a serving URL for the encoded key. If we need to serve
+    the same image with different sizes—for example, to provide a thumbnail—there
+    is no need to store the same file multiple times; in fact, we can specify a size
+    for the image we want to deliver and the CDN will take care of it. We need to
+    import the packages needed at the top of the `main.py` module:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'For convenience, we add a `_get_urls_for()` method to the `MainHandler` class
+    we can call whenever we want to get serving URLs for a file in Cloud Storage:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The method takes the filename as a parameter and builds the full path to Cloud
+    Storage with the slightly different `/gs/<bucket_name>/<user_id>/<filename>` scheme
+    (notice the `/gs` string that we need to prefix only when generating the encoded
+    key). The real path to the file is then passed to the `create_gs_key()` function,
+    which generates an encoded key, and then we call the `get_serving_url()` method
+    twice: once to generate the URL for the full-sized image and then to generate
+    the URL for a cropped thumbnail with a size of 150 pixels. Finally, both the URLs
+    are returned. These URLs will be permanently available unless we call the `delete_serving_url()`
+    method from the Images service passing the same key. If we don''t specify the
+    `size` parameter, the CDN will serve an optimized version of the image that is
+    smaller in size by default; explicitly passing the `size=0` parameter to the first
+    call to the `get_serving_url()` function will make the CDN serve the original
+    image.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can improve the data model by providing a new kind that describes a file
+    attached to a note. In the `models.py` module, we add the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We store the name, the two URLs, and the full path in Cloud Storage for each
+    file. We then reference a `NoteFile` instance instead of the plain filename from
+    the `Note` model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To store data according to the new model, we refactor the `_create_note()`
+    method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We generate the URLs and create the `NoteFile` instance, adding it to the `Note`
+    entity group. In the `post()` method of the `MainHandler` class, we now call the
+    `_create_note()` method as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the HTML template, we add this code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: Instead of the name of the file, we show the thumbnail inside a link pointing
+    to the full-sized version of the image.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Serving other types of files
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: We cannot use the Images service on file types that are not images, so we need
+    to follow a different strategy in this case. Files stored in Cloud Storage that
+    are publicly accessible can be reached by composing the URL of Google CDN with
+    their full path.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first thing to do, then, is to change the default ACL when we save the
+    files in the `post()` method of the `MainHandler` class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `options` parameter for the `open()` method of GCS Client Library lets
+    us specify a dictionary of strings containing additional headers to pass to the
+    Cloud Storage service: in this case, we set the `x-goog-acl` header to the `public-read`
+    value so that the file will be publicly available. From now on, we could reach
+    that file with a URL of the `http://storage.googleapis.com/<bucket_name>/<file_path>`
+    type, so let''s add the code to compose and store such URLs for files that are
+    not images.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the `_get_urls_for()` method, we catch errors of the `TransformationError`
+    or `NotImageError` type assuming that if the Images service failed to handle a
+    certain file, that file is not an image:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: If the file type is not supported by the Images service, we compose the `url`
+    parameter as stated before and set the `thumbnail_url` variable to the `None`
+    value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the HTML template, we will show the filename instead of the thumbnail for
+    files that are not images:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: Transforming images with the Images service
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We already used the App Engine Images service to serve images through Google's
+    CDN, but there's a lot more it can do. It can resize, rotate, flip, crop images,
+    and composite multiple images into a single file. It can enhance pictures using
+    a predefined algorithm. It can convert an image from and to several formats. The
+    service can also provide information about an image, such as its format, width,
+    height, and a histogram of color values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: To use the Images service on the local development server, we need to download
+    and install the **Python Imaging Library** (**PIL**) package or, alternatively,
+    the `pillow` package.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can pass the image data to the service directly from our application or
+    specifying a resource stored in Cloud Storage. To see how this works, we add a
+    function to our Notes application that users can trigger to shrink all the images
+    attached to any note in order to save space in Cloud Storage. To do this, we add
+    a dedicated request handler to the `main.py` module, which will be invoked when
+    users hit the `/shrink` URL:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the `get()` method, we load all the notes belonging to the current logged
+    in user from the Datastore, and then we invoke the `_shrink_note()` method on
+    each of them. For each file attached to a note, we check whether it is an image;
+    if not, we catch the error and pass to the next one. If the file is actually an
+    image, we open the file with GCS Client Library and pass the image data to the
+    `Image` class constructor. Image objects wrap image data and provide an interface
+    to manipulate and get information for the wrapped image. Transformations are not
+    applied immediately; they are added to a queue that is processed when we invoke
+    the `execute_transforms()` method on the `Image` instance. In our case, we apply
+    just one transformation, resizing the image to 640 pixel width. The `execute_transforms()`
+    method returns the transformed image data we use to overwrite the original file.
+    When writing the new image data on Cloud Storage, we need to specify the content
+    type for the file again: we derive the right content type from the `format` property
+    of the `image` object. This value is an integer that has to be mapped to a content
+    type string; we do this by adding this dictionary at the top of the `main.py`
+    module:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: We cast the `image.format` value to the string and access the right string to
+    pass to the `open()` method from GCS Client Library.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We add the mapping for the `/shrink` URL in the `main.py` module:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To let users access this functionality, we add a hyperlink on the main page.
+    We take the opportunity to provide a main menu for our application, changing the
+    `main.html` template as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To make the menu lay out horizontally, we add these lines to the `notes.css`
+    file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: Users can now shrink the space taken by images attached to their notes clicking
+    the corresponding action in the menu on the main page.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Processing long jobs with the task queue
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'App Engine provides a mechanism called **request timer** to ensure that requests
+    from a client have a finite lifespan, avoiding infinite loops and preventing an
+    overly aggressive use of the resources from an application. In particular, the
+    request timer raises a `DeadlineExceededError` error whenever a request takes
+    more than 60 seconds to complete. We have to take this into consideration if our
+    application provides functionalities that involve complex queries, I/O operations,
+    or image processing. This is the case of the `ShrinkHandler` class from the previous
+    paragraph: the number of notes to be loaded and the attached images to be processed
+    could be big enough to make the request last more than 60 seconds. In such cases,
+    we can use the **task queue**, which is a service provided by App Engine that
+    lets us execute operations outside the request / response cycle with a wider time
+    limit of 10 minutes.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There are two types of task queue: **push queues**, which are used for tasks
+    that are automatically processed by the App Engine infrastructure, and **pull
+    queues**, which let developers build their own task-consuming strategy either
+    with another App Engine application or externally from another infrastructure.
+    We will use push queues so that we have a turnkey solution from App Engine without
+    worrying about the setup and scalability of external components.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will run the shrink images functionality inside a task queue, and to do
+    so, we need to refactor the `ShrinkHandler` class: in the `get()` method, we will
+    start the task, moving the execution of the query and the image processing to
+    the `post()` method. The `post()` method will be invoked by the task queue consumer
+    infrastructure to process the task.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We first need to import the `taskqueue` package to use the task queue Python
+    API:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, we add the `post()` method to the `ShrinkHandler` class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To ensure that we have received a task queue request, we check whether the
+    `X-AppEngine-TaskName` HTTP header was set; App Engine strips these kinds of headers
+    if requests come from outside the platform, so we can trust the client. If this
+    header is missing, we set the `HTTP 403: Forbidden` response code.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The request contains a `user_email` parameter containing the e-mail of the user
+    who added this task to the queue (we'll see where this parameter has to be set
+    in a moment); we instance a `User` object by passing the e-mail address to match
+    a valid user and proceed with image processing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `get()` method of the `ShrinkHandler` class has to be refactored as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: After checking whether the user is logged in, we add a task to the queue using
+    the task queue API. We pass the URL mapped to the handler that will perform the
+    job as a parameter and a dictionary containing the parameters we want to pass
+    to the handler. In this case, we set the `user_email` parameter we use in the
+    `post()` method to load a valid `User` instance. After the task is added to the
+    queue, a response is immediately returned, and when executed, the actual shrinking
+    operation could last up to 10 minutes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scheduling tasks with Cron
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We have designed the shrink operation as an optional functionality triggered
+    by users, but we could run it at a determined time interval for every user in
+    order to lower the costs of Cloud Storage. App Engine supports the scheduled execution
+    of jobs with the Cron service; every application has a limited number of Cron
+    jobs available, depending on our billing plan. Cron jobs have the same restrictions
+    as tasks in a task queue, so the request can last up to 10 minutes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We first prepare a request handler that will implement the job:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We derive the `ShrinkCronJob` class from the `ShrinkHandler` class to inherit
+    the `_shrink_note()` method. The cron service performs an HTTP request of type
+    `GET`, so we should override the `post()` method, simply returning a **HTTP 405:
+    Method not allowed** error, thus avoiding someone hitting our handler with an
+    HTTP `POST` request. All the logic is implemented in the `get()` method of the
+    handler class. To ensure the handler was triggered by the Cron service and not
+    by an external client, we first check whether the request contains the `X-AppEngine-Cron`
+    header that is normally stripped by App Engine; if this is not the case, we return
+    a **HTTP 403: Unauthorized** error. Then, we load all the Note entities from the
+    Datastore and invoke the `_shrink_note()` method on each of them.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We then map the `ShrinkCronJob` handler to the `/shrink_all` URL:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Cron jobs are listed in a `YAML` file in the application root, so we create
+    the `cron.yaml` file with the following content:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The file contains a list of job definitions with some properties: for each
+    job, we must specify the URL and `schedule` properties, containing the URL mapped
+    to the handler implementing the job and the time interval at which the job is
+    executed, respectively, every day at midnight. We also add the optional `description`
+    property containing a string to detail the job.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The list of scheduled Cron jobs is updated every time we deploy the application;
+    we can check for jobs' details and status by accessing the Developer Console or
+    the local Development Console.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sending notification e-mails
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'It''s very common for web applications to send notifications to the users,
+    and e-mails are a cheap and effective channel for delivering. The Notes application
+    could benefit from a notification system as well: early in this chapter, we modified
+    the `shrink` image function so that it runs in a task queue. Users receive a response
+    immediately, but the actual job is put in a queue and they don''t know if and
+    when shrink operations complete successfully.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As we can send e-mail messages from an App Engine application on behalf of the
+    administrators or users with Google Accounts, we send a message to the user as
+    soon as the shrink operation is completed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We first import the mail package in the `main.py` module:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then we append the following code to the end of the `post()` method in the
+    `ShrinkHandler` class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: All we have to do is invoke the `send_mail()` method, passing in the sender
+    address, the destination address, the subject of the e-mail, and the body of the
+    message.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we are running the application on the production server, the `sender_address`
+    parameter must contain the registered address on App Engine of one of the administrators,
+    or the message won't be delivered.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If the application is running on the local development server, App Engine will
+    not send out real e-mails and will show a detailed message on the console instead.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Receiving users' data as e-mail messages
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'A less common but useful feature for a web application is the ability to receive
+    e-mail messages from its users: for example, a **Customer Relationship Management**
+    (**CRM)** application could open a support ticket after receiving an e-mail sent
+    out from a user to a certain address, say, `support@example.com`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To show how this works on App Engine, we add the ability for our users to create
+    notes by sending e-mail messages to the Notes application: the e-mail subject
+    will be used for the title, the message body for the note content, and every file
+    attached to the e-mail message will be stored on Cloud Storage and be attached
+    to the note as well.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: App Engine applications can receive e-mail messages at any address of the `<string>@<appid>.appspotmail.com`
+    form; messages are then transformed to HTTP requests to the `/_ah/mail/<address>`
+    URL, where a request handler will process the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Before we start, we need to enable the incoming e-mail service, which is disabled
+    by default, so we add the following in our `app.yaml` file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, we need to implement a handler for the e-mail messages, deriving from
+    a specialized `InboundMailHandler` request handler class provided by App Engine.
+    Our subclass must override the `receive()` method that takes a parameter containing
+    an instance of the `InboundEmailMessage` class that we can use to access all the
+    details from the e-mail message we received. We add this new handler to the `main.py`
+    module but before proceeding, we need to import the modules and packages required:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, we start implementing our `CreateNoteHandler` class; this is the first
+    part of the code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The first part of the code implements a simple security check: we actually
+    create a note for a certain user only if the e-mail message comes from the same
+    address users registered for their account. We first extract the e-mail address
+    from the `sender` field of the `InboundEmailMessage` instance contained in the
+    `mail_message` parameter with a regular expression. We then instance a `User`
+    object representing the owner of the e-mail address that sent the message. If
+    the sender does not correspond to a registered user, App Engine raises a `UserNotFoundError`
+    error and we return a `403: Forbidden` HTTP response code, otherwise we call the
+    `_reload_user()` method.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If users want to attach a file to their notes, the Notes application needs
+    to know the user ID of the note owner to build the path when storing files on
+    Cloud Storage; the problem is that when we programmatically instance a `User`
+    class without calling the `get_current_user()` method from the `users` API, the
+    `user_id()` method of the instance always returns the `None` value. At the time
+    of writing this, App Engine does not provide a clean method to determine the user
+    ID from an instance of the `User` class, so we implement a workaround by following
+    these steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Assign the `User` instance to a field of a Datastore entity, which is called
+    the `UserLoader entity.`
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Store the `UserLoader` entity in the Datastore.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Immediately after, load the entity again.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'This way, we force the `Users` service to fill in all the user data; by accessing
+    the field containing the `User` instance in the `UserLoader` entity, we will get
+    all the user properties, including the `id` property. We perform this operation
+    in a utility method of the handler class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To force a clean reload of the entity from the Datastore, we first need to
+    purge the NDB cache, and we do this by calling the `delete()` method on the key
+    passing the `use_datastore=False` parameter. We then reload the entity from the
+    Datastore and return the `user` property, now containing all the data we need.
+    We add the `UserLoader` model class to our `models.py` module:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Back in the `receive()` method, we proceed to extract all the data we need
+    from the e-mail message after reloading the `User` instance; in order to extract
+    all the data, we need to create a note: the message subject is a simple string
+    that we will use as the note title. Accessing the body is a little bit more complex
+    because e-mail messages might have multiple bodies with different content types,
+    typically plain text or HTML; in this case, we extract only the plain text body
+    and use it as the note content.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the case, the e-mail messages have attachments, and the `mail_message` instance
+    provides the `attachments` attribute: we pass it as a parameter to the method
+    dedicated to note creation, that is the `_create_note()` method. The `_create_note()`
+    method runs in a transaction and encapsulates all the logic needed to create a
+    `Note` entity:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The method is quite similar to the method that has the same name in the `MainHandler`
+    class; the main difference is the way in which we access data from the files attached
+    to the e-mail message. The `attachments` parameter is a list of tuples of two
+    elements: one is a string containing the file name and the other is an instance
+    of a **wrapper** class containing the message payload. We use the filename to
+    build the full path to the file in Cloud Storage, and we use the `decode()` method
+    to access the payload data and store it in a file.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, we map the URL to the handler:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: When testing the application on the local development server, we can use the
+    development console to simulate e-mail sending from a web interface; this function
+    is available from the bar on the left-hand side by clicking on the **Inbound Mail**
+    menu item.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we pushed a lot of features in our Notes application, and we
+    should now be able to leverage the Cloud Storage and use it to store and serve
+    static contents from our applications. We saw the Images API in action, and we
+    should now know how to deal with requests that take a long time, and we also learned
+    how to schedule recurrent tasks. In the last part, we delved into the Mail API
+    capabilities and we learned how App Engine provides a turnkey solution to send
+    and receive e-mail messages.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we will take a look at the performance of our application
+    and see where and how we can improve, using advanced features of components we
+    are already using together with more services provided by App Engine.
+  prefs: []
+  type: TYPE_NORMAL

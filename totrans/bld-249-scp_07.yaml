@@ -1,0 +1,1003 @@
+- en: Chapter 7. Creating Custom Shaders and Textures with Pynodes
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: It is sometimes said that although Blender has a powerful and versatile system
+    to define materials, it lacks a proper shader language to define completely new
+    **shaders**, for example, to create materials that react to light in novel ways.
+    This is, however, not entirely true.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Blender does not have a compiled shader language but it does a have a powerful
+    **node** system to combine textures and materials and these nodes can be Python
+    scripts. This enables users to define completely new textures and materials.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will learn:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to write Pynodes that create simple color patterns
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to write Pynodes that produce patterns with normals
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to write animated Pynodes
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to write height-and slope-dependent materials
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to create shaders that react to the angle of incident light
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: To illustrate some of its power, we start by looking at a script that creates
+    regular color patterns made of triangles, rectangles, or hexagons.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Creating Custom Shaders and Textures with Pynodes](img/0400-07-01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '**Materials**, **shaders**, **and** **textures** are terms that are often used
+    as synonyms although there are differences in meaning. For our purposes we try
+    to adhere to the following definitions: A **texture** is a basic building block,
+    for example, a color or normal pattern or simply some function that returns a
+    value depending on the position on a surface. A **shader** will take any number
+    of textures or just a basic color and will return a color based on the influence
+    of incident light and possibly the view direction. A **material** is a collection
+    of textures, shaders, and all sorts of properties that can be applied to an object.
+    Pynodes can be textures as well as shaders.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The basics
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: When we design a Pynode we basically design something that provides a function
+    that is called for every pixel on the screen that needs to be shaded by that node
+    (or even more than once, if **oversampling** is in effect). This function gets
+    among other things the x, y, and z coordinates of the point on the object being
+    shaded that corresponds to the pixel on the screen we are currently calculating.
+    The function is then expected to return something useful such as a color, an intensity
+    value, or something a little less intuitive such as a normal.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In Blender's Node editor window every material node, including a Pynode, is
+    represented by a box which has its inputs on the left and its outputs on the right.
+    These inputs and outputs are often called **sockets** and are represented by little
+    colored circles (see the next screenshot). These sockets can be used to string
+    nodes together; by clicking on an output socket of one node and dragging the mouse
+    to the input socket of another node, these nodes will be connected. By combining
+    as many different nodes as needed, very complex and powerful shaders can be created.
+  prefs: []
+  type: TYPE_NORMAL
+- en: From nodes to Pynodes
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The power of Blender's Node system not only stems from its many predefined node
+    types and the many ways these nodes may be connected, but also from the fact that
+    we can write new nodes in Python that may be connected in the same way as ordinary
+    nodes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Pynodes need a way to access the information provided by the input sockets
+    and a way to send their calculated results to the output sockets. The concept
+    of a node and its sockets is structured along an object-oriented model. Let''s
+    first look at some example code to prove that this doesn''t need to be scary (object-oriented
+    veterans: look the other way or peek through your fingers to just pick up the
+    class definition from the following example):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Before we look at this code in detail try it in Blender to see how it actually
+    works:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Open a new file in the text editor and give it a distinguishable name.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Copy the example code.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Create a simple scene, for example, a simple UV sphere at the origin with a
+    couple of lamps and a camera.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Assign a `Node` material to the sphere like you normally would.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Finally, add in a *dynamic* node in the Node editor (**Add | Dynamic**) and
+    select the name of the file that you edited by clicking on the selection button
+    of the *dynamic* node and picking the file.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'The resulting network of nodes (often called a **noodle**) may look like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![From nodes to Pynodes](img/0400-07-02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: If you render the sphere the result is a colorful ball not unlike a color selection
+    widget.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now back to the code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the first line we import the `Node` module from Blender because we will be
+    implementing a new type of node, but most of its behavior is already defined in
+    the `Node` module.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Then we define a class `MyNode`, a subclass of `Node.Scripted`, which will behave
+    just like a `Scripted` node except for the parts that we will redefine.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we define the `__init__()` function that will be called the first time
+    we create this type of Pynode in the node editor or any time we click on the **Update**
+    button. When this happens Blender will pass two arguments to this function: `self`,
+    a pointer to the node we are using, and `sockets`, a reference to an object that
+    will point to our lists of input and output sockets. These are the nodes in the
+    node editor we will receive input from or send data to.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the highlighted line we define a list of input socket definitions; only one
+    in this case and it is called `Coords`. It is a vector input because it is initialized
+    with a list of three floats that define the default values, if this input socket
+    is not connected to another node. Vector nodes are represented as blue circles
+    in the node editor.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Other types of input socket are possible as well and the type is determined
+    by the value of the `val` argument. Output sockets are defined in the same way.
+    A list of three floats will define a vector socket, a list of four floats a color
+    socket (with a red, green, blue, and alpha component), and a socket representing
+    a simple value such as intensity is initialized by a single float. Note that we
+    cannot distinguish between inputs that need to be filled in by the user or ones
+    that should be connected to another node. We use input sockets for both and will
+    have to document their intended use. Currently, there is no facility to add buttons
+    or other widgets to a Pynode.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Our sample Pynode needs output as well so we define a list consisting of a single
+    output socket called `Color`. It has four float values as a default specifying
+    the red, green, blue, and alpha values respectively.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next we define a function `__call__()` that is called each time a pixel is shaded.
+    It takes no arguments but `self`—a reference to the current node that is used
+    in the following lines to access the input and output sockets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the body of `__call__()` we retrieve the three components from the input
+    socket called `Coords` and assign them to easy-to-remember variables. Finally,
+    we create a new four-component list that represents our calculated color and assign
+    it to the output socket called `Color`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is the basis to define simple textures but there is more information available
+    to the node (as we will see in the following sections) so some pretty sophisticated
+    effects can be designed. We end this section with a slightly more elaborate node
+    that builds on the same principles we saw earlier but creates more useful patterns.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Regular tilings
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The checkerboard texture is perhaps the simplest texture that you can imagine
+    and is therefore often used as an example when programming textures. Because Blender
+    already has a built-in checker texture (since version 2.49, in the texture context
+    of the nodes window) we go one step further and create a texture node that displays
+    not only a checkerboard texture but **tilings** of triangles and hexagons as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: The first few lines start off by defining our input and output sockets. The
+    output will simply be a color in all cases but we have a more varied set of input
+    sockets. We define three different input colors because the hexagon pattern needs
+    three colors to give each hexagon a color that is distinguishable from its neighbor.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We also define a `Coords` input. This input socket may hook up to any output
+    of a geometry socket. In this way we have many possibilities to map our color
+    texture to the object that we are texturing. A `Scale` socket is defined as well
+    to control the size of our texture.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, we define a `Type` socket to select the pattern that we wish to generate.
+    As the Pynode API does not provide a drop-down box or any other simple selection
+    widget we make do with a value socket and arbitrarily pick values to represent
+    our choice: `1.0` for triangles, `2.0` for checkers, and `3.0` for hexagons.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We end our `__init__()` function with the definition of a number of constants
+    and a dictionary of color mappings that we will use when generating a hexagonal
+    texture.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The next step is to define the `__call__()` function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `__call__()` function starts off by defining some shorthands for input
+    values and multiplying the input coordinates by the chosen scale to stretch or
+    shrink the generated pattern. The next step is to establish the kind of pattern
+    that is desired and call the appropriate function to calculate the output color
+    for the given coordinates. The resulting color is assigned to our only output
+    socket:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: The various pattern-generating functions are all very similar; they take x and
+    y coordinates and two or three colors as arguments and return a single color.
+    As these are member functions of a class, they take an additional first argument
+    of `self` as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `checker` function checks in which row and column we are and if the row
+    number and the column number are both odd or even (that is what the exclusive
+    `or` operator establishes) it returns one color, if not it returns the other color.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `triangle` function first rotates both x and y coordinates together by
+    a 45 degree angle (changing squares into upright lozenges). It then determines
+    the color based on row and column numbers just like in the `checker` function
+    but with a twist: the third term (highlighted) checks whether we are on the left
+    of the diagonal crossing a square and because we have rotated our grid, we really
+    check whether or not the coordinates are above the horizontal line dividing our
+    lozenge. This may sound a bit complicated but you can check the following screenshot
+    to get the idea:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Regular tilings](img/0400-07-03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `hexagon` function is like the `triangle` function in many respects (after
+    all a hexagon is six triangles glued together). Therefore, it performs the same
+    rotation trick but instead of picking the color by using a straightforward formula,
+    things are a bit more involved and hence we use a color map here (highlighted
+    in the previous code snippet). Basically, we divide the screen into horizontal
+    and vertical strips and pick the color based on the strips we are in.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The final piece of magic is in the last line of our script:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The way Pynodes are currently implemented, Blender needs this assignment to
+    identify a class as a node. Our node will show up in the pop-up menu of a script
+    node as **Tilings**. The full code is available as `tilings.py` in `tilings.blend`
+    together with a sample node setup. Some of the possible patterns are shown in
+    the next screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Regular tilings](img/0400-07-04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The corresponding node setup is shown in the next screenshot. Note that we have
+    not connected any node to the color inputs but even more elaborate patterns can
+    be created if we do.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Regular tilings](img/0400-07-05.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Anti-aliasing
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: If you would look closely at the diagonal boundaries of the hexagonal or triangular
+    tilings you would notice some staircase-like artifacts even if oversampling was
+    set to a high value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Blender itself is smart enough to apply the chosen **anti-aliasing** level to
+    things such as object boundaries, but in most cases textures on a surface will
+    have to take care of anti-aliasing themselves. Blender's built-in textures are
+    designed that way of course, but our own textures produced with Pynodes should
+    address this explicitly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are numerous mathematical techniques available to reduce aliasing in generated
+    textures but most are not easy to implement or require specific knowledge about
+    the way a pattern is generated. Fortunately, Blender provides us with the **Full
+    OSA** option (**Buttons windows | Shading context | Material buttons | Links and
+    pipeline tab**). If we enable this option, Blender is forced to oversample each
+    pixel in our texture by the amount selected in the render buttons. This is an
+    expensive option but will get rid of aliasing effects without the need to implement
+    specific filtering options in our Pynode texture.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Indexing a texture by vector
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In our tiling patterns we have limited the colors to the minimum number needed
+    to distinguish each neighboring tile. But would it be possible to assign random
+    colors based on some noise texture? This way we might color fish scales in a way
+    that follows an overall random pattern yet colors each individual scale uniformly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We cannot simply connect a colored texture to the color inputs as this leads
+    to interesting patterns, perhaps, but each tile would not have a uniform color.
+    The solution is to modify our Pynode to produce a unique vector that is uniform
+    within any given tile. This vector may then be connected to any noise texture
+    that takes a vector as input as all Blender textures do. This vector is used by
+    the noise texture node to point to a single point in the random texture and this
+    way we can produce randomly colored but uniform tiles.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To provide this functionality we modify our code by removing the color inputs
+    and replacing the color output by a vector output (not shown). The code inside
+    the `__call__()` function will now have to produce a vector instead of a color.
+    Here we show the modified `triangle` function (full code available as `tilingsv.py`
+    in `tilingsv.blend`):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: The logic is largely the same but, as shown in the highlighted line, we return
+    a vector that is dependent on the position. However, due to the `floor()` operation
+    it is constant within a triangle. Note that for the alternate triangle we add
+    a slight offset; it doesn't matter which offset we choose as long as it is constant
+    and produces a vector distinct from the other triangle.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The results show a random pattern of triangles that follows the large correlations
+    in the noise yet leaves each individual triangle with a uniform color. The sample
+    on the right has a larger noise size for the cloud texture used:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Indexing a texture by vector](img/0400-07-06(2).jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'A possible node setup is shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Indexing a texture by vector](img/0400-07-07(2).jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: A fresh breeze—textures with normals
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: A texture can have more than just a geometric input. If you need a texture to
+    change its behavior based on another texture in a way that cannot be achieved
+    by a simple node setup you may provide it with extra input sockets. We will develop
+    a Pynode that generates a normal map that simulates the little patches of **wavelets**
+    on a pond on an almost windless day.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Where those patches appear is controlled by an extra input socket that may be
+    linked to almost any noise texture. We will give this input socket the name `amplitude`
+    because we use it to multiply it with our calculated **normal**. This way our
+    wavelets will disappear wherever our noisy texture is zero.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The wavelength of the ripples is controlled by yet another input called `wavelength`
+    and our `Ripples` node will have an input socket for the coordinates as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The fourth and final input is called `direction`—a vector that controls the
+    orientation of our wavelets. It may be set by hand by the user but if desired,
+    may be linked up to a normal node that provides an easy way to manipulate the
+    direction with the mouse.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The resulting node setup that combines all of this is shown in the screenshot
+    of the node editor:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![A fresh breeze—textures with normals](img/0400-07-08.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The script for the node is straightforward; after importing some necessary
+    definitions we then define the numerous input sockets and our single output socket:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: Again, all real work is done in the `__call__()` function (highlighted in the
+    preceding code snippet). We first define the shorthands `p` and `d` for the coordinates
+    and the direction vectors respectively. Our wavelets are sinus functions and the
+    location on this sinus curve is determined by the projection of the position on
+    the direction vector. This projection is calculated by taking the "in product"
+    or "dot product"—an operation provided by the `dot()` method of a `Vector` object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![A fresh breeze—textures with normals](img/0400-07-09.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The projection is then multiplied by the wavelength. If we would calculate the
+    sinus we would have the height of our wave. We are, however, not interested in
+    the height but in the normal. The normal always points upward and moves along
+    with our sine wave (see the next diagram). It can be shown that this normal is
+    a vector with a z-component of 1.0 and an x-component equal to the negative derivative
+    of the sine function, that is, minus cosine. The script (`ripples.py`) and an
+    example node setup are available as `ripples.blend`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![A fresh breeze—textures with normals](img/0400-07-10.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In the node setup that we showed earlier you might have noticed that instead
+    of linking up the geometry node directly to our ripples node, we added a second
+    texture node and combined this node with the geometry input by adding and scaling
+    the normal output of the texture node. We could have mixed in some noise in the
+    ripples node itself but this way we give the user far more control over the type
+    and amount of noise he wants to add (if any). This is a general pattern: nodes
+    should be designed as simple as possible to facilitate reuse in different settings.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: These ripples were not designed to be animated but in the following section
+    we will design a node that can.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![A fresh breeze—textures with normals](img/0400-07-11.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Raindrops—animated Pynodes
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Many patterns are not static but change in time. One example is the ripples
+    formed by **raindrops** falling in a pond. Blender exposes render-time parameters
+    such as start frame, frame rate, and current frame so we have plenty of hooks
+    to make our Pynodes time dependent. We will see how to use those hooks in a script
+    that generates a raindrop pattern. A pattern that changes realistically resembling
+    the outward expanding ripples caused by drops falling in a pond. On the way we
+    also pick up some useful tricks to speed up calculations by storing the results
+    of expensive calculations in the Pynode itself for later reuse.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Render-time parameters
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The most relevant render parameters when dealing with time-dependent things
+    are the current frame number and the frame rate (the number of frames per second).
+    These parameters are provided grouped together as a rendering context by the `Scene`
+    module, most via function calls, some as variables:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'With this information we can now calculate the time, either absolute or relative
+    to the start frame:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note the conversion to float in the denominator (highlighted). That way we ensure
+    that the division is treated as a floating point operation. This is not strictly
+    necessary since `fps` is returned as a float but many people assume the frame
+    rate to be some integer value such as 25 or 30\. This is, however, not always
+    the case (for example, NTSC encoding uses a fractional frame rate) so we better
+    make this explicit. Also note that we cannot do away with this division, otherwise
+    when people would change their mind about their chosen frame rate the speed of
+    the animation would change.
+  prefs: []
+  type: TYPE_NORMAL
+- en: What looks good, is good
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Accurately simulating the look of ripples caused by falling droplets may seem
+    difficult but is straightforward, albeit a bit involved. Readers interested in
+    the underlying mathematics might want to check some reference (for example [http://en.wikipedia.org/wiki/Wave](http://en.wikipedia.org/wiki/Wave)).
+    Our goal, however, is not to simulate the real world as accurately as possible
+    but to provide the artist with a texture that looks good and is controllable so
+    that the texture may even be applied in situations which are not realistic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So instead of making the speed at which the ripple travels dependent on things,
+    such as the viscosity of the water, we provide speed as a tunable input to our
+    Pynode. Likewise for the height and width of the ripple and the rate at which
+    the height of the ripple diminishes as it expands. Basically, we approximate our
+    little packet of ripples as it radiates outward from the point of impact of a
+    droplet by a cosine function multiplied by an exponential function and a damping
+    factor. This may sound dangerously like mathematics again, but it can be easily
+    visualized:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![What looks good, is good](img/0400-07-12.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'To calculate the height at any position x, y in our texture the above can be
+    implemented as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: Here, `dropx` and `dropy` are the positions of impact of a drop and `a` is our
+    tunable height parameter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The effects of more drops dropped at different times and at different locations
+    may simply be calculated by summing the resulting heights.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Storing expensive results for reuse
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: A single drop is not rain of course, so we would like to see the effects of
+    many random drops added together. Therefore, we have to choose random impact locations
+    and times for as many droplets as we'd like to simulate.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We would have to do this every time a call to the `__call__()` method is made
+    (this is, for every visible pixel in our texture). However, this would be a tremendous
+    waste of processing power because calculating many random numbers and allocating
+    and releasing memory for possibly a large number of drops is expensive.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Fortunately, we can store these results as instance variables of our Pynode.
+    Of course, we should be careful to check that no input parameters have changed
+    between invocations of `__call__()` and take appropriate action if they have changed.
+    The general pattern would look like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: This pattern works only if the input parameter changes infrequently, for example,
+    only if the user changes it. If the input changes every pixel because the input
+    socket is connected to the output of another node—the suggested scheme only costs
+    time instead of saving some.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Calculating normals
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Our goal is to generate a ripple pattern that can be used as a normal. so we
+    need some way to derive the normal from the calculated heights. Blender does not
+    provide us with such a conversion node for materials so we have to devise a scheme
+    ourselves.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Contrary to materials nodes, Blender's texture nodes do provide a conversion
+    function called 'Value to Normal' that is available in the texture node editor
+    from the menu **Add|Convertor|Value** to Normal.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, as in the case of ripples, we could, in principle, calculate an exact normal
+    for our rain drops as well, but instead of going the mathematical way again we
+    adapt a method used by many built-in noise textures to calculate the normal that
+    works irrespective of the underlying function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As long as we can evaluate a function at three points: `f(x,y),f(x+nabla,y)`,
+    and `f(x,y+nabla)` we can estimate the direction of the normal at x,y by looking
+    at the slopes of our function in the x and y direction. The surface normal will
+    be the unit vector perpendicular to the plane defined by these two slopes. We
+    can take any small value for `nabla` to start and if it doesn''t look good, we
+    can make it smaller.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Putting it all together
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Taking all of these ideas from the preceding paragraphs, we can cook up the
+    following code for our raindrops Pynode (with `import` statements omitted):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: The initialization code defines a number of input sockets besides the coordinates.
+    `Drops_per_second` should be self explanatory. `a` and `c` are the overall height
+    and width of the ripples traveling outward from the point of impact. `speed` and
+    `freq` determine how fast our ripples travel and how close ripples are together.
+    How fast the height of the ripples diminishes as they travel outward is determined
+    by `dampf`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We also define two output sockets: `Height` will contain the calculated height
+    and `Normal` will contain the corresponding normal at that same point. The `Normal`
+    is what you would normally use to obtain the rippling surface effect, but the
+    calculated height might be useful for example to attenuate the reflectance value
+    of the surface.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The initialization ends with the definition of some instance variables that
+    will be used to determine if we need to calculate the position of the drop impacts
+    again as we will see in the definition of the `__call__()` function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The definition of the `__call__()` function starts off with the initialization
+    of a number of local variables. One notable point is that we set the random seed
+    used by the functions of the `Noise` module (highlighted in the following code).
+    In this way, we make sure that each time we recalculate the points of impact we
+    get repeatable results, that is if we set the number of drops per second first
+    to ten, later to twenty, and then back to ten, the generated pattern will be the
+    same. If you would like to change this you could add an extra input socket to
+    be used as input for the `setRandomSeed()` function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The next step is to determine whether we have to calculate the positions of
+    the points of impact of the drops anew. This is necessary only when the value
+    of the input socket `Drops_per_second` is changed by the user (you could hook
+    up this input to some other node that changes this value at every pixel, but that
+    wouldn''t be a good idea) or when the start or stop frame of the animation changes,
+    as this influences the number of drops we have to calculate. This test is performed
+    in the highlighted line of the following code by comparing the newly obtained
+    values to the ones stored in the instance variables:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: If we do have to calculate the position of the drops anew we assign a list of
+    tuples to the `self.drop` instance variable, each consisting of the x and y position
+    of the drop and a random drop size that will attenuate the height of the ripples.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The rest of the lines are all executed each time `__call__()` is called but
+    the highlighted line does show a significant optimization. Because drops that
+    have not yet fallen in the current frame do not contribute to the height, we exclude
+    those from the calculation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the preceding code we actually calculate the height at three different positions
+    to be able to approximate the normal (as explained previously). These values are
+    used in the following lines to determine the x and y components of the normal
+    (the z component is set to one). The calculated height itself is divided by the
+    number of drops (so the average height will not change when the number of drops
+    is changed) and by the overall scaling factor `a`, which may be set by the user
+    before it is assigned to the output socket (highlighted):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The calculated normal is then added to the surface normal at the pixel where
+    we are calculating so the ripples will still look good on a curved surface and
+    normalized before assigning it to the output socket. The final line as usual defines
+    a meaningful name for this Pynode. The full code and a sample node setup are available
+    as `raindrops.py` in `raindrops.blend`. A sample frame from an animation is shown
+    in the next screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Putting it all together](img/0400-07-13.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'A sample node setup is shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Putting it all together](img/0400-07-14.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Wuthering heights—a slope-dependent material
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In Blender it is quite simple to generate a fractal terrain (just add a plane,
+    go to *edit* mode, select all, and then subdivide fractal a few times *W → 3*).
+    If you want something more elaborate a few excellent scripts exist to help you
+    (see for example [http://sites.google.com/site/androcto/Home/python-scripts/ANTLandscape_104b_249.py](http://sites.google.com/site/androcto/Home/python-scripts/ANTLandscape_104b_249.py)).
+    But how would you apply textures to such a terrain? In this example, we will examine
+    a method to choose between different material inputs based on the slope of the
+    surface that we're shading. This will allow us to create the effect that very
+    steep slopes are generally devoid of greenery even though they might be well below
+    the tree line. Combined with a height-dependent material we should be able to
+    shade a mountainous terrain in a pretty convincing way.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '**Reducing computation time:**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Pynodes are computationally intensive as they are called for every visible pixel.
+    Clever coding can sometimes reduce the amount of computation needed but if a further
+    speedup is required a just-in-time compiler might help. **psyco** is such a compiler
+    and we will encounter it in the last chapter where we will apply it on Pynodes
+    and see whether it has any appreciable effect.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Determining the slope
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The **slope** can be defined as the angle between the floor plane and a line
+    tangent to the surface at the point of interest.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Determining the slope](img/0400-07-15.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Because we assume our (imaginary) floor plane to stretch horizontally along
+    the x and y axis this angle is completely determined by the z-component of the
+    surface normal at the same point. Now we can calculate this angle exactly (it
+    is ![Determining the slope](img/0400-07-16.jpg)), but as artists we may want to
+    have some extra control anyway so we simply take the normalized z-component of
+    the surface normal and modify this output intensity with any color ramp node that
+    we like. Within a Pynode a surface normal is a readily available vector entity:
+    `self.input.shi.surfaceNormal`. There is a snag however...'
+  prefs: []
+  type: TYPE_NORMAL
+- en: World space versus camera space
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The surface normal that we have available happens to be defined in camera space.
+    This means that, for example, when the surface normal is pointing straight at
+    the camera it is defined as (0, 0,-1). Now we want our surface normals to be defined
+    in world space. A normal that is pointing straight up for instance should have
+    a value of (0,0,1) irrespective of the position or tilt of the camera (after all,
+    mountainside vegetation does not normally change with the camera angle). Fortunately,
+    we can convert from **camera space** to **world space** by taking the camera''s
+    world space matrix and multiplying the surface normal with the rotation part of
+    this matrix. The resulting code looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note that the initialization code does not define an input socket. We will get
+    the surface normal at the position of the pixel that we are shading from the shader
+    input (highlighted in the next piece of code). We do define three separate output
+    sockets for the x, y, and z components of the slope for ease of use in a node
+    setup. As we mostly will be using just the z-component of the slope, having it
+    available in a separate socket saves use from extracting it from a vector with
+    an additional vector manipulation node.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: The transformation from camera space to world space is done in the line that
+    references the surface normal (highlighted). The orientation is dependent only
+    on the rotation, therefore we extract only the rotation part of the camera's transformation
+    matrix before we multiply the surface normal with it. As the normalized result
+    may point downward we force the z-component to lie in the range [0, 1] by adding
+    1 and multiplying by 0.5\. The full code is available as `slope.py` in `slope.blend`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There is one important thing to be aware of: the surface normal that we use
+    here is not interpolated and hence equal everywhere along the surface of a single
+    face, even if the `smooth` attribute of a face is set. This shouldn''t be a problem
+    in a finely subdivided landscape where the slope input is not used directly, However,
+    this is different from what you might expect. In the present implementation of
+    Pynodes, this limitation is difficult if not impossible to overcome.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The following illustration shows an example of what is possible.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![World space versus camera space](img/0400-07-17.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The effects shown above were realized by combining different materials in the
+    node setup shown in the next screenshot. This setup is available in `slope.blend`
+    as well. The lower two materials were mixed using our slope-dependent node and
+    the resulting material was mixed with the upper material based on a Pynode that
+    calculates the height.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![World space versus camera space](img/0400-07-18.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Soap bubbles—a view-dependent shader
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Some materials change the way they look depending on the angle at which we look
+    at them. Bird feathers, some fancy car paints, oil spills on water, and **soap
+    bubbles** are some examples. This phenomenon of changing colors is known as **iridescence**.
+    If we want to implement something like that we need access to the view vector
+    and the surface normal. In our soap bubble shader we see one way of doing this.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*First* *some* *mathematics*: Why is it that soap bubbles show all those different
+    colors? Soap bubbles are basically curved sheets of water (with a little soap),
+    and at the interface between air and water, light is reflected. An incident ray
+    will therefore be partially reflected when it hits the outer surface of the bubble
+    and be reflected again when it reaches the inner surface. The reflected light
+    that reaches the eye is therefore a mixture of light that has traveled different
+    distances; part of it has traveled the extra distance of twice the thickness of
+    the soap bubble.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, light behaves like a wave and waves that interfere can either dampen or
+    amplify each other depending on their phase, and two light rays that have traveled
+    distances whose difference is not an exact multiple of their wavelength will cancel
+    each other. The result is that white light (a continuum of colors) reflecting
+    off a soap bubble with a thickness equal to half the wavelength of some specific
+    color will show only that single color because all of the other colors are dampened
+    as they do not "fit" properly between the inner and outer surface. (There is much
+    more to soap bubbles. For more and more accurate information refer to: [http://www.exploratorium.edu/ronh/bubbles/bubble_colors.html](http://www.exploratorium.edu/ronh/bubbles/bubble_colors.html).)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Soap bubbles—a view-dependent shader](img/0400-07-19.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Now we know that the distance traveled between the two reflecting surfaces
+    determines the color we perceive, we can also understand why there will be color
+    variations in a soap bubble. The first factor is the curvature of the bubble.
+    The distance traveled will be dependent on the angle between the incident light
+    and the surface: the shallower this angle, the longer the distance the light has
+    to travel between the surfaces will be. As the angle of incidence changes as the
+    surface curves so will the distance and, hence the color. The second source of
+    color variation is the unevenness of the surface; slight variations due to gravity
+    or swirls caused by air currents or temperature differences also cause different
+    colors.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: All this information translates to a surprisingly short piece of code (the full
+    code is available as `irridescence.py` in `irridescence.blend` together with a
+    sample node setup).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Beside the coordinates, we have two input sockets—one for the thickness of
+    the water film and one for the variation. The variation will get added to the
+    thickness and can be hooked up to a texture node to generate swirls and the like.
+    We have a single output socket for the calculated distance:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The calculations of the reflected color start off with getting a list of all
+    lamps in the scene as we will want to calculate the angle of the incident light
+    rays. For now, we take into account only the contribution of the first lamp that
+    we find. However, a more complete implementation would consider all lamps and
+    maybe even their color. For our calculations we have to make certain that the
+    surface normal `N` and the incidence vector of the light `L` are in the same space.
+    As the surface normal provided will be in camera space we will have to transform
+    this vector by the transformation matrix of the camera as we did for our slope-dependent
+    shader (highlighted in the following code snippet):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, we calculate the angle between the surface normal and the incidence vector
+    (`VecT` is an alias for `Mathutils.angleBetweenVecs()`) and use this incidence
+    angle to calculate the angle between the surface normal *inside* the water film
+    as this will determine the distance the light travels. We use **Snell''s law**
+    to calculate this and use `1.31` as the index of refraction of the water film.
+    Calculating the distance is then a matter of simple trigonometry (highlighted
+    below):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The calculated distance is equal to the wavelength of the color that we will
+    perceive. However, Blender does not work with wavelengths but with RGB colors
+    so we still need to convert this wavelength to a (R, G, B) tuple that represents
+    the same color. This might be done by applying some spectral formula (see for
+    example [http://www.philiplaven.com/p19.html](http://www.philiplaven.com/p19.html))
+    but it might even be more versatile to scale this calculated distance and use
+    it as an input for a color band. In this way we might produce non-physically accurate
+    iridescence (if desired):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: To use this Pynode there are some things to keep in mind. First, make sure that
+    the calculated color only affects the specular color of the soap bubble material
+    otherwise everything will show up washed out.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Furthermore, it is important to add some variation to the thickness of the layer
+    as no real soap bubble has an exactly uniform thickness. The choice of noise texture
+    can make quite a difference to the appearance. In the next node setup example,
+    we have added the contribution of a slightly noisy wood texture to obtain the
+    swirly bands often seen on soap films.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, make the material of the soap film very transparent but with a high
+    specular reflectance. Experiment with the values to get the exact effect desired
+    and do take into account the lighting setup. The example shown in the illustration
+    has been tweaked to get some of the issues across in a black and white rendition
+    and is therefore not realistic, but the setup in the example file `iridescence.blend`
+    is tweaked to produce a pleasingly colorful result when rendered.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Soap bubbles—a view-dependent shader](img/0400-07-20.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The use of a color ramp and a noise texture is shown in the previous screenshot
+    where we added some division nodes to scale our distance to a range within [0,1]
+    that can be used as input for the color ramp:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Soap bubbles—a view-dependent shader](img/0400-07-21.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this chapter, we saw that Blender''s lack of a compiled shader language
+    does not prevent its use from designing custom patterns and shaders. Pynodes are
+    an integrated part of Blender''s node system and we saw how to use them to create
+    effects from simple color patterns to fairly-complex animated ripples. Specifically,
+    we learned:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to write Pynodes that create simple color patterns
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to write Pynodes that produce patterns with normals
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to write animated Pynodes
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to write height and slope dependent materials
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to create shaders that react to the angle of incident light
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In the next chapter, we will look into the automation of the rendering process
+    as a whole.
+  prefs: []
+  type: TYPE_NORMAL

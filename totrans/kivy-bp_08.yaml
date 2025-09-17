@@ -1,0 +1,1067 @@
+- en: Chapter 8. Introducing Shaders
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Congratulations on making it this far! The last two chapters will somewhat stand
+    out from the rest of the book, as we will take a completely different perspective
+    on Kivy and dive into low-level details of the OpenGL renderer, such as the **OpenGL
+    Shading Language** (**GLSL**). This will allow us to write high-performance code
+    with very little overhead.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Starting from an unscientific introduction to OpenGL, we will proceed to writing
+    a fast sprite-based engine for a starfield demonstration (basically, a screensaver)
+    and finally, a shoot-em-up game (commonly abbreviated as just *shmup*). The code
+    from this chapter will serve as a basis for the next one, unlike other projects
+    in this book that were largely self-contained. We will lay the foundation here
+    and then build upon it in the next chapter, turning a technical demo into a playable
+    game.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This chapter attempts to cover many complex topics with a sufficient level of
+    detail, but it is way too short to serve as an all-encompassing reference guide.
+    In addition to this, OpenGL, as a standard, evolves very quickly, introducing
+    new features and deprecating the obsolete stuff. So, if you notice a discrepancy
+    between the material presented in the chapter and the objective reality, please
+    look it up—chances are that you're living in the bright future of computing, where
+    things have changed significantly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It should be mentioned upfront that the approach to high-performance rendering
+    discussed here, despite being wildly different from the regular Kivy code, for
+    the most part stays compatible with it and can be used side by side with ordinary
+    widgets. Therefore, it's perfectly feasible to implement only the resource-hungry
+    parts of an app in GLSL—those that will otherwise become a performance bottleneck.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Unscientific introduction to OpenGL
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This section will provide a quick introduction to the basics of OpenGL. It's
+    next to impossible to meaningfully summarize all the nooks and crannies of the
+    standard here; hence it is "unscientific," superficial.
+  prefs: []
+  type: TYPE_NORMAL
+- en: OpenGL is a popular low-level graphical API. It's standardized and almost ubiquitous.
+    Desktop and mobile operating systems commonly ship with an implementation of OpenGL
+    (in the case of mobile, OpenGL ES, a feature-restricted subset of the standard;
+    here, **ES** stands for **embedded systems**). Modern web browsers also implement
+    a variant of OpenGL ES called WebGL.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Wide distribution and a well-defined compatibility makes OpenGL a good target
+    for cross-platform apps, especially video games and graphical toolkits. Kivy also
+    relies on OpenGL to perform rendering across all the supported platforms.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Concepts and parallelism
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'OpenGL operates on basic primitives such as individual vertices and pixels
+    on screen. For example, we can feed three vertices to it and render a triangle,
+    thus computing color for each affected pixel (depending on the pipeline described
+    in the next image). You might have guessed that working at this level of abstraction
+    is extremely cumbersome. This pretty much summarizes the raison d''être of high-level
+    graphical frameworks, including Kivy: they''re there to conceal the gory details
+    of a rendering pipeline behind a more comfortable abstraction, such as working
+    with widgets and layouts.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The low-level rendering pipeline functions as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Concepts and parallelism](img/B01620_08_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: An OpenGL pipeline (oversimplified)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The complete explanation of the preceding figure is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The application gives OpenGL an array of **vertices** (points), **indices**
+    that allow us to reuse the points, and other arbitrary values (called **uniforms**).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A **vertex shader** is invoked for every vertex, transforming it if needed and
+    optionally doing other calculations. Its output is then passed to a corresponding
+    fragment shader.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A **fragment shader** (sometimes called **pixel shader**) is invoked for every
+    affected pixel, computing that pixel's color. More often than not, it takes into
+    account the vertex shader's output but might also return, for example, a constant
+    color.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Pixels are rendered on screen, and other bookkeeping tasks are performed; these
+    tasks are of no interest to us at this point.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: A collection of vertices used together as a batch is commonly called a **model**
+    or **mesh**. It is not necessarily continuous and might consist of scattered polygons
+    as well; the rationale for such models will be mentioned shortly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The "secret sauce" behind the blazing speed of OpenGL is its inherent massive
+    parallelism. The functions mentioned earlier (namely, vertex and pixel shaders)
+    might not be crazy fast by themselves, but as they are invoked simultaneously
+    on a GPU, the delay imposed by shaders usually doesn't grow exponentially with
+    the shaders' complexity; such growth can be close to linear on a decent hardware.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To put things in scale, given today's personal computers (at the time of writing
+    this book), we're talking about multitasking and parallel programming with anywhere
+    from 2 to 16 CPU cores in commodity hardware. Mid-range graphics cards, on the
+    other hand, effectively have thousands of GPU cores; this makes them capable of
+    running way more computations in parallel.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As a consequence though, each task runs in isolation. Unlike the threads in
+    general-purpose programming, a shader cannot wait for the other shader's output
+    without significantly degrading performance, except where implied by pipeline
+    architecture (as mentioned earlier, a vertex shader passes values to a fragment
+    shader). This restriction might be a bit mind-bending to work around as you start
+    writing GLSL.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is also why some algorithms can be implemented to run efficiently on GPU
+    while others cannot. Interestingly, modern cryptography functions such as **bcrypt**
+    are specifically designed to reduce performance of a highly parallelized implementation—this
+    makes such functions inherently more secure by limiting the effectiveness of a
+    brute-force attack.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Performance gains, or lack thereof
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'It is important to understand that there are no immediate performance gains
+    from using raw OpenGL calls at all times; in many cases, high-level frameworks
+    such as Kivy will do just fine. For example, when rendering a polygon somewhere
+    on a screen, roughly the following sequence of actions takes place:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The geometry and position of a polygon are defined in Python.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The vertices, indices, and related assets (such as textures) are uploaded to
+    the graphics driver.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The vertex shader is invoked. It applies the necessary transformations, including
+    positioning, rotation, scaling, and so on.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Finally, the corresponding fragment shader is invoked; this results in a raster
+    image that might be displayed on the screen.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: It doesn't matter whether you use Kivy widgets for this task or stick with writing
+    raw OpenGL commands and GLSL shaders—both the performance and result will likely
+    be the same, with negligible differences at best. This is because Kivy runs very
+    similar OpenGL code behind the scenes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In other words, this example bears very little potential for low-level optimization,
+    and this is exactly the reason why a game such as *Kivy Bird*, consisting of scarce
+    rectangles and very little else, should be implemented at the highest level of
+    abstraction available. Basically, we could have optimized away the creation of
+    a widget or two in Kivy Bird, but this is hardly even measurable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Improving performance
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: So, how do we actually boost performance? The answer is, by reducing the amount
+    of work done on the Python side of things and batching similar objects together
+    for rendering.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's consider the scenario where we need to render over 9,000 similar polygons
+    (a particle system, for example, autumn leaves scattered on the ground or a cluster
+    of stars in space).
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we use Kivy widgets for individual polygons, we're creating a large number
+    of Python objects that exist solely for the purpose of serializing themselves
+    to OpenGL instructions. Moreover, each widget has its own set of vertices that
+    it feeds to the graphics driver, thus issuing excessive API calls and creating
+    a lot of distinct (yet very similar) meshes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Manually, we''re able to, at the very least, do the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Avoid the instantiation of many Python classes and just keep all the coordinates
+    in an array. If we store them in a format suitable for direct OpenGL consumption,
+    there is no need for the serialization step.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Lump all geometry together as a single model and thus make much less API calls.
+    Batching is always a nice optimization, as it allows OpenGL to do a better job
+    at the parallel execution of things.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We will implement the described approach by the end of this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Taking a closer look at GLSL
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: As a language, GLSL is closely related to C; in particular, syntactically, they're
+    very similar. GLSL is strongly, statically typed (more so than C).
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you aren't familiar with the C syntax, here's a very quick primer. First
+    of all, unlike Python, in C-like languages, indentation is insignificant, and
+    ending statements with a semicolon is mandatory. Logical blocks are enclosed in
+    curly braces.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'GLSL supports both C and C++ style comments:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Variable declarations are in the `[type] [name] [= optional value];` format:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Functions are defined using the `[type] [name] ([arguments]) { [body of function]
+    }` syntax:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Control structures are written like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: That's it for the most part; you should be able to read the GLSL code now, regardless
+    of whether you have a background in C programming or not.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The entry point of a shader is designated by a `main()` function. In the following
+    code, we''ll put both vertex and fragment shaders together in one file; so, there
+    will be two `main()` functions per file. This is how these functions look:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: A special `void` type means absence of value, and unlike Python's `NoneType`,
+    you cannot declare a variable of type `void`. In the case of the preceding `main()`
+    function, both the return value and arguments are omitted; hence the function's
+    declaration reads `void main(void)`. Instead of returning the result of a computation
+    from the function, shaders write it to special built-in variables, `gl_Position`,
+    `gl_FragColor`, and others, depending on the shader type and the desired effect.
+    This also holds true for input parameters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A GLSL type system closely reflects its usage domain. Unlike C, it has highly
+    specialized types for vectors and matrices; these types support mathematical operations
+    on them (so, you can multiply matrices with just the `mat1 * mat2` syntax; how
+    cool is that!). In computer graphics, matrices are commonly used to mess with
+    the coordinate system, as you will see shortly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, we'll write a couple of simple GLSL shaders to demonstrate
+    some of the concepts discussed earlier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using custom shaders in Kivy
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Apart from GLSL, we also need to have the usual Python code that initializes
+    the window, loads shaders, and so on. The following program will serve as a good
+    starting point:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: We created just one widget named `GlslDemo` in this example; it will host all
+    the rendering. `RenderContext` is a customizable `Canvas` subclass that allows
+    us to replace shaders easily, as shown in the listing. The `basic.glsl` file contains
+    both vertex and fragment shaders; we will get to it in a minute.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that this time, we aren't using the Kivy language at all, because no layout
+    hierarchy is planned, so there is no accompanying `glsl.kv` file. Instead, we
+    will designate the root widget manually by returning it from the `GlslApp.build()`
+    method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The call to `EventLoop.ensure_window()` is needed, because we want to be able
+    to access OpenGL features, such as the GLSL compiler, while running `GlslDemo.__init__()`.
+    If there is still no application window (and more importantly, no corresponding
+    OpenGL context) at that point in time, the program will crash.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Building the geometry
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Before we begin writing shaders, we need something to render—a series of vertices,
+    that is, a model. We'll stick with a simple rectangle that consists of two right
+    triangles with a common hypotenuse (the subdivision is because baseline polygons
+    are essentially triangular).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Kivy, albeit two-dimensional for the most part, does not impose this limitation
+    in any way. OpenGL, on the other hand, is inherently three-dimensional, so you
+    can use realistic models seamlessly to create modern-looking games, and even mix
+    them with regular Kivy widgets for UI (in-game menus and so on). This possibility
+    is not further detailed in the book, but the underlying mechanics are just the
+    same as described here.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is the updated `__init__()` method of the `GlslDemo` widget, with an explanation
+    following it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Let''s walk through this function, because it''s essential to understand it
+    correctly before moving on to more complex things:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: When writing code that makes use of OpenGL, the first thing you'll notice is
+    that there is no built-in standard format for vertices that we need to adhere
+    to; instead, we need to define such a format ourselves. In the simplest case,
+    we need just the position of each vertex; this is called `vPosition`. Our rectangle
+    is two-dimensional, so we'll pass just two coordinates, which are floating point
+    by default. Hence, we get the resulting line `(b'vPosition', 2, 'float')`.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Now that we have decided on the format of the vertices, it's time to put these
+    vertices in an array that will soon be handed over to the renderer. This is exactly
+    what the `vertices = (...)` line does. It's important that the tuple is flat and
+    unstructured. We will define the record format separately and then pack all the
+    values tightly together, without field delimiters and the like—all in the name
+    of efficiency. This is also how C structs typically work.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Indices are needed to duplicate (reuse) vertices. More often than not, a vertex
+    is used in more than one triangle. Instead of repeating it literally in the array
+    of vertices, we resort to repeating its index in the array of indices—it's typically
+    smaller, so the whole thing ends up taking less memory, proportional to the size
+    of an individual vertex. See the next section for a more detailed explanation
+    of indices.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: With all the required data structures in place, we can finally assemble the
+    mesh using the homonymous Kivy canvas instruction, `Mesh`. Now, it will be rendered
+    over the course of normal widget rendering, which has a nice side effect of composability
+    with other Kivy widgets. Our GLSL code can be effortlessly used in conjunction
+    with all the previous developments. This is certainly a good thing.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Throughout this chapter, we have used the word *array* in a C sense—a continuous
+    memory region containing homogeneous data. This is only tentatively related to
+    the Python data structure having the same name; in fact, on the Python side of
+    things, we're mostly using tuples or lists as a substitute.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Illustrating the Indices
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'To explain OpenGL indices better, let''s visualize our example. These are our
+    vertices from the preceding sample code, in the format of (*x*, *y*):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'An index is just that—a serial number of a vertex in the `vertices` list, and
+    it is zero-based. The following figure illustrates the assignment of indices to
+    the vertices in this setup:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Illustrating the Indices](img/B01620_08_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Vertices scattered on a plane
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Right now, the vertices aren''t connected, so they form a point cloud at best,
+    not a structured polygonal shape. To fix this, we need to specify the `indices`
+    list—it will group the existing vertices into triangles. Its definition, again
+    taken from the sample code, is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We''ve built two triangles here: the first one consists of vertices 0 to 2,
+    and the second one out of vertices 2, 3, and 0\. Note how the 0^(th) and 2^(nd)
+    vertices are reused.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is illustrated in the following figure. Never mind the colors; they are
+    strictly explanatory and not "real" colors yet. We'll get to coloring things on
+    the screen shortly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Illustrating the Indices](img/B01620_08_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Building triangles out of vertices
+  prefs: []
+  type: TYPE_NORMAL
+- en: This pretty much summarizes the utility and usage of indices in OpenGL-related
+    code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The tendency of optimizing in-memory sizes of data structures in OpenGL has
+    very little to do with saving RAM per se—the video card interface throughput is
+    a more serious bottleneck in most scenarios, so we're aiming at passing more stuff
+    per frame, not just compressing data for the sake of economy. This distinction,
+    while very important, makes no difference early on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Writing GLSL
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: This is where things will get more interesting. In a moment, we'll be writing
+    GLSL code that executes on a GPU. As we've already mentioned, it's C-like and
+    crazy fast.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's start with the basics. Kivy expects that both the vertex and the fragment
+    shaders live in the same file, delimited using a special syntax, `'---vertex'`
+    and `'---fragment'` (shown in the next code snippet). It's important to stress
+    out that both these delimiters and the `$HEADER$` syntax are specific to Kivy;
+    they are not part of any standard, and you won't see them elsewhere.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is how the boilerplate for a typical Kivy shader file looks:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: Henceforth, we'll omit most of the boilerplate code to shorten listings—but
+    keep in mind that it's always assumed to be there; otherwise, things might not
+    work as expected, or not at all.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `$HEADER$` macro is context-sensitive and means different things depending
+    on the type of shader.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Inside a vertex shader, `$HEADER$` is a shortcut for roughly the following
+    code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In a fragment shader, `$HEADER$` expands to the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: (Some not very important bits have been redacted for clarity.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Clearly, these might be subject to change in future versions of Kivy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Storage classes and types
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In the previous code, variables are annotated not only with a type, but also
+    with a storage qualifier. Here is a quick rundown of both:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Storage classes |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `attribute` | This denotes the properties of vertices as specified by the
+    vertex format. Attributes are passed from an application. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `uniform` | Uniforms are global variables at the GLSL level. They are also
+    passed from an application, but unlike attributes these do not vary with each
+    vertex. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `varying` | These are variables passed from the vertex shader to the fragment
+    shader. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **Commonly used data types** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `float` | This is the scalar floating-point variable type, similar to other
+    languages. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `vec2`, `vec3`, `vec4` | This is a tuple of length 2, 3, and 4; it contains
+    floats. It might represent points, colors, and so on. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `mat2`, `mat3`, `mat4` | These refer to matrices of sizes 2 × 2, 3 × 3, 4
+    × 4, respectively. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `sampler2D` | This represents a texture that allows lookups (getting the
+    color from specified coordinates). |'
+  prefs: []
+  type: TYPE_TB
+- en: Basic shaders
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Now, without further preliminaries, let's write our first and simplest shaders
+    that do nothing special.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The default-like vertex shader reads:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: This transforms the location of each vertex into Kivy's preferred coordinate
+    system, with the origin at the lower-left corner.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: We will not attempt to describe the nuances of the transformation of coordinates
+    here, as the topic is way too complex for an entry-level tutorial. Moreover, it
+    isn't even necessary to fully understand this code, or to finish reading the book.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you're interested in a more comprehensive description of the topic, a nice
+    short summary of the OpenGL coordinate space and the use of matrices can be found
+    at [http://www.learnopengles.com/understanding-opengls-matrices/](http://www.learnopengles.com/understanding-opengls-matrices/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The easiest fragment shader is a function that returns a constant color:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: This outputs an RGBA color equal to `#FF007F` for every pixel.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you run the program now, you would see output similar to the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Basic shaders](img/B01620_08_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Basic shaders in action: default transformation and flat color'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, we have a visible result of our ordeal. It isn't particularly interesting
+    right now, but it is still better than nothing. Let's fiddle with it and see where
+    this takes us.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Procedural coloring
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Another lazy way to compute color, apart from always returning the same value,
+    is to derive it from something that is immediately available in a corresponding
+    shader, for example, fragment coordinates.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s assume that we want to compute each pixel''s RGB color as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `R` channel will be proportional to the *x* coordinate
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `G` channel will be proportional to the *y* coordinate
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`B` will be an average of `R` and `G`.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'This simple algorithm can be easily implemented in a fragment shader as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `gl_FragCoord` built-in variable contains fragment coordinates (not necessarily
+    representing a whole physical pixel) relative to the application window. A division
+    by `255.0`—the size of the mesh, inlined for simplicity—is necessary to put color
+    components in the range of [0...1].
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This replaces the previously seen flat color with a gradient as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Procedural coloring](img/B01620_08_05.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Computing color based on fragment coordinates
+  prefs: []
+  type: TYPE_NORMAL
+- en: Colorful vertices
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'A similar effect can be made data-driven by giving vertices their own colors.
+    For this, we need to expand the vertex format to contain another per-vertex attribute,
+    `vColor`. In Python code, this amounts to the following definition:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: With an updated format, a vertex now consists of five floats, up from two. It's
+    crucial to keep the `vertices` list in sync with the format; otherwise, weird
+    things will happen.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As per our declaration, `vColor` is an RGB color, and for a vertex shader, we
+    ultimately need RGBA. Instead of passing a constant alpha channel for each vertex,
+    we'll pad it in the vertex shader, similar to how we expand `vPosition` from `vec2`
+    to `vec4`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is what our revised vertex shader looks like:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: GLSL notations such as `vColor.rgb` and `vPosition.xy` are called *swizzling.*
+    They can be used to efficiently manipulate parts of a vector, similar in concept
+    to Python slices.
+  prefs: []
+  type: TYPE_NORMAL
+- en: By itself, `vColor.rgb` simply means "take the first three vector components;"
+    in Python code, we would write `vColor[:3]`. It's also possible to, for example,
+    reverse the order of the color channels easily using `vColor.bgr`, or take just
+    one channel using `vColor.ggg` (this will turn the resulting picture into grayscale).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Up to four vector components can be addressed in this fashion, using either
+    `.xyzw`, `.rgba`, or a more obscure `.stpq` notation; they all do exactly the
+    same thing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Having done this, the fragment shader becomes very simple:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Interestingly enough, we get color interpolation between vertices for free,
+    resulting in a smooth gradient; this is how OpenGL works. The next screenshot
+    depicts the output of the program:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Colorful vertices](img/B01620_08_06.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Passing color as a vertex attribute
+  prefs: []
+  type: TYPE_NORMAL
+- en: Texture mapping
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'To wrap up this series of simple demos, let''s apply a texture to our rectangle.
+    Once again, we need to expand the definition of a vertex format, this time, to
+    assign texture coordinates to each vertex:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: Texture coordinates are usually in the [0...1] range, with the origin in the
+    upper-left corner—note that this is different from the default Kivy's coordinate
+    system. If, at some point, you see a texture flipped upside down for no apparent
+    reason, check the texture coordinates first—they're likely the culprit.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'One more thing that we need to take care of on the Python side of things is
+    loading the texture and passing it to renderer. This is how it''s done:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This will load a file named `kivy.png` from the current directory and convert
+    it into a usable texture. For the sake of demonstration, we will use the following
+    image:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Texture mapping](img/B01620_08_08.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The texture used for the demo
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As for the shaders, they aren''t very different from the previous iteration.
+    The vertex shader simply passes texture coordinates through, untouched:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The fragment shader uses the interpolated `tex_coord0` coordinates to perform
+    a lookup on the `texture0` texture, thus returning the corresponding color:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'When put together, our code delivers the expected result:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Texture mapping](img/B01620_08_07.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Simple GLSL texture mapping
+  prefs: []
+  type: TYPE_NORMAL
+- en: To summarize, this introduction to shaders should have given you enough courage
+    to try to write your own small shader-based programs. Most importantly, don't
+    feel intimidated if certain things don't make much sense—GLSL is a complex subject,
+    and learning it systematically is not a small endeavor.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It pays off, however, in giving you a much better understanding of how things
+    work under the hood. Even if you don't write low-level code on a daily basis,
+    you can still use this knowledge to identify and avoid performance bottlenecks
+    and generally improve the architecture of your applications.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Making the Starfield app
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Armed with our newfound knowledge of GLSL, let's build a starfield screensaver,
+    that is, a non-interactive demonstration of stars fleeing from the center of the
+    screen to its sides, under the influence of an imaginary centrifugal force or
+    something.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: As dynamic visual effects are hard to describe unequivocally and screenshots
+    aren't very helpful in this regard either, run the code that accompanies the chapter
+    to get a better idea of what's going on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Conceptually, each star goes through the same action sequence:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: It spawns randomly near the center of the screen.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The star moves in the opposite direction from the screen center until it's no
+    longer visible.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Then it respawns, going back to square one.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: We will also make stars accelerate and grow in size as they approach the edges
+    of the screen to simulate the faux depth.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following screenshot attempts (or, to be more specific, fails due to the
+    highly dynamic nature of the demo) to illustrate what the end result will look
+    like:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Making the Starfield app](img/B01620_08_09.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: A screenshot cannot convey the motion sickness, but it's there
+  prefs: []
+  type: TYPE_NORMAL
+- en: Application structure
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The new application class bears a striking resemblance to what we did earlier
+    in this chapter. Similar to the examples discussed earlier, we aren't using the
+    Kivy language to describe the (non-existent) widget hierarchy, so there is no
+    `starfield.kv` file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The class consists of two methods, which are shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `build()` method creates and returns the root widget, `Starfield`; it will
+    be in charge of all the math and rendering—basically, everything that happens
+    throughout the application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `on_start()` handler tells the aforementioned root widget to update 60 times
+    per second by calling its `update_glsl()` method after the application has been
+    started.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `Starfield` class is also split in two: there is the usual `__init__()`
+    method, which is responsible for the creation of the data structures, and the
+    `update_glsl()` method, which advances the scene (calculates an updated position
+    of each star) and renders stars on the screen.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Data structures and initializers
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Let''s now review the initialization code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: '`NSTARS` is the total number of stars; try raising or lowering it to alter
+    the density of the starfield. Regarding performance, even a mediocre machine boasting
+    a slow, integrated Intel video card easily supports thousands of stars. Any half-decent
+    dedicated graphics hardware will handle tens of thousands of simultaneously rendered
+    sprites with ease.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Unlike the previous examples, this time we will not fill the indices and vertices
+    with the final, useful data right away; instead, we will prepare placeholder arrays
+    that will be continuously updated later, as part of the `update_glsl()` routine.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `vfmt` vertex format includes the following properties; a part of these
+    has already been showcased in this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Vertex attribute | Its function |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `vCenter` | This denotes the coordinates of the star''s center point on the
+    screen |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `vScale` | This is the star''s size factor, 1 being the original size (48
+    × 48 pixels) |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `vPosition` | This is the position of each vertex relative to the star''s
+    center point |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `vTexCoords0` | This refers to the texture coordinates |'
+  prefs: []
+  type: TYPE_TB
+- en: The property that we haven't mentioned yet, `vsize`, is the length of a single
+    vertex in the array of vertices. It's computed from the vertex format as a sum
+    of its middle column.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `vertices` list contains nearly all data about stars that we need to retain;
+    however, as it is flat and not implicitly structured, it's very unwieldy to operate
+    on. This is where a helper class, `Star`, comes into play. It encapsulates the
+    gory details of accessing and updating a selected entry in the array of vertices
+    so that we don't have to compute offsets throughout our code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `Star` class also keeps track of various properties that aren't part of
+    the vertex format, that is, polar coordinates (`angle` and `distance` from the
+    center) and `size`, which increases with time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is the initialization of the `Star` class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: Here, `base_idx` is the index of this star's first vertex in the array of vertices;
+    we also kept a reference, `sf`, to the `Starfield` instance to be able to access
+    `vertices` later.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `reset()` function, when called, reverts the star's attributes to default
+    (slightly randomized) values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Advancing the scene
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The `Starfield.update_glsl()` method implements the algorithm of the starfield
+    motion and is frequently invoked by Kivy''s clock scheduled in the `on_start()`
+    handler of the application class. Its source code is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: First off, we calculate the distance limit, `max_distance`, after which the
+    stars respawn near the center of the screen. Then, we iterate over the list of
+    stars, setting them in motion and enlarging them slightly on the way. Stars that
+    have escaped the terminal distance are reset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The final part of the function should look familiar. It's the same rendering
+    code as seen in the preceding examples. A call to `canvas.clear()` is necessary;
+    otherwise, a new mesh will be added on each call, swiftly bringing the overwhelmed
+    graphics card to a grinding halt.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The last piece of Python code that hasn''t been revealed is the `Star.update()`
+    method. It refreshes the four vertices belonging to a star, writing new coordinates
+    to appropriate places in the `vertices` array:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `iterate()` helper is for convenience only and could have been inlined,
+    but there's no such thing as superfluous readability, so let's keep it this way.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To reiterate (pun intended), this whole memory-mapping process serves a noble
+    goal of eliminating the need to serialize our numerous objects in each frame;
+    this helps performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Writing a corresponding GLSL
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Shaders used in the following program are also reminiscent of what we''ve seen
+    earlier; they are only a little lengthier. This is the vertex shader:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: Simply put, we're multiplying the relative coordinates of all the vertices by
+    a factor of `vScale`, which resizes the mesh proportionally, and then translating
+    them to the position given by a `vCenter` attribute. The `move_mat` matrix is
+    the translation matrix, an affine transformation method that you might or might
+    not remember from your linear algebra class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To compensate, the fragment shader is very simple:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Its ultimate purpose is to put this beautiful thing on the screen:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Writing a corresponding GLSL](img/B01620_08_10.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Star texture, zoomed in
+  prefs: []
+  type: TYPE_NORMAL
+- en: That's it. Our starfield is now finished and ready for astronomical observation
+    with the unaided eye (or any other usage you can think of).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This chapter aimed (and hopefully succeeded) to introduce you to a beautiful
+    hardware-accelerated world of low-level OpenGL and GLSL development filled with
+    vertices, indices, and shaders.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Direct programming of the GPU is an insanely powerful concept, and with this
+    power always comes responsibility. Shaders are much harder to grasp than regular
+    Python code; debugging might involve a fair measure of guesswork, and there is
+    no convenient interactive environment, such as Python's REPL, to speak of. That
+    said, there is no clear heuristic whether writing a raw GLSL would be useful for
+    any particular application—it should be decided on a case-by-case basis.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Examples in this chapter were deliberately simple to serve as a gentle learning
+    experience, not a test of cognitive abilities. This is mainly because GLSL programming
+    is a very non-trivial, convoluted subject to study, with numerous books and online
+    tutorials dedicated to mastering it, and this short chapter is by no means a comprehensive
+    guide to all things OpenGL.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So far, we''ve just barely scratched the surface of what''s possible. The next
+    chapter will capitalize on the code we wrote here to do a slightly more interesting
+    thing: create a blazing fast shoot-em-up game.'
+  prefs: []
+  type: TYPE_NORMAL

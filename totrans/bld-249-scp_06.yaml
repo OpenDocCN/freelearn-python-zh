@@ -1,0 +1,657 @@
+- en: Chapter 6. Shape Keys, IPOs, and Poses
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We already encountered IPOs in [Chapter 4](ch04.html "Chapter 4. Pydrivers and
+    Constraints"), *Pydrivers and Constraints* when we discussed Pydrivers, but there
+    is more to IPOs than just driving one **IPO** by another one. For example, the
+    Blender API provides us with the means to define IPOs from scratch, enabling the
+    definition of movements not easily re-created by setting key frames by hand. Furthermore,
+    some types of IPOs have a somewhat different behavior than the ones that we encountered
+    so far. **Shape keys** and **poses** are examples of (collections of) IPOs that
+    are quite different from, for example, a location IPO. We will encounter both
+    shape keys and poses later on in this chapter, but we will start off with looking
+    at how we might define an IPO from scratch.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, you will learn how to:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Define IPOs
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Define shape keys on a mesh
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Define IPOs for those shape keys
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Pose armatures
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Group changes in poses into actions
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A touchy subject—defining an IPO from scratch
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Many paths of motion of objects are hard to model by hand, for example, when
+    we want the object to follow a precise mathematical curve or if we want to coordinate
+    the movement of multiple objects in a way that is not easily accomplished by copying
+    IPOs or defining IPO drivers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Imagine the following scenario: we want to interchange the position of some
+    objects over the duration of some time in a fluid way without those objects passing
+    through each other in the middle and without even touching each other. This would
+    be doable by manually setting keys perhaps, but also fairly cumbersome, especially
+    if we would want to repeat this for several sets of objects. The script that we
+    will devise takes care of all of those details and can be applied to any two objects.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Code outline: orbit.py'
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The `orbit.py` script that we will design will take the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Determine the halfway point between the selected objects.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Determine the extent of the selected objects.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Define IPO for object one.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Define IPO for object two.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Determining the halfway point between the selected objects is easy enough:
+    we will just take the average location of both objects. Determining the extent
+    of the selected objects is a little bit more challenging though. An object may
+    have an irregular shape and determining the shortest distance for any rotation
+    of the objects along the path that the object will be taking is difficult to calculate.
+    Fortunately, we can make a reasonable approximation, as each object has an associated
+    **bounding** **box** **.**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This bounding box is a rectangular box that just encapsulates all of the points
+    of an object. If we take half the body diagonal as the extent of an object, then
+    it is easy to see that this distance may be an exaggeration of how close we can
+    get to another object without touching, depending on the exact form of the object.
+    But it will ensure that we never get too close. This bounding box is readily available
+    from an object''s `getBoundBox()` method as a list of eight vectors, each representing
+    one of the corners of the bounding box. The concept is illustrated in the following
+    figure where the bounding boxes of two spheres are shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Code outline: orbit.py](img/0400-06-01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The length of the body diagonal of a bounding box can be calculated by determining
+    both the maximum and minimum values for each x, y, and z coordinate. The components
+    of the vector representing this body diagonal are the differences between these
+    maximums and minimums. The length of the diagonal is subsequently obtained by
+    taking the square root of the sum of squares of the x, y, and z components. The
+    function `diagonal()` is a rather terse implementation as it uses many built-in
+    functions of Python. It takes a list of vectors as an argument and then iterates
+    over each component (highlighted. x, y, and z components of a Blender `Vector`
+    may be accessed as 0, 1, and 2 respectively):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: It determines the extremes for each component by using the built-in `max()`
+    and `min()` functions. Finally, it returns the length by pairing each minimum
+    and maximum by using the `zip()` function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The next step is to verify that we have exactly two objects selected and inform
+    the user if this isn''t the case by drawing a pop up (highlighted in the next
+    code snippet). If we do have two objects selected, we retrieve their locations
+    and bounding boxes. Then we calculate the maximum distance `w` each object has
+    to veer from its path to be half the minimum distance between them, which is equal
+    to a quarter of the sum of the lengths of the body diagonals of those objects:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Before we can calculate the trajectories of both objects, we first create two
+    new and empty Object IPOs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We arbitrarily choose the start and end frames of our swapping operation to
+    be 1 and 30 respectively, but the script could easily be adapted to prompt the
+    user for these values. We iterate over each separate IPO curve for the `Location`
+    IPO and create the first point (or key frame) and thereby the actual curve by
+    assigning a tuple `(framenumber,` `value)` to the curve (highlighted lines of
+    the next code). Subsequent points may be added to these curves by indexing them
+    by frame number when assigning a value, as is done for frame 30 in the following
+    code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note that the location of the first object keyframed at frame 1 is its current
+    location and the location keyframed at frame 30 is the location of the second
+    object. For the other object this is just the other way around. We set the interpolation
+    modes of these curves to "Bezier" to get a smooth motion. We now have two IPO
+    curves that do interchange the location of the two objects, but as calculated
+    they will move right through each other.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Our next step therefore is to add a key at frame 15 with an adjusted z-component.
+    Earlier, we calculated `w` to hold half the distance needed to keep out of each
+    other''s way. Here we add this distance to the z-component of the halfway point
+    of the first object and subtract it for the other:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, we add the new IPOs to our objects:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The full code is available as `swap2.py` in the file `orbit.blend`. The resulting
+    paths of the two objects are sketched in the next screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Code outline: orbit.py](img/0400-06-02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: A lot to swallow—defining poses
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Many cartoon characters seem to have difficulties trying to swallow their food,
+    and even if they did enjoy a relaxing lunch, chances are they will be forced through
+    a rain pipe too small to fit comfortably for no apparent reason.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It is difficult to animate swallowing or any other **peristaltic movement**
+    by using shape keys as it is not the shape of the overall mesh that changes in
+    a uniform way: we want to move along a localized deformation. One way of doing
+    that is to associate an armature consisting of a linear chain of bones with the
+    mesh that we want to deform (shown in the illustration) and animate the scale
+    of each individual bone in time. This way, we can control the movement of the
+    ''lump'' inside to a great extent. It is, for example, possible to make the movement
+    a little bit halting as it moves from bone to bone to simulate something that
+    is hard to swallow.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![A lot to swallow—defining poses](img/0400-06-03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: In order to synchronize the scaling of the individual bones in a way that follows
+    the chain from parent to child, we have to sort our bones because the `bones`
+    attribute of the `Pose` object that we get when calling `getPose()` on an armature
+    is a dictionary. Iterating over the keys or values of this dictionary will return
+    those values in random order.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Therefore, we define a function `sort_by_parent()` that will take a list of
+    `Pose` bones `pbones` and will return a list of strings, each the name of a `Pose`
+    bone. The list is sorted with the parent as the first item followed by its children.
+    Obviously, this will not return a meaningful list for armatures that have bones
+    with more than one child, but for our linear chain of bones it works fine.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following code, we maintain a list of names called `bones` that hold
+    the names of the `Pose` bones in the correct order. We pop the list of `Pose`
+    bones and add the name of the `Pose` bone as long as it is not already added (highlighted).
+    We compare names instead of `Pose` bone objects because the current implementation
+    of `Pose` bones does not reliably implement the `in` operator:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We then get the parent of the bone that we just added to our list, and as long
+    as we can traverse the chain of parents, we insert this parent (or rather its
+    name) in our list in front of the current item (highlighted below). If the chain
+    cannot be followed anymore we pop a new `Pose` bone. When there are no bones left,
+    an `IndexError` exception is raised by the pop() method and we will exit our `while`-`loop`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The next step is to define the script itself. First, we get the active object
+    in the current scene and verify if it is indeed an armature. If not, we alert
+    the user with a pop up (highlighted part of the following code), otherwise we
+    proceed and get the associated armature data with the `getData()` method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: Then, we make the armature editable and make sure that each bone has the `HINGE`
+    option set (highlighted). The business with the conversion of the list of options
+    to a set and back again to a list once we added the `HINGE` option is a way to
+    ensure that the option appears only once in the list.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'A pose is associated with an armature object, not with its data, so we get
+    it from `arm` by using the `getPose()` method. Bone poses are very much like ordinary
+    IPOs but they have to be associated with an **action** that groups those poses.
+    When working interactively with the Blender an action gets created automatically
+    once we insert a key frame on a pose, but in a script we have to create an action
+    explicitly if it is not present already (highlighted):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The next step is to sort the `Pose` bones as a chain of parenthood by using
+    our previously defined function. What is left is to step along the frames in steps
+    of ten at a time and set keys on the scale of each bone at each step, scaling
+    up if the sequence number of the bone matches our step and resetting it if it
+    doesn''t. One of the resulting IPOs is shown in the screenshot. Note that by our
+    setting the `HINGE` attribute on each bone previously, we prevent the scaling
+    to propagate to the children of the bone:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: The full code is available as `peristaltic.py` in `peristaltic.blend`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![A lot to swallow—defining poses](img/0400-06-04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Application of peristaltic.py to an armature
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'To use this script you will have to run it with an armature object selected.
+    One recipe to show its application would be the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Add an armature to a scene.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Go to *edit* mode and extrude any number of bones from the tip of the first
+    bone.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Go to *object* mode and add a mesh centered on the position of the armature.
+    Any mesh will do but for our illustration we use a cylinder with plenty of subdivisions.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Select the mesh and then shift select the armature. Both armature and `Mesh`
+    object are now selected while the armature is the active object.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Press *Ctrl + P* and select **armature**. In next pop up, select **Create from
+    bone heat**. That will create a vertex group on the mesh for each bone in the
+    armature. These vertex groups will be used to deform the mesh when we associate
+    the armature as a modifier with the mesh.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Select the mesh and add an armature modifier. Type the name of the armature
+    in the **Ob:** field and make sure that the **Vert.Group** toggle is selected
+    and **Envelopes** is not.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Select the armature and run the `peristaltic.py`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'The result will be an animated `Mesh` object resembling a lump passing through
+    a narrow flexible pipe. A few frames are shown in the illustration:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Application of peristaltic.py to an armature](img/0400-06-05.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Rain pipes are of course not the only hollow objects fit for animating this
+    way as shown in the following illustration:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Application of peristaltic.py to an armature](img/0400-06-06.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Get down with the beat—syncing shape keys to sound
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Many a rock video today features an animation of speaker cones reverberating
+    with the sound of the music. And although the features for the manipulation of
+    **sound** in the Blender API are rather sparse, we will see that this effect is
+    rather simple to achieve.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The animation that we will construct depends mainly on the manipulation of **shape
+    keys**. Shape keys can be understood as distortions of a base mesh. A mesh can
+    have many of these distortions and each of them is given a distinct name. The
+    fun part is that Blender provides us with the possibility to interpolate between
+    the base shape and any of the distorted shapes in a continuous way, even allowing
+    us to mix contributions from different shapes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One way to animate our speaker cone, for instance, is to model a basic, undistorted
+    shape of the cone; add a shape key to this base mesh; and distort it to resemble
+    a cone that is pushed outward. We can then blend between this "pop out" shape
+    and the base's shape depending on the loudness of the sound.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Animating by setting key frames in Blender means creating IPOs and manipulating
+    IPO curves as we have seen earlier. Indeed, `Shape` or `Key` IPOs are very similar
+    to other kinds of IPOs and are manipulated very much in the same way. The main
+    difference between for example an Object IPO and a Shape IPO is that the individual
+    IPO curves of a Shape IPO are not indexed by some predefined numerical constant
+    (such as `Ipo.OB_LOCX` for an Object) but by a string because the user may define
+    any number of named shapes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Also, a `Shape` IPO is not accessed via an Object but through its underlying
+    `Mesh` object (or `Lattice` or `Curve`, as these may have shape keys as well).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Manipulating sound files
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: So now that we know how to animate shapes, our next goal is to find out how
+    to add some sound to our mesh, or rather to determine at each frame how much the
+    distorted shape should be visible.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As mentioned in the previous section, Blender's API does not provide many tools
+    for manipulating sound files, Basically the `Sound` module provides us with ways
+    to load and play a sound file but that's as far as it gets. There is no way to
+    access individual points of the waveform encoded in the file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Fortunately, standard Python distributions come bundled with a `wave` module
+    that provides us with the means to read files in the common `.wav` format. Although
+    it supports only the uncompressed format, this will suffice as this format is
+    very common and most audio tools, such as **Audacity**, can convert to this format.
+    With this module we can open a `.wav` file, determine the sample rate and duration
+    of the sound clip, and access individual samples. As we will see in the explanation
+    of the following code, we still have to convert these samples to values that we
+    can use as key values for our shape keys but the heavy lifting is already done
+    for us.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Code outline: Sound.py'
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Armed with the knowledge on how to construct IPO curves and access `.wav` files,
+    we might draw up the following code outline:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Determine if the active object has suitable shapes defined and provide a choice.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Let the user select a `.wav` file.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Determine the number of sound samples per second present in the file.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Calculate the number of animation frames needed based on the duration of the
+    sound file and the video frame rate.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Then, for each animation frame:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Average the sound samples occurring in this frame
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Set the blend value of the chosen IPO curve to this (normalized) average
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The full code is available as `Sound.py` in `sound000.blend` and explained
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: We start off by importing the necessary modules including Python's `wave` module
+    to access our `.wav` file and the `struct` module that provides functions to manipulate
+    the actual binary data that we get from the `.wav` file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we define a utility function to pop up a menu in the middle of our screen.
+    It behaves just like the regular `PupMenu()` function from the `Draw` module but
+    sets the cursor to a position halfway across and along the screen with the help
+    of the `GetScreenSize()` and `SetMouseCoords()` functions from Blender''s `Window`
+    module:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The bulk of the work will be done by the function `sound2active()`. It will
+    take two arguments—the filename of the `.wav` file to use and the name of the
+    shape key to animate based on the information in the `.wav` file. First, we attempt
+    to create a `WaveReader` object by calling the `open()` function of the `wave`
+    module (highlighted). If this fails, we show the error in a pop up and quit:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then we do some sanity checks: we first check if the `.wav` file is a `MONO`
+    file. If you want to use a stereo file, convert it to mono first, for example
+    with the free Audacity package ([http://audacity.sourceforge.net/)](http://audacity.sourceforge.net/)).
+    Then we check if we are dealing with an uncompressed `.wav` file because the `wave`
+    module cannot handle other types. (most `.wav` files are uncompressed but if needed,
+    Audacity can convert them as well) and we verify that the samples are 16-bits.
+    If any of these checks fail, we pop up an appropriate error message:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now that we can process the file, we get its **frame** **rate** (the number
+    of audio samples per second) and the total number of bytes (oddly enough by using
+    the awkwardly named function `getnframes()` from the `wave` module). Then, we
+    read all of these bytes and store them in the variable `b`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Our next task is to get the rendering context from the current scene to retrieve
+    the number of video frames per second. The number of seconds our animation will
+    play is determined by the length of our audio sample, something we can calculate
+    by dividing the total number of audio frames in the `.wav` file by the number
+    of audio frames per second (highlighted in the following piece of code). We then
+    define a constant `sampleratio`—the number of audio frames per video frame:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: As mentioned before, the `wave` module gives us access to a number of properties
+    of a `.wav` file and the raw audio samples, but provides no functions to convert
+    these raw samples to usable integer values. We therefore need to do this ourselves.
+    Fortunately, this is not as hard as it may seem. Because we know that the 16-bit
+    audio samples are present as 2 byte integers in the "little-endian" format, we
+    can use the `unpack()` function from Python's `struct` module to efficiently convert
+    the list of bytes to a list of integers by passing a fitting format specification.
+    (You can read more about the way `.wav` files are laid out on [https://ccrma.stanford.edu/courses/422/projects/WaveFormat/](https://ccrma.stanford.edu/courses/422/projects/WaveFormat/).)
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now we can start animating the shape key. We get the start frame from the rendering
+    context and calculate the end frame by multiplying the number of seconds in the
+    `.wav` file with the video frame rate. Note that this may be longer or shorter
+    than the end frame that we may get from the rendering context. The latter determines
+    the last frame that will get rendered when the user clicks on the **Anim** button,
+    but we will animate the movement of our active object regardless of this value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Then for each frame we calculate from start frame to end frame (exclusive) the
+    average value of the audio samples that occur in each video frame by summing these
+    audio samples (present in the `samples` list) and dividing them by the number
+    of audio samples per video frame (highlighted in the next code snippet).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will set the chosen shape key to a value in the range [0:1] so we will have
+    to normalize the calculated averages by determining the minimum and maximum values
+    and calculate a scale:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, we get the active object in the current scene and get its `Shape`
+    IPO (highlighted). We conclude by setting the value of the shape key for each
+    frame in the range we are considering to the scaled average of the audio samples:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The remaining script itself is now rather simple. It fetches the active object
+    and then tries to retrieve a list of shape key names from it (highlighted in the
+    next part). This may fail (hence the `try … except` clause) if for example the
+    active object is not a mesh or has no associated shape keys, in which case we
+    alert the user with a pop up:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: If we were able to retrieve a list of shape keys, we present the user with a
+    pop-up menu to choose from this list. If the user selects one of the items, `key`
+    will be positive and we present the user with a file selector dialog (highlighted).
+    This file selector dialog is passed a `lambda` function that will be called if
+    the user selects a file, passing the name of this selected file as an argument.
+    In our case we construct this `lambda` function to call the `sound2active()` function
+    defined previously with this filename and the selected shape key.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The initial directory that will be presented to the user in the file selector
+    to pick a file from is determined by the last argument to the `FileSelector()`
+    function. We set it to the contents of Blender's `soundsdir` parameter. This usually
+    is `//` (that is, a relative path pointing to the same directory as the `.blend`
+    file the user is working on) but may be set in the user preferences window (**File**
+    **Paths** section) to something else.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Animating a mesh by a .wav file: the workflow'
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Now that we have our `Sounds.py` script we can apply it as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Select a `Mesh` object.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Add a "Basis" shape key to it (**Buttons** **window**, **Editing** **context**,
+    **Shapes** **panel**). This will correspond to the least distorted shape of the
+    mesh.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Add a second shape key and give it a meaningful name.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Edit this mesh to represent the most distorted shape.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In *object* mode, run `Sound.py` from the text editor by pressing *Alt + P.*
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Select the shape key name defined earlier (not the "Basis" one) from the pop
+    up.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Select the `.wav` file to apply.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'The result will be an object with an `IPOcurve` for the chosen shape key that
+    will fluctuate according to the beat of the sound as shown in the next screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Animating a mesh by a .wav file: the workflow](img/0400-06-07.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this chapter we saw how to associate shape keys with a mesh and how to add
+    an IPO to animate transitions between those shape keys. Specifically, we learned
+    how to:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Define IPOs
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Define shape keys on a mesh
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Define IPOs for those shape keys
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Pose armatures
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Group changes in poses into actions
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In the next chapter, we shall learn how to create custom textures and shaders.
+  prefs: []
+  type: TYPE_NORMAL

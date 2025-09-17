@@ -1,0 +1,767 @@
+- en: Chapter 4. Improving Application Performance
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Even if our Notes application lacks many details, at this point, we are using
+    a number of key components of the Cloud Platform, and so it can be considered
+    a fully fledged web application. This is a good opportunity to stop adding major
+    features and trying to delve into some implementation details involving Datastore,
+    Memcache, and the Modules service in order to optimize application performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: While going through this chapter, we have to take into consideration how optimizing
+    a web application running on a pay-per-use service such as App Engine is crucial
+    both to maximize performance and lower costs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Gain a deeper knowledge of Datastore: properties, queries, caching, indexing
+    and administration'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to store transient data into Memcache
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to structure our application with the help of the Modules service
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Advanced use of Datastore
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We have already learned a lot about Datastore so far, including how to define
+    entity kinds with model classes, the property concept, and how to make simple
+    queries.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There is a lot more we can do with the NDB Python API to optimize an application,
+    as we will see shortly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: More on properties – arrange composite data with StructuredProperty
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In our Notes application, we defined the `CheckListItem` model class to represent
+    checkable items, and then we added a property to the `Note` model named `checklist_items`
+    that references a list of that kind of entities. This is what we usually call
+    a one-to-many relationship between notes and checklist items, and it is a common
+    way to structure application data. By following this strategy, though, every time
+    we add an item to a note, we have to create and store a new entity on Datastore.
+    This is not a bad practice at all, but we have to take into consideration that
+    we are charged for the use of Datastore depending on the number of operations
+    we make; so, if we have a lot of data, keeping a low rate of write operations
+    can potentially save a lot of money.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The Python NDB API provides a property type called `StructuredProperty` we
+    can use to include one kind of model inside another; instead of referencing the
+    `CheckListItem` model from a property of the type `KeyProperty` in the `Note`
+    model, we store it in a property of the type `StructuredProperty`. In our `models.py`
+    module, we change the Note model as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the `main.py` module, we need to adjust the code to store checklist items
+    when we create a new note, so we refactor the `create_note` method in this way:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: First of all, we move the call to the `note.put()` method right below the note
+    creation; we don't need to provide a valid key to the `parent` parameter in the
+    `CheckListItem` constructor, so we can persist the `Note` instance later, at the
+    end of the method. We then instance a `CheckListItem` object for every item we
+    want to add to the note as before, but without actually creating any entity in
+    Datastore; these objects will be transparently serialized by the NDB API within
+    the `Note` entity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We need to adjust the HTML template as well, as the `checklist_items` property
+    in notes entities does not contain a list of keys anymore; it contains a list
+    of `CheckListItem` objects instead. In the `main.html` file, we change the code
+    accordingly, removing the `get()` method calls:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To see how it''s easy to work with structured properties, we add a very small
+    feature to the app: a link to toggle the checked status for items in checklists.
+    To toggle the status of an item, we have to provide the request handler with the
+    key of the note containing the item and the index of the item itself inside the
+    `checklist_items` list, so we build a URL with the scheme `/toggle/<note_key>/<item_index>`.
+    In the `main.html` file, we add this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Instances of the `Key` class have a `urlsafe()` method that serializes key
+    objects into a string that can be safely used as part of URLs. To retrieve the
+    current index inside a loop, we use the `loop.index` expression provided by Jinja2\.
+    We can also add a simple CSS rule to the `notes.css` file to make the items look
+    a little better:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To implement the toggling logic, we add the `ToggleHandler` class in the `main.py`
+    module:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: We normalize the item index so that it is zero-based, and then we load a note
+    entity from Datastore using its key. We instantiate a `Key` object passing the
+    string generated with the `urlsafe()` method to the constructor with the `urlsafe`
+    keyword parameter, then we retrieve the entity with the `get()` method. After
+    toggling the state of the item at the requested index, we update the note content
+    in Datastore calling the `put()` method. We finally redirect users to the main
+    page of the application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Eventually, we add the URL mapping to the application constructor with a regular
+    expression matching our URL scheme, `/toggle/<note_key>/<item_index>`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: Working with structured properties is straightforward; we simply access properties
+    and fields of the objects contained in the `checklist_items` property as they
+    were actual entities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The only drawback of this approach is that `CheckListItem` entities are not
+    actually stored in Datastore; they don't have a key and we cannot load them independently
+    from the `Note` entity they belong to, but this is perfectly fine for our use
+    case. Instead of loading the `CheckListItem` entity we want to update, we load
+    the `Note` entity and we use the index to access the item. In exchange, during
+    notes creation, we save a `put()` method call for the note and a `put()` method
+    call for each item in the checklist and when retrieving a note, we save a `get()`
+    method call for each item in the checklist. Needless to say, this kind of optimization
+    can impact favorably on application costs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: More on queries – save space with projections and optimize iterations with mapping
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Queries are used within an application to search Datastore for entities that
+    match a search criteria we can define through filters. We have already used Datastore
+    queries to retrieve entities with a filter; for example, every time we perform
+    an ancestor query, we are actually filtering out these entities that have a different
+    parent from the one we provided to the NDB API `query()` function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There is much more we can do with query filters though, and in this section,
+    we will see, in detail, two features provided by the NDB API that can be used
+    to optimize application performance: projection queries and mapping.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Projection queries
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: When we retrieve an entity with a query, we get all the properties and data
+    for that entity as expected; sometimes though, after retrieving an entity, we
+    use a small subset of its data. For example, take the `post()` method in our `ShrinkHandler`
+    class; we perform an ancestor query to retrieve only the notes belonging to the
+    currently logged in user, then we invoke the `_shrink_note()` method on each of
+    them. The `_shrink_note()` method only accesses the `files` property from note
+    entities, so we are keeping in memory and passing around a rather large object
+    even if we only need a very small part of it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'With the NDB API, we can pass a projection parameter to the `fetch()` method
+    that contains a list of properties we want to be set for the entities retrieved.
+    For example, in the `post()` method of the `ShrinkHandler` class, we can modify
+    the code in this way:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is a so-called projection query and the entities fetched in this way will
+    have only the `files` property set. The fetch is much more efficient because it
+    retrieves and serializes less data and entities use less space while in memory.
+    If we try to access any other property than `files` on such entities, an `UnprojectedPropertyError`
+    error will be raised.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Projections have some limitations we must be aware of. First of all, as we can
+    expect, entities fetched with a projection cannot be saved back on Datastore because
+    they are only partially populated. Another limitation is regarding indexes; in
+    fact, we can only specify indexed properties in a projection and this makes it
+    impossible to project properties with unindexed types such as the `TextProperty`
+    type.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Mapping
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Sometimes, we need to call the same function on a set of entities returned
+    by a query. For example, in the `post()` method of the `ShrinkHandler` class,
+    we need to call the `_shrink_note()` method on all the note entities for the current
+    user:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We first fetch all the entities matching the query in the notes list, then
+    we call the same function for every item in the list. We can rewrite that code
+    replacing the `for` iteration with a single call to the `map()` method provided
+    by the NDB API:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: We call the `map()` method passing the callback function we want to be called
+    on each result of the query; the callback function receives an entity object of
+    kind Note as its only parameter, unless we invoke the `map()` method with the
+    `keys_only=True` parameter. In this case, the callback will receive a `Key` instance
+    when invoked.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Since the `map()` method accepts the standard set of query options (that''s
+    why we can pass the `keys_only` parameter), we can perform the mapping for a projection
+    query too:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Besides the projection, this version of the code is slightly more efficient
+    because the Datastore can apply some concurrency while loading entities and the
+    results are retrieved in batches instead of fetching the entire dataset in memory.
+    If we want to get information regarding the current batch inside the callback
+    function, we need to pass the `pass_batch_into_callback=True` parameter when calling
+    the `map()` method. In this case, the callback will receive three parameters:
+    a `Batch` object provided by App Engine that wraps a lot of information about
+    the current batch, the index of the current item inside the current batch, and
+    the entity object (or the entity key if the `keys_only` parameter was used) fetched
+    from Datastore.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: NDB asynchronous operations
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: As we can expect, Datastore is a key component when considering application
+    performance; adjusting queries and using the right idioms can dramatically improve
+    efficiency and lower costs but there's more. Thanks to the NDB API, we can speed
+    up our applications by performing Datastore actions in parallel with other jobs,
+    or performing a number of Datastore actions concurrently.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Several functions provided by the NDB API have an `_async` counterpart that
+    takes exactly the same arguments, such as the `put` and `put_async` functions.
+    Every async function returns a **future**, an object that represents an operation
+    that was started but possibly not completed. We get the result of an async operation
+    from the future itself calling the `get_result()` method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In our Notes application, we can use asynchronous operations in the `_render_template()`
+    method of the `MainHandler` class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Currently, we wait for the notes to be fetched before loading the template
+    but we can load the template while Datastore is working:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: In this way, the application doesn't block on fetching data because the `fetch_async()`
+    method returns immediately; we then proceed loading the template while the Datastore
+    is working. When it's time to fill the context variable, we call the `get_result()`
+    method on the future object. At this point, either the result is available and
+    we proceed with rendering operations, or the `get_result()` method blocks, waiting
+    for Datastore to be ready. In both cases, we managed to perform two tasks in parallel,
+    thereby increasing the performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: With the NDB API, we can also implement asynchronous tasks called **tasklets**
+    that return a future while performing other work. For example, earlier in this
+    chapter, we used the `map()` method in the `ShrinkHandler` class to call the same
+    function on a set of entities retrieved from Datastore. We know that code is slightly
+    more efficient than the version with the explicit `for` iteration, but it's not
+    much faster actually; the callback function blocks on a synchronous `get()` method,
+    so every step of the mapping waits for the previous to finish.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we turn the callback function into a tasklet, App Engine can run the mapping
+    in parallel, dramatically speeding up application performance. Writing tasklets
+    is simple, thanks to the NDB API; for example the `_shrink_note()` method of the
+    `ShrinkHandler` class can be transformed in a tasklet with just two lines of code,
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: We first apply the `ndb.tasklet` decorator to the function we want to turn into
+    a tasklet; the decorator provides all the logic to support the future mechanism
+    with the `get_result()` method. We then use the `yield` statement to tell App
+    Engine that we will suspend at that point of the execution, waiting for the result
+    of the `get_async()` method. While we suspend, the `map()` method can execute
+    another tasklet with a different entity instead of waiting for us to finish.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Caching
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Caching is a critical component on a system such as App Engine because it impacts
+    on application performance and Datastore roundtrips and thus on application costs.
+    The NDB API automatically manages the cache for us and provides a set of tools
+    to configure the caching system. It's important to understand how NDB cache works
+    if we want to take advantage of such features.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'NDB uses two caching levels: the **in-context** cache that runs in process
+    memory and a gateway to the App Engine Memcache service. The in-context cache
+    stores data only for the duration of a single HTTP request and is local to the
+    code that processes the request, so it is extremely fast. When we use a NDB function
+    to write data on the Datastore, it first populates the in-context cache. Symmetrically,
+    when we use a NDB function to fetch an entity from Datastore, it first searches
+    for it in the in-context cache without even accessing Datastore in the best-case
+    scenario.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Memcache is slower than the in-context cache but still way faster than Datastore.
+    By default, every Datastore operation performed outside a transaction is cached
+    on Memcache and App Engine ensures that data resides on the same server to maximize
+    performance. The NDB ignores Memcache when it operates inside a transaction but
+    when a transaction is committed, it will attempt to remove all the entities involved
+    from Memcache, and we must take into account that some of these deletions can
+    fail.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Both the caches are managed by a so-called context, represented by an instance
+    of the class `Context` provided by App Engine. Each incoming HTTP request and
+    each transaction is executed in a new context, and we can access the current context
+    using the `get_context()` method provided by the NDB API.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In our Notes application, we''ve already experienced one of these rare situations
+    where NDB automatic caching is actually an issue; in the `_reload_user()` method
+    in `CreateNoteHandler` class, we had to force a reload of the `UserLoader` entity
+    from Datastore as a workaround to populate a `User` object. Between the `put()`
+    method and the `get()` method of the `UserLoader` entity, we wrote this instruction
+    to remove the entity from any location except Datastore:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Without this instruction, the NDB caching system would not have fetched the
+    entity from Datastore from scratch as we needed. Now that we know how NDB caching
+    works, we can rewrite that method in an equivalent way, thus being more explicit
+    about cache management, using the `Context` instance:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `set_cache_policy()` method exposed by the context object accepts a key
+    object and returns a Boolean result. When the method returns the `False` parameter,
+    the entity identified by that key won't be saved in any cache; in our case, we
+    return the `False` parameter only when the entity is of the kind `UserLoader`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Backup and restore functionalities
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In order to use the backup and restore functionalities provided by App Engine
+    for Datastore, we first need to enable **Datastore Admin**, which is disabled
+    by default. Datastore Admin is a web application that provides a set of tools
+    very useful for administrative tasks. At the time writing this, the only way to
+    enable and access Datastore Admin is via the old Admin Console available at [https://appengine.google.com](https://appengine.google.com).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We access the console for our project and then we have to perform the following
+    steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click on the **Datastore Admin** menu under the **Data** section on the left
+    of the page.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on the button to enable the admin.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Select one or more entity kinds we want to backup or restore.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'To perform a complete backup, we first have to put our application in read-only
+    mode. From the console, we need to perform the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click on **Application Settings** under the **Administration** menu on the left.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: At the bottom of the page, click on the **Disable Writes...** button under the
+    **Disable Datastore Writes** option.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Return to the **Datastore Admin** section and select all the entity kinds we
+    want to backup.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on the **Backup Entities** button.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Select the destination of the backup and choose between **blobstore** and **Cloud
+    Storage**. Specify a name for the backup file.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on the **Backup Entities** button.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The backup runs in the background; once finished, it is listed in **Datastore
+    Admin**.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Re-enable writings for our application.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: From Datastore Admin, we can select a backup and perform a restore. After starting
+    a restore operation, Datastore Admin will ask us which entity kinds we want to
+    restore, and then it'll proceed in background.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Indexing
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Indexes are tables that list Datastore entities in a sequence determined by
+    certain properties of the index and optionally by entities' ancestors. Every time
+    we write on Datastore, indexes are updated to reflect the changes to their respective
+    entities; when we read from Datastore, results are fetched accessing indexes.
+    This is basically the reason why reading from Datastore is way much faster than
+    writing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Our Notes application performs several queries, which means that some index
+    must be in place, but we have never directly managed or created indexes. This
+    is because of two reasons. The first reason is that when we run the local development
+    server, it scans our source code, searching for queries and automatically generates
+    the code to create all the indexes needed. The other reason is that Datastore
+    automatically generates basic indexes called predefined indexes for each property
+    of every kind, functional for simple queries.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Indexes are declared in the `index.yaml` file at the application root with
+    the following syntax:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: These are the properties needed to define and create the index that allows us
+    to perform queries against Note entities that belong to the currently logged-in
+    user and sort them in reverse by date. When we deploy the application, the `index.yaml`
+    file is uploaded and App Engine starts to build the indexes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If our application exercises every possible kind of query, including every
+    sorting combination, then the entries generated by the development server will
+    represent a complete set of indexes. This is why, in the vast majority of the
+    cases, we don''t need to declare indexes or customize existing ones unless we
+    have a very special case to deal with. Anyway, in order to optimize our application,
+    we can disable indexing for properties we know we will never make a query on.
+    Predefined indexes are not listed in the `index.yaml` file but we can use the
+    properties'' constructors inside the `models.py` module to disable them. For example,
+    if we know in advance that we will never search for `NoteFile` entities directly
+    with a query, we can disable indexing for all its properties:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: By passing the `indexed=False` parameter to constructors, we avoid App Engine
+    to create indexes for those properties so that every time we store a `NoteFile`
+    entity, there will be less indexes to update, speeding up writing operations.
+    The `NoteFile` entities can be still retrieved from the `files` property within
+    the `Note` entity because App Engine will keep on creating the predefined index
+    to retrieve entities by kind and key.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using Memcache
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We already know that Memcache is the distributed in-memory data cache provided
+    by App Engine. A typical use case would be to use it as a cache for rapid data
+    retrieval from persistent storage such as Datastore, but we already know that
+    the NDB API does this for us, so there's no need to explicitly cache entities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Data stored in Memcache can be evicted at any time, so we should cache only
+    data that we can safely lose without affecting integrity. For example, in our
+    Notes application, we can cache the total number of notes globally stored for
+    every user and display this nice kind of metric on the home page. We can perform
+    a Datastore query counting `Note` entities every time a user visits the main page
+    but this would be cumbersome, possibly nullifying every optimization we made so
+    far. A better strategy would be to keep a counter in the Memcache and increment
+    that counter every time a note is created within the application; if Memcache
+    data expires, we make the counting query again without losing any data and start
+    over incrementing the in-memory counter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We implement two functions to wrap Memcache operations: one to get the value
+    of the counter and another to increment it. We first create a new Python module
+    in the `utils.py` file that contains the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: We first try to access counter value from Memcache calling the `get()` method
+    asking for the `note_count` key. If the return value is `None`, we assume the
+    key is not in cache and we proceed querying Datastore. We then store the result
+    of the query in Memcache and return that value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We want to display the counter on the main page, so we add it to the template
+    context in the `_render_template()` method of the `MainHandler` class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Before using the function to get the counter, we need to import it from the
+    `main` module:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We have to modify the HTML template as well:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can then refresh the main page of the Notes application to see the counter
+    in action. Now it's time to write the code that increments the counter, but there's
+    something we should be aware of before proceeding.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Multiple requests can try to increment the value in Memcache concurrently, potentially
+    causing race conditions. To avoid this scenario, Memcache provides two functions,
+    `incr()` and `decr()`, which atomically increment and decrement a 64-bit integer
+    value. These would be perfectly suitable for our counter but we can provide a
+    more general solution that works also for cache values that are not integers using
+    the **compare** and **set** feature of the App Engine Python API.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the `utils.py` module, we add the following function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: We use an instance of the `Client` class because the compare and set functionalities
+    are not provided as functions in the `memcache` module. After getting a `Client`
+    instance, we enter the so-called `retry` loop that we reiterate up to 10 times
+    if we detect a rare condition. We then try to get the value for the `note_count`
+    key using the `gets` method of the client. This method alters the internal state
+    of the client storing a timestamp value provided by the Memcache service. We then
+    try to increment the value corresponding to the same key calling the `cas()` method
+    on the client object; the method transmits the new value for the key to Memcache,
+    plus the previously mentioned timestamp. If the timestamp matches, the value is
+    updated and the `cas()` method returns the `True` parameter causing the `retry`
+    loop to exit; otherwise, it returns the `False` parameter and we try again.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'After importing the `inc_note_counter()` function in the main module, we can
+    call it to increment the counter wherever we create a new note: within the `_create_note`
+    of the `MainHandler` class and within the `_create_note` method in the `CreateNoteHandler`
+    class.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Breaking our application into modules
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: At the moment, our Notes application provides some frontend functionalities
+    such as serving the main page, together with backend functionalities such as handling
+    cron jobs. This is fine for most use cases but if the application architecture
+    is complex and we have a lot of traffic, having several backend jobs around that
+    steal resources from the frontend cannot be always acceptable. To face this kind
+    of problems, App Engine provides an extremely flexible way to lay out a web application
+    with the use of **modules**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Every App Engine application is made up of at least on module; even if we didn't
+    already know it, so far we have worked on the default module of our Notes application.
+    A module is identified by a name, consists of source code and configuration files,
+    and can reside in the application root or in a subfolder. Every module has a version
+    and we can deploy multiple versions of the same module; each version will spawn
+    one or more App Engine instances depending on how we configured it for scaling.
+    The ability to deploy multiple versions of the same module, in particular, is
+    very useful for testing new components or deploying progressive upgrades. Modules
+    that are part of the same application share services such as Memcache, Datastore,
+    and task queues, and can communicate in a secure fashion using the modules of
+    the Python API.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To delve into some other detail, we can refactor our Notes application by adding
+    a new module solely dedicated to handle cron jobs. We don''t need to add any feature;
+    we just break up and refactor existing code. As the architecture of our application
+    is very simple, we can add the module directly in the application root. First
+    of all, we need to configure this new module, we will name `backend` inside a
+    new file, `backend.yaml`, which contains the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is quite similar to any application configuration file, but the main difference
+    is the `module` property that contains the name of the module. When this property
+    is not in the configuration file, or it contains the `default` string as value,
+    App Engine assumes this is the default module for the application. We then tell
+    App Engine we want the `app` application from the `backend_main` file Python module
+    handle every request the module will receive. When we do not specify any scaling
+    option in the configuration file, **automatic scaling** will be assumed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We write a brand new Python module with a dedicated WSGI-compliant application
+    in the `backend_main.py` file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As we see from the mapping, this application will only handle requests for
+    the shrink cron job. We take the handler code from the main module, and to avoid
+    depending on it, we rewrite the `ShrinkCronJob` class so that it doesn''t need
+    to derive from the `ShrinkHandler` class anymore. Again, in the `backend_main.py`
+    module, we add the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: For convenience, we can move the `image_formats` dictionary into the `utils.py`
+    module so that we can reuse it from here and from the `main.py` module.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now that we have two modules, we need to route the requests coming to our application
+    to the right module, and we can do this by creating a file called `dispatch.yaml`
+    in the application root that contains the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: Basically, this is the highest level URL mapping we can have on App Engine.
+    We can use wildcards instead of a regular expression to route URLs of incoming
+    requests to the right module; in this case, we route requests to the `/shrink_all`
+    URL to the backend module, leaving all the rest to the default module.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Ideally, we could have moved to the backend module also the code implementing
+    notes creation by e-mail but unfortunately App Engine only allows inbound services
+    on default modules.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Working with modules, both on the local development environment and on production,
+    adds some complications because we cannot use the App Engine Launcher graphical
+    interface to start and stop the development server or deploy the application;
+    we must use the command-line tools instead.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For example, we can check out how modules works in the local environment, but
+    we have to start the development server passing the `YAML` files for each module
+    together with the `dispatch.yaml` file as arguments. In our case, we issue the
+    following on the command line:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To deploy the application on App Engine, we use the `appcfg` command-line tool
+    passing the `YAML` files of the modules we want to deploy, making sure that the
+    configuration file of the default module is the first of the list during the very
+    first deploy, for example we can use the `YAML` files as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: When the application restarts, we should be able to see an instance running
+    for the additional backend module using Development Console or Admin Console.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Since working with modules on a small application such as Notes is less practical
+    and provides no benefits for the purpose of the book, we can switch back to the
+    layout with only one module.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we delved into several details of most of the Cloud Platform
+    components we have used so far. As mentioned before, when using a pay-per-use
+    service such as the Cloud Platform, mastering the details and the best practices
+    provides benefits for performance as well as costs. The majority of this chapter
+    was dedicated to Cloud Datastore, confirming that this is a critical component
+    for almost any web application; knowing how to lay out data or perform queries
+    can determine the success of our application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We also learned how to safely use Memcache from a Python application, avoiding
+    race conditions and strange behaviors that are difficult to debug. In the last
+    part of the chapter, we covered the modules features of App Engine; even if we
+    have to work on a complex application to completely appreciate the benefits of
+    a modular architecture, knowing what modules are and what they can do for us is
+    an important piece of information if we want to deploy our applications on App
+    Engine.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The next chapter is completely dedicated to the Google Cloud SQL service. We
+    will learn how to create and manage database instances and how to make connections
+    and perform queries.
+  prefs: []
+  type: TYPE_NORMAL
