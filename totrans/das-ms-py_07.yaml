@@ -1,12 +1,16 @@
 - en: Coroutines and Asynchronous I/O
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 协程与异步I/O
 - en: In the previous chapter, we looked at how to use multiple processes to increase
     the rate of data processing in our programs. This is great for CPU-bound programs
     because it allows them to use more than one CPU.
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: 在上一章中，我们探讨了如何使用多个进程来提高我们程序中数据处理的速度。这对于CPU密集型程序来说非常好，因为它允许它们使用多个CPU。
 - en: In this chapter, we'll look at the inverse of this case; we'll use a single
     CPU to handle multiple data processing tasks at once within a single process,
     which is great for I/O-bound programs. We'll see some of the nuts and bolts of
@@ -14,312 +18,449 @@
     used. Then we'll move on to synchronization and communication between asynchronous
     coroutine tasks. Lastly, we'll see how to use asyncio and coroutines to write
     a client-server program to communicate over a network.
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，我们将探讨这种情况的逆过程；我们将使用单个CPU在单个进程中同时处理多个数据处理任务，这对于I/O密集型程序来说非常棒。我们将了解一些使用asyncio的细节。我们还将讨论asyncio的`future`类及其使用方法。然后我们将继续讨论异步协程任务之间的同步和通信。最后，我们将看看如何使用asyncio和协程编写一个客户端-服务器程序，以通过网络进行通信。
 - en: 'We will cover the following topics:'
+  id: totrans-3
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们将涵盖以下主题：
 - en: The difference between asynchronous processing and parallel processing
+  id: totrans-4
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 异步处理与并行处理之间的区别
 - en: Using the asyncio event loop and coroutine scheduler
+  id: totrans-5
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 使用asyncio事件循环和协程调度器
 - en: Waiting for data to become available
+  id: totrans-6
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 等待数据可用
 - en: Synchronizing multiple tasks
+  id: totrans-7
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 同步多个任务
 - en: Communicating across a network
+  id: totrans-8
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 网络通信
 - en: The difference between asynchronous processing and parallel processing
+  id: totrans-9
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 异步处理与并行处理之间的区别
 - en: 'When we worked with the `concurrent.futures` module in [Chapter 6](4ce9ba50-f543-43ef-ba28-82c8833dfbcb.xhtml),
     *Parallel Processing*, we saw a way to make two or more streams of code run at
     the same time. For reference, have a look at the code example we used in the previous
     chapter:'
+  id: totrans-10
   prefs: []
   type: TYPE_NORMAL
+  zh: 当我们在第6章中与`concurrent.futures`模块一起工作时，我们看到了一种让两个或更多代码流同时运行的方法。为了参考，请查看我们在上一章中使用的代码示例：
 - en: '![](img/47709d60-41fe-4ebd-a503-8e9b46bec5c7.jpg)'
+  id: totrans-11
   prefs: []
   type: TYPE_IMG
+  zh: '![图片](img/47709d60-41fe-4ebd-a503-8e9b46bec5c7.jpg)'
 - en: This code helps you create an executor object. Now if you ever wish to run some
     code in parallel, you could just tell the executor to do it. The executor would
     give us a future object that we could use later to get the result of the code,
     and it would then run the code in a separate process. Our original code will keep
     on running in the original process.
+  id: totrans-12
   prefs: []
   type: TYPE_NORMAL
+  zh: 这段代码帮助你创建一个执行器对象。现在，如果你希望并行运行一些代码，你只需告诉执行器去做。执行器会给我们一个未来对象，我们可以在稍后使用它来获取代码的结果，并且它会然后在单独的进程中运行代码。我们的原始代码将在原始进程中继续运行。
 - en: We talked about how this could improve the performance of CPU-bound programs—it
     divides the code into multiple computer cores. Therefore, it's a technique that
     would be convenient in a lot of other circumstances.
+  id: totrans-13
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们讨论了如何提高CPU密集型程序的性能——将代码分割成多个计算机核心。因此，它是一种在其他许多情况下都方便的技术。
 - en: It's handy to be able to tell the computer to "go do this and let me know when
     you're done".
+  id: totrans-14
   prefs: []
   type: TYPE_NORMAL
+  zh: 能够告诉计算机“去做这件事，完成后通知我”是非常方便的。
 - en: One place where this ability seems particularly useful is in network server
     programs, where having a separate stream of execution for each connected client
     makes the logic and structure of the code much easier to grasp; it's easier to
     write bug-free servers when they're structured this way.
+  id: totrans-15
   prefs: []
   type: TYPE_NORMAL
+  zh: 这种能力似乎特别有用的一处是网络服务器程序，其中为每个连接的客户端拥有一个独立的执行流，这使得代码的逻辑和结构更容易理解；以这种方式结构化时，编写无bug的服务器更容易。
 - en: Multithreading is not good for servers
+  id: totrans-16
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 多线程对于服务器来说并不好
 - en: There are ways to write a server that would use only a single stream of execution,
     but if we have a way of writing servers that would probably introduce fewer bugs,
     why not? The problem is resource overhead.
+  id: totrans-17
   prefs: []
   type: TYPE_NORMAL
+  zh: 有方法可以编写只使用单个执行流的服务器，但如果我们有方法可以编写可能引入更少bug的服务器，为什么不呢？问题是资源开销。
 - en: Every process running on a computer uses up memory and CPU time, of course;
     however, in addition to the memory and CPU time, the process needs to run its
     code as well. The operating system also needs to expend some resources to manage
     the process. As it happens, the time spent on switching between processes is significant.
+  id: totrans-18
   prefs: []
   type: TYPE_NORMAL
+  zh: 当然，运行在计算机上的每个进程都会消耗内存和CPU时间；然而，除了内存和CPU时间外，进程还需要运行其代码。操作系统还需要消耗一些资源来管理进程。实际上，在进程之间切换所花费的时间是相当大的。
 - en: Memory overhead is enough; it becomes a limiting factor for how many clients
     a multiprocess server can handle simultaneously; other internal operating system
     resources may be even more limiting.
+  id: totrans-19
   prefs: []
   type: TYPE_NORMAL
+  zh: 内存开销已经足够；它成为多进程服务器可以同时处理多少客户端的限制因素；其他内部操作系统资源可能限制得更多。
 - en: For CPU-bound programs, there's a sweet spot that produces optimal results,
     where the program has one process per CPU core. For an I/O-bound program, which
     most servers are, any process beyond the first is nothing but overhead. As mentioned,
     there are ways to write single-process servers that can handle multiple clients
     at once with much lower overhead per connected client.
+  id: totrans-20
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于计算密集型程序，有一个产生最佳结果的甜点，即程序有一个进程对应一个 CPU 核心。对于 I/O 密集型程序，大多数服务器都是这样的，第一个进程之后的任何进程都只是开销。正如之前提到的，有方法可以编写单进程服务器，可以同时处理多个客户端，并且每个连接客户端的开销都更低。
 - en: These techniques allow a server to handle many more clients at once than what
     the multiprocess server program could manage. Even when not operating at full
     capacity, a single-process server leaves the majority of a computer's resources
     available for other uses.
+  id: totrans-21
   prefs: []
   type: TYPE_NORMAL
+  zh: 这些技术允许服务器同时处理比多进程服务器程序能够管理的更多的客户端。即使在不全速运行的情况下，单进程服务器也会让计算机的大部分资源可用于其他用途。
 - en: So, on one hand, we have a way of writing servers that is logically structured
     and less prone to bugs but wastes resources. On the other hand, we have a way
     of writing servers that is resource efficient but easy to get wrong.
+  id: totrans-22
   prefs: []
   type: TYPE_NORMAL
+  zh: 因此，一方面，我们有编写服务器的方法，逻辑结构清晰且不易出错，但浪费资源。另一方面，我们有编写服务器的方法，资源效率高，但容易出错。
 - en: Can we somehow get the best of both the worlds? The answer is, yes!
+  id: totrans-23
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们能否以某种方式获得两个世界的最佳之处？答案是，可以！
 - en: 'Fortunately, Python''s standard `asyncio` module combines low-level techniques
     that allow a single process to service multiple clients with a cooperative coroutine
     scheduler. Refer to the following code example:'
+  id: totrans-24
   prefs: []
   type: TYPE_NORMAL
+  zh: 幸运的是，Python 的标准 `asyncio` 模块结合了低级技术，允许单个进程通过协作式协程调度器服务多个客户端。参考以下代码示例：
 - en: '![](img/e8baa894-4303-4f66-9f95-37acb23b76b8.jpg)'
+  id: totrans-25
   prefs: []
   type: TYPE_IMG
+  zh: '![图片](img/e8baa894-4303-4f66-9f95-37acb23b76b8.jpg)'
 - en: The end result is a programming interface that looks and acts a lot like `concurrent.futures`
     but with much lower overhead per stream of code execution. That's great, but what's
     a cooperative coroutine scheduler? For that matter, what's a coroutine?
+  id: totrans-26
   prefs: []
   type: TYPE_NORMAL
+  zh: 最终结果是，一个编程接口看起来和表现得很像 `concurrent.futures`，但每个代码执行流的开销要低得多。那很好，但什么是协作式协程调度器？就这个话题而言，什么是协程？
 - en: Cooperative coroutine scheduler versus coroutine
+  id: totrans-27
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 协作式协程调度器与协程的比较
 - en: 'Before we get into detail, let''s define these two terms:'
+  id: totrans-28
   prefs: []
   type: TYPE_NORMAL
+  zh: 在我们深入细节之前，让我们定义这两个术语：
 - en: A coroutine is a computer science concept, a function that can be paused and
     resumed at certain intervals within it. Each time it is paused, it sends data
     out, and each time it is resumed, it receives data.
+  id: totrans-29
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 协程是计算机科学中的一个概念，是一个可以在其中暂停和恢复的函数。每次它暂停时，它会发送数据，每次它恢复时，它会接收数据。
 - en: Python programs can define coroutines using the async and await keywords, and
     asyncio makes extensive use of them.
+  id: totrans-30
   prefs: []
   type: TYPE_NORMAL
+  zh: Python 程序可以使用 `async` 和 `await` 关键字定义协程，并且 asyncio 广泛使用它们。
 - en: A cooperative coroutine scheduler is a piece of code that picks up the execution
     each time a coroutine pauses and decides which coroutine to run next. It's called
     a scheduler because it keeps track of multiple streams of execution and decides
     which one gets to run at any given time.
+  id: totrans-31
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 协作式协程调度器是一段代码，每次协程暂停时都会拾起执行，并决定下一个要运行的协程。它被称为调度器，因为它跟踪多个执行流，并决定在任何给定时间哪个流可以运行。
 - en: It's called cooperative because the scheduler can't run from one coroutine to
     another while the first one is still running. It has to wait until the running
     coroutine pauses itself, then it can select another coroutine to run.
+  id: totrans-32
   prefs: []
   type: TYPE_NORMAL
+  zh: 它被称为协作式，因为调度器不能在第一个协程仍在运行时从第一个协程切换到另一个协程。它必须等待正在运行的协程自己暂停，然后才能选择另一个协程来运行。
 - en: Python coroutines
+  id: totrans-33
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: Python 协程
 - en: In Python coroutines, the pause and resume points are `await` expressions; this
     is how we call other coroutines. Every time we want to perform a function, we
     call a coroutine from inside another coroutine. We wait for the coroutine we want
     to call.
+  id: totrans-34
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 Python 协程中，暂停和恢复点是 `await` 表达式；这就是我们调用其他协程的方式。每次我们想要执行一个函数时，我们都会在另一个协程内部调用一个协程。我们等待我们想要调用的协程。
 - en: The semantics of the code work as if they call a function from inside another
     function. The other coroutine runs until it returns and we get back the return
     value. That's how the code behaves, but what it actually does is quite a bit more
     interesting.
+  id: totrans-35
   prefs: []
   type: TYPE_NORMAL
+  zh: 代码的语义就像它们是从另一个函数内部调用一个函数一样工作。其他协程会一直运行，直到它返回，我们得到返回值。这就是代码的行为方式，但实际上它所做的事情要有趣得多。
 - en: The coroutine scheduler
+  id: totrans-36
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 协程调度器
 - en: 'With the coroutine scheduler, the code behaves in the following manner:'
+  id: totrans-37
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用协程调度器，代码的行为如下：
 - en: The first thing that happens is that the coroutine we're running is paused.
     The coroutine we want to call is handed on to the scheduler, which places it in
     its list of coroutines that it needs to run.
+  id: totrans-38
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 发生第一件事是我们正在运行的协程被暂停。我们想要调用的协程被交给调度器，调度器将其放入它需要运行的协程列表中。
 - en: 'Then, the scheduler checks whether a coroutine is waiting and why: for example,
     new data coming from across the network, or a coroutine being returned; if it''s
     the latter, it adds the waiting coroutines to the list as well.'
+  id: totrans-39
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 然后，调度器检查协程是否在等待以及为什么：例如，来自网络的新数据，或者一个被返回的协程；如果是后者，它也将等待的协程添加到列表中。
 - en: After this, the scheduler picks one of the coroutines that needs to be run and
     resumes it. This means that if a coroutine has a long-running loop that doesn't
     contain any `await` expressions, it will block any other coroutine from running.
     It will also keep the program from checking for new incoming data and prevent
     other assorted input and output operations from being serviced.
+  id: totrans-40
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 然后，调度器选择需要运行的协程之一并恢复其执行。这意味着如果有一个协程包含一个长时间运行的循环且不包含任何`await`表达式，它将阻止其他协程的运行。它也会阻止程序检查新的传入数据，并防止其他各种输入和输出操作得到服务。
 - en: If we have such a loop and there's just no reason to call any other coroutine
     inside it, we can place the `await asyncio.sleep(0)` statement inside the loop
     body, which simply gives the scheduler a chance to do its thing.
+  id: totrans-41
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我们有一个这样的循环，并且没有理由在其中调用任何其他协程，我们可以在循环体中放置`await asyncio.sleep(0)`语句，这仅仅给调度器一个机会去做它的事情。
 - en: This little bit of extra complexity that comes from the requirement of having
     `await` expressions is the price of cooperative scheduling, but since the payoff
     is efficient and logical code for I/O-bound programs, it's often worth it.
+  id: totrans-42
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于需要`await`表达式而产生的这种额外的复杂性是协同调度的代价，但鉴于回报是针对I/O密集型程序的效率高且逻辑清晰的代码，这通常是很值得的。
 - en: Using the asyncio event loop and coroutine scheduler
+  id: totrans-43
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 使用asyncio事件循环和协程调度器
 - en: So far, you have learned about Python's coroutines and a bit about how a cooperative
     coroutine scheduler works. Now, let's try our hand at writing some asynchronous
     code using Python coroutines and asyncio. We start this by creating a coroutine.
+  id: totrans-44
   prefs: []
   type: TYPE_NORMAL
+  zh: 到目前为止，你已经学习了Python的协程以及关于协同协程调度器的一些知识。现在，让我们尝试使用Python协程和asyncio编写一些异步代码。我们首先创建一个协程。
 - en: Creating a coroutine
+  id: totrans-45
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 创建一个协程
 - en: 'It''s easy to create a coroutine—all we have to do is use the `async` keyword
     on a function and use `await` anytime we want to call other coroutines, as shown
     in following code example:'
+  id: totrans-46
   prefs: []
   type: TYPE_NORMAL
+  zh: 创建协程很容易——我们只需要在函数上使用`async`关键字，并在需要调用其他协程时使用`await`，如下面的代码示例所示：
 - en: '![](img/769b4bbf-c77b-4daa-a570-211ef1c350bc.jpg)'
+  id: totrans-47
   prefs: []
   type: TYPE_IMG
+  zh: '![图片](img/769b4bbf-c77b-4daa-a570-211ef1c350bc.jpg)'
 - en: 'Once we have a coroutine though, we can''t just call it to get the ball rolling.
     If we try to call it, it immediately returns a `coroutine` object, as shown in
     the following code example—that''s not much use:'
+  id: totrans-48
   prefs: []
   type: TYPE_NORMAL
+  zh: 然而，一旦我们有了协程，我们并不能直接调用它来启动它。如果我们尝试调用它，它将立即返回一个`coroutine`对象，如下面的代码示例所示——这并没有什么用处：
 - en: '![](img/9b09c416-6948-4da3-aaa2-4ea04f1b23c0.jpg)'
+  id: totrans-49
   prefs: []
   type: TYPE_IMG
+  zh: '![图片](img/9b09c416-6948-4da3-aaa2-4ea04f1b23c0.jpg)'
 - en: Instead, we need to add the coroutine to the asyncio's scheduler as a new task.
     Next, the scheduler runs arranging for coroutines to execute and handling input
     and output events.
+  id: totrans-50
   prefs: []
   type: TYPE_NORMAL
+  zh: 相反，我们需要将协程添加到asyncio的调度器中作为一个新的任务。接下来，调度器安排协程执行和处理输入输出事件。
 - en: The asyncio scheduler - event_loop
+  id: totrans-51
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: asyncio调度器 - 事件循环
 - en: The `asyncio` package automatically creates a default scheduler, also called
     `event_loop`.
+  id: totrans-52
   prefs: []
   type: TYPE_NORMAL
+  zh: '`asyncio`包自动创建一个默认的调度器，也称为`event_loop`。'
 - en: 'While it''s possible to create new `event_loop` objects or replace the default
     one, for our purposes, the default `event_loop` scheduler will work just fine.
     We could get a reference to it by calling asyncio''s `get_event_loop` function
     to tell the scheduler that we want it to start a new task, as shown here:'
+  id: totrans-53
   prefs: []
   type: TYPE_NORMAL
+  zh: 虽然可以创建新的 `event_loop` 对象或替换默认的，但就我们的目的而言，默认的 `event_loop` 调度器将完全足够。我们可以通过调用
+    asyncio 的 `get_event_loop` 函数来获取它的引用，告诉调度器我们想要它启动一个新任务，如下所示：
 - en: '![](img/4c92c495-7c39-4d37-abe0-df461275a94c.jpg)'
+  id: totrans-54
   prefs: []
   type: TYPE_IMG
+  zh: '![图片](img/4c92c495-7c39-4d37-abe0-df461275a94c.jpg)'
 - en: When we run the preceding coroutine, we call asyncio's `ensure_future` function.
     By default, this will create the task in the default scheduler.
+  id: totrans-55
   prefs: []
   type: TYPE_NORMAL
+  zh: 当我们运行前面的协程时，我们调用 asyncio 的 `ensure_future` 函数。默认情况下，这将创建一个任务在默认调度器中。
 - en: ensure_future
+  id: totrans-56
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: ensure_future
 - en: We can also override default scheduler by passing an explicit `event_loop` scheduler
     to the loop keyword-only parameter of the `ensure_future` function.
+  id: totrans-57
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们还可以通过将显式的 `event_loop` 调度器传递给 `ensure_future` 函数的 `loop` 关键字参数来覆盖默认调度器。
 - en: '[PRE0]'
+  id: totrans-58
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: Notice that we didn't just pass the `coroutine` function to `ensure_future`;
     we actually invoked it right there inside `ensure_future` arguments. We did this
     because the `ensure_future` function doesn't actually want to refer to the `coroutine`
     function. The `ensure_future` function is only interested in the `coroutine` object
     that we saw the `coroutine` function return earlier. The name `ensure_future`
     might seem somewhat odd. If it's used for launching tasks, why is it called that?
+  id: totrans-59
   prefs: []
   type: TYPE_NORMAL
+  zh: 注意，我们并没有仅仅将 `coroutine` 函数传递给 `ensure_future`；我们实际上在 `ensure_future` 参数内部调用了它。我们这样做是因为
+    `ensure_future` 函数实际上并不想引用 `coroutine` 函数。`ensure_future` 函数只对我们在之前看到的 `coroutine`
+    函数返回的 `coroutine` 对象感兴趣。`ensure_future` 这个名字可能有些奇怪。如果它用于启动任务，为什么叫这个名字呢？
 - en: The fact of the matter is that launching tasks is basically just a side effect
     of what the function conceptually does, which is **wrapping**. Wrap the function's
     parameter in a future object if necessary. It just so happens that having a future
     object for the return value of our coroutine would be useless if the coroutine
     is never scheduled to run; `ensure_future` makes sure that it does.
+  id: totrans-60
   prefs: []
   type: TYPE_NORMAL
+  zh: 实际上，启动任务基本上只是函数概念上所做事情的一个副作用，即**包装**。如果需要，将函数的参数包装在未来的对象中。碰巧的是，如果协程从未被安排运行，那么为协程的返回值拥有一个未来对象将毫无用处；`ensure_future`
+    确保了这一点。
 - en: The `ensure_future` function adds a new task to the scheduler, whether it's
     called from normal code or within a coroutine. This means that any time we want
     the code to run in its own stream of execution, we can use `ensure_future` to
     get it going.
+  id: totrans-61
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ensure_future` 函数无论在普通代码中还是在协程内部调用，都会向调度器添加一个新任务。这意味着每次我们想要代码在自己的执行流中运行时，我们都可以使用
+    `ensure_future` 来启动它。'
 - en: 'Even in the preceding code example, where we added a coroutine to the scheduler
     as a new task, nothing happened. That''s because the scheduler itself is still
     not running. However, this is an easily solvable problem. We just need to call
     either the `run_forever` or `run_until_complete` method of the loop. Finally,
     our coroutine would actually execute, as shown here:'
+  id: totrans-62
   prefs: []
   type: TYPE_NORMAL
+  zh: 即使在先前的代码示例中，我们添加了一个协程到调度器作为一个新任务，也没有发生任何事情。这是因为调度器本身还没有运行。然而，这是一个容易解决的问题。我们只需要调用
+    `run_forever` 或 `run_until_complete` 方法之一。最终，我们的协程将实际执行，如下所示：
 - en: '[PRE1]'
+  id: totrans-63
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: The run_forever/run_until_complete methods
+  id: totrans-64
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: '`run_forever`/`run_until_complete` 方法'
 - en: 'As the names implies, `run_forever` causes `event_loop` to run forever or at
     least until it''s explicitly stopped by calling its `stop` method. On the other
     hand, the `run_until_complete` method causes the loop to keep going until a particular
     future object is ready to provide a value (refer to the following code example):'
+  id: totrans-65
   prefs: []
   type: TYPE_NORMAL
+  zh: 如其名所示，`run_forever` 使得 `event_loop` 永远运行或至少直到它被显式地通过调用其 `stop` 方法停止。另一方面，`run_until_complete`
+    方法使得循环继续运行，直到特定的未来对象准备好提供一个值（参考以下代码示例）：
 - en: '![](img/ca25e002-02f0-484d-8227-d2fb3a1ab00b.jpg)'
+  id: totrans-66
   prefs: []
   type: TYPE_IMG
+  zh: '![图片](img/ca25e002-02f0-484d-8227-d2fb3a1ab00b.jpg)'
 - en: 'The return value of `ensure_future` is a future object, so you can easily run
     the scheduler until a particular task is done. The preceding code example runs
     two coroutines simultaneously as two separate tasks in the same scheduler. The
@@ -327,155 +468,222 @@
     the `coro2()` coroutine not only finishes, it also causes the `event_loop` stop
     method''s (`loop.stop ()`) to force `run_forever` to terminate eventually. This
     is shown in the following code example:'
+  id: totrans-67
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ensure_future` 的返回值是一个 future 对象，因此你可以轻松地运行调度器，直到特定任务完成。前面的代码示例在同一个调度器中将两个协程作为两个单独的任务同时运行。`coro1()`
+    协程包含一个无限循环，所以它永远不会完成；然而，`coro2()` 协程不仅完成，还导致 `event_loop` 停止方法（`loop.stop ()`）最终强制
+    `run_forever` 终止。这将在以下代码示例中显示：'
 - en: '![](img/b0ec700d-397f-4ab0-acd6-b4264d0d3fde.jpg)'
+  id: totrans-68
   prefs: []
   type: TYPE_IMG
+  zh: '![图片](img/b0ec700d-397f-4ab0-acd6-b4264d0d3fde.jpg)'
 - en: The preceding example behaves in exactly the same way, except it uses `run_until_complete`
     to automatically stop the scheduler once `coro2` is finished instead of explicitly
     calling `stop`.
+  id: totrans-69
   prefs: []
   type: TYPE_NORMAL
+  zh: 上述例子行为完全相同，只是它使用 `run_until_complete` 自动在 `coro2` 完成后停止调度器，而不是显式调用 `stop`。
 - en: The code looks a little cleaner this way. So, as a rule of thumb, it's probably
     better to only use stop when some sort of error makes it necessary to dump out
     of `event_loop`. In both the examples we just saw, there's a line of code to set
     the logging level to critical. This is because `event_loop` issues an error message
     if it is stopped while there are tasks, such as `coro1`, still running. In this
     case, we know it's still running and we don't care, so we suppress the message.
+  id: totrans-70
   prefs: []
   type: TYPE_NORMAL
+  zh: 代码看起来这样更整洁。所以，作为一个经验法则，可能最好只在出现某种错误，需要从 `event_loop` 中退出时才使用 `stop`。在我们刚刚看到的两个例子中，都有一行代码将日志级别设置为关键。这是因为如果
+    `event_loop` 在有任务（如 `coro1`）仍在运行时被停止，它会发出错误信息。在这种情况下，我们知道它仍在运行，我们并不关心，所以我们抑制了消息。
 - en: It's usually better to arrange for all our running tasks to exit cleanly, instead
     of just killing them. This is why the error message is printed. But, in our case,
     there's no problem, so we just keep the message from printing.
+  id: totrans-71
   prefs: []
   type: TYPE_NORMAL
+  zh: 通常，最好安排所有运行的任务干净地退出，而不是简单地杀死它们。这就是为什么打印出错误信息。但是，在我们的情况下，没有问题，所以我们只是阻止消息打印。
 - en: Regardless of how we choose to run and stop `event_loop`, once we're completely
     finished with it, we should call its `close` method. It closes any open files,
     network sockets, and other I/O channels that `event_loop` is managing and generally
     cleans up after itself.
+  id: totrans-72
   prefs: []
   type: TYPE_NORMAL
+  zh: 无论我们如何选择运行和停止 `event_loop`，一旦我们完全完成它，我们应该调用它的 `close` 方法。它会关闭 `event_loop` 管理的任何打开的文件、网络套接字和其他
+    I/O 通道，并通常自行清理。
 - en: Closing event_loop
+  id: totrans-73
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 关闭 event_loop
 - en: 'A good way to close `event_loop` is to use the `contextlib.closing` context
     manager, which guarantees that the `close` method will be called once the `with`
     block ends. The following code example shows `event_loop` closing:'
+  id: totrans-74
   prefs: []
   type: TYPE_NORMAL
+  zh: 关闭 `event_loop` 的一个好方法是使用 `contextlib.closing` 上下文管理器，它保证一旦 `with` 块结束，就会调用
+    `close` 方法。以下代码示例显示了 `event_loop` 的关闭：
 - en: '![](img/20894b8c-08c6-4ec8-a1f0-74639e09c582.jpg)'
+  id: totrans-75
   prefs: []
   type: TYPE_IMG
+  zh: '![图片](img/20894b8c-08c6-4ec8-a1f0-74639e09c582.jpg)'
 - en: Even in error situations, the `close` method should be called when we're completely
     done with an `event_loop`, but this doesn't necessarily mean that it should be
     called right after the `run_forever` or `run_until_complete` call is finished.
     The `event_loop` is still in a valid state at that point, and it's perfectly OK
     to, for example, add some new tasks or start the loop again.
+  id: totrans-76
   prefs: []
   type: TYPE_NORMAL
+  zh: 即使在错误情况下，当我们完全完成 `event_loop` 时，也应该调用 `close` 方法，但这并不一定意味着应该在 `run_forever`
+    或 `run_until_complete` 调用完成后立即调用。在那个点上，`event_loop` 仍然处于有效状态，例如添加一些新任务或再次启动循环是完全正常的。
 - en: As you may have probably noticed, an `asyncio event_loop` object basically fulfills
     the same role as a `concurrent.futures executor` object. From a programming interface
     point of view, that's not the only similarity.
+  id: totrans-77
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可能已经注意到了，`asyncio event_loop` 对象基本上与 `concurrent.futures executor` 对象扮演相同的角色。从编程接口的角度来看，这并不是唯一的相似之处。
 - en: Awaiting data availability
+  id: totrans-78
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 等待数据可用
 - en: asyncio's future objects look and behave pretty much like `concurrent.futures`
     future objects, but they're not interchangeable. They have subtle differences
     in behavior and, of course, major differences in how they interact with the underlying
     systems, which are completely different. Still, each future is a way of referencing
     the value that may or may not have been computed yet and, if necessary, a way
     of waiting for that value to become available.
+  id: totrans-79
   prefs: []
   type: TYPE_NORMAL
+  zh: asyncio的future对象看起来和表现几乎与`concurrent.futures` future对象相同，但它们不是可互换的。它们在行为上有细微的差异，当然，在它们与底层系统的交互方式上有重大差异，这些系统是完全不同的。尽管如此，每个future都是引用可能尚未计算出的值的途径，如果需要，等待该值变得可用的途径。
 - en: asyncio's future objects
+  id: totrans-80
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: asyncio的future对象
 - en: 'The most commonly used feature of a future object is to wait for its value
     to be determined and then retrieve it. For asyncio''s future objects, this is
     done by simply waiting for the future, as shown in the following code example:'
+  id: totrans-81
   prefs: []
   type: TYPE_NORMAL
+  zh: future对象最常用的功能是等待其值确定，然后检索它。对于asyncio的future对象，这可以通过简单地等待future来实现，如下面的代码示例所示：
 - en: '![](img/afd5cf75-8b4e-4016-ab08-8305bad580b4.jpg)'
+  id: totrans-82
   prefs: []
   type: TYPE_IMG
+  zh: '![图片](img/afd5cf75-8b4e-4016-ab08-8305bad580b4.jpg)'
 - en: This will tell the scheduler to pause the coroutine until the value of the future
     becomes available, after which the future's value is set in the coroutine as the
     result of the `await` expression.
+  id: totrans-83
   prefs: []
   type: TYPE_NORMAL
+  zh: 这将告诉调度器暂停协程，直到future的值变得可用，之后future的值在协程中作为`await`表达式的结果被设置。
 - en: If the future represents a raised exception, instead of a value, that exception
     is raised again from the `await` expression, as shown in the preceding code example.
     If we don't want to wait, we could call the `done` method to check whether a future
     is ready; if it is, we could call the `result` method to retrieve the value.
+  id: totrans-84
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果future表示一个抛出的异常而不是值，那么这个异常将从`await`表达式中再次抛出，如前面的代码示例所示。如果我们不想等待，我们可以调用`done`方法来检查future是否已准备好；如果是，我们可以调用`result`方法来检索值。
 - en: So, the syntax and semantics are a little different, but the basic idea of a
     future is the same in asyncio and `concurrent.futures`. When we work with asyncio,
     we use future objects in all the same places we would in `concurrent.futures`.
+  id: totrans-85
   prefs: []
   type: TYPE_NORMAL
+  zh: 因此，语法和语义略有不同，但asyncio和`concurrent.futures`中future的基本思想是相同的。当我们使用asyncio时，我们在所有相同的地方使用future对象，就像在`concurrent.futures`中一样。
 - en: 'There''s one scenario where even using future objects doesn''t make it simple
     to wait for data; this is when we should process a stream of data values as they
     arrive, as shown here:'
+  id: totrans-86
   prefs: []
   type: TYPE_NORMAL
+  zh: 有一种情况，即使使用future对象，等待数据也并不简单；这就是当我们应该处理到达的数据流时，如下所示：
 - en: '![](img/417630f9-c240-4e9b-bdee-55b8735dde8a.jpg)'
+  id: totrans-87
   prefs: []
   type: TYPE_IMG
+  zh: '![图片](img/417630f9-c240-4e9b-bdee-55b8735dde8a.jpg)'
 - en: Sure, we could loop over an iterator of future objects and wait for each one
     of them to become ready to provide their values, but that's clumsy and suffers
     from problems in regard to knowing when to stop the iteration.
+  id: totrans-88
   prefs: []
   type: TYPE_NORMAL
+  zh: 当然，我们可以遍历future对象的迭代器并等待每个对象准备好提供它们的值，但这很笨拙，并且存在关于何时停止迭代的问题。
 - en: Instead, Python provides us with an asynchronous iteration protocol, which allows
     us to write or fetch the next value function as a coroutine. This means that the
     iterator can wait for each value to arrive and simply return it. Now our loop
     will work properly and we will avoid all the confusion about when to stop.
+  id: totrans-89
   prefs: []
   type: TYPE_NORMAL
+  zh: 相反，Python为我们提供了一个异步迭代协议，允许我们将获取下一个值函数作为一个协程来编写或获取。这意味着迭代器可以等待每个值到达，然后简单地返回它。现在我们的循环将正常工作，我们将避免所有关于何时停止的困惑。
 - en: Asynchronous iterations
+  id: totrans-90
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 异步迭代
 - en: Why do we need a special asynchronous iteration for a looping statement and
     a separate asynchronous iteration protocol?
+  id: totrans-91
   prefs: []
   type: TYPE_NORMAL
+  zh: 为什么我们需要为循环语句和单独的异步迭代协议提供特殊的异步迭代？
 - en: It's because an asynchronous iteration only makes sense inside of a coroutine.
     Having a separate looping statement and protocol keeps us from stumbling into
     ambiguous situations, where the computer isn't sure what we want it to do.
+  id: totrans-92
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是因为异步迭代只适用于协程内部。有一个单独的循环语句和协议可以防止我们陷入模糊的情况，在这种情况下，计算机不确定我们想要它做什么。
 - en: Synchronizing multiple tasks
+  id: totrans-93
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 同步多个任务
 - en: In this section, we'll take a look at more ways to share data between tasks
     and synchronize their operations.
+  id: totrans-94
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本节中，我们将探讨更多在任务之间共享数据以及同步它们操作的方法。
 - en: Synchronization primitives
+  id: totrans-95
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 同步原语
 - en: 'The `asyncio` package provides `lock`, `semaphore`, `event`, and `condition`
     classes that are pretty similar to the ones we looked at in the context of `concurrent.futures`.
     They provide the same method names and fulfill the same roles. The important difference
     is that for asyncio''s versions, some of the methods are coroutines and some are
     not, as shown here:'
+  id: totrans-96
   prefs: []
   type: TYPE_NORMAL
 - en: '![](img/ab063608-d987-4a1a-89ad-613691f67f0c.jpg)'
+  id: totrans-97
   prefs: []
   type: TYPE_IMG
 - en: Specifically, in each case, the `acquire` and `wait` methods, if they exist,
     are coroutines that must be called by `await`.
+  id: totrans-98
   prefs: []
   type: TYPE_NORMAL
 - en: This is because they need to be able to pause until some specific thing happens,
@@ -483,26 +691,31 @@
     mentioned lock and the rest, I want to point out that while they are sometimes
     necessary, they are less often needed under asyncio than they would be in concurrent.futures
     or other systems that provide multiple streams of execution.
+  id: totrans-99
   prefs: []
   type: TYPE_NORMAL
 - en: This is because asyncio's scheduling is cooperative. It's only possible to switch
     between execution streams and `await` expressions, which means that if there are
     no await expressions within a critical section of code, it can't be interrupted.
+  id: totrans-100
   prefs: []
   type: TYPE_NORMAL
 - en: No other task can modify the same data at the same time because no other task
     has an opportunity to run any code during that time. Plus, Lock and the rest are
     only needed when a critical section of the code does, in fact, use `await` at
     least once.
+  id: totrans-101
   prefs: []
   type: TYPE_NORMAL
 - en: We've seen the `as_completed` and `wait` functions before when we discussed
     concurrent.futures in the previous chapter. asyncio's versions are coroutines
     because they too need to suspend until it's time to continue executing, but there's
     not much of a difference in how we use them.
+  id: totrans-102
   prefs: []
   type: TYPE_NORMAL
 - en: The wait coroutine
+  id: totrans-103
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
@@ -512,21 +725,26 @@
     list of futures and produces futures of the results in the order that the results
     become available. Then, we extract the actual values from the futures with wait
     and we are good to go.
+  id: totrans-104
   prefs: []
   type: TYPE_NORMAL
 - en: 'As shown in the following code example, there''s no telling in which order
     the results will become available; however, each time a value does become available,
     it gets printed:'
+  id: totrans-105
   prefs: []
   type: TYPE_NORMAL
 - en: '![](img/bc87e32c-2f88-44bb-9b06-29ad565672bf.jpg)'
+  id: totrans-106
   prefs: []
   type: TYPE_IMG
 - en: 'asyncio provides some other interesting coroutines for collecting data from
     futures, particularly: `wait_for` and `gather`.'
+  id: totrans-107
   prefs: []
   type: TYPE_NORMAL
 - en: The wait_for coroutine
+  id: totrans-108
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
@@ -534,16 +752,20 @@
     a timeout. The first two coroutines in the following code example do the same
     thing except that if `foo` doesn''t finish within `5` seconds, the second version
     will raise an asyncio timeout error:'
+  id: totrans-109
   prefs: []
   type: TYPE_NORMAL
 - en: '![](img/e1053535-cd6a-4d79-9ed8-021c4e8f72d4.jpg)'
+  id: totrans-110
   prefs: []
   type: TYPE_IMG
 - en: In the third code block, we're still doing the same thing, except if `foo` times
     out, we print a message. Then, there's the `gather` coroutine.
+  id: totrans-111
   prefs: []
   type: TYPE_NORMAL
 - en: The gather coroutine
+  id: totrans-112
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
@@ -551,13 +773,16 @@
     them into a single future that will be completed when all the subfutures are completed
     along with the result in the list of the subfutures'' results, as shown in the
     following code example:'
+  id: totrans-113
   prefs: []
   type: TYPE_NORMAL
 - en: '![](img/8a9053d9-16fc-44ef-83bb-ba1aaa16509d.jpg)'
+  id: totrans-114
   prefs: []
   type: TYPE_IMG
 - en: There are a bunch of uses for something like that, but one very nice thing we
     can do with it is use it to construct the future that we pass into `run_until_complete`.
+  id: totrans-115
   prefs: []
   type: TYPE_NORMAL
 - en: In effect, we're telling asyncio that it should run until all these futures
@@ -565,9 +790,11 @@
     and events objects are good for sending simple signals. However, sometimes, we
     want a fully featured communication channel. Fortunately, asyncio provides us
     with the `Queue` class and a few variants based on it.
+  id: totrans-116
   prefs: []
   type: TYPE_NORMAL
 - en: The asyncio Queue class
+  id: totrans-117
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
@@ -575,29 +802,35 @@
     we need to call them with `await` and we have to already be in a coroutine to
     call them, unless we were to actually use the `ensure_future` function to launch
     them as separate tasks as shown in the following code example of the `Queue` class:'
+  id: totrans-118
   prefs: []
   type: TYPE_NORMAL
 - en: '![](img/af1cc589-95d4-47ff-8c71-5cbdb3806950.jpg)'
+  id: totrans-119
   prefs: []
   type: TYPE_IMG
 - en: However, the `Queue` class also has methods called `put_nowait` and `get_nowait`,
     which are not coroutines, and can be called from anywhere. This makes the `Queue`
     class quite useful for communicating new data to a system of coroutines as well
     as sending data between coroutine tasks.
+  id: totrans-120
   prefs: []
   type: TYPE_NORMAL
 - en: Queue types
+  id: totrans-121
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
 - en: asyncio provides a couple of variant `Queue` types that return their stored
     values in different orders.
+  id: totrans-122
   prefs: []
   type: TYPE_NORMAL
 - en: Instances of `PriorityQueue` give back the smallest object they contain according
     to a less than comparison when we call `get` or `get_nowait`. So, if our priority
     queue contains `34`, `2`, `5`, and `97`, calling its get coroutine would return
     `2`. The next time, it would return `5`, then `34`, and then `97`.
+  id: totrans-123
   prefs: []
   type: TYPE_NORMAL
 - en: A `LifoQueue` method, on the other hand, always gives back the most recently
@@ -605,66 +838,83 @@
     a joinable `Queue` class, which adds an extra join coroutine and a method called
     `task_done`. With a little bit of extra work, using a joinable queue allows coroutines
     to pause and wait until the queue is emptied.
+  id: totrans-124
   prefs: []
   type: TYPE_NORMAL
 - en: Communicating across the network
+  id: totrans-125
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
 - en: So, we've covered how asyncio works and a bunch of tools that could be used
     to manage the execution of multiple streams of code. That's all great, but what
     about doing some actual I/O with it?
+  id: totrans-126
   prefs: []
   type: TYPE_NORMAL
 - en: The primary motivation for people to use asynchronous I/O is because it helps
     when writing network clients and servers, although that's certainly not the only
     possible use. So, asyncio not only makes network communications efficient, it
     also makes them easy.
+  id: totrans-127
   prefs: []
   type: TYPE_NORMAL
 - en: Creating a simple client in asyncio
+  id: totrans-128
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
 - en: 'Here, we have the code for a simple client-server pair of programs (refer to
     the following code example):'
+  id: totrans-129
   prefs: []
   type: TYPE_NORMAL
 - en: '![](img/289f4dd2-d05b-4a40-8c71-76de750c8996.jpg)'
+  id: totrans-130
   prefs: []
   type: TYPE_IMG
 - en: They not only read and write the same few bytes over and over, but they also
     serve to demonstrate everything needed to communicate across the network.
+  id: totrans-131
   prefs: []
   type: TYPE_NORMAL
 - en: There will be little information about the client that is mysterious.
+  id: totrans-132
   prefs: []
   type: TYPE_NORMAL
 - en: 'Run the following command:'
+  id: totrans-133
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE2]'
+  id: totrans-134
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: 'It runs only a single task that uses asyncio''s high-level API to open a connection
     and then send and receive data through it. The data is just a string of numbers
     as shown:'
+  id: totrans-135
   prefs: []
   type: TYPE_NORMAL
 - en: '![](img/9d680910-da40-49f5-ac7b-fdbd666e084f.jpg)'
+  id: totrans-136
   prefs: []
   type: TYPE_IMG
 - en: Creating a simple server in asyncio
+  id: totrans-137
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
 - en: The server can handle simultaneous connections from many clients at once because
     the `start_server` coroutine we called launches a new task to run the `start_serve`
     coroutine each time a client connects to the server.
+  id: totrans-138
   prefs: []
   type: TYPE_NORMAL
 - en: Each task has the job of handling a connection to a single client, so the server
     coroutine is almost as simple as the client coroutine.
+  id: totrans-139
   prefs: []
   type: TYPE_NORMAL
 - en: There's a little bit of extra code to handle a connection reset error, which
@@ -672,15 +922,18 @@
     server's trying to read data from it, and a little more to handle the class where
     the request is an empty string, which the readline coroutine can only produce
     if the client has closed the connection in a less precipitous manner.
+  id: totrans-140
   prefs: []
   type: TYPE_NORMAL
 - en: Handling client disconnections
+  id: totrans-141
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
 - en: In both previous cases, we want the server to stop worrying about a particular
     client, which we can do simply by returning from the client handling coroutine.
     The task running the coroutine finishes and that's that.
+  id: totrans-142
   prefs: []
   type: TYPE_NORMAL
 - en: In the launched coroutine on the server, we called another coroutine called
@@ -688,18 +941,22 @@
     closed. Without this call, our launched coroutine will immediately terminate and,
     since we used `run_until_complete`, the whole program will terminate immediately
     afterward.
+  id: totrans-143
   prefs: []
   type: TYPE_NORMAL
 - en: This would happen because `start_server` launches a background task and then
     returns rather than manage the server directly, and that's about it.
+  id: totrans-144
   prefs: []
   type: TYPE_NORMAL
 - en: There's a lower-level communication API that asyncio provides, but for the vast
     majority of cases, this lower-level API is unnecessary. asyncio makes network
     communications simple.
+  id: totrans-145
   prefs: []
   type: TYPE_NORMAL
 - en: Summary
+  id: totrans-146
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
@@ -709,11 +966,13 @@
     internally to wait for a sequence of values. We also looked at tools that we can
     use to transmit data to and from asynchronous coroutine tasks and force synchronization
     on them when necessary.
+  id: totrans-147
   prefs: []
   type: TYPE_NORMAL
 - en: Now we've seen how to get a payoff from coroutines and asynchronization using
     these tools to write a network client or server. In the next chapter, we'll look
     at various parts of Python that can be redefined within our program source code
     and how to use them.
+  id: totrans-148
   prefs: []
   type: TYPE_NORMAL
