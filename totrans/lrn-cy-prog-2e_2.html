@@ -1,0 +1,340 @@
+<html><head></head><body>
+  <div id="sbo-rt-content"><div class="chapter" title="Chapter 2. Understanding Cython"><div class="titlepage"><div><div><h1 class="title"><a id="ch02"/>Chapter 2. Understanding Cython</h1></div></div></div><p>As I mentioned previously, there are a number of methods of using Cython. As the basics are very familiar to any Python programmer, it's important to review the linking models before getting into the programming language. This is what drives the design of applications when using Cython.</p><p>Next, we will get more familiar with the Cython programming language constructs, namely, the distinction between <code class="literal">cdef</code> and <code class="literal">cpdef</code>. Then, we will look at getting the most out of Cython by interfacing directly with native C types. Later in this book, we will see that it's possible to use native C++ STL container types. This is where you will gain the optimizations in execution, as no Python runtime is required to work with native types.</p><p>Finally, we will see how easy it is to work with callbacks to and from C and Python code. This is an interesting technique whereby you can offload logic from C code to Python.</p><p>Therefore, in this chapter, we will be diving into the following topics:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Linking models</li><li class="listitem" style="list-style-type: disc">Cython keyword – cdef</li><li class="listitem" style="list-style-type: disc">Typedef and function pointers</li><li class="listitem" style="list-style-type: disc">The public keyword</li><li class="listitem" style="list-style-type: disc">Keyword cpdef</li><li class="listitem" style="list-style-type: disc">Logging from C/C++ into Python</li><li class="listitem" style="list-style-type: disc">Using Python ConfigParser from C/C++</li><li class="listitem" style="list-style-type: disc">Callbacks from Python to C/C++</li><li class="listitem" style="list-style-type: disc">Cython PXD</li><li class="listitem" style="list-style-type: disc">Integration with build systems</li></ul></div><div class="section" title="Linking models"><div class="titlepage"><div><div><h1 class="title"><a id="ch02lvl1sec11"/>Linking models</h1></div></div></div><p>Linking models <a id="id19" class="indexterm"/>are extremely important when considering how we can extend or embed things in native applications. There are two main linking models for Cython:</p><p>Fully embedded Python within C/C++ code, which looks like the following screenshot:</p><div class="mediaobject"><img src="images/B04685_02_01.jpg" alt="Linking models"/></div><p>Using this method of embedding the Python runtime into a native application means you initiate execution of code directly from any point in your C/C++ code, as opposed to the <a class="link" href="ch01.html" title="Chapter 1. Cython Won't Bite">Chapter 1</a>, <span class="emphasis"><em>Cython Won't Bite</em></span> where we had to run the Python interpreter and call an import to execute native code.</p><p>For the sake of completeness, here is the import model of using Cython:</p><div class="mediaobject"><img src="images/B04685_02_02.jpg" alt="Linking models"/></div><p>This would be a more <a id="id20" class="indexterm"/>Pythonic approach to Cython, and will be helpful if your code base is mostly Python. We will review an example of the Python <code class="literal">lxml</code> module, which provides a Cython backend, later in this book, and we can compare it to the native Python backend to review the speed and execution of both code bases to perform the same task.</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Cython keyword – cdef"><div class="titlepage"><div><div><h1 class="title"><a id="ch02lvl1sec12"/>Cython keyword – cdef</h1></div></div></div><p>The <code class="literal">cdef</code> keyword<a id="id21" class="indexterm"/> tells the compiler that this statement is a native C type or native function. Remember from <a class="link" href="ch01.html" title="Chapter 1. Cython Won't Bite">Chapter 1</a>, <span class="emphasis"><em>Cython Won't Bite</em></span> that we used this line to declare the C prototype function:</p><div class="informalexample"><pre class="programlisting">cdef int AddFunction(int, int)</pre></div><p>This is the line that let us wrap the native C function into a Python callable using the Python <code class="literal">def</code> keyword. We can use this in many contexts, for example, we can declare normal variables for use within a function to speed up execution:</p><div class="informalexample"><pre class="programlisting">def square(int x):
+    return x ** 2</pre></div><p>This is a trivial example, but it will tell the compiler that we will always be squaring an integer. However, for normal Python code, it's a little more complicated as Python has to worry a lot more about losing precision when it comes to handling many different types. But in this case, we know exactly what the type is and how it can be handled.</p><p>You might also have noticed that this is a simple <code class="literal">def</code> function, but because it will be fed to the Cython compiler, this <a id="id22" class="indexterm"/>will work just fine, and handle the typed parameter as you would expect.</p><div class="section" title="Structs"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec11"/>Structs</h2></div></div></div><p>C structs<a id="id23" class="indexterm"/> can be worked with directly in Cython. For example, this header declares a simple <code class="literal">struct</code>:</p><div class="informalexample"><pre class="programlisting">#ifndef __MYCODE_H__
+#define __MYCODE_H__
+
+<span class="strong"><strong>struct mystruct {</strong></span>
+<span class="strong"><strong>  char * string;</strong></span>
+<span class="strong"><strong>  int integer;</strong></span>
+<span class="strong"><strong>  char ** string_array;</strong></span>
+<span class="strong"><strong>};</strong></span>
+
+extern void printStruct (struct mystruct *);
+
+#endif //__MYCODE_H__</pre></div><p>This random <code class="literal">struct</code> will demonstrate several concepts, including working with an array. Firstly, we must declare the layout of the <code class="literal">struct</code> inside Cython. We can again use the <code class="literal">cdef</code> block syntax. Everything within that block is a <code class="literal">cdef</code> and will include the specified header, which is important when the output from the Cython compiler is compiled via GCC or Clang:</p><div class="informalexample"><pre class="programlisting">cdef extern from "mycode.h":
+<span class="strong"><strong>  struct mystruct:</strong></span>
+<span class="strong"><strong>    char * string</strong></span>
+<span class="strong"><strong>    int integer</strong></span>
+<span class="strong"><strong>    char ** string_array</strong></span>
+  void printStruct (mystruct *)</pre></div><p>Now that we have declared the prototype <code class="literal">printStruct</code> function, we can use this to verify the data outside of Cython's scope. To work with this raw data type, we will make a <code class="literal">testStruct</code> Python callable, which we will invoke using a simple Python import:</p><div class="informalexample"><pre class="programlisting">def testStruct ():
+<span class="strong"><strong>    cdef mystruct s</strong></span>
+<span class="strong"><strong>    cdef char *array [2]</strong></span>
+    s.string = "Hello World"
+<span class="strong"><strong>    s.integer = 2</strong></span>
+    array [0] = "foo"
+    array [1] = "bar"
+    s.string_array = array
+<span class="strong"><strong>    printStruct (&amp;s)</strong></span>
+</pre></div><p>Let's look at this more closely. We firstly declare an instance of the <code class="literal">struct</code> on the stack. Next, we declare a C-String array of size 2. The next lines will look familiar via setting each of the members of the <code class="literal">struct</code> with a value. But notice that we declared our string array on the stack and then set the string array member to this instance. This is important as Cython will rely on the programmer to understand memory and stack versus heap properly. But it's important to notice that passing strings from language to language is completely trivial.</p><p>The final caveat with structs is while defining a <code class="literal">cdef</code> declaration for a function. If a parameter is a struct, you never declare it as follows:</p><div class="informalexample"><pre class="programlisting">  void myfunc (struct mystruct * x)</pre></div><p>Instead, we simply use the following:</p><div class="informalexample"><pre class="programlisting">  void myfunc (mystruct * x)</pre></div><p>Cython will figure it out.</p><p>There are a few subtleties with the <code class="literal">testStruct</code> function. In Cython, we have the reference operator '<code class="literal">&amp;</code>' that works just as in C. Therefore, with this <code class="literal">struct</code> on the stack, we can pass a pointer via the reference operator just like in C.</p><p>Note that we <a id="id24" class="indexterm"/>don't have a '<code class="literal">→</code>' operator in Cython. When accessing members inside the <code class="literal">struct</code> (even if it is a pointer), we simply use the '<code class="literal">.</code>' operator. Cython understands the context and will handle it.</p><p>From the previous example and for the sake of completeness we can implement the <code class="literal">printStruct</code> function simply as:</p><div class="informalexample"><pre class="programlisting">#include &lt;stdio.h&gt;
+#include "mycode.h"
+
+void printStruct (struct mystruct * s)
+{
+    printf(".string = %s\n", s-&gt;string);
+    printf(".integer = %i\n", s-&gt;integer);
+    printf(".string_array = \n");
+
+    int i;
+    for (i = 0; i &lt; s-&gt;integer; ++i)
+        printf ("\t[%i] = %s\n", i, s-&gt;string_array [i]);
+}</pre></div><p>This demonstrates even when we initialize the C struct from within Cython code it's a perfectly valid C type. A simple run of this in the downloaded code is as follows:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ cd chapter2/cpy-cdef-reference</strong></span>
+<span class="strong"><strong>$ make</strong></span>
+<span class="strong"><strong>$ python</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; from mycodepy import testStruct</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; testStruct ()</strong></span>
+<span class="strong"><strong>.string = Hello World</strong></span>
+<span class="strong"><strong>.integer = 2</strong></span>
+<span class="strong"><strong>.string_array =</strong></span>
+<span class="strong"><strong>  [0] = foo</strong></span>
+<span class="strong"><strong>  [1] = bar</strong></span>
+</pre></div><p>This demonstrates<a id="id25" class="indexterm"/> that Cython can work with C structs—it initialized the C struct and assigned its data members, as you would expect if it was from C.</p></div><div class="section" title="Enums"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec12"/>Enums</h2></div></div></div><p>Interfacing with C enums<a id="id26" class="indexterm"/> is simple. If you have the following enum in C:</p><div class="informalexample"><pre class="programlisting">enum cardsuit {
+   CLUBS,
+   DIAMONDS,
+   HEARTS,
+   SPADES
+};</pre></div><p>Then this can be expressed as the following Cython declaration:</p><div class="informalexample"><pre class="programlisting">cdef enum cardsuit:
+  CLUBS, DIAMONDS, HEARTS, SPADES</pre></div><p>Then, use the following as the <code class="literal">cdef</code> declaration within our code:</p><div class="informalexample"><pre class="programlisting">cdef cardsuit card = CLUBS</pre></div><p>It's a very small example, but it's important to see how simple it is.</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Typedef and function pointers"><div class="titlepage"><div><div><h1 class="title"><a id="ch02lvl1sec13"/>Typedef and function pointers</h1></div></div></div><p>The <code class="literal">typedef</code> in C/C++ code allows the programmer to give a new name or alias to any type. For <a id="id27" class="indexterm"/>example, one <a id="id28" class="indexterm"/>could <code class="literal">typedef</code> an <code class="literal">int</code> to <code class="literal">myint</code>. Or you can just simply <code class="literal">typedef</code> a struct so that you don't have to refer to the struct with the keyword struct every time. For example, consider this C <code class="literal">struct</code> and <code class="literal">typedef</code>:</p><div class="informalexample"><pre class="programlisting">struct foobar {
+  int x;
+  char * y;
+};
+<span class="strong"><strong>typedef struct foobar foobar_t;</strong></span>
+</pre></div><p>In Cython, this can be described by the following:</p><div class="informalexample"><pre class="programlisting">cdef struct foobar:
+    int x
+    char * y
+<span class="strong"><strong>ctypedef foobar foobar_t</strong></span>
+</pre></div><p>Note we can also <code class="literal">typedef</code> pointer types as below:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>ctypedef int * int_ptr</strong></span>
+</pre></div><p>We can <a id="id29" class="indexterm"/>also <code class="literal">typedef</code> function C/C++ pointers, as follows:</p><div class="informalexample"><pre class="programlisting">typedef void (*cfptr) (int)</pre></div><p>In Cython, this will be as follows:</p><div class="informalexample"><pre class="programlisting">ctypedef void (*cfptr)(int)</pre></div><p>Using the <a id="id30" class="indexterm"/>function pointer is just as you would expect:</p><div class="informalexample"><pre class="programlisting">cdef cfptr myfunctionptr = &amp;myfunc</pre></div><p>There is some magic going on here with function pointers as it's simply not safe for raw Python code to directly call a Python function or vice versa. Cython understands this case and will wrap things up for us to make the call safely.</p></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="The public keyword"><div class="titlepage"><div><div><h1 class="title"><a id="ch02lvl1sec14"/>The public keyword</h1></div></div></div><p>This is a very <a id="id31" class="indexterm"/>powerful keyword in Cython. It allows any <code class="literal">cdef</code> declaration with the <code class="literal">public</code> modifier to output a respective C/C++ header with the relative declaration accessible from C/C++. For example, we can declare:</p><div class="informalexample"><pre class="programlisting">cdef public struct CythonStruct:
+    size_t number_of_elements;
+    char ** elements;</pre></div><p>Once the compiler handles this, you will have an output of <code class="literal">cython_input.h</code>:</p><div class="informalexample"><pre class="programlisting"> struct CythonStruct {
+    size_t number_of_elements;
+    char ** elements;
+};</pre></div><p>The main caveat, if you're going to call the Python <code class="literal">public</code> declarations directly from C, is that, if your link model is fully embedded and linked against <code class="literal">libpython.so</code>, you need to use some boilerplate code to initialize Python correctly:</p><div class="informalexample"><pre class="programlisting">#include &lt;Python.h&gt;
+
+int main(int argc, char **argv) {
+    Py_Initialize ();
+    // code in here
+    Py_Finalize ();
+    return 0;
+}</pre></div><p>And before calling anything with the function, you need to initialize the Python module example if you have a <code class="literal">cythonfile.pyx</code> file, and compile it with the <code class="literal">public</code> declarations as follows:</p><div class="informalexample"><pre class="programlisting">cdef <span class="strong"><strong>public</strong></span> void <span class="strong"><strong>cythonFunction ():</strong></span>
+    print "inside cython function!!!"</pre></div><p>You will get not only a <code class="literal">cythonfile.c</code> file, but also <code class="literal">cythonfile.h</code>, which declares a function called <code class="literal">extern void initcythonfile (void)</code>. So, before calling anything related to the Cython code, use the following:</p><div class="informalexample"><pre class="programlisting">/* Boiler plate init Python */
+  Py_SetProgramName (argv [0]);
+  Py_Initialize ();
+  /* Init our config module into Python memory */
+<span class="strong"><strong>  initpublicTest ();</strong></span>
+<span class="strong"><strong>  cythonFunction ();</strong></span>
+
+  /* cleanup python before exit ... */
+  Py_Finalize ();</pre></div><p>Calling<a id="id32" class="indexterm"/> <code class="literal">initcythonfile</code> can be considered as the following in Python:</p><div class="informalexample"><pre class="programlisting">import cythonfile</pre></div><p>Just like the previous examples, this only affects you if you're generating a fully embedded Python binary. If you are simply compiling a native module, you will not need to do this step.</p></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Keyword cpdef"><div class="titlepage"><div><div><h1 class="title"><a id="ch02lvl1sec15"/>Keyword cpdef</h1></div></div></div><p>So far, we have seen<a id="id33" class="indexterm"/> two different function declarations in Cython, <code class="literal">def</code> and <code class="literal">cdef</code>, to define functions. There is one more declaration—<code class="literal">cpdef</code>. The <code class="literal">def</code> is a Python-only function, so it is only callable from Python or Cython code blocks; calling from C does not work. The <code class="literal">cdef</code> is the opposite; this means that it's callable from C and not from Python. For example, if we create a function such as:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>cpdef</strong></span> public test (<span class="strong"><strong>int</strong></span> x):
+   …
+<span class="strong"><strong>  return 1</strong></span>
+</pre></div><p>It will generate the following function prototype:</p><div class="informalexample"><pre class="programlisting">__PYX_EXTERN_C DL_IMPORT(<span class="strong"><strong>PyObject</strong></span>) <span class="strong"><strong>*test</strong></span>(<span class="strong"><strong>int</strong></span>, int <span class="strong"><strong>__pyx_skip_dispatch</strong></span>);</pre></div><p>The <code class="literal">public</code> keyword will make sure we generate the needed header so that we can call it from C. Calling from pure Python, we can work with this as if it was just any other Python function. The drawback of using <code class="literal">cpdef</code> is that the native return type is <code class="literal">PyObject *</code>, which requires you to know exactly what the return type is and consult the Python API documentation to access the data. I prefer keeping bindings between the languages simpler, as this is okay for void functions, and will be easier. But if you want to return the data, it can be frustrating. For example, from the preceding code snippet, if we know that we are returning an <code class="literal">int</code> type, we could use the following:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>long</strong></span> returnValue = <span class="strong"><strong>PyInt_AsLong</strong></span> (<span class="strong"><strong>test</strong></span> (1, 0))</pre></div><p>Notice the extra<a id="id34" class="indexterm"/> argument <code class="literal">__pyx_skip_dispatch</code>. As this is an implementation-specific argument, set this to <code class="literal">0</code>, and your call should work the way you expect, taking the first parameter as the argument specified. The reason we use <code class="literal">long</code> is that every integer in Python is represented as long. You <a id="id35" class="indexterm"/>will need to refer to <a class="ulink" href="https://docs.python.org/2/c-api/">https://docs.python.org/2/c-api/</a> for any other datatypes to get the data out of <code class="literal">PyObject</code>.</p><p>Note that using a public <code class="literal">cpdef</code> Cython function isn't really a good idea. Yes, it means you create functions that are callable from both C/C++ and Python with no change. But you lose the type safety which Cython can provide and is so important.</p></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Logging from C/C++ into Python"><div class="titlepage"><div><div><h1 class="title"><a id="ch02lvl1sec16"/>Logging from C/C++ into Python</h1></div></div></div><p>An example of everything <a id="id36" class="indexterm"/>brought together is reusing the Python logging module directly from C. We want a few macros, such as <code class="literal">info</code>, <code class="literal">error</code>, and <code class="literal">debug</code> that can all handle a variable number of arguments and works as if we are calling a simple <code class="literal">printf</code> method.</p><p>To achieve this, we must make a Python logging backend for our C/C++ code. We need an initialization function to tell Python about our output <code class="literal">logfile</code>, and some wrappers for each <code class="literal">info</code>, <code class="literal">error</code>, and <code class="literal">debug</code>. We can simply write the public <code class="literal">cdef</code> wrappers as:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>import logging</strong></span>
+
+<span class="strong"><strong>cdef public void initLoggingWithLogFile(const char * logfile):</strong></span>
+<span class="strong"><strong>    logging.basicConfig(filename = logfile,</strong></span>
+<span class="strong"><strong>                        level = logging.DEBUG,</strong></span>
+<span class="strong"><strong>                        format = '%(levelname)s %(asctime)s: %(message)s',</strong></span>
+<span class="strong"><strong>                        datefmt = '%m/%d/%Y %I:%M:%S')</strong></span>
+
+<span class="strong"><strong>cdef public void python_info(char * message):</strong></span>
+<span class="strong"><strong>    logging.info(message)</strong></span>
+
+<span class="strong"><strong>cdef public void python_debug(char * message):</strong></span>
+<span class="strong"><strong>    logging.debug(message)</strong></span>
+
+<span class="strong"><strong>cdef public void python_error(char * message):</strong></span>
+<span class="strong"><strong>    logging.error(message)</strong></span>
+</pre></div><p>Remember that we <a id="id37" class="indexterm"/>declare our public functions as <code class="literal">cdef</code>; if they were simply <code class="literal">def</code>, they wouldn't be callable from C/C++. We can make this even more awesome by using C99 <code class="literal">__VA_ARGS__ </code>(this allows us to pass a variable number of arguments to a function hence the name variable arguments, this is how <code class="literal">printf</code> works) and a compiler attribute that enforces argument checking like the warnings and errors you get from wrong format specifiers when using the <code class="literal">printf</code> family of functions. Now, we can declare and define our C API to use the Python logging backend:</p><div class="informalexample"><pre class="programlisting">#ifndef __NATIVE_LOGGING_H__
+#define __NATIVE_LOGGING_H__
+#define printflike __attribute__ ((format (printf, 3, 4)))
+
+extern void printflike native_logging_info(const char *, unsigned, const char *, ...);
+extern void printflike native_logging_debug(const char *, unsigned, const char *, ...);
+extern void printflike native_logging_error(const char *, unsigned, const char *, ...);
+
+#define info(...)  native_logging_info(__FILE__, __LINE__, __VA_ARGS__)
+#define error(...) native_logging_debug(__FILE__, __LINE__, __VA_ARGS__)
+#define debug(...) native_logging_error(__FILE__, __LINE__, __VA_ARGS__)
+
+extern void SetupNativeLogging(const char * logFileName);
+extern void CloseNativeLogging();
+
+#endif // __NATIVE_LOGGING_H__</pre></div><p>Now, we need to fill out each of these functions, beginning with <code class="literal">SetupNativeLogging</code>:</p><div class="informalexample"><pre class="programlisting">void SetupNativeLogging(const char * logFileName)
+{
+    /* Boiler plate init Python */
+    Py_Initialize();
+
+    /* Init our config module into Python memory */
+    initPythonLoggingBackend();
+
+    /* call directly into our cython module  */
+    initLoggingWithLogFile(logFileName);
+}</pre></div><p>This function is<a id="id38" class="indexterm"/> responsible for initializing Python and the Python logging backend module. This is equivalent to an <code class="literal">import</code> statement in Python but because we are in the driving seat in C we must load it natively. As well as its respective <code class="literal">initLoggingWithLogFile</code> so that the logger will output a log file. We can implement a simple C <code class="literal">info</code>, <code class="literal">error</code>, and <code class="literal">debug</code> by using the <code class="literal">va_list</code> and <code class="literal">vsprintf</code> family of functions to turn the argument list and format into a C string ready to print:</p><div class="informalexample"><pre class="programlisting">void native_logging_info(const char * file, unsigned line, const char * fmt, ...)
+{
+    char buffer[256];
+    va_list args;
+    va_start(args, fmt);
+    vsprintf(buffer, fmt, args);
+    va_end(args);
+
+// append file/line information
+    char buf[512];
+    snprintf(buf, sizeof(buf), "%s:%i -&gt; %s", file, line, buffer);
+
+// call python logging.info
+    python_info(buf);
+}</pre></div><p>Now that we have these macros calling their respective log functions within C, we simply need to define the <code class="literal">CloseNativeLogging</code>, which is simple as we just need to close down Python:</p><div class="informalexample"><pre class="programlisting">void CloseNativeLogging()
+{
+    /* cleanup python before exit ... */
+    Py_Finalize();
+}</pre></div><p>By wiring all this up together, we have a very nice way of using Python within C/C++, as if it was nothing strange:</p><div class="informalexample"><pre class="programlisting">#include "NativeLogging.h"
+
+int main(int argc, char **argv)
+{
+    // we want to ensure we use a command line argument for the output log file
+    if (argc &lt; 2) {
+        return -1;
+    }
+
+    // use the first argument as log file
+    SetupNativeLogging(argv[1]);
+
+    // log out some stuff at different levels
+    info("info message");
+    debug("debug message");
+    error("error message");
+
+    // close up everything including Python
+    CloseNativeLogging();
+
+    return 0;
+}</pre></div><p>Note that this is the <a id="id39" class="indexterm"/>fully embedded link model for Cython. I decided to wrap all Python-specific code within the implementation. It's very easy to see how you could even migrate from using an old legacy logging API to using Python logging to get access to the massive feature set available, such as logging, to a network socket.</p><p>Running this example, we can see the output as we would expect:</p><div class="informalexample"><pre class="programlisting">$ cd chapter2/PythonLogging
+$ make
+$ ./example output.log
+$ cat output.log
+INFO 10/25/2015 07:04:45: main.c:14 -&gt; info message
+ERROR 10/25/2015 07:04:45: main.c:15 -&gt; debug message
+DEBUG 10/25/2015 07:04:45: main.c-16 -&gt; error message</pre></div><p>What's really nice here is that we have been able to preserve the line information from C/C++ all the way into the Python code. This example used the function wrapping concepts as well as the embedded linking model. No special programming tricks were used in this example.</p></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Using Python ConfigParser from C/C++"><div class="titlepage"><div><div><h1 class="title"><a id="ch02lvl1sec17"/>Using Python ConfigParser from C/C++</h1></div></div></div><p>I really like<a id="id40" class="indexterm"/> Python's <code class="literal">ConfigParser</code> API. I find <a id="id41" class="indexterm"/>using an INI style config file to be very readable and nice to work with as opposed to using XML or JSON. There are very few cross-platform libraries available to do this. However, when you have Cython, all you need is Python.</p><p>For this example, we will create a sample <code class="literal">INI</code> configuration file and write a simple API to access a list of sections, list of keys available in a section, and a way to get the value from a specified key within a section. These three functions will allow a programmer to access any <code class="literal">INI</code> file.</p><p>A sample INI file could be:</p><div class="informalexample"><pre class="programlisting">[example]
+number = 15
+path = some/path/to/something
+
+[another_section]
+test = something</pre></div><p>An INI file is<a id="id42" class="indexterm"/> comprised of sections within the <a id="id43" class="indexterm"/>square brackets, followed by keys and values. It's a very simple way of doing configuration. Python's API allows for variables and substitution depending on the flavor of the <code class="literal">ConfigParser</code>. Firstly, we need a way to query the list of sections within an INI file:</p><div class="informalexample"><pre class="programlisting">from ConfigParser import SafeConfigParser
+from libc.stdlib cimport malloc
+
+<span class="strong"><strong>cdef public struct ConfigSections:</strong></span>
+<span class="strong"><strong>    size_t number_of_sections</strong></span>
+<span class="strong"><strong>    char ** sections</strong></span>
+
+cdef public void <span class="strong"><strong>ParseSectionsFromConfig</strong></span>(const char *config_path, ConfigSections * const sections):
+    parser = SafeConfigParser()
+    with open(config_path) as config_fd:
+        try:
+            parser.readfp(config_fd)
+            sectionsInConfig = parser.sections()
+            sections.number_of_sections = len(sectionsInConfig)
+            sections.sections = &lt;char **&gt;malloc(sections.number_of_sections)
+            for i in range(sections.number_of_sections):
+                sections.sections[i] = sectionsInConfig[i]
+        except:
+            sections.number_of_sections = 0
+            sections.sections = NULL</pre></div><p>There are a few things going on here to take note of. Firstly, the following:</p><div class="informalexample"><pre class="programlisting">cdef public struct ConfigSections</pre></div><p>This <code class="literal">public struct</code> declaration, as we have seen before, will be the output into the respective header file. This means we don't have to define this inside the C/C++ code first:</p><div class="informalexample"><pre class="programlisting">cdef public void ParseSectionsFromConfig(const char *config_path, ConfigSections * const sections):</pre></div><p>This function is designed to take the path to the configuration file as a string. It also takes the pointer to the <code class="literal">struct ConfigSections</code>. This <code class="literal">ConfigSections</code> structure allows us to return a list of sections back into C code safely. C is a very simple language and does not have any nice variable length structures like C++'s STL library.</p><p>So, we must return a pointer to a list of C-Strings and the number of strings in that list. Since this structure is passed as an argument, the Cython code does not have to allocate and return a pointer, which is less efficient and not a standard C approach for small structures such as this. Note that we do have to allocate the list of strings:</p><div class="informalexample"><pre class="programlisting">sections.sections = <span class="strong"><strong>&lt;char **&gt;</strong></span>malloc(sections.number_of_sections)</pre></div><p>As with C++, Cython code requires an explicit cast when allocating memory with malloc. We will review this cast syntax later for more advanced usage. Next, we need to implement:</p><div class="informalexample"><pre class="programlisting">cdef public void <span class="strong"><strong>ParseKeysFromSectionFromConfig</strong></span>(const char * config_path, const char * section, ConfigSectionKeys * keys):</pre></div><p>And finally, to get<a id="id44" class="indexterm"/> values from keys within<a id="id45" class="indexterm"/> sections:</p><div class="informalexample"><pre class="programlisting">cdef public char * <span class="strong"><strong>ParseConfigKeyFromSection</strong></span>(const char *config_path, const char * section, const char * key):</pre></div><p>Now that we have all these functions, we can write C code to iterate over the sections in any given config file, and print everything out programmatically to demonstrate how powerful this can be:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>#include "PythonConfigParser.h"</strong></span>
+
+static
+void print_config(const char * config_file)
+{
+<span class="strong"><strong>    struct ConfigSections sections;</strong></span>
+<span class="strong"><strong>    ParseSectionsFromConfig</strong></span>(config_file, &amp;sections);
+
+    size_t i;
+    for (i = 0; i &lt; sections.number_of_sections; ++i) {
+        const char *current_section = sections.sections[i];
+        printf("[%s]\n", current_section);
+
+<span class="strong"><strong>        struct ConfigSectionKeys sectionKeys;</strong></span>
+<span class="strong"><strong>        ParseKeysFromSectionFromConfig</strong></span>(config_file, current_section, &amp;sectionKeys);
+
+        size_t j;
+        for (j = 0; j &lt; sectionKeys.number_of_keys; ++j) {
+            const char * current_key = sectionKeys.keys[j];
+            char *key_value = <span class="strong"><strong>ParseConfigKeyFromSection</strong></span>(config_file, current_section, current_key);
+
+            printf("%s = %s\n", current_key, key_value);
+        }
+<span class="strong"><strong>        free(sectionKeys.keys);</strong></span>
+    }
+<span class="strong"><strong>    free(sections.sections);</strong></span>
+}</pre></div><p>Using the <a id="id46" class="indexterm"/>technique of passing reference to <a id="id47" class="indexterm"/>allocated structs on the stack, we eliminate a lot of memory management, but because we allocated memory to the arrays within each struct, we must free them. But note that we can simply return the value for <code class="literal">ParseConfigKeyFromSection</code>:</p><div class="informalexample"><pre class="programlisting">cdef public <span class="strong"><strong>char *</strong></span> ParseConfigKeyFromSection(const char *config_path, const char * section, const char * key):
+    parser = SafeConfigParser()
+    with open(config_path) as config_fd:
+        try:
+            parser.readfp(config_fd)
+<span class="strong"><strong>            return parser.get(section, key)</strong></span>
+        except:
+            return NULL</pre></div><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note02"/>Note</h3><p>When returning C strings from Cython functions, we do not need to free anything, as this is managed by the Python garbage collector. It feels very strange to be able to return strings like this from Cython, but it's perfectly fine to do so.</p></div></div><p>Running this example, we can see:</p><div class="informalexample"><pre class="programlisting">$ cd Chapter2/PythonConfigParser
+$ make
+$ ./example sample.cfg
+[example]
+number = 15
+path = some/path/to/something
+[another_section]
+test = something</pre></div><p>You can see that we successfully parsed out all sections, keys, and values from the INI file programmatically.</p></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Callbacks from Python to C/C++"><div class="titlepage"><div><div><h1 class="title"><a id="ch02lvl1sec18"/>Callbacks from Python to C/C++</h1></div></div></div><p>Callbacks are used <a id="id48" class="indexterm"/>extensively in asynchronous systems. Libraries such as libevent provide a powerful asynchronous core to process events. Let's build an example to set a C function as a callback into a Python backend, which will notify back again into the C code. Firstly, we will declare a public callback function <code class="literal">typedef</code>:</p><div class="informalexample"><pre class="programlisting">cdef public:
+    ctypedef void (*callback)(int)</pre></div><p>This will output a callback <code class="literal">typedef</code>. Next, we can declare a global callback on the stack:</p><div class="informalexample"><pre class="programlisting">cdef callback GlobalCallback</pre></div><p>Once this is set, we can then notify the <code class="literal">callback</code> easily. Next, we need a way to set the <code class="literal">callback</code> and another to call the <code class="literal">callback</code>:</p><div class="informalexample"><pre class="programlisting">cdef public void SetCallback(callback cb):
+    global GlobalCallback
+    GlobalCallback = cb</pre></div><p>Notice the <code class="literal">global</code> keyword from Python through which the compiler knows to use the <code class="literal">global</code> keyword and not create a temporary instance from within that suite:</p><div class="informalexample"><pre class="programlisting">cdef public void Notify(int value):
+    global GlobalCallback
+    if GlobalCallback != &lt;callback&gt;0:
+        GlobalCallback(value)</pre></div><p>The <code class="literal">Notify</code> will take an argument and pass this argument to the callback. Again, we need to use the <code class="literal">global</code> keyword to ensure that the compiler will use the proper <code class="literal">global</code> keyword. Using the cast again, we ensure that we can never call a null <code class="literal">callback</code>. Next, we need to declare a <code class="literal">callback</code> inside the C code:</p><div class="informalexample"><pre class="programlisting">static
+void MyCallback(int val)
+{
+    printf("[MYCALLBACK] %i\n", val);
+}</pre></div><p>Then, we can set the <code class="literal">callback</code>:</p><div class="informalexample"><pre class="programlisting">SetCallback(&amp;MyCallback);</pre></div><p>And finally, <code class="literal">Notify</code>:</p><div class="informalexample"><pre class="programlisting">Notify(12345);</pre></div><p>This is the output we should expect:</p><div class="informalexample"><pre class="programlisting">$ cd Chapter2/PythonCallbacks
+$ make
+$ ./example
+[MYCALLBACK] 12345</pre></div><p>Later, we will use this<a id="id49" class="indexterm"/> more extensively to produce a simple Python message broker.</p></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Cython PXD"><div class="titlepage"><div><div><h1 class="title"><a id="ch02lvl1sec19"/>Cython PXD</h1></div></div></div><p>The use of PXD files is <a id="id50" class="indexterm"/>very similar to that of header files in C/C++. When writing bindings to any C/C++ code, it is a good practice to declare all C/C++ interfaces within a <code class="literal">.pxd</code> file. This stands for<a id="id51" class="indexterm"/> <span class="strong"><strong>Python External Declarations</strong></span>, at least it does in my mind. So, when we add blocks such as this:</p><div class="informalexample"><pre class="programlisting">cdef extern from "AddFunction.h":
+    cdef int AddFunction(int, int)</pre></div><p>We can instead put this directly into a <code class="literal">bindings.pxd</code> file and import this at any time inside any <code class="literal">.pyx</code> file:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>cimport</strong></span> bindings</pre></div><p>Notice the distinction between <code class="literal">cimport</code> for the <code class="literal">.pxd</code> files and a simple import for all normal Python imports.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="tip03"/>Tip</h3><p>Cython's input filenames cannot handle dashes (<code class="literal">-)</code> in their filenames. It's best to try and use CamelCase, since you can't use <code class="literal">cimport my-import</code> in Python.</p></div></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Integration with build systems"><div class="titlepage"><div><div><h1 class="title"><a id="ch02lvl1sec20"/>Integration with build systems</h1></div></div></div><p>This topic is basically dependent on the<a id="id52" class="indexterm"/> linking model that you choose if you are to choose the shared-library approach. I would recommend using Python <code class="literal">distutils</code> and if you are going for embedded Python, and if you like GNU or autotools, this section gives an example you can use.</p><div class="section" title="Python Distutils"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec13"/>Python Distutils</h2></div></div></div><p>When compiling a native Python module, we can <a id="id53" class="indexterm"/>use <code class="literal">distutils</code> and <code class="literal">cythonize</code> inside our <code class="literal">Setup.py</code> build. It's the preferred way in Python to use Cython as part of the build:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>from distutils.core import setup</strong></span>
+<span class="strong"><strong>from Cython.Build import</strong></span> cythonize
+
+setup(
+    ext_modules = cythonize("<span class="strong"><strong>sourcecode.pyx</strong></span>")
+)</pre></div><p>This build file will support<a id="id54" class="indexterm"/> whichever version of Python you invoke the script with. When you run the build, your output will be of the same name of the input source code as a shared module in this case <code class="literal">sourcecode.so</code>.</p></div><div class="section" title="GNU/Autotools"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec14"/>GNU/Autotools</h2></div></div></div><p>To embed Python code within<a id="id55" class="indexterm"/> C/C++ applications using the autotools build system the following snippet will help you. It will use <code class="literal">python-config</code> to get the compiler and linker flags necessary to do so:</p><div class="informalexample"><pre class="programlisting">found_python=no
+<span class="strong"><strong>AC_ARG_ENABLE(</strong></span>
+<span class="strong"><strong>        python,</strong></span>
+<span class="strong"><strong>        AC_HELP_STRING(--enable-python, create python support),</strong></span>
+<span class="strong"><strong>        found_python=yes</strong></span>
+)
+AM_CONDITIONAL(IS_PYTHON, test "x%found_python" = xyes)
+
+PYLIBS=""
+PYINCS=""
+if test "x$found_python" = xyes; then
+<span class="strong"><strong>   AC_CHECK_PROG(CYTHON_CHECK,cython,yes)</strong></span>
+   if test x"$CYTHON_CHECK" != x"yes" ; then
+      AC_MSG_ERROR([Please install cython])
+   fi
+<span class="strong"><strong>   AC_CHECK_PROG(PYTHON_CONF_CHECK,python-config,yes)</strong></span>
+<span class="strong"><strong>   PYLIBS=`python-config --libs`</strong></span>
+<span class="strong"><strong>   PYINCS=`python-config --includes`</strong></span>
+   if test "x$PYLIBS" == x; then
+      AC_MSG_ERROR("python-dev not found")
+   fi
+fi
+<span class="strong"><strong>AC_SUBST(PYLIBS)</strong></span>
+<span class="strong"><strong>AC_SUBST(PYINCS)</strong></span>
+</pre></div><p>This adds the <code class="literal">--enable-python</code> switch to your configure script. You now have the Cython command <code class="literal">found</code> and the <code class="literal">PYLIBS</code> and <code class="literal">PYINCS</code> variables for the compilation flags you need to compile. Now, you need a snippet to understand how to compile <code class="literal">*.pyx</code> in your sources in automake:</p><div class="informalexample"><pre class="programlisting">bin_PROGRAMS = myprog
+ACLOCAL_AMFLAGS = -I etc
+CFLAGS += -I$(PYINCS)
+
+LIBTOOL_DEPS = @LIBTOOL_DEPS@
+libtool: $(LIBTOOL_DEPS)
+        $(SHELL) ./config.status libtool
+
+<span class="strong"><strong>SUFFIXES = .pyx</strong></span>
+<span class="strong"><strong>.pyx.c:</strong></span>
+<span class="strong"><strong>        @echo "  CPY   " $&lt;</strong></span>
+<span class="strong"><strong>        @cython -2 -o $@ $&lt;</strong></span>
+
+myprog_SOURCES = \
+        src/bla.pyx \
+...
+myprog_LDADD = \
+<span class="strong"><strong>        $(PYLIBS)</strong></span>
+</pre></div><p>When you're comfortable <a id="id56" class="indexterm"/>with understanding where your code is and the linking models, embedding Python becomes very easy.</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Summary"><div class="titlepage"><div><div><h1 class="title"><a id="ch02lvl1sec21"/>Summary</h1></div></div></div><p>There are a lot of fundamentals of using Cython in this chapter. It's important to review what you want to achieve when using Cython, since the different ways in which it can be used affects how you design a solution. We investigated the differences between <code class="literal">def</code>, <code class="literal">cdef</code>, and <code class="literal">cpdef</code>. We created public C/C++ declarations of types and callable functions. Using these public declarations, we showed how Python can callback into C code. For me, reusing any Python module within native code is very useful and interesting. I demonstrated how I use the Python <code class="literal">logging</code> and <code class="literal">ConfigParser</code> modules from C code. Appreciating these simple examples, we will see how we can extend C/C++ projects with Python code in the next chapter.</p></div></div>
+</body></html>

@@ -1,0 +1,336 @@
+<html><head></head><body>
+  <div id="sbo-rt-content"><div class="chapter" title="Chapter 3. Extending Applications"><div class="titlepage"><div><div><h1 class="title"><a id="ch03"/>Chapter 3. Extending Applications</h1></div></div></div><p>As mentioned in previous chapters, I want to show you how to interact or extend existing code using Cython. So, let's get right to doing that. Cython<a id="id57" class="indexterm"/> was originally designed to make raw Python computation faster. So, the initial proof of concept for Cython was to enable programmers to take existing Python code and use Cython's <code class="literal">cdef</code> keyword to require native typing to bypass the Python runtime for heavy computation. The culmination of this is increased performance in the time it takes to perform calculations and lower memory usage. It's even possible to write type-safe wrappers to existing Python libraries for fully typed Python code.</p><p>In this chapter, we will first see an example of typing Python code. Next, I will demonstrate the Cython <code class="literal">cdef</code> class, which allow us to wrap native C/C++ types into garbage collected Python classes. We will also see how to extend the native application <span class="strong"><strong>Tmux</strong></span><a id="id58" class="indexterm"/> with Python code by creating a pure Python command object, which is directly embedded into the native code.</p><p>In this chapter, we will cover the following topics:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Cython pure Python code</li><li class="listitem" style="list-style-type: disc">Compiling pure Python code</li><li class="listitem" style="list-style-type: disc">Python garbage collector</li><li class="listitem" style="list-style-type: disc">Extending Tmux</li><li class="listitem" style="list-style-type: disc">Embedding Python</li><li class="listitem" style="list-style-type: disc">Cythonzing struct cmd_entry</li><li class="listitem" style="list-style-type: disc">Implementing a Tmux command</li></ul></div><div class="section" title="Cython pure Python code"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec22"/>Cython pure Python code</h1></div></div></div><p>Let's view a <a id="id59" class="indexterm"/>mathematical application that is actually taken from the Cython documentation. I wrote this equivalent in pure Python so that we can compare the speed. If you open the <code class="literal">primes</code> example for this chapter, you will see two programs—the Cython <code class="literal">primes.pyx</code> example, and my pure Python port. They both look almost the same:</p><div class="informalexample"><pre class="programlisting">def primes(kmax):
+    n = 0
+    k = 0
+    i = 0
+    if kmax &gt; 1000:
+        kmax = 1000
+    p = [0] * kmax
+    result = []
+    k = 0
+    n = 2
+    while k &lt; kmax:
+        i = 0
+        while i &lt; k and n % p[i] != 0:
+            i = i + 1
+        if i == k:
+            p[k] = n
+            k = k + 1
+            result.append(n)
+        n = n + 1
+    return result
+primes (10000)</pre></div><p>This really is a direct<a id="id60" class="indexterm"/> Python port of that Cython code. Both call <code class="literal">primes (10000)</code>, but the evaluation time is very different between them in terms of performance:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ make</strong></span>
+cython --embed primes.pyx
+gcc -g -O2 -c primes.c -o primes.o `python-config --includes`
+gcc -g -O2 -o primes primes.o `python-config –libs`
+<span class="strong"><strong>$ time python pyprimes.py</strong></span>
+        0.18 real         0.17 user         0.01 sys
+<span class="strong"><strong>$ time ./primes</strong></span>
+        0.04 real         0.03 user         0.01 sys</pre></div><p>You can see that the pure Python version was almost five times slower in doing the exact same job. Moreover, nearly every line of code is the same. Cython can do this because we have explicitly expressed the C types, hence there is no type conversion or folding, and we don't even have to use the Python runtime. I want to draw attention to the kind of speedups you can get with just simple code without calling into other native libraries. This is what makes Cython so prevalent in SAGE.</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Compiling pure Python code"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec23"/>Compiling pure Python code</h1></div></div></div><p>Another use for Cython is <a id="id61" class="indexterm"/>to compile Python code. For example, if we go back to the <code class="literal">primes</code> example, we can do the following:</p><div class="informalexample"><pre class="programlisting">$ cython pyprimes.py –embed
+$ gcc -g -O2 pyprimes.c -o <span class="strong"><strong>pyprimes</strong></span> `python-config --includes –libs`</pre></div><p>Then, we can compare the three different versions of the same program: the Cython version using <code class="literal">cdef</code> for native types, the pure Python version running as a Python script, and finally, the Cython-compiled pure Python version, which results in an executable binary of Python code:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">First, the Cython version using native types:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ time ./primes</strong></span>
+<span class="strong"><strong>real    0m0.050s</strong></span>
+<span class="strong"><strong>user    0m0.035s</strong></span>
+<span class="strong"><strong>sys     0m0.013s</strong></span>
+</pre></div></li><li class="listitem" style="list-style-type: disc">Next, the executable pure Python version:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ time ./pyprimes</strong></span>
+<span class="strong"><strong>real    0m0.139s</strong></span>
+<span class="strong"><strong>user    0m0.122s</strong></span>
+<span class="strong"><strong>sys     0m0.013s</strong></span>
+</pre></div></li><li class="listitem" style="list-style-type: disc">And finally, the Python script version:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>philips-macbook:primes redbrain$ time python pyprimes.py</strong></span>
+<span class="strong"><strong>real    0m0.184s</strong></span>
+<span class="strong"><strong>user    0m0.165s</strong></span>
+<span class="strong"><strong>sys     0m0.016s</strong></span>
+</pre></div></li></ul></div><p>The pure Python version runs the slowest, the compiled Python version runs a little bit faster, and finally, the natively-typed Cython version runs the fastest. I think it just draws attention to how well Cython can give you some dynamic language optimizations in several different ways.</p><p>Notice that when compiling the Python version to a binary, I specified <code class="literal">–embed</code> on invoking the Cython compiler. This tells the compiler to <span class="strong"><strong>--embed</strong></span> <a id="id62" class="indexterm"/>a main method for us and to run as you would expect a normal Python script to run.</p><div class="section" title="Avoid Makefiles – pyximport"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec15"/>Avoid Makefiles – pyximport</h2></div></div></div><p>From the previous <a id="id63" class="indexterm"/>example, you<a id="id64" class="indexterm"/> can see that it was code which didn't depend on any outside libraries. To make such code useful, wouldn't it be nice if we could bypass the Makefile and the invocation of compilers? It turns out that, in cases where we do not require linking against other native libraries, we can directly import our <code class="literal">.pyx</code> files into Python programs. You are required, however, to have Cython installed as a dependency.</p><p>Going back to <a class="link" href="ch01.html" title="Chapter 1. Cython Won't Bite">Chapter 1</a>, <span class="emphasis"><em>Cython Won't Bite</em></span>, we can simply import our <code class="literal">helloworld.pyx</code> by importing <code class="literal">pyximport</code> first:</p><div class="informalexample"><pre class="programlisting">&gt;&gt;&gt; import pyximport
+&gt;&gt;&gt; pyximport.install()
+(None, &lt;pyximport.pyximport.PyxImporter object at 0x102fba4d0&gt;)
+&gt;&gt;&gt; import <span class="strong"><strong>helloworld</strong></span>
+Hello World from cython!</pre></div><p>Behind the scenes, Cython is <a id="id65" class="indexterm"/>invoking all the compiler work for you so that you don't have to. But this leads to interesting ideas, such as that you could simply add Cython code to any Python project so long as Cython is a dependency.</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Python garbage collector"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec24"/>Python garbage collector</h1></div></div></div><p>When wrapping up native structs, for <a id="id66" class="indexterm"/>example, it can be very tempting to follow standard <a id="id67" class="indexterm"/>C/C++ idioms and require the Python programmer to call, allocate, and release manually on different objects. This is very tedious and not very Pythonic. Cython allows us to create <code class="literal">cdef</code> classes, which have extra hooks for initialization and deallocation that we can use to control all memory management of structs. These hooks are triggered automatically by the Python garbage collector, making everything nice and simple. Consider the following simple <code class="literal">struct</code>:</p><div class="informalexample"><pre class="programlisting">typedef <span class="strong"><strong>struct data {</strong></span>
+<span class="strong"><strong>  int value;</strong></span>
+<span class="strong"><strong>}</strong></span> data_t;</pre></div><p>We can then write the Cython declaration of the C <code class="literal">struct</code> into <code class="literal">PyData.pxd</code> as follows:</p><div class="informalexample"><pre class="programlisting">cdef extern from "Data.h":
+    struct data:
+        int value
+    ctypedef data data_t</pre></div><p>Now that we have defined the <code class="literal">struct</code>, we can wrap up the <code class="literal">struct</code> into a class:</p><div class="informalexample"><pre class="programlisting">cimport PyData
+
+cdef class Data(object):
+    cdef PyData.data_t * _nativeData
+    …</pre></div><p>Wrapping up data into a class like this will require us to allocate and deallocate memory at the right moments. Thankfully, Cython exposes almost all of the <code class="literal">libc</code> as imports:</p><div class="informalexample"><pre class="programlisting">from libc.stdlib cimport malloc, free</pre></div><p>Now that we can allocate memory and free it, all that is left is to understand the lifecycle of classes and where to hook into. Cython classes provide two special methods: <code class="literal">__cinit__</code> and <code class="literal">__dealloc__</code>. The <code class="literal">__cinit__</code> provides a way of instantiating native code, so for our case, we will allocate memory to the native C struct, and as you can guess on deallocate this is the destroy hook from the garbage collector and gives us a chance to free any allocated resources:</p><div class="informalexample"><pre class="programlisting">def __cinit__(self):
+        self._nativeData = &lt;data_t*&gt;malloc(sizeof(data_t))
+        if not self._nativeData:
+            self._nativeData = NULL
+            raise MemoryError()
+
+def __dealloc__(self):
+        if self._nativeData is not NULL:
+            free(self._nativeData)
+            self._nativeData = NULL</pre></div><p>It's important<a id="id68" class="indexterm"/> to note that <code class="literal">__cinit__</code> doesn't override Python <code class="literal">__init__</code>, and <a id="id69" class="indexterm"/>more importantly, <code class="literal">__cinit__</code> is not designed to call into any Python code at this point as it does not guarantee full initialization of the class. An init method might look as follows:</p><div class="informalexample"><pre class="programlisting">def __init__(self, int value):
+        self.SetValue(value)
+
+def SetValue(self, int value):
+        self.SetNativeValue(value)
+
+cdef SetNativeValue(self, int value):
+        self._nativeData.value = value</pre></div><p>Note that we were able to type the arguments on these functions to ensure that we don't try and put a Python object into the <code class="literal">struct</code>, which would fail. What is impressive here is that this class behaves as if it was just a normal Python class:</p><div class="informalexample"><pre class="programlisting">from PyData import Data
+
+def TestPythonData():
+    # Looks and feels like normal python objects
+    objectList = [Data(1), Data(2), Data(3)]
+
+    # Print them out
+    for dataObject in objectList:
+        print dataObject
+
+    # Show the Mutability
+    objectList[1].SetValue(1234)
+    print objectList[1]</pre></div><p>If you put a <a id="id70" class="indexterm"/>simple <code class="literal">print</code> statement on the <code class="literal">__dealloc__</code> hook <a id="id71" class="indexterm"/>and run the program, you will see all destructors are executed, as you would expect. It means we have just leveraged the Python garbage collector on top of native code.</p></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Extending Tmux"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec25"/>Extending Tmux</h1></div></div></div><p><span class="strong"><strong>Tmux</strong></span> <a id="id72" class="indexterm"/>is a terminal multiplexer inspired by<a id="id73" class="indexterm"/> GNU Screen (<a class="ulink" href="http://tmux.github.io/">http://tmux.github.io/</a>), but it supports much simpler and better configuration. More importantly, the implementation is much cleaner and easier to maintain, and it also uses <code class="literal">libevent</code> and very well-written C code.</p><p>I want to show you how you can extend Tmux with new built-in commands by writing Python code instead of C. Overall, there are several parts to this project, as follows:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Hack the autotool's build system to compile in Cython</li><li class="listitem" style="list-style-type: disc">Create PXD declarations to the relevant declarations such as <code class="literal">struct cmd_entry</code></li><li class="listitem" style="list-style-type: disc">Embed Python into Tmux</li><li class="listitem" style="list-style-type: disc">Add the Python command to the global Tmux <code class="literal">cmd_table</code></li></ul></div><p>Let's take a quick look at the Tmux source, and in particular any of the <code class="literal">cmd-*.c</code> files that contain command declarations and implementations. Consider, for example, that <code class="literal">cmd-kill-window.c</code> is the command entry. This tells Tmux the name of the command, its alias, and how it may or may not accept arguments; finally, it accepts a function pointer to the actual command code:</p><div class="informalexample"><pre class="programlisting">const struct <span class="strong"><strong>cmd_entry cmd_kill_window_entry</strong></span> = {
+  <span class="strong"><strong>"kill-window"</strong></span>, "killw",
+  "at:", 0, 0,
+  "[-a] " CMD_TARGET_WINDOW_USAGE,
+  0,
+  NULL,
+  NULL,
+<span class="strong"><strong>  cmd_kill_window_exec</strong></span>
+};</pre></div><p>So, if we are able to implement and initialize our own <code class="literal">struct</code> containing this information, we can run our <code class="literal">cdef</code> code. Next, we need to look at how Tmux picks up this command definition and how it gets executed.</p><p>If we look at <code class="literal">tmux.h</code>, we find the prototypes for everything that we need to manipulate:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>extern const struct cmd_entry *cmd_table[];</strong></span>
+extern const struct cmd_entry cmd_attach_session_entry;
+extern const struct cmd_entry cmd_bind_key_entry;
+….</pre></div><p>So, we need to add a prototype here for our <code class="literal">cmd_entry</code> definition. Next, we need to look at <code class="literal">cmd.c</code>; this is where the command table is initialized so that it can be looked up later on to execute commands:</p><div class="informalexample"><pre class="programlisting">const struct cmd_entry *cmd_table[] = {
+  &amp;cmd_attach_session_entry,
+  &amp;cmd_bind_key_entry,
+…</pre></div><p>Now that the <a id="id74" class="indexterm"/>command table is initialized, where does the code get executed? If we look at the <code class="literal">cmd_entry</code> definition in the <code class="literal">tmux.h</code> header, we can see the following:</p><div class="informalexample"><pre class="programlisting">/* Command definition. */
+struct cmd_entry {
+<span class="strong"><strong>  const char  *name;</strong></span>
+<span class="strong"><strong>  const char  *alias;</strong></span>
+
+  const char  *args_template;
+  int     args_lower;
+  int     args_upper;
+
+<span class="strong"><strong>  const char  *usage;</strong></span>
+
+#define CMD_STARTSERVER 0x1
+#define CMD_CANTNEST 0x2
+#define CMD_SENDENVIRON 0x4
+#define CMD_READONLY 0x8
+  int     flags;
+
+  void     (*key_binding)(struct cmd *, int);
+  int     (*check)(struct args *);
+<span class="strong"><strong>  enum cmd_retval   (*execc)(struct cmd *, struct cmd_q *);</strong></span>
+};</pre></div><p>The <code class="literal">execc</code> hook is the function pointer we really care about, so if you <code class="literal">grep</code> the sources, you should find the following:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>Philips-MacBook:tmux-project redbrain$ ack-5.12 execc</strong></span>
+<span class="strong"><strong>tmux-1.8/cmd-queue.c</strong></span>
+<span class="strong"><strong>229:               retval = cmdq-&gt;cmd-&gt;entry-&gt;execc(cmdq-&gt;cmd, cmdq);</strong></span>
+</pre></div><p>You might notice that in the official Tmux Git, this hook is simply named <code class="literal">exec</code>. I renamed this to <code class="literal">execc</code> because <code class="literal">exec</code> is a reserved word in Python—we need to avoid things like that. To begin with, let's get some code compiled. First, we need to get the build<a id="id75" class="indexterm"/> system to play ball.</p><div class="section" title="Tmux build system"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec16"/>Tmux build system</h2></div></div></div><p>Tmux uses<a id="id76" class="indexterm"/> autotools, so we can reuse the snippets from <a class="link" href="ch02.html" title="Chapter 2. Understanding Cython">Chapter 2</a>, <span class="emphasis"><em>Understanding Cython</em></span>, to add in <a id="id77" class="indexterm"/>Python support. We can add the <code class="literal">–enable-python</code> switch into <code class="literal">configure.ac</code> as follows:</p><div class="informalexample"><pre class="programlisting"># want python support for pytmux scripting
+found_python=no
+AC_ARG_ENABLE(
+  python,
+  AC_HELP_STRING(--enable-python, create python support),
+  found_python=yes
+)
+AM_CONDITIONAL(IS_PYTHON, test "x$found_python" = xyes)
+
+PYLIBS=""
+PYINCS=""
+if test "x$found_python" = xyes; then
+<span class="strong"><strong>   AC_CHECK_PROG(CYTHON_CHECK,cython,yes)</strong></span>
+   if test x"$CYTHON_CHECK" != x"yes" ; then
+      AC_MSG_ERROR([Please install cython])
+   fi
+<span class="strong"><strong>   AC_CHECK_PROG(PYTHON_CONF_CHECK,python-config,yes)</strong></span>
+<span class="strong"><strong>   PYLIBS=`python-config --libs`</strong></span>
+<span class="strong"><strong>   PYINCS=`python-config --includes`</strong></span>
+   if test "x$PYLIBS" == x; then
+      AC_MSG_ERROR("python-dev not found")
+   fi
+<span class="strong"><strong>   AC_DEFINE(HAVE_PYTHON)</strong></span>
+fi
+AC_SUBST(PYLIBS)
+AC_SUBST(PYINCS)</pre></div><p>This gives us the <code class="literal">./configure –-enable-python</code> option. Next, we need to look at the <code class="literal">Makefile.am</code> file. Let's call our Cython file <code class="literal">cmdpython.pyx</code>. Note that Cython doesn't like awkward characters such as "<code class="literal">-</code>" in the filename, as explained in <a class="link" href="ch02.html" title="Chapter 2. Understanding Cython">Chapter 2</a>, <span class="emphasis"><em>Understanding Cython</em></span>. If we are to make Python support a conditional option at build time, we should add the following to <code class="literal">Makefile.am</code>:</p><div class="informalexample"><pre class="programlisting">if IS_PYTHON
+PYTHON_SOURCES = <span class="strong"><strong>cmdpython.pyx</strong></span>
+else
+PYTHON_SOURCES =
+endif
+
+# List of sources.
+dist_tmux_SOURCES = \
+<span class="strong"><strong>  $(PYTHON_SOURCES) \</strong></span>
+...</pre></div><p>We have to make sure that it is needed and compiled first. Remember that if we create <code class="literal">public</code> declarations, Cython generates a header for us. We will simply add our public header to <code class="literal">tmux.h</code> to keep headers very simple. Then, to make sure Cython files get picked up by automake and is compiled properly according to the correct dependency management at build time, we need to add the following:</p><div class="informalexample"><pre class="programlisting">SUFFIXES = .pyx
+.pyx.c:
+  @echo "  CPY   " $&lt;
+<span class="strong"><strong>  @cython -2 -o $@ $&lt;</strong></span>
+</pre></div><p>This adds in the <a id="id78" class="indexterm"/>suffix rule to make sure the <code class="literal">*.pyx</code> files are Cythoned and then <a id="id79" class="indexterm"/>told to compile the resulting <code class="literal">.c</code> file just as any normal C file. This snippet plays well if you happen to use <code class="literal">AM_SILENT_RULES([yes])</code> in your autotools project, which formats the echo message correctly. Lastly, we need to make sure we add the necessary <code class="literal">CFLAGS</code> and <code class="literal">LIBS</code> options to the compiler from <code class="literal">AC_SUBST</code> in the configure script:</p><div class="informalexample"><pre class="programlisting">CFLAGS += $(<span class="strong"><strong>PYINCS</strong></span>)
+tmux_LDADD = \
+<span class="strong"><strong>  $(PYLIBS)</strong></span>
+</pre></div><p>Now you should have everything ready in the build system, but we have to regenerate the autotools stuff now because of the changes made. Simply run <code class="literal">./autogen.sh</code>.</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Embedding Python"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec26"/>Embedding Python</h1></div></div></div><p>Now <a id="id80" class="indexterm"/>that we have files being compiled, we need to initialize Python. Our module. Tmux is a forked server that clients connect to, so try not to think of it as a single-threaded system. It's a client <span class="emphasis"><em>and</em></span> a server, so all commands are executed on the server. Now, let's find where the event loop is started in the server, and initialize and finalize the server here so that it's done correctly. Looking at <code class="literal">int server_start(int lockfd, char *lockfile)</code>, we can add the following:</p><div class="informalexample"><pre class="programlisting">#ifdef HAVE_PYTHON
+<span class="strong"><strong>  Py_InitializeEx (0);</strong></span>
+#endif
+  server_loop();
+#ifdef HAVE_PYTHON
+  Py_Finalize ();
+#endif</pre></div><p>Python is now embedded into the Tmux server. Notice that instead of using simply <code class="literal">Py_Initialize</code>, I used <code class="literal">Py_InitializeEx (0)</code>. This replicates the same behavior, but doesn't start up normal Python signal handlers. Tmux has its own signal handlers, so I don't want to<a id="id81" class="indexterm"/> override them. It's probably a good idea when extending established applications such as this to use <code class="literal">Py_InitializeEx (0)</code>, since they generally implement their own signal handling. Using this stops Python from trying to handle signals that would conflict.</p></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Cythonizing struct cmd_entry"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec27"/>Cythonizing struct cmd_entry</h1></div></div></div><p>Next, let's <a id="id82" class="indexterm"/>consider creating a <code class="literal">cythonfile.pxd</code> file for the necessary <code class="literal">cdef</code> declarations of Tmux that we need to be aware of. We need to look at the <code class="literal">struct cmd_entry</code> declaration, and work backwards from this:</p><div class="informalexample"><pre class="programlisting">struct cmd_entry {
+  const char  *name;
+  const char  *alias;
+
+  const char  *args_template;
+  int     args_lower;
+  int     args_upper;
+
+  const char  *usage;
+  int     flags;
+
+  void     (*key_binding)<span class="strong"><strong>(struct cmd *, int);</strong></span>
+  int     <span class="strong"><strong>(*check)</strong></span>(struct args *);
+<span class="strong"><strong>  enum cmd_retval   (*execc)(struct cmd *, struct cmd_q *);</strong></span>
+};</pre></div><p>As you can see, <code class="literal">cmd_entry</code> depends on several other types, so we need to work backwards a little bit. If you're going to be lazy and live dangerously, you can get away with it sometimes if you don't care about accessing the data correctly by casting any pointers such as <code class="literal">void *</code>. But if you're a seasoned C programmer, you know this is fairly dangerous and should be avoided. You can see this type depends on <code class="literal">struct cmd *</code>, <code class="literal">struct cmd_q *</code>, and <code class="literal">struct args *</code>. We would ideally want to access these at some point, so it's a good idea to work backwards and implement them one at a time, since the rest are just native C types, which Cython understands.</p><p>Implementing the <code class="literal">enum</code> should be by far the simplest:</p><div class="informalexample"><pre class="programlisting">/* Command return values. */
+<span class="strong"><strong>enum cmd_retval {</strong></span>
+  CMD_RETURN_ERROR = -1,
+  CMD_RETURN_NORMAL = 0,
+  CMD_RETURN_WAIT,
+  CMD_RETURN_STOP
+};</pre></div><p>Then, turn it into the following:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>cdef enum cmd_retval:</strong></span>
+        CMD_RETURN_ERROR = -1
+        CMD_RETURN_NORMAL = 0
+        CMD_RETURN_WAIT = 1
+        CMD_RETURN_STOP = 2</pre></div><p>Now that we have the return value for the <code class="literal">exec</code> hook, we need to look at <code class="literal">struct cmd</code> next and implement it:</p><div class="informalexample"><pre class="programlisting">struct cmd {
+  const struct cmd_entry  *entry;
+  struct args    *args;
+
+  char      *file;
+  u_int       line;
+
+  TAILQ_ENTRY(cmd)   qentry;
+};</pre></div><p>Take a look <a id="id83" class="indexterm"/>at <code class="literal">TAILQ_ENTRY</code>. This is simply a preprocessor macro that is a <span class="strong"><strong>BSD libc</strong></span> extension <a id="id84" class="indexterm"/>to turn any type into its own linked list. We can ignore this:</p><div class="informalexample"><pre class="programlisting"> cdef struct cmd:
+<span class="strong"><strong>        cmd_entry * entry</strong></span>
+<span class="strong"><strong>        args * aargs</strong></span>
+        char * file
+        int line</pre></div><p>Note that this <code class="literal">struct</code> depends on the <code class="literal">struct cmd_entry</code> and <code class="literal">struct args</code> definitions, which we haven't implemented yet. Don't worry about this yet; just put them in for now. Next, let's implement <code class="literal">struct args</code>, since it's simple:</p><div class="informalexample"><pre class="programlisting">/* Parsed arguments. */
+struct args {
+<span class="strong"><strong>  bitstr_t  *flags;</strong></span>
+<span class="strong"><strong>  char    *values[SCHAR_MAX];</strong></span>
+
+  int     argc;
+  char         **argv;
+};</pre></div><p>Note that it uses <code class="literal">bitstr_t</code> and a variable-length array list. I choose to ignore <code class="literal">bitstr_t</code> because I think it's a system-dependent header that is fairly tricky to implement. Let's simply cast these as <code class="literal">char *</code> and <code class="literal">char **</code> to get things working:</p><div class="informalexample"><pre class="programlisting"> cdef struct args:
+<span class="strong"><strong>        char * flags</strong></span>
+<span class="strong"><strong>        char **values</strong></span>
+        int argc
+        char **argv</pre></div><p>Now that the<a id="id85" class="indexterm"/> <code class="literal">args</code> structure is Cythonized, let's implement <code class="literal">struct cmd_q</code>, which is a little trickier:</p><div class="informalexample"><pre class="programlisting">/* Command queue. */
+<span class="strong"><strong>struct cmd_q {</strong></span>
+  int       references;
+  int       dead;
+
+<span class="strong"><strong>  struct client    *client;</strong></span>
+  int       client_exit;
+
+<span class="strong"><strong>  struct cmd_q_items   queue;</strong></span>
+<span class="strong"><strong>  struct cmd_q_item  *item;</strong></span>
+<span class="strong"><strong>  struct cmd    *cmd;</strong></span>
+
+  time_t       time;
+  u_int       number;
+
+  void       (*emptyfn)(struct cmd_q *);
+  void      *data;
+
+<span class="strong"><strong>  struct msg_command_data  *msgdata;</strong></span>
+
+<span class="strong"><strong>  TAILQ_ENTRY(cmd_q)       waitentry;</strong></span>
+};</pre></div><p>There are quite a few more structs that this depends on, but we will not see them here. Let's try and cast these for now; for example, <code class="literal">struct client *</code>. We can cast this as <code class="literal">void *</code>, and then <code class="literal">struct cmd_q_items</code> simply as <code class="literal">int</code>, even though it isn't correct. As long as we are not going to try and access these fields, we will be okay. But remember that if we were to use Cython <code class="literal">sizeof</code>, we could run into memory corruption with different sizes allocated by C and by Cython. We can work down the other types such as <code class="literal">struct cmd_q_item *</code> and cast them as <code class="literal">void *</code> again. Finally, we come to <code class="literal">time_t</code>, where we can reuse <code class="literal">libc.stdlib cimport</code> time from Cython. This is a really good exercise to implement Cython declarations for C applications; it really exercises your code analysis. When going through really long structures, remember that we can get things going by just casting them as <code class="literal">void</code>. Be careful about the <code class="literal">struct</code> alignment and typing if you care about the data types in your Cython API:</p><div class="informalexample"><pre class="programlisting"> cdef struct cmd_q:
+        int references
+        int dead
+<span class="strong"><strong>        void * client</strong></span>
+        int client_exit
+        int queue
+<span class="strong"><strong>        void * item</strong></span>
+<span class="strong"><strong>        cmd * cmd</strong></span>
+        int time
+        int number
+        void (*emptyfn)(cmd_q *)
+<span class="strong"><strong>        void * msgdata</strong></span>
+</pre></div><p>That was a fairly<a id="id86" class="indexterm"/> deep dive into a lot of project-specific internals, but I hope you get the idea—we really didn't do anything terribly scary. We even cheated and casted things that we really don't care about. With all these auxiliary types implemented, we can finally implement the type we care about, namely, <code class="literal">struct cmd_entry</code>:</p><div class="informalexample"><pre class="programlisting">cdef struct cmd_entry:
+        char * name
+        char * alias
+        char * args_template
+        int args_lower
+        int args_upper
+        char * usage
+        int flags
+        void (*keybinding)(cmd *, int)
+        int (*check)(args *)
+        cmd_retval (*execc)(cmd *, cmd_q *)</pre></div><p>With this <code class="literal">cmdpython.pxd</code> file, we can now implement our Tmux command!</p></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Implementing a Tmux command"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec28"/>Implementing a Tmux command</h1></div></div></div><p>One caveat with <a id="id87" class="indexterm"/>Cython is that we cannot statically initialize structs like we can in C, so we need to make a hook so that we can initialize <code class="literal">cmd_entry</code> on Python startup:</p><div class="informalexample"><pre class="programlisting">cimport cmdpython
+
+cdef <span class="strong"><strong>public</strong></span> cmd_entry cmd_entry_python</pre></div><p>With this, we now have a public declaration of <code class="literal">cmd_entry_python</code>, which we will initialize in a startup hook as follows:</p><div class="informalexample"><pre class="programlisting">cdef <span class="strong"><strong>public</strong></span> void tmux_init_cython () with <span class="strong"><strong>gil:</strong></span>
+<span class="strong"><strong>    cmd_entry_python.name = "python"</strong></span>
+    cmd_entry_python.alias = "py"
+    cmd_entry_python.args_template = ""
+    cmd_entry_python.args_lower = 0
+    cmd_entry_python.args_upper = 0
+    cmd_entry_python.usage = "python usage..."
+    cmd_entry_python.flags = 0
+    #cmd_entry_python.key_binding = NULL
+    #cmd_entry_python.check = NULL
+<span class="strong"><strong>    cmd_entry_python.execc = python_exec</strong></span>
+</pre></div><p>Remember that because we declared this in the top level, we know it's on the heap and don't need to declare any memory to the structure, which is very handy for us. You've seen struct access before; the function suite should look familiar. But let me draw attention to a few things here:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">We declared <code class="literal">public</code> to make sure we can call it.</li><li class="listitem" style="list-style-type: disc">The execution hook is simply a <code class="literal">cdef</code> Cython function.</li><li class="listitem" style="list-style-type: disc">Finally, you might notice the <code class="literal">gil</code>. I will explain what this is used for in <a class="link" href="ch05.html" title="Chapter 5. Advanced Cython">Chapter 5</a>, <span class="emphasis"><em>Advanced Cython</em></span>.</li></ul></div><p>Now, let's see a<a id="id88" class="indexterm"/> simple execution hook:</p><div class="informalexample"><pre class="programlisting">cdef cmd_retval python_exec (cmd * cmd, cmd_q * cmdq) with gil:
+    cdef char * message = "Inside your python command inside tmux!!!"
+    log_debug (message)
+    return CMD_RETURN_NORMAL;</pre></div><p>There is not much left to do to hook this into Tmux now. It simply needs to be added to <code class="literal">cmd_table</code> and the startup hook needs to be added to the server initialization.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note03"/>Note</h3><p>Note that I added something in the <code class="literal">log_debug</code> function to the PXD; if you look into Tmux, this is a <code class="literal">VA_ARGS</code> function. Cython doesn't understand these yet, but we can hack it just to get it going by simply casting it as a function that takes a string. As long as we don't try and use it like any <code class="literal">printf</code>, we should be fine.</p></div></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Hooking everything together"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec29"/>Hooking everything together</h1></div></div></div><p>We now<a id="id89" class="indexterm"/> have to fiddle with Tmux just a tiny bit more, but it's fairly painless, and once we are done we are free to be creative. Fundamentally, we should call the <code class="literal">cmd_entry</code> initialization hook in <code class="literal">server.c</code> just before we forget about it:</p><div class="informalexample"><pre class="programlisting">#ifdef HAVE_PYTHON
+  Py_InitializeEx (0);
+<span class="strong"><strong>  tmux_init_cython ();</strong></span>
+#endif
+
+  server_loop();
+
+#ifdef HAVE_PYTHON
+  Py_Finalize ();
+#endif</pre></div><p>Now that this is done, we need to make sure we add the <code class="literal">cmd_entry_python</code> extern declaration to <code class="literal">tmux.h</code>:</p><div class="informalexample"><pre class="programlisting">extern const struct cmd_entry cmd_wait_for_entry;
+#ifdef HAVE_PYTHON
+<span class="strong"><strong># include "cmdpython.h"</strong></span>
+#endif</pre></div><p>Finally, add this to <code class="literal">cmd_table</code>:</p><div class="informalexample"><pre class="programlisting">const struct cmd_entry *cmd_table[] = {
+  &amp;cmd_attach_session_entry,
+  &amp;cmd_bind_key_entry,
+  &amp;cmd_break_pane_entry,
+…
+  &amp;cmd_wait_for_entry,
+<span class="strong"><strong>  &amp;cmd_entry_python,</strong></span>
+  NULL
+};</pre></div><p>Now that this is done, I think we're good to go—let's test out this baby. Compile Tmux with the following:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ ./configure –enable-python</strong></span>
+<span class="strong"><strong>$ make</strong></span>
+<span class="strong"><strong>$ ./tmux -vvv</strong></span>
+<span class="strong"><strong>$ tmux: C-b :python</strong></span>
+<span class="strong"><strong>$ tmux: exit</strong></span>
+</pre></div><p>We can look into <code class="literal">tmux-server-*.log</code> to see our debug message:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>complete key ^M 0xd</strong></span>
+<span class="strong"><strong>cmdq 0xbb38f0: python (client 8)</strong></span>
+<span class="strong"><strong>Inside your python command inside tmux!!!</strong></span>
+<span class="strong"><strong>keys are 1 (e)</strong></span>
+</pre></div><p>I hope you can<a id="id90" class="indexterm"/> now see how easily you can extend this to do something of your own choosing, such as using Python libraries to call directly into your music player, and it would all be integrated with Tmux.</p></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Summary"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec30"/>Summary</h1></div></div></div><p>There are many different techniques and ideas demonstrated in this chapter, but it should serve as a strong reference on common techniques. We saw the speedups in using native types to bypass the runtime, and compiled Python code into its own binary. The <code class="literal">pyximport</code> statement shows us we can bypass compilation and simply import <code class="literal">.pyx</code> files as if it was normal Python. Finally, I ended the chapter with a step-by-step demonstration of my process in embedding Python into Tmux. In the next chapter, we will see debugging in action using <code class="literal">gdb</code>, and some caveats in using Cython.</p></div></div>
+</body></html>
