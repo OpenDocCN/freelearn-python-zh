@@ -1,82 +1,82 @@
 <html><head></head><body>
-  <div id="sbo-rt-content"><div class="chapter" title="Chapter 4. Debugging Cython"><div class="titlepage"><div><div><h1 class="title"><a id="ch04"/>Chapter 4. Debugging Cython</h1></div></div></div><p>Since Cython programs compile down to their native code, we cannot use the Python debugger to step through your code. We can, however, use GDB. <span class="strong"><strong>GNU Project Debugger</strong></span> (<span class="strong"><strong>GDB</strong></span>) is a<a id="id91" class="indexterm"/> cross platform debugger. Python plugin support was added in version 7.0, which was used to add the Cython support into <code class="literal">gdb</code> as a simple script; this means that you can seamlessly step through the C/C++ code into Cython and back again.</p><p>When it comes to language binding, it's good practice to keep interfaces as simple as possible. This will make debugging much simpler until you are happy with your bindings in terms of resource management or stability. I will iterate over some GDB and caveats examples.</p><p>In this chapter, we will cover the following topics:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Using GFB with Cython</li><li class="listitem" style="list-style-type: disc">Cython caveats</li></ul></div><div class="section" title="Using GDB with Cython"><div class="titlepage"><div><div><h1 class="title"><a id="ch04lvl1sec31"/>Using GDB with Cython</h1></div></div></div><p>To debug <a id="id92" class="indexterm"/>Cython, you need GDB &gt;= 7.0. On Mac OS X Xcode, build<a id="id93" class="indexterm"/> tools have moved to LLVM and lldb as respective debuggers. You can install <code class="literal">gdb</code> using homebrew:</p><div class="informalexample"><pre class="programlisting">$ brew install gdb</pre></div><p>We cannot use the Python debugger since the Cython code is compiled down to C/C++. Therefore, when debugging without the Cython plugin, you will be stepping through the generated C/C++ code, which won't be helpful as it won't understand the context of the Cython program.</p><div class="section" title="Running cygdb"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec17"/>Running cygdb</h2></div></div></div><p>Cygdb is installed<a id="id94" class="indexterm"/> as a part of Cython and is a wrapper over GDB (it invokes GDB with arguments to set up the Cython plugin). Before you can debug the Cython code, we need to generate the debugging information. Just like C/C++, we need to specify compiler options to generated debuggable code we can pass <code class="literal">–gdb</code> when invoking the Cython compiler:</p><div class="informalexample"><pre class="programlisting">
-<span class="strong"><strong>$ cython --gdb cycode.pyx</strong></span>
-</pre></div><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note04"/>Note</h3><p>Before you start debugging on Debian, you need to install the Python debug information package and GDB as it is not installed with <code class="literal">build-essential</code>. To install these, run the following:</p><div class="informalexample"><pre class="programlisting">$ sudo apt-get install gdb build-essential cython python-dbg</pre></div></div></div><p>Now that you have GDB and the debug information generated, you can start the Cython debugger with this:</p><div class="informalexample"><pre class="programlisting">
-<span class="strong"><strong>$ cygdb . --args python-dbg main.py</strong></span>
-</pre></div><p>Once you're familiar with GDB, you can simply use all of the normal <code class="literal">gdb</code> commands. However, the whole point of <code class="literal">cygdb</code> is that we can use Cython commands, which we will see in use here with an explanation:</p><div class="informalexample"><pre class="programlisting">
-<span class="strong"><strong>(gdb) cy break</strong></span>
-<span class="strong"><strong>__init__                cycode.foobar.__init__  cycode.foobar.print_me  cycode.func             func                    print_me</strong></span>
-</pre></div><p>If you tab autocomplete <code class="literal">cy break</code>, you will see a list of symbols to which you can set a Cython break point. Next, we need to get the program running and continue to our break points as follows:</p><p><span class="strong"><strong>(gdb) cy break func</strong></span></p><div class="informalexample"><pre class="programlisting">
-<span class="strong"><strong>Function "__pyx_pw_6cycode_1func" not defined.</strong></span>
-<span class="strong"><strong>Breakpoint 1 (__pyx_pw_6cycode_1func) pending.</strong></span>
-</pre></div><p>Now that we have the break point set, we need to run the program:</p><div class="informalexample"><pre class="programlisting">
-<span class="strong"><strong>(gdb) cy run</strong></span>
-<span class="strong"><strong>1    def func (int x):</strong></span>
-</pre></div><p>Now that we have hit the declaration of the <code class="literal">func</code> function, we can continue and do some introspection as follows:</p><div class="informalexample"><pre class="programlisting">
-<span class="strong"><strong>(gdb) cy globals</strong></span>
-<span class="strong"><strong>Python globals:</strong></span>
-<span class="strong"><strong>    __builtins__ = &lt;module at remote 0x7ffff7fabb08&gt;</strong></span>
-<span class="strong"><strong>    __doc__      = None</strong></span>
-<span class="strong"><strong>    __file__     = '$HOME/chapter4/gdb1/cycode.so'</strong></span>
-<span class="strong"><strong>    __name__     = 'cycode'</strong></span>
-<span class="strong"><strong>    __package__  = None</strong></span>
-<span class="strong"><strong>    __test__     = {}</strong></span>
-<span class="strong"><strong>    foobar       = &lt;classobj at remote 0x7ffff7ee50b8&gt;</strong></span>
-<span class="strong"><strong>    func         = &lt;built-in function func&gt;</strong></span>
-<span class="strong"><strong>C globals:</strong></span>
-</pre></div><p>The <code class="literal">globals</code> command <a id="id95" class="indexterm"/>will show any of the global identifiers in the scope of the current frame, so we can see the <code class="literal">func</code> function and <code class="literal">classobj foobar</code>. We can inspect further by listing the code and step code:</p><div class="informalexample"><pre class="programlisting">
-<span class="strong"><strong>(gdb) cy list</strong></span>
-<span class="strong"><strong>     1    def func (int x):</strong></span>
-<span class="strong"><strong>     2        print x</strong></span>
-<span class="strong"><strong>     3        return x + 1</strong></span>
-<span class="strong"><strong>     4</strong></span>
-</pre></div><p>We can also step the code as follows:</p><div class="informalexample"><pre class="programlisting">
-<span class="strong"><strong>(gdb) cy step</strong></span>
-<span class="strong"><strong>1</strong></span>
-<span class="strong"><strong>4    cycode.func (1)</strong></span>
+  <div><div><div><div><div><h1 class="title"><a id="ch04"/>Chapter 4. Debugging Cython</h1></div></div></div><p>Since Cython programs compile down to their native code, we cannot use the Python debugger to step through your code. We can, however, use GDB. <strong>GNU Project Debugger</strong> (<strong>GDB</strong>) is a<a id="id91" class="indexterm"/> cross platform debugger. Python plugin support was added in version 7.0, which was used to add the Cython support into <code class="literal">gdb</code> as a simple script; this means that you can seamlessly step through the C/C++ code into Cython and back again.</p><p>When it comes to language binding, it's good practice to keep interfaces as simple as possible. This will make debugging much simpler until you are happy with your bindings in terms of resource management or stability. I will iterate over some GDB and caveats examples.</p><p>In this chapter, we will cover the following topics:</p><div><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Using GFB with Cython</li><li class="listitem" style="list-style-type: disc">Cython caveats</li></ul></div><div><div><div><div><h1 class="title"><a id="ch04lvl1sec31"/>Using GDB with Cython</h1></div></div></div><p>To debug <a id="id92" class="indexterm"/>Cython, you need GDB &gt;= 7.0. On Mac OS X Xcode, build<a id="id93" class="indexterm"/> tools have moved to LLVM and lldb as respective debuggers. You can install <code class="literal">gdb</code> using homebrew:</p><div><pre class="programlisting">$ brew install gdb</pre></div><p>We cannot use the Python debugger since the Cython code is compiled down to C/C++. Therefore, when debugging without the Cython plugin, you will be stepping through the generated C/C++ code, which won't be helpful as it won't understand the context of the Cython program.</p><div><div><div><div><h2 class="title"><a id="ch04lvl2sec17"/>Running cygdb</h2></div></div></div><p>Cygdb is installed<a id="id94" class="indexterm"/> as a part of Cython and is a wrapper over GDB (it invokes GDB with arguments to set up the Cython plugin). Before you can debug the Cython code, we need to generate the debugging information. Just like C/C++, we need to specify compiler options to generated debuggable code we can pass <code class="literal">–gdb</code> when invoking the Cython compiler:</p><div><pre class="programlisting">
+<strong>$ cython --gdb cycode.pyx</strong>
+</pre></div><div><div><h3 class="title"><a id="note04"/>Note</h3><p>Before you start debugging on Debian, you need to install the Python debug information package and GDB as it is not installed with <code class="literal">build-essential</code>. To install these, run the following:</p><div><pre class="programlisting">$ sudo apt-get install gdb build-essential cython python-dbg</pre></div></div></div><p>Now that you have GDB and the debug information generated, you can start the Cython debugger with this:</p><div><pre class="programlisting">
+<strong>$ cygdb . --args python-dbg main.py</strong>
+</pre></div><p>Once you're familiar with GDB, you can simply use all of the normal <code class="literal">gdb</code> commands. However, the whole point of <code class="literal">cygdb</code> is that we can use Cython commands, which we will see in use here with an explanation:</p><div><pre class="programlisting">
+<strong>(gdb) cy break</strong>
+<strong>__init__                cycode.foobar.__init__  cycode.foobar.print_me  cycode.func             func                    print_me</strong>
+</pre></div><p>If you tab autocomplete <code class="literal">cy break</code>, you will see a list of symbols to which you can set a Cython break point. Next, we need to get the program running and continue to our break points as follows:</p><p><strong>(gdb) cy break func</strong></p><div><pre class="programlisting">
+<strong>Function "__pyx_pw_6cycode_1func" not defined.</strong>
+<strong>Breakpoint 1 (__pyx_pw_6cycode_1func) pending.</strong>
+</pre></div><p>Now that we have the break point set, we need to run the program:</p><div><pre class="programlisting">
+<strong>(gdb) cy run</strong>
+<strong>1    def func (int x):</strong>
+</pre></div><p>Now that we have hit the declaration of the <code class="literal">func</code> function, we can continue and do some introspection as follows:</p><div><pre class="programlisting">
+<strong>(gdb) cy globals</strong>
+<strong>Python globals:</strong>
+<strong>    __builtins__ = &lt;module at remote 0x7ffff7fabb08&gt;</strong>
+<strong>    __doc__      = None</strong>
+<strong>    __file__     = '$HOME/chapter4/gdb1/cycode.so'</strong>
+<strong>    __name__     = 'cycode'</strong>
+<strong>    __package__  = None</strong>
+<strong>    __test__     = {}</strong>
+<strong>    foobar       = &lt;classobj at remote 0x7ffff7ee50b8&gt;</strong>
+<strong>    func         = &lt;built-in function func&gt;</strong>
+<strong>C globals:</strong>
+</pre></div><p>The <code class="literal">globals</code> command <a id="id95" class="indexterm"/>will show any of the global identifiers in the scope of the current frame, so we can see the <code class="literal">func</code> function and <code class="literal">classobj foobar</code>. We can inspect further by listing the code and step code:</p><div><pre class="programlisting">
+<strong>(gdb) cy list</strong>
+<strong>     1    def func (int x):</strong>
+<strong>     2        print x</strong>
+<strong>     3        return x + 1</strong>
+<strong>     4</strong>
+</pre></div><p>We can also step the code as follows:</p><div><pre class="programlisting">
+<strong>(gdb) cy step</strong>
+<strong>1</strong>
+<strong>4    cycode.func (1)</strong>
 
-<span class="strong"><strong>(gdb) cy list</strong></span>
-<span class="strong"><strong>     1    #!/usr/bin/python</strong></span>
-<span class="strong"><strong>     2    import cycode</strong></span>
-<span class="strong"><strong>     3</strong></span>
-<span class="strong"><strong>     4    cycode.func (1)</strong></span>
-<span class="strong"><strong>&gt;    5    object = cycode.foobar ()</strong></span>
-<span class="strong"><strong>     6    object.print_me ()</strong></span>
+<strong>(gdb) cy list</strong>
+<strong>     1    #!/usr/bin/python</strong>
+<strong>     2    import cycode</strong>
+<strong>     3</strong>
+<strong>     4    cycode.func (1)</strong>
+<strong>&gt;    5    object = cycode.foobar ()</strong>
+<strong>     6    object.print_me ()</strong>
 
-<span class="strong"><strong>(gdb) cy step</strong></span>
-<span class="strong"><strong>3        return x + 1</strong></span>
+<strong>(gdb) cy step</strong>
+<strong>3        return x + 1</strong>
 
-<span class="strong"><strong>(gdb) cy list</strong></span>
-<span class="strong"><strong>     1    def func (int x):</strong></span>
-<span class="strong"><strong>     2        print x</strong></span>
-<span class="strong"><strong>&gt;    3        return x + 1</strong></span>
-<span class="strong"><strong>     4</strong></span>
-<span class="strong"><strong>     5    class foobar:</strong></span>
-<span class="strong"><strong>     6        x = 0</strong></span>
-<span class="strong"><strong>     7        def __init__ (self):</strong></span>
-</pre></div><p>You can get fairly neat listings even from classes:</p><div class="informalexample"><pre class="programlisting">
-<span class="strong"><strong>(gdb) cy list</strong></span>
-<span class="strong"><strong>     3        return x + 1</strong></span>
-<span class="strong"><strong>     4</strong></span>
-<span class="strong"><strong>     5    class foobar:</strong></span>
-<span class="strong"><strong>     6        x = 0</strong></span>
-<span class="strong"><strong>     7        def __init__ (self):</strong></span>
-<span class="strong"><strong>&gt;    8            self.x = 1</strong></span>
-<span class="strong"><strong>     9</strong></span>
-<span class="strong"><strong>    10        def print_me (self):</strong></span>
-<span class="strong"><strong>    11            print self.x</strong></span>
-</pre></div><p>We can even see the backtrace of the current Python state:</p><div class="informalexample"><pre class="programlisting">
-<span class="strong"><strong>(gdb) cy bt</strong></span>
-<span class="strong"><strong>#9  0x000000000047b6a0 in &lt;module&gt;() at main.py:6</strong></span>
-<span class="strong"><strong>         6    object.print_me ()</strong></span>
-<span class="strong"><strong>#13 0x00007ffff6a05ea0 in print_me() at /home/redbrain/cython-book/chapter4/gdb1/cycode.pyx:8</strong></span>
-<span class="strong"><strong>         8            self.x = 1</strong></span>
-</pre></div><p>The help can be found by running the following command:</p><div class="informalexample"><pre class="programlisting">
-<span class="strong"><strong>(gdb) help cy</strong></span>
+<strong>(gdb) cy list</strong>
+<strong>     1    def func (int x):</strong>
+<strong>     2        print x</strong>
+<strong>&gt;    3        return x + 1</strong>
+<strong>     4</strong>
+<strong>     5    class foobar:</strong>
+<strong>     6        x = 0</strong>
+<strong>     7        def __init__ (self):</strong>
+</pre></div><p>You can get fairly neat listings even from classes:</p><div><pre class="programlisting">
+<strong>(gdb) cy list</strong>
+<strong>     3        return x + 1</strong>
+<strong>     4</strong>
+<strong>     5    class foobar:</strong>
+<strong>     6        x = 0</strong>
+<strong>     7        def __init__ (self):</strong>
+<strong>&gt;    8            self.x = 1</strong>
+<strong>     9</strong>
+<strong>    10        def print_me (self):</strong>
+<strong>    11            print self.x</strong>
+</pre></div><p>We can even see the backtrace of the current Python state:</p><div><pre class="programlisting">
+<strong>(gdb) cy bt</strong>
+<strong>#9  0x000000000047b6a0 in &lt;module&gt;() at main.py:6</strong>
+<strong>         6    object.print_me ()</strong>
+<strong>#13 0x00007ffff6a05ea0 in print_me() at /home/redbrain/cython-book/chapter4/gdb1/cycode.pyx:8</strong>
+<strong>         8            self.x = 1</strong>
+</pre></div><p>The help can be found by running the following command:</p><div><pre class="programlisting">
+<strong>(gdb) help cy</strong>
 </pre></div><p>I think you<a id="id96" class="indexterm"/> have got the idea! It's worth playing around, checking the help, and trying these for yourself to get the feel of debugging with cygdb. To get a good feel, you really need to practice with GDB and get comfortable with it.</p></div></div></div></div>
 
 
-  <div id="sbo-rt-content"><div class="section" title="Cython caveats"><div class="titlepage"><div><div><h1 class="title"><a id="ch04lvl1sec32"/>Cython caveats</h1></div></div></div><p>There are <a id="id97" class="indexterm"/>some caveats worth noting while mixing C and the Python code when it comes to Cython. It's a good idea to refer to these when building something to be production ready.</p><div class="section" title="Type checking"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec18"/>Type checking</h2></div></div></div><p>You may have <a id="id98" class="indexterm"/>noticed that in the previous code examples, we were able to cast the <code class="literal">void *</code> pointer from <code class="literal">malloc</code> to our extension types using <code class="literal">malloc</code>. Cython supports some more advanced type checking as follows:</p><div class="informalexample"><pre class="programlisting">char * buf = <span class="strong"><strong>&lt;char *&gt;</strong></span> malloc (sizeof (...))</pre></div><p>In basic type casting, Cython supports <code class="literal">&lt;type?&gt;</code> for type checking:</p><div class="informalexample"><pre class="programlisting">char * buf  = <span class="strong"><strong>&lt;char *?&gt;</strong></span> malloc (...)</pre></div><p>This will do some type checking and throw an error if the type that is being cast is not a subclass of <code class="literal">char *</code>. So, in this case, it will pass; however, if you were to do the following:</p><div class="informalexample"><pre class="programlisting">cdef class A:
+  <div><div><div><div><div><h1 class="title"><a id="ch04lvl1sec32"/>Cython caveats</h1></div></div></div><p>There are <a id="id97" class="indexterm"/>some caveats worth noting while mixing C and the Python code when it comes to Cython. It's a good idea to refer to these when building something to be production ready.</p><div><div><div><div><h2 class="title"><a id="ch04lvl2sec18"/>Type checking</h2></div></div></div><p>You may have <a id="id98" class="indexterm"/>noticed that in the previous code examples, we were able to cast the <code class="literal">void *</code> pointer from <code class="literal">malloc</code> to our extension types using <code class="literal">malloc</code>. Cython supports some more advanced type checking as follows:</p><div><pre class="programlisting">char * buf = <strong>&lt;char *&gt;</strong> malloc (sizeof (...))</pre></div><p>In basic type casting, Cython supports <code class="literal">&lt;type?&gt;</code> for type checking:</p><div><pre class="programlisting">char * buf  = <strong>&lt;char *?&gt;</strong> malloc (...)</pre></div><p>This will do some type checking and throw an error if the type that is being cast is not a subclass of <code class="literal">char *</code>. So, in this case, it will pass; however, if you were to do the following:</p><div><pre class="programlisting">cdef class A:
      pass
 cdef class B (A):
      pass
@@ -84,66 +84,66 @@ cdef class B (A):
 def myfunc ():
     cdef A class1 = A ()
     cdef B class2 = B ()
-<span class="strong"><strong>    cdef B x = &lt;B?&gt; class1</strong></span>
-</pre></div><p>This will return an error (at runtime):</p><div class="informalexample"><pre class="programlisting">Traceback (most recent call last):
+<strong>    cdef B x = &lt;B?&gt; class1</strong>
+</pre></div><p>This will return an error (at runtime):</p><div><pre class="programlisting">Traceback (most recent call last):
   File "main.py", line 2, in &lt;module&gt;
     myfunc ()
   File "cycode.pyx", line 12, in cycode.myfunc (cycode.c:714)
-<span class="strong"><strong>    cdef B x = &lt;B?&gt; class1</strong></span>
-<span class="strong"><strong>TypeError: Cannot convert cycode.A to cycode.B</strong></span>
-</pre></div><p>So, this can add <a id="id99" class="indexterm"/>some more type safety to your Cython APIs.</p></div><div class="section" title="Dereference operator (*)"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec19"/>Dereference operator (*)</h2></div></div></div><p>In Cython, we don't have a <a id="id100" class="indexterm"/>dereference operator. For example, if you are passing a C array and length to a function, you can use pointer arithmetic to iterate and access elements of the array:</p><div class="informalexample"><pre class="programlisting">  int * ptr = array;
+<strong>    cdef B x = &lt;B?&gt; class1</strong>
+<strong>TypeError: Cannot convert cycode.A to cycode.B</strong>
+</pre></div><p>So, this can add <a id="id99" class="indexterm"/>some more type safety to your Cython APIs.</p></div><div><div><div><div><h2 class="title"><a id="ch04lvl2sec19"/>Dereference operator (*)</h2></div></div></div><p>In Cython, we don't have a <a id="id100" class="indexterm"/>dereference operator. For example, if you are passing a C array and length to a function, you can use pointer arithmetic to iterate and access elements of the array:</p><div><pre class="programlisting">  int * ptr = array;
   int i;
   for (i = 0; i &lt; len; ++i)
-    printf ("%i\n", <span class="strong"><strong>*ptr++</strong></span>);</pre></div><p>In Cython, we have to be a little more explicit by accessing element zero. Then, we increment the pointer:</p><div class="informalexample"><pre class="programlisting">    cdef int i
+    printf ("%i\n", <strong>*ptr++</strong>);</pre></div><p>In Cython, we have to be a little more explicit by accessing element zero. Then, we increment the pointer:</p><div><pre class="programlisting">    cdef int i
     cdef int * ptr = array
     for i in range (len):
-        print <span class="strong"><strong>ptr [0]</strong></span>
-        ptr = ptr + 1</pre></div><p>There is nothing really fancy here. You simply have to use <code class="literal">x[0]</code> if you want to dereference <code class="literal">int *x</code>.</p></div><div class="section" title="Python exceptions"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec20"/>Python exceptions</h2></div></div></div><p>Another topic to look at is what<a id="id101" class="indexterm"/> happens if your Cython code propagates an exception to your C code. In the next chapter, we will cover how C++ native exceptions interact with Python, but we do not have this in C. Consider the following code:</p><div class="informalexample"><pre class="programlisting">cdef public void myfunc ():
-    <span class="strong"><strong>raise Exception</strong></span> ("Raising an exception!")</pre></div><p>This simply raises an exception back to C and gives the following:</p><div class="informalexample"><pre class="programlisting">
-<span class="strong"><strong>$ ./test</strong></span>
-<span class="strong"><strong>Exception: Exception('Raising an exception!',) in 'cycode.myfunc' ignored</strong></span>
-<span class="strong"><strong>Away doing something else now...</strong></span>
-</pre></div><p>As you can see, a warning was printed and no exception handling had occurred, so the program continues onto something else. This is because the plain <code class="literal">cdef</code> functions that do not return Python objects have no way for exceptions to be handled; and thus, a simple warning message is printed. If we want to control the behavior for C programs, we need to declare the exception on the Cython function prototype.</p><p>There are three forms for doing this. First, we can do the following:</p><div class="informalexample"><pre class="programlisting">cdef int myfunc () <span class="strong"><strong>except -1:</strong></span>
-    cdef int <span class="strong"><strong>retval = -1</strong></span>
+        print <strong>ptr [0]</strong>
+        ptr = ptr + 1</pre></div><p>There is nothing really fancy here. You simply have to use <code class="literal">x[0]</code> if you want to dereference <code class="literal">int *x</code>.</p></div><div><div><div><div><h2 class="title"><a id="ch04lvl2sec20"/>Python exceptions</h2></div></div></div><p>Another topic to look at is what<a id="id101" class="indexterm"/> happens if your Cython code propagates an exception to your C code. In the next chapter, we will cover how C++ native exceptions interact with Python, but we do not have this in C. Consider the following code:</p><div><pre class="programlisting">cdef public void myfunc ():
+    <strong>raise Exception</strong> ("Raising an exception!")</pre></div><p>This simply raises an exception back to C and gives the following:</p><div><pre class="programlisting">
+<strong>$ ./test</strong>
+<strong>Exception: Exception('Raising an exception!',) in 'cycode.myfunc' ignored</strong>
+<strong>Away doing something else now...</strong>
+</pre></div><p>As you can see, a warning was printed and no exception handling had occurred, so the program continues onto something else. This is because the plain <code class="literal">cdef</code> functions that do not return Python objects have no way for exceptions to be handled; and thus, a simple warning message is printed. If we want to control the behavior for C programs, we need to declare the exception on the Cython function prototype.</p><p>There are three forms for doing this. First, we can do the following:</p><div><pre class="programlisting">cdef int myfunc () <strong>except -1:</strong>
+    cdef int <strong>retval = -1</strong>
      ….
-     return retval</pre></div><p>This makes the function throw an<a id="id102" class="indexterm"/> exception on the function returning <code class="literal">-1</code> at any point. This also causes the exception to be propagated to the caller; so, in Cython, we can do the following:</p><div class="informalexample"><pre class="programlisting">cdef public void run ():
+     return retval</pre></div><p>This makes the function throw an<a id="id102" class="indexterm"/> exception on the function returning <code class="literal">-1</code> at any point. This also causes the exception to be propagated to the caller; so, in Cython, we can do the following:</p><div><pre class="programlisting">cdef public void run ():
     try:
-<span class="strong"><strong>        myfunc ()</strong></span>
+<strong>        myfunc ()</strong>
         somethingElse ()
     except Exception:
-        print "Something wrong"</pre></div><p>You can also use the <span class="emphasis"><em>maybe</em></span> exception (as I would like to think of it), which looks as follows:</p><div class="informalexample"><pre class="programlisting">cdef int myfunc () <span class="strong"><strong>except ? -1:</strong></span>
-    cdef int <span class="strong"><strong>retval = -1</strong></span>
+        print "Something wrong"</pre></div><p>You can also use the <em>maybe</em> exception (as I would like to think of it), which looks as follows:</p><div><pre class="programlisting">cdef int myfunc () <strong>except ? -1:</strong>
+    cdef int <strong>retval = -1</strong>
      ….
-     return retval</pre></div><p>This means that it may or may not be an error. Cython generates a call to <code class="literal">PyErr_Occurred</code> to perform verification from the C API. Lastly, we can use the wildcard:</p><div class="informalexample"><pre class="programlisting">cdef int myfunc () <span class="strong"><strong>except *:</strong></span>
-</pre></div><p>This then makes it always <a id="id103" class="indexterm"/>call <code class="literal">PyErr_Occurred</code>, which you can check via <code class="literal">PyErr_PrintEx</code> or via others at <a class="ulink" href="http://docs.python.org/2/c-api/exceptions.html">http://docs.python.org/2/c-api/exceptions.html</a>.</p><p>Note that the function pointer declarations can also handle this in their prototype. Just make sure that the return type matches the exception type, which must be an enum, float, pointer-type, or constant <a id="id104" class="indexterm"/>expression; if this is not the case, you will get a confusing compilation error.</p></div><div class="section" title="C/C++ iterators"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec21"/>C/C++ iterators</h2></div></div></div><p>Cython has more support for the<a id="id105" class="indexterm"/> C style <code class="literal">for</code> loops, and it can also perform further optimizations on the <code class="literal">range</code> function depending on how the iterator is declared. Generally, in Python, you simply do the following:</p><div class="informalexample"><pre class="programlisting">for i in iterable_type: …</pre></div><p>This is fine on PyObjects since they understand iterators, but C types do not have any of these abstractions. You need to do pointer arithmetic on your array types to access indexes. So, for example, first we can do the following with the <code class="literal">range</code> function:</p><div class="informalexample"><pre class="programlisting">cdef void myfunc (int length, <span class="strong"><strong>int * array</strong></span>)
-<span class="strong"><strong>    cdef int i</strong></span>
-<span class="strong"><strong>    for i in range (length):</strong></span>
-        print array [i]</pre></div><p>When the range function is used on C types, such as the following example that uses <code class="literal">cdef int i</code>, it is optimized for real C array access. There are several other forms we can use. We could translate the loop into the following:</p><div class="informalexample"><pre class="programlisting">
-<span class="strong"><strong>cdef int i</strong></span>
-for i in <span class="strong"><strong>array [:length]</strong></span>: print i</pre></div><p>This looks a lot more like a normal Python <code class="literal">for</code> loop performing the iteration assigning <code class="literal">i</code>, the index data. There is also one last form that Cython introduces using the <code class="literal">for .. from</code> syntax. This looks like a real <code class="literal">for</code> loop from C, and we can now write:</p><div class="informalexample"><pre class="programlisting">def myfunc (int length, int * array):
-<span class="strong"><strong>    cdef int i</strong></span>
-<span class="strong"><strong>    for i from 0 &lt;= i &lt; length;</strong></span>
-        print array [i]</pre></div><p>We can also introduce the step size:</p><div class="informalexample"><pre class="programlisting">for i <span class="strong"><strong>from</strong></span> 0 &lt;= i &lt; length <span class="strong"><strong>by 2:</strong></span>
-     print array [i]</pre></div><p>These extra <code class="literal">for</code> loop constructs are particularly useful when working a lot with C types because they do not understand extra Python constructs.</p></div><div class="section" title="Boolean error"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec22"/>Boolean error</h2></div></div></div><p>When you try and <a id="id106" class="indexterm"/>use <code class="literal">bool</code> in Cython, you will get the following:</p><div class="informalexample"><pre class="programlisting">
-<span class="strong"><strong>cycode.pyx:2:9: 'bool' is not a type identifier</strong></span>
-</pre></div><p>So, you need to use this:</p><div class="informalexample"><pre class="programlisting">from libcpp cimport bool</pre></div><p>When you compile it, you get the following:</p><div class="informalexample"><pre class="programlisting">
-<span class="strong"><strong>cycode.c: In function '__pyx_pf_6cycode_run':</strong></span>
-<span class="strong"><strong>cycode.c:642: error: 'bool' undeclared (first use in this function)</strong></span>
-<span class="strong"><strong>cycode.c:642: error: (Each undeclared identifier is reported only once</strong></span>
-<span class="strong"><strong>cycode.c:642: error: for each function it appears in.)</strong></span>
-<span class="strong"><strong>cycode.c:642: error: expected ';' before '__pyx_v_mybool'</strong></span>
-<span class="strong"><strong>cycode.c:657: error: '__pyx_v_mybool' undeclared (first use in this function)</strong></span>
-</pre></div><p>You need to make sure<a id="id107" class="indexterm"/> you're compiling with a C++ compiler as <code class="literal">bool</code> is a native type.</p></div><div class="section" title="Const keyword"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec23"/>Const keyword</h2></div></div></div><p>Cython doesn't understand the <code class="literal">const</code> keyword<a id="id108" class="indexterm"/> pre Cython 0.18, but we can work around this with the following typedefs:</p><div class="informalexample"><pre class="programlisting">cdef extern from *:
-<span class="strong"><strong>    ctypedef char* const_char_ptr "const char*"</strong></span>
-</pre></div><p>Now, we can use the <code class="literal">const</code> keyword as follows:</p><div class="informalexample"><pre class="programlisting">cdef public void foo_c(<span class="strong"><strong>const_char_ptr s</strong></span>):
-   ...</pre></div><p>If you're using Cython greater than or equal to 0.18, you can use <code class="literal">const</code> just as you would from C.</p></div><div class="section" title="Multiple Cython inputs"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec24"/>Multiple Cython inputs</h2></div></div></div><p>Cython does not handle <a id="id109" class="indexterm"/>multiple <code class="literal">.pyx</code> files. So, Cython has another keyword and convention—<code class="literal">.pxi</code>. This is an extra include file that works just as C includes. All other Cython files get pulled into one file to make one Cython compilation. For this, you need to do the following:</p><div class="informalexample"><pre class="programlisting">include "myothercythonfile.pxi"</pre></div><p>It's important to remember that this works as a C include and will put in place the code from the file to the point of the include.</p></div><div class="section" title="Struct initialization"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec25"/>Struct initialization</h2></div></div></div><p>When declaring <code class="literal">struct,</code> you cannot do<a id="id110" class="indexterm"/> normal C initialization as follows:</p><div class="informalexample"><pre class="programlisting">struct myStruct {
+     return retval</pre></div><p>This means that it may or may not be an error. Cython generates a call to <code class="literal">PyErr_Occurred</code> to perform verification from the C API. Lastly, we can use the wildcard:</p><div><pre class="programlisting">cdef int myfunc () <strong>except *:</strong>
+</pre></div><p>This then makes it always <a id="id103" class="indexterm"/>call <code class="literal">PyErr_Occurred</code>, which you can check via <code class="literal">PyErr_PrintEx</code> or via others at <a class="ulink" href="http://docs.python.org/2/c-api/exceptions.html">http://docs.python.org/2/c-api/exceptions.html</a>.</p><p>Note that the function pointer declarations can also handle this in their prototype. Just make sure that the return type matches the exception type, which must be an enum, float, pointer-type, or constant <a id="id104" class="indexterm"/>expression; if this is not the case, you will get a confusing compilation error.</p></div><div><div><div><div><h2 class="title"><a id="ch04lvl2sec21"/>C/C++ iterators</h2></div></div></div><p>Cython has more support for the<a id="id105" class="indexterm"/> C style <code class="literal">for</code> loops, and it can also perform further optimizations on the <code class="literal">range</code> function depending on how the iterator is declared. Generally, in Python, you simply do the following:</p><div><pre class="programlisting">for i in iterable_type: …</pre></div><p>This is fine on PyObjects since they understand iterators, but C types do not have any of these abstractions. You need to do pointer arithmetic on your array types to access indexes. So, for example, first we can do the following with the <code class="literal">range</code> function:</p><div><pre class="programlisting">cdef void myfunc (int length, <strong>int * array</strong>)
+<strong>    cdef int i</strong>
+<strong>    for i in range (length):</strong>
+        print array [i]</pre></div><p>When the range function is used on C types, such as the following example that uses <code class="literal">cdef int i</code>, it is optimized for real C array access. There are several other forms we can use. We could translate the loop into the following:</p><div><pre class="programlisting">
+<strong>cdef int i</strong>
+for i in <strong>array [:length]</strong>: print i</pre></div><p>This looks a lot more like a normal Python <code class="literal">for</code> loop performing the iteration assigning <code class="literal">i</code>, the index data. There is also one last form that Cython introduces using the <code class="literal">for .. from</code> syntax. This looks like a real <code class="literal">for</code> loop from C, and we can now write:</p><div><pre class="programlisting">def myfunc (int length, int * array):
+<strong>    cdef int i</strong>
+<strong>    for i from 0 &lt;= i &lt; length;</strong>
+        print array [i]</pre></div><p>We can also introduce the step size:</p><div><pre class="programlisting">for i <strong>from</strong> 0 &lt;= i &lt; length <strong>by 2:</strong>
+     print array [i]</pre></div><p>These extra <code class="literal">for</code> loop constructs are particularly useful when working a lot with C types because they do not understand extra Python constructs.</p></div><div><div><div><div><h2 class="title"><a id="ch04lvl2sec22"/>Boolean error</h2></div></div></div><p>When you try and <a id="id106" class="indexterm"/>use <code class="literal">bool</code> in Cython, you will get the following:</p><div><pre class="programlisting">
+<strong>cycode.pyx:2:9: 'bool' is not a type identifier</strong>
+</pre></div><p>So, you need to use this:</p><div><pre class="programlisting">from libcpp cimport bool</pre></div><p>When you compile it, you get the following:</p><div><pre class="programlisting">
+<strong>cycode.c: In function '__pyx_pf_6cycode_run':</strong>
+<strong>cycode.c:642: error: 'bool' undeclared (first use in this function)</strong>
+<strong>cycode.c:642: error: (Each undeclared identifier is reported only once</strong>
+<strong>cycode.c:642: error: for each function it appears in.)</strong>
+<strong>cycode.c:642: error: expected ';' before '__pyx_v_mybool'</strong>
+<strong>cycode.c:657: error: '__pyx_v_mybool' undeclared (first use in this function)</strong>
+</pre></div><p>You need to make sure<a id="id107" class="indexterm"/> you're compiling with a C++ compiler as <code class="literal">bool</code> is a native type.</p></div><div><div><div><div><h2 class="title"><a id="ch04lvl2sec23"/>Const keyword</h2></div></div></div><p>Cython doesn't understand the <code class="literal">const</code> keyword<a id="id108" class="indexterm"/> pre Cython 0.18, but we can work around this with the following typedefs:</p><div><pre class="programlisting">cdef extern from *:
+<strong>    ctypedef char* const_char_ptr "const char*"</strong>
+</pre></div><p>Now, we can use the <code class="literal">const</code> keyword as follows:</p><div><pre class="programlisting">cdef public void foo_c(<strong>const_char_ptr s</strong>):
+   ...</pre></div><p>If you're using Cython greater than or equal to 0.18, you can use <code class="literal">const</code> just as you would from C.</p></div><div><div><div><div><h2 class="title"><a id="ch04lvl2sec24"/>Multiple Cython inputs</h2></div></div></div><p>Cython does not handle <a id="id109" class="indexterm"/>multiple <code class="literal">.pyx</code> files. So, Cython has another keyword and convention—<code class="literal">.pxi</code>. This is an extra include file that works just as C includes. All other Cython files get pulled into one file to make one Cython compilation. For this, you need to do the following:</p><div><pre class="programlisting">include "myothercythonfile.pxi"</pre></div><p>It's important to remember that this works as a C include and will put in place the code from the file to the point of the include.</p></div><div><div><div><div><h2 class="title"><a id="ch04lvl2sec25"/>Struct initialization</h2></div></div></div><p>When declaring <code class="literal">struct,</code> you cannot do<a id="id110" class="indexterm"/> normal C initialization as follows:</p><div><pre class="programlisting">struct myStruct {
   int x;
   char * y;
 }
-struct myStruct x = { 2, "bla" };</pre></div><p>You need to do the following:</p><div class="informalexample"><pre class="programlisting">cdef myStruct x:
+struct myStruct x = { 2, "bla" };</pre></div><p>You need to do the following:</p><div><pre class="programlisting">cdef myStruct x:
 x.x = 2
-x.y = "bla"</pre></div><p>So, you manually specify the fields more verbosely. So, when using structs, you should ensure to use memset or set each element explicitly before using it.</p></div><div class="section" title="Calling into pure Python modules"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec26"/>Calling into pure Python modules</h2></div></div></div><p>You<a id="id111" class="indexterm"/> can always call into some pure Python code (non-Cythoned), but you should always beware and use Python <code class="literal">disutils</code> to make sure the module is installed correctly outside of the development environment.</p></div></div></div>
+x.y = "bla"</pre></div><p>So, you manually specify the fields more verbosely. So, when using structs, you should ensure to use memset or set each element explicitly before using it.</p></div><div><div><div><div><h2 class="title"><a id="ch04lvl2sec26"/>Calling into pure Python modules</h2></div></div></div><p>You<a id="id111" class="indexterm"/> can always call into some pure Python code (non-Cythoned), but you should always beware and use Python <code class="literal">disutils</code> to make sure the module is installed correctly outside of the development environment.</p></div></div></div>
 
 
-  <div id="sbo-rt-content"><div class="section" title="Summary"><div class="titlepage"><div><div><h1 class="title"><a id="ch04lvl1sec33"/>Summary</h1></div></div></div><p>Overall, we have seen some basic debugging using the cygdb wrapper. More importantly, we have examined some caveats and features of Cython. In the next chapter, we will see how we can bind C++ code and work with C++ constructs, such as templates and the STL library, in particular, directly from Cython. We will also see how the GIL can affect working with code in Cython and C/C++.</p></div></div>
+  <div><div><div><div><div><h1 class="title"><a id="ch04lvl1sec33"/>Summary</h1></div></div></div><p>Overall, we have seen some basic debugging using the cygdb wrapper. More importantly, we have examined some caveats and features of Cython. In the next chapter, we will see how we can bind C++ code and work with C++ constructs, such as templates and the STL library, in particular, directly from Cython. We will also see how the GIL can affect working with code in Cython and C/C++.</p></div></div>
 </body></html>
