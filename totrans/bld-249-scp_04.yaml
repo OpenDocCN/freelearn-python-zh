@@ -1,0 +1,1649 @@
+- en: Chapter 4. Pydrivers and Constraints
+  id: totrans-0
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+  zh: 第4章：Pydrivers和约束
+- en: When designing a complex object with movable parts we'd like to control how
+    these parts move in relation to each other. Sometimes, we might want to try and
+    simulate reality by using a physics engine such as bullet, but often this is either
+    not accurate enough or does not provide an animator with enough control. Most
+    of the time the clever use of multiple constraints will achieve our goals, but
+    sometimes the restrictions and relations cannot be expressed in terms of simple
+    constraints and key-framed motions. In those cases, we can extend Blender's capabilities
+    by defining our own constraints or relations between animated properties by using
+    Python.
+  id: totrans-1
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 当设计具有可动部件的复杂对象时，我们希望控制这些部件之间的运动关系。有时，我们可能想通过使用物理引擎（如bullet）来尝试模拟现实，但通常这要么不够准确，要么不能为动画师提供足够的控制。大多数时候，巧妙地使用多个约束可以达到我们的目标，但有时限制和关系不能简单地用约束和关键帧运动来表示。在这些情况下，我们可以通过使用Python定义自己的约束或动画属性之间的关系来扩展Blender的功能。
+- en: In this chapter, we will see how we can associate built-in constraints with
+    Blender objects and how to define complex relationships between animated properties
+    by using the so-called **pydrivers**. We will also define new complex constraints
+    that may be used just like the built-in constraints. We will not yet look into
+    defining key frames for animated properties as we will encounter those in later
+    chapters.
+  id: totrans-2
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在本章中，我们将看到如何将内置约束与Blender对象关联起来，以及如何使用所谓的**pydrivers**定义动画属性之间的复杂关系。我们还将定义新的复杂约束，这些约束可以像内置约束一样使用。我们不会在这里探讨为动画属性定义关键帧，因为那些将在后面的章节中遇到。
+- en: 'In this chapter, we will see:'
+  id: totrans-3
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在本章中，我们将看到：
+- en: How to drive one **IPO** from another by a Python expression
+  id: totrans-4
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 如何通过Python表达式从一个IPO驱动另一个IPO
+- en: How to work around some limitations inherent in **pydrivers**
+  id: totrans-5
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 如何绕过**pydrivers**固有的某些限制
+- en: How to restrict the motion of objects and bones by adding constraints
+  id: totrans-6
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 如何通过添加约束来限制对象和骨骼的运动
+- en: How to write a constraint in Python that will snap an object to the closest
+    vertex on another object
+  id: totrans-7
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 如何编写一个Python约束，将对象吸附到另一个对象最近的顶点上
+- en: There is a lot to cover here so let's first start off with some definitions
+    to get a clear idea about what we are dealing with.
+  id: totrans-8
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 这里有很多内容需要介绍，所以让我们首先从一些定义开始，以便清楚地了解我们正在处理的内容。
+- en: Getting to grips with animated properties
+  id: totrans-9
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+  zh: 掌握动画属性
+- en: Blender's system is versatile, yet complex. Before we are able to manipulate
+    animated properties from a Python script it is necessary we understand the concepts
+    involved thoroughly.
+  id: totrans-10
+  prefs: []
+  type: TYPE_NORMAL
+  zh: Blender的系统功能多样，但也很复杂。在我们能够通过Python脚本操作动画属性之前，有必要彻底理解其中涉及的概念。
+- en: IPO
+  id: totrans-11
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+  zh: IPO
+- en: In Blender, almost any property can be animated. Normally this is done by fixing
+    the values of some property such as the position of an Object at certain key frames
+    and interpolating between these values for intermediate frames. Blender groups
+    related animated properties together in so-called IPOs. For instance, all spatial
+    properties such as location, rotation, and scale are grouped as an Object type
+    IPO and may be associated with almost any Blender Object for instance, a `Mesh`,
+    a `Camera`, or a `Lamp`. The many properties of Blender Materials are grouped
+    in the Material type IPO. A Material type IPO may be associated with any object
+    that has associated materials. Likewise, a Lamp type IPO should be associated
+    with a `Lamp` object. An overview of possible IPO types is given in the next table.
+  id: totrans-12
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在Blender中，几乎任何属性都可以进行动画处理。通常，这是通过固定某些属性（如物体在特定关键帧的位置）的值，并在中间帧之间对这些值进行插值来完成的。Blender将相关的动画属性组合在一起，称为IPO。例如，所有空间属性（如位置、旋转和缩放）都被组合为一个对象类型IPO，可以与几乎任何Blender对象相关联，例如`Mesh`、`Camera`或`Lamp`。Blender材质的许多属性被组合在材质类型IPO中。材质类型IPO可以与任何具有相关材质的对象相关联。同样，灯类型IPO应该与`Lamp`对象相关联。下一个表格给出了可能的IPO类型概述。
+- en: Note
+  id: totrans-13
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+  zh: 注意
+- en: '**IPO** sounds like an abbreviation and it probably is, but what it stands
+    for exactly is a bit vague. The Blender wiki states that it stands for InterPOlation
+    system, but InterPolation Object is sometimes encountered as well. Most of the
+    time, IPO is used as a noun by itself however, so this discussion is a bit academical.'
+  id: totrans-14
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '**IPO**听起来像是一个缩写，可能确实如此，但它确切代表什么有点模糊。Blender维基百科表示它代表插值系统，但有时也会遇到插值对象。然而，IPO通常作为名词单独使用，所以这次讨论有点学术性。'
+- en: Each IPO may be associated with more than one object. It is for example possible
+    to animate the rotation of many objects in the same manner by associating a single
+    appropriate Object type IPO with them. In the Blender Python API, IPOs are represented
+    by IPO objects. An IPO object may be associated with another object by means of
+    the `setIpo()` method. The following table gives an overview of IPO types, typical
+    channels, and the type of objects they can be applied to. Refer to the API documentation
+    for the Blender.IPO module for more details ([http://www.blender.org/documentation/249PythonDoc/index.html](http://www.blender.org/documentation/249PythonDoc/index.html)).
+  id: totrans-15
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 每个IPO可以与多个对象相关联。例如，可以通过将单个适当的对象类型IPO与它们关联来以相同的方式动画许多对象的旋转。在Blender Python API中，IPO由IPO对象表示。IPO对象可以通过`setIpo()`方法与另一个对象相关联。以下表格概述了IPO类型、典型通道以及它们可以应用于的对象类型。有关Blender.IPO模块的详细信息，请参阅API文档（[http://www.blender.org/documentation/249PythonDoc/index.html](http://www.blender.org/documentation/249PythonDoc/index.html)）。
+- en: '| IPO type | IPO channels (some examples, refer to API documentation for a
+    full list) | Relevant to these Blender objects |'
+  id: totrans-16
+  prefs: []
+  type: TYPE_TB
+  zh: '| IPO类型 | IPO通道（一些示例，有关完整列表，请参阅API文档）| 与这些Blender对象相关 |'
+- en: '| --- | --- | --- |'
+  id: totrans-17
+  prefs: []
+  type: TYPE_TB
+  zh: '| --- | --- | --- |'
+- en: '| Object | `LocX`, `LocY`, `LocZ` (location)`RotX`, `RotY`, `RotZ` (rotation)`ScaleX`,
+    `ScaleY`, `ScaleZ` (scale) | All Blender objects that can be positioned, such
+    as `Mesh`, `Lamp`, `Camera`, and so on |'
+  id: totrans-18
+  prefs: []
+  type: TYPE_TB
+  zh: '| 对象 | `LocX`、`LocY`、`LocZ`（位置）`RotX`、`RotY`、`RotZ`（旋转）`ScaleX`、`ScaleY`、`ScaleZ`（缩放）|
+    所有可以定位的Blender对象，例如`Mesh`、`Lamp`、`Camera`等 |'
+- en: '| Pose | `RotX`, `RotY`, `RotZ` (rotation) | Bone |'
+  id: totrans-19
+  prefs: []
+  type: TYPE_TB
+  zh: '| 姿势 | `RotX`、`RotY`、`RotZ`（旋转）| 骨骼 |'
+- en: '| Material | `R`,`G`,`B` (diffuse color) | Any object that takes a material
+    |'
+  id: totrans-20
+  prefs: []
+  type: TYPE_TB
+  zh: '| 材质 | `R`、`G`、`B`（漫反射颜色）| 任何接受材质的对象 |'
+- en: '| Texture | `Contrast` | Any object with associated textures, such as `Mesh`,
+    `Lamp`, `World`, and so on |'
+  id: totrans-21
+  prefs: []
+  type: TYPE_TB
+  zh: '| 纹理 | `Contrast` | 任何具有关联纹理的对象，例如`Mesh`、`Lamp`、`World`等 |'
+- en: '| Curve | `Speed` | `Curve` |'
+  id: totrans-22
+  prefs: []
+  type: TYPE_TB
+  zh: '| 曲线 | `Speed` | 曲线 |'
+- en: '| Lamp | `Energ` (energy)`R`,`G`,`B` (color) | `Lamp` |'
+  id: totrans-23
+  prefs: []
+  type: TYPE_TB
+  zh: '| 灯光 | `Energ`（能量）`R`、`G`、`B`（颜色）| 灯光 |'
+- en: '| World | `HorR`,`HorG`,`HorB` (horizon color) | World |'
+  id: totrans-24
+  prefs: []
+  type: TYPE_TB
+  zh: '| 世界 | `HorR`、`HorG`、`HorB`（地平线颜色）| 世界 |'
+- en: '| Constraint | `Inf` (Influence) | Constraint |'
+  id: totrans-25
+  prefs: []
+  type: TYPE_TB
+  zh: '| 约束 | `Inf`（影响）| 约束 |'
+- en: '| Sequence | `Fac` (Factor, for example, the volume of an audio strip) | Sequence
+    |'
+  id: totrans-26
+  prefs: []
+  type: TYPE_TB
+  zh: '| 序列 | `Fac`（因子，例如，音频条目的音量）| 序列 |'
+- en: IPOchannels and IPOCurves
+  id: totrans-27
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+  zh: IPO通道和IPO曲线
+- en: IPOs of a given type will contain a whole collection of related animated properties.
+    Each of these properties is often referred to as a channel. Examples of channels
+    in an Object type IPO are for example `LocX` (the x-component of a location) and
+    `RotY` (the rotation around the y-axis). Each channel is represented by an `IPOCurve`
+    object that implements the required functionality to return a value interpolated
+    between key frames.
+  id: totrans-28
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 给定类型的IPO将包含一系列相关的动画属性。这些属性通常被称为通道。例如，在对象类型IPO中的通道有`LocX`（位置的x分量）和`RotY`（绕y轴的旋转）。每个通道都由一个实现所需功能以在关键帧之间返回插值值的`IPOCurve`对象表示。
+- en: An example of a channel in a Material type IPO would be `SpecB`—the blue component
+    of the specular color.
+  id: totrans-29
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 材质类型IPO中的通道示例可以是`SpecB`——漫反射颜色的蓝色分量。
+- en: '`IPOCurve` objects of a given IPO are accessed as attributes, for example,
+    `myipo.LocX` will refer to a `LocX` `IPOCurve` if `myipo` is an Object type IPO.'
+  id: totrans-30
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 可以通过属性访问给定IPO的`IPOCurve`对象，例如，如果`myipo`是对象类型IPO，则`myipo.LocX`将引用一个`LocX` `IPOCurve`。
+- en: 'To illustrate these concepts imagine that we want to animate the movement of
+    a simple cube along the x-axis. We want to start the motion at frame number 1
+    and to end it at frame number 25\. Within Blender, this is accomplished by following
+    these steps:'
+  id: totrans-31
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 为了说明这些概念，假设我们想要沿着x轴动画一个简单立方体的移动。我们希望在帧编号1开始运动，并在帧编号25结束。在Blender中，可以通过以下步骤实现：
+- en: Add a simple `Cube` by selecting **Add | Mesh | Cube** and make sure that you
+    are in Object mode again.
+  id: totrans-32
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 通过选择**添加 | 网格 | 立方体**添加一个简单的`Cube`，并确保你再次处于对象模式。
+- en: Go to frame number one (for example, by entering the frame number in the frame
+    number widget below the 3D View window).
+  id: totrans-33
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 前往第一帧（例如，通过在3D视图窗口下方的帧编号小部件中输入帧编号）。
+- en: Insert a location key frame by selecting **Object | Insert keyframe | Loc**.
+    In the `IPOCurve` editing window this location key frame will show up as an Object
+    type IPO (highlighted in the following screenshot).![IPOchannels and IPOCurves](img/0400-04-01.jpg)
+  id: totrans-34
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 通过选择**对象 | 插入关键帧 | 位置**来插入位置关键帧。在`IPOCurve`编辑窗口中，此位置关键帧将显示为对象类型IPO（在以下屏幕截图中突出显示）。![IPO通道和IPO曲线](img/0400-04-01.jpg)
+- en: The current frame is visible as a green vertical line. A location IPO holds
+    three distinct channels (for the location along the x-axis, `LocX`, and along
+    the y– and z-axes (`LocY` and `LocZ`). These channels are represented as different
+    colored graphs (they might overlap). These graphs may be manipulated in the `IPOCurve`
+    editor directly, but here we will just add a second key frame in the 3D View window.
+  id: totrans-35
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 当前帧以绿色垂直线可见。一个位置IPO包含三个不同的通道（沿x轴的位置`LocX`，以及沿y轴和z轴的位置`LocY`和`LocZ`）。这些通道以不同颜色的图表表示（它们可能重叠）。这些图表可以直接在`IPOCurve`编辑器中操作，但在这里我们将在3D视图窗口中添加第二个关键帧。
+- en: In the 3D View window, go to frame number 25.
+  id: totrans-36
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 在3D视图窗口中，转到第25帧。
+- en: Select the Cube and move it along the x-axis to the right.
+  id: totrans-37
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 选择立方体并将其沿x轴向右移动。
+- en: Insert a second location key frame by selecting **Object | Insert keyframe |
+    Loc**. Now we see that each of the graphs representing the three location IPO
+    channels have a second point defined on them. Because we changed the location
+    of the cube only along the x-axis, the graphs of the other channels remain flat,
+    but the `LocX` channel shows how the change of x-position progresses with each
+    frame.![IPOchannels and IPOCurves](img/0400-04-02.jpg)
+  id: totrans-38
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 通过选择**对象 | 插入关键帧 | Loc**插入第二个位置关键帧。现在我们可以看到代表三个位置IPO通道的每个图表上都有一个第二个点被定义。因为我们只改变了立方体的x轴位置，所以其他通道的图表保持平坦，但`LocX`通道显示了x位置变化如何随着每一帧的进展而变化。![IPOchannels
+    and IPOCurves](img/0400-04-02.jpg)
+- en: By adding more key frames we can make any motion as complex as we want, but
+    this becomes a lot of work if we want our object to follow a precise precalculated
+    path for example. Later in this chapter we will see how we can manipulate the
+    `IPOCurve` objects that represent these channels within an IPO programmatically.
+  id: totrans-39
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 通过添加更多的关键帧，我们可以使任何运动变得尽可能复杂，但如果我们的对象需要遵循一个精确预计算的路径，这将会变得非常繁琐。在本章的后面部分，我们将看到如何通过IPO程序来操作代表这些通道的`IPOCurve`对象。
+- en: Constraints
+  id: totrans-40
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+  zh: 约束
+- en: '**Constraints** in Blender are associated with top-level Blender Objects or
+    Blender Bone objects and represented by `Constraint` objects. Blender Objects
+    and Bones have a `constraints` attribute, which is an object implementing a sequence
+    of constraints and methods to add, remove, and alter the order of constraints
+    in this sequence (being able to change the order of constraints is necessary because
+    in some situations the order in which constraints are applied matters).'
+  id: totrans-41
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '**约束**在Blender中与顶级Blender对象或Blender骨骼对象相关联，并由`Constraint`对象表示。Blender对象和骨骼有一个`constraints`属性，这是一个对象，它实现了一系列约束和方法，用于添加、删除和改变这个序列中约束的顺序（能够改变约束的顺序是必要的，因为在某些情况下，约束应用的顺序很重要）。'
+- en: When a constraint is associated with an object the result will be a mix of the
+    constrained parameters and the calculated parameters. How much this mix will consist
+    of constrained or unconstrained parameters is determined by the `influence` attribute
+    and this may even be animated.
+  id: totrans-42
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 当约束与一个对象关联时，结果将是约束参数和计算参数的混合。这种混合中约束参数或非约束参数的比例由`influence`属性决定，这甚至可以动画化。
+- en: Difference between drivers and constraints
+  id: totrans-43
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+  zh: 驱动器和约束之间的区别
+- en: 'Drivers and constraints are related in the sense that they influence the way
+    parameters may change but they are also very different: constraints act on objects
+    while drivers determine how IPO curves (animated parameters) change other IPO
+    curves. And where constraints can only influence the spatial properties of an
+    object such as its position, scale or rotation, any IPO curve may be driven by
+    another IPO curve. This means that even material parameters, such as color or
+    a `Lamp` parameter such as energy, may be driven by another IPO. There is a restriction
+    though: the IPO curves that drive other IPO curves must currently be special properties
+    of an object so you can drive the color of a material by the rotation of some
+    object but you cannot drive that color by the energy of a lamp for instance. Also,
+    the fact that constraints can affect only spatial properties means that there
+    is for instance no way that you can limit the diffuse color of a material. The
+    following table shows some constraints and their relevant attributes. Refer to
+    the API documentation for the `Blender.Constraint` module for more details.'
+  id: totrans-44
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 驱动器和约束在影响参数变化方式方面相关联，但它们也非常不同：约束作用于对象，而驱动器确定IPO曲线（动画参数）如何改变其他IPO曲线。并且，约束只能影响对象的空间属性，如位置、缩放或旋转，任何IPO曲线都可以由另一个IPO曲线驱动。这意味着即使是材料参数，如颜色或`Lamp`参数（如能量），也可以由另一个IPO驱动。不过，有一个限制：驱动其他IPO曲线的IPO曲线目前必须是对象的特殊属性，因此你可以通过某个对象的旋转来驱动材料的颜色，但不能通过灯的能量来驱动该颜色。此外，约束只能影响空间属性的事实意味着例如无法限制材料的漫反射颜色。以下表格显示了某些约束及其相关属性。有关`Blender.Constraint`模块的更多详细信息，请参阅API文档。
+- en: '| Constraint type | Typical attributes |'
+  id: totrans-45
+  prefs: []
+  type: TYPE_TB
+  zh: '| 约束类型 | 典型属性 |'
+- en: '| --- | --- |'
+  id: totrans-46
+  prefs: []
+  type: TYPE_TB
+  zh: '| --- | --- |'
+- en: '| `TrackTo` | `Target` (target object)`Track` (axis to track) |'
+  id: totrans-47
+  prefs: []
+  type: TYPE_TB
+  zh: '| `TrackTo` | `Target`（目标对象）`Track`（跟踪轴）|'
+- en: '| `Floor` | `Target` (target object) |'
+  id: totrans-48
+  prefs: []
+  type: TYPE_TB
+  zh: '| `Floor` | `Target`（目标对象）|'
+- en: '| `StretchTo` | `Target` (target object) |'
+  id: totrans-49
+  prefs: []
+  type: TYPE_TB
+  zh: '| `StretchTo` | `Target`（目标对象）|'
+- en: '| `CopyLocation` | `Copy` (which location component(s) to copy) |'
+  id: totrans-50
+  prefs: []
+  type: TYPE_TB
+  zh: '| `CopyLocation` | `Copy`（要复制的位置组件）|'
+- en: Note that it is possible to animate the influence of a constraint as well, in
+    which case an Object will have an associated constraint type IPO.
+  id: totrans-51
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 注意，还可以动画化约束的影响，在这种情况下，对象将有一个相关的约束类型IPO。
+- en: Programming with constraints
+  id: totrans-52
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+  zh: 使用约束编程
+- en: Blender has many constraints that you may apply to an object. Some of them are
+    quite like drivers, in the sense that they do not restrict a motion of an object
+    but copy some parameters such as rotation or location. From a developer's point
+    of view, each Blender Object has a `constraints` attribute that is a sequence
+    of constraint objects. This sequence can be appended and items from this sequence
+    can be deleted. It is also possible to alter the order of the items.
+  id: totrans-53
+  prefs: []
+  type: TYPE_NORMAL
+  zh: Blender有许多可以应用于对象的约束。其中一些与驱动器类似，因为它们不限制对象的运动，而是复制一些参数，如旋转或位置。从开发者的角度来看，每个Blender对象都有一个`constraints`属性，它是一个约束对象的序列。这个序列可以被追加，并且可以从序列中删除项目。还可以改变项目的顺序。
+- en: '| Method | Action | Example |'
+  id: totrans-54
+  prefs: []
+  type: TYPE_TB
+  zh: '| 方法 | 操作 | 示例 |'
+- en: '| --- | --- | --- |'
+  id: totrans-55
+  prefs: []
+  type: TYPE_TB
+  zh: '| --- | --- | --- |'
+- en: '| `append(`*type*`)` | Appends a new constraint to an object and returns the
+    constraint | `ob.constraints.append(Constraint.Type.TRACKTO)` |'
+  id: totrans-56
+  prefs: []
+  type: TYPE_TB
+  zh: '| `append(`*类型*`)` | 向对象追加新的约束并返回该约束 | `ob.constraints.append(Constraint.Type.TRACKTO)`
+    |'
+- en: '| `remove(`*constraint*`)` | Removes a constraint from an object | `ob.constraints.remove(ob.constraints[0])`
+    |'
+  id: totrans-57
+  prefs: []
+  type: TYPE_TB
+  zh: '| `remove(`*约束*`)` | 从对象中删除约束 | `ob.constraints.remove(ob.constraints[0])`
+    |'
+- en: '| `moveUp(`*constraint*`)``moveDown(`*constraint*`)` | Change the position
+    of a constraint in the list of constraints | `ob.constraints.moveDown(ob.constraints[0])`
+    |'
+  id: totrans-58
+  prefs: []
+  type: TYPE_TB
+  zh: '| `moveUp(`*约束*`)` `moveDown(`*约束*`)` | 改变约束在约束列表中的位置 | `ob.constraints.moveDown(ob.constraints[0])`
+    |'
+- en: '| `[]` | Accesses an attribute of a constraint | `Con = ob.constraints[0]``Con[Constraint.Settings.TARGET]
+    = other` |'
+  id: totrans-59
+  prefs: []
+  type: TYPE_TB
+  zh: '| `[]` | 访问约束的属性 | `Con = ob.constraints[0]` `Con[Constraint.Settings.TARGET]
+    = other` |'
+- en: New `Constraint` objects are not instanced by way of a constructor, but by calling
+    the `append()` method of the `constraints` attribute with the type of the constraint
+    to add. `append()` will then return the new `Constraint` whose settings may then
+    be altered.
+  id: totrans-60
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 新的 `Constraint` 对象不是通过构造函数实例化的，而是通过调用 `constraints` 属性的 `append()` 方法并指定要添加的约束类型来创建。`append()`
+    方法将返回新的 `Constraint` 对象，然后可以修改其设置。
+- en: Programming with IPOs
+  id: totrans-61
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+  zh: 使用IPO编程
+- en: 'IPO channels can be changed from a script just as constraints can but they
+    are rather more diverse than constraints because there are many different types
+    of IPO channels and some of them, notably texture channels and shape keys, need
+    a special treatment. They have a separate chapter of their own ([Chapter 6](ch06.html
+    "Chapter 6. Shape Keys, IPOs, and Poses"): *Shape keys, IPOs, and Poses*) but
+    a different use of Python for IPO channels is shown in the next section.'
+  id: totrans-62
+  prefs: []
+  type: TYPE_NORMAL
+  zh: IPO通道可以从脚本中更改，就像约束一样，但它们比约束更为多样，因为存在许多不同类型的IPO通道，其中一些，特别是纹理通道和形状键，需要特殊处理。它们有自己独立的章节（[第6章](ch06.html
+    "第6章。形状键、IPO和姿态")：*形状键、IPO和姿态*），但在下一节中将展示Python在IPO通道中的不同用法。
+- en: PyDrivers
+  id: totrans-63
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+  zh: PyDrivers
+- en: There are many cases where we would like to change some property by referring
+    to another property but where the relationship cannot be captured by driving an
+    IPO channel by another one. Often, this is because the relation is not a simple
+    linear dependency, for example, a piston driven by a circular motion. Another
+    case would be if the relation is non continuous, for example, a light that is
+    turned on when a switch is in a certain position.
+  id: totrans-64
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 有许多情况，我们希望通过引用另一个属性来更改某些属性，但无法通过驱动另一个IPO通道来捕捉这种关系。通常，这是因为关系不是简单的线性依赖，例如，由圆形运动驱动的活塞。另一种情况是，如果关系是非连续的，例如，当开关处于某个位置时打开的灯光。
+- en: In these cases the relationship may be defined by a Python expression or by
+    the so-called *pydriver*. A pydriver takes the IPO channel of another object as
+    input and produces output that will drive a channel on the current object. Because
+    these Python expressions can access the complete Blender API, these relations
+    can be made very complex indeed.
+  id: totrans-65
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在这种情况下，关系可能由Python表达式或所谓的*pydriver*定义。pydriver将另一个对象的IPO通道作为输入，并产生输出，该输出将驱动当前对象的通道。因为这些Python表达式可以访问完整的Blender
+    API，所以这些关系可以变得非常复杂。
+- en: PyConstraints
+  id: totrans-66
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+  zh: PyConstraints
+- en: Where pydrivers may be used to bypass limitations in the built-in possibilities
+    to drive IPO channels, **PyConstraints** allow us to conquer difficulties in situations
+    where the built-in constraints will not suffice. For example, it is not possible
+    to restrict the position of an object to the surface of another object with holes
+    in it. The built-in constraints offer ways to limit the position to a location
+    not lower than another object (the `floor` constraint). But if we would like it
+    to be possible for our object to drop below the surface at locations where there
+    is a hole, we would have to program such a constraint ourselves. As we will see,
+    PyConstraints allow us to do just that.
+  id: totrans-67
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在内置的IPO通道驱动可能性受限时，可以使用pydrivers来绕过这些限制，而**PyConstraints**则允许我们在内置约束不足的情况下克服困难。例如，无法将一个物体的位置限制在另一个有孔物体的表面上。内置约束提供了一种方法，将位置限制在另一个物体（即`floor`约束）的上方。但如果我们希望物体在存在孔的位置下落，我们就必须自己编写这样的约束。正如我们将看到的，PyConstraints允许我们做到这一点。
+- en: With all these introductory remarks behind us we can finally turn to programming
+    again in the next section.
+  id: totrans-68
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在我们完成所有这些介绍性说明之后，我们可以在下一节中再次转向编程。
+- en: Setting the time—one to rule them all
+  id: totrans-69
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+  zh: 设置时间——一统天下
+- en: What use is a clock if you cannot set the time in a convenient way? Instead
+    of positioning each hand, we would like to turn a single knob to move both the
+    big hand and the little hand where the little hand would have to move twelve times
+    as slow as the big hand.
+  id: totrans-70
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 如果不能以方便的方式设置时间，时钟有什么用？我们不想为每个指针定位，而是希望转动一个旋钮，同时移动大指针和小指针，其中小指针的移动速度是大指针的十二分之一。
+- en: Therefore, we would have to define a `knob` object (that we probably would not
+    render) and drive the rotation of the bones in the clock by the rotation of this
+    knob.
+  id: totrans-71
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 因此，我们必须定义一个`knob`对象（我们可能不会渲染它），并通过这个旋钮的旋转来驱动时钟骨骼的旋转。
+- en: 'To set up the driven channels we follow these steps:'
+  id: totrans-72
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 要设置驱动通道，我们遵循以下步骤：
+- en: In the 3D View, select the `bighand` object.
+  id: totrans-73
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 在3D视图中，选择`bighand`对象。
+- en: In the IPO window, make sure that you have the object IPO types selected. On
+    the right-hand side, there will be a list of channels. Select the one labeled
+    **RotZ** by left-clicking on it. It will be highlighted.![Setting the time—one
+    to rule them all](img/0400-04-03.jpg)
+  id: totrans-74
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 在IPO窗口中，请确保您已选择了对象IPO类型。在右侧，将有一个通道列表。通过左键单击标签为**RotZ**的通道来选择它。它将被突出显示。![设置时间——一统天下](img/0400-04-03.jpg)
+- en: Select **Curve | Transform Properties**. A pop-up window will appear. Click
+    on the **Add Driver** button.![Setting the time—one to rule them all](img/0400-04-04.jpg)
+  id: totrans-75
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 选择**曲线 | 变换属性**。将出现一个弹出窗口。点击**添加驱动器**按钮。![设置时间——一统天下](img/0400-04-04.jpg)
+- en: With the **Transform Properties** pop up still present, select **Curve | Insert
+    1:1** **mapping** and next click on the **Default one-to-one mapping** pop up
+    (or press *Enter*). The resulting graph will show up as a straight, pale blue
+    line in the IPO editor window.![Setting the time—one to rule them all](img/0400-04-05.jpg)
+  id: totrans-76
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 在**变换属性**弹出窗口仍然存在的情况下，选择**曲线 | 插入 1:1 映射**，然后点击**默认的一对一映射**弹出窗口（或按*Enter*键）。生成的图表将作为一条直线、浅蓝色线出现在IPO编辑器窗口中。![设置时间——一统天下](img/0400-04-05.jpg)
+- en: 'In the **Transform Properties** pop-up window, click on the pale green python
+    icon. The python icon will turn dark green and it is now possible to enter a pydriver
+    expression in the adjacent text field. Enter the following line of code:'
+  id: totrans-77
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+  zh: 在**变换属性**弹出窗口中，点击浅绿色的Python图标。Python图标将变为深绿色，现在可以在相邻的文本字段中输入pydriver表达式。输入以下代码行：
+- en: '[PRE0]'
+  id: totrans-78
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+  zh: '[PRE0]'
+- en: Et voila! If you now rotate the `knob` object about its z-axis the big hand
+    follows suit. The pydriver expression does need some clarification though. The
+    highlighted part is the driver—the object channel that supplies the input for
+    our driven channel. The `ob('Knob')` part is the shorthand allowed in pydriver
+    expressions for `Blender.Object.Get('Knob')` and the `RotZ` attribute supplies
+    us with the rotation about the z-axis. This rotation, however, is given in radians,
+    whereas the result of a pydriver expression for a rotation channel should be in
+    degrees, so we multiply by 360 degrees and divide by 2 times pi. Finally, we divide
+    our calculated number of degrees by ten because for some obscure reason, Blender
+    does not really expect degrees but the number of degrees divided by 10! (Note
+    that this "divide by ten" business is valid only for rotation channels and not
+    for any of the other channels!)
+  id: totrans-79
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 哇！如果你现在围绕`knob`对象的z轴旋转，大指针也会相应地旋转。不过，pydriver表达式确实需要一些解释。高亮部分是驱动器——为我们驱动通道提供输入的对象通道。`ob('Knob')`部分是pydriver表达式允许的`Blender.Object.Get('Knob')`的缩写，而`RotZ`属性为我们提供了关于z轴的旋转。然而，这种旋转是以弧度为单位的，而旋转通道的pydriver表达式的结果应该是以度为单位的，因此我们将其乘以360度并除以2π。最后，我们将计算出的度数除以十，因为出于某种神秘的原因，Blender实际上并不期望度数，而是度数除以10！（请注意，这种“除以十”的操作仅适用于旋转通道，不适用于其他任何通道！）
+- en: Note
+  id: totrans-80
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+  zh: 注意
+- en: 1-on-1 mappings
+  id: totrans-81
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 1:1映射
+- en: You may wonder why we would have to insert a 1-on-1 curve first. Well, the relation
+    between a driven channel and its driver contains one more layer and that is a
+    curve translating the output of the pydriver to the final output. This curve can
+    be tweaked of course, but normally we would do all the fine-tuning in our pydriver
+    and just put in a 1-on-1 curve. This way of working is so common that Blender
+    provides a menu entry especially for this situation since it is quite tedious
+    to create the necessary curves again and again for each driven channel.
+  id: totrans-82
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 你可能会想知道为什么我们首先需要插入一个1:1曲线。嗯，驱动通道与其驱动器之间的关系包含一个额外的层次，那就是将pydriver的输出转换为最终输出的曲线。当然，我们可以调整这条曲线，但通常我们会在pydriver中进行所有精细调整，然后只插入一个1:1曲线。这种工作方式非常常见，因此Blender提供了一个专门用于这种情况的菜单项，因为为每个驱动通道反复创建必要的曲线是非常繁琐的。
+- en: Of course, we could have accomplished the same feat by driving the rotation
+    channel directly by the rotation channel of the `knob` object or even by a copy
+    rotation constraint. That would have saved us the strange conversion issues but
+    the purpose of this section is to show the basics.
+  id: totrans-83
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 当然，我们可以通过直接驱动旋转通道的旋转通道或通过复制旋转约束来实现同样的效果。这将节省我们奇怪的转换问题，但本节的目的是展示基础知识。
+- en: 'The little hand is an example where using a pydriver really is a valid solution.
+    (Although by tweaking the IPO curve itself we could alter the pace of the driven
+    channel but that would not be as clear as a simple expression and almost impossible
+    for more complex relations) We repeat the list of actions shown earlier but now
+    for the little hand object and enter the following pydriver expression:'
+  id: totrans-84
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 小指针是一个使用pydriver确实是有效解决方案的例子。（尽管通过调整IPO曲线本身我们也可以改变驱动通道的速度，但这不如简单的表达式清晰，对于更复杂的关系几乎不可能实现）我们重复之前显示的操作列表，但现在针对小指针对象，并输入以下pydriver表达式：
+- en: '[PRE1]'
+  id: totrans-85
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE1]'
+- en: 'Because the little hand runs twelve times as slow as the big hand, we use the
+    same pydriver expression as for the big hand but divide that result by twelve.
+    Now when we rotate the `knob` object about its z-axis, the big hand will follow
+    as will the little hand at its set pace. Instead of manually rotating the knob
+    it is also possible to animate the rotation of the knob to animate both clock
+    hands. The complete result is available as `clock-pydriver.blend` and a rendered
+    image of the clock, with the knob driving the motion of the hands visible on the
+    top left, is shown in the next screenshot:'
+  id: totrans-86
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 因为小指针的运行速度是大指针的十二分之一，所以我们使用与大指针相同的pydriver表达式，但将其结果除以十二。现在当我们围绕`knob`对象的z轴旋转时，大指针会跟随，小指针也会以设定的速度跟随。除了手动旋转旋钮外，还可以动画化旋钮的旋转来动画化两个时钟指针。完整的结果作为`clock-pydriver.blend`提供，时钟的渲染图像，其中旋钮驱动指针的运动在左上角可见，如图所示：
+- en: '![Setting the time—one to rule them all](img/0400-04-06.jpg)'
+  id: totrans-87
+  prefs: []
+  type: TYPE_IMG
+  zh: '![设置时间——一统天下](img/0400-04-06.jpg)'
+- en: Shortcuts
+  id: totrans-88
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+  zh: 快捷键
+- en: Within pydriver expressions some useful shortcuts can be used to save on typing.
+    In the step-by-step example we already made use of the `ob('<name>')` shortcut
+    that refers to Blender objects by name and likewise, it is possible to access
+    `Mesh` objects and materials by `me('<name>')` and `ma('<name>')` respectively.
+    Furthermore, the `Blender` module is available as `b`, the `Blender.Noise` module
+    as `n`, and Python's `math` module as `m`. This allows for expressions using trigonometric
+    functions such as sinus, for example. These facilities are sufficient to cover
+    many issues but they still might not be enough, for instance if we would like
+    to import external modules. There is a way around these difficulties though as
+    we will see in the next section.
+  id: totrans-89
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在pydriver表达式中，可以使用一些有用的快捷键来节省输入。在逐步示例中，我们已经使用了`ob('<name>')`快捷键，该快捷键通过名称引用Blender对象，同样，可以通过`me('<name>')`和`ma('<name>')`分别访问`Mesh`对象和材质。此外，`Blender`模块作为`b`可用，`Blender.Noise`模块作为`n`可用，Python的`math`模块作为`m`可用。这允许使用三角函数等表达式，例如正弦。这些设施足以覆盖许多问题，但它们可能仍然不足以满足需求，例如如果我们想导入外部模块。然而，我们将在下一节中看到，有一种方法可以绕过这些困难。
+- en: 'Overcoming limitations: pydrivers.py'
+  id: totrans-90
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+  zh: 克服限制：pydrivers.py
+- en: 'The input field for pydrivers is limited to 125 characters and even though
+    the shortcuts provided to access Python''s `math` module and some of the Blender
+    modules allow for shorter expressions, the space provided is often not enough.
+    Also, as pydrivers must be Python expressions, it is quite difficult to debug
+    them (because you cannot insert `print` statements for example) or to attain something
+    like an `if/then` functionality. The latter can be overcome, to a certain extent,
+    by clever tricks based on the fact that `True` and `False` in Python are converted
+    to 1 and 0 respectively inside numerical expressions, so the statement:'
+  id: totrans-91
+  prefs: []
+  type: TYPE_NORMAL
+  zh: pydrivers的输入字段限制为125个字符，尽管提供的快捷键可以访问Python的`math`模块和一些Blender模块，允许更短的表达式，但提供的空间通常不足。此外，由于pydrivers必须是Python表达式，因此很难调试它们（例如，无法插入`print`语句）或实现类似`if/then`的功能。后者可以通过基于以下事实的巧妙技巧在一定程度上克服：在Python中，`True`和`False`在数值表达式中分别转换为1和0，因此以下语句：
+- en: '[PRE2]'
+  id: totrans-92
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE2]'
+- en: 'may be expressed as:'
+  id: totrans-93
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 可以表示为：
+- en: '[PRE3]'
+  id: totrans-94
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE3]'
+- en: 'However, this feels awkward and evaluates the condition twice. Fortunately,
+    both the space problem and the limitation to a single expression can be solved
+    by using a text block named `pydrivers.py`. If such a text block is present, its
+    contents are accessible as a module called `p`. So, for example, if we define
+    a function `clamp()` in `pydrivers.py` that looks like this:'
+  id: totrans-95
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 然而，这感觉有些笨拙，并且会两次评估条件。幸运的是，通过使用名为`pydrivers.py`的文本块，可以解决空间问题和限制单个表达式的问题。如果存在这样的文本块，其内容可以通过名为`p`的模块访问。例如，如果我们定义一个名为`clamp()`的函数在`pydrivers.py`中，其看起来如下：
+- en: '[PRE4]'
+  id: totrans-96
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE4]'
+- en: We may invoke this function in our pydriver expression as `p.clamp(a,14,109)`.
+  id: totrans-97
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们可以在pydriver表达式中调用此函数为`p.clamp(a,14,109)`。
+- en: We will use `pydrivers.py` quite a bit in the following examples, not only because
+    it allows for more complex expressions, but also because the width of the pydriver
+    field is even smaller than the length of its allowed content making it very hard
+    to read as you have to scroll about to access all parts of an expression.
+  id: totrans-98
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在接下来的示例中，我们将大量使用`pydrivers.py`，这不仅因为它允许使用更复杂的表达式，还因为pydriver字段的宽度甚至小于其允许内容的长度，这使得阅读起来非常困难，因为你必须滚动以访问表达式的所有部分。
+- en: Internal combustion—correlating complex changes
+  id: totrans-99
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+  zh: 内燃机——关联复杂变化
+- en: Imagine that we want to demonstrate how a four-stroke internal combustion engine
+    works. Such an engine has a lot of moving parts and many of them are related in
+    complex ways.
+  id: totrans-100
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 想象一下，我们想要展示一个四冲程内燃机是如何工作的。这种发动机有很多运动部件，其中许多部件以复杂的方式相互关联。
+- en: To see what these exact relations are, it might be useful to have a look at
+    the following illustration. It lists the names that we will use when we refer
+    to the various parts. (I am neither an automotive engineer nor a mechanic so these
+    part names may not be accurate but at least we will be talking about the same
+    things. For more information you may want to read [http://en.wikipedia.org/wiki/Four-stroke_cycle](http://en.wikipedia.org/wiki/Four-stroke_cycle).)
+  id: totrans-101
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 为了看到这些确切的关系，查看以下插图可能很有用。它列出了我们将用于引用各种部件的名称。（我既不是汽车工程师也不是机械师，所以这些部件名称可能不准确，但至少我们将谈论相同的事情。如需更多信息，您可能想阅读[http://en.wikipedia.org/wiki/Four-stroke_cycle](http://en.wikipedia.org/wiki/Four-stroke_cycle)。）
+- en: '![Internal combustion—correlating complex changes](img/0400-04-07.jpg)'
+  id: totrans-102
+  prefs: []
+  type: TYPE_IMG
+  zh: '![内燃机——关联复杂变化](img/0400-04-07.jpg)'
+- en: 'Before we start to configure the parts to have their rotation and position
+    driven by another part, it is a good thing to think ahead: in real life, the pistons
+    inside the cylinders are propelled by the expansion of the ignited fuel and the
+    pistons drive the drive shaft (or crank-shaft) with the attached flywheel and
+    a distribution belt (or in our case some gears, that are not shown here) transfers
+    that motion back to the camshafts that drive the motion of the inlet and outlet
+    valves. Obviously, we cannot follow this concept directly as there is no fuel
+    object of some sort to drive other objects so it makes more sense to reverse the
+    chain of relations. In our setup the flywheel will drive the drive shaft and the
+    different gears and the drive shaft will drive most other objects, including the
+    piston and its connecting rod. We will also drive the energy of the lamp positioned
+    at the tip of the spark plug by the rotation of the drive shaft.'
+  id: totrans-103
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在我们开始配置部件，使其旋转和位置由另一个部件驱动之前，提前思考一下是件好事：在现实生活中，气缸内的活塞是由燃烧燃料的膨胀推动的，而活塞通过连接飞轮和分配皮带（或在我们的情况下是一些齿轮，这里没有展示）将运动传递回驱动进气和排气阀运动的凸轮轴。显然，我们无法直接遵循这个概念，因为没有某种类型的燃料对象来驱动其他对象，所以反转关系链更有意义。在我们的设置中，飞轮将驱动传动轴和不同的齿轮，传动轴将驱动大多数其他对象，包括活塞及其连杆。我们还将通过传动轴的旋转来驱动位于火花塞尖端的灯泡的能量。
+- en: 'The drive shaft will simply follow the rotation of the flywheel as will the
+    lower gear (this could be implemented with a `copy` `rotation` constraint just
+    as well but here we choose to implement everything by pydrivers). The corresponding
+    pydrivers for the `RotX` channel will look like this:'
+  id: totrans-104
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 传动轴将简单地跟随飞轮的旋转，下齿轮也是如此（这也可以通过`copy` `rotation`约束来实现，但在这里我们选择通过pydrivers来实现所有操作）。对应于`RotX`通道的pydrivers将如下所示：
+- en: '[PRE5]'
+  id: totrans-105
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE5]'
+- en: This may look awkward for something just copying a rotation but remember that
+    rotations are stored as radians while pydriver expressions should return rotations
+    as degrees divided by 10.
+  id: totrans-106
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 对于仅仅复制旋转的东西来说，这看起来可能有些笨拙，但请记住，旋转是以弧度存储的，而pydriver表达式应该返回以10度为单位除以的旋转度数。
+- en: 'The top gear and both the camshafts will also follow the rotation of the flywheel
+    but with the speed reduced to half and with the direction of the rotation reversed:'
+  id: totrans-107
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 顶齿轮和两个凸轮轴也将跟随飞轮的旋转，但速度减半，并且旋转方向相反：
+- en: '[PRE6]'
+  id: totrans-108
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE6]'
+- en: To illustrate how to access functions in Python's `math` module we did not do
+    the conversion to degrees ourselves but used the `degrees()` function supplied
+    by the `math` module.
+  id: totrans-109
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 为了说明如何访问Python的`math`模块中的函数，我们没有自己进行度数的转换，而是使用了`math`模块提供的`degrees()`函数。
+- en: 'We modeled the camshafts with the cam pointing exactly downward. If we want
+    to drive the x-axis rotation of the inlet camshaft by the rotation of the drive
+    shaft we have to take into account that it moves at half the speed. Also, its
+    rotation lags behind a bit to match the ignition cycle of the cylinder as it opens
+    the inlet valve on the first downstroke and closes the valve just before the ignition
+    spark:'
+  id: totrans-110
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们将凸轮轴建模为凸轮正好向下。如果我们想通过传动轴的旋转来驱动进气凸轮轴的x轴旋转，我们必须考虑到它以一半的速度移动。此外，它的旋转稍微滞后，以匹配气缸的点火周期，因为它在第一次下冲时打开进气阀，并在点火火花前关闭阀门：
+- en: '[PRE7]'
+  id: totrans-111
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE7]'
+- en: 'The expression for the outlet camshaft is almost identical except for the amount
+    it lags behind (here `24`, but tuning this engine is left to real mechanics):'
+  id: totrans-112
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 出口凸轮轴的表达式几乎完全相同，只是它落后（此处为`24`）的量，但调整此发动机的工作留给真正的机械师：
+- en: '[PRE8]'
+  id: totrans-113
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE8]'
+- en: '![Internal combustion—correlating complex changes](img/0400-04-08.jpg)'
+  id: totrans-114
+  prefs: []
+  type: TYPE_IMG
+  zh: '![内燃机—关联复杂变化](img/0400-04-08.jpg)'
+- en: 'The movement of the piston is limited to just the vertical, but the exact motion
+    is somewhat more involved to calculate. We are interested in the position of the
+    quantity **Q**—see the preceding figure—and the distance between the center of
+    the drive shaft and point where the connecting rod (**L** in the diagram) connects
+    to the piston. Because the length of the connecting rod is fixed, **Q** will vary
+    as a function of the rotation angle **α** of the drive shaft. The distance from
+    the center of the drive shaft to point where the connecting rod is connected to
+    the drive shaft is also fixed. We call this distance R. Now we have a triangle
+    with sides **Q**, **L**, and **R** and a known angle **α**. As three of these
+    quantities (L, R, and α) are known, we can calculate the fourth, **Q**, by using
+    the cosine rule ([http://en.wikipedia.org/wiki/Law_of_cosines](http://en.wikipedia.org/wiki/Law_of_cosines)).
+    Therefore, we define a function `q()` in `pydrivers.py` that will return the length
+    **Q** when **L**,**R**, and **α** are given:'
+  id: totrans-115
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 活塞的运动仅限于垂直方向，但确切的运动计算要复杂一些。我们感兴趣的是数量**Q**的位置——参见前面的图示——以及驱动轴中心与连杆连接点（图中**L**）之间的距离。由于连杆的长度是固定的，**Q**将作为驱动轴旋转角度**α**的函数而变化。从驱动轴中心到连杆连接点的距离也是固定的。我们称这个距离为R。现在我们有一个边长为**Q**、**L**和**R**的三角形，以及一个已知的角**α**。由于这三个量（L、R和α）是已知的，我们可以通过余弦定理（[http://en.wikipedia.org/wiki/Law_of_cosines](http://en.wikipedia.org/wiki/Law_of_cosines)）计算出第四个量**Q**。因此，我们在`pydrivers.py`中定义了一个函数`q()`，当给定**L**、**R**和**α**时，它将返回长度**Q**：
+- en: '[PRE9]'
+  id: totrans-116
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE9]'
+- en: 'The expression for the `LocZ` channel of the piston will then simply call this
+    function with the appropriate values for the arguments:'
+  id: totrans-117
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 活塞的`LocZ`通道的表达式将简单地调用此函数，并使用适当的参数值：
+- en: '[PRE10]'
+  id: totrans-118
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE10]'
+- en: The precise values for **L** and **R** were taken from the mesh by noting the
+    position of appropriate vertices of the connecting rod and the drive shaft in
+    the `Transform Properties` window. (*N* key in the 3D View)
+  id: totrans-119
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '**L**和**R**的确切值是通过在`Transform Properties`窗口中记录连杆和驱动轴适当顶点的位置从网格中获得的。（3D视图中的*N*键）'
+- en: The connecting rod itself may use the same expression for its `LocZ` channel
+    as we carefully made the mesh origins of the piston and the connecting rod to
+    coincide.
+  id: totrans-120
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 连杆本身可能使用与活塞和连杆的网格原点精确对齐相同的`LocZ`通道表达式。
+- en: 'However, the motion of the connecting rod is not limited to the z-location
+    as it will rotate around the x-axis centered on the point connecting it to the
+    piston. The angle of this rotation (**γ** in the diagram) can be derived from
+    the quantities **L**, **R**, and **α**:'
+  id: totrans-121
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 然而，连杆的运动不仅限于z位置，因为它将围绕连接到活塞的点的x轴旋转。这种旋转的角度（图中**γ**）可以从数量**L**、**R**和**α**中推导出来：
+- en: '[PRE11]'
+  id: totrans-122
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE11]'
+- en: 'The pydriver expression for `RotX` will then look like this:'
+  id: totrans-123
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '`RotX`的pydriver表达式将看起来像这样：'
+- en: '[PRE12]'
+  id: totrans-124
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE12]'
+- en: 'The inlet and outlet valves are driven by the rotation of their respective
+    camshafts. The outline of the actual cam is quite complex so here, we use not
+    the actual form of that outline but approximate it by something that looks good
+    enough (that is, open the valve in a fluent yet brisk motion at the correct moment).
+    The following graph shows the valve travel as a function of rotation angle:'
+  id: totrans-125
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 进气和排气阀门由各自凸轮轴的旋转驱动。实际凸轮的轮廓相当复杂，因此在这里，我们不是使用该轮廓的实际形状，而是通过某种看起来足够好的东西来近似它（即，在正确的时间以流畅而迅速的动作打开阀门）。以下图表显示了阀门行程作为旋转角度的函数：
+- en: '![Internal combustion—correlating complex changes](img/0400-04-09.jpg)'
+  id: totrans-126
+  prefs: []
+  type: TYPE_IMG
+  zh: '![内燃机—关联复杂变化](img/0400-04-09.jpg)'
+- en: 'To this end, in `pydrivers.py` we define a function `spike()` that will take
+    the rotation of the camshaft as its argument and returns a value between `0.0`
+    and `1.0` that rises steeply around the zero angle:'
+  id: totrans-127
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 为了达到这个目的，在`pydrivers.py`中我们定义了一个函数`spike()`，它将凸轮轴的旋转作为其参数，并返回一个在零角度周围急剧上升的值在`0.0`和`1.0`之间：
+- en: '[PRE13]'
+  id: totrans-128
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE13]'
+- en: 'Now the motion of the valve is linear but the line it follows is tilted by
+    10 degrees (forward for the inlet valve, backward for the outlet valve) so we
+    have to drive two channels, `LocZ` and `LocY`, each multiplied by the correct
+    amount to effect the slanted motion. We therefore define two functions in `pydrivers.py`:'
+  id: totrans-129
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 现在阀门的运动是线性的，但它所遵循的线倾斜了10度（进水阀向前，出水阀向后），因此我们需要驱动两个通道，`LocZ` 和 `LocY`，每个通道都乘以正确的数值以产生倾斜运动。因此，我们在
+    `pydrivers.py` 中定义了两个函数：
+- en: '[PRE14]'
+  id: totrans-130
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE14]'
+- en: 'Both functions will return a distance given the rotation angle of the object
+    driving it. The `tilt` is the amount that the valve is tilted (in degrees), `travel`
+    is the maximum distance the valve will travel along the tilted line, and `offset`
+    is a value that allows us to tweak the position of the valve. The corresponding
+    pydriver expressions for the `LocZ` and `LocY` channels of the inlet valve will
+    then become:'
+  id: totrans-131
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 这两个函数都会根据驱动对象的旋转角度返回一个距离。`tilt` 是阀门倾斜的角度（以度为单位），`travel` 是阀门沿着倾斜线可以旅行的最大距离，`offset`
+    是一个允许我们调整阀门位置的值。因此，进水阀的 `LocZ` 和 `LocY` 通道的对应 pydriver 表达式将变为：
+- en: '[PRE15]'
+  id: totrans-132
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE15]'
+- en: and
+  id: totrans-133
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 和
+- en: '[PRE16]'
+  id: totrans-134
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE16]'
+- en: (The expressions for the outlet valve look the same but with a positive tilt
+    angle.)
+  id: totrans-135
+  prefs: []
+  type: TYPE_NORMAL
+  zh: （出水阀的表达式看起来相同，但倾斜角度为正值。）
+- en: 'Until now, all channels have been object channels, that is, locations and rotations.
+    But it is also possible to drive other channels, and that is precisely what we
+    need to drive the energy of the lamp positioned at the tip of our spark plug.
+    In `pydrivers.py` we first define a helper function `topi()` that, besides the
+    rotation angle of the driving object, will take an angle `h` (in radians) and
+    an intensity `i` as arguments. It will return that intensity if the angle of the
+    driving object is between `0` and `h` and will return zero outside this range.
+    Because the input angle may be larger than two times pi (when the driving object
+    is rotated more than full circle), we correct this by the highlighted *modulo*
+    operation:'
+  id: totrans-136
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 到目前为止，所有通道都是对象通道，即位置和旋转。但也可以驱动其他通道，这正是我们需要驱动位于火花塞尖端灯的能量。在 `pydrivers.py` 中，我们首先定义了一个辅助函数
+    `topi()`，它除了接受驱动对象的旋转角度外，还将接受一个角度 `h`（以弧度为单位）和一个强度 `i` 作为参数。如果驱动对象的旋转角度在 `0` 到
+    `h` 之间，它将返回该强度，如果在这个范围之外，则返回零。因为输入角度可能大于两倍的 pi（当驱动对象旋转超过一整圈时），我们通过高亮的 *modulo*
+    操作进行纠正：
+- en: '[PRE17]'
+  id: totrans-137
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE17]'
+- en: 'The pydriver expression for the energy channel (called "Energ" in the IPO editor
+    window) can then be expressed as follows:'
+  id: totrans-138
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 能量通道的 pydriver 表达式（在 IPO 编辑器窗口中称为 "Energ"）可以表示如下：
+- en: '[PRE18]'
+  id: totrans-139
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE18]'
+- en: As shown, this expression will 'fire' the spark plug for the first 17 degrees
+    or so (`0.3` radians) of its cycle by setting the energy to `0.5`.
+  id: totrans-140
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 如所示，这个表达式将在其周期的前17度左右（约 `0.3` 弧度）通过将能量设置为 `0.5` 来触发火花塞。
+- en: More power—combining multiple cylinders to an engine
+  id: totrans-141
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+  zh: 更强大的功能——将多个气缸组合到发动机中
+- en: Once we have modeled a single cylinder and taken care of driving the motions
+    of the individual parts, our next step is to duplicate the cylinders to create
+    a set like the opening illustration of this chapter. In principle we can select
+    all parts, duplicate them by pressing *Shift* + *D*, and adjust the timing of
+    the individual driven channels.
+  id: totrans-142
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 一旦我们建模了一个单缸并处理了各个部分的运动，我们的下一步就是复制气缸以创建类似于本章开篇插图中的集合。原则上我们可以选择所有部分，通过按 *Shift*
+    + *D* 复制它们，并调整各个驱动通道的时序。
+- en: There is a snag, however. When using *Shift* + *D* rather than *Alt* + *D* we
+    make actual copies of the object meshes instead of merely referring to the same.
+    We would expect the same for other items associated with an object, such as materials,
+    textures, and IPOs. This is not the case however as Blender, by default, does
+    not duplicate those last three categories when duplicating an object. This would
+    be awkward, as a change in the IPO of the first piston for example would affect
+    all duplicated pistons as well.
+  id: totrans-143
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 然而，有一个问题。当我们使用 *Shift* + *D* 而不是 *Alt* + *D* 时，我们实际上创建了对象网格的副本，而不是仅仅引用相同的对象。我们原本期望对于与对象相关联的其他项目，例如材质、纹理和IPOs，也会有同样的效果。然而，事实并非如此，因为Blender默认情况下在复制对象时不会复制那些最后三个类别。例如，如果第一个活塞的IPO发生变化，将会影响所有复制的活塞，这将会很尴尬。
+- en: We could make those copies unique afterward (by clicking on the user count field
+    of those IPOs for instance and confirm the **make** **single** **user?** popup)
+    but this is tedious as it would have to be repeated for each copy.
+  id: totrans-144
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们可以在之后使那些副本变得独特（例如，通过点击那些 IPO 的用户计数字段并确认 **make** **single** **user?** 弹出窗口）但这很麻烦，因为必须为每个副本重复操作。
+- en: '![More power—combining multiple cylinders to an engine](img/0400-04-10.jpg)'
+  id: totrans-145
+  prefs: []
+  type: TYPE_IMG
+  zh: '![更多动力——将多个气缸组合到发动机中](img/0400-04-10.jpg)'
+- en: A better way is to alter the **Duplicate** **with** **object** settings in the
+    **Edit** **Methods** screen of the **User Preferences** window as shown in the
+    preceding screenshot. In this way, IPOs associated with an object will be made
+    into unique copies when duplicating an object. A screenshot of the **User Preferences**
+    window with buttons to duplicate IPOs (highlighted) is shown above.
+  id: totrans-146
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 更好的方法是修改**用户首选项**窗口中**编辑方法**屏幕的**复制** **与** **对象**设置，如前面的截图所示。这样，与对象关联的IPOs将在复制对象时变成独特的副本。上面显示了带有复制IPOs按钮（高亮显示）的**用户首选项**窗口的截图。
+- en: 'The result of our labors, a four cylinder engine with gears to transfer the
+    motion of the drive shaft to the camshafts is available as `engine001.blend`.
+    A still image from the animation available at [http://vimeo.com/7170769](http://vimeo.com/7170769)
+    is shown in the next screenshot:'
+  id: totrans-147
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们劳动的结果，一个带有齿轮的四个气缸发动机，可以将驱动轴的运动传递到凸轮轴上，现在可用作`engine001.blend`。下一张截图显示了动画中的静态图像，该动画可在[http://vimeo.com/7170769](http://vimeo.com/7170769)找到：
+- en: '![More power—combining multiple cylinders to an engine](img/0400-04-11.jpg)'
+  id: totrans-148
+  prefs: []
+  type: TYPE_IMG
+  zh: '![更多动力——将多个气缸组合到发动机中](img/0400-04-11.jpg)'
+- en: Adding simple constraints
+  id: totrans-149
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+  zh: 添加简单约束
+- en: 'Constraints may be applied to objects as well as to bones. In both instances
+    a new constraint is added by calling the `append()` method of the `constraints`
+    attribute. Our next example will show how we may restrict the movement of the
+    clock hands from the rigged clock (from [Chapter 3](ch03.html "Chapter 3. Vertex
+    Groups and Materials"), *Vertex Groups and Materials*) to rotate around the z-axis.
+    The code defining the function to accomplish this starts off with two `import`
+    statements that will save us some typing:'
+  id: totrans-150
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 约束可以应用于对象以及骨骼。在这两种情况下，通过调用`constraints`属性的`append()`方法添加一个新的约束。我们的下一个示例将展示我们如何限制从绑定时钟（来自[第3章](ch03.html
+    "第3章。顶点组和材质"), *顶点组和材质*)的指针围绕z轴旋转。定义完成此操作的函数的代码以两个`import`语句开始，这将节省我们一些输入：
+- en: '[PRE19]'
+  id: totrans-151
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE19]'
+- en: 'The function itself will take two arguments: `obbones`, a reference to a Blender
+    object whose data is an armature (that is, not the armature object itself) and
+    `bone`, the name of the bone whose motion we would like to restrict. It is important
+    to understand that the constraint that we will associate with a bone is not a
+    property of the armature but of the pose of the object containing the armature.
+    Many objects may refer to the same armature and any poses are associated with
+    the object so different objects referring to the same armature may strike different
+    poses.'
+  id: totrans-152
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 函数本身将接受两个参数：`obbones`，一个指向Blender对象（其数据是骨架，即不是骨架对象本身）的引用，以及`bone`，我们想要限制其运动的骨骼名称。重要的是要理解，我们将与骨骼关联的约束不是骨架的属性，而是包含骨架的对象姿势的属性。许多对象可能引用同一个骨架，并且任何姿势都与对象相关联，因此引用相同骨架的不同对象可能会呈现不同的姿势。
+- en: 'So the function starts off by getting the pose first and then a reference to
+    the bone that we want to constrain. The highlighted line shows how to associate
+    the constraint (this would be similar if we would associate a constraint with
+    a Blender object instead of a bone):'
+  id: totrans-153
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 因此，函数首先获取姿势，然后获取我们想要约束的骨骼的引用。高亮行显示了如何关联约束（如果我们将约束与Blender对象而不是骨骼关联，这将是类似的）：
+- en: '[PRE20]'
+  id: totrans-154
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE20]'
+- en: The newly appended constraint is retained as the variable `c` and the subsequent
+    lines show that the different attributes of a constraint may be accessed like
+    a dictionary. First, we configure the `LIMIT` attribute (a bitmap) to limit the
+    rotation of the x and y axes. Next, we set the minimum and maximum of the rotations
+    around these axes to `0.0`, as we disallow any movement. In the rigging of a realistic
+    animal skeleton, for example, these values could be set to limit the extent of
+    the rotation to values comparable with a real joint. Finally, to make the changes
+    to our `Pose` object visible, we call its `update()` method.
+  id: totrans-155
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 新添加的约束被保留为变量`c`，后续行显示可以像字典一样访问约束的不同属性。首先，我们配置`LIMIT`属性（一个位图）以限制x和y轴的旋转。接下来，我们将围绕这些轴的旋转的最小值和最大值设置为`0.0`，因为我们不允许任何移动。例如，在真实动物骨骼的绑定中，这些值可以设置为限制旋转范围，使其与真实关节相当。最后，为了使我们的`Pose`对象的变化可见，我们调用其`update()`方法。
+- en: Defining complex constraints
+  id: totrans-156
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+  zh: 定义复杂约束
+- en: Where pydrivers enable us to drive the change of one `IPOCurve` by the change
+    in another, PyConstraints provide us with ways to let object properties change
+    only in a limited way.
+  id: totrans-157
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 当pydrivers使我们能够通过另一个`IPOCurve`的变化来驱动一个的变化时，PyConstraints为我们提供了让对象属性仅以有限方式变化的方法。
+- en: Of course, Blender has many simple constraints predefined as we saw in previous
+    sections and often a combination of simple constraints may be exactly what you
+    want. But say you want your objects to move about freely within a non-rectangular
+    area, for example to simplify the allowed placement of traffic lights and phone
+    booths on a street grid. How would we achieve that? Enter pyconstraints.
+  id: totrans-158
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 当然，Blender已经预定义了许多简单的约束，正如我们在前面的章节中看到的，通常简单约束的组合可能正是你想要的。但假设你希望你的对象在一个非矩形区域内自由移动，例如简化街道网格上交通灯和电话亭的允许放置。我们如何实现这一点？请进入pyconstraints。
+- en: '**PyConstraints** are Python scripts that should be present as a text block
+    in Blender''s text editor and start with a comment line identifying it as a constraint:'
+  id: totrans-159
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '**PyConstraints** 是一些Python脚本，应该以文本块的形式存在于Blender的文本编辑器中，并以注释行开始，标识它为一个约束：'
+- en: '[PRE21]'
+  id: totrans-160
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE21]'
+- en: A Python constraint should contain three functions called `doConstraint()`,
+    `doTarget()`, and `getSettings()`. The first two are invoked anytime we move either
+    the target or the constrained object and the last one is called when the user
+    clicks the **Options** button that is present once the user has selected a pyconstraint.
+    The following screenshot shows the **Constraints** tab once a pyconstraint is
+    selected.
+  id: totrans-161
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 一个Python约束应包含三个函数，称为`doConstraint()`、`doTarget()`和`getSettings()`。前两个函数在我们移动目标或约束对象时被调用，最后一个函数在用户点击**选项**按钮时被调用，该按钮在用户选择了一个pyconstraint之后出现。以下截图显示了选择pyconstraint后的**约束**选项卡。
+- en: '![Defining complex constraints](img/0400-04-12.jpg)'
+  id: totrans-162
+  prefs: []
+  type: TYPE_IMG
+  zh: '![定义复杂约束](img/0400-04-12.jpg)'
+- en: The easiest way to understand what these functions do is by looking at the built-in
+    constraint template that we can use as a basis to write our own constraints. It
+    is accessible in the text editor from the menu **Text | Script Templates | Script
+    Constraint**. If clicked, it will create a new text block that can be selected
+    from the dropdown at the bottom of the text editor.
+  id: totrans-163
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 理解这些函数的功能的最简单方法是通过查看内置的约束模板，我们可以将其用作编写我们自己的约束的基础。它可以通过文本编辑器的**文本 | 脚本模板 | 脚本约束**菜单访问。如果点击，它将在文本编辑器的底部下拉菜单中选择一个新文本块。
+- en: The Blender constraint template
+  id: totrans-164
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+  zh: Blender约束模板
+- en: The Blender constraint template contains a lot of helpful comments as well,
+    but here we list mostly the bare functions. Also, the template creates a dummy
+    properties window. We will encounter properties in the next section so our example
+    of `getSettings()` here will be almost empty. As shown the functions will implement
+    a functional constraint, however, nothing is actually constrained. Location, rotation,
+    and scale of the constrained object are all kept the same.
+  id: totrans-165
+  prefs: []
+  type: TYPE_NORMAL
+  zh: Blender约束模板也包含许多有用的注释，但在这里我们主要列出基本函数。此外，模板创建了一个虚拟属性窗口。我们将在下一节遇到属性，因此这里`getSettings()`的示例将几乎是空的。如图所示，这些函数将实现功能约束，然而，实际上没有任何东西被约束。约束对象的定位、旋转和缩放都保持不变。
+- en: '[PRE22]'
+  id: totrans-166
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE22]'
+- en: The `doConstraint()` function will be passed the transformation matrix of the
+    constrained object and a list of transformation matrices for every target object.
+    It will also receive a dictionary of properties of the constraint that may be
+    accessed by name.
+  id: totrans-167
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '`doConstraint()` 函数将传递约束对象的变换矩阵以及每个目标对象的变换矩阵列表。它还将接收一个包含约束属性字典，这些属性可以通过名称访问。'
+- en: The first thing we do is to separate out the translation, rotation, and scale
+    components of the constrained objects' transformation matrix. The translation
+    part will be a vector with the x, y, z position and the scale part will be a vector
+    with scaling factors along the x, y, and z-axis. The rotation part will be represented
+    by a Euler vector with the rotation about the three principal axes. (Eulers greatly
+    simplify working with rotations in 3D but are rather difficult to grasp at first.
+    Wikipedia has a great page on Euler angles [http://en.wikipedia.org/wiki/Euler_angle](http://en.wikipedia.org/wiki/Euler_angle)
+    but for now, it is easiest to think of Eulers as a rotation separated out as rotations
+    around the local x, y, and z axes.) We could separate any of the target object's
+    transformation matrices as well, if we wanted, and then modify the transformation
+    components of the transformation matrix of the constrained object in any way we
+    wish.
+  id: totrans-168
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们首先做的是将约束对象的变换矩阵的平移、旋转和缩放组件分离出来。平移部分将是一个包含x、y、z位置的向量，缩放部分将是一个包含沿x、y和z轴的缩放因子的向量。旋转部分将由一个表示绕三个主轴旋转的欧拉向量表示。（欧拉角大大简化了3D中的旋转操作，但一开始很难理解。维基百科有一个关于欧拉角的优秀页面[http://en.wikipedia.org/wiki/Euler_angle](http://en.wikipedia.org/wiki/Euler_angle)，但就现在而言，最容易想到的是欧拉角作为绕局部x、y和z轴的旋转分离出来。）如果我们愿意，我们也可以将目标对象的任何变换矩阵分离出来，然后以任何我们希望的方式修改约束对象的变换矩阵的变换组件。
+- en: The function as shown here does nothing but converts the different transformation
+    components back to matrices by using API methods (where available) and then recombines
+    them by using matrix multiplication to a single matrix that is subsequently returned.
+  id: totrans-169
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 如此所示，该函数什么也不做，只是通过使用API方法（如果可用）将不同的变换组件转换回矩阵，然后通过矩阵乘法将它们重新组合成一个随后返回的单个矩阵。
+- en: 'The `doTarget()` function is called prior to calling `doConstraint()` and gives
+    us the opportunity to manipulate the target matrix before it is passed to `doConstraint()`.
+    Its arguments are the target object, the subtarget (either a `Bone` or a vertex
+    group for a target armature or mesh respectively), the target matrix, and the
+    properties of the constraint. In a later section, we exploit this opportunity
+    to store a reference to the target object in the properties so that `doConstraint()`
+    may access that information that it otherwise could not access. If we do not wish
+    to alter anything then returning the target matrix as is will suffice, as shown
+    in the following code:'
+  id: totrans-170
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在调用`doConstraint()`之前调用`doTarget()`函数，这给了我们操纵目标矩阵在传递给`doConstraint()`之前的机会。它的参数是目标对象、子目标（对于目标骨架或网格，分别是一个`Bone`或顶点组），目标矩阵和约束的属性。在后面的部分，我们将利用这个机会在属性中存储对目标对象的引用，以便`doConstraint()`可以访问它否则无法访问的信息。如果我们不想改变任何东西，那么像以下代码所示返回目标矩阵原样即可：
+- en: '[PRE23]'
+  id: totrans-171
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE23]'
+- en: 'Likewise, if there is no need to offer the user the possibility to specify
+    additional properties, `getSettings()` may simply return. If we *do* want to show
+    a pop up, `getSettings()` is the place where it should happen. We see an example
+    of that in a later section as well. The following code is a valid "do nothing"
+    implementation:'
+  id: totrans-172
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 同样，如果没有必要提供给用户指定额外属性的可能性，`getSettings()`可以简单地返回。如果我们确实想要显示一个弹出窗口，`getSettings()`就是它应该发生的地方。我们将在后面的部分看到一个例子。以下代码是一个有效的“什么都不做”实现：
+- en: '[PRE24]'
+  id: totrans-173
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE24]'
+- en: Do you find me attractive too?
+  id: totrans-174
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+  zh: 你也觉得我很有魅力吗？
+- en: As the moon and earth revolve around each other they feel each other's gravitational
+    attraction. On earth this will result in tides, but the solid body of the earth
+    and moon will be distorted as well, although this effect is small. Now there is
+    a lot more to tides than attraction alone ([http://en.wikipedia.org/wiki/Tides](http://en.wikipedia.org/wiki/Tides)),
+    but we can show the gravitational distortion in an exaggerated way by applying
+    constraints.
+  id: totrans-175
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 当月亮和地球相互绕转时，它们会感受到彼此的引力。在地球上，这会导致潮汐，但地球和月球的固体也会发生形变，尽管这种效应很小。现在关于潮汐的不仅仅是引力([http://en.wikipedia.org/wiki/Tides](http://en.wikipedia.org/wiki/Tides))，但我们可以通过应用约束来夸张地展示引力形变。
+- en: One way of doing this is to use a `TrackTo` constraint to orient an axis of
+    our constrained object towards the attracting object and add a second constraint
+    that scales the constrained object along the same axis. The size of the scale
+    will depend on the inverse distance between the constrained object and the target
+    object. The effect is illustrated in the next screenshot where the effect of a
+    `TrackTo` constraint is combined with the script constraint `moon_constraint.py`.
+  id: totrans-176
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 实现这一点的其中一种方法是通过使用`TrackTo`约束将我们约束对象的轴朝向吸引对象进行定位，并添加第二个约束来沿同一轴缩放约束对象。缩放的大小将取决于约束对象与目标对象之间的逆距离。效果如图所示，其中`TrackTo`约束的效果与脚本约束`moon_constraint.py`相结合。
+- en: '![Do you find me attractive too?](img/0400-04-13.jpg)'
+  id: totrans-177
+  prefs: []
+  type: TYPE_IMG
+  zh: '![你也觉得我很有吸引力吗？](img/0400-04-13.jpg)'
+- en: 'We will have to write this distance-dependent scaling ourselves. If we take
+    the constraint template provided by Blender we can leave the `doTarget()` and
+    `getSettings()` functions as is, but we do have to write a suitable `doConstraint()`
+    function (full code available as `moon_constraint.py`):'
+  id: totrans-178
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们将不得不自己编写这个距离相关的缩放。如果我们采用Blender提供的约束模板，我们可以保留`doTarget()`和`getSettings()`函数不变，但我们必须编写一个合适的`doConstraint()`函数（完整代码作为`moon_constraint.py`提供）：
+- en: '[PRE25]'
+  id: totrans-179
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE25]'
+- en: We left out any lines related to properties as we do not implement any user-configurable
+    properties for this constraint. The highlighted lines show what we have to do
+    to calculate the distance-dependent scaling.
+  id: totrans-180
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 我们省略了与属性相关的任何行，因为我们没有为这个约束实现任何用户可配置的属性。高亮显示的行显示了我们需要做什么来计算距离相关的缩放。
+- en: The first line gets the location of our target. Next, we calculate the distance
+    between the constrained object and the target and limit this to a minimum (slightly
+    larger than zero) to prevent a division by zero in the next highlighted line.
+    The formula used here is nowhere near an approximation of any gravitational influence
+    but behaves nicely enough for our purpose; the scale factor will be `1.0` if `d`
+    is very large and will smoothly increase as the distance `d` becomes smaller.
+    The final highlighted line shows that we alter the scale only of the y-axis, that
+    is, the axis we orient towards the target object with the `TrackTo` constraint.
+  id: totrans-181
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 第一行获取目标的位置。接下来，我们计算约束对象与目标之间的距离，并将其限制在一个最小值（略大于零）以防止在下一行高亮显示时发生除以零的情况。这里使用的公式远非任何引力影响的近似，但对我们目的来说已经足够好了；如果`d`非常大，则缩放因子将为`1.0`，并且随着距离`d`的减小将平滑增加。最后一行高亮显示的是我们只改变y轴的缩放，即我们使用`TrackTo`约束朝向目标对象定位的轴。
+- en: Note
+  id: totrans-182
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+  zh: 注意
+- en: '**Cyclic dependencies:**'
+  id: totrans-183
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '**循环依赖：**'
+- en: If both objects have a comparable mass, the gravitational distortion would be
+    of comparable size on both objects. We might be tempted to add the `TrackTo` and
+    `moon_constraint.py` constraints to both objects to see the effect they assert
+    on each other, but unfortunately that will not work because it will create a cyclic
+    dependency and Blender will protest.
+  id: totrans-184
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 如果两个对象具有相当的质量，那么在两个对象上产生的引力扭曲将具有相当的大小。我们可能会想将`TrackTo`和`moon_constraint.py`约束添加到两个对象上，以观察它们对彼此产生的影响，但不幸的是，这不会起作用，因为它将创建循环依赖，Blender将会抗议。
+- en: Snapping to mesh vertices
+  id: totrans-185
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+  zh: 吸附到网格顶点
+- en: This is like the "snap to vertex" mode that is available in Blender from the
+    menu **Object | Transform | Snap** (see **[http://wiki.blender.org/index.php/Doc:Manual/Modelling/Meshes/Snap_to_Mesh](http://wiki.blender.org/index.php/Doc:Manual/Modelling/Meshes/Snap_to_Mesh)
+    for more about snapping) except that the effect is not permanent (the object reverts
+    to its unconstrained position once the constraint is removed) and the strength
+    of the constraint can be modulated (animated even) by changing the Influence slider.**
+  id: totrans-186
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 这类似于Blender菜单中的“吸附到顶点”模式，即**对象 | 变换 | 吸附**（更多关于吸附的信息，请参阅**[http://wiki.blender.org/index.php/Doc:Manual/Modelling/Meshes/Snap_to_Mesh](http://wiki.blender.org/index.php/Doc:Manual/Modelling/Meshes/Snap_to_Mesh)）的功能，但效果不是永久的（一旦移除约束，对象将恢复到未约束的位置），并且可以通过改变影响滑块来调节约束的强度。**
+- en: '**In the constraints that we designed so far, only the position of the target
+    object was needed to calculate the effects on the constrained object. This position
+    was readily available to the `doConstraint()` function as the matrices of the
+    targets were passed as arguments. Now we are facing a different challenge though:
+    if we want to snap to a vertex we must have access to the mesh data of the target
+    object, but the target object is not passed to the `doConstraint()` function.**'
+  id: totrans-187
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '**在我们迄今为止设计的约束中，只需要目标对象的当前位置来计算对约束对象的影响。这个位置对`doConstraint()`函数来说很容易获得，因为目标的矩阵作为参数传递。然而，我们现在面临一个不同的挑战：如果我们想要对齐到一个顶点，我们必须能够访问目标对象的网格数据，但目标对象并没有传递给`doConstraint()`函数。**'
+- en: '**The way around this obstacle is the `idprop` argument that is passed to `doConstraint()`.
+    Before `doConstraint()` is called, Blender first calls `doTarget()` for each target
+    object. This function is passed as a reference to the target object and to the
+    properties of the constraint. This allows us to insert a reference to the target
+    object in these properties and because these properties are passed to `doConstraint()`,
+    this provides us with a means to pass the necessary information to `doConstraint()`
+    to get at the `Mesh` data. There is a minor point to consider here though: Blender
+    properties can only be numbers or strings so we cannot actually store a reference
+    to an object but have to settle for its name. Because a name is unique and Blender''s
+    `Object.Get()` provides a way to retrieve an object by name, this is not a problem.**'
+  id: totrans-188
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '**克服这个障碍的方法是将`idprop`参数传递给`doConstraint()`。在调用`doConstraint()`之前，Blender首先为每个目标对象调用`doTarget()`。这个函数作为目标对象和约束属性的引用传递。这允许我们在这些属性中插入目标对象的引用，因为这些属性传递给`doConstraint()`，这为我们提供了将必要信息传递给`doConstraint()`以获取`Mesh`数据的方法。这里有一个需要注意的小问题：Blender属性只能是数字或字符串，所以我们实际上不能存储对象的引用，而只能满足其名称。因为名称是唯一的，Blender的`Object.Get()`提供了一种通过名称检索对象的方法，所以这不是问题。**'
+- en: '**The code for `doConstraint()` and `doTarget()` will look like this (the full
+    code is provided as `zoning_constraint.py`):**'
+  id: totrans-189
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '**`doConstraint()`和`doTarget()`的代码如下（完整的代码作为`zoning_constraint.py`提供）：**'
+- en: '[PRE26]'
+  id: totrans-190
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE26]'
+- en: '**The highlighted lines show how we pass the name of the target object to `doConstraint()`.
+    In `doConstraint()` we first retrieve the target mesh. This may throw an exception,
+    for example, if the target object is not a mesh, but this will be caught by Blender
+    itself. The constraint will not be affected then and an error is shown on the
+    console, but Blender will proceed happily.**'
+  id: totrans-191
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '**高亮行显示了我们将目标对象的名称传递给`doConstraint()`的方式。在`doConstraint()`中，我们首先检索目标网格。这可能抛出异常，例如，如果目标对象不是一个网格，但Blender本身会捕获这个异常。此时约束不会受到影响，并且控制台会显示错误，但Blender会继续愉快地运行。**'
+- en: '**Once we have the mesh data of the target object we retrieve the object location
+    of the target object. We need this because all vertex coordinates are relative
+    to this. Next we compare the location of the constrained object to all the vertex
+    locations of the target mesh and remember the closest one to calculate the object
+    location of the constrained object. Finally, we reconstruct the transformation
+    matrix of the constrained object by combining various transformation components
+    as before.**'
+  id: totrans-192
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '**一旦我们有了目标对象的网格数据，我们就检索目标对象的位置。我们需要这个位置，因为所有顶点坐标都是相对于这个位置。接下来，我们将约束对象的位置与目标网格的所有顶点位置进行比较，并记住最近的那个来计算约束对象的位置。最后，我们通过结合各种变换组件，像以前一样重建约束对象的变换矩阵。**'
+- en: '**Aligning along a vertex normal**'
+  id: totrans-193
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+  zh: '**沿着顶点法线对齐**'
+- en: '**Now that we can constrain an object to the closest vertex on a target mesh
+    we can see that something is missing: the object is not oriented in a meaningful
+    way. This might not always be a problem, for example, trees will normally point
+    upward, but in many situations it would be nice if we could orient the constrained
+    object perpendicular to the surface. This is the same for all practical purposes,
+    as orienting the constrained object along the vertex normal of the vertex it has
+    been snapped to.**'
+  id: totrans-194
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '**现在我们可以将对象约束到目标网格上的最近顶点，我们可以看到有些东西缺失：对象没有以有意义的方式定向。这不一定总是问题，例如，树木通常向上生长，但在许多情况下，如果我们能够使约束对象垂直于表面定向会更好。这在所有实际目的上都是相同的，因为将约束对象沿其已对齐的顶点的顶点法线定向。**'
+- en: '**Therefore, after finding the closest vertex we determine the angle between
+    the vertex normal and the z-axis (that is, we arbitrarily define the z direction
+    as ''up'') and then rotate the constrained object by the same amount around the
+    axis perpendicular to both the vertex normal and the z-axis. This will orient
+    the constrained object along that vertex normal. If the constrained object was
+    rotated manually before adding the constraint these previous rotations would be
+    lost. If that is not what we want, we can apply any rotations permanently before
+    adding the constraint.**'
+  id: totrans-195
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '**因此，在找到最近的顶点后，我们确定顶点法线与z轴之间的角度（即，我们任意定义z方向为''向上''），然后围绕垂直于顶点法线和z轴的轴旋转被约束的对象相同的角度。这将使被约束的对象沿着该顶点法线定位。如果被约束的对象在添加约束之前手动旋转，这些先前的旋转将会丢失。如果我们不希望这样，我们可以在添加约束之前永久应用任何旋转。**'
+- en: '**To implement this alignment feature, our code will change (`zoning_constraint.py`
+    contains these changes already): `doConstraint()` will have to calculate the rotation
+    part of the transformation matrix. We have to calculate the rotation angle, the
+    rotation axis, and then the new rotation matrix. The highlighted part of the following
+    code shows that the essential tools for these calculations are already provided
+    by the `Mathutils` module:**'
+  id: totrans-196
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '**为了实现这个对齐功能，我们的代码将发生变化（`zoning_constraint.py`文件中已经包含了这些更改）：`doConstraint()`将必须计算变换矩阵的旋转部分。我们必须计算旋转角度、旋转轴，然后是新的旋转矩阵。以下代码中突出显示的部分显示了这些计算的基本工具已经由`Mathutils`模块提供：**'
+- en: '[PRE27]'
+  id: totrans-197
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE27]'
+- en: '**In the preceding code we can see that we have made an alignment dependent
+    on the `NormalAlign` property. Only if it is set do we calculate the necessary
+    transformation. Therefore, we need to adapt `getSettings()` as well because the
+    user needs a way to select whether he wants alignment or not:**'
+  id: totrans-198
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '**在前面的代码中，我们可以看到我们已经根据`NormalAlign`属性进行了对齐。只有当它被设置时，我们才会计算必要的变换。因此，我们还需要调整`getSettings()`，因为用户需要一种方式来选择是否想要对齐：**'
+- en: '[PRE28]'
+  id: totrans-199
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE28]'
+- en: '**As shown, the `NormalAlign` property will be set to `True` by default. The
+    option is then presented as a simple pop up with a toggle button. If the user
+    clicks outside the pop up or presses the *Esc* key, the return value from `PupBlock()`
+    will be `None` and we won''t change the `NormalAlign` property. Otherwise, it
+    will be set to the value of the toggle button.**'
+  id: totrans-200
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '**如图所示，`NormalAlign`属性将默认设置为`True`。然后，该选项将以一个简单的弹出窗口和切换按钮的形式呈现。如果用户点击弹出窗口外部或按下*Esc*键，`PupBlock()`的返回值将是`None`，我们不会更改`NormalAlign`属性。否则，它将被设置为切换按钮的值。**'
+- en: '**The effects are shown in the illustrations. The first one shows a small pine
+    tree constrained to a vertex of a simple subdivided ground plane. It is snapped
+    to the exact vertex location but its z-axis points straight up along the global
+    z-axis. The following screenshot shows a fir tree constrained to a vertex in a
+    craggy landscape.**'
+  id: totrans-201
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '**效果在插图中有展示。第一个展示了一棵小松树被约束在简单细分地面平面的一个顶点上。它被精确地吸附到顶点位置，但其z轴沿着全局z轴直指上方。接下来的截图显示了一棵云杉树被约束在崎岖景观中的一个顶点上。**'
+- en: '**![Aligning along a vertex normal](img/0400-04-14.jpg)**'
+  id: totrans-202
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '**![沿顶点法线对齐](img/0400-04-14.jpg)**'
+- en: '**If we turn on the `NormalAlign` property we see that the tree model is no
+    longer pointing straight up, but that its z-axis is aligned along the direction
+    of the vertex normal of the vertex it is snapped to. The following screenshot
+    shows a fir tree constrained to a vertex and aligned along the vertex normal.**'
+  id: totrans-203
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '**如果我们打开`NormalAlign`属性，我们会看到树模型不再直指上方，而是其z轴沿着它被吸附到的顶点的顶点法线方向对齐。以下截图显示了一棵云杉树被约束在顶点上并沿着顶点法线对齐。**'
+- en: '**![Aligning along a vertex normal](img/0400-04-15.jpg)**'
+  id: totrans-204
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '**![沿顶点法线对齐](img/0400-04-15.jpg)**'
+- en: '**It is possible to restrict the vertices the model can snap to even further,
+    for example, to just the vertices belonging to a vertex group. In the following
+    illustration, our model cannot move beyond the extent of the vertex group that
+    is shown in white. How this might be accomplished is shown in the next section.**'
+  id: totrans-205
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '**可以进一步限制模型可以吸附到的顶点，例如，仅限于属于顶点组的顶点。在以下插图，我们的模型不能移动到白色显示的顶点组范围之外。如何实现这一点将在下一节中展示。**'
+- en: '**![Aligning along a vertex normal](img/0400-04-16.jpg)**'
+  id: totrans-206
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '**![沿顶点法线对齐](img/0400-04-16.jpg)**'
+- en: '**Snap to vertices in a vertex group**'
+  id: totrans-207
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+  zh: '**吸附到顶点组的顶点上**'
+- en: '**What if we want to restrict the vertices we can snap an object to? This can
+    be achieved by defining a vertex group and then consider only vertices from this
+    vertex group as candidates to snap to. The code needed for this would take just
+    a couple of lines and the relevant part of `doConstraint()` would look like this
+    (the highlighted code shows the additional lines dealing with the matching against
+    a vertex group):**'
+  id: totrans-208
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '**如果我们想限制可以吸附的顶点？这可以通过定义一个顶点群，然后只考虑这个顶点群中的顶点作为吸附的候选。实现这一点的代码只需几行，`doConstraint()`的相关部分将看起来像这样（高亮代码显示了处理与顶点群匹配的附加行）：**'
+- en: '[PRE29]'
+  id: totrans-209
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE29]'
+- en: '**The `try/except` construction ensures that if the `VertexGroup` property
+    refers to a nonexistent vertex group, we will get the chance to check all vertices.
+    Of course, we now need a way for the user to select the vertex group, so `getSettings()`
+    will have to be adapted too. We settle for a simple string input field where the
+    name of a vertex group can be typed. There is no checking if the vertex group
+    exists and if we do not want to restrict the snapping to a vertex group, then
+    we can either leave this input field blank or type in the name of a nonexistent
+    group. Not very elegant but it works (added lines highlighted):**'
+  id: totrans-210
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '**`try/except`结构确保如果`VertexGroup`属性引用了一个不存在的顶点群，我们将有机会检查所有顶点。当然，我们现在需要一种让用户选择顶点群的方法，因此`getSettings()`也需要进行适配。我们选择了一个简单的字符串输入字段，可以在其中输入顶点群的名字。没有检查顶点群是否存在，如果我们不想将吸附限制在顶点群上，我们既可以留空这个输入字段，也可以输入一个不存在的群组名字。这并不十分优雅，但它是有效的（添加的行已高亮）：**'
+- en: '[PRE30]'
+  id: totrans-211
+  prefs: []
+  type: TYPE_PRE
+  zh: '[PRE30]'
+- en: '**The next screenshot shows how the input box for the vertex group may look:**'
+  id: totrans-212
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '**下一张截图显示了顶点群输入框可能的样子：**'
+- en: '**![Snap to vertices in a vertex group](img/0400-04-17.jpg)**'
+  id: totrans-213
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '**![将顶点群中的顶点吸附到一起](img/0400-04-17.jpg)**'
+- en: '**Note**'
+  id: totrans-214
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+  zh: '**注意**'
+- en: '**Note that the script constraint also presents the user with a VG string input
+    field that may refer to a vertex group, but this is different from the vertex
+    group input field that we show the user in the **Options** pop up. This VG field
+    will alter the way the constraint looks at a target. If a valid vertex group is
+    set here, the target matrix passed to `doConstraint()` will be that of the median
+    position of the vertices in the vertex group.**'
+  id: totrans-215
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '**注意，脚本约束还向用户提供了一个可能引用顶点群的VG字符串输入字段，但这与我们向用户在**选项**弹出窗口中显示的顶点群输入字段不同。这个VG字段将改变约束查看目标的方式。如果在这里设置了有效的顶点群，传递给`doConstraint()`的目标矩阵将是顶点群中顶点中值位置的那个。**'
+- en: '**# Summary'
+  id: totrans-216
+  prefs: []
+  type: TYPE_NORMAL
+  zh: '**# 摘要'
+- en: 'In this chapter, we saw how different animated properties can be linked together
+    and how we could constrain the spatial properties of objects to complex limitations.
+    We have learned how to:'
+  id: totrans-217
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 在本章中，我们了解了如何将不同的动画属性相互关联，以及如何将物体的空间属性约束到复杂的限制中。我们学习了如何：
+- en: Drive one **IPO** from another by a Python expression
+  id: totrans-218
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 通过Python表达式从一个**IPO**驱动另一个
+- en: Work around some limitations inherent in pydrivers
+  id: totrans-219
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 解决pydrivers中固有的某些限制
+- en: Restrict the motion of objects and bones by adding constraints
+  id: totrans-220
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 通过添加约束来限制物体和骨骼的运动**
+- en: Write a constraint in Python that will snap an object to the closest vertex
+    on another object
+  id: totrans-221
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+  zh: 编写一个Python约束，将物体吸附到另一个物体上最近的顶点上
+- en: Next we take a look at how to perform some action every time we advance a frame
+    in our animation.**
+  id: totrans-222
+  prefs: []
+  type: TYPE_NORMAL
+  zh: 接下来，我们将探讨如何在动画中每次前进一帧时执行某些操作。**
