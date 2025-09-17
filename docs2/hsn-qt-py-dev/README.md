@@ -1,6 +1,6 @@
-# Go 编程蓝图
+# Python 开发者的 QT 实用指南
 
-> 原文：[`zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66`](https://zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66)
+> 原文：[`zh.annas-archive.org/md5/d5c7eae7becafec937a2fa9cb7e21898`](https://zh.annas-archive.org/md5/d5c7eae7becafec937a2fa9cb7e21898)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 

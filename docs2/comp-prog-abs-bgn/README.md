@@ -1,6 +1,6 @@
-# Go 编程蓝图
+# 计算机编程的完全初学者指南
 
-> 原文：[`zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66`](https://zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66)
+> 原文：[`zh.annas-archive.org/md5/2d57c42cbb832b0aca774fe1913fc0e9`](https://zh.annas-archive.org/md5/2d57c42cbb832b0aca774fe1913fc0e9)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 
