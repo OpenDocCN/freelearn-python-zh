@@ -1,4 +1,4 @@
-# 在 Flask 中使用模型、SQLAlchemy 和超链接 API 进行工作
+# 第二章：在 Flask 中使用模型、SQLAlchemy 和超链接 API 进行工作
 
 在本章中，我们将扩展上一章开始构建的 RESTful API 的功能。我们将使用 SQLAlchemy 作为我们的 ORM 来与 PostgreSQL 数据库交互，并且我们将利用 Flask 和 Flask-RESTful 中包含的先进功能，这将使我们能够轻松组织代码以处理复杂的 API，如模型和蓝图。
 

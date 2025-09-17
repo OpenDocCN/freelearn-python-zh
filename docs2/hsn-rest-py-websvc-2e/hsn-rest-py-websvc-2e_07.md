@@ -1,4 +1,4 @@
-# 使用 Django 改进我们的 API 并为其添加认证
+# 第七章：使用 Django 改进我们的 API 并为其添加认证
 
 在本章中，我们将使用我们在上一章中开始使用的 PostgreSQL 10.5 数据库来改进 Django RESTful API。我们将使用 Django REST 框架中包含的许多功能来向 API 添加新功能，并将添加与认证相关的安全功能。我们将执行以下操作：
 

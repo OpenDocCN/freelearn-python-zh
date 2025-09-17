@@ -1,4 +1,4 @@
-# 使用 Gazebo 的虚拟 SLAM 和导航
+# 第八章：使用 Gazebo 的虚拟 SLAM 和导航
 
 在本章中，您将了解机器人导航的概念和组件。通过 **SLAM**（即 **Simultaneous Localization and Mapping**）技术，您将能够使用 GoPiGo3 执行自主导航。本章涉及模拟的高级主题。因此，您理解前一章中的概念至关重要，在那里我们向您提供了与 Gazebo 中的虚拟机器人交互的基础。
 

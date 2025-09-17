@@ -1,4 +1,4 @@
-# 使用 Pyramid 1.10 开发 RESTful API
+# 第九章：使用 Pyramid 1.10 开发 RESTful API
 
 在本章中，我们将使用 Pyramid 1.10 来创建一个执行简单数据源 CRUD 操作的 RESTful Web API。我们将探讨以下主题：
 

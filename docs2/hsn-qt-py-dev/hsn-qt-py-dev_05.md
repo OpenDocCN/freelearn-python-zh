@@ -1,4 +1,4 @@
-# 开始使用 PyQt 和 PySide
+# 第四章：开始使用 PyQt 和 PySide
 
 在本章中，我们将打下基础，以便我们可以使用 Python 绑定（如 PyQt 和 PySide）开始创建 GUI。这些绑定能够利用所有 Python 编程语言的功能和 Python 世界中可用的各种基于 Python 的工具，再加上强大的 Qt 框架，这反过来又允许我们在真实且功能广泛的 GUI 应用程序中可视化我们的想象和开发过程。
 

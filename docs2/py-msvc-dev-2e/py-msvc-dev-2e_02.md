@@ -1,6 +1,6 @@
 
 
-# 发现 Quart
+# 第二章：发现 Quart
 
 **Quart** 是在 2017 年作为流行的 **Flask** 框架的进化而开始的。Quart 与 Flask 具有许多相同的设计决策，因此很多关于 Flask 的建议也适用于 Quart。本书将专注于 Quart，以便我们支持异步操作并探索诸如 WebSocket 和 HTTP/2 支持等功能。
 

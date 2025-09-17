@@ -1,4 +1,4 @@
-# 重要的 RESTful API 模式
+# 第三章：重要的 RESTful API 模式
 
 本章提供了 RESTful API 常见和基本设计模式的概念和代码示例，以便您可以挑选这些示例并复制和增强它们的 RESTful API 服务。
 

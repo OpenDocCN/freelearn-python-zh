@@ -1,4 +1,4 @@
-# Raspberry Pi 3 电脑入门
+# 第一章：Raspberry Pi 3 电脑入门
 
 在本章中，我们将介绍以下食谱：
 

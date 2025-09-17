@@ -1,4 +1,4 @@
-# 使用 Django 2.1 开发 RESTful API
+# 第五章：使用 Django 2.1 开发 RESTful API
 
 在本章中，我们将开始使用 Django 和 Django REST framework，并创建一个 RESTful 网络 API，该 API 在简单的 SQLite 数据库上执行 CRUD 操作。我们将做以下事情：
 

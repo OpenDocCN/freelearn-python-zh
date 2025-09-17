@@ -1,4 +1,4 @@
-# 认识 Tkinter
+# 第一章：认识 Tkinter
 
 欢迎来到使用 Tkinter 进行 GUI 编程的激动人心世界。本章旨在让您熟悉 Tkinter，这是所有标准 Python 发行版内置的**图形用户界面**（**GUI**）库。
 

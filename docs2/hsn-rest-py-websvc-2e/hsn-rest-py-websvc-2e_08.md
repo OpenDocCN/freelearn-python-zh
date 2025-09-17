@@ -1,4 +1,4 @@
-# 使用 Django 2.1 节流、过滤、测试和部署 API
+# 第八章：使用 Django 2.1 节流、过滤、测试和部署 API
 
 在本章中，我们将使用 Django 2.1 和 Django REST Framework 中包含的附加功能来改进我们的 RESTful API。我们还将编写、执行和改进单元测试，并学习一些与部署相关的内容。我们将查看以下内容：
 
