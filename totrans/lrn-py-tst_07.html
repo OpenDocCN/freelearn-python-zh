@@ -1,0 +1,803 @@
+<html><head></head><body>
+  <div id="sbo-rt-content"><div class="chapter" title="Chapter 7. Test-driven Development Walk-through"><div class="titlepage"><div><div><h1 class="title"><a id="ch07"/>Chapter 7. Test-driven Development Walk-through</h1></div></div></div><p>In this chapter, we're not going to talk about new techniques of testing in Python, and we're not going to spend much time talking about the philosophy of testing. Instead, what we're going to do is a step-by-step walk-through of an actual development process. Your humble and sadly fallible author has commemorated his mistakes—and the ways that testing helped him fix them—while developing part of a personal scheduling program.</p><p>In this chapter, we'll cover the following topics:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Writing a testable specification</li><li class="listitem" style="list-style-type: disc">Writing unit tests that drive the development process</li><li class="listitem" style="list-style-type: disc">Writing code that complies with the specification and unit tests</li><li class="listitem" style="list-style-type: disc">Using the testable specification and unit tests to help debug</li></ul></div><p>You'll be prompted to design and build your own module as you read through this chapter, so that you can walk through your own process as well.</p><div class="section" title="Writing the specification"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec52"/>Writing the specification</h1></div></div></div><p>As usual, the <a id="id314" class="indexterm"/>process starts with a written specification. The specification is a <code class="literal">doctest</code> that we learned in <a class="link" href="ch02.html" title="Chapter 2. Working with doctest">Chapter 2</a>, <span class="emphasis"><em>Working with doctest</em></span>, and <a class="link" href="ch03.html" title="Chapter 3. Unit Testing with doctest">Chapter 3</a>, <span class="emphasis"><em>Unit Testing with doctest</em></span>, so the computer can use it to check the implementation. The specification isn't strictly a set of unit tests, though the discipline of unit testing has been sacrificed (for the moment) in exchange for making the document more accessible to a human reader. That's a common trade-off, and it's fine as long as you make up for it by also writing unit tests covering the code.</p><p>The goal of the project in this chapter is to make a Python package capable of representing personal time management information.</p><p>The following code goes in a file called <code class="literal">docs/outline.txt</code>:</p><div class="informalexample"><pre class="programlisting">This project is a personal scheduling system intended to keep track of
+a single person's schedule and activities. The system will store and
+display two kinds of schedule information: activities and statuses.
+Activities and statuses both support a protocol which allows them to
+be checked for overlap with another object supporting the protocol.
+
+&gt;&gt;&gt; from planner.data import Activity, Status
+&gt;&gt;&gt; from datetime import datetime
+
+Activities and statuses are stored in schedules, to which they can be
+added and removed.
+
+&gt;&gt;&gt; from planner.data import Schedule
+&gt;&gt;&gt; activity = Activity('test activity',
+..                      datetime(year = 2014, month = 6, day = 1,
+..                               hour = 10, minute = 15),
+..                      datetime(year = 2014, month = 6, day = 1,
+..                               hour = 12, minute = 30))
+&gt;&gt;&gt; duplicate_activity = Activity('test activity',
+..                      datetime(year = 2014, month = 6, day = 1,
+..                               hour = 10, minute = 15),
+..                      datetime(year = 2014, month = 6, day = 1,
+..                               hour = 12, minute = 30))
+&gt;&gt;&gt; status = Status('test status',
+...                 datetime(year = 2014, month = 7, day = 1,
+...                          hour = 10, minute = 15),
+...                 datetime(year = 2014, month = 7, day = 1,
+...                          hour = 12, minute = 30))
+&gt;&gt;&gt; schedule = Schedule()
+&gt;&gt;&gt; schedule.add(activity)
+&gt;&gt;&gt; schedule.add(status)
+&gt;&gt;&gt; status in schedule
+True
+&gt;&gt;&gt; activity in schedule
+True
+&gt;&gt;&gt; duplicate_activity in schedule
+True
+&gt;&gt;&gt; schedule.remove(activity)
+&gt;&gt;&gt; schedule.remove(status)
+&gt;&gt;&gt; status in schedule
+False
+&gt;&gt;&gt; activity in schedule
+False
+
+Activities represent tasks that the person must actively engage in,
+and they are therefore mutually exclusive: no person can have two
+activities that overlap the same period of time.
+
+&gt;&gt;&gt; activity1 = Activity('test activity 1',
+...                      datetime(year = 2014, month = 6, day = 1,
+...                               hour = 9, minute = 5),
+...                      datetime(year = 2014, month = 6, day = 1,
+...                               hour = 12, minute = 30))
+&gt;&gt;&gt; activity2 = Activity('test activity 2',
+...                      datetime(year = 2014, month = 6, day = 1,
+...                               hour = 10, minute = 15),
+...                      datetime(year = 2014, month = 6, day = 1,
+...                               hour = 13, minute = 30))
+&gt;&gt;&gt; schedule = Schedule()
+&gt;&gt;&gt; schedule.add(activity1)
+&gt;&gt;&gt; schedule.add(activity2)
+Traceback (most recent call last):
+ScheduleError: "test activity 2" overlaps with "test activity 1"
+
+Statuses represent tasks that a person engages in passively, and so
+can overlap with each other and with activities.
+
+&gt;&gt;&gt; activity1 = Activity('test activity 1',
+...                      datetime(year = 2014, month = 6, day = 1,
+...                               hour = 9, minute = 5),
+...                      datetime(year = 2014, month = 6, day = 1,
+...                               hour = 12, minute = 30))
+&gt;&gt;&gt; status1 = Status('test status 1',
+...                  datetime(year = 2014, month = 6, day = 1,
+...                           hour = 10, minute = 15),
+...                  datetime(year = 2014, month = 6, day = 1,
+...                           hour = 13, minute = 30))
+&gt;&gt;&gt; status2 = Status('test status 2',
+...                  datetime(year = 2014, month = 6, day = 1,
+...                           hour = 8, minute = 45),
+...                  datetime(year = 2014, month = 6, day = 1,
+...                           hour = 15, minute = 30))
+&gt;&gt;&gt; schedule = Schedule()
+&gt;&gt;&gt; schedule.add(activity1)
+&gt;&gt;&gt; schedule.add(status1)
+&gt;&gt;&gt; schedule.add(status2)
+&gt;&gt;&gt; activity1 in schedule
+True
+&gt;&gt;&gt; status1 in schedule
+True
+&gt;&gt;&gt; status2 in schedule
+True
+
+Schedules can be saved to a sqlite database, and they can be reloaded
+from that stored state.
+
+&gt;&gt;&gt; from planner.persistence import file
+&gt;&gt;&gt; storage = File(':memory:')
+&gt;&gt;&gt; schedule.store(storage)
+&gt;&gt;&gt; newsched = Schedule.load(storage)
+&gt;&gt;&gt; schedule == newsched
+True</pre></div><p>This <code class="literal">doctest</code> will serve as a testable specification for my project, which means that it will be the foundation <a id="id315" class="indexterm"/>stone for all of my tests and my program code that will be built on. Let's look at each section in more detail:</p><div class="informalexample"><pre class="programlisting">This project is a personal scheduling system intended to keep track of
+a single person's schedule and activities. The system will store and
+display two kinds of schedule information: activities and statuses.
+Activities and statuses both support a protocol which allows them to
+be checked for overlap with another object supporting the protocol.
+
+&gt;&gt;&gt; from planner.data import Activity, Status
+&gt;&gt;&gt; from datetime import datetime</pre></div><p>The preceding code consists of some introductory English text, and a couple of <code class="literal">import</code> statements that bring in code that we need for these tests. By doing so, they also tell us about some of the <a id="id316" class="indexterm"/>structure of the <code class="literal">planner</code> package. It contains a module called <code class="literal">data</code> that defines <code class="literal">Activity</code> and <code class="literal">Status</code>.</p><div class="informalexample"><pre class="programlisting">Activities and statuses are stored in schedules, to which they can be
+added and removed.
+
+&gt;&gt;&gt; from planner.data import Schedule
+&gt;&gt;&gt; activity = Activity('test activity',
+..                      datetime(year = 2014, month = 6, day = 1,
+..                               hour = 10, minute = 15),
+..                      datetime(year = 2014, month = 6, day = 1,
+..                               hour = 12, minute = 30))
+&gt;&gt;&gt; duplicate_activity = Activity('test activity',
+..                      datetime(year = 2014, month = 6, day = 1,
+..                               hour = 10, minute = 15),
+..                      datetime(year = 2014, month = 6, day = 1,
+..                               hour = 12, minute = 30))
+&gt;&gt;&gt; status = Status('test status',
+...                 datetime(year = 2014, month = 7, day = 1,
+...                          hour = 10, minute = 15),
+...                 datetime(year = 2014, month = 7, day = 1,
+...                          hour = 12, minute = 30))
+&gt;&gt;&gt; schedule = Schedule()
+&gt;&gt;&gt; schedule.add(activity)
+&gt;&gt;&gt; schedule.add(status)
+&gt;&gt;&gt; status in schedule
+True
+&gt;&gt;&gt; activity in schedule
+True
+&gt;&gt;&gt; duplicate_activity in schedule
+True
+&gt;&gt;&gt; schedule.remove(activity)
+&gt;&gt;&gt; schedule.remove(status)
+&gt;&gt;&gt; status in schedule
+False
+&gt;&gt;&gt; activity in schedule
+False</pre></div><p>The preceding tests describe some of the desired behavior of <code class="literal">the Schedule</code> instances when interacting with the <code class="literal">Activity</code> and <code class="literal">Status</code> objects. According to these tests, a <code class="literal">Schedule</code> instance must accept an <code class="literal">Activity</code> or <code class="literal">Status</code> object as the parameter of its <code class="literal">add</code> and <code class="literal">remove</code> methods; once added, the <code class="literal">in</code> operator must return <code class="literal">True</code> for an object until it is removed. Furthermore, the two <code class="literal">Activity</code> instances that have the same parameters must be <a id="id317" class="indexterm"/>treated as the same object by <code class="literal">Schedule</code>:</p><div class="informalexample"><pre class="programlisting">Activities represent tasks that the person must actively engage in,
+and they are therefore mutually exclusive: no person can have two
+activities that overlap the same period of time.
+
+&gt;&gt;&gt; activity1 = Activity('test activity 1',
+...                      datetime(year = 2014, month = 6, day = 1,
+...                               hour = 9, minute = 5),
+...                      datetime(year = 2014, month = 6, day = 1,
+...                               hour = 12, minute = 30))
+&gt;&gt;&gt; activity2 = Activity('test activity 2',
+...                      datetime(year = 2014, month = 6, day = 1,
+...                               hour = 10, minute = 15),
+...                      datetime(year = 2014, month = 6, day = 1,
+...                               hour = 13, minute = 30))
+&gt;&gt;&gt; schedule = Schedule()
+&gt;&gt;&gt; schedule.add(activity1)
+&gt;&gt;&gt; schedule.add(activity2)
+Traceback (most recent call last):
+ScheduleError: "test activity 2" overlaps with "test activity 1"</pre></div><p>The preceding test code describes what should happen when overlapping activities are added to a schedule. Specifically, a <code class="literal">ScheduleError</code> exception should be raised:</p><div class="informalexample"><pre class="programlisting">Statuses represent tasks that a person engages in passively, and so
+can overlap with each other and with activities.
+
+&gt;&gt;&gt; activity1 = Activity('test activity 1',
+...                      datetime(year = 2014, month = 6, day = 1,
+...                               hour = 9, minute = 5),
+...                      datetime(year = 2014, month = 6, day = 1,
+...                               hour = 12, minute = 30))
+&gt;&gt;&gt; status1 = Status('test status 1',
+...                  datetime(year = 2014, month = 6, day = 1,
+...                           hour = 10, minute = 15),
+...                  datetime(year = 2014, month = 6, day = 1,
+...                           hour = 13, minute = 30))
+&gt;&gt;&gt; status2 = Status('test status 2',
+...                  datetime(year = 2014, month = 6, day = 1,
+...                           hour = 8, minute = 45),
+...                  datetime(year = 2014, month = 6, day = 1,
+...                           hour = 15, minute = 30))
+&gt;&gt;&gt; schedule = Schedule()
+&gt;&gt;&gt; schedule.add(activity1)
+&gt;&gt;&gt; schedule.add(status1)
+&gt;&gt;&gt; schedule.add(status2)
+&gt;&gt;&gt; activity1 in schedule
+True
+&gt;&gt;&gt; status1 in schedule
+True
+&gt;&gt;&gt; status2 in schedule
+True</pre></div><p>The preceding test code describes what should happen when overlapping statuses are added to a schedule: the schedule should accept them. Furthermore, if a status and an activity overlap, they can still both be added:</p><div class="informalexample"><pre class="programlisting">Schedules can be saved to a sqlite database, and they can be reloaded
+from that stored state.
+
+&gt;&gt;&gt; from planner.persistence import file
+&gt;&gt;&gt; storage = File(':memory:')
+&gt;&gt;&gt; schedule.store(storage)
+&gt;&gt;&gt; newsched = Schedule.load(storage)
+&gt;&gt;&gt; schedule == newsched
+True</pre></div><p>The preceding code describes how schedule storage should work. It also tells us that the <code class="literal">planner</code> package needs to <a id="id318" class="indexterm"/>contain a <code class="literal">persistence</code> module that, in turn, should contain <code class="literal">File</code>. It also tells us that <code class="literal">Schedule</code> instances should have <code class="literal">load</code> and <code class="literal">store</code> methods, and that the <code class="literal">==</code> operator should return <code class="literal">True</code> when they contain the same data.</p><div class="section" title="Try it for yourself – what are you going to do?"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec64"/>Try it for yourself – what are you going to do?</h2></div></div></div><p>It's time for <a id="id319" class="indexterm"/>you to come up with a project of your own, something you can work on for yourself. We step through the development process:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Think of a project of approximately the same complexity as the one described in this chapter. It should be a single module or a few modules in a single package. It should also be something that interests you, which is why I haven't given you a specific assignment here.<p>Imagine that the project is already done, and you need to write a description of what you've done, along with a little bit of demonstration code. Then go ahead and write your description and demo code in the form of a <code class="literal">doctest</code> file.</p></li><li class="listitem">As you're writing <a id="id320" class="indexterm"/>the <code class="literal">doctest</code> file, watch out for places where your original idea has to change a little bit to make the demo easier to write or work better. When you find such cases, pay attention to them! At this stage, it's better to change the idea a little bit and save yourself effort all through the process.</li></ol></div></div><div class="section" title="Wrapping up the specification"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec65"/>Wrapping up the specification</h2></div></div></div><p>We've now got testable specifications for a couple of moderately-sized projects—yours and mine. These will <a id="id321" class="indexterm"/>help us to write unit tests and code, and they'll give us a sense of how complete each project is as a whole.</p><p>In addition, the process of writing code into the <code class="literal">doctest</code> gave us a chance to test-drive our ideas. We've probably improved on our projects a little bit by using them in a concrete manner, even though the project implementation is still merely imaginary.</p><p>Once again, it's important that we have these tests written before writing the code that they will test. By writing the tests first, we give ourselves a touchstone that we can use in order to judge how well our code conforms to what we intended. If we write the code first, and then the tests, all we end up doing is enshrining what the code actually does—as opposed to what we meant for it to do—into the tests.</p></div></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Writing initial unit tests"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec53"/>Writing initial unit tests</h1></div></div></div><p>Since the <a id="id322" class="indexterm"/>specification doesn't contain unit tests, there's still a need for unit tests before the coding of the module can begin. The <code class="literal">planner.data</code> classes are the first target for the implementation, so they're the first ones to get the tests.</p><p>Activities and statuses are defined to be very similar, so their test modules are also similar. They're not identical, though, and they're not required to have any particular inheritance relationship; so the tests remain distinct.</p><p>The following <a id="id323" class="indexterm"/>tests are in <code class="literal">tests/test_activities.py</code>:</p><div class="informalexample"><pre class="programlisting">from unittest import TestCase
+from unittest.mock import patch, Mock
+from planner.data import Activity, TaskError
+from datetime import datetime
+
+class constructor_tests(TestCase):
+    def test_valid(self):
+        activity = Activity('activity name',
+                           datetime(year = 2012, month = 9, day = 11),
+                           datetime(year = 2013, month = 4, day = 27))
+
+        self.assertEqual(activity.name, 'activity name')
+        self.assertEqual(activity.begins,
+                         datetime(year = 2012, month = 9, day = 11))
+        self.assertEqual(activity.ends,
+                         datetime(year = 2013, month = 4, day = 27))
+
+    def test_backwards_times(self):
+        self.assertRaises(TaskError,
+                          Activity,
+                          'activity name',
+                          datetime(year = 2013, month = 4, day = 27),
+                          datetime(year = 2012, month = 9, day = 11))
+
+    def test_too_short(self):
+        self.assertRaises(TaskError,
+                          Activity,
+                          'activity name',
+                          datetime(year = 2013, month = 4, day = 27,
+                                   hour = 7, minute = 15),
+                          datetime(year = 2013, month = 4, day = 27,
+                                   hour = 7, minute = 15))
+
+class utility_tests(TestCase):
+    def test_repr(self):
+        activity = Activity('activity name',
+                           datetime(year = 2012, month = 9, day = 11),
+                           datetime(year = 2013, month = 4, day = 27))
+
+        expected = "&lt;activity name 2012-09-11T00:00:00 2013-04-27T00:00:00&gt;"
+
+        self.assertEqual(repr(activity), expected)
+
+class exclusivity_tests(TestCase):
+    def test_excludes(self):
+        activity = Mock()
+
+        other = Activity('activity name',
+                         datetime(year = 2012, month = 9, day = 11),
+                         datetime(year = 2012, month = 10, day = 6))
+
+        # Any activity should exclude any activity
+        self.assertTrue(Activity.excludes(activity, other))
+
+        # Anything not known to be excluded should be included
+        self.assertFalse(Activity.excludes(activity, None))
+
+class overlap_tests(TestCase):
+    def test_overlap_before(self):
+        activity = Mock(begins = datetime(year = 2012, month = 9, day = 11),
+                        ends = datetime(year = 2012, month = 10, day = 6))
+
+        other = Mock(begins = datetime(year = 2012, month = 10, day = 7),
+                     ends = datetime(year = 2013, month = 2, day = 5))
+
+        self.assertFalse(Activity.overlaps(activity, other))
+
+    def test_overlap_begin(self):
+        activity = Mock(begins = datetime(year = 2012, month = 8, day = 11),
+                        ends = datetime(year = 2012, month = 11, day = 27))
+
+        other = Mock(begins = datetime(year = 2012, month = 10, day = 7),
+                     ends = datetime(year = 2013, month = 2, day = 5))
+
+        self.assertTrue(Activity.overlaps(activity, other))
+
+    def test_overlap_end(self):
+        activity = Mock(begins = datetime(year = 2013, month = 1, day = 11),
+                        ends = datetime(year = 2013, month = 4, day = 16))
+
+        other = Mock(begins = datetime(year = 2012, month = 10, day = 7),
+                     ends = datetime(year = 2013, month = 2, day = 5))
+
+        self.assertTrue(Activity.overlaps(activity, other))
+
+    def test_overlap_inner(self):
+        activity = Mock(begins = datetime(year = 2012, month = 10, day = 11),
+                        ends = datetime(year = 2013, month = 1, day = 27))
+
+        other = Mock(begins = datetime(year = 2012, month = 10, day = 7),
+                     ends = datetime(year = 2013, month = 2, day = 5))
+
+        self.assertTrue(Activity.overlaps(activity, other))
+
+    def test_overlap_outer(self):
+        activity = Mock(begins = datetime(year = 2012, month = 8, day = 12),
+                        ends = datetime(year = 2013, month = 3, day = 15))
+
+        other = Mock(begins = datetime(year = 2012, month = 10, day = 7),
+                     ends = datetime(year = 2013, month = 2, day = 5))
+
+        self.assertTrue(Activity.overlaps(activity, other))
+
+    def test_overlap_after(self):
+        activity = Mock(begins = datetime(year = 2013, month = 2, day = 6),
+                        ends = datetime(year = 2013, month = 4, day = 27))
+
+        other = Mock(begins = datetime(year = 2012, month = 10, day = 7),
+                     ends = datetime(year = 2013, month = 2, day = 5))
+
+        self.assertFalse(Activity.overlaps(activity, other))</pre></div><p>Let's take a look at <a id="id324" class="indexterm"/>the following code, step-by-step:</p><div class="informalexample"><pre class="programlisting">    def test_valid(self):
+        activity = Activity('activity name',
+                            datetime(year = 2012, month = 9, day = 11),
+                            datetime(year = 2013, month = 4, day = 27))
+
+        self.assertEqual(activity.name, 'activity name')
+        self.assertEqual(activity.begins,
+                         datetime(year = 2012, month = 9, day = 11))
+        self.assertEqual(activity.ends,
+                         datetime(year = 2013, month = 4, day = 27))</pre></div><p>The <code class="literal">test_valid</code> method <a id="id325" class="indexterm"/>checks whether the constructor works correctly when all of the parameters are correct. This is an important test, because it defines what correct behavior should be normally. We need more tests, though, to define correct behavior in abnormal situations:</p><div class="informalexample"><pre class="programlisting">    def test_backwards_times(self):
+        self.assertRaises(TaskError,
+                          Activity,
+                          'activity name',
+                          datetime(year = 2013, month = 4, day = 27),
+                          datetime(year = 2012, month = 9, day = 11))</pre></div><p>Here, we're making sure that you can't create an activity that ends before it begins. That doesn't make any sense, and can easily throw off assumptions made during the implementation:</p><div class="informalexample"><pre class="programlisting">    def test_too_short(self):
+        self.assertRaises(TaskError,
+                          Activity,
+                          'activity name',
+                          datetime(year = 2013, month = 4, day = 27,
+                                   hour = 7, minute = 15),
+                          datetime(year = 2013, month = 4, day = 27,
+                                   hour = 7, minute = 15))</pre></div><p>We don't want extremely <a id="id326" class="indexterm"/>short activities, either. In the real world, an activity that takes no time is meaningless, so we have a test here to make sure that such things are not allowed:</p><div class="informalexample"><pre class="programlisting">class utility_tests(TestCase):
+    def test_repr(self):
+        activity = Activity('activity name',
+                            datetime(year = 2012, month = 9, day = 11),
+                            datetime(year = 2013, month = 4, day = 27))
+
+        expected = "&lt;activity name 2012-09-11T00:00:00 2013-04-27T00:00:00&gt;"
+
+        self.assertEqual(repr(activity), expected)</pre></div><p>While <code class="literal">repr(activity)</code> isn't likely to be used in any production code paths, it's handy during development and debugging. This test defines how the text representation of an activity ought to look, to make sure that it contains the desired information.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="tip15"/>Tip</h3><p>The <code class="literal">repr</code> function is <a id="id327" class="indexterm"/>often useful during debugging, because it attempts to take any object and turn it into a string that represents that object. This is distinct from the <code class="literal">str</code> function, because <code class="literal">str</code> tries to turn the object into a string that is convenient for humans to read. The <code class="literal">repr</code> function, on the other hand, tries to create a string containing code that will recreate the object. That's a slightly tough concept, so here's an example contrasting <code class="literal">str</code> and <code class="literal">repr</code>:</p><div class="informalexample"><pre class="programlisting">&gt;&gt;&gt; from decimal import Decimal
+&gt;&gt;&gt; x = Decimal('123.45678')
+&gt;&gt;&gt; str(x)
+'123.45678'
+&gt;&gt;&gt; repr(x)
+"Decimal('123.45678')"</pre></div></div></div><div class="informalexample"><pre class="programlisting">class exclusivity_tests(TestCase):
+    def test_excludes(self):
+        activity = Mock()
+
+        other = Activity('activity name',
+                         datetime(year = 2012, month = 9, day = 11),
+                         datetime(year = 2012, month = 10, day = 6))
+
+        # Any activity should exclude any activity
+        self.assertTrue(Activity.excludes(activity, other))
+
+        # Anything not known to be excluded should be included
+        self.assertFalse(Activity.excludes(activity, None))</pre></div><p>It's up to the objects stored in a schedule to decide whether they are exclusive with other objects they overlap. Specifically, activities are supposed to exclude each other, so we check this here. We're using a mock object for the main activity, but we're being a bit lazy and use a real <code class="literal">Activity</code> instance to compare it against, trusting that there won't be a problem in this case. We <a id="id328" class="indexterm"/>don't expect that <code class="literal">Activity.excludes</code> will do much more than apply the <code class="literal">isinstance</code> function to its parameter, so there's not much that an error in the constructor can do to mess things up.</p><div class="informalexample"><pre class="programlisting">class overlap_tests(TestCase):
+    def test_overlap_before(self):
+        activity = Mock(begins = datetime(year = 2012, month = 9, day = 11),
+                        ends = datetime(year = 2012, month = 10, day = 6))
+
+        other = Mock(begins = datetime(year = 2012, month = 10, day = 7),
+                     ends = datetime(year = 2013, month = 2, day = 5))
+
+        self.assertFalse(Activity.overlaps(activity, other))
+
+    def test_overlap_begin(self):
+        activity = Mock(begins = datetime(year = 2012, month = 8, day = 11),
+                        ends = datetime(year = 2012, month = 11, day = 27))
+
+        other = Mock(begins = datetime(year = 2012, month = 10, day = 7),
+                     ends = datetime(year = 2013, month = 2, day = 5))
+
+        self.assertTrue(Activity.overlaps(activity, other))
+
+    def test_overlap_end(self):
+        activity = Mock(begins = datetime(year = 2013, month = 1, day = 11),
+                        ends = datetime(year = 2013, month = 4, day = 16))
+
+        other = Mock(begins = datetime(year = 2012, month = 10, day = 7),
+                     ends = datetime(year = 2013, month = 2, day = 5))
+
+        self.assertTrue(Activity.overlaps(activity, other))
+
+    def test_overlap_inner(self):         activity = Mock(begins = datetime(year = 2012, month = 10, day = 11),
+                        ends = datetime(year = 2013, month = 1, day = 27))
+
+        other = Mock(begins = datetime(year = 2012, month = 10, day = 7),
+                     ends = datetime(year = 2013, month = 2, day = 5))
+
+        self.assertTrue(Activity.overlaps(activity, other))
+
+    def test_overlap_outer(self):
+        activity = Mock(begins = datetime(year = 2012, month = 8, day = 12),
+                        ends = datetime(year = 2013, month = 3, day = 15))
+
+        other = Mock(begins = datetime(year = 2012, month = 10, day = 7),
+                     ends = datetime(year = 2013, month = 2, day = 5))
+
+        self.assertTrue(Activity.overlaps(activity, other))
+
+    def test_overlap_after(self):
+        activity = Mock(begins = datetime(year = 2013, month = 2, day = 6),
+                        ends = datetime(year = 2013, month = 4, day = 27))
+
+        other = Mock(begins = datetime(year = 2012, month = 10, day = 7),
+                     ends = datetime(year = 2013, month = 2, day = 5))
+
+        self.assertFalse(Activity.overlaps(activity, other))</pre></div><p>These tests describe the <a id="id329" class="indexterm"/>behavior of the code that checks whether activities overlap in the cases where the first activity:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Comes before the second activity</li><li class="listitem" style="list-style-type: disc">Overlaps the beginning of the second activity</li><li class="listitem" style="list-style-type: disc">Overlaps the end of the second activity</li><li class="listitem" style="list-style-type: disc">Begins and ends within the range of the second activity</li><li class="listitem" style="list-style-type: disc">Begins before the second activity and ends after it</li><li class="listitem" style="list-style-type: disc">Comes after the second activity</li></ul></div><p>This covers the domain of possible relationships between the tasks.</p><p>No actual activities were used in these tests, just <code class="literal">Mock</code> objects that had been given the attributes that the <code class="literal">Activity.overlaps</code> function should look for. As always, we're doing our best to keep the code in different units from being able to interact during the tests.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="tip16"/>Tip</h3><p>You might have noticed that we used a shortcut to create the mock objects, by passing the attributes, we wanted them to have as keyword parameters for the constructor. Most of the time, that's a handy way to save a little work, but it does have the problem that it only works for attribute names that don't happen to be used as actual parameters to the <code class="literal">Mock</code> constructor. Notably, attributes called <code class="literal">name</code> can't be assigned in this way, because that parameter has a special meaning for <code class="literal">Mock</code>.</p></div></div><p>The code in <code class="literal">tests/test_statuses.py</code> is almost the same, except that it uses the <code class="literal">Status</code> class instead <a id="id330" class="indexterm"/>of the <code class="literal">Activity</code> class. There is one significant difference, though:</p><div class="informalexample"><pre class="programlisting">    def test_excludes(self):
+        status = Mock()
+
+        other = Status('status name',
+                       datetime(year = 2012, month = 9, day = 11),
+                       datetime(year = 2012, month = 10, day = 6))
+
+        # A status shouldn't exclude anything
+        <span class="strong"><strong>self.assertFalse(Status.excludes(status, other))</strong></span>
+        self.assertFalse(Status.excludes(status, None))</pre></div><p>The defining difference between a <code class="literal">Status</code> and an <code class="literal">Activity</code> is that a status does not exclude other tasks that overlap with it. The tests, naturally, should reflect that difference.</p><p>The following code goes in <code class="literal">tests/test_schedules.py</code>. We define several mock objects that behave as if they were statuses or activities, and in which they support the overlap and exclusion protocol. We'll use these mock objects in several tests, to see how the schedule deals with the various combinations of overlapping and exclusive objects:</p><div class="informalexample"><pre class="programlisting">from unittest import TestCase
+from unittest.mock import patch, Mock
+from planner.data import Schedule, ScheduleError
+from datetime import datetime
+
+class add_tests(TestCase):
+    overlap_exclude = Mock()
+    overlap_exclude.overlaps = Mock(return_value = True)
+    overlap_exclude.excludes = Mock(return_value = True)
+
+    overlap_include = Mock()
+    overlap_include.overlaps = Mock(return_value = True)
+    overlap_include.excludes = Mock(return_value = False)
+
+    distinct_exclude = Mock()
+    distinct_exclude.overlaps = Mock(return_value = False)
+    distinct_exclude.excludes = Mock(return_value = True)
+
+    distinct_include = Mock()
+    distinct_include.overlaps = Mock(return_value = False)
+    distinct_include.excludes = Mock(return_value = False)
+
+    def test_add_overlap_exclude(self):
+        schedule = Schedule()
+        schedule.add(self.distinct_include)
+        self.assertRaises(ScheduleError,
+                          schedule.add,
+                          self.overlap_exclude)
+
+    def test_add_overlap_include(self):
+        schedule = Schedule()
+        schedule.add(self.distinct_include)
+        schedule.add(self.overlap_include)
+
+    def test_add_distinct_exclude(self):
+        schedule = Schedule()
+        schedule.add(self.distinct_include)
+        schedule.add(self.distinct_exclude)
+
+    def test_add_distinct_include(self):
+        schedule = Schedule()
+        schedule.add(self.distinct_include)
+        schedule.add(self.distinct_include)
+
+    def test_add_over_overlap_exclude(self):
+        schedule = Schedule()
+        schedule.add(self.overlap_exclude)
+        self.assertRaises(ScheduleError,
+                          schedule.add,
+                          self.overlap_include)
+
+    def test_add_over_distinct_exclude(self):
+        schedule = Schedule()
+        schedule.add(self.distinct_exclude)
+        self.assertRaises(ScheduleError,
+                          schedule.add,
+                          self.overlap_include)
+
+    def test_add_over_overlap_include(self):
+        schedule = Schedule()
+        schedule.add(self.overlap_include)
+        schedule.add(self.overlap_include)
+
+    def test_add_over_distinct_include(self):
+        schedule = Schedule()
+        schedule.add(self.distinct_include)
+        schedule.add(self.overlap_include)
+
+class in_tests(TestCase):
+    fake = Mock()
+    fake.overlaps = Mock(return_value = True)
+    fake.excludes = Mock(return_value = True)
+
+    def test_in_before_add(self):
+        schedule = Schedule()
+        self.assertFalse(self.fake in schedule)
+
+    def test_in_after_add(self):
+        schedule = Schedule()
+        schedule.add(self.fake)
+        self.assertTrue(self.fake in schedule)</pre></div><p>Let's take a closer look at some sections of the following code:</p><div class="informalexample"><pre class="programlisting">    overlap_exclude = Mock()
+    overlap_exclude.overlaps = Mock(return_value = True)
+    overlap_exclude.excludes = Mock(return_value = True)
+
+    overlap_include = Mock()
+    overlap_include.overlaps = Mock(return_value = True)
+    overlap_include.excludes = Mock(return_value = False)
+
+    distinct_exclude = Mock()
+    distinct_exclude.overlaps = Mock(return_value = False)
+    distinct_exclude.excludes = Mock(return_value = True)
+
+    distinct_include = Mock()
+    distinct_include.overlaps = Mock(return_value = False)
+    distinct_include.excludes = Mock(return_value = False)</pre></div><p>These lines create mock objects as attributes of the <code class="literal">add_tests</code> class. Each of these mock objects has mocked <code class="literal">overlaps</code> and <code class="literal">excludes</code> methods that will always return either <code class="literal">True</code> or <code class="literal">False</code> when called. This means that each of these mock objects considers itself as overlap ping either everything or nothing, and excludes either everything or nothing. Between the four mock objects, we have covered all the possible combinations. In the following tests, we'll add <a id="id331" class="indexterm"/>various combinations of these mock objects to a schedule, and make sure that it does the right things:</p><div class="informalexample"><pre class="programlisting">    def test_add_overlap_exclude(self):
+        schedule = Schedule()
+        schedule.add(self.distinct_include)
+        self.assertRaises(ScheduleError,
+                          schedule.add,
+                          self.overlap_exclude)
+
+    def test_add_overlap_include(self):
+        schedule = Schedule()
+        schedule.add(self.distinct_include)
+        schedule.add(self.overlap_include)
+
+    def test_add_distinct_exclude(self):
+        schedule = Schedule()
+        schedule.add(self.distinct_include)
+        schedule.add(self.distinct_exclude)
+
+    def test_add_distinct_include(self):
+        schedule = Schedule()
+        schedule.add(self.distinct_include)
+        schedule.add(self.distinct_include)</pre></div><p>The preceding four tests are covering cases where we add a nonoverlapping object to a schedule. All of them are expected to accept the nonoverlapping object, except the first. In this test, we've previously added an object that claims that it does indeed overlap; furthermore, it excludes anything it overlaps. This test shows that, if either the object being added or an object already in the schedule believes that there's an overlap, the schedule must treat it as an overlap.</p><div class="informalexample"><pre class="programlisting">    def test_add_over_overlap_exclude(self):
+        schedule = Schedule()
+        schedule.add(self.overlap_exclude)
+        self.assertRaises(ScheduleError,
+                          schedule.add,
+                          self.overlap_include)</pre></div><p>In this test, we're making sure that if an object already in the schedule overlaps a new object and claims exclusivity, then adding the new object will fail.</p><div class="informalexample"><pre class="programlisting">    def test_add_over_distinct_exclude(self):
+        schedule = Schedule()
+        schedule.add(self.distinct_exclude)
+        self.assertRaises(ScheduleError,
+                          schedule.add,
+                          self.overlap_include)</pre></div><p>In this test, we're making sure that, even though the object already in the schedule doesn't think that it overlaps <a id="id332" class="indexterm"/>with the new object, it excludes the new object because the new object thinks that there's an overlap.</p><div class="informalexample"><pre class="programlisting">    def test_add_over_overlap_include(self):
+        schedule = Schedule()
+        schedule.add(self.overlap_include)
+        schedule.add(self.overlap_include)
+
+    def test_add_over_distinct_include(self):
+        schedule = Schedule()
+        schedule.add(self.distinct_include)
+        schedule.add(self.overlap_include)</pre></div><p>These tests are making sure that the inclusive objects don't somehow interfere with adding each other to a schedule.</p><div class="informalexample"><pre class="programlisting">class in_tests(TestCase):
+    fake = Mock()
+    fake.overlaps = Mock(return_value = True)
+    fake.excludes = Mock(return_value = True)
+
+    def test_in_before_add(self):
+        schedule = Schedule()
+        self.assertFalse(self.fake in schedule)
+
+    def test_in_after_add(self):
+        schedule = Schedule()
+        schedule.add(self.fake)
+        self.assertTrue(self.fake in schedule)</pre></div><p>These two tests describe the schedule behavior with respect to the <code class="literal">in</code> operator. Specifically, it should <a id="id333" class="indexterm"/>return <code class="literal">True</code> when the object in question is actually in the schedule.</p><div class="section" title="Try it for yourself – write your early unit tests"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec66"/>Try it for yourself – write your early unit tests</h2></div></div></div><p>A specification—even a testable specification written in <code class="literal">doctest</code>—still hosts a lot of ambiguities <a id="id334" class="indexterm"/>that can be ironed out with good unit tests. Add that to the fact that the specification doesn't maintain separation between different tests, and you can see that it's time for your project to gain some unit tests. Perform the following steps:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Find some element of your project that is described in (or implied by) your specification.</li><li class="listitem">Write a unit test that describes the behavior of that element when given the correct input.</li><li class="listitem">Write a unit test that describes the behavior of that element when given the incorrect input.</li><li class="listitem">Write unit tests that describe the behavior of the element at the boundaries between correct and incorrect input.</li><li class="listitem">Go back to step 1 if you can find another untested part of your program.</li></ol></div></div><div class="section" title="Wrapping up the initial unit tests"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec67"/>Wrapping up the initial unit tests</h2></div></div></div><p>This is where <a id="id335" class="indexterm"/>you really take what was an ill-defined idea and turn it into a precise description of what you're going to do.</p><p>The end result can be quite lengthy, which shouldn't come as much of a surprise. After all, your goal at this stage is to completely define the behavior of your project; even without concerning yourself with the details of how that behavior is implemented, that's a lot of information.</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Coding planner.data"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec54"/>Coding planner.data</h1></div></div></div><p>It's time to write <a id="id336" class="indexterm"/>some code using the specification document and the unit tests as guides. Specifically, it's time to write the <code class="literal">planner.data</code> module, which contains <code class="literal">Status</code>, <code class="literal">Activity</code>, and <code class="literal">Schedule</code>.</p><p>To create this package, I made a directory called <code class="literal">planner</code> and, within this directory, created a file called <code class="literal">__init__.py</code>. There's no need to put anything inside <code class="literal">__init__.py</code>, but the file itself needs to exist to tell Python that the <code class="literal">planner</code> directory is a package.</p><p>The following <a id="id337" class="indexterm"/>code goes in <code class="literal">planner/data.py</code>:</p><div class="informalexample"><pre class="programlisting">from datetime import timedelta
+
+class TaskError(Exception):
+    pass
+
+class ScheduleError(Exception):
+    pass
+
+class Task:
+    def __init__(self, name, begins, ends):
+        if ends &lt; begins:
+            raise TaskError('The begin time must precede the end time')
+        if ends - begins &lt; timedelta(minutes = 5):
+            raise TaskError('The minimum duration is 5 minutes')
+
+        self.name = name
+        self.begins = begins
+        self.ends = ends
+
+    def excludes(self, other):
+        return NotImplemented
+
+    def overlaps(self, other):
+        if other.begins &lt; self.begins:
+            return other.ends &gt; self.begins
+        elif other.ends &gt; self.ends:
+            return other.begins &lt; self.ends
+        else:
+            return True
+
+    def __repr__(self):
+        return '&lt;{} {} {}&gt;'.format(self.name,
+                                   self.begins.isoformat(),
+                                   self.ends.isoformat())
+
+class Activity(Task):
+    def excludes(self, other):
+        return isinstance(other, Activity)
+
+class Status(Task):
+    def excludes(self, other):
+        return False
+
+class Schedule:
+    def __init__(self):
+        self.tasks = []
+
+    def add(self, task):
+        for contained in self.tasks:
+            if task.overlaps(contained):
+                if task.exclude(contained) or contained.exclude(task):
+                    raise ScheduleError(task, containeed)
+
+        self.tasks.append(task)
+
+    def remove(self, task):
+        try:
+            self.tasks.remove(task)
+        except ValueError:
+            pass
+
+    def __contains__(self, task):
+        return task in self.tasks</pre></div><p>The <code class="literal">Task</code> class here contains most of the behavior that is needed for both the <code class="literal">Activity</code> class and the <code class="literal">Status</code> class. Since so much of what they do is common to both, it makes sense to write the code once and reuse it. Only the <code class="literal">excludes</code> method needs to be different in each of the <a id="id338" class="indexterm"/>subclasses. That makes the classes for activities and statuses very simple. The <code class="literal">Schedule</code> class turns out to be pretty easy, too. But is it right? Our tests will tell us.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note20"/>Note</h3><p>We used the <code class="literal">timedelta</code> class and the <code class="literal">datetime.isoformat</code> method in the preceding code. Both are useful but somewhat obscure features of the <code class="literal">datetime</code> module. A <a id="id339" class="indexterm"/>
+<code class="literal">timedelta</code> instance represents the duration between two points in time. The <code class="literal">isoformat</code> method returns a string representing the <code class="literal">datetime</code> module in ISO 8601 standard format.</p></div></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Using tests to get the code right"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec55"/>Using tests to get the code right</h1></div></div></div><p>All right, so that code <a id="id340" class="indexterm"/>looks fairly good. Unfortunately, Nose tells us that there are a few problems. Actually, Nose reports quite a large number of problems, but a lot of them seem to be related to a few root causes.</p><p>First, let's address the problem that, though the <code class="literal">Activity</code> and <code class="literal">Status</code> classes don't seem to have the <code class="literal">exclude</code> methods, some of our code tries to call that method. A typical report of this problem from the Nose output looks like a traceback followed by:</p><div class="informalexample"><pre class="programlisting"><span class="strong"><strong>AttributeError: 'Activity' object has no attribute 'exclude'</strong></span></pre></div><p>Looking at our code, we see that it is properly called <code class="literal">excludes</code>. The tracebacks included in the Nose error report tell us that the problem is on line 51 of <code class="literal">planner/data.py</code>, and it looks like a quick fix.</p><p>We'll just change line 51 from the following:</p><div class="informalexample"><pre class="programlisting">if task.exclude(contained) or contained.exclude(task):</pre></div><p>to:</p><div class="informalexample"><pre class="programlisting">if task.exclude<span class="strong"><strong>s</strong></span>(contained) or contained.exclude<span class="strong"><strong>s</strong></span>(task):</pre></div><p>and run Nose again.</p><p>Similarly, several of our tests report the following output:</p><div class="informalexample"><pre class="programlisting"><span class="strong"><strong>NameError: name 'containeed' is not defined</strong></span></pre></div><p>This is clearly another typo. That one's on line 52 of <code class="literal">planner/data.py</code>. Oops!! We'll fix that one, too, and run Nose again to see what else is wrong.</p><p>Continuing our trend of picking the low-hanging fruit first, let's clear up the problem reported as the following:</p><div class="informalexample"><pre class="programlisting"><span class="strong"><strong>SyntaxError: unexpected EOF while parsing</strong></span></pre></div><p>This is yet another typo, this time in <code class="literal">docs/outline.txt</code>. This time, it's not a problem with the code being tested, but with the test itself. It still needs to be fixed.</p><p>The problem is that, when originally entering the tests, I apparently only typed in two dots at the beginning of several lines, instead of the three that tell doctest that an expression continues onto that line.</p><p>After fixing that, things are starting to get less obvious. Let's pick on this one next:</p><div class="informalexample"><pre class="programlisting"><span class="strong"><strong>File "docs/outline.txt", line 36, in outline.txt</strong></span>
+<span class="strong"><strong>Failed example:</strong></span>
+<span class="strong"><strong>    duplicate_activity in schedule</strong></span>
+<span class="strong"><strong>Expected:</strong></span>
+<span class="strong"><strong>    True</strong></span>
+<span class="strong"><strong>Got:</strong></span>
+<span class="strong"><strong>    False</strong></span></pre></div><p>Why isn't the activity being seen as a member of the schedule? The previous example passed, which shows that the <code class="literal">in</code> operator works for the activity we actually added to the schedule. The failure shows up when we try to use an equivalent activity; once we realize that, we know what <a id="id341" class="indexterm"/>we need to fix. Either our <code class="literal">__eq__</code> method isn't working, or (as is the actual case) we forgot to write it.</p><p>We can fix this bug by adding the <code class="literal">__eq__</code> and <code class="literal">__ne__</code> methods to <code class="literal">Task</code>, which will be inherited by <code class="literal">Activity</code> and <code class="literal">Status</code>.</p><div class="informalexample"><pre class="programlisting">    def __eq__(self, other):
+        return (self.name == other.name and
+                self.begins == other.begins and
+                self.ends == other.ends)
+
+    def __ne__(self, other):
+        return (self.name != other.name or
+                self.begins != other.begins or
+                self.ends != other.ends)</pre></div><p>Now, two tasks that have the same name, start time, and end time will compare as equivalent even if one is a <code class="literal">Status</code> and the other is an <code class="literal">Activity</code>. The last isn't necessarily right, but it doesn't cause any of our tests to fail, so we'll leave it for now. If it becomes a problem later, we'll write a test that checks it, and then fix it.</p><p>What's the deal with this one?</p><div class="informalexample"><pre class="programlisting"><span class="strong"><strong>File "docs/outline.txt", line 61, in outline.txt</strong></span>
+<span class="strong"><strong>Failed example:</strong></span>
+<span class="strong"><strong>    schedule.add(activity2)</strong></span>
+<span class="strong"><strong>Expected:</strong></span>
+<span class="strong"><strong>    Traceback (most recent call last):</strong></span>
+<span class="strong"><strong>    ScheduleError: "test activity 2" overlaps with "test activity 1"</strong></span>
+<span class="strong"><strong>Got:</strong></span>
+<span class="strong"><strong>    Traceback (most recent call last):</strong></span>
+<span class="strong"><strong>      File "/usr/lib64/python3.4/doctest.py", line 1324, in __run</strong></span>
+<span class="strong"><strong>        compileflags, 1), test.globs)</strong></span>
+<span class="strong"><strong>      File "&lt;doctest outline.txt[20]&gt;", line 1, in &lt;module&gt;</strong></span>
+<span class="strong"><strong>        schedule.add(activity2)</strong></span>
+<span class="strong"><strong>      File "planner/data.py", line 62, in add</strong></span>
+<span class="strong"><strong>        raise ScheduleError(task, contained)</strong></span>
+<span class="strong"><strong>    planner.data.ScheduleError: (&lt;test activity 2 2014-06-01T10:15:00 2014-06-01T13:30:00&gt;, &lt;test activity 1 2014-06-01T09:05:00 2014-06-01T12:30:00&gt;)</strong></span></pre></div><p>Well, it looks ugly but, if you look at it, you'll see that <code class="literal">doctest</code> is just complaining that the raised exception doesn't print out as expected. It's even the right exception; it's just a question of formatting.</p><p>We can fix this on line 62 of <code class="literal">planner/data.py</code>, by changing the line to read:</p><div class="informalexample"><pre class="programlisting">raise ScheduleError('"{}" overlaps with "{}"'.format(task.name, contained.name))</pre></div><p>There's one more problem with this doctest example, which is that we wrote the name of the expected exception as <code class="literal">ScheduleError</code>, and that was how Python 2 printed out exceptions. Python 3 prints out exceptions with a qualified name, though, so we need to change it to <code class="literal">planner.data.ScheduleError</code> on line 63 of the doctest file.</p><p>Now, if you've been following <a id="id342" class="indexterm"/>along, all of the errors should be fixed, except for some of the acceptance tests in <code class="literal">docs/outline.txt</code>. Basically, these failing tests tell us that we haven't written the persistence code yet, which is true.</p><div class="section" title="Try it for yourself – writing and debugging code"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec68"/>Try it for yourself – writing and debugging code</h2></div></div></div><p>The basic <a id="id343" class="indexterm"/>procedure, as we've discussed before, is to write some code, then run the <a id="id344" class="indexterm"/>tests to find problems with the code, and repeat. When you happen to come across an error that isn't covered by an existing test, you need to write a new test and continue the process. Perform the following steps:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Write code that ought to satisfy at least some of your tests.<p>Run your tests. If you've used the tools we talked about in the previous chapters, you should be able to run everything simply by executing:</p><div class="informalexample"><pre class="programlisting"><span class="strong"><strong>$ python3 -m nose</strong></span></pre></div></li><li class="listitem">If there are errors in the code you've already written, use the test output to help you locate and identity them. Once you understand the bugs, try to fix them and then go back to step 2.</li><li class="listitem">Once you've fixed all the errors in the code you've written, and if your project isn't complete, choose some new tests to concentrate on and go back to step 1.</li></ol></div><p>Enough iterations on this procedure lead you to have a complete and tested project. Of course, the real task is more difficult than simply saying "it will work" but, in the end, it will work. You will produce a codebase that you can be confident in. It will also be an easier process than it would have been without the tests.</p><p>Your project might be <a id="id345" class="indexterm"/>done, but there's still more to do on the personal scheduler. At <a id="id346" class="indexterm"/>this stage of the chapter, I haven't finished going through the writing and debugging process. It's time to do that.</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Writing the persistence tests"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec56"/>Writing the persistence tests</h1></div></div></div><p>Since I don't have <a id="id347" class="indexterm"/>any actual unit tests for the persistence code yet, I'll start off by making some. In the process, I have to figure out how persistence will <a id="id348" class="indexterm"/>actually work. The following code goes in <code class="literal">tests/test_persistence.py</code>:</p><div class="informalexample"><pre class="programlisting">from unittest import TestCase
+from planner.persistence import File
+
+class test_file(TestCase):
+    def test_basic(self):
+        storage = File(':memory:')
+        storage.store_object('tag1', ('some object',))
+        self.assertEqual(tuple(storage.load_objects('tag1')),
+                         (('some object',),))
+
+    def test_multiple_tags(self):
+        storage = File(':memory:')
+
+        storage.store_object('tag1', 'A')
+        storage.store_object('tag2', 'B')
+        storage.store_object('tag1', 'C')
+        storage.store_object('tag1', 'D')
+        storage.store_object('tag3', 'E')
+        storage.store_object('tag3', 'F')
+
+        self.assertEqual(set(storage.load_objects('tag1')),
+                         set(['A', 'C', 'D']))
+
+        self.assertEqual(set(storage.load_objects('tag2')),
+                         set(['B']))
+
+        self.assertEqual(set(storage.load_objects('tag3')),
+                         set(['E', 'F']))</pre></div><p>Looking at each of the <a id="id349" class="indexterm"/>important sections of the test code, we see the following:</p><div class="informalexample"><pre class="programlisting">    def test_basic(self):
+        storage = File(':memory:')
+        storage.store_object('tag1', ('some object',))
+        self.assertEqual(tuple(storage.load_objects('tag1')),
+                         (('some object',),))</pre></div><p>The <code class="literal">test_basic</code> test creates <code class="literal">File</code>, stores a single object under the name <code class="literal">'tag1'</code>, and then loads that object back from storage and checks whether it is equal to the original object. It really is a very <a id="id350" class="indexterm"/>basic test, but it covers the simple use case.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="tip17"/>Tip</h3><p>We don't need a test fixture here because we're not actually working with an on-disk file that we need to create and delete. The special filename <code class="literal">':memory:'</code> tells SQLite to do everything in memory. This is particularly handy for testing.</p></div></div><div class="informalexample"><pre class="programlisting">    def test_multiple_tags(self):
+        storage = File(':memory:')
+
+        storage.store_object('tag1', 'A')
+        storage.store_object('tag2', 'B')
+        storage.store_object('tag1', 'C')
+        storage.store_object('tag1', 'D')
+        storage.store_object('tag3', 'E')
+        storage.store_object('tag3', 'F')
+
+        self.assertEqual(set(storage.load_objects('tag1')),
+                         set(['A', 'C', 'D']))
+
+        self.assertEqual(set(storage.load_objects('tag2')),
+                         set(['B']))
+
+        self.assertEqual(set(storage.load_objects('tag3')),
+                         set(['E', 'F']))</pre></div><p>The <code class="literal">test_multiple_tags</code> test creates a storage, and then stores multiple objects in it, some with duplicate tags. It then checks whether the storage keeps all of the objects with a given tag, and returns all of them on request.</p><p>In other words, all these <a id="id351" class="indexterm"/>tests define the persistence file as a multimap from string <a id="id352" class="indexterm"/>keys to object values.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note21"/>Note</h3><p>A multimap is a mapping between single keys and any number of values. In other words, each individual key might be associated with one value, of fifty.</p></div></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Finishing up the personal planner"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec57"/>Finishing up the personal planner</h1></div></div></div><p>Now that there <a id="id353" class="indexterm"/>are at least basic unit tests covering the persistence mechanism, it's time to write the persistence code itself. The following goes in <code class="literal">planner/persistence.py</code>:</p><div class="informalexample"><pre class="programlisting">import sqlite3
+from pickle import loads, dumps
+
+class File:
+    def __init__(self, path):
+        self.connection = sqlite3.connect(path)
+
+        try:
+            self.connection.execute("""
+                create table objects (tag, pickle)
+            """)
+        except sqlite3.OperationalError:
+            pass
+
+    def store_object(self, tag, object):
+        self.connection.execute('insert into objects values (?, ?)',
+                                (tag, dumps(object)))
+
+    def load_objects(self, tag):
+        cursor = self.connection.execute("""
+                     select pickle from objects where tag like ?
+                 """, (tag,))
+        return [loads(row['pickle']) for row in cursor]</pre></div><p>The <code class="literal">store_object</code> method runs a short SQL statement to store the object into a database field. The object serialization is handled by the <code class="literal">dumps</code> function from the <code class="literal">pickle</code> module.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note22"/>Note</h3><p>The <code class="literal">pickle</code> module, as a whole, deals with storing and retrieving Python objects. The <a id="id354" class="indexterm"/>
+<code class="literal">dumps</code> function in particular transforms Python objects <a id="id355" class="indexterm"/>into byte strings that can be transformed back into a Python object via the <code class="literal">loads</code> function.</p></div></div><p>The <code class="literal">load_object</code> method <a id="id356" class="indexterm"/>uses SQL to query the database for the serialized version of every object stored under a given tag, and then uses <code class="literal">pickle.loads</code> to <a id="id357" class="indexterm"/>transform these serializations into real objects for it to return.</p><p>Now I run Nose to find out what's broken:</p><div class="informalexample"><pre class="programlisting"><span class="strong"><strong>ERROR: test_multiple_tags (test_persistence.test_file)</strong></span>
+<span class="strong"><strong>----------------------------------------------------------------------</strong></span>
+<span class="strong"><strong>Traceback (most recent call last):</strong></span>
+<span class="strong"><strong>  File "tests/test_persistence.py", line 21, in test_multiple_tags</strong></span>
+<span class="strong"><strong>    self.assertEqual(set(storage.load_objects('tag1')),</strong></span>
+<span class="strong"><strong>  File "planner/persistence.py", line 23, in load_objects</strong></span>
+<span class="strong"><strong>    return [loads(row['pickle']) for row in cursor]</strong></span>
+<span class="strong"><strong>  File "planner/persistence.py", line 23, in &lt;listcomp&gt;</strong></span>
+<span class="strong"><strong>    return [loads(row['pickle']) for row in cursor]</strong></span>
+<span class="strong"><strong>TypeError: tuple indices must be integers, not str</strong></span></pre></div><p>Ah, yes. The <code class="literal">sqlite3</code> module returns the query rows as tuples, unless you tell it otherwise. I want to use column names as indexes, so I need to set the row factory. We'll add the following line to the <code class="literal">File</code> constructor:</p><div class="informalexample"><pre class="programlisting">self.connection.row_factory = sqlite3.Row</pre></div><p>Now when I run Nose, the only problems it tells me about are that I haven't implemented <code class="literal">Schedule.load</code> and <code class="literal">Schedule.store</code> yet. Furthermore, there aren't any unit tests that check these methods. The only error comes from the specification doctest. It's time to write some more unit tests in <code class="literal">tests/test_schedules.py</code>:</p><div class="informalexample"><pre class="programlisting">class store_load_tests(TestCase):
+    def setUp(self):
+        fake_tasks = []
+        for i in range(50):
+            fake_task = Mock()
+            fake_task.overlaps = Mock(return_value = False)
+            fake_task.name = 'fake {}'.format(i)
+
+        self.tasks = fake_tasks
+
+    def tearDown(self):
+        del self.tasks
+
+    def test_store(self):
+        fake_file = Mock()
+
+        schedule = Schedule('test_schedule')
+
+        for task in self.tasks:
+            schedule.add(task)
+
+        schedule.store(fake_file)
+
+        for task in self.tasks:
+            fake_file.store_object.assert_any_call('test_schedule', task)
+
+    def test_load(self):
+        fake_file = Mock()
+
+        fake_file.load_objects = Mock(return_value = self.tasks)
+
+        schedule = Schedule.load(fake_file, 'test_schedule')
+
+        fake_file.load_objects.assert_called_once_with('test_schedule')
+
+        self.assertEqual(set(schedule.tasks),
+                         set(self.tasks))</pre></div><p>Now that I have some <a id="id358" class="indexterm"/>tests to check against, it's time to write the store and load methods of the <code class="literal">Schedule</code> class in <code class="literal">planner/data.py</code>:</p><div class="informalexample"><pre class="programlisting">    def store(self, storage):
+        for task in self.tasks:
+            storage.store_object(self.name, task)
+
+    @staticmethod
+    def load(storage, name = 'schedule'):
+        value = Schedule(name)
+
+        for task in storage.load_objects(name):
+            value.add(task)
+
+        return value</pre></div><p>These changes also imply a change to the Schedule constructor:</p><div class="informalexample"><pre class="programlisting">    def __init__(self, name = 'schedule'):
+        self.tasks = []
+        self.name = name</pre></div><p>Okay, now, I run Nose, and... something's still broken::</p><div class="informalexample"><pre class="programlisting"><span class="strong"><strong>File "docs/outline.txt", line 101, in outline.txt</strong></span>
+<span class="strong"><strong>Failed example:</strong></span>
+<span class="strong"><strong>    schedule == newsched</strong></span>
+<span class="strong"><strong>Expected:</strong></span>
+<span class="strong"><strong>    True</strong></span>
+<span class="strong"><strong>Got:</strong></span>
+<span class="strong"><strong>    False</strong></span></pre></div><p>Looks like schedules need to compare equal based on their contents, too. That's easily done:</p><div class="informalexample"><pre class="programlisting">    def __eq__(self, other):
+        return self.tasks == other.tasks</pre></div><p>Just like last time we wrote a comparison function; this one has some unusual behavior, in that it only considers <a id="id359" class="indexterm"/>two schedules equal if the tasks were added to them in the same order. Again, though this smells a little funny, it doesn't make any tests fail, and it's not clearly wrong; so we'll leave it until it matters.</p></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Summary"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec58"/>Summary</h1></div></div></div><p>In this chapter, we learned about how the skills that we covered in earlier parts of this book are applied in practice. We did this by stepping through a recording of your humble author's actual process in writing a package. At the same time, you had the chance to work through your own project, make your own decisions, and design your own tests. You've taken the lead in a test-driven project, and you should be able to do it again whenever you want.</p><p>Now that we've covered the heart of Python testing, we're ready to talk about testing at the integration and system levels, which we'll do in the next chapter.</p></div></div>
+</body></html>

@@ -1,0 +1,391 @@
+<html><head></head><body><div class="chapter" title="Chapter&#xA0;9.&#xA0;Making a Shoot-Em-Up Game"><div class="titlepage"><div><div><h1 class="title"><a id="ch09"/>Chapter 9. Making a Shoot-Em-Up Game</h1></div></div></div><p>Welcome to the final chapter of Kivy Blueprints. In this tutorial, we're going to build a shoot-em-up game (or <span class="emphasis"><em>shmup</em></span> for short)—a fast-paced action game about shooting things indefinitely.</p><p>This is a small preview to pique your interest:</p><div class="mediaobject"><img src="graphics/B01620_09_03.jpg" alt="Making a Shoot-Em-Up Game"/><div class="caption"><p>The game: player (on the left-hand side) seeks to destroy the defenseless alien saucer (on the right-hand side)</p></div></div><p>Building an app with lots of moving parts simultaneously presented on screen, especially a mobile (or multi-platform) game, depends heavily on a capable renderer. This is what we'll attempt to develop by the end of the book, partially based on the source code from the starfield screensaver discussed in <a class="link" href="ch08.html" title="Chapter 8. Introducing Shaders">Chapter 8</a>, <span class="emphasis"><em>Introducing Shaders</em></span>.</p><p>This chapter will also cover the following topics:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Working with texture atlases in Kivy, complete with manual unpacking of texture coordinates for use in low-level code</li><li class="listitem" style="list-style-type: disc">Further development of a GLSL-based particle system and usage of particle systems to create different in-game entities</li><li class="listitem" style="list-style-type: disc">Implementing the game mechanics for a two-dimensional shooter—a control scheme suitable for mouse and touch screen, basic collision detection for bullets, and so on</li></ul></div><p>As with all other code for this book, you can find the most up-to-date version of all source code <a id="id602" class="indexterm"/>on GitHub, at <a class="ulink" href="https://github.com/mvasilkov/kb">https://github.com/mvasilkov/kb</a>. Consult the full source code of the application periodically when following along, because this puts things in context and makes the program flow more understandable.</p><div class="section" title="Limitations of the project"><div class="titlepage"><div><div><h1 class="title"><a id="ch09lvl1sec57"/>Limitations of the project</h1></div></div></div><p>The<a id="id603" class="indexterm"/> shoot-em-up game we're writing is going to be very minimal, feature-wise. In particular, here are the constraints:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">The whole motivational part (winning and game over conditions) is omitted for the sake of clarity. It should be easy to implement once you're happy with the gameplay.</li><li class="listitem" style="list-style-type: disc">There's just one enemy type in our version of the game, and one simple movement pattern.</li><li class="listitem" style="list-style-type: disc">Many opportunities for optimization were purposefully missed to make the code more concise and readable.</li></ul></div><p>These are left as an exercise for the reader, if you're willing to do a bit more work. But first, let's review how texture maps work in Kivy—we'll rely on them later in the particle system code.</p></div></div>
+<div class="section" title="Texture atlases at a glance"><div class="titlepage"><div><div><h1 class="title"><a id="ch09lvl1sec58"/>Texture atlases at a glance</h1></div></div></div><p>Texture<a id="id604" class="indexterm"/> atlases (also known as sprite sheets) are a method of combining images used in the application into a larger composite texture. There are several advantages of doing so, compared to just loading a bunch of individual images like we did in previous projects:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">The application should open faster; it's usually cheaper to read one large file than several smaller ones. This may sound negligible until you have hundreds of textures, and then it becomes pretty noticeable—even more so over the network: HTTP requests add sizable overhead, which may become a deal breaker on mobile devices with constrained connectivity.</li><li class="listitem" style="list-style-type: disc">Rendering is also subtly quicker when there's no need to rebind textures. Using a texture map effectively means that only the texture coordinates are affected by any change that would otherwise lead to switching textures.</li><li class="listitem" style="list-style-type: disc">The <a id="id605" class="indexterm"/>previous point also makes atlases more suitable for use in situations when there's a single large model, such as our GLSL-based renderer. Again, texture coordinates are cheap and rebinding textures isn't.</li></ul></div><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note53"/>Note</h3><p>If you're coming from an HTML and CSS background, then you probably have heard about a very similar approach used in web development, called CSS sprites. The rationale is basically the same, sans the GLSL part. Since web apps are mostly delivered over the network, the gain from using CSS sprites is substantial even for a small number of images—every eliminated HTTP request counts.</p></div></div><p>In this section of the chapter, we'll review the following topics:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Creating texture maps using Kivy's built-in CLI utility</li><li class="listitem" style="list-style-type: disc">File format and structure of an <code class="literal">.atlas</code> file</li><li class="listitem" style="list-style-type: disc">The usage of texture atlases in Kivy-based apps</li></ul></div><p>If you're already familiar with Kivy atlases, feel free to skip straight to the <span class="emphasis"><em>Ad hoc usage of atlases with GLSL</em></span> section.</p><div class="section" title="Creating an atlas"><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec108"/>Creating an atlas</h2></div></div></div><p>Unlike<a id="id606" class="indexterm"/> in web development, where no standard tool has emerged for this particular task, Kivy framework comes with a useful command-line utility for texture maps. Its invocation looks like the following:</p><div class="informalexample"><pre class="programlisting">python –m kivy.atlas &lt;atlas_name&gt; &lt;texture_size&gt; &lt;images…&gt;</pre></div><p>On a Mac, replace <code class="literal">python</code> with <code class="literal">kivy</code>—that's the conventional command provided by <code class="literal">Kivy.app</code> for invoking a Kivy-aware Python interpreter.</p><p>This creates two or more files, depending on whether all images fit into a single composite texture of requested size. For the purpose of this tutorial, we assume that the value of <code class="literal">texture_size</code> is large enough to include every last image.</p><p>All output files are named after the <code class="literal">atlas_name</code> argument that you provide on the command line:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">The atlas index will be called <code class="literal">&lt;atlas_name&gt;.atlas</code></li><li class="listitem" style="list-style-type: disc">Textures have an additional ordinal suffix—<code class="literal">&lt;atlas_name&gt;-0.png</code> (this one is always created), <code class="literal">&lt;atlas_name&gt;-1.png</code>, and so on</li></ul></div></div><div class="section" title="Atlas structure"><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec109"/>Atlas structure</h2></div></div></div><p>An index of any given atlas, <code class="literal">.atlas</code>, is basically a <span class="strong"><strong>JavaScript Object Notation</strong></span> (<span class="strong"><strong>JSON</strong></span>) file <a id="id607" class="indexterm"/>describing the positioning of individual textures on the<a id="id608" class="indexterm"/> map. Its contents look like the following (formatted for readability):</p><div class="informalexample"><pre class="programlisting">{
+    "game-0.png": {
+        "player": [2, 170, 78, 84],
+        "bullet": [82, 184, 24, 16]
+    }
+}</pre></div><p>Textures are named after their corresponding source images, without an extension: a file <code class="literal">foo.png</code> becomes just <code class="literal">foo</code>. The numbers in each record describe a region of the large texture: <code class="literal">[x, y, width, height]</code>, where all values are in pixels.</p><p>A composite texture is about what you'd expect from a concatenation of images, as shown in the next figure. Usually, it will be tightly packed to efficiently utilize most of its area.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note54"/>Note</h3><p>When creating an atlas, Kivy handles individual sprites' edges with precaution, accounting for possible rendering artifacts related to rounding. This is why one may notice extra pixels on the edges of a sprite. This effect isn't always visible, but when it is, don't worry—it's by design and serves a good cause.</p></div></div><div class="mediaobject"><img src="graphics/B01620_09_09.jpg" alt="Atlas structure"/><div class="caption"><p>A texture atlas is merely a concatenation of smaller images</p></div></div><p>Using atlases in regular Kivy-based code is as simple as replacing file paths with a special protocol, <code class="literal">atlas:</code> (conceptually similar to <code class="literal">http:</code>). As you're already aware, the usual file reference in Kivy language looks similar to the next code snippet:</p><div class="informalexample"><pre class="programlisting">Image:
+    source: 'flags/Israel.png'</pre></div><p>An atlas reference, however, will use the following notation:</p><div class="informalexample"><pre class="programlisting">Image:
+    source: 'atlas://flags/Israel'</pre></div><p>Continue<a id="id609" class="indexterm"/> reading for a complete (albeit very simple) example of creating and using an atlas in a conventional Kivy app, a "hello world" of sorts.</p></div><div class="section" title="Using Kivy atlases in an easy way"><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec110"/>Using Kivy atlases in an easy way</h2></div></div></div><p>For<a id="id610" class="indexterm"/> the purpose of this example, let's borrow two icons from our previous projects and name them <code class="literal">icon_clock.png</code> and <code class="literal">icon_paint.png</code>:</p><div class="mediaobject"><img src="graphics/B01620_09_10.jpg" alt="Using Kivy atlases in an easy way"/><div class="caption"><p>Individual icons used to craft a sample atlas</p></div></div><p>To create an atlas, we crank open a terminal and issue the following command:</p><div class="informalexample"><pre class="programlisting">kivy -m kivy.atlas icons 512 icon_clock.png icon_paint.png</pre></div><p>Remember to substitute the <code class="literal">kivy</code> command with <code class="literal">python</code> when not on a Mac. The <code class="literal">kivy.atlas</code> part, however, stays the same on all systems.</p><p>The atlas utility should reply with something along the lines of the following:</p><div class="informalexample"><pre class="programlisting">[INFO] Kivy v1.8.0
+[INFO] [Atlas] create an 512x512 rgba image
+('Atlas created at', 'icons.atlas')
+1 image have been created</pre></div><p>After a successful completion of the aforementioned command, a couple of new files—<code class="literal">icons.atlas</code> and <code class="literal">icons-0.png</code>—should have appeared in the same folder.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="tip42"/>Tip</h3><p>At this point, it is safe to remove source images. It's advised that you still keep them around for the likely event that you'll need to rebuild the atlas later, for example, when adding new images or replacing existing ones.</p></div></div><p>The atlas is ready. As for the usage, we can create a simple demo app in a few lines of Python and the Kivy language.</p><p>The Python source, <code class="literal">basic.py</code>, contains a barebones Kivy app:</p><div class="informalexample"><pre class="programlisting">from kivy.app import App
+
+class BasicApp(App):
+    pass
+
+if __name__ == '__main__':
+    BasicApp().run()</pre></div><p>This is <a id="id611" class="indexterm"/>very simple and exists for the sole purpose of (automatically) loading the layout, defined in the <code class="literal">basic.kv</code> file. The accompanying Kivy language file reads as follows:</p><div class="informalexample"><pre class="programlisting">BoxLayout:
+    orientation: 'horizontal'
+
+    Image:
+        source: 'atlas://icons/icon_clock'
+
+    Image:
+        source: 'atlas://icons/icon_paint'</pre></div><p>This simple usage of an atlas results in the following layout, and it is pretty much what you'd expect from looking at the source code:</p><div class="mediaobject"><img src="graphics/B01620_09_01.jpg" alt="Using Kivy atlases in an easy way"/><div class="caption"><p>Basic usage of a Kivy atlas</p></div></div><p>As you can see, apart from the <code class="literal">atlas:</code> protocol described earlier, there is nothing new or intriguing<a id="id612" class="indexterm"/> in this example. So, let's move on to parsing texture atlases and their more advanced usage.</p></div><div class="section" title="Ad hoc usage of atlases with GLSL"><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec111"/>Ad hoc usage of atlases with GLSL</h2></div></div></div><p>The built-in <a id="id613" class="indexterm"/>support for atlases in Kivy works just <a id="id614" class="indexterm"/>fine for simple cases, but not so much for our custom GLSL-based application, which manages all rendering, textures and whatnot, on its own.</p><p>Thankfully, the <code class="literal">.atlas</code> file format is JSON, which means we can easily parse it utilizing the <code class="literal">json</code> module from the Python standard library. Afterwards, we should be able to translate pixel coordinates given in the file to UV coordinates for use with OpenGL routines.</p><p>Since we know the absolute size of each texture, we can also effortlessly compute the vertices' positions relative to center of each sprite. This facilitates easy rendering of sprites in their "original form", keeping both the size and the aspect ratio intact.</p><div class="section" title="Data structure for UV mapping"><div class="titlepage"><div><div><h3 class="title"><a id="ch09lvl3sec34"/>Data structure for UV mapping</h3></div></div></div><p>Put<a id="id615" class="indexterm"/> together, there are a lot of values<a id="id616" class="indexterm"/> per sprite. In order to keep things maintainable we can define a lightweight record type (a named tuple) to hold these together:</p><div class="informalexample"><pre class="programlisting">from collections import namedtuple
+
+UVMapping = namedtuple('UVMapping', 'u0 v0 u1 v1 su sv')</pre></div><p>If you're not familiar with named tuples in Python, from the user's perspective this amounts to basically the following logic-less type, similar in concept to a <code class="literal">struct</code> compositional type in C:</p><div class="informalexample"><pre class="programlisting">class UVMapping:
+    def __init__(self, u0, v0, u1, v1, su, sv):
+        self.u0 = u0  # top left corner
+        self.v0 = v0  # ---
+        self.u1 = u1  # bottom right corner
+        self.v1 = v1  # ---
+        self.su = su  # equals to 0.5 * width
+        self.sv = sv  # equals to 0.5 * height</pre></div><p>Note that this code is purely illustrative, and the preceding <code class="literal">namedtuple()</code> definition does not actually expand to this—the user-facing interface, however, is similar.</p><p>The meaning of each field is given in the following table:</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Field(s)</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Description</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">u0, v0</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>UV coordinates of the sprite's top-left corner</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">u1, v1</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>UV coordinates of the sprite's bottom-right corner</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">su</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Sprite width divided by 2; this value is useful when building an array of vertices</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">sv</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Sprite height divided by 2; this is similar to the previous field</p>
+</td></tr></tbody></table></div><p>Named <a id="id617" class="indexterm"/>fields provide direct access to <a id="id618" class="indexterm"/>different values inside the record, which dramatically improves readability: <code class="literal">tup.v1</code> reads much better than <code class="literal">tup[3]</code>. At the same time, <code class="literal">UVMapping</code> is essentially a tuple, an immutable and memory-efficient data structure with all fields still accessible by index, should the need arise.</p></div><div class="section" title="Writing an atlas loader"><div class="titlepage"><div><div><h3 class="title"><a id="ch09lvl3sec35"/>Writing an atlas loader</h3></div></div></div><p>Now, let's <a id="id619" class="indexterm"/>write a function that makes <a id="id620" class="indexterm"/>happen everything that was discussed so far: JSON parsing, coordinates fixup, and so on. This function will also be used in the final program:</p><div class="informalexample"><pre class="programlisting">import json
+from kivy.core.image import Image
+
+def load_atlas(atlas_name):
+    with open(atlas_name, 'rb') as f:
+        atlas = json.loads(f.read().decode('utf-8'))
+
+    tex_name, mapping = atlas.popitem()
+    tex = Image(tex_name).texture
+    tex_width, tex_height = tex.size
+
+    uvmap = {}
+    for name, val in mapping.items():
+        x0, y0, w, h = val
+        x1, y1 = x0 + w, y0 + h
+        uvmap[name] = UVMapping(
+            x0 / tex_width, 1 - y1 / tex_height,
+            x1 / tex_width, 1 - y0 / tex_height,
+            0.5 * w, 0.5 * h)
+
+    return tex, uvmap</pre></div><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="tip43"/>Tip</h3><p>Keep in mind that we're supporting only the simplest case: an atlas with just one composite texture. This is probably the most useful configuration anyway, so this limitation shouldn't affect our code in the slightest, especially since the atlas generation is completely under our control.</p></div></div><p>We're <a id="id621" class="indexterm"/>reversing the ordinate axis since the coordinates <a id="id622" class="indexterm"/>are initially given in Kivy's coordinate system, and we're better off using the OpenGL's coordinate system with the origin at the top-left. Otherwise, sprites will be flipped upside down (which, by the way, isn't a problem for most sprites in our little game. This means that such bugs could have lived in the codebase for a long time—unnoticed and practically harmless).</p><p>The call to <code class="literal">load_atlas('icons.atlas')</code> returns both the composite texture loaded from <code class="literal">icons-0.png</code>, and the description of each texture included in the atlas:</p><div class="informalexample"><pre class="programlisting">&gt;&gt;&gt; load_atlas('icons.atlas')
+
+(&lt;Texture size=(512, 512)...&gt;,
+ {'icon_paint': UVMapping(u0=0.2578125, v0=0.00390625,
+                          u1=0.5078125, v1=0.25390625,
+                          su=64.0, sv=64.0),
+  'icon_clock': UVMapping(...)})</pre></div><p>(Numbers obviously may differ in your case.)</p><p>This data format is sufficient to pick out individual sprites from the texture and render them on screen—and that's exactly what we'll do next.</p></div><div class="section" title="Rendering sprites from atlas"><div class="titlepage"><div><div><h3 class="title"><a id="ch09lvl3sec36"/>Rendering sprites from atlas</h3></div></div></div><p>Armed <a id="id623" class="indexterm"/>with the above function, let's hack<a id="id624" class="indexterm"/> together a variation of the previous demo that <a id="id625" class="indexterm"/>uses the same texture map with GLSL.</p><p>The source code, <code class="literal">tex_atlas.py</code>, is conceptually similar to simple GLSL examples from <a class="link" href="ch08.html" title="Chapter 8. Introducing Shaders">Chapter 8</a>, <span class="emphasis"><em>Introducing Shaders</em></span>. It makes use of the <code class="literal">load_atlas()</code> function to populate the<a id="id626" class="indexterm"/> array of vertices:</p><div class="informalexample"><pre class="programlisting">from kivy.graphics import Mesh
+from kivy.graphics.instructions import RenderContext
+from kivy.uix.widget import Widget
+
+class GlslDemo(Widget):
+    def __init__(self, **kwargs):
+        Widget.__init__(self, **kwargs)
+        self.canvas = RenderContext(use_parent_projection=True)
+        self.canvas.shader.source = 'tex_atlas.glsl'
+
+        fmt = (
+            (b'vCenter',     2, 'float'),
+            (b'vPosition',   2, 'float'),
+            (b'vTexCoords0', 2, 'float'),
+        )
+
+        texture, uvmap = load_atlas('icons.atlas')
+
+        a = uvmap['icon_clock']
+        vertices = (
+            128, 128, -a.su, -a.sv, a.u0, a.v1,
+            128, 128,  a.su, -a.sv, a.u1, a.v1,
+            128, 128,  a.su,  a.sv, a.u1, a.v0,
+            128, 128, -a.su,  a.sv, a.u0, a.v0,
+        )
+        indices = (0, 1, 2, 2, 3, 0)
+
+        b = uvmap['icon_paint']
+        vertices += (
+            256, 256, -b.su, -b.sv, b.u0, b.v1,
+            256, 256,  b.su, -b.sv, b.u1, b.v1,
+            256, 256,  b.su,  b.sv, b.u1, b.v0,
+            256, 256, -b.su,  b.sv, b.u0, b.v0,
+        )
+        indices += (4, 5, 6, 6, 7, 4)
+
+        with self.canvas:
+            Mesh(fmt=fmt, mode='triangles',
+                 vertices=vertices, indices=indices,
+                 texture=texture)</pre></div><p>The <a id="id627" class="indexterm"/>code essentially just copies the output <a id="id628" class="indexterm"/>data from <code class="literal">load_atlas()</code> to the <code class="literal">vertices</code> array, besides<a id="id629" class="indexterm"/> the usual GLSL initialization sequence. We pick two different records: <code class="literal">icon_clock</code> (stored as an <code class="literal">a</code> variable for brevity) and <code class="literal">icon_paint</code> (named <code class="literal">b</code>, similar to <code class="literal">a</code>), and then shove them into the array of vertices.</p><p>Our vertex format for this example is very minimal:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>vCenter</strong></span>: This is the location of the sprite on the screen. It should be the same <a id="id630" class="indexterm"/>value for all vertices of a given sprite</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>vPosition</strong></span>: This <a id="id631" class="indexterm"/>is the vertex position relative to the center of the sprite, unaffected by the previous value</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>vTexCoords0</strong></span>: This is the texture coordinates (UV) for each vertex. It determines <a id="id632" class="indexterm"/>which part of the large texture will be rendered.</li></ul></div><p>From these, only the sprite location (first two columns of raw numbers in the listing) cannot be derived from the UV mapping; everything else comes from the <code class="literal">load_atlas()</code> call.</p><p>Here<a id="id633" class="indexterm"/> is the corresponding shader <a id="id634" class="indexterm"/>code, <code class="literal">tex_atlas.glsl</code>:</p><div class="informalexample"><pre class="programlisting">---vertex
+$HEADER$
+
+attribute vec2 vCenter;
+
+void main(void)
+{
+    tex_coord0 = vTexCoords0;
+    mat4 move_mat = mat4
+        (1.0, 0.0, 0.0, vCenter.x,
+         0.0, 1.0, 0.0, vCenter.y,
+         0.0, 0.0, 1.0, 0.0,
+         0.0, 0.0, 0.0, 1.0);
+    vec4 pos = vec4(vPosition.xy, 0.0, 1.0) * move_mat;
+    gl_Position = projection_mat * modelview_mat * pos;
+}
+
+---fragment
+$HEADER$
+
+void main(void)
+{
+    gl_FragColor = texture2D(texture0, tex_coord0);
+}</pre></div><p>This <a id="id635" class="indexterm"/>has only the minimal capabilities—positioning and texturing—baked in. A similar shader will be used in the final game, with an addition of the relative sizing attribute, <code class="literal">vScale</code>.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="tip44"/>Tip</h3><p>If you don't understand what's going on in the shader code, go back to <a class="link" href="ch08.html" title="Chapter 8. Introducing Shaders">Chapter 8</a>, <span class="emphasis"><em>Introducing Shaders:</em></span> it holds a number of examples that you may find relevant to the discussion at hand.</p></div></div><p>The end result, however uninteresting it may look, is depicted here:</p><div class="mediaobject"><img src="graphics/B01620_09_02.jpg" alt="Rendering sprites from atlas"/><div class="caption"><p>Rendering sprites from the atlas using GLSL</p></div></div><p>With <a id="id636" class="indexterm"/>this, we can move on to the<a id="id637" class="indexterm"/> development of a generic sprite-based particle system<a id="id638" class="indexterm"/> that will, in its turn, serve as a foundation for all in-game objects.</p></div></div></div>
+<div class="section" title="Designing a reusable particle system"><div class="titlepage"><div><div><h1 class="title"><a id="ch09lvl1sec59"/>Designing a reusable particle system</h1></div></div></div><p>In this<a id="id639" class="indexterm"/> section, we're going to write a particle system that will be later used to create pretty much everything in the game—spaceships, bullets, and so on. This is the generic approach used in situations where you have many similar objects on the screen with very little logic for movement and interaction.</p><p>This topic will capitalize on the previous chapter's code. In fact, the starfield screensaver from the previous chapter as a whole is a fine example of a particle system; however, it lacks the necessary configurability and cannot be easily repurposed. We're going to change that without significantly altering the GLSL and related code.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note55"/>Note</h3><p>It's worth mentioning that the chosen approach—rendering textured quads for each particle—isn't the most optimal in terms of low-level rendering. On the plus side, it's very straightforward, easy to reason about, and compatible with any implementation of OpenGL that supports GLSL at all.</p><p>If you choose to learn OpenGL more systematically, you will probably want to replace quads with point sprites or do something similar in concept; these enhancements are out of the scope of this book.</p></div></div><div class="section" title="Class hierarchy"><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec112"/>Class hierarchy</h2></div></div></div><p>The<a id="id640" class="indexterm"/> API of our particle system will consist of two classes: <code class="literal">PSWidget</code>, which does all rendering, and a lightweight <code class="literal">Particle</code> class to <a id="id641" class="indexterm"/>represent individual particles.</p><p>These will be tightly coupled by design, which is usually frowned upon in terms of classical OOP, but improves performance considerably in our case: particles will access the vertices array in the renderer directly in order to alter the mesh—less copying in this case, taking into account that many particles will be active at the same time, can be a huge win.</p><p>The implementation of the particle system widget isn't substantially different from other GLSL-based widgets we've seen so far, except for the fact that now it's meant to be subclassed for actual use. Both <code class="literal">PSWidget</code> and <code class="literal">Particle</code> are abstract base classes, that is, they cannot be instantiated directly by calling, for example, <code class="literal">PSWidget()</code>.</p><p>There are different ways to enforce this restriction. We could have used the <code class="literal">abc</code> module from the Python standard library in order to create <span class="emphasis"><em>true</em></span> abstract base classes (<code class="literal">abc</code> actually stands for just that). While this may be deemed useful by Java programmers and the like, it's not the approach routinely taken by Python developers.</p><p>For the sake of simplicity, we're going to write appropriate placeholders (stubs) raising <code class="literal">NotImplementedError</code> for all methods that require overriding. This will make the base class technically unusable without the use of metaclasses and complex inheritance, as the <code class="literal">abc</code> module suggests.</p><div class="section" title="The PSWidget renderer class"><div class="titlepage"><div><div><h3 class="title"><a id="ch09lvl3sec37"/>The PSWidget renderer class</h3></div></div></div><p>Without <a id="id642" class="indexterm"/>further introduction, let's take a look <a id="id643" class="indexterm"/>at the creation of <code class="literal">PSWidget</code>:</p><div class="informalexample"><pre class="programlisting">class PSWidget(Widget):
+    indices = []
+    vertices = []
+    particles = []
+
+    def __init__(self, **kwargs):
+        Widget.__init__(self, **kwargs)
+        self.canvas = RenderContext(use_parent_projection=True)
+        self.canvas.shader.source = self.glsl
+
+        self.vfmt = (
+            (b'vCenter', 2, 'float'),
+            (b'vScale', 1, 'float'),
+            (b'vPosition', 2, 'float'),
+            (b'vTexCoords0', 2, 'float'),
+        )
+
+        self.vsize = sum(attr[1] for attr in self.vfmt)
+
+        self.texture, self.uvmap = load_atlas(self.atlas)</pre></div><p>This is essentially the same familiar initialization we've seen in all GLSL examples, with some fields left undefined (they are borrowed from the subclass, which has to set these). The <code class="literal">self.glsl</code> property will hold the filename of the shader, and <code class="literal">self.atlas</code> is the filename of the texture map that will serve as the only source of textures for this renderer instance.</p><p>Note<a id="id644" class="indexterm"/> how we don't populate the vertices array here: this <a id="id645" class="indexterm"/>work is left for the subclass to do. We should, however, provide an easy way for descendant classes to work with our internal data structures. Hence, the following <code class="literal">PSWidget</code> method that makes it easy to add a large number of similar particles is used:</p><div class="informalexample"><pre class="programlisting">def make_particles(self, Cls, num):
+    count = len(self.particles)
+    uv = self.uvmap[Cls.tex_name]
+
+    for i in range(count, count + num):
+        j = 4 * i
+        self.indices.extend((
+            j, j + 1, j + 2, j + 2, j + 3, j))
+
+        self.vertices.extend((
+            0, 0, 1, -uv.su, -uv.sv, uv.u0, uv.v1,
+            0, 0, 1,  uv.su, -uv.sv, uv.u1, uv.v1,
+            0, 0, 1,  uv.su,  uv.sv, uv.u1, uv.v0,
+            0, 0, 1, -uv.su,  uv.sv, uv.u0, uv.v0,
+        ))
+
+        p = Cls(self, i)
+        self.particles.append(p)</pre></div><p>This instantiates the requested number of particles (<code class="literal">num</code>) of class <code class="literal">Cls</code>, adding them to the widget's <code class="literal">self.particles</code> list and populating <code class="literal">self.vertices</code> at the same time. Each particle type should expose a <code class="literal">tex_name</code> property that is used to look up the correct sprite in the UV mapping, the data structure derived earlier from the atlas (<code class="literal">PSWidget.uvmap</code>).</p><p>Strictly speaking, this helper function is optional, but very useful. Calls to this method will be included in the initialization of the widget's concrete class before rendering.</p><p>The last part of the widget base class is the rendering:</p><div class="informalexample"><pre class="programlisting">def update_glsl(self, nap):
+    for p in self.particles:
+        p.advance(nap)
+        p.update()
+
+    self.canvas.clear()
+
+    with self.canvas:
+        Mesh(fmt=self.vfmt, mode='triangles',
+             indices=self.indices, vertices=self.vertices,
+             texture=self.texture)</pre></div><p>Starting<a id="id646" class="indexterm"/> from the <code class="literal">canvas.clear()</code> call, this is<a id="id647" class="indexterm"/> just about the same code used in all GLSL-based examples. The beginning of the function is more interesting. We iterate through all particles and call two methods on each: the <code class="literal">advance()</code> method computes new state of the particle (it's up to the particle to decide what this does, not necessarily resembling any visible change), and <code class="literal">update()</code> keeps the necessary data in the array of vertices in sync with the internal state, if any.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="tip45"/>Tip</h3><p>Such separation of concerns, while not ideal for performance, helps readability somewhat. When (if) optimizing, first consider the following points:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">This loop can and should be parallelized, in full or partially</li><li class="listitem" style="list-style-type: disc">This code can also run on another thread completely, and not update every frame (again, this optimization may apply to selected classes of particles, for example, stuff in background that doesn't affect main program flow)</li></ul></div></div></div><p>These methods, along with other implementation details of particles, are described in the forthcoming sections.</p></div><div class="section" title="The Particle class"><div class="titlepage"><div><div><h3 class="title"><a id="ch09lvl3sec38"/>The Particle class</h3></div></div></div><p>In the <a id="id648" class="indexterm"/>following code we review yet another base class, <code class="literal">Particle</code>, that <a id="id649" class="indexterm"/>represents individual sprites. It resembles the <code class="literal">Star</code> class from the starfield project, sans the logic for movement (this will be implemented later by subclasses):</p><div class="informalexample"><pre class="programlisting">class Particle:
+    x = 0
+    y = 0
+    size = 1
+
+    def __init__(self, parent, i):
+        self.parent = parent
+        self.vsize = parent.vsize
+        self.base_i = 4 * i * self.vsize
+        self.reset(created=True)
+
+    def update(self):
+        for i in range(self.base_i,
+                       self.base_i + 4 * self.vsize,
+                       self.vsize):
+            self.parent.vertices[i:i + 3] = (
+                self.x, self.y, self.size)
+
+    def reset(self, created=False):
+        raise NotImplementedError()
+
+    def advance(self, nap):
+        raise NotImplementedError()</pre></div><p>Storing<a id="id650" class="indexterm"/> a reference to the <span class="emphasis"><em>parent</em></span> <code class="literal">PSWidget</code> in the constructor<a id="id651" class="indexterm"/> allows us to interface with it later on. This primarily happens in the <code class="literal">update()</code> method, also shown in the previous listing—it makes changes to all four vertices of a polygon to keep those in sync with the particle's desired location and scale (<code class="literal">x</code>, <code class="literal">y</code>, and <code class="literal">size</code> properties).</p><p>There is at least one method in this new class that wasn't present in the <code class="literal">Star</code> class, namely, <code class="literal">advance()</code>. This one has to be overridden, since there's no default behavior for advancing the scene. It's up to a particle to decide how it should change with time. As you will see shortly, particle systems can be used to create substantially different effects.</p><p>The <code class="literal">reset()</code> method<a id="id652" class="indexterm"/> is called to reinitialize a particle that ended its life cycle (for example, has left the screen or exhausted its TTL). It's highly particle system-specific, but generally any such system has some notion of a particle being restored to a blank or randomized initial state. Again, there is no clever default behavior we could invoke here, so there's only a stub in place.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note56"/>Note</h3><p>Raising <code class="literal">NotImplementedError</code> from a virtual method is a way to inform the developer that it would be nice to define this method on a derived class. We could have omitted the last two methods altogether, but that would lead to a less relevant error, <code class="literal">AttributeError</code>. Preserving method signatures, even in the absence of a default implementation, is also nice and reduces guesswork for your peers (or your future self, should you revisit the same code after a long delay).</p></div></div><p>The idea behind the new keyword argument, <code class="literal">created</code>, which is passed to <code class="literal">reset()</code>, is simple. Some particle systems may need an additional (or merely different) initialization routine when particles first spawn. A good example of such behavior is the new starfield (we will get to it shortly), where stars spawn on the right-hand side of the screen. If we don't account for the <span class="emphasis"><em>just created</em></span> state, then all stars will indeed appear on the rightmost edge of the screen with the same <code class="literal">x</code> coordinate and thus form a straight line. This graphical glitch is clearly undesirable, so we fully randomize the location of stars if <code class="literal">created</code> is set to <code class="literal">True</code>, which gives us nice initial distribution.</p><p>Calls to <code class="literal">reset()</code> will clearly mean subsequent respawning of particles much more often than the first-time initialization, so the <code class="literal">created</code> flag defaults to <code class="literal">False</code>.</p><p>We're <a id="id653" class="indexterm"/>pretty much done with the base classes at this point. As <a id="id654" class="indexterm"/>you will see shortly, the implementation of the game itself becomes very straightforward as soon as <span class="emphasis"><em>hard</em></span> technical details are abstracted out. For the rest of the chapter, we'll employ particle system basics outlined here in creative ways to build various stuff, from background to interactive in-game objects such as bullets.</p></div></div></div>
+<div class="section" title="Writing the game"><div class="titlepage"><div><div><h1 class="title"><a id="ch09lvl1sec60"/>Writing the game</h1></div></div></div><p>Our <a id="id655" class="indexterm"/>application is structured around building blocks described earlier: our root widget is a <code class="literal">PSWidget</code> subclass called <code class="literal">Game</code> and all in-game entities will derive from the <code class="literal">Particle</code> class.</p><p>Here is the short and sweet base application:</p><div class="informalexample"><pre class="programlisting">from kivy.base import EventLoop
+from kivy.clock import Clock
+
+class Game(PSWidget):
+    glsl = 'game.glsl'
+    atlas = 'game.atlas'
+
+    def initialize(self):
+        pass
+
+class GameApp(App):
+    def build(self):
+        EventLoop.ensure_window()
+        return Game()
+
+    def on_start(self):
+        self.root.initialize()
+        Clock.schedule_interval(
+            self.root.update_glsl, 60 ** -1)</pre></div><p>The following <a id="id656" class="indexterm"/>are the details about external files referenced here:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">The <code class="literal">game.glsl</code> shader file is the same as <code class="literal">starfield.glsl</code> from the previous chapter</li><li class="listitem" style="list-style-type: disc">The <code class="literal">game.atlas</code> texture map hosts the following textures:<div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">star</code>: This<a id="id657" class="indexterm"/> texture resembles a star, similar to the one we've used in the previous project</li><li class="listitem" style="list-style-type: disc"><code class="literal">player</code>: This is a spaceship facing to the right (in the general direction of movement)</li><li class="listitem" style="list-style-type: disc"><code class="literal">trail</code>: This is a <span class="emphasis"><em>fireball</em></span> (a single particle of flame) emitted from ship's rocket engine</li><li class="listitem" style="list-style-type: disc"><code class="literal">bullet</code>: This is a projectile spawned by ship's imaginary frontal cannon</li><li class="listitem" style="list-style-type: disc"><code class="literal">ufo</code>: This is an alien saucer, facing to the left (and moving against the current)</li></ul></div></li></ul></div><p>The previous code renders nothing on screen yet, since we haven't populated the vertices array. Let's start from the background and implement the stars first.</p><div class="section" title="Implementing stars"><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec113"/>Implementing stars</h2></div></div></div><p>Once <a id="id658" class="indexterm"/>again we build a simple star-field. This time it scrolls<a id="id659" class="indexterm"/> right-to-left to imitate movement, similar in concept to the Kivy Bird game that we built earlier.</p><p>To create a simple parallax effect (just like in Kivy Bird), we assign stars to three planes and then set their size and speed to match. Stars on a plane with a greater number are bigger and move faster than those from a lesser plane. The moment a star goes off the screen, it's reborn at random position on a random plane.</p><p>Let's review the particle system code implementing the new and improved starfield:</p><div class="informalexample"><pre class="programlisting">from random import randint, random
+
+class Star(Particle):
+    plane = 1
+    tex_name = 'star'
+
+    def reset(self, created=False):
+        self.plane = randint(1, 3)
+
+        if created:
+            self.x = random() * self.parent.width
+        else:
+            self.x = self.parent.width
+
+        self.y = random() * self.parent.height
+        self.size = 0.1 * self.plane
+
+    def advance(self, nap):
+        self.x -= 20 * self.plane * nap
+        if self.x &lt; 0:
+            self.reset()</pre></div><p>The <code class="literal">tex_name</code> property is required and refers to a texture inside <code class="literal">game.atlas</code>.</p><p>Resetting <a id="id660" class="indexterm"/>randomizes a star's plane and position, depending<a id="id661" class="indexterm"/> on whether the method was called during the initialization (<code class="literal">created=True</code>) or not; the rationale for this was described earlier.</p><p>The last method, <code class="literal">advance()</code>, is simple: move the sprite to the left until it's out of screen, and then reset it.</p><p>In order to put our new particle system to use, we need to add a number of stars using the <code class="literal">make_particles()</code> helper from <code class="literal">PSWidget</code>. This happens in <code class="literal">Game.initialize()</code>:</p><div class="informalexample"><pre class="programlisting">def initialize(self):
+    self.make_particles(Star, 200)</pre></div><p>Finally, some visible fruits of our labor:</p><div class="mediaobject"><img src="graphics/B01620_09_04.jpg" alt="Implementing stars"/><div class="caption"><p>The starfield, revisited</p></div></div></div><div class="section" title="Making a spaceship"><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec114"/>Making a spaceship</h2></div></div></div><p>We <a id="id662" class="indexterm"/>need exactly one spaceship at all times (since we're building a <a id="id663" class="indexterm"/>single-player game), which means that the implementation will be a degenerate case of a particle system having just one particle. This is done for the sake of unification with the rest of the code. There is nothing we could gain by architecting this particular object differently.</p><p>The player's spacecraft will be glued to the pointer location at all times. To achieve this effect, we store the position of the pointer in a pair of <code class="literal">Game</code> properties, namely <code class="literal">player_x</code> and <code class="literal">player_y</code>, and then put the spaceship sprite at those coordinates when updating the scene. To save the pointer location, we can use the following code:</p><div class="informalexample"><pre class="programlisting">from kivy.core.window import Window
+
+class Game(PSWidget):
+    def update_glsl(self, nap):
+        self.player_x, self.player_y = Window.mouse_pos
+
+        PSWidget.update_glsl(self, nap)</pre></div><p>Since the spaceship is under player's complete control, there is no other logic that we could implement in the particle class—apart from just moving the sprite to the last pointer position accordingly:</p><div class="informalexample"><pre class="programlisting">class Player(Particle):
+    tex_name = 'player'
+
+    def reset(self, created=False):
+        self.x = self.parent.player_x
+        self.y = self.parent.player_y
+
+    advance = reset</pre></div><p>As you can see, <code class="literal">reset()</code> and <code class="literal">advance()</code> methods are the same. There is just about nothing else we can do.</p><p>Don't forget to actually spawn a particle of this type:</p><div class="informalexample"><pre class="programlisting">def initialize(self):
+    self.make_particles(Star, 200)
+    self.make_particles(Player, 1)</pre></div><p>The end result so far resembles a lone spacecraft in the middle of an endless void:</p><div class="mediaobject"><img src="graphics/B01620_09_05.jpg" alt="Making a spaceship"/><div class="caption"><p>The spaceship follows the mouse, putting the user in direct control</p></div></div></div><div class="section" title="Creating a trail of fire"><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec115"/>Creating a trail of fire</h2></div></div></div><p>Every<a id="id664" class="indexterm"/> respectable spacecraft in a sci-fi setting is followed <a id="id665" class="indexterm"/>by a flaming trail. Particles composing such a trail use the following algorithm:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">A<a id="id666" class="indexterm"/> particle spawns near the engine, its size randomized. The size of the particle is also its <span class="strong"><strong>time to live</strong></span> (<span class="strong"><strong>TTL</strong></span>).</li><li class="listitem">It then travels away from the spacecraft at a constant speed, shrinking in size while doing so.</li><li class="listitem">Particles that have shrunk to about 10 percent of the normal size are reset and begin their journey anew.</li></ol></div><p>Given many particles, this effect may look nice in motion. Sadly, screenshots cannot convey the dynamics, so be sure to run the example code to get a better impression.</p><p>Long story short, the particle system implementation is given as follows:</p><div class="informalexample"><pre class="programlisting">class Trail(Particle):
+    tex_name = 'trail'
+
+    def reset(self, created=False):
+        self.x = self.parent.player_x + randint(-30, -20)
+        self.y = self.parent.player_y + randint(-10, 10)
+
+        if created:
+            self.size = 0
+        else:
+            self.size = random() + 0.6
+
+    def advance(self, nap):
+        self.size -= nap
+        if self.size &lt;= 0.1:
+            self.reset()
+        else:
+            self.x -= 120 * nap</pre></div><p>This <a id="id667" class="indexterm"/>implements the aforementioned algorithm quite literally, while<a id="id668" class="indexterm"/> relying on the same <code class="literal">player_x</code> and <code class="literal">player_y</code> properties to determine the current position of the ship.</p><p>As mentioned earlier, we should assign many particles to the effect so that it looks good:</p><div class="informalexample"><pre class="programlisting">def initialize(self):
+    self.make_particles(Star, 200)
+    self.make_particles(Trail, 200)
+    self.make_particles(Player, 1)</pre></div><p>Here is the screenshot of the result:</p><div class="mediaobject"><img src="graphics/B01620_09_06.jpg" alt="Creating a trail of fire"/><div class="caption"><p>Fire burning in vacuum: looks neat while not making a case for realism</p></div></div><p>The last two particle systems that remain unimplemented, namely enemies and bullets, are different. Unlike other classes of particles we've seen previously, where all instances are being displayed simultaneously at any given time, neither bullets nor enemies spawn all at once; both wait for a special event to occur and then increase the <span class="emphasis"><em>population</em></span> of objects by one, firing a bullet or spawning a single enemy.</p><p>Nevertheless, we want to allocate a fixed number of such particles in advance, because growing and shrinking the array of vertices unnecessarily complicates the code and is not desirable.</p><p>The catch is to add a new Boolean field to a particle to signify whether it's active (shown on screen) or <a id="id669" class="indexterm"/>not, and then <span class="emphasis"><em>activate</em></span> such particles on demand. This approach will be demonstrated shortly.</p></div><div class="section" title="Making bullets"><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec116"/>Making bullets</h2></div></div></div><p>We <a id="id670" class="indexterm"/>want our ship's cannon to fire while we're holding a mouse<a id="id671" class="indexterm"/> button or touching the screen continuously. This setup is easy to implement using the newly added <code class="literal">firing</code> property to denote that the trigger is being pulled:</p><div class="informalexample"><pre class="programlisting">class Game(PSWidget):
+    firing = False
+    fire_delay = 0
+
+    def on_touch_down(self, touch):
+        self.firing = True
+        self.fire_delay = 0
+
+    def on_touch_up(self, touch):
+        self.firing = False</pre></div><p>To add a brief delay between shots, we introduce yet another property, <code class="literal">fire_delay</code>. This variable decreases each frame until it reaches zero, then a new bullet spawns and <code class="literal">fire_delay</code> is incremented. The cycle continues while <code class="literal">firing</code> is <code class="literal">True</code>:</p><div class="informalexample"><pre class="programlisting">def update_glsl(self, nap):
+    self.player_x, self.player_y = Window.mouse_pos
+
+    <span class="strong"><strong>if self.firing:</strong></span>
+<span class="strong"><strong>        self.fire_delay -= nap</strong></span>
+
+    PSWidget.update_glsl(self, nap)</pre></div><p>Now, let's see the aforementioned active state of a particle. Initially, all bullets are inactive (that is, <code class="literal">active=False</code>) and removed from the screen (the coordinates <code class="literal">x=-100</code>, <code class="literal">y=-100</code> are set for the bullets, which effectively prevents them from rendering). The code is as follows:</p><div class="informalexample"><pre class="programlisting">class Bullet(Particle):
+    active = False
+    tex_name = 'bullet'
+
+    def reset(self, created=False):
+        self.active = False
+        self.x = -100
+        self.y = -100</pre></div><p>When looping over bullets, we skip those that are inactive, unless <code class="literal">firing_delay</code> has reached zero. In this case, we activate one bullet and put it in front of the player, bumping the <code class="literal">firing_delay</code> variable to reset the countdown.</p><p>Active bullets <a id="id672" class="indexterm"/>move just like stars, albeit in the opposite direction. Unlike stars, bullets that go off screen don't auto-respawn. They return to the inactive pool instead, vanishing from view. The code is as follows:</p><div class="informalexample"><pre class="programlisting">def advance(self, nap):
+    if self.active:
+        self.x += 250 * nap
+        if self.x &gt; self.parent.width:
+            self.reset()
+
+    elif (self.parent.firing and
+          self.parent.fire_delay &lt;= 0):
+        self.active = True
+        self.x = self.parent.player_x + 40
+        self.y = self.parent.player_y
+        self.parent.fire_delay += 0.3333</pre></div><p>The <code class="literal">fire_delay</code> property set to one-third of a second, which obviously leads to an average rate of <a id="id673" class="indexterm"/>automatic<a id="id674" class="indexterm"/> fire of three <span class="strong"><strong>rounds per second</strong></span> (<span class="strong"><strong>RPS</strong></span>).</p><div class="mediaobject"><img src="graphics/B01620_09_07.jpg" alt="Making bullets"/><div class="caption"><p>A spacecraft with guns blazing</p></div></div></div><div class="section" title="Implementing enemies"><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec117"/>Implementing enemies</h2></div></div></div><p>Enemies <a id="id675" class="indexterm"/>are conceptually similar to bullets, but since <a id="id676" class="indexterm"/>they spawn continuously, we don't need a flag such as <code class="literal">firing</code>—a <code class="literal">spawn_delay</code> property is sufficient. This is, by the way, the final evolution of the <code class="literal">update_glsl()</code> method:</p><div class="informalexample"><pre class="programlisting">class Game(PSWidget):
+    spawn_delay = 1
+
+    def update_glsl(self, nap):
+        self.player_x, self.player_y = Window.mouse_pos
+
+        if self.firing:
+            self.fire_delay -= nap
+
+        self.spawn_delay -= nap
+
+        PSWidget.update_glsl(self, nap)</pre></div><p>During the initialization, we create a predefined number of enemies, initially inactive. In order to implement collision detection with bullets later on, we also store a list of bullets (a slice of the <code class="literal">Game.particles</code> list) separately:</p><div class="informalexample"><pre class="programlisting">def initialize(self):
+    self.make_particles(Star, 200)
+    self.make_particles(Trail, 200)
+    self.make_particles(Player, 1)
+    self.make_particles(Enemy, 25)
+    self.make_particles(Bullet, 25)
+
+    self.bullets = self.particles[-25:]</pre></div><p>The corresponding particle class will be the most complex so far, mainly because of the more involved movement pattern. In addition to a constant movement speed along the <code class="literal">x</code> axis, each <a id="id677" class="indexterm"/>enemy also features randomized vertical movement <a id="id678" class="indexterm"/>vector, <code class="literal">v</code>. When a particle of this type is about to leave the screen from the top or bottom edge, the particle's <code class="literal">v</code> property changes its sign accordingly, reflecting the enemy back into the visible screen space.</p><p>Other rules are similar to how bullets work: when an enemy reaches the opposite edge of the screen, it resets and effectively disappears until spawned again. The code is as follows:</p><div class="informalexample"><pre class="programlisting">class Enemy(Particle):
+    active = False
+    tex_name = 'ufo'
+    v = 0
+
+    def reset(self, created=False):
+        self.active = False
+        self.x = -100
+        self.y = -100
+        self.v = 0
+
+    def advance(self, nap):
+        if self.active:
+            if self.check_hit():  # Step 1
+                self.reset()
+                return
+
+            self.x -= 200 * nap  # Step 2
+            if self.x &lt; -50:
+                self.reset()
+                return
+
+            self.y += self.v * nap  # Step 3
+            if self.y &lt;= 0:
+                self.v = abs(self.v)
+            elif self.y &gt;= self.parent.height:
+                self.v = -abs(self.v)
+
+        elif self.parent.spawn_delay &lt;= 0:  # Step 4
+            self.active = True
+            self.x = self.parent.width + 50
+            self.y = self.parent.height * random()
+            self.v = randint(-100, 100)
+            self.parent.spawn_delay += 1</pre></div><p>This<a id="id679" class="indexterm"/> listing may appear relatively long but the algorithm is <a id="id680" class="indexterm"/>actually pretty simple to grasp:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Check whether we're hit by a bullet and reset (see the next section).</li><li class="listitem">Move horizontally, check whether we have left the view, and reset.</li><li class="listitem">Move vertically, check whether we're leaving the view, and change the vector sign.</li><li class="listitem">Spawn another enemy if <code class="literal">spawn_delay</code> has ended and bump <code class="literal">spawn_delay</code>.</li></ol></div><div class="section" title="Collision detection"><div class="titlepage"><div><div><h3 class="title"><a id="ch09lvl3sec39"/>Collision detection</h3></div></div></div><p>Another<a id="id681" class="indexterm"/> interesting aspect of the <code class="literal">Enemy</code> class that we <a id="id682" class="indexterm"/>haven't seen before is the <code class="literal">check_hit()</code> method. There are two things enemies can collide with: the player's spaceship and bullets. For the sake of simplicity, let's say that the protagonist is invincible and the collision simply destroys the enemy; a colliding bullet, however, also despawns. The code is as follows:</p><div class="informalexample"><pre class="programlisting">def check_hit(self):
+    if math.hypot(self.parent.player_x - self.x,
+                  self.parent.player_y - self.y) &lt; 60:
+        return True
+
+    for b in self.parent.bullets:
+        if not b.active:
+            continue
+
+        if math.hypot(b.x - self.x, b.y - self.y) &lt; 30:
+            b.reset()
+            return True</pre></div><p>This collision detection routine is as simple as possible: <code class="literal">math.hypot()</code> merely computes distance between center points, so we assume that all objects are approximately round for the purpose of this check. We also don't try to collide with inactive bullets for obvious reasons—logically inactive entities don't exist and physically they are located outside the visible screen space anyway. So, they probably don't collide with objects on screen.</p><p>This concludes the first (barely) playable version of the game.</p><div class="mediaobject"><img src="graphics/B01620_09_08.jpg" alt="Collision detection"/><div class="caption"><p>Enemies sighted</p></div></div></div></div></div>
+<div class="section" title="Finishing touches"><div class="titlepage"><div><div><h1 class="title"><a id="ch09lvl1sec61"/>Finishing touches</h1></div></div></div><p>There are <a id="id683" class="indexterm"/>many areas where this game can and should be improved, particularly in terms of gameplay. It goes without saying that this prototype, as it stands, isn't marketable.</p><p>Some suggestions for <span class="emphasis"><em>homework</em></span>, should you be interested in working on this project further, are listed here:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">First of all, the game needs a "game over" state, badly. Winning is optional, but losing is a must; otherwise, it's just not competitive at all, like an interactive screensaver.</li><li class="listitem" style="list-style-type: disc">Another obvious improvement is adding content—diversity is king. More enemies, more attack patterns, and probably the ability for selected enemies to shoot back at player. A progressive increase in difficulty level goes in the same bucket: later stages of the game should bring bigger waves of enemies, faster spawn times, and so on.</li><li class="listitem" style="list-style-type: disc">Adding sound effects is probably the simplest enhancement. Refer to <a class="link" href="ch07.html" title="Chapter 7. Writing a Flappy Bird Clone">Chapter 7</a>, <span class="emphasis"><em>Writing a Flappy Bird Clone</em></span>, for details. The same <code class="literal">MultiAudio</code> class can be trivially reused in this project too. Alternatively, take a look at the sample code accompanying this chapter.</li></ul></div></div>
+<div class="section" title="Summary"><div class="titlepage"><div><div><h1 class="title"><a id="ch09lvl1sec62"/>Summary</h1></div></div></div><p>The main point of this chapter is that a particle system can be used for vastly different things. Perhaps this is not the most stunningly clever idea you've heard today, so let's instead summarize the main points of the whole book, regardless of small implementation details.</p><p>In this lengthy write-up, we barely scratched the surface of what can be easily done with Python and Kivy. The realm of possibilities is vast and diverse:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Utility apps for desktop and mobile</li><li class="listitem" style="list-style-type: disc">Applications for content creation, be it a graphical or text editor, possibly even a sound synthesizer</li><li class="listitem" style="list-style-type: disc">Networked apps used for chatting, other ways of social networking, and remote control programs</li><li class="listitem" style="list-style-type: disc">Video games</li></ul></div><p>Over the course of this book, we also highlighted some useful principles of working with any new technology efficiently:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Apply your experience from other problem domains, such as web development. Kivy is different, but it's not that much different; many approaches are actually reusable between substantially different environments.</li><li class="listitem" style="list-style-type: disc">Attempt to understand what's happening behind the scenes. Understanding the inner workings of the framework will help immensely when debugging.</li><li class="listitem" style="list-style-type: disc">Related to the previous point, if docs are missing or unclear, read the source code. It's Python after all, so naturally it's very readable.</li><li class="listitem" style="list-style-type: disc">Don't hesitate to search the Web for solutions to problems and topics of interest. More often than not, someone already had this problem and found a workaround.</li></ul></div><p>All in all, I sincerely hope you enjoyed the ride. If you have any questions or want to discuss something, by all means contact me at <code class="email">&lt;<a class="email" href="mailto:mvasilkov@gmail.com">mvasilkov@gmail.com</a>&gt;</code> (and expect excruciatingly slow replies!).</p></div></body></html>
