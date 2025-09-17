@@ -1,4 +1,4 @@
-# 第七章 Django CMS
+# 第七章：Django CMS
 
 在本章中，我们将介绍以下菜谱：
 

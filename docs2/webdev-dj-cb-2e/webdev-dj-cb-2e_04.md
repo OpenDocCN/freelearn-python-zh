@@ -1,4 +1,4 @@
-# 第四章 模板和 JavaScript
+# 第四章：模板和 JavaScript
 
 在本章中，我们将涵盖以下主题：
 
