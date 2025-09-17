@@ -1,0 +1,512 @@
+<html><head></head><body>
+  <div id="sbo-rt-content"><div class="chapter"><div class="titlepage"><div><div><h1 class="title"><a id="ch03"/>Chapter 3. Overview of CherryPy</h1></div></div></div><p>In the first chapter we briefly reviewed some aspects of CherryPy; it is now time to dig deeper and see how the project is designed and structured. We will first go through a basic CherryPy example. Then we will go through the CherryPy core, the publishing-object engine, and see how it wraps the HTTP protocol in an object-oriented library. Our next step will be to explore the concept of hooking into the core, the CherryPy library, and the tool mechanism. We will then review how CherryPy handles errors and exceptions and how you can benefit from it.<a id="id30" class="indexterm"/>
+</p><p>By the end of this chapter you will have a good overview of the CherryPy library; however, it is likely you will need to come back to this chapter during the rest of the book in order to fully appreciate it.</p><div class="section"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec01"/>Vocabulary</h1></div></div></div><p>In order to avoid misunderstandings, we need to define a few key words that will be used throughout this book.<a id="id31" class="indexterm"/>
+</p><div class="informaltable"><table style="border-collapse: collapse;border-top: 0.5pt solid ; border-bottom: 0.5pt solid ; "><colgroup><col width="1.27579473553544" style="text-align: left" class="C1"/><col width="4.22319970454855" style="text-align: left" class="C2"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Keyword</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Definition</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>
+<span class="strong"><strong>Web server</strong></span>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>A web server is the interface dealing with the HTTP protocol. Its goal is to transform incoming HTTP requests into entities that are then passed to the application server and also transform information from the application server back into HTTP responses.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<span class="strong"><strong>Application</strong></span>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>An application is a piece of software that takes a unit of information, applies business logic to it, and returns a processed unit of information.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<span class="strong"><strong>Application server</strong></span>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>An application server is the component hosting one or more applications.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<span class="strong"><strong>Web application server</strong></span>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>A web application server is simply the aggregation of a web server and an application server into a single component.</p>
+</td></tr></tbody></table></div><p>CherryPy is a web application server.<a id="id32" class="indexterm"/>
+</p></div><div class="section"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec02"/>Basic Example</h1></div></div></div><p>To illustrate the CherryPy library we will go through a very basic web application allowing a user to leave a note on the main page through an HTML form. The notes will be stacked and be rendered in a reverse order of their creation date. We will use a session object to store the name of the author of the note.<a id="id33" class="indexterm"/>
+</p><div class="mediaobject"><img src="images/1848_03_01.jpg" alt="Basic Example"/></div><p>Each note will have a URI attached to itself, of the form<code class="literal"> /note/id</code>.<a id="id34" class="indexterm"/>
+</p><div class="mediaobject"><img src="images/1848_03_02.jpg" alt="Basic Example"/></div><p>Create a blank file named<code class="literal"> note.py</code> and copy the following source code.</p><div class="informalexample"><pre class="programlisting">#!/usr/bin/python
+# -*- coding: utf-8 -*
+# Python standard library imports
+import os.path
+import time
+###############################################################
+CherryPylibrary, working of#The unique module to be imported to use cherrypy
+###############################################################
+import cherrypy
+# CherryPy needs an absolute path when dealing with static data
+_curdir = os.path.join(os.getcwd(), os.path.dirname(__file__))
+###############################################################
+# We will keep our notes into a global list
+# Please not that it is hazardous to use a simple list here
+# since we will run the application in a multi-threaded environment
+# which will not protect the access to this list
+# In a more realistic application we would need either to use a
+# thread safe object or to manually protect from concurrent access
+# to this list
+###############################################################
+_notes = []
+###############################################################
+# A few HTML templates
+###############################################################
+_header = """
+&lt;html&gt;
+&lt;head&gt;
+&lt;title&gt;Random notes&lt;/&lt;title&gt;
+&lt;link rel="stylesheet" type="text/css" href="/style.css"&gt;&lt;/link&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;div class="container"&gt;"""
+_footer = """
+&lt;/div&gt;
+&lt;/body&gt;
+&lt;/html&gt;"""
+_note_form = """
+&lt;div class="form"&gt;
+&lt;form method="post" action="post" class="form"&gt;
+&lt;input type="text" value="Your note here..." name="text"
+size="60"&gt;&lt;/input&gt;
+&lt;input type="submit" value="Add"&gt;&lt;/input&gt;
+&lt;/form&gt;
+&lt;/div&gt;"""
+_author_form = """
+CherryPylibrary, working of&lt;div class="form"&gt;
+&lt;form method="post" action="set"&gt;
+&lt;input type="text" name="name"&gt;&lt;/input&gt;
+&lt;input type="submit" value="Switch"&gt;&lt;/input&gt;
+&lt;/form&gt;
+&lt;/div&gt;"""
+_note_view = """
+&lt;br /&gt;
+&lt;div&gt;
+%s
+&lt;div class="info"&gt;%s - %s &lt;a href="/note/%d"&gt;(%d)&lt;/a&gt;&lt;/div&gt;
+&lt;/div&gt;"""
+###############################################################
+# Our only domain object (sometimes referred as to a Model)
+###############################################################
+class Note(object):
+def __init__(self, author, note):
+self.id = None
+self.author = author
+self.note = note
+self.timestamp = time.gmtime(time.time())
+def __str__(self):
+return self.note
+###############################################################
+# The main entry point of the Note application
+###############################################################
+class NoteApp:
+"""
+The base application which will be hosted by CherryPy
+"""
+# Here we tell CherryPy we will enable the session
+# from this level of the tree of published objects
+# as well as its sub-levels
+_cp_config = { 'tools.sessions.on': True }
+def _render_note(self, note):
+"""Helper to render a note into HTML"""
+return _note_view % (note, note.author,
+time.strftime("%a, %d %b %Y %H:%M:%S",
+note.timestamp),
+note.id, note.id)
+@cherrypy.expose
+def index(self):
+# Retrieve the author stored in the current session
+# None if not defined
+author = cherrypy.session.get('author', None)
+page = [_header]
+if author:
+page.append("""
+&lt;div&gt;&lt;span&gt;Hello %s, please leave us a note.
+&lt;a href="author"&gt;Switch identity&lt;/a&gt;.&lt;/span&gt;&lt;/div&gt;"""
+%(author,))
+page.append(_note_form)
+else:
+page.append("""&lt;div&gt;&lt;a href="author"&gt;Set your
+identity&lt;/a&gt;&lt;/span&gt;&lt;/div&gt;""")
+notes = _notes[:]
+CherryPylibrary, working ofnotes.reverse()
+for note in notes:
+page.append(self._render_note(note))
+page.append(_footer)
+# Returns to the CherryPy server the page to render
+return page
+@cherrypy.expose
+def note(self, id):
+# Retrieve the note attached to the given id
+try:
+note = _notes[int(id)]
+except:
+# If the ID was not valid, let's tell the
+# client we did not find it
+raise cherrypy.NotFound
+return [_header, self._render_note(note), _footer]
+@cherrypy.expose
+def post(self, text):
+author = cherrypy.session.get('author', None)
+# Here if the author was not in the session
+# we redirect the client to the author form
+if not author:
+raise cherrypy.HTTPRedirect('/author')
+note = Note(author, text)
+_notes.append(note)
+note.id = _notes.index(note)
+raise cherrypy.HTTPRedirect('/')
+class Author(object):
+@cherrypy.expose
+def index(self):
+return [_header, _author_form, _footer]
+@cherrypy.expose
+def set(self, name):
+cherrypy.session['author'] = name
+return [_header, """
+Hi %s. You can now leave &lt;a href="/" title="Home"&gt;notes&lt;/a&gt;.
+""" % (name,), _footer]
+if __name__ == '__main__':
+# Define the global configuration settings of CherryPy
+global_conf = {
+'global': { 'engine.autoreload.on': False,
+'server.socket_host': 'localhost',
+'server.socket_port': 8080,
+}}
+application_conf = {
+'/style.css': {
+'tools.staticfile.on': True,
+'tools.staticfile.filename': os.path.join(_curdir,
+'style.css'),
+}
+}
+# Update the global CherryPy configuration
+CherryPylibrary, working ofcherrypy.config.update(global_conf)
+# Create an instance of the application
+note_app = NoteApp()
+# attach an instance of the Author class to the main application
+note_app.author = Author()
+# mount the application on the '/' base path
+cherrypy.tree.mount(note_app, '/', config = application_conf)
+# Start the CherryPy HTTP server
+cherrypy.server.quickstart()
+# Start the CherryPy engine
+cherrypy.engine.start()
+</pre></div><p>Following is the CSS which should be saved in a file named<code class="literal"> style.css</code> and stored in the same directory as<code class="literal"> note.py</code>.</p><div class="informalexample"><pre class="programlisting">html, body {
+background-color: #DEDEDE;
+padding: 0px;
+marging: 0px;
+height: 100%;
+}
+.container {
+border-color: #A1A1A1;
+border-style: solid;
+border-width: 1px;
+background-color: #FFF;
+margin: 10px 150px 10px 150px;
+height: 100%;
+}
+a:link {
+text-decoration: none;
+color: #A1A1A1;
+}
+a:visited {
+text-decoration: none;
+color: #A1A1A1;
+}
+a:hover {
+text-decoration: underline;
+}
+input {
+CherryPylibrary, working ofborder: 1px solid #A1A1A1;
+}
+.form {
+margin: 5px 5px 5px 5px;
+}
+.info {
+font-size: 70%;
+color: #A1A1A1;
+}
+</pre></div><p>In the rest of this chapter we will refer to the application to explain CherryPy's design.</p></div><div class="section"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec03"/>Built-In HTTP Server</h1></div></div></div><p>CherryPy comes with its own web (HTTP) server. The goal of this decision was to make CherryPy self-contained and allow users to run a CherryPy application within minutes of getting the library. As the name implies, the web server is the gateway to a CherryPy application through which all HTTP requests and responses have to go. It is therefore up to that layer to handle the low-level TCP sockets used to convey the information between the client and the server.<a id="id40" class="indexterm"/>
+</p><p>It is not compulsory to use the built-in server though and CherryPy is quite able to interface itself with other web servers if needed. Throughout this book, however, we will only use the default built-in web server.<a id="id41" class="indexterm"/>
+</p><p>To start the web server you have to make the following call:</p><div class="informalexample"><pre class="programlisting">cherrypy.server.quickstart()
+</pre></div></div><div class="section"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec04"/>Internal Engine</h1></div></div></div><p>The CherryPy engine is the layer in charge of the following:<a id="id42" class="indexterm"/>
+</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><p>Creating and managing Request and Response objects</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><p>The Request is in charge of retrieving and calling the page handler matching the Request-URI.</p></li><li class="listitem"><p>The Response object constructs and validates the response before handing it back to the underlying server.</p></li></ul></div></li><li class="listitem"><p>Controlling, managing, and monitoring the CherryPy process</p></li></ul></div><p>To start the engine you must issue the following call:</p><div class="informalexample"><pre class="programlisting">cherrypy.engine.start()
+</pre></div></div><div class="section"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec05"/>Configuration</h1></div></div></div><p>CherryPy comes with its own configuration system allowing you to parameterize the HTTP server as well as the behavior of the CherryPy engine when processing a Request-URI.<a id="id43" class="indexterm"/>
+</p><p>The settings can be stored either in a text file with syntax close to the<code class="literal"> INI</code> format or in a pure Python dictionary. Choosing between the two is a matter of taste as both carry the same information.</p><p>CherryPy offers two entry points for passing configuration values—globally to the server instance through the<code class="literal"> cherrypy.config.update()</code> method and per application via the<code class="literal"> cherrypy.tree.mount()</code> method. In addition there is a third scope where configuration settings can be applied: per path.</p><p>To configure the CherryPy server instance itself you will need to use the<code class="literal"> global</code> section of the settings.</p><p>In the<code class="literal"> note</code> application we have defined the following settings:</p><div class="informalexample"><pre class="programlisting">global_conf = {
+'global': {
+'server.socket_host': 'localhost',
+'server.socket_port': 8080,
+},
+}
+application_conf = {
+'/style.css': {
+'tools.staticfile.on': True,
+'tools.staticfile.filename': os.path.join(_curdir,
+'style.css'),
+}
+}
+</pre></div><p>This could be represented in a file like this:</p><div class="informalexample"><pre class="programlisting">[global]
+server.socket_host="localhost"
+CherryPyconfiguringserver.socket_port=8080
+[/style.css]
+tools.staticfile.on=True
+tools.staticfile.filename="/full/path/to.style.css"
+</pre></div><div class="note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="note10"/>Note</h3><p>When using a file to store the settings you must use valid Python objects (string, integer, Boolean, etc.).</p></div><p>We define the host and the port on which the server will listen for incoming connections.</p><p>Then we indicate to the CherryPy engine that the<code class="literal"> /style.css</code> file is to be handled by the<code class="literal"> staticfile</code> tool and also indicate the absolute path of the physical file to be served. We will explain in detail what tools are in the following chapters but for now imagine them as a way to extend CherryPy's internal features and enhance its possibilities.</p><p>To notify CherryPy of our global settings we need to make the following call:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><p>With a dictionary</p></li></ul></div><div class="informalexample"><pre class="programlisting">cherrypy.config.update(conf)
+</pre></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><p>With a file</p></li></ul></div><div class="informalexample"><pre class="programlisting">cherrypy.config.update('/path/to/the/config/file')
+</pre></div><p>We also have to pass the configuration values to the mounted applications as follows:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><p>With a dictionary</p></li></ul></div><div class="informalexample"><pre class="programlisting">cherrypy.tree.mount(application_instance, script_name, config=conf)
+</pre></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><p>With a file</p></li></ul></div><div class="informalexample"><pre class="programlisting">cherrypy.tree.mount(application_instance, script_name,
+config='/path/to/config/file')
+</pre></div><p>Although in most cases choosing between a dictionary and a file will be a matter of taste, it may happen in some cases that one is better than the other. For instance, you may be required to pass complex data or objects to one key of the configuration, which cannot be achieved via a text file. On the other hand if the settings are to be amendable by the administrator of the application, using an INI file may facilitate that task.</p><div class="note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="note11"/>Note</h3><p>Remember that if you configure parts of your application such as we do to serve the stylesheet in our Note application, you must make a call to<code class="literal"> cherrypy.tree.mount()</code>.</p></div><p>The last way of configuring your application is by using the<code class="literal"> _cp_config</code> attribute on your page handler or as a class attribute of the class containing the page handlers, in which case the configuration will prevail for all page handlers.</p><p>In the following code sample, we indicate that all the page handlers of the<code class="literal"> Root</code> class will use<code class="literal"> gzip</code> compression except the<code class="literal"> hello</code> page handler.</p><div class="informalexample"><pre class="programlisting">import cherrypy
+class Root:
+_cp_config = {'tools.gzip.on': True}
+@cherrypy.expose
+CherryPyconfiguringdef index(self):
+return "welcome"
+@cherrypy.expose
+def default(self, *args, **kwargs):
+return "oops"
+@cherrypy.expose
+# this next line is useless because we have set the class
+# attribute _cp_config but shows you how to configure a tool
+# using its decorator. We will explain more in the next
+# chapters.
+@cherrypy.tools.gzip()
+def echo(self, msg):
+return msg
+@cherrypy.expose
+def hello(self):
+return "there"
+hello._cp_config = {'tools.gzip.on': False}
+if __name__ == '__main__':
+cherrypy.quickstart(Root(), '/')
+</pre></div><p>The call to<code class="literal"> quickstart</code> above is a shortcut for:</p><div class="informalexample"><pre class="programlisting">cherrypy.tree.mount(Root(), '/')
+cherrypy.server.quickstart()
+cherrypy.engine.start()
+</pre></div><p>You can use this call anytime you only mount one single application on a CherryPy server.</p><p>The last important point is that configuration settings are independent of the prefix on which the application is mounted. Therefore in the above example even though the application could be mounted at<code class="literal"> /myapp</code> instead of<code class="literal"> /</code>, the settings would not be different. They would not include the prefix. Therefore consider the configuration settings to be relative to the application but independent of the prefix used to mount the application.<a id="id46" class="indexterm"/>
+</p><div class="note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="note12"/>Note</h3><p>The prefix where the application is mounted is referred to the<code class="literal"> script_name</code>.</p></div></div><div class="section"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec06"/>Object Publisher Engine</h1></div></div></div><p>HTTP servers such as Apache or lighttpd map Request-URIs to paths on the file system making them very efficient at handling websites mainly made of static content such as images.<a id="id47" class="indexterm"/>
+</p><p>CherryPy has chosen a completely different approach and uses its own internal lookup algorithm to retrieve the handler referred to by the Request-URI. The decision made with CherryPy 2.0 was that such a handler would be a Python-callable object attached to a tree of published objects. That is the reason why we speak of object publishing as the Request-URI maps to a Python object.</p><p>CherryPy defines two important concepts:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><p>
+<span class="strong"><strong>Published:</strong></span> A Python object is said to be published when it is attached to a tree of objects and the root of this tree is mounted on the CherryPy engine server via a call to<code class="literal"> cherrypy.tree.mount</code>.<a id="id48" class="indexterm"/>
+</p><p>For instance:
+</p></li></ul></div><div class="informalexample"><pre class="programlisting">root = Blog()
+root.admin = Admin()
+cherrypy.tree.mount(root, '/blog')
+</pre></div><p>In the above example the root object is said to be published. By extension the admin object, which is an attribute of a published object, is also published.</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><p>
+<span class="strong"><strong>Exposed:</strong></span> A published object is said to be exposed when it has an attribute named<code class="literal"> exposed</code> set to<code class="literal"> True</code>. An exposed object must be Python callable.<a id="id49" class="indexterm"/>
+</p><p>Being published is not sufficient for an object to be treated as being a potential handler for a URI by CherryPy. A published object must be exposed so that it becomes visible to the CherryPy engine. For instance:
+</p></li></ul></div><div class="informalexample"><pre class="programlisting">class Root:
+@cherrypy.expose
+def index(self):
+return self.dosome()
+def dosome(self):
+return "hello there"
+cherrypy.tree.mount(Root(), '/')
+</pre></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><p>In this example a request to <code class="literal">/dosome</code> would return a <span class="strong"><strong>Not Found</strong></span> error because the method is not exposed even though it belongs to a published object. The reason is that the dosome callable object is not exposed to the internal engine as a potential match for a URI.
+</p></li></ul></div><p>You can set the<code class="literal"> exposed</code> attribute either manually or by using the<code class="literal"> expose</code> decorator provided by CherryPy as we will do throughout this book.</p><div class="note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="note13"/>Note</h3><p>An exposed object is usually referred to as a<span class="strong"><strong> page handler</strong></span> by the CherryPy community. This is the term we will be using throughout the book.</p></div><p>For example, in the<code class="literal"> Note</code> application the published objects are<code class="literal"> note_app</code> and<code class="literal"> author</code>. The root of the tree is<code class="literal"> note_app</code> and is mounted on the<code class="literal">'/'</code> prefix. Therefore CherryPy will use that tree of objects upon receiving a request for any path starting with<code class="literal">'/'</code>. Had we used a prefix such as<code class="literal"> /postit</code>, the<code class="literal"> Note</code> application would have only been served by CherryPy when getting a request starting with such a prefix.</p><p>It is therefore possible to mount several applications via distinct prefixes. CherryPy will call the correct one based on the Request-URI. (As we will explain later in the book, two applications mounted via<code class="literal"> cherrypy.tree.mount()</code> are unaware of each other. CherryPy makes sure that they don't leak.)</p><p>The following table displays the relationship between a Request-URI and the page handler matching the path of the URI as found by CherryPy.<a id="id50" class="indexterm"/>
+</p><div class="informaltable"><table style="border-collapse: collapse;border-top: 0.5pt solid ; border-bottom: 0.5pt solid ; "><colgroup><col width="1.75555555555556" style="text-align: left" class="C1"/><col width="1.75625" style="text-align: left" class="C2"/><col width="1.76597222222222" style="text-align: left" class="C3"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Request-URI Path</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Published Object</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Page Handler</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">/</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>
+<code class="literal">note_app</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>
+<code class="literal">index</code>
+</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">/author/</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>
+<code class="literal">note_app.author</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>
+<code class="literal">index</code>
+</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">/author/set</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>
+<code class="literal">note_app.author</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>
+<code class="literal">set</code>
+</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">/note/1</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>
+<code class="literal">note_app</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>
+<code class="literal">note</code>
+</p>
+</td></tr></tbody></table></div><p>The<code class="literal"> index()</code> and<code class="literal"> default()</code> methods are special page handlers for CherryPy. The former one matches Request-URIs ending with a slash, similarly to the<code class="literal"> index.html</code> file on the Apache server. The latter one is used by CherryPy when no explicit page handler is found for a Request-URI. Our<code class="literal"> Note</code> application does not define one but the<code class="literal"> default</code> page handler is often used to catch irregular URIs.</p><p>You can also notice that the<code class="literal"> /note/1</code> URI, in fact, matches<code class="literal"> note(id)</code>; this is because CherryPy supports positional parameters. The bottom line is that CherryPy will call the first page handler that has a signature matching the requested URI.</p><div class="note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="note14"/>Note</h3><p>CherryPy treats<code class="literal"> /note/1</code> and<code class="literal"> /note?id=1</code> the same way as long as it finds a page handler with the following signature:<code class="literal"> note(id)</code>.</p></div><p>The following figure is a global overview of the process followed by an HTTP request when reaching the CherryPy server.</p><div class="mediaobject"><img src="images/1848_03_03.jpg" alt="Object Publisher Engine"/></div></div><div class="section"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec07"/>Library</h1></div></div></div><p>CherryPy comes with a set of modules covering common tasks when building a web application such as session management, static resource service, encoding handling, or basic caching.<a id="id51" class="indexterm"/>
+</p><div class="section"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec01"/>The Autoreload Feature</h2></div></div></div><p>CherryPy is a long-running Python process, meaning that if we modify a Python module of the application, it will not be propagated in the existing process. Since stopping and restarting the server manually can be a tedious task, the CherryPy team has included an autoreload module that restarts the process as soon as it detects a modification to a Python module imported by the application. This feature is handled via configuration settings.<a id="id52" class="indexterm"/>
+</p><p>If you need the autoreload module to be enabled while in production you will set it up as below. Note the<code class="literal"> engine.autoreload_frequency</code> option that sets the number of seconds the autoreloader engine has to wait before checking for new changes. It defaults to one second if not present.</p><div class="informalexample"><pre class="programlisting">[global]
+server.environment = "production"
+engine.autoreload_on = True
+engine.autoreload_frequency = 5
+</pre></div><p>Autoreload is not properly a module but we mention it here as it is a common feature offered by the library.</p></div><div class="section"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec02"/>The Caching Module</h2></div></div></div><p>Caching is an important side of any web application as it reduces the load and stress of the different servers in action—HTTP, application, and database servers. In spite of being highly correlated to the application itself, generic caching tools such as the ones provided by this module can help in achieving decent improvements in your application's performance.<a id="id53" class="indexterm"/>
+</p><p>The CherryPy caching module works at the HTTP server level in the sense that it will cache the generated output to be sent to the user agent and will retrieve a cached resource based on a predefined key, which defaults to the complete URL leading to that resource. The cache is held in the server memory and is therefore lost when stopping it. Note that you can also pass your own caching class to handle the underlying process differently while keeping the same high-level interface.</p></div><div class="section"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec03"/>The Coverage Module</h2></div></div></div><p>When building an application it is often beneficial to understand the path taken by the application based on the input it processes. This helps to determine potential bottlenecks and also see if the application runs as expected. The coverage module provided by CherryPy does this and provides a friendly browseable output showing the lines of code executed during the run. The module is one of the few that rely on a third-party package to run.<a id="id54" class="indexterm"/>
+</p></div><div class="section"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec04"/>The Encoding/Decoding Module</h2></div></div></div><p>Publishing over the Web means dealing with the multitude of existing character encoding. To one extreme you may only publish your own content using US-ASCII without asking for readers' feedback and to the other extreme you may release an application such as bulletin board that will handle any kind of charset. To help in this task CherryPy provides an encoding/decoding module that filters the input and output content based on server or user-agent settings.<a id="id55" class="indexterm"/>
+</p></div><div class="section"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec05"/>The HTTP Module</h2></div></div></div><p>This module offers a set of classes and functions to handle HTTP headers and entities.<a id="id56" class="indexterm"/>
+</p><p>For example, to parse the HTTP request line and query string:</p><div class="informalexample"><pre class="programlisting">s = 'GET /note/1 HTTP/1.1' # no query string
+r = http.parse_request_line(s) # r is now ('GET', '/note/1', '',
+'HTTP/1.1')
+s = 'GET /note?id=1 HTTP/1.1' # query string is id=1
+r = http.parse_request_line(s) # r is now ('GET', '/note', 'id=1',
+'HTTP/1.1')
+http.parseQueryString(r[2]) # returns {'id': '1'}
+Provide a clean interface to HTTP headers:
+For example, say you have the following Accept header value:
+accept_value = "text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5"
+values = http.header_elements('accept', accept_value)
+print values[0].value, values[0].qvalue # will print text/html 1.0
+</pre></div></div><div class="section"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec06"/>The Httpauth Module</h2></div></div></div><p>This module provides an implementation of the basic and digest authentication algorithm as defined in RFC 2617.<a id="id57" class="indexterm"/>
+</p></div><div class="section"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec07"/>The Profiler Module</h2></div></div></div><p>This module features an interface to conduct a performance check of the application.<a id="id58" class="indexterm"/>
+</p></div><div class="section"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec08"/>The Sessions Module</h2></div></div></div><p>The Web is built on top of a stateless protocol, HTTP, which means that requests are independent of each other. In spite of that, a user can navigate an e-commerce website with the impression that the application more or less follows the way he or she would call the store to pass an order. The session mechanism was therefore brought to the Web to allow servers to keep track of users' information.<a id="id59" class="indexterm"/>
+</p><p>CherryPy's session module offers a straightforward interface to the application developer to store, retrieve, amend, and delete chunks of data from a session object. CherryPy comes natively with three different back-end storages for session objects:<a id="id60" class="indexterm"/>
+</p><div class="informaltable"><table style="border-collapse: collapse;border-top: 0.5pt solid ; border-bottom: 0.5pt solid ; "><colgroup><col width="1.71875" style="text-align: left" class="C1"/><col width="1.81388888888889" style="text-align: left" class="C2"/><col width="1.77638888888889" style="text-align: left" class="C3"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Back-end type</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Advantages</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Drawbacks</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>RAM</p>
+</td><td style="text-align: left" valign="top">
+<p>Efficient</p>
+<p>Accepts any type of objects</p>
+<p>No configuration needed</p>
+</td><td style="text-align: left" valign="top">
+<p>Information lost when server is shutdown</p>
+<p>Memory consumption can grow fast</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>File system</p>
+</td><td style="text-align: left" valign="top">
+<p>Persistence of the information</p>
+<p>Simple setup</p>
+</td><td style="text-align: left" valign="top">
+<p>File system locking can be inefficient</p>
+<p>Only serializable (via the pickle module) objects can be stored</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>Relational database (PostgreSQL built-in support)</p>
+</td><td style="text-align: left" valign="top">
+<p>Persistence of the information</p>
+<p>Robust</p>
+<p>Scalable</p>
+<p>Can be load balanced</p>
+</td><td style="text-align: left" valign="top">
+<p>Only serializable objects can be stored</p>
+<p>Setup less straightforward</p>
+</td></tr></tbody></table></div><p>The advantage is that your application will use a high-level interface independent of the underlying back end. Therefore, while in early development you may use RAM sessions, you can easily switch to the PostgreSQL back end if needed later on without modifying your application. Obviously CherryPy allows you to plug and use your own back end if needed.</p></div><div class="section"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec09"/>The Static Module</h2></div></div></div><p>Even the most dynamic application serves static resources such as images or CSS. CherryPy provides a module to ease the process of serving those or to even serve a complete directory structure. It will handle the underlying HTTP exchanges such as the use of the<code class="literal"> If-Modified-Since</code> header, which checks if a resource has changed since a given date thus avoiding processing it again unnecessarily.<a id="id61" class="indexterm"/>
+</p></div><div class="section"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec10"/>The Tidy Module</h2></div></div></div><p>Even though as a web application developer you should make sure the content generated by your application is clean and valid against standards it may happen that you have to serve content over which you do not have full control. In such a case CherryPy provides an easy way to filter the outgoing content by using tools such as<code class="literal"> nsgml</code> or<code class="literal"> tidy</code>.<a id="id62" class="indexterm"/>
+</p></div><div class="section"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec11"/>The Wsgiapp Module</h2></div></div></div><p>This module allows you to wrap any WSGI application to use as a CherryPy application. For more information on WSGI, please refer to<a class="link" href="ch04.html" title="Chapter 4. CherryPy in Depth">Chapter 4</a>.<a id="id63" class="indexterm"/>
+</p></div><div class="section"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec12"/>The XML-RPC Module</h2></div></div></div><p>XML-RPC is a remote procedure call protocol using XML to format messages, transferred via HTTP, between an XML-RPC client and XML-RPC server. Basically, a client creates an XML document containing the name of the remote method to call and the values to be passed and then requests the server using an HTTP POST message. The returned HTTP response contains the XML document, as a string, to be processed by the client.<a id="id64" class="indexterm"/>
+</p><p>The CherryPy xmlrpc module allows you to transform a published object into an XML-RPC service. CherryPy will extract, from the incoming XML document, the name of the method as well as the values and will apply the same logic as if it was a regular URI call, therefore looking for a matching page handler. Then when the page handler returns CherryPy wraps the content into a valid XML-RPC response and sends it back to the client.</p><p>The following code sample defines an XML-RPC service served by CherryPy.</p><div class="informalexample"><pre class="programlisting">import cherrypy
+from cherrypy import _cptools
+class Root(_cptools.XMLRPCController):
+@cherrypy.expose
+def echo(self, message):
+return message
+if __name__ == '__main__':
+cherrypy.quickstart(Root(), '/xmlrpc')
+</pre></div><p>Your XML-RPC client could look like this:</p><div class="informalexample"><pre class="programlisting">import xmlrpclib
+proxy = xmlrpclib.ServerProxy('http://localhost:8080/xmlrpc/')
+proxy.echo('hello') # will return 'hello'
+</pre></div></div></div><div class="section"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec08"/>Tools</h1></div></div></div><p>In the previous sections we have introduced the built-in modules. CherryPy provides a<span class="strong"><strong> unified interface</strong></span>, referred as the<span class="strong"><strong> tool</strong></span> interface, to call those modules or build and call your own modules.</p><p>Tools can be set up from three different contexts:<a id="id65" class="indexterm"/>
+</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><p>The configuration file or dictionary</p></li></ul></div><div class="informalexample"><pre class="programlisting">conf = {'/': {
+'tools.encode.on': True,
+'tools.encode.encoding': 'ISO-8859-1'
+}
+}
+cherrypy.tree.mount(Root(), '/', config=conf)
+</pre></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><p>Attached to a particular page handler</p><p>It is not uncommon to decide to add extra processing to an object path matching a URI. In that case you might want to use a Python decorator around the page handler.
+</p></li></ul></div><div class="informalexample"><pre class="programlisting">@cherrypy.expose
+@cherrypy.tools.encode(encoding='ISO 8859-1')
+def index(self)
+return "Et voilà"
+</pre></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><p>Making a library call with a higher-level interface</p><p>Tools can be applied as regular Python callable objects.
+</p></li></ul></div><div class="informalexample"><pre class="programlisting">def index(self):
+cherrypy.tools.accept.callable(media='text/html')
+</pre></div><p>The previous line shows how to call the<code class="literal"> accept</code> tool that looks up the provided media type within the requested<code class="literal"> Accept HTTP</code> header.</p><p>Thanks to that unified interface it is possible to modify the underlying code of the tool without having to modify the application level itself.</p><div class="note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="note15"/>Note</h3><p>A tool is an interface to extend CherryPy by plugging third-party components into the CherryPy engine.</p></div></div><div class="section"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec09"/>Error and Exception Handling</h1></div></div></div><p>CherryPy tries hard to help the developer see a web application as close as a rich application. This means that from your page handler you may raise a Python error or exception as in any other Python application. CherryPy will catch those and transform them into HTTP messages depending on the type of errors.<a id="id66" class="indexterm"/>
+</p><div class="note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="note16"/>Note</h3><p>Note that when an exception is raised and not caught by any other part of the application, CherryPy will return the corresponding HTTP 500 error code.</p></div><p>For example, the following example will show the default behavior of CherryPy.</p><div class="informalexample"><pre class="programlisting">import cherrypy
+class Root:
+@cherrypy.expose
+def index(self):
+raise NotImplementedError, "This is an error..."
+if __name__ == '__main__':
+cherrypy.quickstart(Root(), '/')
+<a id="id67" class="indexterm"/>
+</pre></div><div class="mediaobject"><img src="images/1848_03_04.jpg" alt="Error and Exception Handling"/></div><p>As you can see CherryPy displays the complete traceback of the Python error. Although this is useful when developing the application, it might not be relevant in production mode. In that case, CherryPy returns simply a default message.</p><div class="mediaobject"><img src="images/1848_03_05.jpg" alt="Error and Exception Handling"/></div><div class="note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="note17"/>Note</h3><p>In development mode you can hide the tracebacks on error by using the<code class="literal"> request.show_tracebacks</code> key in the<code class="literal"> global</code> section of the configuration settings.</p></div><p>CherryPy returns an HTTP error code 500 when it catches an error that is not handled otherwise by the application developer. The HTTP specification defines two sets of error codes, client errors in the 4xx range and server errors in the 5xx range. The client errors indicate that the user agent has sent an invalid request (e.g. missing authentication credentials, requested resource not found or gone, etc.). The server errors inform the user agent that an event occurred that prevented the server fulfilling the request processing.<a id="id68" class="indexterm"/>
+</p><p>CherryPy provides a simple interface allowing the application developer to send the correct error code:</p><div class="informalexample"><pre class="programlisting">cherrypy.HTTPError(error_code, [error_message])
+</pre></div><div class="note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="note18"/>Note</h3><p>The<code class="literal"> HTTPError</code> error will be trapped by the CherryPy engine, which will in turn use the error code and error message of the error as the status and body of the HTTP response to be sent.</p></div><p>When raising that error, CherryPy sets the HTTP response body to the provided message and the HTTP header matching the error code defined.</p><div class="informalexample"><pre class="programlisting">import cherrypy
+class Root:
+@cherrypy.expose
+def index(self):
+raise cherrypy.HTTPError(401, 'You are not authorized to \
+access this resource')
+if __name__ == '__main__':
+CherryPyerror handlingcherrypy.quickstart(Root(), '/')
+<a id="id70" class="indexterm"/>
+</pre></div><p>The returned HTTP response will be:</p><div class="informalexample"><pre class="programlisting">HTTP/1.x 401 Unauthorized
+Date: Wed, 14 Feb 2007 11:41:55 GMT
+Content-Length: 744
+Content-Type: text/html
+Server: CherryPy/3.0.1alpha
+</pre></div><div class="mediaobject"><img src="images/1848_03_06.jpg" alt="Error and Exception Handling"/></div><div class="informalexample"><pre class="programlisting">import cherrypy
+class Root:
+CherryPyerror handling@cherrypy.expose
+def index(self):
+# shortcut to cherrypy.HTTPError(404)
+raise cherrypy.NotFound
+if __name__ == '__main__':
+CherryPyexception handlingconf = {'global':{'request.show_tracebacks':False}}
+cherrypy.config.update(conf)
+cherrypy.quickstart(Root(), '/')
+</pre></div><div class="mediaobject"><img src="images/1848_03_07.jpg" alt="Error and Exception Handling"/></div><p>You might wonder how to change the layout of the error page returned by CherryPy to integrate it with your own application. The way to achieve this is by using the configuration system.</p><div class="informalexample"><pre class="programlisting">import cherrypy
+class Root:
+# Uncomment this line to use this template for this level of the
+# tree as well as its sub-levels
+#_cp_config = {'error_page.404': 'notfound.html'}
+@cherrypy.expose
+def index(self):
+CherryPyexception handlingraise cherrypy.NotFound
+# Uncomment this line to tell CherryPy to use that html page only
+CherryPyerror handling# for this page handler. The other page handlers will use
+# the default CherryPy layout
+# index._cp_config = {'error_page.404': 'notfound.html'}
+if __name__ == '__main__':
+# Globally set the new layout for an HTTP 404 error code
+cherrypy.config.update({'global':{'error_page.404': 'notfound.html' }})
+cherrypy.quickstart(Root(), '/')
+</pre></div><p>The<code class="literal"> notfound.html</code> page:</p><div class="informalexample"><pre class="programlisting">&lt;html&gt;
+&lt;head&gt;&lt;title&gt;Clearly not around here&lt;/title&gt;&lt;/head&gt;
+&lt;body&gt;
+&lt;p&gt;Well sorry but couldn't find the requested resource.&lt;/p&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</pre></div><div class="mediaobject"><img src="images/1848_03_08.jpg" alt="Error and Exception Handling"/></div><p>When catching an<code class="literal"> HTTPError</code> error CherryPy looks for an<code class="literal"> error_page.xxx</code> (where<code class="literal"> xxx</code> is the HTTP error code used) entry in the configuration for that page handler and uses it instead of the default template.<a id="id75" class="indexterm"/>
+</p><p>As you can see CherryPy offers a very flexible and yet effective way to use your own page template for displaying friendlier error messages.</p><p>Until now we have discussed the high-level handling of errors in CherryPy. However, it is possible to modify the internal processing used through the hook API as we will see in the next chapter.</p></div><div class="section"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec10"/>Summary</h1></div></div></div><p>This chapter should have introduced you to some of the core principles of CherryPy, HTTP, and the server engine as well as its configuration system. We have also briefly discussed the object publisher engine, which allows transparent mapping of a URI to an exposed Python object. Finally we briefly reviewed the core modules of the CherryPy library that enhance its capacities and the way CherryPy lets you handle errors. The next chapter will dive into CherryPy's internal components and features as well go into more detail about some topics already covered.</p></div></div></div>
+</body></html>
