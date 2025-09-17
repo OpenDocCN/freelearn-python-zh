@@ -1,6 +1,6 @@
-# Go 编程蓝图
+# SaltStack 扩展指南
 
-> 原文：[`zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66`](https://zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66)
+> 原文：[`zh.annas-archive.org/md5/14192f95f462eb0486790344dad3fe7b`](https://zh.annas-archive.org/md5/14192f95f462eb0486790344dad3fe7b)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 

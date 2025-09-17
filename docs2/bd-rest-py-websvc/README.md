@@ -1,6 +1,6 @@
-# Go 编程蓝图
+# Python REST Web 服务构建指南
 
-> 原文：[`zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66`](https://zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66)
+> 原文：[`zh.annas-archive.org/md5/02eadb30335bca313871c8d62bd41dad`](https://zh.annas-archive.org/md5/02eadb30335bca313871c8d62bd41dad)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 

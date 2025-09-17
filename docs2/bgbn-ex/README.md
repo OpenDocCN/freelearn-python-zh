@@ -1,6 +1,6 @@
-# Go 编程蓝图
+# BeagleBone 示例
 
-> 原文：[`zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66`](https://zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66)
+> 原文：[`zh.annas-archive.org/md5/13e193172fb19493b3cf69c6610b8f6d`](https://zh.annas-archive.org/md5/13e193172fb19493b3cf69c6610b8f6d)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 

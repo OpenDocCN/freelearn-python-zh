@@ -1,6 +1,6 @@
-# Go 编程蓝图
+# 每日数据结构
 
-> 原文：[`zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66`](https://zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66)
+> 原文：[`zh.annas-archive.org/md5/14471d76ac2357aa321887ee33d26782`](https://zh.annas-archive.org/md5/14471d76ac2357aa321887ee33d26782)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 

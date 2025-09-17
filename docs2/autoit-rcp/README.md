@@ -1,6 +1,6 @@
-# Go 编程蓝图
+# AutoIt 秘籍
 
-> 原文：[`zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66`](https://zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66)
+> 原文：[`zh.annas-archive.org/md5/8f8a70ed95a9c4e2d339b67f1fd45d15`](https://zh.annas-archive.org/md5/8f8a70ed95a9c4e2d339b67f1fd45d15)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 
