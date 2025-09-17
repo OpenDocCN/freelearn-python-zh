@@ -1,0 +1,260 @@
+<html><head></head><body><div class="chapter" title="Chapter&#xA0;8.&#xA0;Exposing a REST API with Google Cloud Endpoints"><div class="titlepage"><div><div><h1 class="title"><a id="ch08"/>Chapter 8. Exposing a REST API with Google Cloud Endpoints</h1></div></div></div><p>In <a class="link" href="ch01.html" title="Chapter 1. Getting Started">Chapter 1</a>, <span class="emphasis"><em>Getting Started</em></span>, we provided the definition of a web application, and one chapter after another, you learned to implement an application using App Engine. At this point, we know enough about the anatomy of such kinds of software to understand the differences between the backend and frontend components of a web application: the first provides logic, definition, and access to data, and the latter provides the user interface.</p><p>We did not make a clear distinction between these two components in the previous chapters, and the code we wrote so far provided both the frontend and the backend components without too much separation. In this chapter, we will tear apart the frontend component of our Notes application, implementing a standalone backend server ready to exchange data with different clients, from mobile applications to rich JavaScript clients running in a browser.</p><p>Once again, to implement our application, we are going to leverage some tools and services provided by<a id="id496" class="indexterm"/> the Google Cloud Platform, known as Google Cloud Endpoints.</p><p>In this chapter, we will cover the following topics:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">What REST is, and designing an API for the Notes application</li><li class="listitem" style="list-style-type: disc">Using Cloud Endpoints to implement the REST API</li><li class="listitem" style="list-style-type: disc">The API explorer tool</li><li class="listitem" style="list-style-type: disc">Protecting the API with OAuth2</li></ul></div><div class="section" title="Reasons to use a REST API"><div class="titlepage"><div><div><h1 class="title"><a id="ch08lvl1sec50"/>Reasons to use a REST API</h1></div></div></div><p><span class="strong"><strong>Representational State Transfer</strong></span> (<span class="strong"><strong>REST</strong></span>) is a simple stateless architecture style usually running<a id="id497" class="indexterm"/> over the HTTP protocol. The idea<a id="id498" class="indexterm"/> behind REST is exposing the state of the system as a collection of resources we can manipulate, addressing them by their name or ID. The backend service is responsible for making a resource's data persist, usually through the use of a database server. Clients retrieve the state of a resource performing HTTP requests to the <a id="id499" class="indexterm"/>server. The resource can be manipulated and sent back to the server through an HTTP request as well. Resources can be represented in several formats but we will use JSON, a lightweight, human-readable, and widespread interchange format. We can see the manipulation of a resource state a bit like a <span class="strong"><strong>Create, Retrieve, Update, Delete</strong></span> (<span class="strong"><strong>CRUD</strong></span>) system. What we are going to do is map each of these operations<a id="id500" class="indexterm"/> to a specific HTTP verb. We will perform an HTTP <code class="literal">POST</code> request to create a new resource, a <code class="literal">GET</code> request to retrieve an existing one, a <code class="literal">PUT</code> request to update its state, and a <code class="literal">DELETE</code> request to remove it from the system.</p><p>REST is widely adopted these days, mainly because it allows a strong decoupling of clients from servers, is easy to implement over HTTP, has a very good performance, can be cached, and in general, can scale very well. Exposing a REST API makes it extremely easy to provide a mobile client, a browser extension, or any piece of software that needs to access and process application data; for these reasons, we are going to provide a REST API for Notes. Using Cloud Endpoints, we'll be able to add a REST API to the existing codebase of the webapp2 version of Notes without touching the data models or the overall architecture of the application.</p></div></div>
+<div class="section" title="Designing and building the API"><div class="titlepage"><div><div><h1 class="title"><a id="ch08lvl1sec51"/>Designing and building the API</h1></div></div></div><p>Before writing the code, we need to have a neat idea in mind of the resources we are going to<a id="id501" class="indexterm"/> make available through the API, the methods we will provide to<a id="id502" class="indexterm"/> manipulate such resources, and the response codes we will deliver to the clients. After designing the API, we can start write some code to implement resources representation.</p><div class="section" title="Resources, URLs, HTTP verbs, and response code"><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec44"/>Resources, URLs, HTTP verbs, and response code</h2></div></div></div><p>Defining<a id="id503" class="indexterm"/> a resource is very similar to defining a model <a id="id504" class="indexterm"/>class in an ORM system, and it's not uncommon for them to coincide, like in our case. In fact, we will provide the following resources:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Note</li><li class="listitem" style="list-style-type: disc">NoteFile</li><li class="listitem" style="list-style-type: disc">ChecklistItem</li></ul></div><p>Every resource<a id="id505" class="indexterm"/> will be identified by a URL. We omit the <a id="id506" class="indexterm"/>hostname here for clarity:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>The</strong></span> <code class="literal">/notes</code> <span class="strong"><strong>URL</strong></span>: This identifies a collection of resources of type Note</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>The</strong></span> <code class="literal">/notes/:id</code> <span class="strong"><strong>URL</strong></span>: This identifies a single resource of type Note using its ID as the discriminator</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>The</strong></span> <code class="literal">/notefiles</code> <span class="strong"><strong>URL</strong></span>: This identifies a collection of resources of type NoteFile</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>The</strong></span> <code class="literal">/notefiles/:id</code> <span class="strong"><strong>URL</strong></span>: This identifies a single resource of type NoteFile</li></ul></div><p>We won't <a id="id507" class="indexterm"/>expose the <code class="literal">CheckListItem</code> resource through the <a id="id508" class="indexterm"/>API because in the underlying data model, we defined the items as a <code class="literal">StructuredProperty</code> field of the <code class="literal">Note</code> model. Since corresponding entities don't exist in the Datastore, we cannot alter the state of a <code class="literal">ChecklistItem</code> resource without altering the Note state as well. For this reason, exposing two different resources doesn't make much sense.</p><p>A client specifies a certain HTTP verb, or method, in the request header when contacting the backend server, and HTTP verbs tell the server what to do with the data identified by the URL. We need to know that, depending on whether a URL represents a single resources <a id="id509" class="indexterm"/>or a collection, a verb might have different <a id="id510" class="indexterm"/>meanings. For the URLs exposed by our REST API, we will support the following verbs:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>The</strong></span> <code class="literal">GET</code> <span class="strong"><strong>request</strong></span><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>On a collection</strong></span>: This retrieves a list of resource representations</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>On a single resource</strong></span>: This retrieves a resource representation</li></ul></div></li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>The</strong></span> <code class="literal">POST</code> <span class="strong"><strong>request</strong></span><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>On a collection</strong></span>: This creates a new resource and returns its representation</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>On a single resource</strong></span>: This is not applicable and returns an error</li></ul></div></li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>The</strong></span> <code class="literal">PUT</code> <span class="strong"><strong>request</strong></span><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>On a collection</strong></span>: This updates a list of resources in a batch and returns no payload</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>On a single resource</strong></span>: This updates the single resource and returns the updated representation</li></ul></div></li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>The</strong></span> <code class="literal">DELETE</code> <span class="strong"><strong>request</strong></span><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>On a collection</strong></span>: This is not applicable and returns an error</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>On a single resource</strong></span>: This deletes the resources and returns no payload</li></ul></div></li></ul></div><p>Every time<a id="id511" class="indexterm"/> the server answers a request from a client, an HTTP status code is transmitted along with a possible payload. Our API will provide<a id="id512" class="indexterm"/> the following status codes:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>200 OK</strong></span>: This<a id="id513" class="indexterm"/> indicates that the request was successful.</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>204 No Content</strong></span>: This indicates that the request was successful but the response <a id="id514" class="indexterm"/>contains no data, usually returned after a <code class="literal">DELETE</code> request.</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>400 Bad Request</strong></span>: This <a id="id515" class="indexterm"/>means the request<a id="id516" class="indexterm"/> was malformed; for example, the<a id="id517" class="indexterm"/> data did not pass validation or is in the wrong format.</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>404 Not Found</strong></span>: This<a id="id518" class="indexterm"/> indicates that the requested resource could not be found.</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>401 Unauthorized</strong></span>: This indicates that we need to perform authentication before <a id="id519" class="indexterm"/>accessing the resource.</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>405 Method Not Allowed</strong></span>: This means that the HTTP method used is not supported <a id="id520" class="indexterm"/>for this resource.</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>409 Conflict</strong></span>: This indicates a conflict occurred when updating the state of the <a id="id521" class="indexterm"/>system, for example when we try to insert duplicates.</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>503 Service Unavailable</strong></span>: This indicates that the server is temporarily unavailable. In particular, this occurs when our Cloud Endpoints application raises <a id="id522" class="indexterm"/>an uncaught exception</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>500 Internal Server Error</strong></span>: This<a id="id523" class="indexterm"/> occurs when everything else has failed.</li></ul></div><p>Now that the design of the API is complete, it's time for us to write some code.</p></div><div class="section" title="Defining resource representations"><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec45"/>Defining resource representations</h2></div></div></div><p>We have already mentioned that both requests and responses might contain representations <a id="id524" class="indexterm"/>of one or more resources, and <a id="id525" class="indexterm"/>we have also stated that we will use the JSON format to implement such representations. Now we need to define a resource in our code, and Cloud Endpoints will take care of transforming our resources back and forth in JSON format for us. This operation is known as serialization.</p><p>Before we start coding, we need to spend some time on the Cloud Endpoints architecture so that it'll be easier to understand why we use certain Python packages or data structures.</p><p>Cloud Endpoints is built on top of the Google Protocol RPC Library, a framework implementing <span class="strong"><strong>Remote Procedure Call</strong></span> (<span class="strong"><strong>RPC</strong></span>) services over the HTTP protocol. A service is a <a id="id526" class="indexterm"/>collection of methods that can be invoked through regular HTTP requests. A method receives an object of a message type in the request and returns another message type in response. Message types are regular <a id="id527" class="indexterm"/>Python classes deriving from<a id="id528" class="indexterm"/> the <code class="literal">protorpc.messages.Message</code> class, while services are methods of a Python class deriving from <code class="literal">protorpc.remote.Service</code> class. Since Cloud Endpoints are actually an RPC service under the hood, the representations of our REST resources will be implemented as RPC messages.</p><p>We create a new module called <code class="literal">resources.py</code> on the application root, containing the following code:</p><div class="informalexample"><pre class="programlisting">from protorpc import messages
+from protorpc import message_types
+
+class CheckListItemRepr(messages.Message):
+    title = messages.StringField(1)
+    checked = messages.BooleanField(2)
+
+
+class NoteRepr(messages.Message):
+    key = messages.StringField(1)
+    title = messages.StringField(2)
+    content = messages.StringField(3)
+    date_created = message_types.DateTimeField(4)
+    checklist_items = messages.MessageField(CheckListItemRepr,
+                                            5, repeated=True)
+    files = messages.StringField(6, repeated=True)
+
+class NoteCollection(messages.Message):
+    items = messages.MessageField(NoteRepr, 1, repeated=True)</pre></div><p>Defining message classes is a bit like defining model classes in an ORM; we specify class attributes that correspond to each of the fields we want to use to represent a resource. Fields have a type, and their constructors take an integer parameter used as identifier that must be unique within the message class. The <code class="literal">CheckListItemRepr</code> class will be used to serialize the checkable items attached to a note. <code class="literal">NoteRepr</code> represents the note resource and is the core of our API.</p><p>We need a <code class="literal">key</code> field so that clients can have a reference if they want to get details or modify the resource. The <code class="literal">checklist_items</code> field references the <code class="literal">CheckListItemRepr</code> class, which will be nested into note representations. We represent the files associated with a note as a list of strings called <code class="literal">files</code>, containing keys for <code class="literal">models.NoteFile</code> instances. Finally, we define a representation for a collection of notes called <code class="literal">NoteCollection</code>. It has only one field, <code class="literal">items</code>, containing single-note representations.</p><p>Once serialized, a JSON representation of a note should look like this:</p><div class="informalexample"><pre class="programlisting">{
+    "checklist_items": [
+        {
+            "checked": false,
+            "title": "one"
+        },
+        {
+            "checked": true,
+            "title": "two"
+        },
+        {
+            "checked": false,
+            "title": "three"
+        }
+    ],
+    "content": "Some example contents",
+    "date_created": "2014-11-08T15:49:07.696869",
+    "files": [
+        "ag9kZXZ-Ym9vay0xMjM0NTZyQAsSBFVzZXIiE"
+    ],
+    "key": "ag9kZXZ-Ym9vay0xMjM0NTZyKwsSBFVz",
+    "title": "Example Note"
+}</pre></div><p>As we<a id="id529" class="indexterm"/> can see, the JSON representation <a id="id530" class="indexterm"/>is very easy to read.</p><p>Now that we have representations for our REST resources, we can start implementing the endpoints for our REST API.</p></div></div>
+<div class="section" title="Implementing API endpoints"><div class="titlepage"><div><div><h1 class="title"><a id="ch08lvl1sec52"/>Implementing API endpoints</h1></div></div></div><p>As we already<a id="id531" class="indexterm"/> mentioned, our REST API will be <a id="id532" class="indexterm"/>integrated with the existing App Engine application without altering its behavior, so we need to specify a new WSGI application that will handle the URLs we map to the API endpoints. Let's start with the <code class="literal">app.yaml</code> file, where we add the following code:</p><div class="informalexample"><pre class="programlisting">handlers:
+- url: /static
+  static_dir: static
+
+- url: /_ah/spi/.*
+  script: notes_api.app
+
+- url: .*
+  script: main.app
+
+libraries:
+- name: webapp2
+  version: "2.5.2"
+
+- name: jinja2
+  version: latest
+
+- name: endpoints
+  version: 1.0</pre></div><p>The regular<a id="id533" class="indexterm"/> expression that matches API URLs is <a id="id534" class="indexterm"/>actually <code class="literal">/_ah/spi/.*</code>. Even if we perform requests to an URL such as <code class="literal">https://example.com/_ah/api/v1/an-endpoint</code>, Cloud Endpoints will take care of the proper redirects. The handler script of the API URLs points to the <code class="literal">app</code> variable in the <code class="literal">notes_api</code> module, which we are yet to create. In a new file called <code class="literal">notes_api.py</code>, we add the following code:</p><div class="informalexample"><pre class="programlisting">import endpoints
+
+app = endpoints.api_server([])</pre></div><p>This is the very basic scaffold for our REST API. Now we need to define the endpoints as methods of a Python class deriving from <code class="literal">protorpc.remote.Service</code> class, and append this class to the list that was passed as a parameter to the <code class="literal">api_server()</code> function.</p><p>In the <code class="literal">notes_api.py</code> module, we add the <code class="literal">NotesApi</code> class, which will contain all the endpoints needed to retrieve and manipulate note resources. Let's see how to implement the endpoints operating on collections of notes, one at a time, starting from the endpoint supporting <code class="literal">GET</code> requests:</p><div class="informalexample"><pre class="programlisting">from protorpc import message_types
+from protorpc import remote
+from google.appengine.ext import ndb
+
+import models
+import resources
+
+@endpoints.api(name='notes', version='v1')
+class NotesApi(remote.Service):
+
+    @endpoints.method(message_types.VoidMessage,
+                      resources.NoteCollection,
+                      path='notes',
+                      http_method='GET',
+                      name='notes.notesList')
+    def note_list(self, unused_request_msg):
+        items = []
+        for note in models.Note.query().fetch():
+            checkl_items = []
+            for i in note.checklist_items:
+                checkl_items.append(
+                    resources.CheckListItemRepr(title=i.title,
+                                               checked=i.checked))
+            files = [f.urlsafe() for f in note.files]
+            r = resources.NoteRepr(key=note.key.urlsafe(),
+                                   title=note.title,
+                                   content=note.content,
+                                   date_created=note.date_created,
+                                   checklist_items=checkl_items,
+                                   files=files)
+               items.append(r)
+
+            return resources.NoteCollection(items=items)
+
+app = endpoints.api_server([NotesApi])</pre></div><p>The <a id="id535" class="indexterm"/>decorator we apply to the <code class="literal">NotesApi</code> class, the <code class="literal">@endpoints.api</code> decorator, tells Cloud Endpoints that this class is a part of an API <a id="id536" class="indexterm"/>called <code class="literal">notes</code> with version v1. The <code class="literal">note_list()</code> method is decorated with the <code class="literal">@endpoints.method</code> decorator, and this method expects the following parameters, in the order given:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">The message class used for the request. In this case, we don't expect any input, so we use, <code class="literal">message_types.VoidMessage</code>, a special message class provided by Cloud Endpoints.</li><li class="listitem">The message class we will return in the response, in this case our <code class="literal">resources.NoteCollection</code> class.</li><li class="listitem">The URL or path of the endpoint.</li><li class="listitem">The HTTP method or verb supported by the endpoint.</li><li class="listitem">A string representing the name of the endpoint.</li></ol></div><p>The logic of the endpoint is simple—we load all the Note instances from the Datastore, and for each of them, we build a <code class="literal">NoteRepr</code> object. Representations are then added to a collection using the <code class="literal">NoteCollection</code> class and returned to the client.</p><p>Now we add the endpoint supporting requests of the <code class="literal">POST</code> type:</p><div class="informalexample"><pre class="programlisting">    @endpoints.method(resources.NoteRepr,
+                      resources.NoteRepr,
+                      path='notes',
+                      http_method='POST',
+                      name='notes.notesCreate')
+    def note_create(self, new_resource):
+        user = endpoints.get_current_user()
+        if user is None:
+            raise endpoints.UnauthorizedException()
+
+        note = models.Note(parent=ndb.Key("User",
+                           user.nickname()),
+                           title=new_resource.title,
+                           content=new_resource.content)
+        note.put()
+        new_resource.key = note.key.urlsafe()
+        new_resource.date_created = note.date_created
+        return new_resource</pre></div><p>We name the method <code class="literal">note_create()</code> to better describe its semantics. It expects a <code class="literal">NoteRepr</code> message in the request containing the information to create a new resource, and will <a id="id537" class="indexterm"/>return a <code class="literal">NoteRepr</code> message in the response<a id="id538" class="indexterm"/> containing the resource created. The <code class="literal">new_resource</code> parameter contains the <code class="literal">NoteRepr</code> instance that arrived in the request and is used to build a new <code class="literal">Note</code> entity in the Datastore. We need to pass a user as the owner of the note, so we call the <code class="literal">get_current_user</code> method from the endpoints package. We will see later in the chapter how users can authenticate to use our API. After calling the <code class="literal">PUT</code> type, we can access the key of the newly created entity, so we update the <code class="literal">new_resource</code> message fields and return it to the client.</p><p>Here is the code for the endpoint supporting requests of the <code class="literal">PUT</code> type:</p><div class="informalexample"><pre class="programlisting">    @endpoints.method(resources.NoteCollection,
+                      message_types.VoidMessage,
+                      path='notes',
+                      http_method='PUT',
+                      name='notes.notesBatchUpdate')
+    def note_batch_update(self, collection):
+        for note_repr in collection.items:
+            note = ndb.Key(urlsafe=note_repr.key).get()
+            note.title = note_repr.title
+            note.content = note_repr.content
+
+            checklist_items = []
+            for item in note_repr.checklist_items:
+                checklist_items.append(
+                    models.CheckListItem(title=item.title,                                                                   	                                   checked=item.checked))
+            note.checklist_items = checklist_items
+
+            files = []
+            for file_id in note_repr.files:
+                files.append(ndb.Key(urlsafe=file_id).get())
+            note.files = files
+
+            note.put()
+
+        return message_types.VoidMessage()</pre></div><p>The <a id="id539" class="indexterm"/>method is called <code class="literal">note_batch_update()</code> because it's supposed to perform updates on a collection of resources<a id="id540" class="indexterm"/> received in the request, returning no payload to the clients. It expects a <code class="literal">NoteCollection</code> message class in the input, and after performing all the updates needed, it returns a <code class="literal">VoidMessage</code> instance.</p><p>The last endpoint operating on a collection of notes is actually a handler for an error condition. In fact, performing a <code class="literal">DELETE</code> request on a collection should result in an <span class="strong"><strong>HTTP error 405: method not allowed</strong></span> message. To respond to an API call with an error code, we can just raise a proper exception in the Python method implementing the endpoint:</p><div class="informalexample"><pre class="programlisting">    @endpoints.method(message_types.VoidMessage,
+                      message_types.VoidMessage,
+                      path='notes',
+                      http_method='DELETE',
+                      name='notes.notesBatchDelete')
+    def note_list_delete(self, request):
+        raise errors.MethodNotAllowed()</pre></div><p>The <code class="literal">note_list_delete()</code> method just raises an exception that we still have to define. In a new <code class="literal">errors.py</code> module in our application, we add the following:</p><div class="informalexample"><pre class="programlisting">import endpoints
+import httplib
+
+
+class MethodNotAllowed(endpoints.ServiceException):
+    http_status = httplib.METHOD_NOT_ALLOWED</pre></div><p>We need to define our own <code class="literal">MethodNotAllowed</code> exception because Cloud Endpoints only provides exception classes for the most common HTTP error codes: <code class="literal">400</code>, <code class="literal">401</code>, <code class="literal">403</code>, <code class="literal">404</code>, and <code class="literal">500</code>.</p><p>The portion of the REST API operating on a collection of resources of type <code class="literal">note</code> is now complete, so we can move on and start implementing the endpoints operating on a single note. The path to single resources contains an argument, the resource identifier. In such cases, as well as when there's the need to pass query string arguments, we cannot use a simple <code class="literal">Message</code> class for the request, but we must use a special container, defined in the <code class="literal">endpoints.ResourceContainer</code> parameter, that wraps both the message and the arguments in the path and in the query string. In our case, since we're going to use the container <a id="id541" class="indexterm"/>more than once, we can define it as a field <a id="id542" class="indexterm"/>of our <code class="literal">NotesApi</code> class:</p><div class="informalexample"><pre class="programlisting">from protorpc import messages
+
+@endpoints.api(name='notes', version='v1')
+class NotesApi(remote.Service):
+    NoteRequestContainer = endpoints.ResourceContainer(
+        resources.NoteRepr, key=messages.StringField(1))</pre></div><p>We pass the message we want to wrap to the constructor, along with the arguments we need to receive through the request path or in the query string. Each argument must be defined as a message field with a unique identifier.</p><p>We then proceed to define the endpoint that handles <code class="literal">GET</code> requests for a single-note resource:</p><div class="informalexample"><pre class="programlisting">    @endpoints.method(NoteRequestContainer,
+                      resources.NoteRepr,
+                      path='notes/{key}',
+                      http_method='GET',
+                      name='notes.notesDetail')
+    def note_get(self, request):
+        note = ndb.Key(urlsafe=request.key).get()
+        checklist_items = []
+        for i in note.checklist_items:
+            checklist_items.append(
+                resources.CheckListItemRepr(title=i.title,
+                                               checked=i.checked))
+        files = [f.urlsafe() for f in note.files]
+        return resources.NoteRepr(key=request.key,
+                                  title=note.title,
+                                  content=note.content,
+                                  date_created=note.date_created,
+                                  checklist_items=checklist_items,
+                                  files=files)</pre></div><p>We expect the <code class="literal">NoteRequestContainer</code> parameter in the input for our endpoint, <code class="literal">note_get()</code>, that will return a <code class="literal">NoteRepr</code> message. The path contains the <code class="literal">{key}</code> argument, and whenever the requested URL matches, Cloud Endpoint will fill the corresponding <code class="literal">key</code> field in the <code class="literal">NoteRequestContainer</code> instance with the parsed value. We then use the key of the resource to retrieve the corresponding entity from the Datastore, and finally fill and return a <code class="literal">NoteRepr</code> message object.</p><p>We<a id="id543" class="indexterm"/> raise an error when clients make requests<a id="id544" class="indexterm"/> of type <code class="literal">POST</code> on a single resource, so the endpoint is implemented as follows:</p><div class="informalexample"><pre class="programlisting">    @endpoints.method(NoteRequestContainer,
+                      message_types.VoidMessage,
+                      path='notes/{key}',
+                      http_method='POST',
+                      name='notes.notesDetailPost')
+    def note_get_post(self, request):
+        raise errors.MethodNotAllowed()
+This is the code for requests of type PUT instead:
+    @endpoints.method(NoteRequestContainer,
+                      resources.NoteRepr,
+                      path='notes/{key}',
+                      http_method='PUT',
+                      name='notes.notesUpdate')
+    def note_update(self, request):
+        note = ndb.Key(urlsafe=request.key).get()
+        note.title = request.title
+        note.content = request.content
+        checklist_items = []
+        for item in request.checklist_items:
+            checklist_items.append(
+                models.CheckListItem(title=item.title,
+                                     checked=item.checked))
+        note.checklist_items = checklist_items
+
+        files = []
+        for file_id in request.files:
+               files.append(ndb.Key(urlsafe=file_id).get())
+        note.files = files
+        note.put()
+        return resources.NoteRepr(key=request.key,
+                                  title=request.title,
+                                  content=request.content,
+                                date_created=request.date_created,
+                          checklist_items=request.checklist_items,
+                                  files=request.files)</pre></div><p>The <code class="literal">note_update()</code> method retrieves the <code class="literal">note</code> entity from the Datastore and updates its fields accordingly with the content of the request. Finally, the method returns a representation of the updated resource.</p><p>The last method we need to support for a single resource is <code class="literal">DELETE</code>:</p><div class="informalexample"><pre class="programlisting">    @endpoints.method(NoteRequestContainer,
+                      message_types.VoidMessage,
+                      path='notes/{key}',
+                      http_method='DELETE',
+                      name='notes.notesDelete')
+    def note_delete(self, request):
+        ndb.Key(urlsafe=request.key).delete()
+        return message_types.VoidMessage()</pre></div><p>The<a id="id545" class="indexterm"/> endpoint takes a request container, deletes the<a id="id546" class="indexterm"/> corresponding Datastore entity, and returns an empty payload if everything is fine.</p><p>We finally have a complete REST API to deal with note entities. Now it's time to play with it and check whether the results are as we expect.</p></div>
+<div class="section" title="Testing the API with API Explorer"><div class="titlepage"><div><div><h1 class="title"><a id="ch08lvl1sec53"/>Testing the API with API Explorer</h1></div></div></div><p>We can<a id="id547" class="indexterm"/> test our REST API on the local development <a id="id548" class="indexterm"/>environment by running the <code class="literal">dev_appserver.py</code> script or deploying the application on App Engine. In both cases, Cloud Endpoints provides a tool that let us explore our API; let's see how.</p><p>With the local development server running, we point the browser to the <code class="literal">http://localhost:8080/_ah/api/explorer</code> URL, and we are immediately redirected to the API Explorer, where we can see our API listed, as shown in the  following screenshot:</p><div class="mediaobject"><img src="graphics/8194OS_08_01.jpg" alt="Testing the API with API Explorer"/></div><p>When <a id="id549" class="indexterm"/>we click on our API name, the explorer lists<a id="id550" class="indexterm"/> all the endpoints exposed through the Cloud Endpoints service. Before we begin our test, we should ensure that some notes exist in the Datastore. We can use the Notes web application to insert them.</p><p>By clicking on the notes <span class="strong"><strong>List</strong></span> entry, we can access the details page for the endpoint, where we can click on the <span class="strong"><strong>Execute</strong></span> button to perform a <code class="literal">GET</code> request and retrieve a collection of notes visible in the <span class="strong"><strong>Response</strong></span> section, represented in JSON format. We can also copy the <span class="strong"><strong>key</strong></span> field of one of the notes in the collection and access the details page for the <code class="literal">notesDetail</code> endpoint. Here, we paste the key on the <span class="strong"><strong>key</strong></span> field in the form and then press <span class="strong"><strong>Execute</strong></span> button. This time, the response should contain the resource representation.</p><p>To see how to update this resource, we access the details page for the <code class="literal">notesUpdate</code> endpoint. Here, we can again paste the key of the resource we want to update and build a request body with the <span class="strong"><strong>Request body</strong></span> editor, a very powerful tool that let us compose complex <a id="id551" class="indexterm"/>JSON objects by just pointing and clicking <a id="id552" class="indexterm"/>on some HTML controls.</p><div class="mediaobject"><img src="graphics/8194OS_08_02.jpg" alt="Testing the API with API Explorer"/></div><p>.</p><p>The API Explorer is of great help while developing an API to immediately see the results of a call to an endpoint, test endpoints with particular payloads in the request, and check the behavior of different versions of the same API. We could also use other clients to test our API, such as the <code class="literal">curl</code> program from the command line, but the interactivity granted by the API Explorer is a great value added.</p><p>In the next paragraph, we will see another functionality of the API Explorer that will make our lives much easier—the opportunity to test our API with a client authenticated with OAuth2.</p></div>
+<div class="section" title="Protecting an endpoint with OAuth2"><div class="titlepage"><div><div><h1 class="title"><a id="ch08lvl1sec54"/>Protecting an endpoint with OAuth2</h1></div></div></div><p>Even if ou<a id="id553" class="indexterm"/>r REST API seems quite complete, a critical component is missing in our implementation: any client in fact is currently able to retrieve all the notes stored in the Datastore without provid<a id="id554" class="indexterm"/>ing authentication and regardless of being or not the owner of those notes. Moreover, until we don't provide authentication for our REST API, creating a note will be impossible because we need an authenticated user to create an entity in the <code class="literal">note_create()</code> method of the <code class="literal">NotesApi</code> class. We can easily fill this gap in our requirements because Cloud Endpoints provides support to protect all or part of our API with the OAuth2 authorization framework.</p><p>The first step to provide protection to our API is to specify which clients we allow to access the API. Here, we use the term "client" to actually identify a type of client, such as a JavaScript application running in a browser, a mobile application running on Android or iOS, and so on. Each client is identified with a string called client ID that we must generate using the Developer console:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">On the left menu, choose <span class="strong"><strong>APIs &amp; auth</strong></span>.</li><li class="listitem">Select <span class="strong"><strong>credentials</strong></span>.</li><li class="listitem">Click on the <span class="strong"><strong>Create new Client ID</strong></span> button.</li></ol></div><p>A guided procedure is then started, and all we have to do to generate a new client ID is follow the instructions on the screen.</p><p>We then specify the list of authorized client IDs with the <code class="literal">@endpoints.api</code> decorator of our <code class="literal">NotesApi</code> class, like this:</p><div class="informalexample"><pre class="programlisting">JS_CLIENT_ID = '8nej3vl.apps.googleusercontent.com'
+IOS_CLIENT_ID = 'm6gikl14bncbqks.apps.googleusercontent.com'
+
+@endpoints.api(name='notes', version='v1',
+               allowed_client_ids=[
+                   endpoints.API_EXPLORER_CLIENT_ID,
+                   JS_CLIENT_ID,
+                   IOS_CLIENT_ID
+               ])
+class NotesApi(remote.Service):</pre></div><p>To access the API from the explorer, we also list its client ID, which is provided by the <code class="literal">endpoints</code> package. Since the client IDs are listed inside the Python source code, we have to remember that we need to redeploy the application every time we change the <code class="literal">allowed_client_ids</code> list.</p><p>If we add an Android application to the list of allowed client IDs, we must also specify the audience parameter in the <code class="literal">@endpoints.api</code> decorator. The value of this parameter is the same as that of the client ID:</p><div class="informalexample"><pre class="programlisting">JS_CLIENT_ID = '8nej3vl.apps.googleusercontent.com'
+IOS_CLIENT_ID = 'm6gikl14bncbqks.apps.googleusercontent.com'
+ANDROID_CLIENT_ID = '1djhfk8ne.apps.googleusercontent.com'
+
+@endpoints.api(name='notes', version='v1',
+               allowed_client_ids=[
+                   endpoints.API_EXPLORER_CLIENT_ID,
+                   JS_CLIENT_ID,
+                   IOS_CLIENT_ID,
+                   ANDROID_CLIENT_ID,
+               ],
+               audiences=[ANDROID_CLIENT_ID])
+class NotesApi(remote.Service):</pre></div><p>The last <a id="id555" class="indexterm"/>configuration step is the declaration <a id="id556" class="indexterm"/>of the OAuth2 scopes we want a client to provide in order to access our API. For our Notes API, we will require only the <code class="literal">endpoints.EMAIL_SCOPE</code> class, the minimum required by Cloud Endpoints to provide OAuth2 authentication and authorization. We add the following to the list of parameters we pass to the <code class="literal">@endpoints.api</code> decorator:</p><div class="informalexample"><pre class="programlisting">@endpoints.api(name='notes', version='v1',
+               allowed_client_ids=[
+                   endpoints.API_EXPLORER_CLIENT_ID,
+                   JS_CLIENT_ID,
+                   ANDROID_CLIENT_ID
+               ],
+               audiences=[ANDROID_CLIENT_ID],
+                scopes=[endpoints.EMAIL_SCOPE])
+class NotesApi(remote.Service):</pre></div><p>From now on, the Cloud Endpoints framework will automatically authenticate users and enforce the list of allowed clients, providing a valid <code class="literal">User</code> instance to our application if the authentication procedure succeeds. To retrieve the authenticated user, we call the <code class="literal">endpoints.get_current_user()</code> function the same way as we did in the <code class="literal">create_note()</code> endpoint method. If the authentication procedure fails, the <code class="literal">get_current_user()</code> function returns the <code class="literal">None</code> parameter. It's up to our code to check whether the current user is valid inside the methods we want to protect.</p><p>For example, we can add the following security check at the very beginning of the <code class="literal">note_list()</code> method in our <code class="literal">NotesApi</code> class:</p><div class="informalexample"><pre class="programlisting">    def note_list(self, request):
+        if endpoints.get_current_user() is None:
+            raise endpoints.UnauthorizedException()</pre></div><p>Now, if we open the API Explorer and try to perform a <code class="literal">GET</code> request on the <code class="literal">notesList</code> endpoint, we will get this response:</p><div class="informalexample"><pre class="programlisting">401 Unauthorized
+{
+ "error": {
+  "code": 401,
+  "errors": [
+   {
+    "domain": "global",
+    "message": "Unauthorized",
+    "reason": "required"
+   }
+  ],
+  "message": "Unauthorized"
+ }
+}</pre></div><p>Thanks to <a id="id557" class="indexterm"/>the API Explorer, we can authenticate ourselves with OAuth2 and try to access the same endpoint to check whether<a id="id558" class="indexterm"/> we are allowed this time. Staying on the page where we used to perform the failed request, we can see on the top-right corner of the API Explorer interface a switch labeled <span class="strong"><strong>Authorize requests using OAuth 2.0</strong></span>. If we click on it, the explorer will start the authorization procedure using OAuth2 with one of our Google accounts, and once it is finished, we will be able to perform the request without authentication errors again.</p><p>Besides having authentication in place, now we can also filter Datastore queries using the user instance so that each user can only access their own data.</p></div>
+<div class="section" title="Summary"><div class="titlepage"><div><div><h1 class="title"><a id="ch08lvl1sec55"/>Summary</h1></div></div></div><p>In this final chapter, we took an in-depth look at the Cloud Endpoints framework, and you now have the skills needed to complete the REST API and potentially support a wide variety of clients: someone could write an Android version of Notes, some other might provide a porting on iOS. We can write a JavaScript client and deliver it as a Chrome or Firefox application through their respective marketplaces.</p><p>You learned about REST in brief and why you should choose it among other solutions to talk with miscellaneous clients. We accurately designed our API, providing a comprehensive set of endpoints to retrieve and manipulate resources in our application. We finally implemented the code and played with the API using the API Explorer, an interactive exploring tool capable of executing API methods, showing request and response data, and authenticating the client.</p><p>REST is a language used in many places on the Internet, and thanks to the Cloud Endpoints, we have the opportunity to easily provide a modern and powerful API for every web application running on App Engine.</p><p>I hope you have enjoyed this book as much as I've enjoyed writing it, and whether your next Python application will be running on Google App Engine or not, I hope this book has helped you in making that decision.</p></div></body></html>

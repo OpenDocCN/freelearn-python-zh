@@ -1,0 +1,417 @@
+<html><head></head><body>
+  <div id="sbo-rt-content"><div class="chapter" title="Chapter 9. Creating Full-Fledged Webapps: Implementing Instances"><div class="titlepage"><div><div><h1 class="title"><a id="ch09"/>Chapter 9. Creating Full-Fledged Webapps: Implementing Instances</h1></div></div></div><div class="blockquote"><blockquote class="blockquote"><p>The framework for the rapid development of Python web applications is coming along nicely, but some distinct features are still lacking.</p></blockquote></div><p>In this chapter, we take a look at some of them, notably:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">How to implement more complex relations</li><li class="listitem" style="list-style-type: disc">How to create the necessary user interface components to maintain those relations</li><li class="listitem" style="list-style-type: disc">And how to allow for a more fine-grained control of who is allowed to do what</li></ul></div><p>These are some interesting challenges, so let's get started.</p><div class="section" title="Even more relations"><div class="titlepage"><div><div><h1 class="title"><a id="ch09lvl1sec01"/>Even more relations</h1></div></div></div><p>As we have seen, it was not very difficult to make<code class="literal"> Display</code> capable of handling references to related entities. These relations, however, are limited to lookup relations (also known as many-to-one relations). A<code class="literal"> Contact</code> entity, for example, refers to, at most, a single<code class="literal"> Account</code> entity and the<code class="literal"> Display</code> class allows us to select an<code class="literal"> Account</code> when we edit a<code class="literal"> Contact</code>.<a id="id393" class="indexterm"/>
+</p><p>But what do we need for the opposite situation? An<code class="literal"> Account</code> may have many<code class="literal"> Contacts</code> and both<code class="literal"> Account</code> and<code class="literal"> Contact</code> may have many<code class="literal"> Addresses</code>. What we need is a way to make<code class="literal"> Display</code> show which one-to-many relationships exist for an entity and provide the means to show those entities when the user clicks on such a relation.</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Time for action showing one-to-many relationships"><div class="titlepage"><div><div><h1 class="title"><a id="ch09lvl1sec02"/>Time for action showing one-to-many relationships</h1></div></div></div><p>The illustration shows what we might expect:<a id="id395" class="indexterm"/>
+</p><div class="mediaobject"><img src="images/3746_09_01.jpg" height="107" alt="Time for action showing one-to-many relationships"/></div><p>We have selected a<code class="literal"> Contact</code> and its details are available for editing, including a reference to an<code class="literal"> Account</code>. Now on the left, however, we have a sidebar showing the available one-to-many relations, in this case, the only one-to-many relation applicable to a<code class="literal"> Contact</code> is<code class="literal"> Address</code>.</p><div class="section" title="What just happened?"><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec01"/>What just happened?</h2></div></div></div><p>To show a list of entities, we already have a suitable building block, the<code class="literal"> Browse</code> class that will not only let us browse a list of entities in various ways, but is also capable of filtering those entities. In this example, we would want to show just those addresses that are associated with this specific contact.</p><p>We therefore add a new method to the<code class="literal"> Display</code> class that will produce an HTML fragment together with some JavaScript to show the list of available one-to-many relations:</p><p>
+<span class="strong"><strong>Chapter9/display.py</strong></span>
+</p><div class="informalexample"><pre class="programlisting">
+@staticmethod
+def related_link(re,e):
+	return '&lt;li id="%s" class="%s" ref="%s"&gt;%s&lt;/li&gt;'%(
+		e.id,e.__class__.__name__,re.lower(),re)
+def related_entities(self,e):
+	r=['&lt;div class="related_entities"&gt;&lt;h3&gt;Related&lt;/h3&gt;&lt;ul&gt;']
+	if hasattr(e.__class__,'reltype'):
+		r.extend([self.related_link(re,e)
+			for re,rt in e.__class__.reltype.items()
+			if (rt == '1:N' or rt == 'N:N')])
+	r.append('&lt;/ul&gt;&lt;/div&gt;')
+	r.append('''
+	&lt;script&gt;
+	$('div.related_entities li').click(function(){
+		var rel=$(this).attr("ref");
+		var related=$("input[name=related]").val();
+		$(".content").load(rel,
+			$.param({
+			"pattern" : $(this).attr("class") +
+				"," + $(this).attr("id"),
+			"related": related}),
+		function(){shiftforms(rel)});
+	});
+&lt;/script&gt;''')
+return "\n".join(r)
+</pre></div><p>To determine which relations are available,<code class="literal"> related_entities()</code> refers to the<code class="literal"> reltype</code> class variable (highlighted), which is a dictionary of entity names and their type maintained by the<code class="literal"> MetaRelation</code> class when a new relation is defined. For each suitable relation, a<code class="literal">&lt;li&gt;</code> element is produced with the help of the<code class="literal"> related_link()</code> method.<a id="id396" class="indexterm"/>
+</p><p>These<code class="literal">&lt;li&gt;</code> elements have an<code class="literal"> id</code> attribute that holds the unique ID of the referring entity (the ID of the contact in this example) and a<code class="literal"> class</code> attribute that indicates the type of the referring entity (Contact in this case). The<code class="literal">&lt;li&gt;</code> elements also have a<code class="literal"> rel</code> attribute that points to the URL that is serviced by a<code class="literal"> Browse</code> class. For now, we derive this URL from the name of the entities we are referring to (in this case, address).</p><p>The final piece of HTML produced is a<code class="literal">&lt;script&gt;</code> element that installs an event handler on the<code class="literal">&lt;li&gt;</code> elements. This click handler will take the<code class="literal"> ref</code> attribute of its associated<code class="literal">&lt;li&gt;</code> element to construct a URL that is subsequently used to open a new window. We will have to adapt the<code class="literal"> index()</code> methods of the<code class="literal"> Display</code> and<code class="literal"> Browse</code> classes slightly to pass and process those attributes around, as we will see in a minute.</p><p>In our example, the resulting HTML fragment (minus the script element) would look like this:</p><div class="informalexample"><pre class="programlisting">
+&lt;div class="related_entities"&gt;
+	&lt;h3&gt;Related&lt;/h3&gt;
+	&lt;ul&gt;
+		&lt;li ref="address" class="Contact" id="1"&gt;Address&lt;/li&gt;
+	&lt;/ul&gt;
+&lt;/div&gt;
+</pre></div><p>And the<code class="literal"> load()</code> call that will replace the contents of the<code class="literal">&lt;div&gt;</code> element with the<code class="literal"> content</code> class would be passed the following URL, for example:<code class="literal"> http://127.0.0.1:8080/ address/?_=1295184609212&amp;pattern=Contact,1&amp;related=Contact,1</code>.</p><div class="note" title="Note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="note36"/>Note</h3><p>Note that we use jQuery's<code class="literal"> param()</code> function here to convert an object containing several attributes to a string suitable to add to a URL. We could have simply passed the object here, but that would result in a POST action even though we configured all AJAX calls to use the HTTP GET method. Normally, that wouldn't be a problem, but if the final slash is missing in the URL, CherryPy will redirect us to the URL with the slash at the end and the AJAX call will be made again, but this time without the parameters appended! To prevent this possible awkwardness and to aid in debugging, we force the use of the GET method by constructing the full URL ourselves with the help of the<code class="literal"> param()</code> function.</p></div></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Time for action adapting MetaRelation"><div class="titlepage"><div><div><h1 class="title"><a id="ch09lvl1sec03"/>Time for action adapting MetaRelation</h1></div></div></div><p>In the<code class="literal"> Display</code> class, we used the information about the type of relation stored by the<code class="literal"> MetaRelation</code> metaclass. This is necessary because in recognizing that there is more than one type of relation, we need some way to indicate that when we define a new relation and act upon that information when creating a new class. Look at the following example code:<a id="id397" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">
+class A(Entity):
+	pass
+class B(Entity):
+	pass
+class AhasmanyB(Relation):
+	a=A
+	b=B
+</pre></div><p>Here we express the relation between<code class="literal"> A</code> and<code class="literal"> B</code> to be one-to-many. If we would like to express the notion that an instance of<code class="literal"> A</code> may refer only to a single<code class="literal"> B</code> instance, we need some way to indicate that in the definition. One way of doing so is by reversing the assignments in the class definition of the variable:</p><div class="informalexample"><pre class="programlisting">
+class AreferstoasingleB(Relation):
+	a=B
+	b=A
+</pre></div><p>The<code class="literal"> MetaRelation</code> metaclass we defined earlier could act on such a definition as we arranged for the class dictionary of the relation being defined to be an<code class="literal"> OrderedDict</code>, so in principle, we can act on the order of the definitions.<a id="id398" class="indexterm"/>
+</p><p>A slightly more explicit way of defining this is often clearer, so instead we opt for a<code class="literal"> relation_type</code> attribute that can be assigned a string with the type of the relation. For example:</p><div class="informalexample"><pre class="programlisting">
+class AhasmanyB(Relation):
+	a=A
+	b=B
+	relation_type='1:N'
+class AreferstoasingleB(Relation):
+	a=A
+	b=B
+	relation_type='N:1'
+</pre></div><p>If we leave out the<code class="literal"> relation_type</code>, a one-to-many relation is assumed.</p><div class="section" title="What just happened?"><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec02"/>What just happened?</h2></div></div></div><p>Let's have a look at the changes and additions to<code class="literal"> MetaRelation</code> needed to implement those semantics. We need two changes. The first is in the definition of the bridge table we use to administer the relation. We need an additional<code class="literal"> unique</code> constraint here to enforce that in a one-to-many relation, the IDs in the column referring to the many side of the equation are unique.</p><p>This may sound counterintuitive, but let's say we have the following cars: a Volvo, a Renault, a Ford, and a Nissan. There are also two owners, John and Jill. Jill owns the Volvo and the Renault, and John the other cars. The tables might look like this:</p><div class="informaltable"><table border="1"><colgroup><col width="0.381944444444444" style="text-align: left"/><col width="0.629166656070285" style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Car</p>
+</th><th style="text-align: left" valign="top"> </th></tr><tr><th style="text-align: left" valign="bottom">
+<p>ID</p>
+</th><th style="text-align: left" valign="bottom">
+<p>make</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>1</p>
+</td><td style="text-align: left" valign="top">
+<p>Volvo</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>2</p>
+</td><td style="text-align: left" valign="top">
+<p>Renault</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>3</p>
+</td><td style="text-align: left" valign="top">
+<p>Ford</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>4</p>
+</td><td style="text-align: left" valign="top">
+<p>Nissan</p>
+</td></tr></tbody></table></div><div class="informaltable"><table border="1"><colgroup><col width="0.58263889948527" style="text-align: left"/><col width="0.513194455040826" style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Owner</p>
+</th><th style="text-align: left" valign="top"> </th></tr><tr><th style="text-align: left" valign="bottom">
+<p>ID</p>
+</th><th style="text-align: left" valign="bottom">
+<p>name</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>1</p>
+</td><td style="text-align: left" valign="top">
+<p>Jill</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>2</p>
+</td><td style="text-align: left" valign="top">
+<p>John</p>
+</td></tr></tbody></table></div><p>The table that reflects the ownership of the cars might look like this:</p><div class="informaltable"><table border="1"><colgroup><col width="0.868055555555556" style="text-align: left"/><col width="0.559027777777778" style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Ownership</p>
+</th><th style="text-align: left" valign="top"> </th></tr><tr><th style="text-align: left" valign="bottom">
+<p>Car</p>
+</th><th style="text-align: left" valign="bottom">
+<p>owner</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>1</p>
+</td><td style="text-align: left" valign="top">
+<p>1</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>2</p>
+</td><td style="text-align: left" valign="top">
+<p>1</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>3</p>
+</td><td style="text-align: left" valign="top">
+<p>2</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>4</p>
+</td><td style="text-align: left" valign="top">
+<p>2</p>
+</td></tr></tbody></table></div><p>We see that while a<span class="emphasis"><em> single</em></span> owner may have<span class="emphasis"><em> many</em></span> cars, it is the numbers in the<code class="literal"> Car</code> column that are unique because of this relation.<a id="id399" class="indexterm"/>
+</p><p>In order to define a table with those additional uniqueness constraints and to make the information about the type of relation available in the classes that form both halves of a relation, we have to adapt the final part of the<code class="literal"> __new__()</code> method in the<code class="literal"> MetaRelation</code> metaclass:</p><p>
+<span class="strong"><strong>Chapter9/entity.py</strong></span>
+</p><div class="informalexample"><pre class="programlisting">
+if relationdefinition or '_meta' in classdict:
+		a = classdict['a']
+		b = classdict['b']<span class="strong"><strong>
+		r = '1:N'0
+		if 'relation_type' in classdict: r = classdict['relation_type']
+		if not r in ('N:1','1:N'): raise KeyError("unknown relation_
+type %s"%r)
+		classdict['relation_type'] = r</strong></span>
+		if not issubclass(a,AbstractEntity) : raise TypeError('a not 
+an AbstractEntity')
+		if not issubclass(a,AbstractEntity) : raise TypeError('b not 
+an AbstractEntity')<span class="strong"><strong>
+		runique = ' ,unique(%s_id)'%a.__name__
+		if r == '1:N' : runique = ' ,unique(%s_id)'%b.__name__
+		sql = 'create table if not exists %(rel)s ( %(a)s_id references %(a)s on delete cascade, %(b)s_id references %(b)s on delete cascade, unique(%(a)s_id,%(b)s_id)%(ru)s)'%{'rel':classname,'a':a.__name__,'b':b.__name__,'ru':runique}</strong></span>
+conn = sqlite.connect(classdict['_database'])
+		conn.execute(sql)
+		setattr(a,'get'+b.__name__,lambda self:getclass(self,b, 
+classname))
+		setattr(a,'get',get)
+		setattr(b,'get'+a.__name__,lambda self:getclass(self,a, 
+classname))
+		setattr(b,'get',get)
+		setattr(a,'add'+b.__name__,lambda self,entity:addclass(self, entity,b,
+classname))
+		setattr(a,'add',add)
+		setattr(b,'add'+a.__name__,lambda self,entity:addclass(self, entity,a,
+classname))
+		setattr(b,'add',add)<span class="strong"><strong>
+		reltypes = getattr(a,'reltype',{})
+		reltypes[b.__name__]=r
+		setattr(a,'reltype',reltypes)
+		reltypes = getattr(b,'reltype',{})
+		reltypes[a.__name__]={'1:N':'N:1','N:N':'N:N','N:1':'1:N'}[r]
+		setattr(b,'reltype',reltypes)
+		relclasses = getattr(a,'relclass',{})
+		relclasses[b.__name__]=b
+		setattr(a,'relclass',relclasses)
+		relclasses = getattr(b,'relclass',{})
+		relclasses[a.__name__]=a
+		setattr(b,'relclass',relclasses)
+		joins = getattr(a,'joins',{})
+		joins[b.__name__]=classname
+		setattr(a,'joins',joins)
+		joins = getattr(b,'joins',{})
+		joins[a.__name__]=classname
+		setattr(b,'joins',joins)</strong></span>
+	return type.__new__(metaclass,classname,baseclasses,classdict)
+</pre></div><p>The highlighted lines are the ones we added. The first set makes sure there is a<code class="literal"> relation_type</code> attribute defined and if not, creates one with a default<code class="literal">'1:N'</code> value.</p><p>The second set of highlighted lines determines which column in the bridge table should receive an additional unique constraint and constructs the SQL query to create the table.</p><p>The final block of highlighted lines adds class attributes to both classes in the relation. All those attributes are dictionaries indexed by the name of an entity. The<code class="literal"> reltype</code> attribute holds the type of the relation, so in a<code class="literal"> Car</code> entity, we might obtain the type of relation with an<code class="literal"> Owner</code> like this:<a id="id401" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">Car.reltype('Owner')
+</pre></div><p>Which, if defined as in our previous example, will yield<code class="literal">'N:1'</code> (one or more cars may have a single owner).</p><p>Likewise, we can get information about the same relation from the perspective of the owner:</p><div class="informalexample"><pre class="programlisting">Owner.reltype('Car')
+</pre></div><p>Which will yield the inverse,<code class="literal">'1:N'</code> (an owner may have more than one car).</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Time for action enhancing Display"><div class="titlepage"><div><div><h1 class="title"><a id="ch09lvl1sec04"/>Time for action enhancing Display</h1></div></div></div><p>What do we have to change to add the functionality to the<code class="literal"> Display</code> class to pop up a list of items when the user clicks on a related tag?<a id="id402" class="indexterm"/>
+</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Because all activities of the<code class="literal"> Display</code> class are served by its<code class="literal"> index()</code> method, we will have to apply some changes there.</li><li class="listitem" style="list-style-type: disc">The<code class="literal"> index()</code> method both displays forms and processes the results when the submit button is pressed, so we have to look at both the aspects of the edit and add functionality.</li><li class="listitem" style="list-style-type: disc">When an edit form is shown, this will always be initiated from double-clicking in a list of items shown by a<code class="literal"> Browse</code> instance and will therefore be passed a related argument. This argument must be passed along with the contents of the form when the submit button is clicked in order to associate it with the item that initiated this edit action.</li></ul></div><p>These issues require that we apply a few changes to the<code class="literal"> index()</code> method.</p><div class="section" title="What just happened?"><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec03"/>What just happened?</h2></div></div></div><p>The first thing we have to do is add a<code class="literal"> related</code> parameter to the<code class="literal"> index()</code> method. This parameter may hold the name of the entity and the ID of the specific related instance separated by a comma:</p><p>
+<span class="strong"><strong>Chapter9/display.py</strong></span>
+</p><div class="informalexample"><pre class="programlisting">
+@cherrypy.expose
+	def index(self,id=None,_=None,add=None,edit=None,related=None,**
+kw):
+</pre></div><p>When processing the information passed to the<code class="literal"> index()</code> method of the<code class="literal"> Display</code> class, the portion dealing with the results of an add action has to act on the information in the<code class="literal"> related</code> parameter:<a id="id403" class="indexterm"/>
+</p><p>
+<span class="strong"><strong>Chapter9/display.py</strong></span>
+</p><div class="informalexample"><pre class="programlisting">
+if not related is None and related != '':
+	r=related.split(',')<span class="strong"><strong>
+	re=e.relclass[r[0]](id=int(r[1]))</strong></span>
+	e.add(re)
+</pre></div><p>If the method was called as the result of clicking the add button in a list of items, the<code class="literal"> related</code> parameter will be non empty and we split it on the comma to retrieve the name of the entity and its ID.</p><p>The name of the entity is used to retrieve its class that was added to the<code class="literal"> relclass</code> dictionary when the relation was defined and this class' constructor is called with the ID of the instance to create an object (highlighted). The relation between the item we are currently editing and the related item is subsequently established by the<code class="literal"> add()</code> method.</p><p>Likewise, the portion responsible for delivering the add or edit form in the first place must include a hidden<code class="literal">&lt;input&gt;</code> element that holds the contents of the related parameter passed to it when the user clicked the add button in a page delivered by a<code class="literal"> Browse</code> instance:</p><p>
+<span class="strong"><strong>Chapter9/display.py</strong></span>
+</p><div class="informalexample"><pre class="programlisting">
+							submitbutton='&lt;input type="hidden" name="related" 
+value="%s"&gt;&lt;input type="submit" name="add" value="Add"&gt;'%related
+</pre></div></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Time for action enhancing Browse"><div class="titlepage"><div><div><h1 class="title"><a id="ch09lvl1sec05"/>Time for action enhancing Browse</h1></div></div></div><p>All this passing around of the related parameter originates with the user clicking an 'add' button in a list of entities that, in its turn, was shown in response to clicking a related tag when editing or viewing an item.<a id="id404" class="indexterm"/>
+</p><p>Those lists of entities are generated by the<code class="literal"> index()</code> method of the<code class="literal"> Browse</code> class, so we have to make sure that suitable information (that is, the name of the entity that is listed together with the ID of the instance) is passed on.</p><p>This means we have to:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Enhance the<code class="literal"> index()</code> method to receive a related parameter that can be passed on when the 'add' button is clicked.</li><li class="listitem" style="list-style-type: disc">Extend the code that generated the form associated with this add button with a hidden<code class="literal">&lt;input&gt;</code> element to hold this information, so that it may be passed on again to the<code class="literal"> index()</code> method of the<code class="literal"> Display</code> class.</li></ul></div><p>If it sounds a little confusing how<code class="literal"> Display</code> and<code class="literal"> Browse</code> are connected, it may help to envision the following scenario:<a id="id405" class="indexterm"/>
+</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">The user starts looking at a list of owners from the main menu and double-clicks a certain owner. This will result in an 'edit' form delivered by the<code class="literal"> Display</code> class. Because double-clicking on an item will not pass a related argument, this argument in the<code class="literal"> index()</code> method of<code class="literal"> Display</code> will receive its default value of<code class="literal"> None</code>.</li><li class="listitem" style="list-style-type: disc">The edit form shows the details of the owner in the sidebar labeled Related, we see a Carsentry.</li><li class="listitem" style="list-style-type: disc">When the user clicks this<span class="strong"><strong> Cars</strong></span> entry to show the list of cars related to this owner, this will result in the<code class="literal"> index()</code> method of a<code class="literal"> Browse</code> instance for the<code class="literal"> Car</code> entity to be called with both a<code class="literal"> related</code> and a<code class="literal"> pattern</code> argument of<code class="literal"> Owner,5</code>, for example.</li><li class="listitem" style="list-style-type: disc">This will result in a list of cars of the indicated owner and when the 'add' button in this list is clicked, it is again the<code class="literal"> index()</code> method of the<code class="literal"> Display</code> class that is called, but this time, a<code class="literal"> Display</code> instance associated with the<code class="literal"> Car</code> entity. It will be passed the<code class="literal"> related</code> argument of<code class="literal"> Owner,5</code>.</li><li class="listitem" style="list-style-type: disc">Finally, when the user has entered the new car details and clicks 'add', the same<code class="literal"> index()</code> method of the<code class="literal"> Display</code> class is called, again with a<code class="literal"> related</code> argument of<code class="literal"> Owner,5</code> but also with an<code class="literal"> add</code> argument. The car details will be used to create a new<code class="literal"> Car</code> instance and the<code class="literal"> related</code> argument to identify the<code class="literal"> Owner</code> instance and associate the new car instance with.</li></ul></div><p>The following series of screenshots illustrates what is happening. We start with a list of owners:</p><div class="mediaobject"><img src="images/3746_09_02.jpg" height="133" alt="Time for action enhancing Browse"/></div><p>When we double-click on<span class="strong"><strong> Knut Larsson</strong></span>, the following URL is sent to the server:<code class="literal"> http://127.0.0.1:8080/owner/edit/?id=5&amp;_=1295438048592</code> (the<code class="literal"> id=5</code> indicates the instance, the number at the end is what jQuery adds to an AJAX call to prevent caching by the web browser).<a id="id406" class="indexterm"/>
+</p><p>The result will be an edit form for<span class="strong"><strong> Knut:</strong></span>
+</p><div class="mediaobject"><img src="images/3746_09_03.jpg" height="74" alt="Time for action enhancing Browse"/></div><p>A click on<span class="strong"><strong> Car</strong></span> will result in the following URL being sent to the server:<code class="literal"> http://127.0.0.1:8080/car/?_=1295438364192&amp;pattern=Owner,5&amp;related=Owner,5</code>.</p><p>We recognize the<code class="literal"> related</code> and<code class="literal"> pattern</code> arguments of<code class="literal"> Owner,5</code> (that is, referring to<span class="strong"><strong> Knut)</strong></span>. Note that the commas in the arguments appended to this URL would be sent to the server encoded as<code class="literal"> %2C</code>.</p><div class="note" title="Note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="note37"/>Note</h3><p>Why do we send both a<code class="literal"> related</code> argument and a<code class="literal"> pattern</code> argument containing the same information? For adding an entity to another entity, this is indeed redundant but if we would like to add the ability to transfer ownership as well as add a new entity, we would like to filter those cars that belong to some other owner and therefore we need to separately provide the<code class="literal"> pattern</code> and<code class="literal"> related</code> arguments.</p></div><p>If this is the first time we will be adding a car to<span class="strong"><strong> Knut</strong></span>, the list of related cars will be empty:</p><div class="mediaobject"><img src="images/3746_09_04.jpg" height="72" alt="Time for action enhancing Browse"/></div><p>If we now click on the<span class="strong"><strong> Add new</strong></span> button, the following URL is constructed:</p><p>
+<code class="literal">http://127.0.0.1:8080/car/add/?_=1295438711800&amp;related=Owner,5</code>, which will result in an add form for a new car:</p><div class="mediaobject"><img src="images/3746_09_05.jpg" height="83" alt="Time for action enhancing Browse"/></div><p>After filling in the details, clicking on the<span class="strong"><strong> Add</strong></span> button will result in a new car instance that will be associated with<span class="strong"><strong> Knut</strong></span> even if we leave the<span class="strong"><strong> Owner</strong></span> field empty because of the related argument passed yet again in the URL:<a id="id407" class="indexterm"/>
+</p><p>
+<code class="literal">http://127.0.0.1:8080/car/add/?_=1295439571424&amp;make=Volvo&amp;model=C30&amp;color=Green&amp;license=124-abc&amp;Owner=&amp;related=Owner,5&amp;add=Add</code>.</p><div class="mediaobject"><img src="images/3746_09_06.jpg" height="93" alt="Time for action enhancing Browse"/></div><div class="section" title="What just happened?"><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec04"/>What just happened?</h2></div></div></div><p>To allow a<code class="literal"> Browse</code> instance to receive and pass on a<code class="literal"> related</code> attribute in the same manner as a<code class="literal"> Display</code> instance, we need to make a few small changes. First, we have to alter the signature of the<code class="literal"> index()</code> method:</p><p>
+<span class="strong"><strong>Chapter9/browse.py</strong></span>
+</p><div class="informalexample"><pre class="programlisting">
+@cherrypy.expose
+	def index(self, _=None, start=0, pattern=None, sortorder=None, 
+cacheid=None, next=None,previous=None, first=None, last=None, 
+clear=None, related=None):
+</pre></div><p>All that is left then is to make sure that clicking the<span class="strong"><strong> Add</strong></span> new button will pass on this value by including a hidden<code class="literal">&lt;input&gt;</code> element to the form:<a id="id408" class="indexterm"/>
+</p><p>
+<span class="strong"><strong>Chapter9/browse.py</strong></span>
+</p><div class="informalexample"><pre class="programlisting">
+yield '&lt;form method="GET" action="add"&gt;'
+			yield '&lt;input name="related" type="hidden" 
+value="%s"&gt;'%related
+			yield '&lt;button type="submit"&gt;Add new&lt;/button&gt;'
+			yield '&lt;/form&gt;'
+</pre></div></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Access control"><div class="titlepage"><div><div><h1 class="title"><a id="ch09lvl1sec06"/>Access control</h1></div></div></div><p>In the applications we designed so far, we took a very simple approach to access control. Based on someone's login credentials we either allowed access or not. We slightly expanded this notion in the books applications where deleting a book meant that the association between a book and an owner was deleted rather that removing the book instance from the database altogether.<a id="id409" class="indexterm"/>
+</p><p>In many situations, a finer control of privileges is required, but if this control is hardcoded into the application maintaining it will rapidly become unwieldy. We therefore need something that will allow us to manage access privileges in a simple way and in a manner that allows easy expansion.</p><p>Consider the following scenario: In a company using our CRM application, different accounts are owned by different sales persons. It's a small firm so everybody is allowed to see all the information on all the accounts but changing information for an account is restricted to the sales person that owns that account. Of course the sales manager, their boss, is allowed to change this information also, regardless of whether he owns an account or not.</p><p>We could implement such a strategy by letting the<code class="literal"> update()</code> method of an<code class="literal"> Entity</code> check whether this entity has an account and owned by the person doing the update and if not, whether the person is the sales manager.</p></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Time for action implementing access control"><div class="titlepage"><div><div><h1 class="title"><a id="ch09lvl1sec07"/>Time for action implementing access control</h1></div></div></div><p>This scenario is implemented in<code class="literal"> access1.py:</code>
+<a id="id410" class="indexterm"/>
+</p><div class="note" title="Note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="note38"/>Note</h3><p>Note: In the code distributed with this chapter and the following one, the<code class="literal"> logon</code> class is not only initialized with an<code class="literal"> admin</code> user (with<code class="literal"> admin</code> as a password) but with the following three name/password combinations:<code class="literal"> eve/eve, john/john</code>, and<code class="literal"> mike/mike</code>.</p></div><p>If your run this application and point your browser to<code class="literal"> http://localhost:8080</code>, you are presented with a list of accounts. If you have logged in as either<span class="strong"><strong> john</strong></span> or<span class="strong"><strong> mike</strong></span> both sales persons you can only alter the accounts owned by each of them. If however, you log in as eve, the sales manager, you can alter the information in all accounts.</p><div class="section" title="What just happened?"><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec05"/>What just happened?</h2></div></div></div><p>The application is simple enough and follows a familiar pattern. The relevant definitions are shown here:<a id="id411" class="indexterm"/>
+</p><p>
+<span class="strong"><strong>Chapter9/access1.py</strong></span>
+</p><div class="informalexample"><pre class="programlisting"><span class="strong"><strong>
+from permissions1 import isallowed</strong></span>
+class Entity(AbstractEntity):
+	database = db<span class="strong"><strong>
+	def update(self,**kw):
+		if isallowed('update', self, logon.checkauth(),
+							self.getUser()):
+				super().update(**kw)</strong></span>
+class Relation(AbstractRelation):
+	database = db
+class User(Entity):
+	name = Attribute(notnull=True, unique=True,
+			displayname="Name", primary=True)
+class Account(Entity):
+	name = Attribute(notnull=True, displayname="Name",
+			primary=True)
+class OwnerShip(Relation):
+	a = User
+	b = Account
+class AccountBrowser(Browse):
+	edit = Display(Account, edit=True, logon=logon,
+			columns=Account.columns+[User])
+	add = Display(Account, add=True, logon=logon,
+			columns=Account.columns+[User])
+class UserBrowser(Browse):
+	edit = Display(User, edit=True, logon=logon)
+	add = Display(User, add=True, logon=logon)
+</pre></div><p>The database distributed with the code (access1.db) contains a number of accounts already so the code does not contain any lines to create those. The important part is highlighted in the preceding code: it imports a<code class="literal"> permissions1</code> module that contains a dictionary of permissions. This dictionary lists for each combination of entity, action, ownership, and username whether this is permissible or not.<a id="id412" class="indexterm"/>
+</p><p>We can now override the<code class="literal"> update()</code> method in the<code class="literal"> AbstractEntity</code> class (highlighted): We retrieve the username from the current sessions by calling the<code class="literal"> checkauth()</code> method and pass it along to the<code class="literal"> isallowed()</code> function, together with the name of the action we want to check (update in this case), the entity, and a list of users (the owners). If this checks out okay, we call the original<code class="literal"> update()</code> method.</p><p>If we take a look at<code class="literal"> permissions1.py</code>, we see that because, in this example, we only consider the<code class="literal"> Account</code> entity and the update action in this list is quite small:</p><p>
+<span class="strong"><strong>Chapter9/permissions1.py</strong></span>
+</p><div class="informalexample"><pre class="programlisting">
+import entity1<span class="strong"><strong>
+allowed = {</strong></span>
+	'Account' : {
+		'create' : {
+			'admin' : 'all',
+			'eve' : 'all',
+			'john' : 'owner',
+			'mike' : 'owner'
+		},
+		'update' : {
+			'admin' : 'all',
+			'eve' : 'all',
+			'john' : 'owner',
+			'mike' : 'owner'
+		},
+		'delete' : {
+			'admin' : 'all',
+			'eve' : 'all',
+		}
+	}
+}<span class="strong"><strong>
+def isallowed(action,entity,user,owner):</strong></span>
+if len(owner) &lt; 1 : return True
+try:
+	privileges = allowed[entity.__class__.__name__][action]
+	if not user in privileges :
+			return False
+	elif privileges[user] == 'all':
+			return True
+	elif privileges[user] == 'owner' and user == owner[0].name:
+			return True
+	else:
+			return False
+except KeyError:
+	return True
+</pre></div><p>The dictionary with privileges itself is called<code class="literal"> allowed</code> (highlighted) and<code class="literal"> permissions1.py</code> also defines a function called<code class="literal"> isallowed()</code>, that will return<code class="literal"> True</code> if there aren't any owners for this entity. Then it checks if there are any privileges known for this entity and action. If this is not the case, any exception will be raised because either the key for the entity or the key for the action does not exist.<a id="id413" class="indexterm"/>
+</p><p>If there are privileges known, we check if the user has specific privileges. If there is no key for the user, we return<code class="literal"> False</code>. If there is, and the privilege is<code class="literal"> all</code>, we return<code class="literal"> True:</code> he/she may perform the action on this entity even for an entity instance he/she doesn't own. If the privilege is the owner, we only return<code class="literal"> True</code> if the user is in fact the owner.</p><p>The aforementioned approach outlined is cumbersome for various reasons:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">If we would like to add a new salesperson, for example, we would have to add permission entries for each entity/action combination. In the example, we only considered the<code class="literal"> Account</code> entity and the<code class="literal"> update</code> action, but in a somewhat more realistic application, there would be tens of entities (like<code class="literal"> Contact, Address, Quote, Lead</code>, and so on) and quite a few actions more to consider (for example,<code class="literal"> delete</code> and<code class="literal"> create</code>, but also actions that involve other entities like<span class="emphasis"><em> changing</em></span> ownership or adding an address to an account). Also, if that sales person was promoted to sales manager, we would have to repeat the whole exercise again.</li><li class="listitem" style="list-style-type: disc">If we added a new type of entity, we would have to add lines for each and every person in the company.</li><li class="listitem" style="list-style-type: disc">Administering permissions in a Python module is not something you normally would expect a non-technical person to do as it is cumbersome, error prone, and requires the application to be restarted if something changes.</li></ul></div><p>The last reason is why we will implement the list of permissions in the database. After all, we already have a framework that allows for easy manipulation of database entries with a web interface. The other reasons are why we will reconsider our first approach and will implement a scheme called<span class="strong"><strong> role-based access control</strong></span>.<a id="id414" class="indexterm"/>
+</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Role-based access control"><div class="titlepage"><div><div><h1 class="title"><a id="ch09lvl1sec08"/>Role-based access control</h1></div></div></div><p>The idea in role-based access control is to assign one or more roles to people instead of specific permissions.<a id="id415" class="indexterm"/>
+</p><p>Permissions are then associated with a role, and if a person has more than one role, the permissions are merged. If a new person needs a set of permissions to use an application, or if a person's role in the organization changes, only the list of roles associated with that person needs to be changed instead of having to change the permissions for this person for each type of entity in the application.</p><p>Likewise, if we would extend the available types of entities, we would only have to define what permissions associated with a role (or roles) would apply to this new entity instead of defining this for every person.</p><div class="note" title="Note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="note39"/>Note</h3><p>A good starter for reading more about this is this Wikipedia article:<a class="ulink" href="http://en.wikipedia.org/wiki/Role-based_access_control"> http://en.wikipedia.org/wiki/Role-based_access_control</a>.</p></div><p>The aforementioned concepts described can be captured in this data model:</p><div class="mediaobject"><img src="images/3746OS_09_09.jpg" height="94" alt="Role-based access control"/></div><p>In our simplified model, a user can have one role, but a role can have one or more permissions. A permission consists of several attributes, an entity, action, and level, that together describe under which conditions something is allowed.</p></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Time for action implementing role-based access control"><div class="titlepage"><div><div><h1 class="title"><a id="ch09lvl1sec09"/>Time for action implementing role-based access control</h1></div></div></div><p>Run the example application provided in<code class="literal"> access2.py</code> and log in as<code class="literal"> admin</code>. You will see that besides<span class="strong"><strong> Users</strong></span> and<span class="strong"><strong> Accounts</strong></span>, you are presented with links to<span class="strong"><strong> Roles</strong></span> and<span class="strong"><strong> Permissions</strong></span> as well. If you click on<span class="strong"><strong> Roles</strong></span>, you will see we have defined several roles:<a id="id416" class="indexterm"/>
+</p><div class="mediaobject"><img src="images/3746_09_07.jpg" width="186" alt="Time for action implementing role-based access control"/></div><p>As you can see in the screenshot, we have also defined a<span class="strong"><strong> Superuser</strong></span> role to illustrate that it is possible to extend the concept of role-based access control to the maintenance of roles and permissions themselves.<a id="id417" class="indexterm"/>
+</p><div class="section" title="What just happened?"><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec06"/>What just happened?</h2></div></div></div><p>Applications that use this form of access control have to be adapted only slightly. Take a look at<code class="literal"> access2.py:</code>
+</p><p>
+<span class="strong"><strong>Chapter9/access2.py</strong></span>
+</p><div class="informalexample"><pre class="programlisting">
+import os
+import cherrypy
+from rbacentity import AbstractEntity, Attribute, Picklist, 
+AbstractRelation
+from browse import Browse
+from display import Display
+from logondb import LogonDB
+db="/tmp/access2.db"
+</pre></div><p>Compared to our previous example, only the first part is different, in that it includes the<code class="literal"> rbacentity</code> instead of the<code class="literal"> entity</code> module. This module provides the same functionality as the<code class="literal"> entity</code> module, but the<code class="literal"> AbstractEntity</code> class defined in this module has some added magic to provide access to roles and permissions. We will not inspect that in detail here, but will comment on it when we encounter it in the following code.<a id="id418" class="indexterm"/>
+</p><p>The next part is the definition of the<code class="literal"> Entity</code> class. We could have opted for redefining the<code class="literal"> AbstractEntity</code> class, but here we have chosen to add the functionality to the<code class="literal"> Entity</code> subclass by adding and overriding methods where necessary:</p><p>
+<span class="strong"><strong>Chapter9/access2.py</strong></span>
+</p><div class="informalexample"><pre class="programlisting">
+class Entity(AbstractEntity):
+	database = db
+	userentity = None
+	logon = None
+	@classmethod
+	def setUserEntity(cls,entity):
+		cls.userentity = entity
+	@classmethod
+	def getUserEntity(cls):
+		return cls.userentity
+	@classmethod
+	def setLogon(cls,logon):
+		cls.logon = logon
+	@classmethod
+	def getAuthenticatedUsername(cls):
+		if cls.logon :
+			return cls.logon.checkauth()
+		return None
+	def isallowed(self,operation):
+		user = self.getUserEntity().list(
+			pattern=[('name',self.getAuthenticatedUsername())])[0]
+		entity = self.__class__.__name__<span class="strong"><strong>
+		if user.name == 'admin' :
+			return True</strong></span>
+		roles = user.getRole()
+		if len(roles):
+			role = roles[0]
+			permissions = role.getPermission()
+			for p in permissions :
+				if p.entity == entity:
+					if p.operation=='*' or p.operation==operation:
+						if p.level == 0 :
+							return True
+						elif p.level == 1:<span class="strong"><strong>
+							for owner in self.getUser():</strong></span>
+								if user.id == owner.id :
+									return True
+						return False<span class="strong"><strong>
+					def update(self,**kw):</strong></span>
+						if self.isallowed('update'):
+							super().update(**kw)
+</pre></div><p>Instead of just defining a<code class="literal"> database</code> class variable, we now also define a<code class="literal"> userentity</code> class variable to hold a reference to the class of the entity that represents a user and a<code class="literal"> logon</code> class variable to hold a reference to a logon instance that can provide us with the name of an authenticated user.<a id="id419" class="indexterm"/>
+</p><p>This distinction is identical to examples in the previous chapters: we have a<code class="literal"> User</code> entity in our main database where we may store all sorts of information related to the user (like full name, telephone number, gender, and so on) and a separate password database that holds just usernames and encrypted passwords. If the user is correctly authenticated against the password database, we know his/her username, which we can then use to retrieve the corresponding<code class="literal"> User</code> instance with all the extra associated information. The class methods provide the means to get access to these class variables.</p><p>In this example, we only override the<code class="literal"> update()</code> method (highlighted) but in a full implementation you might want to override other<code class="literal"> Entity</code> methods as well. The pattern is simple: we call the<code class="literal"> isallowed()</code> method with an argument that indicates which action we would like to check and if<code class="literal"> isallowed()</code> returns<code class="literal"> True</code>, we call the original method.</p><p>The first thing the<code class="literal"> isallowed()</code> method itself does, is retrieve the username of the authenticated user with the<code class="literal"> getAuthenticatedUsername()</code> class method. It then uses this name to find a<code class="literal"> User</code> instance. Even though we might want to implement a role-based access scheme in our application to allow for the administration of roles and permissions by various users, we still provide a shortcut for the administrator here as a convenience (highlighted). This way we do not have to prime the database with roles and permissions for the admin user. For a real world application, you may choose differently of course.</p><p>Next we check if there are any roles associated with the user, and if this is the case, we retrieve all permissions associated with the first role (in this example, users have just one role). We then loop over all those permissions to check if there is one that applies to the entity we are interested in. If so, we check the<code class="literal"> operation</code> field. If this field contains an asterisk (*) or is equal to the operation we are checking, we look at the<code class="literal"> level</code>. If this<code class="literal"> level</code> is zero, this means that the current user may perform this operation on this entity even if he/she is not the owner. If the level is one, he/she is only allowed to perform the operation if he/she owns the entity, so we check whether the user is in the list of users associated with the current entity.</p><div class="note" title="Note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="tip09"/>Tip</h3><p>Retrieving roles and permissions each time an operation is performed might incur a serious performance hit. It might be a good idea to cache some of this information. You have to be careful though and invalidate that cache as soon as the set of permissions for a user changes.</p></div><p>The next part of<code class="literal"> access2.py</code>, as shown, illustrates how we may use this augmented version of the<code class="literal"> Entity</code> class:<a id="id420" class="indexterm"/>
+</p><p>
+<span class="strong"><strong>Chapter9/access2.py</strong></span>
+</p><div class="informalexample"><pre class="programlisting">
+class Relation(AbstractRelation):
+	database = db
+class User(Entity):
+	name = Attribute(notnull=True, unique=True, displayname="Name", 
+primary=True)
+class Account(Entity):
+	name = Attribute(notnull=True, displayname="Name", primary=True)
+class OwnerShip(Relation):
+	a = User
+	b = Account
+class UserRoles(Relation):
+	a = User<span class="strong"><strong>
+	b = User._rbac().getRole()</strong></span>
+	relation_type = "N:1"
+logon = LogonDB()
+Entity.setUserEntity(User)
+Entity.setLogon(logon)
+</pre></div><p>As before, we define<code class="literal"> User</code> and<code class="literal"> Account</code> entities, and an ownership relation between them. The<code class="literal"> rbacentity</code> module will have provided for<code class="literal"> Role</code> and<code class="literal"> Permission</code> classes and we can gain access to those with the<code class="literal"> _rbac()</code> class method available to all<code class="literal"> AbstractEntity</code> derived classes. The object returned by this<code class="literal"> _rbac()</code> method provides a<code class="literal"> getRole()</code> method that returns the class of the<code class="literal"> Role</code> entity. We use it here to create a relation between users and their roles (highlighted). The final lines associate the password database and the<code class="literal"> User</code> class with our new<code class="literal"> Entity</code> class.<a id="id421" class="indexterm"/>
+</p><p>To provide access to the lists of roles and permissions, we can use the same<code class="literal"> _rbac()</code> method to provide the<code class="literal"> Role</code> and<code class="literal"> Permission</code> classes needed to create<code class="literal"> Browse</code> classes:</p><p>
+<span class="strong"><strong>Chapter9/access2.py</strong></span>
+</p><div class="informalexample"><pre class="programlisting">
+class RoleBrowser(Browse):
+		edit = Display(User._rbac().getRole(), edit=True, logon=logon)
+		add = Display(User._rbac().getRole(), add=True, logon=logon)
+class PermissionBrowser(Browse):
+		edit = Display(User._rbac().getPermission(), edit=True,
+	logon=logon, columns=User._rbac().getPermission().columns + 
+[User._rbac().getRole()])
+	add = Display(User._rbac().getPermission(), add=True,
+logon=logon, columns=User._rbac().getPermission().columns + [User._
+rbac().getRole()])
+</pre></div></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Summary"><div class="titlepage"><div><div><h1 class="title"><a id="ch09lvl1sec10"/>Summary</h1></div></div></div><p>In this chapter, we filled in some gaps in our framework, Specifically, we learned how to implement more complex relations, for example, one-to-many and many-to-one relationships, how to create the necessary user interface components to maintain those relations, and how to implement role-based access control.</p><p>We're not quite there yet, because we are missing facilities to let end-users customize the datamodel, which is the subject of the next chapter.</p></div></div>
+</body></html>

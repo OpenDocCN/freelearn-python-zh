@@ -1,0 +1,515 @@
+<html><head></head><body>
+  <div id="sbo-rt-content"><div class="chapter" title="Chapter 8. Managing Customer Relations"><div class="titlepage"><div><div><h1 class="title"><a id="ch08"/>Chapter 8. Managing Customer Relations</h1></div></div></div><div class="blockquote"><blockquote class="blockquote"><p>There is more to an entity framework and CherryPy application code than just merely browsing lists. The user must be able to add new instances and edit existing ones.</p></blockquote></div><p>In this chapter, we will:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">See how to display instances</li><li class="listitem" style="list-style-type: disc">How to add and edit instances</li><li class="listitem" style="list-style-type: disc">How to provide auto complete functionality to attributes referring to other entities</li><li class="listitem" style="list-style-type: disc">How to implement picklists</li></ul></div><p>So let's get on with it...</p><div class="section" title="A critical review"><div class="titlepage"><div><div><h1 class="title"><a id="ch08lvl1sec01"/>A critical review</h1></div></div></div><p>Now that we have created an object relational framework in the form of an entity and relation modules, it is time for a critical reappraisal.</p><p>A couple of larger and smaller issues may hinder us in quickly prototyping and implementing a database-driven application:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">We already keep an administration of the additional properties of the entity attributes, for example, whether an attribute has a validator function. It might be a good idea to store things like the preferred representation of an attribute's value as well. We also want to have the possibility of keeping a record of allowed values, so we can implement picklists</li><li class="listitem" style="list-style-type: disc">Although the framework is flexible enough for a developer to quickly implement a database-driven application, it does not have any functionality to let an end user alter the database schema. It is not possible to add an attribute to an entity, for example. Even if this were possible, we would still need some authorization scheme to limit this functionality to authorized users only.</li></ul></div><p>In the following chapters, we will tackle these limitations one-by-one and each step will bring us closer to implementing our final example: a customer relations management application. Some parts of this process require us to perform some pretty sophisticated Python tricks, but these parts are clearly flagged and may be skipped.</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Designing a Customer Relationship Management application"><div class="titlepage"><div><div><h1 class="title"><a id="ch08lvl1sec02"/>Designing a Customer Relationship Management application</h1></div></div></div><p>Our first revision of CRM will start off with a bare bones implementation. It is about as simple as the books application and its data model is illustrated in the next diagram:<a id="id369" class="indexterm"/>
+</p><div class="mediaobject"><img src="images/3746OS_08_01.jpg" height="90" alt="Designing a Customer Relationship Management application"/></div><p>The web application will serve a single company and the users are typically the sales representatives and back office employees. In this basic form, an Account is the company we are interested in with a couple of attributes like name and the type of business. We also keep records of Contacts; these are people that may be associated with an Account. These Contacts have attributes like name, gender, and so on. Both Accounts and Contacts may have any number of addresses.</p></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Time for action implementing a basic CRM"><div class="titlepage"><div><div><h1 class="title"><a id="ch08lvl1sec03"/>Time for action implementing a basic CRM</h1></div></div></div><p>Have a look at the following code (available as<code class="literal"> crm1.py)</code>. It will define the entities identified in the previous section and the result, when run, will have a familiar look:<a id="id370" class="indexterm"/>
+</p><div class="mediaobject"><img src="images/3746_08_002.jpg" height="89" alt="Time for action implementing a basic CRM"/></div><p>We've added a little bit of CSS styling to order the elements on the page, but in the final revision, we will give it a much more attractive look. Clicking on the<span class="strong"><strong> Add new</strong></span> button will allow you to add a new entity.</p><div class="section" title="What just happened?"><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec01"/>What just happened?</h2></div></div></div><p>These humble beginnings in implementing CRM were accomplished by the code in<code class="literal"> crm1.py:</code>
+</p><p>
+<span class="strong"><strong>Chapter8/crm1.py</strong></span>
+</p><div class="informalexample"><pre class="programlisting">
+	import os
+	import cherrypy
+	from entity import AbstractEntity, Attribute, Picklist, 
+	AbstractRelation
+	from browse import Browse
+	from display import Display
+	from editor import Editor
+	from logondb import LogonDB
+	db="/tmp/crm1.db"
+	class Entity(AbstractEntity):
+		database = db
+	class Relation(AbstractRelation):
+		database = db
+	class User(Entity):
+		name = Attribute(notnull=True, unique=True,
+				displayname="Name", primary=True)
+	class Account(Entity):
+		name = Attribute(notnull=True,
+				displayname="Name", primary=True)
+	class Contact(Entity):
+		firstname = Attribute(displayname="First Name")
+		lastname = Attribute(displayname="Last Name",
+					notnull=True, primary=True)<span class="strong"><strong>
+	gender = Attribute(displayname="Gender",
+			notnull=True,
+			validate=Picklist(
+						Male=1,
+						Female=2,
+						Unknown=0))</strong></span>
+	telephone = Attribute(displayname="Telephone")
+class Address(Entity):
+	address = Attribute(displayname="Address",
+				notnull=True, primary=True)
+	city = Attribute(displayname="City")
+	zipcode = Attribute(displayname="Zip")
+	country = Attribute(displayname="Country")
+	telephone = Attribute(displayname="Telephone")
+class OwnerShip(Relation):
+	a = User
+	b = Account
+class Contacts(Relation):
+	a = Account
+	b = Contact
+class AccountAddress(Relation):
+	a = Account
+	b = Address
+class ContactAddress(Relation):
+	a = Contact
+	b = Address
+</pre></div><p>The first part is all about defining the entities and the relations between them according to the data model we sketched earlier. The concept is pretty much the same as for the books application, but for one important detail, the use of a<span class="strong"><strong> picklist</strong></span> to limit the allowable choices for gender (highlighted). We will study these picklists in detail later in this chapter.<a id="id372" class="indexterm"/>
+</p><p>The next part creates the actual CherryPy application, with a<code class="literal"> Browse</code> page for each entity (highlighted):</p><p>
+<span class="strong"><strong>Chapter8/crm1.py</strong></span>
+</p><div class="informalexample"><pre class="programlisting">
+logon = LogonDB()<span class="strong"><strong>
+class AccountBrowser(Browse):</strong></span>
+	display = Display(Account)
+	edit = Display(Account, edit=True, logon=logon,
+								columns=Account.columns+[Address,User])
+	add = Display(Account, add=True, logon=logon,
+								columns=Account.columns+[Address,User])<span class="strong"><strong>
+class UserBrowser(Browse):</strong></span>
+	display = Display(User)
+	edit = Display(User, edit=True, logon=logon)
+	add = Display(User, add=True, logon=logon)<span class="strong"><strong>
+class ContactBrowser(Browse):</strong></span>
+	display = Display(Contact)
+	edit = Display(Contact, edit=True, logon=logon,
+								columns=Contact.
+columns+[Account,Address])
+	add = Display(Contact, add=True, logon=logon,
+								columns=Contact.
+columns+[Account,Address])<span class="strong"><strong>
+class AddressBrowser(Browse):</strong></span>
+	display = Display(Address)
+	edit = Display(Address, edit=True, logon=logon)
+	add = Display(Address, add=True, logon=logon)
+</pre></div><p>The final part defines a<code class="literal"> Root</code> class with an<code class="literal"> index()</code> method that will force the user to identify himself/herself first (highlighted) and will then redirect the user to the<a class="ulink" href="http:///entities"> /entities</a> page, served by the<code class="literal"> entities()</code> method.</p><p>This method will serve up a basepage with a navigation section that will allow the user to select a browse page for a type of entity and a content division which is initially empty, but will act as a container for either the chosen browse component or any edit or add page.<a id="id373" class="indexterm"/>
+</p><p>
+<span class="strong"><strong>Chapter8/crm1.py</strong></span>
+</p><div class="informalexample"><pre class="programlisting">
+with open('basepage.html') as f:
+	basepage=f.read(-1)
+class Root():
+	logon = logon
+	user = UserBrowser(User)
+	account = AccountBrowser(Account,
+						columns=Account.
+columns+[User,Address,Contact])
+	contact = ContactBrowser(Contact,
+						columns=Contact.columns+[Address,Account])
+	address = AddressBrowser(Address)
+	@cherrypy.expose
+	def index(self):<span class="strong"><strong>
+		return Root.logon.index(returnpage='../entities')</strong></span>
+	@cherrypy.expose
+	def entities(self):
+		username = self.logon.checkauth()
+		if username is None :
+				raise HTTPRedirect('.')
+		user=User.list(pattern=[('name',username)])
+		if len(user) &lt; 1 :
+				User(name=username)
+		return basepage%'''
+		&lt;div class="navigation"&gt;
+				&lt;a href="user"&gt;Users&lt;/a&gt;
+				&lt;a href="http://account"&gt;Accounts&lt;/a&gt;
+				&lt;a href="contact"&gt;Contacts&lt;/a&gt;
+				&lt;a href="http://address"&gt;Addresses&lt;/a&gt;
+		&lt;/div&gt;
+		&lt;div class="content"&gt;
+		&lt;/div&gt;
+		&lt;script&gt;
+		... Javascript omitted ...
+		&lt;/script&gt;
+		'''
+cherrypy.config.update({'server.thread_pool':1})
+cherrypy.engine.subscribe('start_thread',
+	lambda thread_index: Root.logon.connect())
+current_dir = os.path.dirname(os.path.abspath(__file__))
+cherrypy.quickstart(Root(),config={
+		'/':
+		{ 'log.access_file' :
+				os.path.join(current_dir,"access.log"),
+		'log.screen': False,
+		'tools.sessions.on': True
+		},
+		'/browse.js':
+		{ 'tools.staticfile.on':True,
+		'tools.staticfile.filename':current_dir+"/browse.js"
+		},
+		'/base.css':
+		{ 'tools.staticfile.on':True,
+		'tools.staticfile.filename':current_dir+"/base.css"
+		}
+})
+</pre></div></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Adding and editing values"><div class="titlepage"><div><div><h1 class="title"><a id="ch08lvl1sec04"/>Adding and editing values</h1></div></div></div><p>Until now, we did not look closely at the<code class="literal"> Display</code> class, although it is used in various incarnations within the application that we set up with CherryPy. The<code class="literal"> Display</code> class combines a number of functions. It:</p><p>Until now, we did not look closely at the<code class="literal"> Display</code> class, although it is used in various incarnations within the application that we set up with CherryPy. The<code class="literal"> Display</code> class combines a number of functions. It:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Displays detailed values of an instance<a id="id375" class="indexterm"/></li><li class="listitem" style="list-style-type: disc">Allows those values to be edited</li><li class="listitem" style="list-style-type: disc">Displays a form that allows us to add a completely new instance</li><li class="listitem" style="list-style-type: disc">Processes the input from the edit and add forms</li></ul></div><p>The reason to bundle these functions is twofold: displaying the labels and values for reading, editing, or adding an instance shares a lot of common logic, and by processing the results within the same class method, we can refer to the<code class="literal"> action</code> attribute of a<code class="literal">&lt;form&gt;</code> element in a way that allows us to mount an instance of the<code class="literal"> Display</code> class from anywhere in the application tree.</p></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Time for action adding an instance"><div class="titlepage"><div><div><h1 class="title"><a id="ch08lvl1sec05"/>Time for action adding an instance</h1></div></div></div><p>To understand the<code class="literal"> Display</code> class, let us create a very simple application. Type in the following code and run it:<a id="id376" class="indexterm"/>
+</p><p>
+<span class="strong"><strong>Chapter8/crmcontact.py</strong></span>
+</p><div class="informalexample"><pre class="programlisting">
+import os
+import cherrypy
+from entity import AbstractEntity, Attribute, Picklist
+from browse import Browse
+from display import Display
+from logondb import LogonDB
+db="/tmp/crmcontact.db"
+class Entity(AbstractEntity):
+	database = db
+class Contact(Entity):
+	firstname = Attribute(displayname="First Name")
+	lastname = Attribute(displayname="Last Name",
+											notnull=True, 
+primary=True)
+	gender = Attribute(displayname="Gender",
+											notnull=True,
+											validate=Picklist(
+Male=1,Female=2,Unknown=0))
+	telephone = Attribute(displayname="Telephone")
+class ContactBrowser(Browse):
+	edit = Display(Contact, edit=True)
+	add = Display(Contact, add=True)
+current_dir = os.path.dirname(os.path.abspath(__file__))
+cherrypy.quickstart(ContactBrowser(Contact),config={
+	'/':
+	{ 'log.access_file' :
+			os.path.join(current_dir,"access.log"),
+	'log.screen': False,
+	'tools.sessions.on': True
+	}
+})
+</pre></div><p>When you point your browser to<code class="literal"> http://localhost:8080</code>, you will be presented with an empty list of contacts that you may expand by clicking the<span class="strong"><strong> Add</strong></span> button. This will present you with the following screen:<a id="id377" class="indexterm"/>
+</p><div class="mediaobject"><img src="images/3746_08_003.jpg" height="16" alt="Time for action adding an instance"/></div><p>Here you may enter new values, and when you click the add button, a new contact will be added to the database, after which, you will return to the list of contacts, but now with an extra one added.</p><div class="section" title="What just happened?"><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec02"/>What just happened?</h2></div></div></div><p>In the application tree that we constructed, we mounted several instances of the<code class="literal"> Display</code> class, each with its own initialization parameters. These parameters are merely stored in the instance by the<code class="literal"> __init__()</code> method for referral later:</p><p>
+<span class="strong"><strong>Chapter8/display.py</strong></span>
+</p><div class="informalexample"><pre class="programlisting">
+	def __init__(self, entity, edit=False, add=False,
+								logon=None, columns=None):
+		self.entity = entity
+		self.edit = edit
+		self.add = add
+		self.logon = logon
+		if columns is None:
+			self.columns = entity.columns
+		else:
+			self.columns = columns
+</pre></div><p>The most important parameter is<code class="literal"> entity</code>. This will be the<code class="literal"> Entity</code> class that we want<code class="literal"> Display</code> to be able to add or edit.</p><p>
+<code class="literal">__init__()</code> also takes an<code class="literal"> edit</code> or<code class="literal"> add</code> parameter that when set will determine the type of activity this instance of<code class="literal"> Display</code> will perform. If neither is given, an instance will just be displayed without the possibility of altering its attributes. In the stripped down<code class="literal"> crmcontact.py</code> application, we created a<code class="literal"> ContactBrowser</code> class that holds references to two different instances of the<code class="literal"> Display</code> class. The one in the<code class="literal"> add</code> class variable is created with an<code class="literal"> add</code> attribute set to<code class="literal"> True</code>, while the one in the<code class="literal"> edit</code> variable is created with an<code class="literal"> edit</code> attribute set to<code class="literal"> True</code>. The<span class="strong"><strong> Add new</strong></span> button in the browser is equipped with a click handler that will replace the browse list with the form that will be served by the<code class="literal"> Display</code> instance that was created with the<code class="literal"> add</code> argument.<a id="id378" class="indexterm"/>
+</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Time for action editing an instance"><div class="titlepage"><div><div><h1 class="title"><a id="ch08lvl1sec06"/>Time for action editing an instance</h1></div></div></div><p>We also want to open a form that will allow the user to edit an existing instance when double-clicked in the browse list. In the stripped down application that we created in the previous section, we merely created the<code class="literal"> ContactBrowser</code> class as a subclass of<code class="literal"> Browse</code>. If we want to add an additional double-click handler to the browse list element, we will have to override the<code class="literal"> index()</code> method.<a id="id379" class="indexterm"/>
+</p><p>In the definition of the<code class="literal"> ContactBrowser</code> class, add the following to the definition of the<code class="literal"> index()</code> method (the complete code is available as<code class="literal"> crmcontactedit.py):</code>
+</p><p>
+<span class="strong"><strong>Chapter8/crmcontactedit.py</strong></span>
+</p><div class="informalexample"><pre class="programlisting">
+@cherrypy.expose
+def index(self, _=None,
+	start=0, pattern=None, sortorder=None, cacheid=None,
+	next=None, previous=None, first=None, last=None,
+	clear=None):
+	s="".join(super().index(_, start, pattern, sortorder,
+							cacheid, next,previous, first, last, 
+clear))
+	s+='''
+	&lt;script&gt;
+	$("table.entitylist tr").dblclick(function(){
+				var id=$(this).attr('id');
+				$("body").load('edit/?id='+id);
+			});
+	&lt;/script&gt;
+	'''
+	return basepage%s
+</pre></div><p>The code merely gathers the output from the original<code class="literal"> index()</code> method of the<code class="literal"> Browse</code> class (highlighted) and adds a<code class="literal">&lt;script&gt;</code> element to it that will add a double-click handler to each<code class="literal">&lt;tr&gt;</code> element in the browse list. This click handler will replace the body with the form served by the edit URL, which will be passed an<code class="literal"> id</code> parameter equal to the<code class="literal"> id</code> attribute of the<code class="literal">&lt;tr&gt;</code> element.</p><p>If you run<code class="literal"> crmcontactedit.py</code>, you will be presented with the same list of contacts as before and if it is empty, you may first need to add one or more contacts. Once these are present, you can double-click on any of them to be presented with an edit screen:</p><div class="mediaobject"><img src="images/3746_08_004.jpg" height="16" alt="Time for action editing an instance"/></div><p>This looks very similar to the add screen, but changing values here and clicking the<span class="strong"><strong> Edit</strong></span> button will alter instead of adding a contact and returning you to the list of contacts.</p><div class="section" title="What just happened?"><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec03"/>What just happened?</h2></div></div></div><p>Let us have a look at how the<code class="literal"> Display</code> class handles the editing of instances.<a id="id380" class="indexterm"/>
+</p><p>All interaction by an instance of the<code class="literal"> Display</code> class is provided by a single method:<code class="literal"> index()</code> (full code is available in<code class="literal"> display.py):</code>
+</p><p>
+<span class="strong"><strong>Chapter8/display.py</strong></span>
+</p><div class="informalexample"><pre class="programlisting">
+@cherrypy.expose
+def index(self, id=None, _=None,
+		add=None, edit=None, related=None, **kw):
+	mount = cherrypy.request.path_info
+	if not id is None :
+		id = int(id)
+	kv=[]
+	submitbutton=""
+	if edit or add:
+		... code to process the results of an edit/add form omitted
+	action="display"
+	autocomplete=''
+	if not id is None:
+		e=self.entity(id=id)
+			for c in self.columns:
+				if c in self.entity.columns:
+					kv.append('&lt;label for="%s"&gt;%s&lt;/label&gt;'%
+						(c,self.entity.displaynames[c]))
+					if c in self.entity.validators and type(
+						self.entity.validators[c])==Picklist:
+						kv.append('&lt;select name="%s"&gt;'%c)
+						kv.extend(['&lt;option %s&gt;%s&lt;/option&gt;'%
+							("selected" if v==getattr(e,c)
+							else "",k)
+						for k,v in self.entity.validators[c]
+							.list.items()])
+						kv.append('&lt;/select&gt;')
+					else:
+					kv.append(
+					'&lt;input type="text" name="%s" value="%s"&gt;'%
+						(c,getattr(e,c)))
+					elif issubclass(c,AbstractEntity):
+						kv.append(
+						'&lt;label for="%s"&gt;%s&lt;/label&gt;'%
+						(c.__name__,c.__name__))
+						v=",".join([r.primary for r in e.get(c)])
+						kv.append(
+						'&lt;input type="text" name="%s" value="%s"&gt;'%
+						(c.__name__,v))
+						autocomplete += '''
+	$("input[name=%s]").autocomplete({source:"%s",minLength:2});
+						'''%(c.__name__,
+							mount+'autocomplete?entity='+c.__name__)
+				yield self.related_entities(e)<span class="strong"><strong>
+				if self.edit:</strong></span>
+					action='edit'
+					submitbutton='''
+					&lt;input type="hidden" name="id" value="%s"&gt;
+					&lt;input type="hidden" name="related" value="%s,%s"&gt;
+					&lt;input type="submit" name="edit" value="Edit"&gt;
+					'''%(id,self.entity.__name__,id)
+			elif self.add:
+				action='add'
+					for c in self.columns:
+						if c in self.entity.columns:
+							kv.append('&lt;label for="%s"&gt;%s&lt;/label&gt;'%(
+								c,self.entity.displaynames[c]))
+							if c in self.entity.validators and type(
+								self.entity.validators[c])==Picklist:
+							kv.append('&lt;select name="%s"&gt;'%c)
+							kv.extend(['&lt;option&gt;%s&lt;/option&gt;'%v
+								for v in self.entity.validators[c].
+									list.keys()])
+								kv.append('&lt;/select&gt;')
+							else:
+								kv.append('&lt;input type="text" name="%s"&gt;'
+									%c)
+						elif c=="related":
+							pass
+						elif issubclass(c,AbstractEntity):
+							kv.append('&lt;label for="%s"&gt;%s&lt;/label&gt;'%
+								(c.__name__,c.__name__))
+							kv.append('&lt;input type="text" name="%s"&gt;'%
+								c.__name__)
+							autocomplete += '''
+	$("input[name=%s]").autocomplete({source:"%s",minLength:2});
+							'''%(c.__name__,
+								mount+'autocomplete?entity='+c.__name__)
+			submitbutton='''
+			&lt;input type="hidden" name="related" value="%s"&gt;
+			&lt;input type="submit" name="add" value="Add"&gt;
+			'''%related
+		else:
+			yield """cannot happen
+			id=%s, edit=%s, add=%s, self.edit=%s, self.add=%s
+			"""%(id,edit,add,self.edit,self.add)<span class="strong"><strong>
+		yield '&lt;form action="%s"&gt;'%action
+		for k in kv:
+			yield k
+		yield submitbutton
+		yield "&lt;/form&gt;"
+		yield '&lt;script&gt;'+autocomplete+'&lt;/script&gt;'</strong></span>
+</pre></div><p>Depending on the parameters passed to the index() method and the information stored when the<code class="literal"> Display</code> instance was initialized,<code class="literal"> index()</code> performs different but similar actions.<a id="id382" class="indexterm"/>
+</p><p>When called without the<code class="literal"> add</code> or<code class="literal"> edit</code> parameter,<code class="literal"> index()</code> is called to display, edit, or add an instance and the first part of the code is skipped.</p><div class="note" title="Note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="note33"/>Note</h3><p>The<code class="literal"> add</code> and<code class="literal"> edit</code> parameters to<code class="literal"> index()</code> are different from the ones passed to<code class="literal"> __init__()</code>.</p></div><p>First, we check if the<code class="literal"> id</code> parameter is present (highlighted). If not, we're expected to present an empty form to let the user enter the attributes for an all new instance. However, if an<code class="literal"> id</code> parameter is present, we have to display a form with values.</p><p>To present such a form, we retrieve the entity with the given ID and check which columns we have to display and see if such a column is an attribute of the entity we are dealing with (highlighted). If so, we append to the<code class="literal"> kv</code> list a<code class="literal">&lt;label&gt;</code> element with the display name of the column and an<code class="literal">&lt;input&gt;</code> or<code class="literal">&lt;select&gt;</code> element, depending on whether we are dealing with an unrestricted text field or a picklist. If we are dealing with a picklist, the available choices are added as<code class="literal">&lt;option&gt;</code> elements.</p><p>If the column to display is not an attribute of the entity but another entity class, we are dealing with a relation. Here we also add a<code class="literal">&lt;label&gt;</code> element and an<code class="literal">&lt;input&gt;</code> field, but we also add JavaScript code to the<code class="literal"> autocomplete</code> variable that when executed will convert this<code class="literal">&lt;input&gt;</code> element into an autocomplete widget, which will retrieve its choices from the<code class="literal"> autocomplete()</code> method in this same<code class="literal"> Display</code> instance.</p><p>Only if this<code class="literal"> Display</code> instance was initialized to perform the edit function (highlighted), we append a submit button and set the<code class="literal"> action</code> variable to edit (the last part of the URL the values of the<code class="literal">&lt;form&gt;</code> element will be submitted to). We also add an extra hidden input element that holds the ID of the instance we are editing.<a id="id383" class="indexterm"/>
+</p><p>Constructing the empty form to add a new instance is almost the same exercise, only in this case, no values are filled in any of the<code class="literal">&lt;input&gt;</code> elements.</p><p>The final lines of code (highlighted) are shared again and used to deliver the<code class="literal">&lt;form&gt;</code> element based on the components just created for either an edit/display form or an empty add form together with any JavaScript generated to implement the autocomplete features. A typical sample of HTML generated for an edit form may look like this:</p><div class="informalexample"><pre class="programlisting">
+&lt;form action="edit"&gt;
+	&lt;label for="firstname"&gt;First Name&lt;/label&gt;
+	&lt;input name="firstname" value="Eva" type="text"&gt;
+	&lt;label for="lastname"&gt;Last Name&lt;/label&gt;
+	&lt;input name="lastname" value="Johnson" type="text"&gt;
+	&lt;label for="gender"&gt;Gender&lt;/label&gt;
+	&lt;select name="gender"&gt;
+			&lt;option selected="selected"&gt;Unknown&lt;/option&gt;
+			&lt;option&gt;Male&lt;/option&gt;
+			&lt;option&gt;Female&lt;/option&gt;
+	&lt;/select&gt;
+	&lt;label for="telephone"&gt;Telephone&lt;/label&gt;
+	&lt;input name="telephone" value="" type="text"&gt;
+	&lt;label for="Account"&gt;Account&lt;/label&gt;
+	&lt;input name="Account" value="" type="text"&gt;
+	&lt;label for="Address"&gt;Address&lt;/label&gt;
+	&lt;input name="Address" value="" type="text"&gt;
+	&lt;input name="id" value="2" type="hidden"&gt;
+	&lt;input name="edit" value="Edit" type="submit"&gt;
+&lt;/form&gt;
+&lt;script&gt;
+$("input[name=Account]").autocomplete({source:"autocomplete?entity=
+Account",minLength:2});
+$("input[name=Address]").autocomplete({source:"autocomplete?entity=
+Address",minLength:2});
+&lt;/script&gt;
+</pre></div><p>If the<code class="literal"> index()</code> method of<code class="literal"> Display</code> is called with either the<code class="literal"> add</code> or the<code class="literal"> edit</code> parameter present (typically the result of clicking a submit button in a generated edit or add form), different code is executed:<a id="id384" class="indexterm"/>
+</p><p>
+<span class="strong"><strong>Chapter8/display.py</strong></span>
+</p><div class="informalexample"><pre class="programlisting">
+@cherrypy.expose
+def index(self, id=None, _=None,
+		add=None, edit=None, related=None, **kw):
+	mount = cherrypy.request.path_info
+	if not id is None :
+		id = int(id)
+	kv=[]
+	submitbutton=""
+	if edit or add:
+		if (edit and add):
+			raise HTTPError(500)
+		if not self.logon is None:
+			username=self.logon.checkauth()
+			if username is None:<span class="strong"><strong>
+				raise HTTPRedirect('/')</strong></span>
+		if add:
+			attr={}
+			cols={}
+			relations={c.__name__:c for c in self.columns
+				if type(c)!=str}
+			for k,v in kw.items():<span class="strong"><strong>
+				if not k in self.entity.columns:</strong></span>
+					attr[k]=v
+					if not k in relations :
+						raise KeyError(k,
+							'not a defined relation')
+				else:
+					cols[k]=v<span class="strong"><strong>
+			e=self.entity(**cols)</strong></span>
+			for k,v in attr.items():
+				if v != None and v != '':
+					relentity = relations[k]
+					primary = relentity.primaryname
+					rels = relentity.listids(
+						pattern=[(primary,v)])
+					if len(rels):
+						r = relentity(id=rels[0])
+					else:
+						r = relentity(**{primary:v})
+					e.add(r)
+			if not related is None and related != '':
+				r=related.split(',')
+				re=e.relclass[r[0]](id=int(r[1]))
+				e.add(re)
+			redit = sub(Display.finaladd,'',mount)
+			raise cherrypy.HTTPRedirect(redit)
+		elif edit:
+			e=self.entity(id=id)
+			e.update(**kw)
+			raise cherrypy.HTTPRedirect(
+				mount.replace('edit','').replace('//','/'))
+				...code to display and instance omitted
+</pre></div><p>Only one of<code class="literal"> edit</code> or<code class="literal"> add</code> should be present; if both are present we raise an exception. If the user is not authenticated, editing an instance or adding a new one is not allowed, and we unceremoniously redirect him/her to the homepage (highlighted).<a id="id385" class="indexterm"/>
+</p><p>If the<code class="literal"> add</code> parameter is present, we will be creating a brand new instance. The first item of order is to check all incoming parameters to see if they are either an attribute of the entity that we will be creating (highlighted) or the name of a related entity. If not, an exception is raised.</p><p>The next step is to create the new entity (highlighted) and establish any relations.</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Adding relations"><div class="titlepage"><div><div><h1 class="title"><a id="ch08lvl1sec07"/>Adding relations</h1></div></div></div><p>One of the things we silently glossed over in the previous sections was the functionality to define relations between entities. Sure, the implementation of the<code class="literal"> Display</code> class did allow for the creation of new instances, but we did not address how to define a relation, even though<code class="literal"> Display</code> is already perfectly capable of showing columns that point to related entities like authors.<a id="id386" class="indexterm"/>
+</p><p>We could have hardcoded this behavior into specific implementations of<code class="literal"> Display</code> like we did earlier when we implemented the first version of the books application, but this doesn't play well with the idea of creating components that can figure out those things for themselves, leaving the developer of the web application with fewer things to worry about.</p><p>The previous incarnation of the<code class="literal"> relation</code> module was not quite up to this: we could define and administer a relation all right, but we'd have to do that by referring explicitly to an instance of a<code class="literal"> Relation</code> class.</p><p>Because this isn't intuitive, we created a second version of the<code class="literal"> relation</code> module that allows us to use the<code class="literal"> add()</code> method inserted into the class definition of an<code class="literal"> Entity</code> by the metaclass that creates a new relation. We do not have to care about the details: if we use<code class="literal"> add()</code> to establish a relation between two entities, this is all taken care of.</p><p>This means that we can complete the add functionality of the<code class="literal"> Display</code> class. For each column that refers to another entity (for example, the<code class="literal"> Author</code> column of a book), we now implement some way for the user to make a choice, for example, with the autocomplete functionality, and process this choice in a rather simple manner: if it is empty, we do not add a relation, if it refers to a existing entity, add the relation and if not, create the related entity first before adding it.<a id="id387" class="indexterm"/>
+</p><p>We now have the functionality to refer to existing related items by their primary attribute or define a new one. However, for the end user, it might be very convenient to have auto completion on input fields that refer to related entities. This not only may save time, it also prevents inadvertently adding new entities when a typing error is made.</p><p>In previous chapters, we already encountered auto completion with the help of jQuery UI's autocomplete widget and we implemented the server-side functionality to retrieve lists of possible completions. All we have to do now is to make this functionality available in a manner that is independent from the actual related entity:</p><p>
+<span class="strong"><strong>Chapter8/display.py</strong></span>
+</p><div class="informalexample"><pre class="programlisting">
+@cherrypy.expose
+def autocomplete(self, entity, term, _=None):<span class="strong"><strong>
+	entity={c.__name__:c for c in self.columns
+		if type(c)!=str}[entity]</strong></span>
+	names=entity.getcolumnvalues(entity.primaryname)
+	pat=compile(term,IGNORECASE)
+	return json.dumps(list(takewhile(lambda x:pat.match(x),
+				dropwhile(lambda x:not pat.match(x),names))))
+</pre></div><p>The HTML and JavaScript that is generated by the<code class="literal"> index()</code> method of the<code class="literal"> Display</code> class will ensure that the preceding<code class="literal"> autocomplete()</code> method will be called with the name of the entity of which we want to retrieve column values.</p><p>Any related class that the instance we are editing refers to is stored in the<code class="literal"> self.columns</code> instance variable, just like the names of the regular attributes. The highlighted line, therefore, collects those column names that are actually classes and creates a dictionary indexed by name, which holds the corresponding classes as values.</p><p>When we use the name of the related entity passed to the<code class="literal"> autocomplete()</code> method as the index, we will get hold of the class. This class is used in the next line to retrieve all column values for the column marked as the primary column. The final code to return a JSON encoded list of all those values that start with the term argument is the same as implemented earlier.<a id="id388" class="indexterm"/>
+</p><div class="note" title="Note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="note34"/>Note</h3><p>Dictionary comprehensions are a new addition to Python 3.x, so it might be enlightening to write out the highlighted line in the example code in a more traditional manner:</p><div class="informalexample"><pre class="programlisting">
+classmap = {} 
+for c in self.columns: 
+	if type(c)!=str: 
+			classmap[c.__name__] = c 
+entity = classmap[entity]
+</pre></div></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Picklists"><div class="titlepage"><div><div><h1 class="title"><a id="ch08lvl1sec08"/>Picklists</h1></div></div></div><p>When we examined the code to generate a form to edit an instance, we did not look into the details of implementing picklists. Picklists are a great way to reduce input errors. Anywhere a limited list of values is permitted, we can use a picklist, thereby preventing the user from inadvertently entering a value that is not allowed. In doing so, we can also associate each possible value with a meaningful label.<a id="id389" class="indexterm"/>
+</p><div class="note" title="Note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="note35"/>Note</h3><p>We already have the possibility to add a validation function, but this function only checks the input; it does not provide us with a list of possible choices.</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Time for action implementing picklists"><div class="titlepage"><div><div><h1 class="title"><a id="ch08lvl1sec09"/>Time for action implementing picklists</h1></div></div></div><p>What we need is a way to indicate that an entity attribute is a picklist. Run the following code (available as<code class="literal"> fruit.py)</code> and point your browser to<a class="ulink" href="http://localhost:8080"> http://localhost:8080</a>.<a id="id390" class="indexterm"/>
+</p><p>
+<span class="strong"><strong>Chapter8/fruit.py</strong></span>
+</p><div class="informalexample"><pre class="programlisting">
+import os
+import cherrypy
+from entity import AbstractEntity, Attribute, Picklist
+from browse import Browse
+from display import Display
+from logondb import LogonDB
+db="/tmp/fruits.db"
+class Entity(AbstractEntity):
+	database = db
+class Fruit(Entity):
+	name = Attribute(displayname="Name")
+	color = Attribute(displayname="Color",
+			notnull = True,
+			validate= Picklist([('Yellow',1),('Green',2),('Orange',0)]))
+	taste = Attribute(displayname="Taste",
+			notnull = True,
+			validate= Picklist(Sweet=1,Sour=2))
+class FruitBrowser(Browse):
+	edit = Display(Fruit, edit=True)
+	add = Display(Fruit, add=True)
+current_dir = os.path.dirname(os.path.abspath(__file__))
+cherrypy.quickstart(FruitBrowser(Fruit),config={
+			'/':
+			{ 'log.access_file' : os.path.join(current_dir,"access.
+log"),
+			'log.screen': False,
+			'tools.sessions.on': True
+			}
+})
+</pre></div><p>Click the<span class="strong"><strong> Add</strong></span> button to create a new fruit instance. The<code class="literal"> color</code> and<code class="literal"> taste</code> attributes are defined as picklists, and clicking on the<span class="strong"><strong> Color</strong></span> attribute, for example, may look like this:</p><div class="mediaobject"><img src="images/3746_08_005.jpg" height="44" alt="Time for action implementing picklists"/></div><div class="section" title="What just happened?"><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec04"/>What just happened?</h2></div></div></div><p>In the<code class="literal"> entity.py</code> file, we added a<code class="literal"> Picklist</code> class to store the available choices and their values:<a id="id391" class="indexterm"/>
+</p><p>
+<span class="strong"><strong>Chapter8/entity.py</strong></span>
+</p><div class="informalexample"><pre class="programlisting">
+class Picklist:
+	def __init__(self,list=None,**kw):
+		self.list = collections.OrderedDict(list) if not list is 
+None else collections.OrderedDict()
+		self.list.update(kw)
+	def __getitem__(self,key):
+		return self.list[key]
+</pre></div><p>The<code class="literal"> Picklist</code> class is primarily a container for an<code class="literal"> OrderedDict</code> (highlighted) and may be initialized either by a list or by passing any number of keywords to the<code class="literal"> __init__()</code> method. However, the order of these keywords is not preserved, so even though we defined the color attribute of the fruit entity with this validate argument<code class="literal"> validate= Picklist(Yellow=1,Green=2,Orange=0)</code>, the order in the drop-down box was<span class="strong"><strong> Orange, Green</strong></span>, and<span class="strong"><strong> Yellow</strong></span>.</p><p>So although convenient, passing keywords makes the use of an<code class="literal"> OrderedDict</code> rather pointless. Therefore, the<code class="literal"> __init__()</code> method also accepts a list of tuples of key/value pairs and if present, uses this list to initialize the dictionary. Now if we would use<code class="literal"> validate= Picklist([('Yellow',1),('Green',2),('Orange',0)])</code>, the order would be preserved, as shown in the following screenshot. It has the added benefit of allowing us to specify any string as a key and not just strings that are valid Python identifiers.</p><div class="mediaobject"><img src="images/3746_08_006.jpg" height="45" alt="What just happened?"/></div><p>We already saw in the<code class="literal"> index()</code> method of the<code class="literal"> Display</code> class how to retrieve a list of possible choices. An<code class="literal"> Entity</code> itself also needs to know how to deal with attributes that are picklists, for example, when it updates such an attribute. The<code class="literal"> __setattr__()</code> method of the<code class="literal"> AbstractEntity</code> class will have to be adapted as follows:<a id="id392" class="indexterm"/>
+</p><p>
+<span class="strong"><strong>Chapter8/entity.py</strong></span>
+</p><div class="informalexample"><pre class="programlisting">
+def __setattr__(self,name,value):
+		if name in self.validators :
+			if type(self.validators[name])==Picklist:
+				try:
+					value=self.validators[name].list[value]
+				except:
+					# key not known, try value directly
+					if not value in list(
+				self.validators[name].list.values()):
+							raise AttributeError(
+		"assignment to "+name+" fails, "+
+		str(value)+" not in picklist")
+			elif not self.validators[name](value):
+					raise AttributeError(
+					"assignment to "+name+" does not validate")
+	object.__setattr__(self,name,value)
+</pre></div><p>The added lines (highlighted) check whether any validator is a<code class="literal"> Picklist</code>, and if it is, tries to retrieve the value associated with the key. If this fails, it checks if the value that is entered is one of the values allowed. This way, it is valid to update a picklist attribute both with a key as well as a value. Given a<code class="literal"> fruit</code> instance of the<code class="literal"> Fruit</code> class defined earlier, the following lines are equivalent:</p><div class="informalexample"><pre class="programlisting">
+fruit.color = 'Green'
+fruit.color = 2
+</pre></div></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Summary"><div class="titlepage"><div><div><h1 class="title"><a id="ch08lvl1sec10"/>Summary</h1></div></div></div><p>We learned a lot in this chapter about how to present the end user with forms to manipulate instances in a way that does not need any hardcoded information.</p><p>Specifically, we covered how to display instances, add, and edit them, how to provide autocomplete functionality to attributes referring to other entities, and how to implement picklists.</p><p>All these items helped us to design and implement the first revision of a CRM application. Of course, there is more to a CRM application than just Accounts and Contacts and that is what we will look into in the next chapter.</p></div></div>
+</body></html>

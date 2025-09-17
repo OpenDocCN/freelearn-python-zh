@@ -1,0 +1,957 @@
+<html><head></head><body>
+  <div id="sbo-rt-content"><div class="chapter" title="Chapter 7. Refactoring Code for Reuse"><div class="titlepage"><div><div><h1 class="title"><a id="ch07"/>Chapter 7. Refactoring Code for Reuse</h1></div></div></div><div class="blockquote"><blockquote class="blockquote"><p>After doing a substantial bit of work, it is often a good idea to take a step back and look critically at your work to see if things could have been done better. Quite often, the insight gained in the development process can be used to good effect in any new code or even to refactor existing code if the benefits are so substantial that they warrant the extra work.</p></blockquote></div><div class="blockquote"><blockquote class="blockquote"><p>Often, such a critical reappraisal is motivated by observed shortcomings in the application, like poor performance, or by noting that requested changes take more time than we like because the code is designed in a less than optimal way.</p></blockquote></div><div class="blockquote"><blockquote class="blockquote"><p>Now that we have designed and implemented several applications in the last few chapters based on a simple entity/relation framework, it is time to have that critical look and see if there is room for improvement.</p></blockquote></div><div class="section" title="Time for action taking a critical look"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec01"/>Time for action taking a critical look</h1></div></div></div><p>Examine each major piece of code (often a Python module that you implemented) and ask yourself the following questions:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Could I reuse it without changes?</li><li class="listitem" style="list-style-type: disc">How much extra code was needed to actually use the module?</li><li class="listitem" style="list-style-type: disc">Did you really understand the documentation (even if you wrote it yourself)?</li><li class="listitem" style="list-style-type: disc">How much of the code is duplicated?</li><li class="listitem" style="list-style-type: disc">How easy is it to add new functionality?</li><li class="listitem" style="list-style-type: disc">How well did it perform?</li></ul></div><p>When we ask these questions about the entity and relation modules we developed, we see that:<a id="id315" class="indexterm"/>
+</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">It was quite easy to reuse the modules</li><li class="listitem" style="list-style-type: disc">But they do require quite a bit of extra code, for example, to initialize tables and threads</li></ul></div><p>Also, we deliberately wrote specific modules to deal with domain-specific code, like input validation, but it is worth examining this code to see if we can discover patterns and enhance our framework to better support these patterns. One example is that we frequently require auto completion so it is worth looking at how this is implemented.<a id="id316" class="indexterm"/>
+</p><p>Performance-wise, we saw in the books application that we have hardly addressed the way in which large lists of books are browsed and this certainly needs attention if we wish to reuse our framework in settings that deal with large lists.<a id="id317" class="indexterm"/>
+</p><div class="section" title="What just happened?"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec01"/>What just happened?</h2></div></div></div><p>Now that we have pointed out several areas where our framework modules might be improved, it is time to consider if it is worth the effort.</p><p>Framework modules are intended to be reused by many applications, so a redesign that will allow the modules to be used with less additional code is a good idea, as less code means less maintenance. Of course, rewriting may mean that existing applications need to be rewritten if they want to use these new versions, but that is the price to pay for better maintenance.<a id="id318" class="indexterm"/>
+</p><p>Refactoring existing functionality is often less problematic, but benefits greatly from a good test framework to check if the new implementation still behaves as expected. Likewise, adding completely new functionality is likely to be even less of a problem, as existing applications do not yet use this functionality.</p><p>Because, in our case, we judge the advantages to outweigh the disadvantages, we will rework the entity/relation framework in the next section. We will not only focus on using less code, but also on making the definition of the new Entity and Relation classes easier to read. This will provide for a more intuitive use of these classes.</p><p>We will also devote a section to developing functionality to browse through lists of entities in a way that scales well, even if the lists are large and need to be sorted or filtered.</p></div></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Refactoring"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec02"/>Refactoring</h1></div></div></div><p>The first area that we will refactor is the way we can use the<code class="literal"> Entity</code> class. Our goal is to enable a more intuitive use, without the need for explicit initialization of the database connections. To get a feeling for what is possible, let us first look at an example of how we would use the refactored<code class="literal"> entity</code> module.<a id="id319" class="indexterm"/>
+</p></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Time for action defining new entities: how it should look"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec03"/>Time for action defining new entities: how it should look</h1></div></div></div><p>Type in and run the following code (also available as<code class="literal"> testentity.py)</code>. It will use the refactored<code class="literal"> entity</code> module to define a<code class="literal"> MyEntity</code> class and work with some instances of this class. We will create, list, and update instances and even see an update fail because we try to assign a value that will not pass a validation for an attribute:<a id="id320" class="indexterm"/>
+</p><p>
+<span class="strong"><strong>Chapter7/testentity.py</strong></span>
+</p><div class="informalexample"><pre class="programlisting">
+from entity import *
+class Entity(AbstractEntity):
+	database="/tmp/abc.db"
+class MyEntity(Entity):<span class="strong"><strong>
+	a=Attribute(unique=True, notnull=True, affinity='float',
+		displayname='Attribute A', validate=lambda x:x&lt;5)</strong></span>
+a=MyEntity(a=3.14)
+print(MyEntity.list())
+e=MyEntity.list(pattern=[('a',3.14)])[0]
+print(e)
+e.delete()
+a=MyEntity(a=2.71)
+print([str(e) for e in MyEntity.list()])
+a.a=1
+a.update()
+print([str(e) for e in MyEntity.list()])
+a.a=9
+</pre></div><p>The output produced by the print functions should look similar to the lines listed next, including the raised exception caused by an invalid update attempt:</p><div class="informalexample"><pre class="programlisting"><span class="strong"><strong>
+[MyEntity(id=5)]
+&lt;MyEntity: Atrribute A=3.14, id=5&gt;
+['&lt;MyEntity: Atrribute A=2.71, id=6&gt;']
+['&lt;MyEntity: Atrribute A=1.0, id=6&gt;']
+Traceback (most recent call last):
+File "testentity.py", line 25, in &lt;module&gt;
+	a.a=9
+File "C:\Documents and Settings\Michel\Bureaublad\MetaBase\Books II\entity.py"
+, line 117, in __setattr__
+	raise AttributeError("assignment to "+name+" does not validate")
+AttributeError: assignment to a does not validate</strong></span>
+</pre></div><div class="section" title="What just happened?"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec02"/>What just happened?</h2></div></div></div><p>The first thing we note is that there is no explicit initialization of any database, nor is there any code to explicitly initialize any threads. All that is needed is to subclass the entity class from the<code class="literal"> AbstractEntity</code> class provided in the entity module and define a database class variable that points to a file to be used as a database.<a id="id321" class="indexterm"/>
+</p><p>The next thing is that although we define a specific class (MyEntity, in this example) in a similar way as before by defining it as a subclass of Entity, we now specify any attributes by defining class variables that are assigned<code class="literal"> Attribute</code> instances. In the example, we do this for just a single attribute<code class="literal"> a</code> (highlighted). The<code class="literal"> Attribute</code> instance encapsulates a lot of knowledge about constraints, and allows for the definition of a default value and a validation function.</p><p>Creating an instance isn't any different, but as the second<code class="literal"> list()</code> example shows, this implementation allows for filtering so there is no need to retrieve all instance IDs, instantiate them as true objects and compare their attributes.<a id="id322" class="indexterm"/>
+</p><p>The final assignment to the<code class="literal"> a</code> attribute shows the validation feature in action. It raises an<code class="literal"> AttributeError</code> exception because trying to assign a value of 9 to it triggers our validation function.</p><p>These new and less cumbersome semantics are largely due to what can be achieved by using metaclasses, a concept we explore in the next section.</p></div><div class="section" title="Metaclasses"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec03"/>Metaclasses</h2></div></div></div><p>Although the Python documentation warns that using metaclasses will make your head explode (read, for example,<code class="literal"> http://www.python.org/doc/newstyle/)</code>, they are not that dangerous: they may cause headaches, but these will mostly fade away after some experimenting and re-reading of the documentation.<a id="id323" class="indexterm"/>
+</p><p>Metaclasses allow you to inspect and alter the definition of a class just before this definition is made final and becomes available to the programmer. This is possible because, in Python, even classes are objects; specifically, they are instances of a metaclass. When we instantiate an object, we can control the way this instance is initialized by defining the<code class="literal"> __init__()</code> and<code class="literal"> __new__()</code> methods. Likewise, we can control the way a class is initialized by defining suitable<code class="literal"> __init__()</code> and<code class="literal"> __new__()</code> methods in its metaclass.<a id="id324" class="indexterm"/>
+</p><p>Just as all classes are ultimately subclasses of the<code class="literal"> object</code> class, all metaclasses derive from the<code class="literal"> type</code> metaclass. This means that if we want our class to be an instance of a different type of metaclass, we have to subclass<code class="literal"> type</code> and define our class.</p><p>After reading the previous paragraphs, you may still fear your head may explode, but like most things, an example is much simpler to understand.</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Time for action using metaclasses"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec04"/>Time for action using metaclasses</h1></div></div></div><p>Say we want to be able to verify that classes we define always have an<code class="literal"> __info__()</code> method. We can accomplish that by defining a suitable metaclass and defining any new class that should be checked with a reference to this metaclass. Look at the following example code (also available as<code class="literal"> metaclassexample.py):</code>
+<a id="id325" class="indexterm"/>
+</p><p>
+<span class="strong"><strong>Chapter7/metaclassexample.py</strong></span>
+</p><div class="informalexample"><pre class="programlisting">
+class hasinfo(type):
+	def __new__(metaclass, classname, baseclasses, classdict):
+		if len(baseclasses) and not '__info__' in classdict:
+			raise TypeError('does not have __info__')
+		return type.__new__(metaclass,
+				classname, baseclasses, classdict)
+class withinfo(metaclass=hasinfo):
+	pass
+class correct(withinfo):
+	def __info__(self): pass
+class incorrect(withinfo):
+	pass
+</pre></div><p>This will raise an exception for the<code class="literal"> incorrect</code> class, but not for the<code class="literal"> correct</code> class.</p><div class="section" title="What just happened?"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec04"/>What just happened?</h2></div></div></div><p>As you can see, the<code class="literal"> __new__()</code> method of a metaclass receives a number of important parameters. First, the metaclass itself and the<code class="literal"> classname</code> of the class that is being defined, a (possibly empty) list of<code class="literal"> baseclasses</code>, and finally the class dictionary. That last argument is very important.</p><p>As we define a class with a class statement, all methods and class variables we define here end up in a dictionary. Once this class is completely defined, this dictionary will be available as the<code class="literal"> __dict__</code> attribute of the class. This is the dictionary that is passed to the<code class="literal"> __new__()</code> method of the metaclass and we can examine and alter this dictionary at will.</p><p>In this example, we simply check whether there exists a key called<code class="literal"> __info__</code> in this class dictionary and raise an exception if it doesn't. (We do not really check that it is a method but this is possible too of course). If everything went well, we call the<code class="literal"> __new__()</code> method of<code class="literal"> type</code> (the mother of all metaclasses) as that method will take care of making the class definition available in the current scope.</p><p>There is an extra trick involved, however. The<code class="literal"> withinfo</code> class is abstract in the sense that it defines the need for an<code class="literal"> __info__()</code> method by referring to the<code class="literal"> hasinfo</code> metaclass, but it does not define one itself. However, because it refers to the<code class="literal"> hasinfo</code> metaclass, an exception would be raised because its own class dictionary is checked in the same way as its subclasses. To prevent this, we only check for the occurrence of the<code class="literal"> __info__()</code> method if a class is a subclass, that is, when the list of base classes (available in the<code class="literal"> baseclasses</code> parameter) is not empty.<a id="id326" class="indexterm"/>
+</p><p>Checking for mandatory methods is nice, but with so much information available, much more can be done. In the next section, we use this power to ensure that the definition of a new class will take care of creating suitable tables in a database backend as well.</p></div><div class="section" title="MetaEntity and AbstractEntity classes"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec05"/>MetaEntity and AbstractEntity classes</h2></div></div></div><p>Besides creating a database table, if necessary, the metaclass that we will define will also examine the<code class="literal"> Attribute</code> instance assigned to any class variable to build dictionaries of display names and validation functions. This way, subclasses can easily check if a column has such an attribute by using the column name as a key, thus obviating the need to check all class variables themselves again and again.</p><div class="mediaobject"><img src="images/3746OS_07_03.jpg" width="140" alt="MetaEntity and AbstractEntity classes"/></div></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Time for action implementing the MetaEntity and AbstractEntity classes"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec06"/>Time for action implementing the MetaEntity and AbstractEntity classes</h1></div></div></div><p>Let's see how this is done:</p><p>
+<span class="strong"><strong>Chapter7/entity.py</strong></span>
+</p><div class="informalexample"><pre class="programlisting">
+class Attribute:
+	def __init__(self, unique=False, notnull=False,
+								default=None, affinity=None, validate=None,
+								displayname=None, primary=False):<span class="strong"><strong>
+		self.coldef = (
+				(affinity+' ' if not affinity is None else '') +
+				('unique ' if unique else '') +
+				('not null ' if notnull else '') +
+				('default %s '%default if not default is None else '')
+		)</strong></span>
+		self.validate = validate
+		self.displayname = displayname
+		self.primary = primary
+</pre></div><p>The<code class="literal"> Attribute</code> class is mainly a vehicle to store information about attributes in a structured way. We could have used strings and parsed them, but by using an<code class="literal"> Attribute</code> class, it is possible to explicitly recognize class variables that are meant to be attributes that are stored as database columns. That way, we can still define class variables that have a different purpose. Also, writing a parser is a lot of work, while checking parameters is a lot easier.<a id="id327" class="indexterm"/>
+</p><p>The highlighted code shows that most parameters are used to create a string that can be used as a column definition that is part of a create table statement. The other parameters (displayname and<code class="literal"> validate)</code> are just stored as is for future reference:</p><p>
+<span class="strong"><strong>Chapter7/entity.py</strong></span>
+</p><div class="informalexample"><pre class="programlisting">
+class MetaEntity(type):
+	@classmethod
+	def __prepare__(metaclass, classname, baseclasses, **kwds):
+		return collections.OrderedDict()
+	@staticmethod
+	def findattr(classes,attribute):
+		a=None
+		for c in classes:
+			if hasattr(c,attribute):
+				a=getattr(c,attribute)
+				break
+			if a is None:
+				for c in classes:
+					a = MetaEntity.findattr(c.__bases__,attribute)
+					if not a is None:
+						break
+			return a
+	def __new__(metaclass,classname,baseclasses,classdict):
+		def connect(cls):
+			if not hasattr(cls._local,'conn'):
+				cls._local.conn=sqlite.connect(cls._database)
+				cls._local.conn.execute('pragma foreign_keys = 1')
+				cls._local.conn.row_factory = sqlite.Row
+			return cls._local.conn
+		entitydefinition = False<span class="strong"><strong>
+		if len(baseclasses):</strong></span>
+			if not 'database' in classdict:
+				classdict['_database']=MetaEntity.findattr(
+							baseclasses,'database')
+				if classdict['_database'] is None:
+					raise AttributeError(
+						'''subclass of AbstractEntity has no
+						database class variable''')
+					entitydefinition=True
+			if not '_local' in classdict:
+				classdict['_local']=MetaEntity.findattr(
+							baseclasses,'_local')
+			classdict['_connect']=classmethod(connect)<span class="strong"><strong>
+			classdict['columns']=[
+				k for k,v in classdict.items()
+					if type(v) == Attribute]</strong></span>
+			classdict['sortorder']=[]
+			classdict['displaynames']={
+				k:v.displayname if v.displayname else k
+				for k,v in classdict.items()
+				if type(v) == Attribute}
+			classdict['validators']={
+				k:v.validate for k,v in classdict.items()
+				if type(v) == Attribute
+					and not v.validate is None}<span class="strong"><strong>
+			classdict['displaynames']['id']='id'</strong></span>
+			PrimaryKey = Attribute()
+			PrimaryKey.coldef = 'integer primary key '
+			PrimaryKey.coldef+= 'autoincrement'
+			if entitydefinition:
+				sql = 'create table if not exists '
+				sql+= classname +' ('
+				sql+= ", ".join([k+' '+v.coldef
+					for k,v in [('id',PrimaryKey)]
+							+list(classdict.items())
+							if type(v) == Attribute])
+				sql+= ')'
+				conn = sqlite.connect(classdict['_database'])
+				conn.execute(sql)
+			for k,v in classdict.items():
+				if type(v) == Attribute:
+					if v.primary:
+						classdict['primary']=property(
+							lambda self:getattr(self,k))
+						classdict['primaryname']=k
+						break
+			if not 'primary' in classdict:
+				classdict['primary']=property(
+					lambda self:getattr(self,'id'))
+				classdict['primaryname']='id'
+		return type.__new__(metaclass,
+			classname,baseclasses,classdict)
+</pre></div><p>The metaclass we will use to synchronize the creation of database tables and the creation of entity classes is called<code class="literal"> MetaEntity</code>. Its<code class="literal"> __new__()</code> method is where all the action takes place, but there is one important additional method:<code class="literal"> __prepare__()</code>.<a id="id329" class="indexterm"/>
+</p><p>The<code class="literal"> __prepare__()</code> method is called to provide an object that can be used as a class dictionary. The default, as provided by the<code class="literal"> type</code> class, just returns a regular Python<code class="literal"> dict</code> object. Here we return an ordered dictionary, a dictionary that will remember the order of its keys as they are entered. This will enable us to use the order in which class variables are declared, for example, to use this as the default order to display columns. Without an ordered dictionary, we wouldn't have any control and would have to supply separate information.</p><p>The<code class="literal"> __new__()</code> method first checks if we are a subclass of<code class="literal"> MetaEntity</code> by checking whether the list of base classes is non zero (highlighted) as<code class="literal"> MetaEntity</code> itself does not have a database backend.</p><p>Then it checks if the database class variable is defined. If not, we are a specific entity that has a database backend and we try to locate the database class variable in one of our super classes. If we find it, we store it locally; if not, we raise an exception because we cannot function without a reference to a database.</p><p>The<code class="literal"> AbstractEntity</code> class will have a<code class="literal"> _local</code> class variable defined that holds a reference to thread local storage, and subclasses will have their own<code class="literal"> _local</code> variable that points to the same thread local storage.<a id="id330" class="indexterm"/>
+</p><p>The next step is to gather all sorts of information from all the class variables that refer to<code class="literal"> Attribute</code> instances. First we collect a list of column names (highlighted). Remember that because we caused the class dictionary to be an ordered dictionary, these column names will be in the order they were defined.</p><p>Likewise, we define a list of display names. If any attribute does not have a<code class="literal"> displayname</code> attribute, its display name will be identical to its column name. We also construct a dictionary of validators, that is, a dictionary indexed by column name that holds a function to validate any value before it is assigned to a column.</p><p>Every entity will have an<code class="literal"> id</code> attribute (and a corresponding column in the database table) that is created automatically without it being explicitly defined. Therefore, we add its<code class="literal"> displayname</code> separately and construct a special Attribute instance (highlighted).</p><p>This<code class="literal"> coldef</code> attribute of this special<code class="literal"> Attribute</code> together with the<code class="literal"> coldef</code> attributes of the other<code class="literal"> Attribute</code> instances will then be used to compose an SQL statement that will create a table with the proper column definitions.</p><p>Finally, we pass the altered and augmented class dictionary together with the original list of base classes and the class name to the<code class="literal"> __new__()</code> method of the type class which will take care of the actual construction of the class.</p><p>The rest of the functionality of any<code class="literal"> Entity</code> is not implemented by its metaclass, but in the regular way, that is, by providing methods in the class that all entities should derive from:<code class="literal"> AbstractEntity:</code>
+</p><p>
+<span class="strong"><strong>Chapter7/entity.py</strong></span>
+</p><div class="informalexample"><pre class="programlisting"><span class="strong"><strong>
+class AbstractEntity(metaclass=MetaEntity):</strong></span>
+	_local = threading.local()
+	@classmethod
+	def listids(cls,pattern=None,sortorder=None):<span class="strong"><strong>
+		sql = 'select id from %s'%(cls.__name__,)</strong></span>
+		args = []
+		if not pattern is None and len(pattern)&gt;0:
+				for s in pattern:
+						if not (s[0] in cls.columns or s[0]=='id'):
+								raise TypeError('unknown column '+s[0])
+				sql += " where "
+				sql += " and ".join("%s like ?"%s[0] for s in 
+pattern)
+				args+= [s[1] for s in pattern]
+		if sortorder is None:
+			if not cls.sortorder is None :
+					sortorder = cls.sortorder
+		else:
+			for s in sortorder:
+					if not (s[0] in cls.columns or s[0]=='id'):
+							raise TypeError('unknown column '+s[0])
+					if not s[1] in ('asc', 'desc') :
+							raise TypeError('illegal sort 
+argument'+s[1])
+		if not (sortorder is None or len(sortorder) == 0):
+			sql += ' order by '
+			sql += ','.join(s[0]+' '+s[1] for s in sortorder)
+		cursor=cls._connect().cursor()
+		cursor.execute(sql,args)
+		return [r['id'] for r in cursor]
+	@classmethod
+	def list(cls,pattern=None,sortorder=None):
+		return [cls(id=id) for id in cls.listids(
+				sortorder=sortorder,pattern=pattern)]
+	@classmethod
+	def getcolumnvalues(cls,column):
+		if not column in cls.columns :
+			raise KeyError('unknown column '+column)
+		sql ="select %s from %s order by lower(%s)"
+		sql%=(column,cls.__name__,column)
+		cursor=cls._connect().cursor()
+		cursor.execute(sql)
+		return [r[0] for r in cursor.fetchall()]
+	def __str__(self):
+		return '&lt;'+self.__class__.__name__+': '+", ".join(
+				["%s=%s"%(displayname, getattr(self,column))
+				for column,displayname
+				in self.displaynames.items()])+'&gt;'
+	def __repr__(self):
+		return self.__class__.__name__+"(id="+str(self.id)+")"
+	def __setattr__(self,name,value):
+		if name in self.validators :
+			if not self.validators[name](value):
+				raise AttributeError(
+					"assignment to "+name+" does not 
+validate")
+		object.__setattr__(self,name,value)
+	def __init__(self,**kw):<span class="strong"><strong>
+			if 'id' in kw:</strong></span>
+				if len(kw)&gt;1 :
+						raise AttributeError('extra keywords besides 
+id')
+				sql = 'select * from %s where id = ?'
+				sql%= self.__class__.__name__
+				cursor = self._connect().cursor()
+				cursor.execute(sql,(kw['id'],))
+				r=cursor.fetchone()
+				for c in self.columns:
+						setattr(self,c,r[c])
+				self.id = kw['id']
+			else:
+				rels={}
+				attr={}
+				for col in kw:
+						if not col in self.columns:
+								rels[col]=kw[col]
+						else:
+								attr[col]=kw[col]
+				name = self.__class__.__name__
+				cols = ",".join(attr.keys())
+				qmarks = ",".join(['?']*len(attr))
+				if len(cols):
+						sql = 'insert into %s (%s) values (%s)'
+						sql%= (name,cols,qmarks)
+				else:
+						sql = 'insert into %s default values'%name
+				with self._connect() as conn:
+						cursor = conn.cursor()
+						cursor.execute(sql,tuple(attr.values()))<span class="strong"><strong>
+						self.id = cursor.lastrowid</strong></span>
+	def delete(self):
+		sql = 'delete from %s where id = ?'
+		sql%= self.__class__.__name__
+		with self._connect() as conn:
+						cursor = conn.cursor()
+						cursor.execute(sql,(self.id,))
+	def update(self,**kw):
+		for k,v in kw.items():
+				setattr(self,k,v)
+		sets = []
+		vals = []
+		for c in self.columns:
+				if not c == 'id':
+						sets.append(c+'=?')
+						vals.append(getattr(self,c))
+		table = self.__class__.__name__
+		sql = 'update %s set %s where id = ?'
+		sql%=(table,",".join(sets))
+		vals.append(self.id)
+		with self._connect() as conn:
+					cursor = conn.cursor()
+					cursor.execute(sql,vals)
+</pre></div><div class="section" title="What just happened"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec06"/>What just happened</h2></div></div></div><p>
+<code class="literal">AbstractEntity</code> provides a number of methods to provide CRUD functionality:<a id="id333" class="indexterm"/>
+</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">A constructor to refer to the existing entities in the database or to create new ones</li><li class="listitem" style="list-style-type: disc"><code class="literal">list()</code> and<code class="literal"> listids()</code>, to find instances that match certain criteria</li><li class="listitem" style="list-style-type: disc"><code class="literal">update()</code>, to synchronize changed attributes of an entity with the database</li><li class="listitem" style="list-style-type: disc"><code class="literal">delete()</code>, to delete an entity from the database</li></ul></div><p>It also defines the 'special' Python methods<code class="literal"> __str__(), __repr__()</code>, and<code class="literal"> __setattr__()</code> to render an entity in a legible way and to validate the assignment of a value to an attribute.</p><p>Obviously,<code class="literal"> AbstractEntity</code> refers to the<code class="literal"> MetaEntity</code> metaclass (highlighted). It also defines a<code class="literal"> _local</code> class variable that refers to thread local storage. The<code class="literal"> MetaEntity</code> class will make sure this reference (but not its contents) are copied to all subclasses for fast access. By defining it here, we will make sure that all subclasses refer to the same thread local storage, and more importantly, will use the same connection to the database for each thread instead of using a separate database connection for each different entity.<a id="id334" class="indexterm"/>
+</p><p>The<code class="literal"> listids()</code> class method will return a list of IDs of entities that match the criteria in its<code class="literal"> pattern</code> argument or the IDs of all the entities if no criteria were given. It will use the<code class="literal"> sortorder</code> argument to return the list of IDs in the required order. Both<code class="literal"> sortorder</code> and<code class="literal"> pattern</code> are a list of tuples, each tuple having the column name as its first item. The second item will be a string to match against for the<code class="literal"> pattern</code> argument or either<code class="literal"> asc</code> or<code class="literal"> desc</code> for the<code class="literal"> sortorder</code> argument, signifying an ascending or descending sort respectively.</p><p>The SQL statement to retrieve any matching IDs is constructed by first creating the<code class="literal"> select</code> part (highlighted), as this will be the same irrespective of any additional restrictions. Next, we check if there are any<code class="literal"> pattern</code> components specified, and if so, add a<code class="literal"> where</code> clause with matching parts for each<code class="literal"> pattern</code> item. The matches we specify use the SQL<code class="literal"> like</code> operator, which is normally only defined for strings, but SQLite will convert any argument to a string if we use the like operator. Using the like operator will allow us to use SQL wildcards (for example,<code class="literal"> %</code> ).</p><p>The next stage is to check if there were any sort order items specified in the<code class="literal"> sortorder</code> argument. If not, we use the default sort order stored in the<code class="literal"> sortorder</code> class variable (which in our current implementation will still be<code class="literal"> None)</code>. If there are items specified, we add an order by clause and add specifications for each sort item. A typical SQL statement will look something like<code class="literal"> select id from atable where col1 like ? and col2 like ? order by col1 asc</code>.</p><p>Finally, we use the<code class="literal"> _connect()</code> method (that was added by the metaclass) to retrieve a database connection (and establish one, if needed) that we can use to execute the SQL query with and retrieve the list of IDs.</p><p>The<code class="literal"> list()</code> method bears a close resemblance to the<code class="literal"> listids()</code> method and takes the same arguments. It will, however, return a list of entity instances rather than a list of just the IDs by calling the entity's constructor with each ID as an argument. This is convenient if that was what we wanted to do with those IDs anyway, but a list of IDs is often easier to manipulate. We therefore provide both methods.</p><p>Being able to retrieve lists of entities is nice, but we must also have a means to create a new instance and to retrieve all information associated with a record with a known ID. That is where the entity's constructor, in the form of the<code class="literal"> __init__()</code> method, comes in.</p><div class="note" title="Note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="note28"/>Note</h3><p>Strictly speaking,<code class="literal"> __init__()</code> isn't a constructor but a method that initializes an instance after it is constructed.</p></div><p>If a single ID keyword argument is passed to<code class="literal"> __init__()</code> (highlighted), all columns of the record matching that ID are retrieved and the corresponding arguments (that is, attributes with the same name as a column) are set using the<code class="literal"> setattr()</code> built-in function.<a id="id335" class="indexterm"/>
+</p><p>If more than one keyword argument is passed to<code class="literal"> __init__()</code>, each should be the name of a defined column. If not, an exception is raised. Otherwise, the keywords and their values are used to construct an insert statement. If there are more columns defined than there are keywords given, this will result in default values to be inserted. The default is usually<code class="literal"> NULL</code> unless a<code class="literal"> default</code> argument was specified for the column when the<code class="literal"> Entity</code> was defined. If<code class="literal"> NULL</code> is the default and the column has a<code class="literal"> non null</code> constraint, an exception will be raised.</p><p>Because ID columns are defined as<code class="literal"> autoincrement</code> columns and we do not specify an explicit ID value, the ID value will be equal to the<code class="literal"> rowid</code>, a value we retrieve as the<code class="literal"> lastrowid</code> attribute of the cursor object (highlighted).</p></div><div class="section" title="Have a go hero retrieving instances in a single step"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec07"/>Have a go hero retrieving instances in a single step</h2></div></div></div><p>Retrieving a list of IDs first and then instantiating entities means that we have to retrieve all attributes of each entity with a separate SQL statement. This might have a negative impact on performance if the list of entities is large.</p><p>Create a variant of the<code class="literal"> list()</code> method that will not convert the selected IDs to entity instances one-by one, but will use a single select statement to retrieve all attributes and use those to instantiate entities.</p></div><div class="section" title="Relations"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec08"/>Relations</h2></div></div></div><p>Defining relations between entities should be just as hassle free as defining the entities themselves, and with the power of metaclasses in our hands, we can use the same concepts. But let's first have a look at how we would use such an implementation.<a id="id336" class="indexterm"/>
+</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Time for action defining new relations: how it should look"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec07"/>Time for action defining new relations: how it should look</h1></div></div></div><p>The following sample code shows how we would use a<code class="literal"> Relation</code> class (also available in<code class="literal"> relation.py):</code>
+<a id="id337" class="indexterm"/>
+</p><p>
+<span class="strong"><strong>Chapter7/relation.py</strong></span>
+</p><div class="informalexample"><pre class="programlisting">
+from os import unlink
+db="/tmp/abcr.db"
+try:
+	unlink(db)
+except:
+	pass
+class Entity(AbstractEntity):
+	database=db
+class Relation(AbstractRelation):
+	database=db
+class A(Entity): pass
+class B(Entity): pass
+class AB(Relation):
+	a=A
+	b=B
+a1=A()
+a2=A()
+b1=B()
+b2=B()
+a1.add(b1)
+a1.add(b2)
+print(a1.get(B))
+print(b1.get(A))
+</pre></div><div class="section" title="What just happened?"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec09"/>What just happened?</h2></div></div></div><p>After defining a few entities, defining the relation between those entities follows the same pattern: we define a<code class="literal"> Relation</code> class that is a subclass of<code class="literal"> AbstractRelation</code> to establish a reference to a database that will be used.</p><p>Then we define an actual relation between two entities by subclassing<code class="literal"> Relation</code> and defining two class variables,<code class="literal"> a</code> and<code class="literal"> b</code> that refer to the<code class="literal"> Entity</code> classes that form each half of the relation.</p><p>If we instantiate a few entities, we may then define a few relations between these instances by using the<code class="literal"> add()</code> method and retrieve related entities with the<code class="literal"> get()</code> method.<a id="id338" class="indexterm"/>
+</p><p>Note that those methods are called on the<code class="literal"> Entity</code> instances, allowing for a much more natural idiom than the use of class methods in the<code class="literal"> Relation</code> class. These<code class="literal"> add()</code> and<code class="literal"> get()</code> methods were added to those entity classes by the<code class="literal"> MetaRelation</code> metaclass, and in the next section, we will see how this is accomplished.</p><p>The class diagram for relation classes looks nearly identical to the one for entities:</p><div class="mediaobject"><img src="images/3746OS_07_04.jpg" width="218" alt="What just happened?"/></div></div><div class="section" title="Implementing the MetaRelation and AbstractRelation classes"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec10"/>Implementing the MetaRelation and AbstractRelation classes</h2></div></div></div><p>The implementation of the<code class="literal"> AbstractRelation</code> class is very minimalistic because it is only used to create some thread local storage and establish a relation with the<code class="literal"> MetaRelation</code> metaclass:<a id="id339" class="indexterm"/>
+</p><p>
+<span class="strong"><strong>Chapter7/relation.py</strong></span>
+</p><div class="informalexample"><pre class="programlisting">
+class AbstractRelation(metaclass=MetaRelation):
+	_local = threading.local()
+</pre></div><p>No methods are specified since the metaclass will take care of adding suitable methods to the entity class that are a part of this relationship.</p><p>The<code class="literal"> MetaRelation</code> class has two goals: creating a database table that will hold records for each individual relation and adding methods to the entity classes involved, so that relations can be created, removed, and queried:<a id="id340" class="indexterm"/>
+</p><p>
+<span class="strong"><strong>Chapter7/relation.py</strong></span>
+</p><div class="informalexample"><pre class="programlisting">
+class MetaRelation(type):
+	@staticmethod
+	def findattr(classes,attribute):
+		a=None
+		for c in classes:
+			if hasattr(c,attribute):
+				a=getattr(c,attribute)
+				break
+		if a is None:
+			for c in classes:
+				a = MetaRelation.findattr(c.__bases__,attribute)
+				if not a is None:
+					break
+		return a
+	def __new__(metaclass,classname,baseclasses,classdict):
+		def connect(cls):
+			if not hasattr(cls._local,'conn'):
+				cls._local.conn=sqlite.connect(cls._database)
+				cls._local.conn.execute('pragma foreign_keys = 1')
+				cls._local.conn.row_factory = sqlite.Row
+			return cls._local.conn
+		def get(self,cls):
+			return getattr(self,'get'+cls.__name__)()
+		def getclass(self,cls,relname):
+			clsname = cls.__name__
+			sql = 'select %s_id from %s where %s_id = ?'%(
+				clsname,relname,self.__class__.__name__)
+			cursor=self._connect().cursor()
+			cursor.execute(sql,(self.id,))
+			return [cls(id=r[clsname+'_id']) for r in cursor]
+		def add(self,entity):
+			return getattr(self,
+				'add'+entity.__class__.__name__)(entity)
+		def addclass(self,entity,Entity,relname):
+			if not entity.__class__ == Entity :
+				raise TypeError(
+					'entity not of the required class')
+			sql = 'insert or replace into %(rel)s '
+			sql+= '(%(a)s_id,%(b)s_id) values (?,?)'
+			sql%= { 'rel':relname,
+				'a':self.__class__.__name__,
+				'b':entity.__class__.__name__}
+			with self._connect() as conn:
+				cursor = conn.cursor()
+				cursor.execute(sql,(self.id,entity.id))
+		relationdefinition = False
+		if len(baseclasses):
+			if not 'database' in classdict:
+				classdict['_database']=MetaRelation.findattr(
+					baseclasses,'database')
+				if classdict['_database'] is None:
+					raise AttributeError(
+						'''subclass of AbstractRelation has no
+						database class variable''')<span class="strong"><strong>
+					relationdefinition=True</strong></span>
+				if not '_local' in classdict:
+					classdict['_local']=MetaRelation.findattr(
+						baseclasses,'_local')
+				classdict['_connect']=classmethod(connect)
+				if relationdefinition:
+					a = classdict['a']
+					b = classdict['b']<span class="strong"><strong>
+					if not issubclass(a,AbstractEntity) :
+						raise TypeError('a not an AbstractEntity')
+					if not issubclass(a,AbstractEntity) :
+						raise TypeError('b not an AbstractEntity')</strong></span>
+						sql = 'create table if not exists %(rel)s '
+						sql+= '( %(a)s_id references %(a)s '
+						sql+= 'on delete cascade, '
+						sql+= '%(b)s_id references %(b)s '
+						sql+= 'on delete cascade, '
+						sql+= 'unique(%(a)s_id,%(b)s_id))'
+						sql%= { 'rel':classname,
+							'a':a.__name__,
+							'b':b.__name__}
+						conn = sqlite.connect(classdict['_database'])
+						conn.execute(sql)<span class="strong"><strong>
+						setattr(a,'get'+b.__name__,
+							lambda self:getclass(self,b,classname))</strong></span>
+						setattr(a,'get',get)<span class="strong"><strong>
+						setattr(b,'get'+a.__name__,
+							lambda self:getclass(self,a,classname))</strong></span>
+						setattr(b,'get',get)<span class="strong"><strong>
+						setattr(a,'add'+b.__name__,
+						lambda self,entity:addclass(self,
+									entity,b,classname))</strong></span>
+						setattr(a,'add',add)<span class="strong"><strong>
+						setattr(b,'add'+a.__name__,
+						lambda self,entity:addclass(self,
+									entity,a,classname))</strong></span>
+						setattr(b,'add',add)
+				return type.__new__(metaclass,
+							classname,baseclasses,classdict)
+</pre></div><p>As was the case for the<code class="literal"> MetaEntity</code> class,<code class="literal"> MetaRelation</code> performs its magic through its<code class="literal"> __new__()</code> method.</p><p>First, we check if we are creating a subclass of<code class="literal"> AbstractRelation</code> by checking the length of the<code class="literal"> baseclasses</code> parameter (remember that<code class="literal"> MetaRelation</code> is defined as a metaclass for<code class="literal"> AbstractRelation</code>, meaning that not only its subclasses, but also<code class="literal"> AbstractRelation</code> itself will be processed by the metaclass machinery, something that is not really needed here).</p><p>If it is a subclass, we copy the database and thread local storage references to the class dictionary for quick access.<a id="id343" class="indexterm"/>
+</p><p>If there was no<code class="literal"> database</code> attribute specified, we know the class being defined is a subclass of<code class="literal"> Relation</code>, that is, a specific relation class and mark this in the<code class="literal"> relationdefinition</code> variable (highlighted).</p><p>If we are dealing with a concrete definition of a relation, we will have to work out which entities are involved. This is done by checking the class dictionary for attributes named<code class="literal"> a</code> and<code class="literal"> b</code>, that should be subclasses of<code class="literal"> AbstractEntity</code> (highlighted). These are both halves of the relation and their names are used to create a bridging table if not already present.</p><p>If we were to define a relation like this:</p><div class="informalexample"><pre class="programlisting">
+class Owner(Relation):
+	a=Car
+	b=User
+</pre></div><p>The SQL statement generated would be:</p><div class="informalexample"><pre class="programlisting">
+create table if not exists Owner (
+	Car_id references Car on delete cascade,
+	User_id references User on delete cascade,
+	unique(Car_id,User_id)
+)
+</pre></div><p>Each column references the primary key in the corresponding table (because we did specify just the table in the references clause) and the<code class="literal"> on delete cascade</code> constraint will make sure that if an entity is deleted, the relation is deleted as well. The final<code class="literal"> unique</code> constraint will make sure that if there is a relation between specific instances, there will be only one record reflecting this.</p><div class="section" title="Adding new methods to existing classes"><div class="titlepage"><div><div><h3 class="title"><a id="ch07lvl3sec01"/>Adding new methods to existing classes</h3></div></div></div><p>The final part of the<code class="literal"> __new__()</code> method deals with inserting methods in the entity classes that are involved in this relation. Adding methods to other classes may sound like magic, but in Python, classes themselves are objects too and have class dictionaries that hold the attributes of a class. Methods are just attributes that happen to have a value that is a function definition.<a id="id344" class="indexterm"/>
+</p><p>We can, therefore, add a new method at runtime to any class by assigning a reference to a suitable function to a class attribute. The<code class="literal"> MetaEntity</code> class only altered the class dictionary of an<code class="literal"> Entity</code> before it was created. The<code class="literal"> MetaRelation</code> class goes one step further and not only alters the class dictionary of the<code class="literal"> Relation</code> class, but also those of the<code class="literal"> Entity</code> classes involved.</p><div class="note" title="Note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="tip08"/>Tip</h3><p>Altering class definitions at runtime is not limited to metaclasses, but should be used sparingly because we expect classes to behave consistently anywhere in the code.</p></div><p>If we have two classes,<code class="literal"> A</code> and<code class="literal"> B</code>, we want to make sure each has its own complement of get and add methods. That is, we want to make sure the<code class="literal"> A</code> class has<code class="literal"> getB()</code> and<code class="literal"> addB()</code> methods and the<code class="literal"> B</code> class has<code class="literal"> getA()</code> and<code class="literal"> addA()</code>. We, therefore, define generic<code class="literal"> getclass()</code> and<code class="literal"> addclass()</code> functions and assign those with tailored lambda functions to the named attributes in the class concerned (highlighted).<a id="id345" class="indexterm"/>
+</p><p>If we assume again that the entity classes are called<code class="literal"> A</code> and<code class="literal"> B</code> and our relation is called<code class="literal"> AB</code>, the assignment:</p><div class="informalexample"><pre class="programlisting">
+setattr(a,'get'+b.__name__,lambda self:getclass(self,b,classname))
+</pre></div><p>will mean that the A class will now have a method called<code class="literal"> getB</code> and if that method is called on an instance of<code class="literal"> A</code> (like<code class="literal"> a1.getB())</code> it will result in a call to<code class="literal"> getclass</code> like:</p><div class="informalexample"><pre class="programlisting">getclass(a1,B,'AB')
+</pre></div><p>We also create (or redefine) a<code class="literal"> get()</code> method that when given a class as an argument will find the corresponding<code class="literal"> getXXX</code> method.</p><p>The<code class="literal"> getclass()</code> method is defined as follows:</p><div class="informalexample"><pre class="programlisting">
+			def getclass(self,cls,relname):
+					clsname = cls.__name__
+					sql = 'select %s_id from %s where %s_id = 
+?'%(clsname,relname,self.__class__.__name__)
+					cursor=self._connect().cursor()
+					cursor.execute(sql,(self.id,))
+					return [cls(id=r[clsname+'_id']) for r in cursor]
+</pre></div><p>First, it constructs an SQL statement. If<code class="literal"> getclass()</code> was invoked like<code class="literal"> getclass(a1,B,'AB')</code>, this statement might look like this:</p><div class="informalexample"><pre class="programlisting">select B_id from AB where A_id = ?
+</pre></div><p>Then it executes this statement with<code class="literal"> self.id</code> as the argument. The resulting list of IDs is returned as a list of instances.</p><p>The add functionality follows the same pattern, so we only take a quick look at the<code class="literal"> addclass()</code> function. It first checks if the entity we are trying to add is of the required class. Note that if we make a call like<code class="literal"> a1.addB(b1)</code>, it will refer to a function inserted by the<code class="literal"> MetaRelation</code> class that will then be called like<code class="literal"> addclass(a1,b1,B,'AB')</code>.</p><p>The SQL statement that is subsequently constructed may look like this:</p><div class="informalexample"><pre class="programlisting">insert or replace into AB (A_id,B_id) values (?,?)
+</pre></div><p>Because of the unique constraint we specified earlier, a second insert that specifies the same specific relation may fail in which case we replace the record (that is effectively ignoring the failure). This way, we may call<code class="literal"> add()</code> twice with the same arguments, yet still end up with just a single record of the relation.<a id="id346" class="indexterm"/>
+</p></div></div><div class="section" title="Browsing lists of entities"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec11"/>Browsing lists of entities</h2></div></div></div><p>One of the most important tools for a user to interact with a collection of entities is a table. A table provides a logical interface to page through lists of data and present relevant attributes in columns. Other features often found in such a table interface are the options to sort on one or more attributes and to drill down, that is, to show only those entities that have some specific value for an attribute.<a id="id347" class="indexterm"/>
+</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Time for action using a table-based Entity browser"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec08"/>Time for action using a table-based Entity browser</h1></div></div></div><p>Run<code class="literal"> browse.py</code> and point your browser to<code class="literal"> http://localhost:8080</code>. A small sample application is started that shows lists of random data, as can be seen in the following image:<a id="id348" class="indexterm"/>
+</p><div class="mediaobject"><img src="images/3647_07_01.jpg" width="223" alt="Time for action using a table-based Entity browser"/></div><p>This rather Spartan looking interface may lack most visual adornments, but it is fully functional nevertheless. You may page through the list of data by clicking the appropriate buttons in the button bar at the bottom, change the sort order of the list by clicking one or more times on a header (which will cycle through ascending, descending, or no sort at all, however, without any visual feedback at the moment) or reduce the list of items shown by clicking on a value in a column, that will result in a list of items that share the same value in this column. All items may be shown again by clicking the<span class="strong"><strong> Clear</strong></span> button.<a id="id349" class="indexterm"/>
+</p><div class="section" title="What just happened?"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec12"/>What just happened?</h2></div></div></div><p>The<code class="literal"> browse</code> module (which is available as<code class="literal"> browse.py)</code> contains more than the sample application. It also defines a reusable<code class="literal"> Browse</code> class that can be initialized with a reference to an<code class="literal"> Entity</code> and used as a CherryPy application. The<code class="literal"> Browse</code> class can also be given arguments that specify which, if any, columns should be shown.</p><p>Its intended use is best illustrated by taking a look at the sample application:</p><p>
+<span class="strong"><strong>Chapter7/browse.py</strong></span>
+</p><div class="informalexample"><pre class="programlisting">
+from random import randint
+import os
+current_dir = os.path.dirname(os.path.abspath(__file__))
+class Entity(AbstractEntity):
+	database='/tmp/browsetest.db'
+class Number(Entity):
+	n = Attribute(displayname="Size")
+n=len(Number.listids())
+if n&lt;100:
+	for i in range(100-n):
+		Number(n=randint(0,1000000))
+root = Browse(Number, columns=['id','n'],
+	sortorder=[('n','asc'),('id','desc')])
+cherrypy.quickstart(root,config={
+	'/':
+	{ 'log.access_file' :
+			os.path.join(current_dir,"access.log"),
+	'log.screen': False,
+	'tools.sessions.on': True
+	}
+})
+</pre></div><p>It initializes an instance of the<code class="literal"> Browse</code> class with a single mandatory argument as a subclass of<code class="literal"> Entity</code>, in this case,<code class="literal"> Number</code>. It also takes a<code class="literal"> columns</code> argument that takes a list that specifies which attributes to show in the table's columns and in which order. It also takes a<code class="literal"> sortorder</code> argument, a list of tuples that specifies on which columns to sort and in which direction.<a id="id350" class="indexterm"/>
+</p><p>This instance of the<code class="literal"> Browse</code> class is then passed to CherryPy's<code class="literal"> quickstart()</code> function to deliver the functionality to the client. It would be just as simple to mount two different<code class="literal"> Browse</code> instances, each servicing a different<code class="literal"> Entity</code> class within a custom root application.</p><p>How is all this implemented? Let's first take a look at the<code class="literal"> __init__()</code> method:</p><p>
+<span class="strong"><strong>Chapter7/browse.py</strong></span>
+</p><div class="informalexample"><pre class="programlisting">
+class Browse:
+	def __init__(self,entity,columns=None,
+		sortorder=None,pattern=None,page=10,show="show"):<span class="strong"><strong>
+		if not issubclass(entity,AbstractEntity) :</strong></span>
+				raise TypeError()
+		self.entity = entity
+		self.columns = entity.columns if columns is None else 
+columns
+		self.sortorder = [] if sortorder is None else sortorder
+		self.pattern = [] if pattern is None else pattern
+		self.page = page
+		self.show = show
+		self.cache= {}
+		self.cachelock=threading.Lock()
+		self.cachesize=3
+		for c in self.columns:
+			if not (c in entity.columns or c == 'id') and not (
+						hasattr(self.entity,'get'+c.__name__)) :
+					raise ValueError('column %s not defined'%c)
+		if len(self.sortorder) &gt; len(self.columns) :
+			raise ValueError()
+		for s in self.sortorder:
+			if s[0] not in self.columns and s[0]!='id':
+					raise ValueError(
+						'sorting on column %s not 
+possible'%s[0])
+			if s[1] not in ('asc','desc'):
+					raise ValueError(
+						'column %s, %s is not a valid sort 
+order'%s)
+		for s in self.pattern:
+			if s[0] not in self.columns and s[0]!='id':
+					raise ValueError(
+						'filtering on column %s not 
+possible'%s[0])
+		if self.page &lt; 5 :
+					raise ValueError()
+</pre></div><p>The<code class="literal"> __init__()</code> method takes quite a number of arguments and only the<code class="literal"> entity</code> argument is mandatory. It should be a subclass of<code class="literal"> AbstractEntity</code> and this is checked in the highlighted code.</p><p>All parameters are stored and initialized to suitable defaults if missing.</p><p>The<code class="literal"> columns</code> argument defaults to a list of all columns defined for the entity, and we verify that any column we want to display is actually defined for the entity.</p><p>Likewise, we verify that the<code class="literal"> sortorder</code> argument (a list of tuples containing the column name and its sort direction) contains no more items than there are columns (as it is not sensible to sort more than once on the same column) and that the sort directions specified are either<code class="literal"> asc</code> or<code class="literal"> desc</code> (for ascending and descending respectively).</p><p>The<code class="literal"> pattern</code> argument, a list of tuples containing the column name and a value to filter on, is treated in a similar manner to see if only defined columns are filtered on. Note that it is perfectly valid to filter or sort on a column or columns that are themselves not shown. This way, we can display subsets of a large dataset without bothering with too many columns.<a id="id352" class="indexterm"/>
+</p><p>The final sanity check is done on the<code class="literal"> page</code> argument which specifies the number of rows to show on each page. Very few rows feels awkward and negative values are meaningless, so we settle for a lower limit of five rows per page:</p><p>
+<span class="strong"><strong>Chapter7/browse.py</strong></span>
+</p><div class="informalexample"><pre class="programlisting">
+@cherrypy.expose
+def index(self, _=None, start=0,
+	pattern=None, sortorder=None, cacheid=None,
+	next=None,previous=None, first=None, last=None,
+	clear=None):
+	if not clear is None :
+		pattern=None
+	if sortorder is None :
+		sortorder = self.sortorder
+	elif type(sortorder)==str:
+		sortorder=[tuple(sortorder.split(','))]
+	elif type(sortorder)==list:
+		sortorder=[tuple(s.split(',')) for s in sortorder]
+	else:
+		sortorder=None
+	if pattern is None :
+		pattern = self.pattern
+	elif type(pattern)==str:
+		pattern=[tuple(pattern.split(','))]
+	elif type(pattern)==list:
+		pattern=[tuple(s.split(',',1)) for s in pattern]
+	else:
+		pattern=None
+	ids = self.entity.listids(
+		pattern=pattern,sortorder=sortorder)
+	start=int(start)<span class="strong"><strong>
+	if not next is None :
+		start+=self.page
+	elif not previous is None :
+		start-=self.page
+	elif not first is None :
+		start=0
+	elif not last is None :
+		start=len(ids)-self.page</strong></span>
+	if start &gt;= len(ids) :
+		start=len(ids)-1
+	if start&lt;0 :
+		start=0
+	yield '&lt;table class="entitylist" start="%d" page="%d"&gt;\
+n'%(start,self.page)
+	yield '&lt;thead&gt;&lt;tr&gt;'
+	for col in self.columns:
+		if type(col) == str :
+			sortclass="notsorted"
+			for s in sortorder:
+				if s[0]==col :
+					sortclass='sorted-'+s[1]
+					break
+			yield '&lt;th class="%s"&gt;'%sortclass+self.entity.
+displaynames[col]+'&lt;/th&gt;'
+			else :
+				yield '&lt;th&gt;'+col.__name__+'&lt;/th&gt;'
+			yield '&lt;/tr&gt;&lt;/thead&gt;\n&lt;tbody&gt;\n'<span class="strong"><strong>
+			entities = [self.entity(id=i)
+					for i in ids[start:start+self.page]]</strong></span>
+			for e in entities:
+				vals=[]
+				for col in self.columns:
+					if not type(col) == str:
+						vals.append(
+							"".join(
+							['&lt;span class="related" entity="%s" &gt;%s&lt;/span&gt; ' % (r.__
+class__.__name__, r.primary) for r in e.get(col)]))
+					else:
+						vals.append(str(getattr(e,col)))
+				yield ('&lt;tr id="%d"&gt;&lt;td&gt;'
+					+ '&lt;/td&gt;&lt;td&gt;'.join(vals)+'&lt;/td&gt;&lt;/tr&gt;\n')%(e.id,)
+			yield '&lt;/tbody&gt;\n&lt;/table&gt;\n'
+			yield '&lt;form method="GET" action="."&gt;'
+			yield '&lt;div class="buttonbar"&gt;'
+			yield '&lt;input name="start" type="hidden" value="%d"&gt;\n'%start
+			for s in sortorder:
+				yield '&lt;input name="sortorder" type="hidden" value="%s,%s"&gt;\n'%s
+			for f in pattern:
+				yield '&lt;input name="pattern" type="hidden" value="%s,%s"&gt;\n'%f
+			yield '&lt;input name="cacheid" type="hidden" value="%s"&gt;'%cacheid
+			yield '&lt;p class="info"&gt;items %d-%d/%d&lt;/p&gt;'%(start+1,start+len 
+(entities),len(ids))
+			yield '&lt;button name="first" type="submit"&gt;First&lt;/button&gt;\n'
+			yield '&lt;button name="previous" type="submit"&gt;Previous&lt;/button&gt;\n'
+			yield '&lt;button name="next" type="submit"&gt;Next&lt;/button&gt;\n'
+			yield '&lt;button name="last" type="submit"&gt;Last&lt;/button&gt;\n'
+			yield '&lt;button name="clear" type="submit"&gt;Clear&lt;/button&gt;\n'
+			yield '&lt;/div&gt;'
+			yield '&lt;/form&gt;'
+			# no name attr on the following button otherwise it may be sent as 
+an argument!
+			yield '&lt;form method="GET" action="add"&gt;&lt;button type="submit"&gt;Add 
+new&lt;/button&gt;&lt;/form&gt;'
+</pre></div><p>Both the initial display of the table as well as paging, sorting, and filtering are taken care of by the same<code class="literal"> index()</code> method. To understand all the parameters it may take, it might be helpful to look at the HTML markup it produces for our sample application.<a id="id354" class="indexterm"/>
+</p><div class="note" title="Note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="note29"/>Note</h3><p>The<code class="literal"> index()</code> method of the<code class="literal"> Browse</code> class is not the only place where we encounter a fair amount of HTML to be delivered to the client. This might become difficult to read and therefore difficult to maintain and using templates might be a better solution. A good start point for choosing a template solution that works well with CherryPy is<a class="ulink" href="http://www.cherrypy.org/wiki/ChoosingATemplatingLanguage"> http://www.cherrypy.org/wiki/ChoosingATemplatingLanguage</a>.</p></div></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Time for action examining the HTML markup"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec09"/>Time for action examining the HTML markup</h1></div></div></div><p>Let's have a look at how the HTML markup produced by the<code class="literal"> index()</code> method looks:<a id="id355" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">
+&lt;table class="entitylist" start="0" page="10"&gt;
+	&lt;thead&gt;
+		&lt;tr&gt;
+				&lt;th class="sorted-desc"&gt;id&lt;/th&gt;
+				&lt;th class="sorted-asc"&gt;Size&lt;/th&gt;
+		&lt;/tr&gt;
+	&lt;/thead&gt;
+	&lt;tbody&gt;
+		&lt;tr id="86"&gt;&lt;td&gt;86&lt;/td&gt;&lt;td&gt;7702&lt;/td&gt;&lt;/tr&gt;
+		&lt;tr id="14"&gt;&lt;td&gt;14&lt;/td&gt;&lt;td&gt;12331&lt;/td&gt;&lt;/tr&gt;
+		&lt;tr id="72"&gt;&lt;td&gt;72&lt;/td&gt;&lt;td&gt;17013&lt;/td&gt;&lt;/tr&gt;
+		&lt;tr id="7"&gt;&lt;td&gt;7&lt;/td&gt;&lt;td&gt;26236&lt;/td&gt;&lt;/tr&gt;
+		&lt;tr id="12"&gt;&lt;td&gt;12&lt;/td&gt;&lt;td&gt;48481&lt;/td&gt;&lt;/tr&gt;
+		&lt;tr id="10"&gt;&lt;td&gt;10&lt;/td&gt;&lt;td&gt;63060&lt;/td&gt;&lt;/tr&gt;
+		&lt;tr id="15"&gt;&lt;td&gt;15&lt;/td&gt;&lt;td&gt;64824&lt;/td&gt;&lt;/tr&gt;
+		&lt;tr id="85"&gt;&lt;td&gt;85&lt;/td&gt;&lt;td&gt;69352&lt;/td&gt;&lt;/tr&gt;
+		&lt;tr id="8"&gt;&lt;td&gt;8&lt;/td&gt;&lt;td&gt;84442&lt;/td&gt;&lt;/tr&gt;
+		&lt;tr id="53"&gt;&lt;td&gt;53&lt;/td&gt;&lt;td&gt;94749&lt;/td&gt;&lt;/tr&gt;
+	&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;form method="GET" action="."&gt;
+	&lt;div class="buttonbar"&gt;
+		&lt;input name="start" type="hidden" value="0"&gt;
+		&lt;input name="sortorder" type="hidden" value="n,asc"&gt;
+		&lt;input name="sortorder" type="hidden" value="id,desc"&gt;
+		&lt;input name="cacheid" type="hidden"
+				value="57ec8e0a53e34d428b67dbe0c7df6909"&gt;
+		&lt;p class="info"&gt;items 1-10/100&lt;/p&gt;
+		&lt;button name="first" type="submit"&gt;First&lt;/button&gt;
+		&lt;button name="previous" type="submit"&gt;Previous&lt;/button&gt;
+		&lt;button name="next" type="submit"&gt;Next&lt;/button&gt;
+		&lt;button name="last" type="submit"&gt;Last&lt;/button&gt;
+		&lt;button name="clear" type="submit"&gt;Clear&lt;/button&gt;
+	&lt;/div&gt;
+&lt;/form&gt;
+&lt;form method="GET" action="add"&gt;
+	&lt;button type="submit"&gt;Add new&lt;/button&gt;
+&lt;/form&gt;
+</pre></div><p>Apart from the actual table, we have a<code class="literal">&lt;form&gt;</code> element with quite a number of<code class="literal">&lt;button&gt;</code> and<code class="literal">&lt;input&gt;</code> elements, albeit that most have their type attribute set to hidden.</p><p>The<code class="literal">&lt;form&gt;</code> element has an action attribute "." (a single dot), which will cause all the information in the form to be submitted to the same URL that originated this form, so the data will be processed by the same<code class="literal"> index()</code> method we are now examining. A submit is triggered when any of the<code class="literal">&lt;button&gt;</code> elements with a<code class="literal"> type</code> attribute equal to<code class="literal"> submit</code> is clicked, in which case, not only the<code class="literal">&lt;input&gt;</code> elements are sent, but also the name of the button that was clicked.</p><div class="note" title="Note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="note30"/>Note</h3><p>Note that any<code class="literal">&lt;input&gt;</code> element that has to be sent to the server should have a<code class="literal"> name</code> attribute. Omitting the<code class="literal"> name</code> attribute will cause it to be missed out.<code class="literal">&lt;input&gt;</code> elements with<code class="literal"> type</code> equal to<code class="literal"> hidden</code> are sent as well if they have a<code class="literal"> name</code> attribute. Hidden<code class="literal">&lt;input&gt;</code> elements are not displayed, but do play an important role in keeping essential information associated with a form together.</p></div><p>The first hidden<code class="literal">&lt;input&gt;</code> element in the form stores the start index of the items currently displayed in the table. By adding it as a hidden element, we can calculate which items to show when we take action when the<span class="strong"><strong> Next</strong></span> or<span class="strong"><strong> Previous</strong></span> button is clicked.<a id="id356" class="indexterm"/>
+</p><p>We also want to remember if and how the items are sorted. Therefore, we include a number of hidden input elements with a<code class="literal"> name</code> attribute equal to<code class="literal"> sortorder</code>, each having a value consisting of a column name and a sort direction separated by a comma.</p><p>When a form is submitted, input elements with the same name are added in order as arguments to the<code class="literal"> action</code> URL and CherryPy will recognize this pattern and convert them to a list of values. In this example, the<code class="literal"> index()</code> method of the<code class="literal"> Browse</code> class receives this list as its<code class="literal"> sortorder</code> argument. Any<code class="literal"> pattern</code> values are present as hidden<code class="literal">&lt;input&gt;</code> elements as well and processed in an identical way.</p><p>The form also contains an<code class="literal"> info</code> class<code class="literal">&lt;p&gt;</code> element, that contains information on the number of items and the items actually shown on the current page. The final part of the form is a collection of submit buttons.</p><div class="section" title="What just happened?"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec13"/>What just happened?</h2></div></div></div><p>The<code class="literal"> index()</code> method may be called with no arguments at all or with any or all contents of the form it displays. If the client-side JavaScript code wants to call it asynchronously while preventing the browser from caching it, it may even pass an<code class="literal"> _</code> (underscore) argument with a random value, which will be ignored.</p><p>The rest of the arguments are relevant and checked for sanity before being acted upon.</p><p>We want the<code class="literal"> sortorder</code> variable to contain a list of tuples, each consisting of a column name and a sort direction, but the values of the input elements are simply interpreted as strings by CherryPy, so we have to convert this list of strings to a list of tuples by splitting those strings on the comma separator. We neither check for the validity of the column names, nor for that of the sort directions because that will be done by the code doing the actual work.</p><p>The<code class="literal"> pattern</code> variable is treated in a similar way, but because we may want to filter on values containing commas, we cannot simply use the<code class="literal"> split()</code> method here, but have to pass it a limit of 1 to restrict its splitting to the first comma it encounters.<a id="id357" class="indexterm"/>
+</p><p>Next, we pass the<code class="literal"> sortorder</code> and<code class="literal"> pattern</code> variables to the<code class="literal"> listids()</code> class method of the entity we stored with this<code class="literal"> Browse</code> instance. It will return a list of IDs of instances that match the<code class="literal"> pattern</code> criteria (or all instances if no patterns are specified) sorted in the correct order. Note that since the number of instances might be huge, we do not use the<code class="literal"> list()</code> method here because converting all IDs to entity instances at once might render the application unresponsive. We will just convert those IDs to instances that we will actually show on the page, based on the start and page variables.</p><p>To calculate the new start index, we will have to check if we act upon one of the paging buttons (highlighted) and add or subtract a page length if we are acting on a click on the<span class="strong"><strong> Next</strong></span> or<span class="strong"><strong> Previous</strong></span> button. We set the start index to 0 if the<span class="strong"><strong> First</strong></span> button was clicked. If the<span class="strong"><strong> Last</strong></span> button was clicked, we set the start index to the number of items minus the length of the page. If any of these calculations result in a start index that is less than zero, we set it to zero.</p><p>The next step is to produce the actual output, yielding one line at a time, beginning with the<code class="literal">&lt;table&gt;</code> element. Our table consists of a head and a body, the head consisting of a single row of<code class="literal">&lt;th&gt;</code> elements, each containing either the display name of the column we are showing if it represents an attribute of the entity, or the name of the class if it represents a related entity. Any sort order associated with this column is represented in its<code class="literal"> class</code> attribute, so we may use CSS to make this visible to the user.</p><p>To display the rows in the body of the table, we convert the relevant IDs in the selection to actual entities (highlighted) and generate<code class="literal">&lt;td&gt;</code> elements for each attribute. If the column refers to related entities, their primary attributes are displayed, each related entity encapsulated in its own<code class="literal">&lt;span&gt;</code> element. The latter will enable us to associate relevant actions with each individual item shown, for example, displaying it in full when it is clicked.</p><p>The final long list of<code class="literal"> yield</code> statements is used to produce the form with its many hidden input elements, each recording the arguments that were passed to the<code class="literal"> index()</code> method.</p></div><div class="section" title="Caching"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec14"/>Caching</h2></div></div></div><p>The bulk of the activity when browsing through lists in a typical application is paging forward and backward. If we would need to retrieve the full list of entities each time we forward a single page, the application might feel sluggish if the list was huge or the sorting and filtering was complicated. It might therefore be sensible to implement some sort of caching scheme.<a id="id358" class="indexterm"/>
+</p><p>There are a couple of things to consider though:<a id="id359" class="indexterm"/>
+</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Our CherryPy applications are multithreading, so we should be aware of that, especially when storing things in a cache, as we don't want threads to trash the shared cache.</li><li class="listitem" style="list-style-type: disc">We have to devise some scheme to limit the number of cached items as resources are limited.</li><li class="listitem" style="list-style-type: disc">We must overcome the limitations of the statelessness of the HTTP protocol: each time the client issues a request. This request should contain all necessary information to determine if we have something cached for him available and of course we have to understand that each request may be served by a different thread.</li></ul></div><p>These requirements can be satisfied if we change the line in the<code class="literal"> index()</code> that retrieves the matching IDs into the following few lines:</p><p>
+<span class="strong"><strong>Chapter7/browse.py</strong></span>
+</p><div class="informalexample"><pre class="programlisting">
+			if not (next is None and previous is None
+								and first is None and last is None):
+					cacheid=self.iscached(cacheid,sortorder,pattern)
+			else:
+					cacheid=None
+			if cacheid is None:
+					ids = self.entity.listids(
+							pattern=pattern,sortorder=sortorder)
+					cacheid = self.storeincache(ids,sortorder,pattern)
+			else:
+					ids = self.getfromcache(cacheid,sortorder,pattern)
+					if ids == None:
+							ids = self.entity.listids(
+									pattern=pattern,sortorder=sortorder)
+							cacheid = self.storeincache(ids,sortorder, 
+pattern)
+</pre></div><p>Because we will store a unique<code class="literal"> cacheid</code> in a hidden<code class="literal">&lt;input&gt;</code> element, it will be passed as an argument when the form is submitted. We use this<code class="literal"> cachid</code> together with the<code class="literal"> sortorder</code> and<code class="literal"> pattern</code> arguments to check whether a previously retrieved list of IDs is present in the cache with the<code class="literal"> iscached()</code> method. Passing the<code class="literal"> sortorder</code> and<code class="literal"> pattern</code> arguments will enable the<code class="literal"> iscached()</code> method to determine if these are changed and invalidate the cache entry.</p><p>
+<code class="literal">iscached()</code> will return the<code class="literal"> cacheid</code> if it exists in the cache or<code class="literal"> None</code> if it doesn't.<code class="literal"> iscached()</code> will also return<code class="literal"> None</code> if the<code class="literal"> cacheid</code> does exist but the<code class="literal"> sortorder</code> or<code class="literal"> pattern</code> arguments were changed.</p><p>Next, we check if the<code class="literal"> cacheid</code> is<code class="literal"> None</code>. This may seem redundant, but if<code class="literal"> index()</code> was called for the first time (without arguments, that is) none of the submit button arguments would be present and we wouldn't have checked the cache.</p><div class="note" title="Note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="note31"/>Note</h3><p>This is intended: if we would, at a later point, revisit this list, we would want a fresh set of items, not some old cached ones. After all, the contents of the database might have changed.</p></div><p>If the<code class="literal"> cacheid</code> is<code class="literal"> None</code> we retrieve a fresh list of IDs and store it in the cache together with the<code class="literal"> sortorder</code> and<code class="literal"> pattern</code> arguments. The<code class="literal"> storeincache()</code> method will return a freshly minted<code class="literal"> cacheid</code> for us to store in the hidden<code class="literal">&lt;input&gt;</code> element.<a id="id360" class="indexterm"/>
+</p><p>If the<code class="literal"> cacheid</code> was not<code class="literal"> None</code>, we use the<code class="literal"> getfromcache()</code> method to retrieve the list of IDs from the cache. We check the returned value because between our checking for the existence of the key in the cache and retrieving the associated data, the cache might have been purged, in which case, we still call the<code class="literal"> listids()</code> method.</p><p>The implementation of the<code class="literal"> iscached(), getfromcache()</code>, and<code class="literal"> storeincache()</code> method takes care of all the thread safety issues:</p><p>
+<span class="strong"><strong>	</strong></span>
+</p><div class="informalexample"><pre class="programlisting">
+			def chash(self,cacheid,sortorder,pattern):
+					return cacheid + '-' + hex(hash(str(sortorder))) + '-' + 
+hex(hash(str(pattern)))
+			def iscached(self,cacheid,sortorder,pattern):
+					h=self.chash(cacheid,sortorder,pattern)
+					t=False
+					with self.cachelock:
+							t = h in self.cache
+							if t :
+									self.cache[h]=(time(),self.cache[h][1])
+					return cacheid if t else None
+			def cleancache(self):
+					t={}
+					with self.cachelock:
+							t={v[0]:k for k,v in self.cache.items()}
+					if len(t) == 0 :
+							return
+					limit = time()
+					oldest = limit
+					limit -= 3600
+					key=None
+					for tt,k in t.items():
+							if tt&lt;limit:
+									with self.cachelock:
+											del self.cache[k]
+							else:
+								if tt&lt;oldest:
+										oldest = tt
+										key = k
+					if key:
+							with self.cachelock:
+								del self.cache[key]
+			def storeincache(self,ids,sortorder,pattern):
+					cacheid=uuid().hex
+					h=self.chash(cacheid,sortorder,pattern)
+					if len(self.cache)&gt;self.cachesize :
+							self.cleancache()
+					with self.cachelock:
+							self.cache[h]=(time(),ids)
+					return cacheid
+			def getfromcache(self,cacheid,sortorder,pattern):
+					ids=None
+					h=self.chash(cacheid,sortorder,pattern)
+					with self.cachelock:
+							try:
+									ids=self.cache[h][1]
+							except KeyError:
+									pass
+					return ids
+</pre></div><p>All methods use the<code class="literal"> chash()</code> method to create a unique key from the<code class="literal"> cacheid</code> and the<code class="literal"> sortorder</code> and<code class="literal"> pattern</code> arguments.<code class="literal"> iscached()</code> waits until it acquires a lock to check if this unique value is present in the cache. If it is, it updates the associated value, a tuple consisting of a timestamp and a list of IDs. By updating this timestamp here, we reduce the chance that this item is purged from the cache between the check for existence and the actual retrieval.<a id="id361" class="indexterm"/>
+</p><p>The<code class="literal"> getfromcache()</code> method creates a unique key with the<code class="literal"> chash()</code> method in the same way<code class="literal"> iscached()</code> did and waits to acquire the lock before it uses the key to retrieve the value from the cache. If this fails, a<code class="literal"> KeyError</code> will be raised that will be caught, causing the<code class="literal"> None</code> value to be returned as that was what the IDs variable was initialized to.</p><p>The<code class="literal"> storeincache()</code> method first creates a new<code class="literal"> cacheid</code> using one of the<code class="literal"> uuid()</code> functions from Python's<code class="literal"> uuid</code> module, essentially creating a random string of hexadecimal characters. Together with the<code class="literal"> sortorder</code> and<code class="literal"> pattern</code> arguments, this new<code class="literal"> cacheid</code> is used to generate a unique key.</p><p>Before we store the list of IDs in the cache, we check whether there is any space left by comparing the number of keys in the cache to the maximum length we are prepared to accept. If there isn't any room left, we make room by calling the<code class="literal"> cleancache()</code> method that will remove any entries that are too old. We then store the IDs together with a time stamp after acquiring a lock and return the<code class="literal"> cacheid</code> just generated.<a id="id362" class="indexterm"/>
+</p><p>The final cog in our caching machinery is the<code class="literal"> cleancache()</code> method. After requiring a lock, a reverse map is built, mapping timestamps to keys. If this map holds any items, we use it to locate any key that is older than an hour. Those are deleted after acquiring a lock.</p><div class="note" title="Note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="note32"/>Note</h3><p>The whole business with acquiring a lock and releasing it as quick as possible instead of acquiring the lock and doing all the cache-related business in one go ensures that other threads accessing the cache do not have to wait very long, which keeps the whole application responsive.</p></div><p>If the age of an entry is less than an hour, we keep notes to see which of the remaining ones is the oldest to remove that one at the end. This way, we ensure that we always retire at least one entry, even if there aren't any really old ones.</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="The books application revisited"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec10"/>The books application revisited</h1></div></div></div><p>With that much versatile code available, constructing a new lean and mean version of our books application becomes very straightforward.</p></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Time for action creating a books application, take two"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec11"/>Time for action creating a books application, take two</h1></div></div></div><p>Run the code in<code class="literal"> books2.py</code> and point your web browser to<a class="ulink" href="http://localhost:8080"> http://localhost:8080</a>.<a id="id363" class="indexterm"/>
+</p><p>After logging in (a default username/password combination of admin/admin will be present), you will be presented with a list of entities to browse (books and authors) and after clicking on<span class="strong"><strong> Books</strong></span>, a screen will present itself that closely resembles the general Browse application (the page still has a Spartan look because no CSS is added at this point):</p><div class="mediaobject"><img src="images/3647_07_02.jpg" width="160" alt="Time for action creating a books application, take two"/></div><p>Thanks to some JavaScript goodness, our browse screen is embedded in the page instead of functioning standalone, yet all functionality is retained, including skipping forward and backward as well as sorting. New books or authors may be added by clicking the<span class="strong"><strong> Add new</strong></span> button.</p><div class="section" title="What just happened?"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec15"/>What just happened?</h2></div></div></div><p>When we take a look at the code in<code class="literal"> books2.py</code>, we see that its main part consists of definitions of entities, relations, and specific<code class="literal"> Browse</code> entities that are combined together to form a CherryPy application:<a id="id364" class="indexterm"/>
+</p><p>
+<span class="strong"><strong>Chapter7/books2.py</strong></span>
+</p><div class="informalexample"><pre class="programlisting">
+import os
+import cherrypy
+from entity import AbstractEntity, Attribute
+from relation import AbstractRelation
+from browse import Browse
+from display import Display
+from editor import Editor
+from logondb import LogonDB
+db="/tmp/book2.db"
+class Entity(AbstractEntity):
+	database = db
+class Relation(AbstractRelation):
+	database = db
+class User(Entity):
+	name = Attribute(notnull=True, unique=True,
+			displayname="Name")
+class Book(Entity):
+	title = Attribute(notnull=True, displayname="Title")
+	isbn = Attribute(displayname="Isbn")
+	published = Attribute(displayname="Published")
+class Author(Entity):
+	name = Attribute(notnull=True, unique=True,
+			displayname="Name", primary=True)
+class OwnerShip(Relation):
+	a = User
+	b = Book
+class Writer(Relation):
+	a = Book
+	b = Author<span class="strong"><strong>
+logon = LogonDB()</strong></span>
+class AuthorBrowser(Browse):
+	display = Display(Author)
+	edit = Display(Author, edit=True, logon=logon)
+	add = Display(Author, add=True, logon=logon)
+class BookBrowser(Browse):
+	display = Display(Book)
+	edit = Display(Book, edit=True, logon=logon,
+			columns=Book.columns+[Author])
+	add = Display(Book, add=True, logon=logon,
+			columns=Book.columns+[Author])
+with open('basepage.html') as f:
+	basepage=f.read(-1)
+books applicationbooks applicationcreatingclass Root():
+	logon = logon
+	books = BookBrowser(Book,
+			columns=['title','isbn','published',Author])
+	authors = AuthorBrowser(Author)
+	@cherrypy.expose
+	def index(self):
+			return Root.logon.index(returnpage='../entities')
+	@cherrypy.expose
+	def entities(self):<span class="strong"><strong>
+		username = self.logon.checkauth()</strong></span>
+		if username is None :
+			raise HTTPRedirect('.')
+		user=User.list(pattern=[('name',username)])
+		if len(user) &lt; 1 :
+			User(name=username)
+		return basepage%'''&lt;div class="navigation"&gt;
+		&lt;a href="books"&gt;Books&lt;/a&gt;
+		&lt;a href="authors"&gt;Authors&lt;/a&gt;
+		&lt;/div&gt;&lt;div class="content"&gt;
+		&lt;/div&gt;
+		&lt;script&gt;
+				... Javascript omitted ...
+		&lt;/script&gt;
+		'''
+cherrypy.engine.subscribe('start_thread',
+	lambda thread_index: Root.logon.connect())
+current_dir = os.path.dirname(os.path.abspath(__file__))
+cherrypy.quickstart(Root(),config={
+		'/':
+		{ 'log.access_file' :
+				os.path.join(current_dir,"access.log"),
+		'log.screen': False,
+		'tools.sessions.on': True
+		}
+	})
+</pre></div><p>After importing the modules we need, we define<code class="literal"> User, Book</code>, and<code class="literal"> Author</code> entities and an<code class="literal"> OwnerShip</code> class, to define the relation between a book and a user. Likewise, we define a<code class="literal"> Writer</code> class that defines the relation between a book and its author(s).<a id="id366" class="indexterm"/>
+</p><p>The next step is to create an instance of a<code class="literal"> LogonDB</code> class (highlighted) that will be used in many parts of our CherryPy application to verify that the user is authenticated.</p><p>The bulk of the CherryPy application consists of two<code class="literal"> Browse</code> classes, one for books and one for authors. Each class has display, edit, and add class variables that point to further branches of our application that are served by<code class="literal"> Display</code> instances.</p><p>The<code class="literal"> Root</code> class we define ties all of this together. It refers to the<code class="literal"> LogonDb</code> instance created earlier in its<code class="literal"> logon</code> class variable, and its<code class="literal"> books</code> and<code class="literal"> authors</code> class variables point to the previously defined<code class="literal"> Browse</code> instances. It also defines an<code class="literal"> index()</code> method that merely presents a logon screen if the user is not yet authenticated and if he/she is, redirects the user to the entities page. The<code class="literal"> entities()</code> method which serves this page makes sure there is a corresponding user in the database (highlighted) and presents a base page consisting of a navigation<code class="literal"> div</code> and a content<code class="literal"> div</code> that will be filled when one of the links in the navigation section is clicked, and some JavaScript to tie everything together.</p><p>Before we examine the JavaScript, it might be good to take a look at the illustration to see how the application tree looks:</p><div class="informaltable"><table border="1"><colgroup><col width="1.63938492063492" style="text-align: left"/><col width="2.79861111111111" style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Path</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Method</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">/</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>
+<code class="literal">Root.index()</code>
+</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">/entities</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>
+<code class="literal">Root.entities()</code>
+</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">/logon</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>
+<code class="literal">LogonDB.index()</code>
+</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">/books</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>
+<code class="literal">BooksBrowser.index()</code>
+</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">/add</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>
+<code class="literal">Display().index()</code>
+</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">/edit</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>
+<code class="literal">Display().index()</code>
+</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">/display</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>
+<code class="literal">Display().index()</code>
+</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">/authors</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>
+<code class="literal">AuthorBrowser.index()</code>
+</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">/add</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>
+<code class="literal">Display().index()</code>
+</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">/edit</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>
+<code class="literal">Display().index()</code>
+</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">/display</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>
+<code class="literal">Display().index()</code>
+</p>
+</td></tr></tbody></table></div><p>(Note that the<code class="literal"> edit, add</code>, and<code class="literal"> display</code> branches are each serviced by a different instance of<code class="literal"> Display)</code>.</p><p>Earlier, we saw that the<code class="literal"> Browse</code> class we created was able to function standalone: clicking on any of the buttons referred to the same URL that served up the form in the first place. This setup makes it possible to use different<code class="literal"> Browse</code> instances in different parts of an application tree, but here we want to replace a part of a page with the form produced by the<code class="literal"> Browse</code> instance using an AJAX call. The problem then is that submitting a form without an<code class="literal"> action</code> attribute will result in a request to the current URL, that is, the one referring to the page the form is embedded in, not the one that produces the form.<a id="id367" class="indexterm"/>
+</p><p>Fortunately, we can use jQuery to solve this problem by altering the<code class="literal"> action</code> attributes of the freshly loaded forms to point to the URL that served those forms:</p><p>
+<span class="strong"><strong>Chapter7/books2.py</strong></span>
+</p><div class="informalexample"><pre class="programlisting">
+	$.ajaxSetup({cache:false,type:"GET"});<span class="strong"><strong>
+	$(".navigation a").click(function (){</strong></span>
+		var rel = $(this).attr('href');
+		function shiftforms(){
+			$(".content form").each(function(i,e){
+			$(e).attr('action',
+				rel+'/'+$(e).attr('action'));
+				$('[type=submit]',e).bind('click',
+					function(event){
+					var f = $(this).parents('form');
+					var n = $(this).attr('name');
+					if (n != ''){
+						n = '&amp;'+n+'='+$(this).attr('value');}
+					$(".content").load(f.attr('action'),
+						f.serialize()+n,shiftforms);
+					return false;
+				});
+			});
+		};
+		// change action attributes of form elements
+		$(".content").load($(this).attr('href'),shiftforms);
+		return false;
+	});
+</pre></div><p>This is accomplished by adding a click event handler to the links in the navigation area. That will not only prevent the default action but load the HTML produced by the URL referred to by the<code class="literal"> href</code> attribute and pass a callback function that will alter the action attributes of any freshly loaded<code class="literal">&lt;form&gt;</code> elements (highlighted).</p><p>The<code class="literal"> shiftforms()</code> function first prepends the original<code class="literal"> href</code> contents to the<code class="literal"> action</code> attributes and then binds a click handler to each button or input element with a<code class="literal"> type</code> attribute equal to submit.</p><p>It would not be sufficient to add a submit handler to the form, because we don't want to let the<code class="literal">&lt;form&gt;</code> perform its default action. When a form is submitted, the contents of the page are replaced and this is not what we want. Instead, we want to replace the contents of the content<code class="literal"> div</code> so we have to<code class="literal"> load()</code> the URL from the form's<code class="literal"> action</code> attribute ourselves.<a id="id368" class="indexterm"/>
+</p><p>This also means that we have to serialize the contents of the form to add as parameters to this URL, but jQuery's<code class="literal"> serialize()</code> function will not serialize submit buttons. We, therefore, end up with adding a click handler to submit buttons in order to be able to determine the submit button that was clicked, so we can construct a complete list of parameters, including the name and value of the submit button.</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Summary"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec12"/>Summary</h1></div></div></div><p>We took a critical look at the framework we developed so far, and made improvements to the framework to make it more versatile and simpler to use for a developer.</p><p>Specifically, we covered:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">How to do away with explicit database and thread initialization.</li><li class="listitem" style="list-style-type: disc">How to wield the awesome power of Python metaclasses to synchronize the creation of Python classes and their corresponding database tables.</li><li class="listitem" style="list-style-type: disc">How to use those same metaclasses to alter the definitions of existing classes to create a much more intuitive interface when dealing with relations.</li><li class="listitem" style="list-style-type: disc">How to implement a<code class="literal"> Browse</code> class to navigate through large collections of entities in an efficient way using caches.</li><li class="listitem" style="list-style-type: disc">How to rewrite the books application in a much simpler way with this reworked framework.</li></ul></div><p>We have still glossed over several issues, including how to display and edit instances. In the last three chapters, we will develop a Customer Relationship Management application and fill in the final bits, including controlling how to restrict some actions to specific persons and how to allow for end user customization of the application.</p></div></div>
+</body></html>
