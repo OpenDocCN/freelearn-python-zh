@@ -1,334 +1,470 @@
 - en: Chapter 5. Multithreading versus Multiprocessing
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 第5章：多线程与多进程
 - en: When it comes to optimizing code, concurrency and parallelism are two topics
     that are rarely left out of the conversation. However, in the case of Python these
     are topics that are normally used to criticize the language. Critics normally
     blame the difficulty of using these mechanics versus the actual benefit they bring
     to the table (which, in some instances, is nonexistent).
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: 当谈到优化代码时，并发和并行性是两个很少被忽视的话题。然而，在Python的情况下，这些通常是用来批评该语言的议题。批评者通常指责使用这些机制与它们实际带来的好处（在某些情况下，这种好处可能根本不存在）之间的难度。
 - en: 'In this chapter, we will see that the critics are right some of the time and
     wrong in other cases. Just like with most tools, these mechanics require certain
     conditions to work for the developer, instead of working against them. During
     our tour of the internals of how we can achieve parallelism in Python and on which
     occasions it is actually worth it, we''ll discuss two specific topics:'
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这一章中，我们将看到批评者在某些情况下是正确的，在其他情况下是错误的。就像大多数工具一样，这些机制需要满足某些条件才能为开发者服务，而不是与他们作对。在我们对如何在Python中实现并行性以及何时这样做真正值得的内部结构进行巡游时，我们将讨论两个具体的话题：
 - en: '**Multithreading**: This is the most classical approach in trying to achieve
     true parallelism. Other languages such as C++ and Java provide this feature as
     well.'
+  id: totrans-3
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: '**多线程**：这是尝试实现真正并行性的最经典方法。其他语言如C++和Java也提供了这一功能。'
 - en: '**Multiprocessing**: Although not as common and with some potentially difficult
     problems to solve, we''ll discuss this feature as a valid alternative to multithreading.'
+  id: totrans-4
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: '**多进程**：尽管不太常见，并且可能存在一些难以解决的问题，但我们将讨论这一特性作为多线程的有效替代方案。'
 - en: After reading this chapter, you'll fully understand the difference between Multithreading
     and Multiprocessing. Moreover, you will also understand what a **Global Interpreter
     Lock** (**GIL**) is, and how it will affect your decision when trying to pick
     the right parallelism technique.
+  id: totrans-5
   prefs: []
   type: TYPE_NORMAL
+  zh: 在阅读完这一章后，你将完全理解多线程和多进程之间的区别。此外，你还将了解什么是**全局解释器锁**（**GIL**），以及它将如何影响你在尝试选择正确的并行技术时的决策。
 - en: Parallelism versus concurrency
+  id: totrans-6
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 并行性与并发性
 - en: These two terms are often used together and even interchangeably, but they are
     technically two different things. On one side, we have parallelism, which happens
     when two or more processes can run at the exact same time. This can happen, for
     instance, in multicore systems, where each process runs on a different processor.
+  id: totrans-7
   prefs: []
   type: TYPE_NORMAL
+  zh: 这两个术语经常一起使用，甚至可以互换，但它们在技术上实际上是两回事。一方面，我们有并行性，这是指两个或更多进程可以同时运行的情况。例如，在多核系统中，每个进程都在不同的处理器上运行。
 - en: On the other hand, concurrency happens when two or more processes try to run
     at the same time on top of the same processor. This is usually solved by techniques
     such as time slicing. However, these techniques do not execute in a truly parallel
     fashion. It just looks parallel to observers because of the speed at which the
     processor switches between tasks.
+  id: totrans-8
   prefs: []
   type: TYPE_NORMAL
+  zh: 另一方面，并发性发生在两个或更多进程试图在同一个处理器上同时运行的情况下。这通常通过时间切片等技术来解决。然而，这些技术并不是真正并行地执行。只是因为处理器在任务之间切换的速度快，所以看起来像是并行的。
 - en: 'The following diagram tries to illustrate this:'
+  id: totrans-9
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下图表试图说明这一点：
 - en: '![Parallelism versus concurrency](img/B02088_05_01.jpg)'
+  id: totrans-10
   prefs: []
   type: TYPE_IMG
+  zh: '![并行性与并发性](img/B02088_05_01.jpg)'
 - en: Concurrency, for instance, is a technique used by all modern operating systems.
     This is because irrespective of the number of processors a computer has, the system
     alone will probably need to have more processes running at the same time, let
     alone anything the user might want to do. So, to solve this, the operative system
     will take care of scheduling time with the processor for each process that requires
     it. Then, it'll switch context between them, giving each one a slice of time.
+  id: totrans-11
   prefs: []
   type: TYPE_NORMAL
+  zh: 并发性，例如，是所有现代操作系统使用的一种技术。这是因为无论计算机有多少处理器，系统本身可能需要同时运行更多的进程，更不用说用户可能想要做的事情了。因此，为了解决这个问题，操作系统将负责为每个需要它的进程调度处理器时间。然后，它将在它们之间切换上下文，给每个进程分配一段时间。
 - en: Now, with this in mind, how can we achieve either parallelism or concurrency
     in our Python programs? This is where multithreading and multiprocessing come
     into play.
+  id: totrans-12
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，考虑到这一点，我们如何在Python程序中实现并行性或并发性呢？这就是多线程和多进程发挥作用的地方。
 - en: Multithreading
+  id: totrans-13
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 多线程
 - en: Multithreading is the ability of a program to run multiple threads within the
     context of the same program. These threads share the process's resources and allow
     multiple actions to run in the concurrent mode (for single processor systems)
     and in the parallel mode (for multicore systems).
+  id: totrans-14
   prefs: []
   type: TYPE_NORMAL
+  zh: 多线程是程序在相同程序上下文中运行多个线程的能力。这些线程共享进程的资源，允许在并发模式（对于单处理器系统）和并行模式（对于多核系统）中同时运行多个操作。
 - en: 'Structuring your program to utilize these threads is not an easy task. However,
     it comes with some very interesting benefits:'
+  id: totrans-15
   prefs: []
   type: TYPE_NORMAL
+  zh: 将你的程序结构化以利用这些线程不是一项容易的任务。然而，它带来了一些非常有趣的好处：
 - en: '**Responsiveness**: In single-threaded programs, executing a long running task
     might cause the program to appear to freeze. Thanks to multithreading and by moving
     such code into a worker thread, the program can remain responsive while concurrently
     executing the long running task.'
+  id: totrans-16
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**响应性**：在单线程程序中，执行长时间运行的任务可能会使程序看起来冻结。多线程和将此类代码移动到工作线程，程序可以在同时执行长时间运行的任务的同时保持响应。'
 - en: '**Faster execution**: In multicore processors or multiprocessor systems, multithreading
     can be used to improve the program''s performance by achieving true parallelism.'
+  id: totrans-17
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**执行速度更快**：在多核处理器或多处理器系统中，多线程可以通过实现真正的并行性来提高程序的性能。'
 - en: '**Lower resource consumption**: Using threads, a program can serve many requests
     using the resources from the original process.'
+  id: totrans-18
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**资源消耗降低**：使用线程，程序可以使用原始进程的资源来服务许多请求。'
 - en: '**Simplified sharing and communication**: Since threads already share the same
     resources and memory space, communication between them is much simpler than interprocess
     communication.'
+  id: totrans-19
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**简化共享和通信**：由于线程已经共享相同的资源和内存空间，它们之间的通信比进程间通信要简单得多。'
 - en: '**Parallelization**: Multicore or multiprocessor systems can be used to leverage
     multithreading and run each thread independently. **Compute Unified Device Architecture**
     (**CUDA**) from Nvidia ([http://www.nvidia.com/object/cuda_home_new.html](http://www.nvidia.com/object/cuda_home_new.html))
     or OpenCL from Khronos Group ([https://www.khronos.org/opencl/](https://www.khronos.org/opencl/))
     are GPU-computing environments that utilize from dozens to hundreds of processors
     to run tasks in parallel.'
+  id: totrans-20
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**并行化**：多核或多处理器系统可以用来利用多线程并独立运行每个线程。Nvidia的**计算统一设备架构**（**CUDA**）([http://www.nvidia.com/object/cuda_home_new.html](http://www.nvidia.com/object/cuda_home_new.html))或Khronos
+    Group的OpenCL([https://www.khronos.org/opencl/](https://www.khronos.org/opencl/))是利用从几十到几百个处理器来并行运行任务的GPU计算环境。'
 - en: 'There are also some drawbacks of multithreading:'
+  id: totrans-21
   prefs: []
   type: TYPE_NORMAL
+  zh: 多线程也有一些缺点：
 - en: '**Thread synchronization**: Since threads can potentially work on the same
     data, you will need to implement some sort of mechanics to prevent race conditions
     (causing corrupted data reads).'
+  id: totrans-22
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**线程同步**：由于线程可能处理相同的数据，你需要实现某种机制来防止竞态条件（导致数据读取损坏）。'
 - en: '**Crash due to problematic thread**: Although it might seem independent, a
     single problematic thread acting up and performing an invalid action can crash
     the entire process.'
+  id: totrans-23
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**由问题线程引起的崩溃**：尽管它可能看起来是独立的，但一个单独的问题线程出现问题并执行无效操作可能会使整个进程崩溃。'
 - en: '**Deadlocks**: This is a common problem associated with working with threads.
     Normally, when a thread needs a resource, it will lock it until it is done with
     it. A deadlock occurs when one thread enters a wait state, waiting for a second
     thread to release its resources but the second thread is, in turn, waiting for
     the first one to release its locked ones.'
+  id: totrans-24
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**死锁**：这是与线程工作相关的一个常见问题。通常，当一个线程需要资源时，它会锁定该资源直到完成。当一条线程进入等待状态，等待第二条线程释放其资源，但第二条线程反过来又正在等待第一条线程释放其已锁定的资源时，就会发生死锁。'
 - en: Normally, this technique should be enough to achieve parallelism on multiprocessor
     systems. However, the official version of Python (CPython) has a limitation called
     GIL. This GIL prevents multiple native threads from running Python's bytecode
     at once, which effectively trumps parallelism. If you have a four-processor system,
     your code would not run at 400 percent. Instead, it would just run at 100 percent
     or a bit slower actually, because of the extra overhead from threading.
+  id: totrans-25
   prefs: []
   type: TYPE_NORMAL
+  zh: 通常，这种技术应该足以在多处理器系统上实现并行性。然而，Python的官方版本（CPython）有一个称为GIL的限制。这个GIL阻止多个原生线程同时运行Python的字节码，这实际上破坏了并行性。如果你有一个四处理器系统，你的代码不会以400%的速度运行。相反，它只会以100%或稍微慢一点的速度运行，因为线程带来的额外开销。
 - en: Note
+  id: totrans-26
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 注意
 - en: Note that the GIL is not an invention only of Python (or CPython). Other programming
     languages also have a GIL, such as Ruby's official implementation Ruby MRI or
     even OCaml ([https://ocaml.org/](https://ocaml.org/)).
+  id: totrans-27
   prefs: []
   type: TYPE_NORMAL
+  zh: 注意，GIL不仅仅是Python（或CPython）的发明。其他编程语言也有GIL，例如Ruby的官方实现Ruby MRI或OCaml（[https://ocaml.org/](https://ocaml.org/))）。
 - en: A GIL is necessary because the memory management in CPython is not thread safe.
     So, by forcing everything to run serially, it makes sure that nothing corrupts
     the memory. It is also faster for single-threaded programs and simplifies the
     creation of C extensions, because they don't have to take multithreading into
     account.
+  id: totrans-28
   prefs: []
   type: TYPE_NORMAL
+  zh: GIL是必要的，因为CPython中的内存管理不是线程安全的。因此，通过强制所有内容按顺序运行，它确保没有任何东西会破坏内存。对于单线程程序来说，它也更快，简化了C扩展的创建，因为它们不需要考虑多线程。
 - en: There are, however, some ways around the GIL. For instance, since it only prevents
     threads from running Python's bytecode at the same time, you could potentially
     code your tasks in C and have Python just as a wrapper for that code. The GIL
     would not stop the C code from running all threads concurrently in this case.
+  id: totrans-29
   prefs: []
   type: TYPE_NORMAL
+  zh: 然而，有一些方法可以绕过GIL。例如，由于它只阻止线程同时运行Python的字节码，因此你可以在C中编码你的任务，让Python只是该代码的包装器。在这种情况下，GIL不会阻止C代码同时运行所有线程。
 - en: Another example where the GIL will not affect the performance would be a network
     server, which spends most of its time reading packets off the network. In this
     case, the added concurrency will allow more packets to be serviced, even if there
     is no real parallelism. This effectively boosts the performance of our program
     (it can serve a lot more clients per second), but it does not affect its speed,
     as every task takes the same amount of time
+  id: totrans-30
   prefs: []
   type: TYPE_NORMAL
+  zh: 另一个GIL不会影响性能的例子是一个网络服务器，它的大部分时间都花在从网络上读取数据包。在这种情况下，增加的并发性将允许服务更多的数据包，即使没有真正的并行性。这实际上提高了我们程序的性能（每秒可以服务更多的客户端），但它不会影响其速度，因为每个任务花费相同的时间
 - en: Threads
+  id: totrans-31
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 线程
 - en: Now, let's talk a bit about threads in Python in order to understand how to
     use them. They are composed of a beginning, an execution sequence, and a conclusion.
     There is also an instruction pointer, which keeps track of where a thread is currently
     running within the thread's context.
+  id: totrans-32
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，让我们简要谈谈Python中的线程，以便了解如何使用它们。它们由开始、执行序列和结束组成。还有一个指令指针，它跟踪线程在其上下文中当前运行的位置。
 - en: That pointer can be pre-empted or interrupted in order to stop the thread. Alternatively,
     it can also be put on hold temporarily. This basically means putting the thread
     to sleep.
+  id: totrans-33
   prefs: []
   type: TYPE_NORMAL
+  zh: 那个指针可以被抢占或中断，以便停止线程。或者，它也可以暂时挂起。这基本上意味着让线程休眠。
 - en: 'In order to work with threads in Python, we have the following two options:'
+  id: totrans-34
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了在Python中使用线程，我们有以下两种选择：
 - en: '**The thread module**: This provides some limited ability to work with threads.
     It''s simple to use, and for small tasks, it adds little overhead.'
+  id: totrans-35
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**线程模块**：这提供了一些有限的能力来处理线程。它使用简单，对于小型任务，它增加的额外开销很小。'
 - en: '**The threading module**: This is newer and included in Python since version
     2.4\. It provides a more powerful and higher level support for threads.'
+  id: totrans-36
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**线程模块**：这是较新的模块，自Python 2.4版本以来就包含在Python中。它提供了更强大和更高层次的线程支持。'
 - en: Creating a thread with the thread module
+  id: totrans-37
   prefs:
   - PREF_H4
   type: TYPE_NORMAL
+  zh: 使用线程模块创建线程
 - en: Although we'll focus on the threading module, we'll quickly show an example
     of how to use this module for the simpler times, when not a lot of work is required
     from your script.
+  id: totrans-38
   prefs: []
   type: TYPE_NORMAL
+  zh: 虽然我们将重点关注线程模块，但我们会快速展示如何使用此模块进行更简单的时代，当脚本不需要大量工作时。
 - en: 'The thread module ([https://docs.python.org/2/library/thread.html](https://docs.python.org/2/library/thread.html))
     provides the `start_new_thread` method. We can pass it in the following parameters:'
+  id: totrans-39
   prefs: []
   type: TYPE_NORMAL
+  zh: 线程模块（[https://docs.python.org/2/library/thread.html](https://docs.python.org/2/library/thread.html)）提供了`start_new_thread`方法。我们可以传递以下参数：
 - en: We can pass it in a function that will contain the actual code to run. Once
     this function returns, the thread will be stopped.
+  id: totrans-40
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 我们可以将其传递给一个包含实际要运行的代码的函数。一旦这个函数返回，线程将被停止。
 - en: We can pass it in a tuple of arguments. This list will be passed to the function.
+  id: totrans-41
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 我们可以将其传递为一个参数元组。这个列表将被传递给函数。
 - en: Finally, we can pass it in an optional dictionary of named arguments.
+  id: totrans-42
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 最后，我们可以将其传递为一个可选的命名参数字典。
 - en: 'Let''s see an example of all the preceding parameters:'
+  id: totrans-43
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们看看前面所有参数的一个例子：
 - en: '[PRE0]'
+  id: totrans-44
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: 'The preceding code prints the following output:'
+  id: totrans-45
   prefs: []
   type: TYPE_NORMAL
+  zh: 上述代码打印以下输出：
 - en: '![Creating a thread with the thread module](img/B02088_05_02.jpg)'
+  id: totrans-46
   prefs: []
   type: TYPE_IMG
+  zh: '![使用thread模块创建线程](img/B02088_05_02.jpg)'
 - en: The preceding code is simple enough, and the output clearly shows how both threads
     are actually running concurrently. The interesting thing about this is that in
     the code, the `print_time` function itself has an inside loop. If we were to run
     this function twice serially, then it would last `5` * delay seconds each time
     we call it.
+  id: totrans-47
   prefs: []
   type: TYPE_NORMAL
+  zh: 上述代码足够简单，输出清楚地显示了两个线程实际上是并发运行的。关于这一点有趣的是，在代码中，`print_time`函数本身有一个内部循环。如果我们两次串行运行此函数，那么每次调用它都会持续`5`
+    * 延迟秒。
 - en: However, using threads and without having to change anything, we're running
     the loop twice concurrently.
+  id: totrans-48
   prefs: []
   type: TYPE_NORMAL
+  zh: 然而，使用线程并且不需要做任何改变，我们正在同时运行循环两次。
 - en: 'This module also provides other threading primitives that can come in handy.
     Here is an example:'
+  id: totrans-49
   prefs: []
   type: TYPE_NORMAL
+  zh: 此模块还提供了其他有用的线程原语。以下是一个示例：
 - en: '[PRE1]'
+  id: totrans-50
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: This method sends a keyboard interrupt exception to the main thread. This, effectively,
     is like hitting *CTRL*+*C* on your program while running. If not caught, the thread
     that sent the signal would terminate the program.
+  id: totrans-51
   prefs: []
   type: TYPE_NORMAL
+  zh: 此方法向主线程发送键盘中断异常。这实际上就像在程序运行时按下*CTRL*+*C*一样。如果没有捕获，发送信号的线程将终止程序。
 - en: '[PRE2]'
+  id: totrans-52
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: 'This method exits the thread silently. It is a good way to terminate a thread
     without affecting anything else. Let''s assume that we changed our `print_time`
     function into the following lines of code:'
+  id: totrans-53
   prefs: []
   type: TYPE_NORMAL
+  zh: 此方法静默地退出线程。这是一种在不影响其他任何事物的情况下终止线程的好方法。假设我们将我们的`print_time`函数改为以下代码行：
 - en: '[PRE3]'
+  id: totrans-54
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: 'In this case, the output would be as follows:'
+  id: totrans-55
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这种情况下，输出结果如下：
 - en: '![Creating a thread with the thread module](img/B02088_05_03.jpg)'
+  id: totrans-56
   prefs: []
   type: TYPE_IMG
+  zh: '![使用thread模块创建线程](img/B02088_05_03.jpg)'
 - en: The `allocate_lock` method returns a lock for the threads to use. The lock will
     help the developer protect sensitive code and make sure that there are no race
     conditions during execution.
+  id: totrans-57
   prefs: []
   type: TYPE_NORMAL
+  zh: '`allocate_lock`方法返回一个线程可以使用的锁。锁将帮助开发者保护敏感代码，并确保在执行期间没有竞态条件。'
 - en: 'The lock objects returned have these three simple methods:'
+  id: totrans-58
   prefs: []
   type: TYPE_NORMAL
+  zh: 返回的锁对象具有这三个简单的方法：
 - en: '`acquire`: This basically acquires the lock for the current thread. It accepts
     an optional integer parameter. If it is zero, the lock would be acquired only
     if it can be acquired immediately, without waiting. If it''s non-zero, the lock
     would be acquired unconditionally (like when you omit the parameter). This means
     that if the thread needs to wait to acquire the lock, it would.'
+  id: totrans-59
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`acquire`：这基本上是为当前线程获取锁。它接受一个可选的整数参数。如果它是零，只有在可以立即获取锁而无需等待的情况下，锁才会被获取。如果它不是零，锁将无条件地被获取（就像当你省略参数时）。这意味着如果线程需要等待以获取锁，它就会等待。'
 - en: '`release`: This will release the lock for the next thread to acquire it.'
+  id: totrans-60
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`release`：这将释放锁，以便下一个线程获取它。'
 - en: '`locked`: This would return `TRUE` if the lock is acquired by some thread.
     Otherwise, it would be `FALSE`.'
+  id: totrans-61
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`locked`：如果某个线程获取了锁，则返回`TRUE`。否则，返回`FALSE`。'
 - en: 'Here is a very basic example of how locking can help multithreaded code. The
     following code increments a global variable using 10 threads. Each one will add
     one thread. So, by the end, we should have 10 threads in that global variable:'
+  id: totrans-62
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是一个如何使用锁帮助多线程代码的非常基本的例子。以下代码使用10个线程递增全局变量。每个线程都会添加一个线程。所以，到最后，我们应该在该全局变量中有10个线程：
 - en: '[PRE4]'
+  id: totrans-63
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: 'Here is the output of the preceding code:'
+  id: totrans-64
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下是前面代码的输出：
 - en: '![Creating a thread with the thread module](img/B02088_05_04.jpg)'
+  id: totrans-65
   prefs: []
   type: TYPE_IMG
+  zh: '![使用thread模块创建线程](img/B02088_05_04.jpg)'
 - en: Not only are we correctly incrementing the value of the global variable (we
     only got up to `2`), but we are also having issues printing out the strings. In
     some cases, we have two strings in the same line, when they should each occupy
     one. This is because when two strings existed in the same line, both threads tried
     to print at the same time. At that time, the current line to print on was the
     same in both cases.
+  id: totrans-66
   prefs: []
   type: TYPE_NORMAL
+  zh: 不仅我们正确地增加了全局变量的值（我们只增加到`2`），我们还遇到了打印字符串的问题。在某些情况下，同一行中有两个字符串，而它们应该各自占据一行。这是因为当同一行中存在两个字符串时，两个线程都试图同时打印。那时，要打印的当前行在两种情况下都是相同的。
 - en: 'The same occurrence repeats for the global value. When threads `1`, `3`, `6`,
     `8`, `4`, `2`, and `7` read the value of the global variable in order to add `1`,
     the value was `0` (which is what they each copied to the `local_value` variable).
@@ -336,20 +472,31 @@
     it out is protected (inside a lock) so that no two threads can run it at the same
     time. To accomplish this, we''ll use two methods for the Lock object: acquire
     and release.'
+  id: totrans-67
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于全局值，同样的情况也会发生。当线程 `1`、`3`、`6`、`8`、`4`、`2` 和 `7` 按顺序读取全局变量的值以添加 `1` 时，其值为 `0`（这是它们各自复制到
+    `local_value` 变量的值）。我们需要确保复制值、增加它并打印它的代码被保护（在锁内），以便没有两个线程可以同时运行它。为了实现这一点，我们将使用锁对象的两种方法：获取和释放。
 - en: 'Use the following lines of code:'
+  id: totrans-68
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用以下代码行：
 - en: '[PRE5]'
+  id: totrans-69
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: 'Now, the output makes more sense:'
+  id: totrans-70
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，输出结果更有意义了：
 - en: '![Creating a thread with the thread module](img/B02088_05_05.jpg)'
+  id: totrans-71
   prefs: []
   type: TYPE_IMG
+  zh: '![使用thread模块创建线程](img/B02088_05_05.jpg)'
 - en: 'The output now makes more sense, the format got fixed, and we successfully
     incremented the value of our variable. Both fixes are due to the locking mechanics.
     Regarding the code, to increment the value of `global_value`, the lock is preventing
@@ -358,379 +505,563 @@
     So, while the lock is active, only the thread that acquired it will be able to
     run those lines. After the lock has been released, the next thread in line will
     do the same. The preceding line of code returns the current threads identified:'
+  id: totrans-72
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在的输出更有意义了，格式已修复，我们成功增加了变量的值。这两个修复都归因于锁定机制。关于代码，要增加 `global_value` 的值，锁阻止其他线程（那些尚未获取锁的线程）执行该代码部分（将其值读入局部变量并增加它）。因此，当锁处于活动状态时，只有获取锁的线程才能运行这些行。锁释放后，下一个排队等待的线程将执行相同的操作。前面的代码行返回当前线程的标识：
 - en: '[PRE6]'
+  id: totrans-73
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: 'This is a non-zero integer with no direct meaning other than identifying the
     current thread between the lists of active ones. This number can be recycled after
     a thread dies or exits, so it is not unique during the lifetime of the program.
     The following code sets or returns the thread stack size used when creating new
     threads:'
+  id: totrans-74
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是一个非零整数，除了在活动线程列表中标识当前线程外，没有其他直接意义。线程死亡或退出后，此数字可以被回收，因此在程序的生命周期内不是唯一的。以下代码设置或返回创建新线程时使用的线程堆栈大小：
 - en: '[PRE7]'
+  id: totrans-75
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: This supports an optional argument ("this" being the size to set for the stack).
     This size must either be 0 or at least 32.768 (32 Kb). Depending on the system,
     there might be other restrictions to the number or even to setting the stack size.
     So, check with your OS's manual before trying to use this method.
+  id: totrans-76
   prefs: []
   type: TYPE_NORMAL
+  zh: 这支持一个可选参数（“this”是要设置的堆栈大小）。此大小必须是 0 或至少 32.768（32 Kb）。根据系统，可能会有其他限制，甚至是对设置堆栈大小的限制。因此，在尝试使用此方法之前，请查阅您操作系统的手册。
 - en: Note
+  id: totrans-77
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 注意
 - en: Although it is not the target version of this book, in Python 3, this module
     has been renamed to `_thread`.
+  id: totrans-78
   prefs: []
   type: TYPE_NORMAL
+  zh: 虽然这不是本书的目标版本，但在Python 3中，此模块已被重命名为 `_thread`。
 - en: Working with the threading module
+  id: totrans-79
   prefs:
   - PREF_H4
   type: TYPE_NORMAL
+  zh: 使用线程模块
 - en: This is the current and recommended way to work with threads in Python. This
     module provides a better and higher level interface for that. It also adds complexity
     to our code, since the simplicity of the `_thread` module will not be available
     now.
+  id: totrans-80
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是当前和推荐在Python中处理线程的方式。此模块为此提供了一个更好、更高级的接口。它也增加了我们代码的复杂性，因为现在将不再可用 `_thread`
+    模块的简单性。
 - en: 'For this case, we can loosely quote Uncle Ben and say:'
+  id: totrans-81
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于这种情况，我们可以引用本叔叔的话：
 - en: '*With great power comes great complexity.*'
+  id: totrans-82
   prefs:
   - PREF_BQ
   type: TYPE_NORMAL
+  zh: '*权力越大，责任越大*。'
 - en: Jokes apart, the `threading` module encapsulates the concept of thread inside
     a class, which we're required to instantiate to be able to use.
+  id: totrans-83
   prefs: []
   type: TYPE_NORMAL
+  zh: 开个玩笑，`threading` 模块将线程的概念封装在一个类中，我们必须实例化它才能使用。
 - en: 'We can create a subclass of the `Thread` class ([https://docs.python.org/2/library/thread.html](https://docs.python.org/2/library/thread.html))
     provided by the module (this is normally the preferred way). Alternatively, we
     could even instantiate that class directly if we want to do something very simple.
     Let''s see how the preceding example would translate using the `threading` module:'
+  id: totrans-84
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以创建模块提供的 `Thread` 类的子类（[https://docs.python.org/2/library/thread.html](https://docs.python.org/2/library/thread.html)），这通常是首选方式。或者，如果我们想做一些非常简单的事情，我们甚至可以直接实例化该类。让我们看看前面的例子如何使用
+    `threading` 模块进行转换：
 - en: '[PRE8]'
+  id: totrans-85
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: For more complex things, we might want to create our own thread classes in order
     to better encapsulate its behavior.
+  id: totrans-86
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于更复杂的事情，我们可能想要创建自己的线程类，以便更好地封装其行为。
 - en: 'When using the subclass approach, there are a few things you need to take into
     account when writing your own classes:'
+  id: totrans-87
   prefs: []
   type: TYPE_NORMAL
+  zh: 当使用子类方法时，在编写自己的类时，你需要注意以下几点：
 - en: They need to extend the `threading.Thread` class
+  id: totrans-88
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 它们需要扩展`threading.Thread`类
 - en: They need to overwrite the `run` method and, optionally, the `__init__` method
+  id: totrans-89
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 它们需要重写`run`方法，并且可选地重写`__init__`方法
 - en: If you overwrite the constructor, make sure to call the parent's class constructor
     (`Thread.__init__`) as the first action you take
+  id: totrans-90
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 如果你重写了构造函数，请确保首先调用父类的构造函数（`Thread.__init__`）。
 - en: The thread will stop when the `run` method stops or throws an unhandled exception,
     so plan your method with this in mind
+  id: totrans-91
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 当`run`方法停止或抛出未处理的异常时，线程将停止，因此请考虑这一点来规划你的方法。
 - en: You can name your thread with the `name` argument on its constructor method
+  id: totrans-92
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 你可以在构造方法的`name`参数中为线程命名
 - en: Although you'll have to overwrite the `run` method, which will contain the main
     logic of the thread, you will not be in control of when that method is called.
     Instead, you will call the `start` method, which, in turn, will create a new thread
     and call the `run` method with that thread as context.
+  id: totrans-93
   prefs: []
   type: TYPE_NORMAL
+  zh: 虽然你将不得不重写`run`方法，其中将包含线程的主要逻辑，但你将无法控制该方法何时被调用。相反，你将调用`start`方法，该方法会创建一个新的线程，并使用该线程作为上下文调用`run`方法。
 - en: 'Let''s now look at a simple example of a very common pitfall of working with
     threads:'
+  id: totrans-94
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在让我们看看一个关于线程工作中非常常见的陷阱的简单例子：
 - en: '[PRE9]'
+  id: totrans-95
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: 'The output of that code is as follows:'
+  id: totrans-96
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下代码的输出如下：
 - en: '![Working with the threading module](img/B02088_05_06.jpg)'
+  id: totrans-97
   prefs: []
   type: TYPE_IMG
+  zh: '![使用线程模块](img/B02088_05_06.jpg)'
 - en: 'As you can see highlighted in the preceding screenshot, the program is sending
     the exit message before anything else. In this case, it''s not a big issue. However,
     it would be a problem if we had something like this:'
+  id: totrans-98
   prefs: []
   type: TYPE_NORMAL
+  zh: 如前一个截图所示，程序在发送退出消息之前发送了其他消息。在这种情况下，这不是一个大问题。然而，如果我们有类似的情况：
 - en: '[PRE10]'
+  id: totrans-99
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: Note
+  id: totrans-100
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 注意
 - en: Note that the preceding code will fail, because it will close the file handler
     before any thread tries to use it in any way. If we want to avoid this type of
     issue, we need to use the `join` method, which will halt the calling thread until
     the target thread has completed execution.
+  id: totrans-101
   prefs: []
   type: TYPE_NORMAL
+  zh: 注意，前面的代码将失败，因为它将在任何线程试图以任何方式使用文件句柄之前关闭它。如果我们想避免这类问题，我们需要使用`join`方法，这将使调用线程暂停，直到目标线程完成执行。
 - en: 'In our case, if we use the `join` method from the main thread, it would make
     sure that the program does not continue with the main chain of commands until
     both threads complete execution. We need to make sure we use the `join` method
     on the threads after both have started. Otherwise, we could end up running them
     serially:'
+  id: totrans-102
   prefs: []
   type: TYPE_NORMAL
+  zh: 在我们的情况下，如果我们从主线程中使用`join`方法，它将确保程序在两个线程完成执行之前不会继续执行主命令链。我们需要确保在两个线程启动后使用`join`方法。否则，我们可能会以串行方式运行它们：
 - en: '[PRE11]'
+  id: totrans-103
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: 'This method also accepts an optional argument: a timeout (a `float` or `None`)
     in seconds. However, the `join` method always returns `None`. So, to find out
     whether the operation indeed timed out, we need to check whether the thread is
     still alive (with the `isAlive` method) after the `join` method returns. If the
     thread is alive, then the operation timed out.'
+  id: totrans-104
   prefs: []
   type: TYPE_NORMAL
+  zh: 此方法还接受一个可选参数：一个超时时间（一个`float`或`None`），单位为秒。然而，`join`方法始终返回`None`。因此，为了确定操作是否确实超时，我们需要在`join`方法返回后检查线程是否仍然存活（使用`isAlive`方法）。如果线程仍然存活，则操作超时。
 - en: 'Let''s now see another example of a simple script to check the status code
     of a list of sites. This script requires just a few lines of code to iterate over
     the list and collect the status code returned:'
+  id: totrans-105
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在让我们看看另一个简单脚本的例子，用于检查一系列网站的返回状态码。此脚本只需要几行代码就可以遍历列表并收集返回的状态码：
 - en: '[PRE12]'
+  id: totrans-106
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: 'If you run the preceding code with the time command-line tool on Linux, you
     could also get the time it takes to execute:'
+  id: totrans-107
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你使用Linux上的时间命令行工具运行前面的代码，你还可以得到执行所需的时间：
 - en: '[PRE13]'
+  id: totrans-108
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: 'The output is as follows:'
+  id: totrans-109
   prefs: []
   type: TYPE_NORMAL
+  zh: 输出如下：
 - en: '![Working with the threading module](img/B02088_05_07.jpg)'
+  id: totrans-110
   prefs: []
   type: TYPE_IMG
+  zh: '![使用线程模块](img/B02088_05_07.jpg)'
 - en: 'Now, looking at the code and with what we''ve seen so far, a clear optimization
     would be to turn the IO-bound function (`check_http_status`) into a thread. This
     way, we can concurrently check the status for all sites, instead of waiting for
     each request to finish before processing the next one:'
+  id: totrans-111
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，看看代码以及我们迄今为止所看到的，一个明显的优化是将I/O密集型函数（`check_http_status`）转换为线程。这样，我们可以并发地检查所有站点的状态，而不是等待每个请求完成后再处理下一个：
 - en: '[PRE14]'
+  id: totrans-112
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: 'Running the new script with time will produce the following result:'
+  id: totrans-113
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用时间运行新脚本会产生以下结果：
 - en: '[PRE15]'
+  id: totrans-114
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: 'We will get the following output:'
+  id: totrans-115
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们将得到以下输出：
 - en: '![Working with the threading module](img/B02088_05_08.jpg)'
+  id: totrans-116
   prefs: []
   type: TYPE_IMG
+  zh: '![使用线程模块](img/B02088_05_08.jpg)'
 - en: Clearly, the threaded alternative is faster. In our case, it is almost three
     times faster, which is an amazing improvement.
+  id: totrans-117
   prefs: []
   type: TYPE_NORMAL
+  zh: 显然，线程化的替代方案更快。在我们的例子中，它几乎快了三倍，这是一个惊人的改进。
 - en: Interthread communication with events
+  id: totrans-118
   prefs:
   - PREF_H4
   type: TYPE_NORMAL
+  zh: 使用事件进行线程间通信
 - en: Although threads are normally thought of as individual or parallel workers,
     sometimes, it is useful to allow them to communicate with each other.
+  id: totrans-119
   prefs: []
   type: TYPE_NORMAL
+  zh: 尽管线程通常被认为是单个或并行工作者，但有时允许它们相互通信是有用的。
 - en: To achieve this, the threading module provides the event construct ([https://docs.python.org/2/library/threading.html#event-objects](https://docs.python.org/2/library/threading.html#event-objects)).
     It contains an internal flag, and caller threads can either use `set()` or `clear()`.
+  id: totrans-120
   prefs: []
   type: TYPE_NORMAL
+  zh: 要实现这一点，线程模块提供了事件构造（[https://docs.python.org/2/library/threading.html#event-objects](https://docs.python.org/2/library/threading.html#event-objects)）。它包含一个内部标志，调用线程可以使用`set()`或`clear()`来操作。
 - en: 'The `Event` class has a very simple interface. Here are the methods provided
     within the class:'
+  id: totrans-121
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Event`类有一个非常简单的接口。以下是该类内部提供的方法：'
 - en: '`is_set`: this would return `True` if the internal flag of the event is set.'
+  id: totrans-122
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`is_set`：如果事件的内部标志被设置，则返回`True`。'
 - en: '`set`: this sets the internal flag to `True`. It awakens all threads waiting
     for this flag to be set. Threads calling `wait()` will no longer be blocked.'
+  id: totrans-123
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`set`：这将内部标志设置为`True`。唤醒所有等待此标志被设置的线程。调用`wait()`的线程将不再被阻塞。'
 - en: '`clear`: this resets the internal flag. Any thread calling the `wait()` method
     will become blocked until `set()` is called again.'
+  id: totrans-124
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`clear`：这将重置内部标志。任何调用`wait()`方法的线程将变为阻塞状态，直到再次调用`set()`。'
 - en: '`wait`: this blocks the calling thread until the internal flag of the event
     is set. This method accepts an optional argument for a timeout. If it is specified
     and different from none, then the thread would be blocked only by that timeout.'
+  id: totrans-125
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`wait`：这将阻塞调用线程，直到事件的内部标志被设置。此方法接受一个可选的超时参数。如果指定了超时并且与`none`不同，则线程将只被该超时阻塞。'
 - en: 'Let''s see a simple example of using events to communicate between two threads
     so that they can take turns printing out to a standard output. Both threads will
     share the same event object. One will set it on every iteration of the `while`
     loop, and the other would clear it if it''s set. On every action (`set` or `clear`),
     they''ll print the right letter:'
+  id: totrans-126
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们看看使用事件在两个线程之间进行通信的简单示例，以便它们可以轮流向标准输出打印。两个线程将共享同一个事件对象。一个线程会在`while`循环的每次迭代中设置它，而另一个线程如果设置了它，就会清除它。在每次操作（`set`或`clear`）时，它们会打印出正确的字母：
 - en: '[PRE16]'
+  id: totrans-127
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: 'In conclusion, the following table shows when to use multithreading and when
     not to:'
+  id: totrans-128
   prefs: []
   type: TYPE_NORMAL
+  zh: 总之，以下表格显示了何时使用多线程以及何时不使用：
 - en: '| Use threads | Don''t use threads |'
+  id: totrans-129
   prefs: []
   type: TYPE_TB
+  zh: '| 使用线程 | 不使用线程 |'
 - en: '| --- | --- |'
+  id: totrans-130
   prefs: []
   type: TYPE_TB
+  zh: '| --- | --- |'
 - en: '| For heavy IO-bound scripts | To optimize scripts that are heavily CPU bound
     |'
+  id: totrans-131
   prefs: []
   type: TYPE_TB
+  zh: '| 对于重I/O密集型脚本 | 用于优化重CPU密集型脚本 |'
 - en: '| When parallelism can be replaced by concurrency | For programs that must
     take advantage of multicore systems |'
+  id: totrans-132
   prefs: []
   type: TYPE_TB
+  zh: '| 当并行化可以被并发替代时 | 对于必须利用多核系统的程序 |'
 - en: '| For GUI development |   |'
+  id: totrans-133
   prefs: []
   type: TYPE_TB
+  zh: '| 用于GUI开发 |   |'
 - en: Multiprocessing
+  id: totrans-134
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 多进程
 - en: Multithreading in Python fails to achieve real parallelism, thanks to the GIL,
     as we saw earlier. Thus, some types of applications will not see a real benefit
     from using this module.
+  id: totrans-135
   prefs: []
   type: TYPE_NORMAL
+  zh: 如我们之前所见，由于GIL的存在，Python中的多线程无法实现真正的并行化。因此，某些类型的应用程序将不会从使用此模块中获得真正的益处。
 - en: Instead, Python provides an alternative to multithreading called multiprocessing.
     In multiprocessing, threads are turned into individual subprocesses. Each one
     will run with its own GIL (which means there are no limitations on the number
     of parallel Python processes that can run at the same time).
+  id: totrans-136
   prefs: []
   type: TYPE_NORMAL
+  zh: 相反，Python提供了一个名为多进程的替代多线程的方法。在多进程中，线程被转换为单独的子进程。每个子进程都将运行自己的GIL（这意味着可以同时运行多个并行Python进程，没有限制）。
 - en: To clarify, threads are all part of the same process, and they share the same
     memory, space, and resources. On the other hand, processes don't share memory
     space with their spawning parent, so it might be more complicated for them to
     communicate with each other.
+  id: totrans-137
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了澄清，线程都是同一进程的一部分，它们共享相同的内存、空间和资源。另一方面，进程不与它们的父进程共享内存空间，因此它们之间进行通信可能更复杂。
 - en: 'This approach comes with advantages and disadvantages over the multithreading
     alternative:'
+  id: totrans-138
   prefs: []
   type: TYPE_NORMAL
+  zh: 与多线程相比，这种方法既有优点也有缺点：
 - en: '| Advantages | Disadvantages |'
+  id: totrans-139
   prefs: []
   type: TYPE_TB
+  zh: '| 优点 | 缺点 |'
 - en: '| --- | --- |'
+  id: totrans-140
   prefs: []
   type: TYPE_TB
+  zh: '| --- | --- |'
 - en: '| Takes advantage of multicore systems | Larger memory footprint |'
+  id: totrans-141
   prefs: []
   type: TYPE_TB
+  zh: '| 利用多核系统 | 内存占用更大 |'
 - en: '| Separate memory space removes race conditions from the equation | Harder
     to share mutable data between processes |'
+  id: totrans-142
   prefs: []
   type: TYPE_TB
+  zh: '| 分离的内存空间消除了竞争条件 | 在进程间共享可变数据更困难 |'
 - en: '| Child processes are easily interruptible (killable) | **Interprocess communication**
     (**IPC**) is harder than with threads |'
+  id: totrans-143
   prefs: []
   type: TYPE_TB
+  zh: '| 子进程容易中断（可杀） | **进程间通信**（**IPC**）比线程更困难 |'
 - en: '| Avoids the GIL limitation (although only in the case of CPython) |   |'
+  id: totrans-144
   prefs: []
   type: TYPE_TB
+  zh: '| 避免了全局解释器锁（GIL）的限制（尽管仅在CPython的情况下） |   |'
 - en: Multiprocessing with Python
+  id: totrans-145
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: Python的多进程
 - en: The `multiprocessing` module ([https://docs.python.org/2/library/multiprocessing.html](https://docs.python.org/2/library/multiprocessing.html))
     provides the `Process` class, which, in turn, has an API similar to the `threading.Thread`
     class. So, migrating code from multithreading to multiprocessing is not as difficult
     as one might think, because the basic structure of your code would remain the
     same.
+  id: totrans-146
   prefs: []
   type: TYPE_NORMAL
+  zh: '`multiprocessing`模块（[https://docs.python.org/2/library/multiprocessing.html](https://docs.python.org/2/library/multiprocessing.html)）提供了`Process`类，该类反过来又具有与`threading.Thread`类相似的API。因此，将代码从多线程迁移到多进程并不像人们想象的那么困难，因为你的代码的基本结构将保持不变。'
 - en: 'Let''s look at a quick example of how we might structure a multiprocessing
     script:'
+  id: totrans-147
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们快速看一下我们可能如何构建一个多进程脚本的结构：
 - en: '[PRE17]'
+  id: totrans-148
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: The preceding code is a basic example, but it shows just how similar to multithreading
     the code can be.
+  id: totrans-149
   prefs: []
   type: TYPE_NORMAL
+  zh: 前面的代码是一个基本示例，但它展示了代码与多线程是多么相似。
 - en: Note
+  id: totrans-150
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 注意
 - en: 'Note that on Windows systems, you will need to add an extra check to make sure
     that when the subprocesses include the main code, it would not be executed again.
     To clarify, the main code should look like this (if you plan to run it on Windows):'
+  id: totrans-151
   prefs: []
   type: TYPE_NORMAL
+  zh: 注意，在Windows系统上，您需要添加一个额外的检查以确保当子进程包含主代码时，它不会再次执行。为了澄清，主代码应如下所示（如果您计划在Windows上运行它）：
 - en: '[PRE18]'
+  id: totrans-152
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: Exit status
+  id: totrans-153
   prefs:
   - PREF_H4
   type: TYPE_NORMAL
+  zh: 退出状态
 - en: When each process is finished (or terminated), it has an exit code, which is
     a number representing the result of the execution. This number might either indicate
     that the process finished correctly, incorrectly, or that it was terminated by
     another process.
+  id: totrans-154
   prefs: []
   type: TYPE_NORMAL
+  zh: 当每个进程完成（或终止）时，它都有一个退出代码，这是一个表示执行结果的数字。这个数字可能表示进程正确完成、错误完成，或者被另一个进程终止。
 - en: 'To be more precise:'
+  id: totrans-155
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了更精确：
 - en: A code equal to `0` means there was no problem at all
+  id: totrans-156
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 代码值等于`0`表示没有任何问题
 - en: A code higher than `0` means the process failed and exited with that code
+  id: totrans-157
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 代码值大于`0`表示进程失败并以该代码退出
 - en: A code lower than `0` means it was killed with a `-1` * `exit_code` signal
+  id: totrans-158
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 代码值小于`0`表示进程被`-1` `exit_code`信号杀死
 - en: 'The following code shows how to read the exit code and how it is set, depending
     on the outcome of the task:'
+  id: totrans-159
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下代码展示了如何读取退出代码以及它是如何根据任务的结果设置的：
 - en: '[PRE19]'
+  id: totrans-160
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE19]'
 - en: 'The output of this script is shown in the following screenshot:'
+  id: totrans-161
   prefs: []
   type: TYPE_NORMAL
+  zh: 该脚本的输出如下截图所示：
 - en: '![Exit status](img/B02088_05_09.jpg)'
+  id: totrans-162
   prefs: []
   type: TYPE_IMG
+  zh: '![退出状态](img/B02088_05_09.jpg)'
 - en: 'Notice how the `print` property from the third worker is never executed. This
     is because that process is terminated before the `sleep` method finishes. It is
     also important to note that we''re doing two separate `for` loops over the three
@@ -739,111 +1070,157 @@
     each subprocess, then the third subprocess would not fail. In fact, it would return
     an exit code of zero (no problem), because as with multithreading, the `join()`
     method will block the calling process until the target one finishes.'
+  id: totrans-163
   prefs: []
   type: TYPE_NORMAL
+  zh: 注意到第三个工作进程的`print`属性从未被执行。这是因为该进程在`sleep`方法完成之前就被终止了。同样重要的是要注意，我们在三个工作进程上执行了两个不同的`for`循环：一个用于启动它们，另一个用于使用`join()`方法将它们连接起来。如果我们，例如，在启动每个子进程时执行`join()`方法，那么第三个子进程就不会失败。实际上，它会返回退出代码为零（没有问题），因为与多线程一样，`join()`方法将阻塞调用进程，直到目标进程完成。
 - en: Process pooling
+  id: totrans-164
   prefs:
   - PREF_H4
   type: TYPE_NORMAL
+  zh: 进程池
 - en: This module also provides the `Pool` class ([https://docs.python.org/2/library/multiprocessing.html#module-multiprocessing.pool](https://docs.python.org/2/library/multiprocessing.html#module-multiprocessing.pool)),
     which represents a pool of worker processes that facilitate different ways to
     execute a set of tasks in subprocesses.
+  id: totrans-165
   prefs: []
   type: TYPE_NORMAL
+  zh: 此模块还提供了`Pool`类([https://docs.python.org/2/library/multiprocessing.html#module-multiprocessing.pool](https://docs.python.org/2/library/multiprocessing.html#module-multiprocessing.pool))，它代表一组工作进程池，可以方便地在子进程中以不同的方式执行一系列任务。
 - en: 'The main methods provided by this class are:'
+  id: totrans-166
   prefs: []
   type: TYPE_NORMAL
+  zh: 此类提供的主要方法包括：
 - en: '`apply`: This executes a function in a separate subprocess. It also blocks
     the calling process until the called function returns.'
+  id: totrans-167
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`apply`：在单独的子进程中执行一个函数。它也会阻塞调用进程，直到被调用函数返回。'
 - en: '`apply_async`: This executes a function in a separate subprocess, asynchronously,
     which means that it''ll return immediately. It returns an `ApplyResult` object.
     To get the actual returned value, you need to use the `get()` method. This action
     will be blocked until the asynchronously executed function finishes.'
+  id: totrans-168
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`apply_async`：在单独的子进程中异步执行一个函数，这意味着它将立即返回。它返回一个`ApplyResult`对象。要获取实际的返回值，需要使用`get()`方法。此操作将阻塞，直到异步执行函数完成。'
 - en: '`map`: This executes a function for a list of values. It is a blocking action,
     so the returned value is the result of applying the function to each value of
     the list.'
+  id: totrans-169
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`map`：对一系列值执行一个函数。这是一个阻塞操作，因此返回的值是函数应用于列表中每个值的返回结果。'
 - en: Each one of them provides a different way of iterating over your data, be it
     asynchronously, synchronously, or even one by one. It all depends on your needs.
+  id: totrans-170
   prefs: []
   type: TYPE_NORMAL
+  zh: 每一个都提供了不同的方式来遍历你的数据，无论是异步、同步，甚至是逐个。这完全取决于你的需求。
 - en: Interprocess communication
+  id: totrans-171
   prefs:
   - PREF_H4
   type: TYPE_NORMAL
+  zh: 进程间通信
 - en: Now, getting the processes to communicate with each other is not, as we already
     mentioned, as easy as with threads. However, Python provides us with several tools
     to achieve this.
+  id: totrans-172
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，让进程相互通信并不像我们之前提到的那么简单。然而，Python为我们提供了几个工具来实现这一点。
 - en: 'The `Queue` class provides a thread-safe and process-safe **first in first
     out** (**FIFO**) ([https://docs.python.org/2/library/multiprocessing.html#exchanging-objects-between-processes](https://docs.python.org/2/library/multiprocessing.html#exchanging-objects-between-processes))
     mechanism to exchange data. The `Queue` class provided by the multiprocessing
     module is a near clone of `Queue.Queue`, so the same API can be used. The following
     code shows an example of two processes interacting through `Queue`:'
+  id: totrans-173
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Queue`类提供了一个线程安全和进程安全的**先进先出**（**FIFO**）([https://docs.python.org/2/library/multiprocessing.html#exchanging-objects-between-processes](https://docs.python.org/2/library/multiprocessing.html#exchanging-objects-between-processes))机制来交换数据。多进程模块提供的`Queue`类几乎与`Queue.Queue`相同，因此可以使用相同的API。以下代码展示了两个进程通过`Queue`进行交互的示例：'
 - en: '[PRE20]'
+  id: totrans-174
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE20]'
 - en: Pipes
+  id: totrans-175
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 管道
 - en: Pipes provide ([https://docs.python.org/2/library/multiprocessing.html#exchanging-objects-between-processes](https://docs.python.org/2/library/multiprocessing.html#exchanging-objects-between-processes))
     a bidirectional channel of communication between two processes. The `Pipe()` function
     returns a pair of connection objects, each representing one side of the pipe.
     Each connection object has both a `send()` and a `recv()` method.
+  id: totrans-176
   prefs: []
   type: TYPE_NORMAL
+  zh: 管道提供了([https://docs.python.org/2/library/multiprocessing.html#exchanging-objects-between-processes](https://docs.python.org/2/library/multiprocessing.html#exchanging-objects-between-processes))两个进程之间双向通信的通道。`Pipe()`函数返回一对连接对象，每个对象代表管道的一侧。每个连接对象都有`send()`和`recv()`方法。
 - en: 'The following code shows a simple usage for the pipe construct, similar to
     the preceding Queue example. This script will create two processes: one that will
     generate random numbers and send them through the pipe and one that will read
     the same one and write the numbers to a file:'
+  id: totrans-177
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下代码展示了管道构造的简单用法，类似于前面的队列示例。此脚本将创建两个进程：一个进程将生成随机数并通过管道发送，另一个进程将读取相同的数并将数字写入文件：
 - en: '[PRE21]'
+  id: totrans-178
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE21]'
 - en: Events
+  id: totrans-179
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 事件
 - en: 'They are also present in the multiprocessing module, and they work in almost
     a similar way. The developer only needs to keep in mind that event objects can''t
     be passed into worker functions. If you try to do that, a runtime error will be
     issued, saying that semaphore objects can only be shared between processes through
     inheritance. This means that you can''t do what is shown in this code:'
+  id: totrans-180
   prefs: []
   type: TYPE_NORMAL
+  zh: 它们也存在于多进程模块中，并且几乎以相同的方式工作。开发者只需要记住，事件对象不能传递给工作函数。如果你尝试这样做，将会引发运行时错误，指出信号量对象只能通过继承在进程间共享。这意味着你不能像以下代码所示进行操作：
 - en: '[PRE22]'
+  id: totrans-181
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE22]'
 - en: Summary
+  id: totrans-182
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 概述
 - en: Now that we've covered both alternatives, their main characteristics, and their
     ups and downs, it is really up to the developer to pick one or the other. There
     is clearly no better one, since they are meant for different scenarios, although
     they might seem to accomplish the same thing.
+  id: totrans-183
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在我们已经涵盖了这两种替代方案、它们的主要特性以及它们的优缺点，最终选择哪一个完全取决于开发者。显然，没有哪一个更好，因为它们适用于不同的场景，尽管它们可能看起来完成了相同的事情。
 - en: The main take-away from this chapter should be the points mentioned earlier,
     the main characteristics of each approach, and when each one should be used.
+  id: totrans-184
   prefs: []
   type: TYPE_NORMAL
+  zh: 本章的主要收获应该是前面提到的要点，即每种方法的主要特性以及何时应该使用每种方法。
 - en: In the next chapter, we'll continue with the optimization tools. This time,
     we will look at Cython (an alternative that allows you to compile your Python
     code on C) and PyPy (an alternative interpreter written in Python that is not
     bound to the GIL like CPython is).
+  id: totrans-185
   prefs: []
   type: TYPE_NORMAL
+  zh: 在下一章中，我们将继续探讨优化工具。这次，我们将探讨Cython（一种允许您将Python代码编译为C的替代方案）和PyPy（一种用Python编写的替代解释器，它不像CPython那样受GIL的限制）。
