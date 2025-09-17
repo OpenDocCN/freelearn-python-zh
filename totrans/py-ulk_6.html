@@ -1,0 +1,426 @@
+<html><head></head><body><div class="chapter" title="Chapter&#xA0;6.&#xA0;Test-Driven Development"><div class="titlepage"><div><div><h1 class="title"><a id="ch06"/>Chapter 6. Test-Driven Development</h1></div></div></div><p>In this chapter, we will discuss some good concepts that are to be applied during testing. First, we will take a look at how we can create mock or stubs easily to test functionalities that are not present in the system. Then, we will cover how to write test cases with parameterization. Custom test runners can be of great help to write test utilities for a specific project. Then, we will cover how to test threaded applications, and utilize concurrent execution to decrease the overall time spent on test suite runs. We will cover the following topics:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Mock for tests</li><li class="listitem" style="list-style-type: disc">Parameterization</li><li class="listitem" style="list-style-type: disc">Creating custom test runners</li><li class="listitem" style="list-style-type: disc">Testing threaded applications</li><li class="listitem" style="list-style-type: disc">Running test cases in parallel</li></ul></div><div class="section" title="Mock for tests"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec41"/>Mock for tests</h1></div></div></div><p>
+<span class="strong"><strong>Key 1: Mock what you do not have.</strong></span>
+</p><p>When we are using test driven development, we have to write test cases for the components that<a id="id171" class="indexterm"/> rely on <a id="id172" class="indexterm"/>other components that are not written yet or take a lot of time to execute. This is close to impossible until we create mocks and stubs. In this scenario, stubs or mocks are very useful. We use a fake object instead of a real one to write the test case. This can be made very easy if we use tools that are provided by the language. For example, in the following code, we only have the interface for the worker class, and no real implementation of it. We want to test the <code class="literal">assign_if_free</code> function.</p><p>Instead of writing any stub ourselves, we use the <code class="literal">create_autospec</code> function to create a mock object from the definition of the Worker abstract class. We also set up a return value <a id="id173" class="indexterm"/>for the function <a id="id174" class="indexterm"/>call of checking whether worker was busy or not:</p><div class="informalexample"><pre class="programlisting">import six
+import unittest
+import sys
+import abc
+if sys.version_info[0:2] &gt;= (3, 3):
+    from unittest.mock import Mock, create_autospec
+else:
+    from mock import Mock, create_autospec
+if six.PY2:
+    import thread
+else:
+    import _thread as thread
+
+class IWorker(six.with_metaclass(abc.ABCMeta, object)):
+
+    @abc.abstractmethod
+    def execute(self, *args):
+        """ execute an api task """
+        pass
+
+    @abc.abstractmethod
+    def is_busy(self):
+        pass
+
+    @abc.abstractmethod
+    def serve_api(self,):
+        """register for api hit"""
+        pass
+
+class Worker(IWorker):
+    def __init__(self,):
+        self.__running = False
+
+    def execute(self,*args):
+        self.__running = True
+        th = thread.start_new_thread(lambda x:time.sleep(5))
+        th.join()
+        self.__running = False
+
+    def is_busy(self):
+        return self.__running == True
+
+def assign_if_free(worker, task):
+    if not worker.is_busy():
+        worker.execute(task)
+        return True
+    else:
+        return False
+
+
+class TestWorkerReporting(unittest.TestCase):
+
+    def test_worker_busy(self,):
+        mworker = create_autospec(IWorker)
+        mworker.configure_mock(**{'is_busy.return_value':True})
+        self.assertFalse(assign_if_free(mworker, {}))
+    
+    def test_worker_free(self,):
+        mworker = create_autospec(IWorker)
+        mworker.configure_mock(**{'is_busy.return_value':False})
+        self.assertTrue(assign_if_free(mworker, {}))
+        
+
+if __name__ == '__main__':
+    unittest.main()</pre></div><p>To set up <a id="id175" class="indexterm"/>return values, we <a id="id176" class="indexterm"/>can also use functions to return conditional responses, as follows:</p><div class="informalexample"><pre class="programlisting">&gt;&gt;&gt; STATE = False
+&gt;&gt;&gt; worker = create_autospec(Worker,)
+&gt;&gt;&gt; worker.configure_mock(**{'is_busy.side_effect':lambda : True if not STATE else False})
+&gt;&gt;&gt; worker.is_busy()
+True
+&gt;&gt;&gt; STATE=True
+&gt;&gt;&gt; worker.is_busy()
+False</pre></div><p>We can also set methods to raise exceptions using the <code class="literal">side_effect</code> attribute of mock, as follows:</p><div class="informalexample"><pre class="programlisting">&gt;&gt;&gt; worker.configure_mock(**{'execute.side_effect':Exception('timeout for execution')})
+&gt;&gt;&gt; 
+&gt;&gt;&gt; worker.execute()
+Traceback (most recent call last):
+  File "&lt;stdin&gt;", line 1, in &lt;module&gt;
+  File "/usr/lib/python3.4/unittest/mock.py", line 896, in __call__
+    return _mock_self._mock_call(*args, **kwargs)
+  File "/usr/lib/python3.4/unittest/mock.py", line 952, in _mock_call
+    raise effect
+Exception: timeout for execution</pre></div><p>Another use<a id="id177" class="indexterm"/> is to check <a id="id178" class="indexterm"/>whether a method was called and with what arguments, as follows:</p><div class="informalexample"><pre class="programlisting">&gt;&gt;&gt; worker = create_autospec(IWorker,)
+&gt;&gt;&gt; worker.configure_mock(**{'is_busy.return_value':True})
+&gt;&gt;&gt; assign_if_free(worker,{})
+False
+&gt;&gt;&gt; worker.execute.called
+False
+&gt;&gt;&gt; worker.configure_mock(**{'is_busy.return_value':False})
+&gt;&gt;&gt; assign_if_free(worker,{})
+True
+&gt;&gt;&gt; worker.execute.called
+True</pre></div></div></div>
+<div class="section" title="Parameterization"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec42"/>Parameterization</h1></div></div></div><p>
+<span class="strong"><strong>Key 2: Manageable inputs to tests.</strong></span>
+</p><p>For the tests where we have to test various inputs for the same functionality or transformations, we have to write test cases to cover test different inputs. We can use <a id="id179" class="indexterm"/>parameterization here. In this way, we invoke the same test case with different inputs, hence, decreasing time and errors that are associated with it. Newer Python versions 3.4 or higher include a very useful method, <code class="literal">subTest</code> in <code class="literal">unittest.TestCase</code>, which makes it very easy to add parameterized tests. In the test output, please note that the parameterized values are also available:</p><div class="informalexample"><pre class="programlisting">import unittest
+from itertools import combinations
+from functools import wraps
+
+def convert(alpha):
+    return ','.join([str(ord(i)-96) for i in alpha])
+        
+class TestOne(unittest.TestCase):
+    
+    def test_system(self,):
+        cases = [("aa","1,1"),("bc","2,3"),("jk","4,5"),("xy","24,26")]
+        for case in cases:
+            with self.subTest(case=case):
+                self.assertEqual(convert(case[0]),case[1])
+
+if __name__ == '__main__':
+    unittest.main(verbosity=2)</pre></div><p>This will <a id="id180" class="indexterm"/>give us the following output:</p><div class="informalexample"><pre class="programlisting">(py3)arun@olappy:~/codes/projects/pybook/book/ch6$ python parametrized.py
+test_system (__main__.TestOne) ... 
+======================================================================
+FAIL: test_system (__main__.TestOne) (case=('jk', '4,5'))
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "parametrized.py", line 14, in test_system
+    self.assertEqual(convert(case[0]),case[1])
+AssertionError: '10,11' != '4,5'
+- 10,11
++ 4,5
+
+
+======================================================================
+FAIL: test_system (__main__.TestOne) (case=('xy', '24,26'))
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "parametrized.py", line 14, in test_system
+    self.assertEqual(convert(case[0]),case[1])
+AssertionError: '24,25' != '24,26'
+- 24,25
+?     ^
++ 24,26
+?     ^
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.001s
+
+FAILED (failures=2)</pre></div><p>This also means that if we needed the <span class="emphasis"><em>currying</em></span> that is running tests for all combinations of inputs, then this can be done very easily. We have to write a function that returns curried arguments, and then we can use <code class="literal">subTest</code> to have mini tests run with <a id="id181" class="indexterm"/>curried arguments. This way it is very easy to explain to new people on the team how to write test cases with minimum language jargon, as follows:</p><div class="informalexample"><pre class="programlisting">import unittest
+from itertools import combinations
+from functools import wraps
+
+def entry(number,alpha):
+    if 0 &lt; number &lt; 4 and 'a' &lt;= alpha &lt;= 'c':
+        return True
+    else:
+        return False
+
+def curry(*args):
+    if not args:
+        return []
+    else:
+        cases = [ [i,] for i in args[0]]
+        if len(args)&gt;1:
+            for i in range(1,len(args)):
+                ncases = []
+                for j in args[i]:
+                    for case in cases:
+                        ncases.append(case+[j,])
+                cases = ncases
+        return cases
+    
+        
+class TestOne(unittest.TestCase):
+
+    def test_sample2(self,):
+         case1 = [1,2]
+         case2 = ['a','b','d']
+         for case in curry(case1,case2):
+             with self.subTest(case=case):
+                 self.assertTrue(entry(*case), "not equal")
+
+if __name__ == '__main__':
+    unittest.main(verbosity=2)</pre></div><p>This will give us the following output:</p><div class="informalexample"><pre class="programlisting">(py3)arun@olappy:~/codes/projects/pybook/book/ch6$ python parametrized_curry.py 
+test_sample2 (__main__.TestOne) ... 
+======================================================================
+FAIL: test_sample2 (__main__.TestOne) (case=[1, 'd'])
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "parametrized_curry.py", line 33, in test_sample2
+    self.assertTrue(entry(*case), "not equal")
+AssertionError: False is not true : not equal
+
+======================================================================
+FAIL: test_sample2 (__main__.TestOne) (case=[2, 'd'])
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "parametrized_curry.py", line 33, in test_sample2
+    self.assertTrue(entry(*case), "not equal")
+AssertionError: False is not true : not equal
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (failures=2)</pre></div><p>But, this works <a id="id182" class="indexterm"/>only for new versions of Python. For the older versions, we can perform similar work using dynamism of language. We can implement this feature ourselves, as shown in the following code snippet. We use a decorator to stick the parameterize value to test case, and then in <code class="literal">metaclass</code>, we create a new wrapper function that calls the original function with the required parameters:</p><div class="informalexample"><pre class="programlisting">from functools import wraps
+import six
+import unittest
+from datetime import datetime, timedelta
+
+class parameterize(object):
+    """decorator to pass parameters to function 
+    we need this to attach parameterize 
+    arguments on to the function, and it attaches
+    __parameterize_this__ attribute which tells 
+    metaclass that we have to work on this attribute
+    """
+    def __init__(self,names,cases):
+        """ save parameters """
+        self.names = names
+        self.cases = cases
+    
+    def __call__(self,func):
+        """ attach parameters to same func """
+        func.__parameterize_this__ = (self.names, self.cases)
+        return func
+                
+class ParameterizeMeta(type):
+    
+    def __new__(metaname, classname, baseclasses, attrs):
+        # iterate over attribute and find out which one have __parameterize_this__ set
+        for attrname, attrobject in six.iteritems(attrs.copy()):
+            if attrname.startswith('test_'):
+                pmo = getattr(attrobject,'__parameterize_this__',None)
+                if pmo:
+                    params,values = pmo
+                    for case in values:
+                        name = attrname + '_'+'_'.join([str(item) for item in case])
+                        def func(selfobj, testcase=attrobject,casepass=dict(zip(params,case))):
+                            return testcase(selfobj, **casepass)
+                        attrs[name] = func
+                        func.__name__ = name
+                    del attrs[attrname]
+        return type.__new__(metaname, classname, baseclasses, attrs)
+
+class MyProjectTestCase(six.with_metaclass(ParameterizeMeta,unittest.TestCase)):
+    pass
+
+class TestCase(MyProjectTestCase):
+
+    @parameterize(names=("input","output"),
+                 cases=[(1,2),(2,4),(3,6)])
+    def test_sample(self,input,output):
+        self.assertEqual(input*2,output)
+
+
+    @parameterize(names=("in1","in2","output","shouldpass"),
+                  cases=[(1,2,3,True),
+                         (2,3,6,False)]
+                 )
+    def test_sample2(self,in1,in2,output,shouldpass):
+        res = in1 + in2 == output
+        self.assertEqual(res,shouldpass)
+
+
+if __name__ == '__main__':
+    unittest.main(verbosity=2)</pre></div><p>The output <a id="id183" class="indexterm"/>for the preceding code is as follows:</p><div class="informalexample"><pre class="programlisting">test_sample2_1_2_3_True (__main__.TestCase) ... ok
+test_sample2_2_3_6_False (__main__.TestCase) ... ok
+test_sample_1_2 (__main__.TestCase) ... ok
+test_sample_2_4 (__main__.TestCase) ... ok
+test_sample_3_6 (__main__.TestCase) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.000s
+
+OK</pre></div></div>
+<div class="section" title="Creating custom test runners"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec43"/>Creating custom test runners</h1></div></div></div><p>
+<span class="strong"><strong>Key 3: Getting information from test system.</strong></span>
+</p><p>The flow of unit<a id="id184" class="indexterm"/> test is like this: <code class="literal">unittest TestProgram</code> in <code class="literal">unittest.main</code> is the primary object that runs everything. Test cases are collected by test discovery or by loading modules that were passed via command line. If no test runner is specified to the main function, by default, <code class="literal">TextTestRunner</code> is used. Test suite is passed to the runner's run function to give back a <code class="literal">TestResult</code> object.</p><p>The custom test runners are a great way to get information in a specific output format, from the test system, manage run sequence, store results in a database, or create new features for project needs.</p><p>Let's now take a look at an example to create an XML output of test cases, you may need something like this to integrate with continuous integration systems, which are only able to work with some XML format. As in the following code snippet <code class="literal">XMLTestResult</code> is the class that gives the test result in the XML format. The <code class="literal">TsRunner</code> class test runner then puts the same information on the <code class="literal">stdout</code> stream. We also add the <a id="id185" class="indexterm"/>time taken for the test case as well. The <code class="literal">XMLify</code> class is sending information to test the <code class="literal">TsRunner</code> runner class in an XML format. The <code class="literal">XMLRunner</code> class is putting this information in the XML format on <code class="literal">stdout</code>, as follows:</p><div class="informalexample"><pre class="programlisting">""" custom test system classes """
+
+import unittest
+import sys
+import time
+from xml.etree import ElementTree as ET
+from unittest import TextTestRunner
+
+
+class XMLTestResult(unittest.TestResult):
+    """converts test results to xml format"""
+
+    def __init__(self, *args,**kwargs):#runner):
+        unittest.TestResult.__init__(self,*args,**kwargs )
+        self.xmldoc = ET.fromstring('&lt;testsuite /&gt;')
+
+    def startTest(self, test):
+        """called before each test case run"""
+        test.starttime = time.time()
+        test.testxml = ET.SubElement(self.xmldoc,
+                                     'testcase',
+                                     attrib={'name': test._testMethodName,
+                                             'classname': test.__class__.__name__,
+                                             'module': test.__module__})
+
+    def stopTest(self, test):
+        """called after each test case"""
+        et = time.time()
+        time_elapsed = et - test.starttime
+        test.testxml.attrib['time'] = str(time_elapsed)
+
+    def addSuccess(self, test):
+        """
+        called on successful test case run
+        """
+        test.testxml.attrib['result'] = 'ok'
+
+    def addError(self, test, err):
+        """
+        called on errors in test case
+        :param test: test case
+        :param err: error info
+        """
+        unittest.TestResult.addError(self, test, err)
+        test.testxml.attrib['result'] = 'error'
+        el = ET.SubElement(test.testxml, 'error', )
+        el.text = self._exc_info_to_string(err, test)
+
+    def addFailure(self, test, err):
+        """
+        called on failures in test cases.
+        :param test: test case
+        :param err: error info
+        """
+        unittest.TestResult.addFailure(self, test, err)
+        test.testxml.attrib['result'] = 'failure'
+        el = ET.SubElement(test.testxml, 'failure', )
+        el.text = self._exc_info_to_string(err, test)
+
+    def addSkip(self, test, reason):
+        # self.skipped.append(test)
+        test.testxml.attrib['result'] = 'skipped'
+        el = ET.SubElement(test.testxml, 'skipped', )
+        el.attrib['message'] = reason
+
+
+class XMLRunner(object):
+    """ custom runner class"""
+
+    def __init__(self, *args,**kwargs):
+        self.resultclass = XMLTestResult
+
+    def run(self, test):
+        """ run given test case or suite"""
+        result = self.resultclass()
+        st = time.time()
+        test(result)
+        time_taken = float(time.time() - st)
+        result.xmldoc.attrib['time'] = str(time_taken)
+
+        ET.dump(result.xmldoc)
+        #tree = ET.ElementTree(result.xmldoc)
+        #tree.write("testm.xml", encoding='utf-8')
+        return result</pre></div><p>Let's assume that <a id="id186" class="indexterm"/>we use this <code class="literal">XMLRunner</code> on the test cases, as shown in the following code:</p><div class="informalexample"><pre class="programlisting">import unittest
+
+class TestAll(unittest.TestCase):
+    def test_ok(self):
+        assert 1 == 1
+
+    def test_notok(self):
+        assert 1 &gt;= 3
+
+    @unittest.skip("not needed")
+    def test_skipped(self):
+        assert 2 == 4
+
+class TestAll2(unittest.TestCase):
+    def test_ok2(self):
+        raise IndexError
+        assert 1 == 1
+
+    def test_notok2(self):
+        assert 1 == 3
+
+    @unittest.skip("not needed")
+    def test_skipped2(self):
+        assert 2 == 4
+
+if __name__ == '__main__':
+    from ts2 import XMLRunner
+unittest.main(verbosity=2, testRunner=XMLRunner)</pre></div><p>We will get the<a id="id187" class="indexterm"/> following output:</p><div class="informalexample"><pre class="programlisting">&lt;testsuite time="0.0005891323089599609"&gt;&lt;testcase classname="TestAll" module="__main__" name="test_notok" result="failure" time="0.0002377033233642578"&gt;&lt;failure&gt;Traceback (most recent call last):
+  File "test_cases.py", line 8, in test_notok
+    assert 1 &amp;gt;= 3
+AssertionError
+&lt;/failure&gt;&lt;/testcase&gt;&lt;testcase classname="TestAll" module="__main__" name="test_ok" result="ok" time="2.6464462280273438e-05" /&gt;&lt;testcase classname="TestAll" module="__main__" name="test_skipped" result="skipped" time="9.059906005859375e-06"&gt;&lt;skipped message="not needed" /&gt;&lt;/testcase&gt;&lt;testcase classname="TestAll2" module="__main__" name="test_notok2" result="failure" time="9.34600830078125e-05"&gt;&lt;failure&gt;Traceback (most recent call last):
+  File "test_cases.py", line 20, in test_notok2
+    assert 1 == 3
+AssertionError
+&lt;/failure&gt;&lt;/testcase&gt;&lt;testcase classname="TestAll2" module="__main__" name="test_ok2" result="error" time="8.440017700195312e-05"&gt;&lt;error&gt;Traceback (most recent call last):
+  File "test_cases.py", line 16, in test_ok2
+    raise IndexError
+IndexError
+&lt;/error&gt;&lt;/testcase&gt;&lt;testcase classname="TestAll2" module="__main__" name="test_skipped2" result="skipped" time="7.867813110351562e-06"&gt;&lt;skipped message="not needed" /&gt;&lt;/testcase&gt;&lt;/testsuite&gt;</pre></div></div>
+<div class="section" title="Testing threaded applications"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec44"/>Testing threaded applications</h1></div></div></div><p>
+<span class="strong"><strong>Key 4: Make threaded application tests like nonthreaded ones.</strong></span>
+</p><p>My experience <a id="id188" class="indexterm"/>with testing on threaded application is to perform the following actions:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Try to make the threaded application as nonthreaded as possible for tests. By this, I mean that group logic that is nonthreaded in one code segment. Do not try to test business logic with thread logic. Try to keep them separate.</li><li class="listitem" style="list-style-type: disc">Work with as little global state as possible. Functions should pass around objects that are needed to work.</li><li class="listitem" style="list-style-type: disc">Try to make queues of tasks to synchronize them. Instead of creating producer consumer chains yourself, first try to use queues.</li><li class="listitem" style="list-style-type: disc">Also note that sleep statements make test cases run slower. If you add up sleeps in the code for more than 20 places, the whole test suite starts to become slow. Threaded code should pass on information with events and notifications rather than a while loop checking some condition.</li></ul></div><p>The <code class="literal">_thread</code> module in Python 2 and the <code class="literal">_thread</code> module in Python 3 are a big help as you can <a id="id189" class="indexterm"/>start functions as threads, shown as follows:</p><div class="informalexample"><pre class="programlisting">&gt;&gt;&gt; def foo(waittime):
+...     time.sleep(waittime)
+...     print("done")
+&gt;&gt;&gt; thread.start_new_thread(foo,(3,))
+140360468600576
+&gt;&gt; done</pre></div></div>
+<div class="section" title="Running test cases in parallel"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec45"/>Running test cases in parallel</h1></div></div></div><p>
+<span class="strong"><strong>Key 5: Faster test suite execution</strong></span>
+</p><p>When we have<a id="id190" class="indexterm"/> accumulated a lot of test cases in the project, it takes a lot of time to execute all of the test cases. We have to make the test run in parallel to decrease the time that is taken overall. In this case, the <code class="literal">py.test</code> testing framework does a fantastic job of simplifying the ability to run tests in parallel. To make this work, we have to first install the <code class="literal">py.test</code> library, and then use its runner to run the test cases. The <code class="literal">py.test</code> library has an <code class="literal">xdist</code> plugin, which adds the capability to run tests in parallel, as follows:</p><div class="informalexample"><pre class="programlisting">(py35) [ ch6 ] $ py.test -n 3 test_system.py
+========================================== test session starts ===========================================
+platform linux -- Python 3.5.0, pytest-2.8.2, py-1.4.30, pluggy-0.3.1
+rootdir: /home/arun/codes/workspace/pybook/ch6, inifile: 
+plugins: xdist-1.13.1
+gw0 [5] / gw1 [5] / gw2 [5]
+scheduling tests via LoadScheduling
+s...F
+================================================ FAILURES ================================================
+___________________________________________ TestApi.test_api2 ____________________________________________
+[gw0] linux -- Python 3.5.0 /home/arun/.pyenv/versions/py35/bin/python3.5
+self = &lt;test_system.TestApi testMethod=test_api2&gt;
+
+    def test_api2(self,):
+        """api2
+            simple test1"""
+        for i in range(7):
+            with self.subTest(i=i):
+&gt;               self.assertLess(i, 4, "not less")
+E               AssertionError: 4 not less than 4 : not less
+
+test_system.py:40: AssertionError
+============================= 1 failed, 3 passed, 1 skipped in 0.42 seconds ==============================</pre></div><p>If you want to <a id="id191" class="indexterm"/>dive deeper<a id="id192" class="indexterm"/> into this topic, you can refer to <a class="ulink" href="https://pypi.python.org/pypi/pytest-xdist">https://pypi.python.org/pypi/pytest-xdist</a>.</p></div>
+<div class="section" title="Summary"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec46"/>Summary</h1></div></div></div><p>Testing is very important in creating a stable application. In this chapter, we discussed how we mock the objects to create an easy separation on concerns to test different components. Parameterization is very useful to test various transformation logics. The most important take away is to try to create functionalities that are needed by your project as test utilities. Try to stick with the <code class="literal">unittest</code> module. Use other libraries for parallel execution as they support the <code class="literal">unittest</code> tests as well.</p><p>In the next chapter, we will cover optimization techniques for Python.</p></div></body></html>
