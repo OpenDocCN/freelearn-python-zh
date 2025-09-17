@@ -1,0 +1,587 @@
+<html><head></head><body>
+        <section>
+
+            <header>
+                <h1 class="header-title">Distributed Processing</h1>
+            </header>
+
+            <article>
+                
+<p>In the last chapter, we introduced the concept of parallel processing and learned how to leverage multicore processors and GPUs. Now, we can step up our game a bit and turn our attention on distributed processing, which involves executing tasks across multiple machines to solve a certain problem.</p>
+<p>In this chapter, we will illustrate the challenges, use cases, and examples of how to run code on a cluster of computers. Python offers easy-to-use and reliable packages for distribute processing, which will allow us to implement scalable and fault-tolerant code with relative ease.</p>
+<p>The list of topics for this chapter is as follows:</p>
+<ul>
+<li>Distributed computing and the MapReduce model</li>
+<li>Directed Acyclic Graphs with Dask</li>
+<li>Writing parallel code with Dask's <kbd>array</kbd>, <kbd>Bag</kbd>, and <kbd>DataFrame</kbd> data structures</li>
+<li>Distributing parallel algorithms with Dask Distributed</li>
+<li>An introduction to PySpark</li>
+<li>Spark's Resilient Distributed Datasets and DataFrame</li>
+<li>Scientific computing with <kbd>mpi4py</kbd></li>
+</ul>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Introduction to distributed computing</h1>
+            </header>
+
+            <article>
+                
+<p>In today's world, computers, smartphones, and other devices have become an integral part of our lives. Every day, massive quantities of data is produced. Billions of people access services on the Internet, and companies are constantly collecting data to learn about their users to better target products and improve user experience. </p>
+<p>Handling this ever increasing amount of data presents substantial challenges. Large companies and organizations often build clusters of machines designed to store, process, and analyze large and complex datasets. Similar datasets are also produced in data-intensive fields such as environmental sciences and health care. These large-scale datasets have been recently called <strong>big data</strong>. The analysis techniques applied to big data usually involve a combination of machine learning, information retrieval, and visualization.</p>
+<p>Computing clusters have been used for decades in scientific computing, where the study of complex problems requires the use of parallel algorithms executed on high-performance distributed systems. For such applications, universities and other organizations provide and manage supercomputers for research and engineering purposes. Applications that run on supercomputers are generally focused on highly numerical workloads, such as protein and molecular simulations, quantum mechanical calculations, climate models, and much more.</p>
+<p>The challenges of programming for distributed systems are apparent if we think back on how the cost of communication increases as we distribute data and computational tasks across a local network. Network transfers are extremely slow compared to the processor speed, and when using distributed processing, it is even more important to keep network communications as limited as possible. This can be achieved using a few different strategies that favor local data processing and resort to data transfers only when strictly necessary.</p>
+<p>Other challenges of distributed processing involve the general unreliability of computer networks. When you think that in a computing cluster there may be thousands of machines, it becomes clear that (probabilistically speaking) faulty nodes become very common. For this reason, distributed systems need to be able to handle node failures gracefully and without disrupting the ongoing work. Luckily, companies have invested a great deal of resources in developing fault-tolerant distributed engines that take care of these aspects automatically.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">An introduction to MapReduce</h1>
+            </header>
+
+            <article>
+                
+<p><strong>MapReduce</strong> is a programming model that allows you to express algorithms for efficient execution on a distributed system. The MapReduce model was first introduced by Google in 2004 (<a href="https://research.google.com/archive/mapreduce.html">https://research.google.com/archive/mapreduce.html</a>), as a way to automatically partition datasets over different machines and for automatic local processing and the communication between <em>cluster nodes</em>.</p>
+<p>The MapReduce framework was used in cooperation with a distributed filesystem, the <strong>Google File System</strong> (GFS or GoogleFS), which was designed to partition and replicate data across the computing cluster. Partitioning was useful for storing and processing datasets that wouldn't fit on a single node while replication ensured that the system was able to handle failures gracefully. MapReduce was used by Google, in conjunction with GFS, for indexing of their web pages. Later on, the MapReduce and GFS concepts were implemented by Doug Cutting (at the time, an employee at Yahoo!), resulting in the first versions of the <strong>Hadoop Distributed File System</strong> (<strong>HDFS</strong>) and Hadoop MapReduce.</p>
+<p>The programming model exposed by MapReduce is actually quite simple. The idea is to express the computation as a combination of two, fairly generic, steps: <em>Map</em> and <em>Reduce</em>. Some readers will probably be familiar with Python's <kbd>map</kbd> and <kbd>reduce</kbd> functions; however, in the context of MapReduce, the Map and Reduce steps are capable of representing a broader class of operations.</p>
+<p>Map takes a collection of data as input and produces a <em>transformation</em> on this data. What is generally emitted by Map is a series of key value pairs that can be passed to a Reduce step. The Reduce step will aggregate items with the same key and apply a function to the collection to form a usually smaller collection of values.</p>
+<p>The estimation of <em>pi</em>, which was shown in the last chapter, can be trivially converted using a series of Map and Reduce steps. In that case, the input was a collection of pairs of random numbers. The transformation (Map step) was the hit test, and the Reduce step was counting the number of times the hit test was True.</p>
+<p>The prototypical example of the MapReduce model is the implementation of a word count; the program takes a series of documents as input, and returns, for each word, the total number of occurrences in the document collection. The following figure illustrates the Map and Reduce steps of the word count program. On the left, we have the input documents. The Map operation will produce a (key, value) entry where the first element is the word and the second element is <strong>1</strong> (that's because every word contributes <strong>1</strong> to the final count).</p>
+<p>We then perform the reduce operation to aggregate all the elements of the same key and produce the global count for each of the words. In the figure, we can see how all values of the items with key <strong>the</strong> are summed to produce the final entry (<strong>the, 4</strong>):  </p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full image-border" height="199" src="assets/B06440_08CHPNO_01.png" width="434"/></div>
+<p>If we implement our algorithm using the Map and Reduce operation, the framework implementation will ensure that data production and aggregation is done efficiently, by limiting the communication between nodes through clever algorithms.</p>
+<p>However, how does MapReduce manage to keep communication to a minimum? Let's go through the journey of a MapReduce task. Imagine that you have a cluster with two nodes, and a partition of the data (this is usually found locally in each node) is loaded in each node from disk and is ready for processing. A mapper process is created in each node and processes the data to produce the intermediate results. </p>
+<p>Next, it is necessary to send the data to the reducer for further processing. In order to do this, however, it is necessary that all the items that possess the same key are shipped to the same reducer. This operation is called <strong>shuffling</strong> and is the principal communication task in the MapReduce model:</p>
+<div class="CDPAlignCenter CDPAlign"> <img class="aligncenter size-full image-border" height="244" src="assets/B06440_08CHPNO_02.png" width="298"/></div>
+<p>Note that, before the data exchange happens, it is necessary to assign a subset of keys to each reducer; this step is called <strong>partitioning</strong>.  Once a reducer receives its own partition of keys, it is free to process data and write the resulting output on disk.</p>
+<p>The MapReduce framework (through the Apache Hadoop project) has been extensively used in its original form by many companies and organizations. More recently, new frameworks that extend the ideas introduced by MapReduce have been developed to create systems able to express more complex workflows, to use memory more efficiently and to support a lean and efficient execution of distributed tasks.</p>
+<p>In the following sections, we will describe two of the most used libraries in the Python distributed landscape: Dask and PySpark.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Dask</h1>
+            </header>
+
+            <article>
+                
+<p><strong>Dask</strong> is a project of Continuum Analytics (the same company that's responsible for Numba and the <kbd>conda</kbd> package manager) and a pure Python library for parallel and distributed computation. It excels at performing data analysis tasks and is very well integrated in the Python ecosystem.</p>
+<p>Dask was initially conceived as a package for bigger-than-memory calculations on a single machine. Recently, with the Dask Distributed project, its code has been adapted to execute tasks on a cluster with excellent performance and fault-tolerance capabilities. It supports MapReduce-style tasks as well as complex numerical algorithms.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Directed Acyclic Graphs</h1>
+            </header>
+
+            <article>
+                
+<p>The idea behind Dask is quite similar to what we already saw in the last chapter with Theano and Tensorflow. We can use a familiar Pythonic API to build an execution plan, and the framework will automatically split the workflow into tasks that will be shipped and executed on multiple processes or computers.</p>
+<p>Dask expresses its variables and operations as a <strong>Directed Acyclic Graph</strong> (<strong>DAG</strong>) that can be represented through a simple Python dictionary. To briefly illustrate how this works, we will implement the sum of two numbers with Dask. We will define our computational graph by storing the values of our input variables in the dictionary. The <kbd>a</kbd> and <kbd>b</kbd> input variables will be given a value of <kbd>2</kbd>:</p>
+<pre>
+    dsk = {<br/>      "a" : 2,<br/>      "b" : 2,<br/>    }
+</pre>
+<p>Each variable represents a node in the DAG. The next step necessary to build our DAG is the execution of operations on the nodes we just defined. In Dask, a task can be defined by placing a tuple containing a Python function and its positional arguments in the <kbd>dsk</kbd> dictionary. To implement a <kbd>sum</kbd>, we can add a new node, named <kbd>result</kbd>, (the actual name is completely arbitrary) with a tuple containing the function we intend to execute, followed by its arguments. This is illustrated in the following code:</p>
+<pre>
+    dsk = {<br/>      "a" : 2,<br/>      "b" : 2,<br/>      "result": (lambda x, y: x + y, "a", "b")<br/>    }
+</pre>
+<p>For better style and clarity, we can calculate the sum by replacing the <kbd>lambda</kbd> statement with the standard <kbd>operator.add</kbd> library function:</p>
+<pre>
+    from operator import add<br/>    dsk = {<br/>      "a" : 2,<br/>      "b" : 2,<br/>      "result": (add, "a", "b")<br/>    }
+</pre>
+<p>It's important to note that the arguments we intend to pass to the function are the <kbd>"a"</kbd> and <kbd>"b"</kbd> strings, which refer to the <kbd>a</kbd> and <kbd>b</kbd> nodes in the graph. Note that we didn't use any Dask-specific functions to define the DAG; this is the first indication of how the framework is flexible and lean since all manipulations are performed on simple and familiar Python dictionaries.</p>
+<p>The execution of tasks is performed by a scheduler, which is a function that takes a DAG and the task or tasks we'd like to perform and returns the computed value. The default Dask scheduler is the <kbd>dask.get</kbd> function, which can be used as follows:</p>
+<pre>
+    import dask<br/><br/>    res = dask.get(dsk, "result")<br/>    print(res)<br/>    # Output:<br/>    # 4 
+</pre>
+<p>All the complexity is hidden behind the scheduler, which will take care of distributing the tasks across threads, processes, or even different machines. The <kbd>dask.get</kbd> scheduler is a synchronous and serial implementation that is useful for testing and debugging purposes.</p>
+<p>Defining graphs using a simple dictionary is useful to understand how Dask does its magic and for debugging purposes. Raw dictionaries can also be used to implement more complex algorithms not covered by the Dask API. Now, we will learn how Dask is capable of generating tasks automatically through a familiar NumPy- and Pandas-like interface.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Dask arrays</h1>
+            </header>
+
+            <article>
+                
+<p>One of the main use-cases of Dask is the automatic generation of parallel array operations, which greatly simplifies the handling of arrays that don't fit into memory. The strategy employed by Dask is to split the array into a number of subunits that, in Dask array terminology, are called <strong>chunks</strong>.</p>
+<p>Dask implement a NumPy-like interface for arrays in the <kbd>dask.array</kbd> module (which we will abbreviate as <kbd>da</kbd>). An array can be created from a NumPy-like array using the <kbd>da.from_array</kbd> function, which requires the specification of a chunk size. The <kbd>da.from_array</kbd> function will return a <kbd>da.array</kbd> object that will handle the splitting of the original array into subunits of the specified chunk size. In the following example, we create an array of <kbd>30</kbd> elements, and we split it into chunks with <kbd>10</kbd> elements each:</p>
+<pre>
+    import numpy as np<br/>    import dask.array as da<br/><br/>    a = np.random.rand(30)<br/><br/>    a_da = da.from_array(a, chunks=10)<br/>    # Result:<br/>    # dask.array&lt;array-4..., shape=(30,), dtype=float64, chunksize=(10,)&gt;
+</pre>
+<p>The <kbd>a_da</kbd> variable maintains a Dask graph that can be accessed using the <kbd>dask</kbd> attribute. To understand what Dask does under the hood, we can inspect its content. In the following example, we can see that the Dask graph contains four nodes. One of them is the source array, denoted by the <kbd>'array-original-4c76'</kbd> key, the other three keys in the <kbd>a_da.dask</kbd> dictionary are tasks that are used to access a chunk of the original array using the <kbd>dask.array.core.getarray</kbd> function and, as you can see, each task extracts a slice of 10 elements:</p>
+<pre>
+    dict(a_da.dask)<br/>    # Result<br/>    {('array-4c76', 0): (&lt;function dask.array.core.getarray&gt;, <br/>                         'array-original-4c76',<br/>                         (slice(0, 10, None),)),<br/>     ('array-4c76', 2): (&lt;function dask.array.core.getarray&gt;,<br/>                         'array-original-4c76',<br/>                         (slice(20, 30, None),)),<br/>     ('array-4c76', 1): (&lt;function dask.array.core.getarray&gt;, <br/>                         'array-original-4c76',<br/>                         (slice(10, 20, None),)),<br/>     'array-original-4c76': array([ ... ])<br/>    }<br/><br/>
+</pre>
+<p>If we perform an operation on the <kbd>a_da</kbd> array, Dask will generate more subtasks that operate on the smaller chunks, opening the possibility of achieving parallelism. The interface exposed by <kbd>da.array</kbd> is compatible with common NumPy semantics and broadcasting rules. The complete code, shown as follows, demonstrates the good compatibility of Dask with NumPy broadcasting rules, element-wise operations, and other methods:</p>
+<pre>
+    N = 10000<br/>    chunksize = 1000 <br/><br/>    x_data = np.random.uniform(-1, 1, N)<br/>    y_data = np.random.uniform(-1, 1, N)<br/><br/>    x = da.from_array(x_data, chunks=chunksize)<br/>    y = da.from_array(y_data, chunks=chunksize)<br/><br/>    hit_test = x ** 2 + y ** 2 &lt; 1<br/><br/>    hits = hit_test.sum()<br/>    pi = 4 * hits / N
+</pre>
+<p>The value of pi can be calculated using the <kbd>compute</kbd> method, which can also be called with the <kbd>get</kbd> optional argument to specify a different scheduler (by default, <kbd>da.array</kbd> uses a multithreaded scheduler):</p>
+<pre>
+    pi.compute() # Alternative: pi.compute(get=dask.get)<br/>    # Result:<br/>    # 3.1804000000000001
+</pre>
+<p>Even deceptively simple algorithms, such as the estimation of pi, may require a lot of tasks to be executed. Dask provides utilities to visualize the computational graph. The following figure shows part of the Dask graph for the estimation of pi, which can be obtained by executing the method <kbd>pi.visualize()</kbd>. In the graph, circles refer to transformations that get applied on the nodes, which are represented as rectangles. This example helps us to get a feel of the complexity of the Dask graph and to appreciate the scheduler's job of creating an efficient execution plan that includes proper ordering of tasks and the selection of tasks that will be executed in parallel: </p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full image-border" height="366" src="assets/dask_graph-e1489790395473.png" width="411"/></div>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Dask Bag and DataFrame</h1>
+            </header>
+
+            <article>
+                
+<p>Dask provides other data structures for automatic generation of computation graphs. In this subsection, we'll take a look at <kbd>dask.bag.Bag</kbd>, a generic collection of elements that can be used to code MapReduce-style algorithms, and <kbd>dask.dataframe.DataFrame</kbd>, a distributed version of <kbd>pandas.DataFrame</kbd>.</p>
+<p>A <kbd>Bag</kbd> can be easily created from a Python collection. For example, you can create a <kbd>Bag</kbd> from a list using the <kbd>from_sequence</kbd> factory function. The level of parallelism can be specified using the <kbd>npartitions</kbd> argument (this will distribute the <kbd>Bag</kbd> content into a number of partitions). In the following example, we create a <kbd>Bag</kbd> containing numbers from <kbd>0</kbd> to <kbd>99</kbd>, partitioned into four chunks:</p>
+<pre>
+    import dask.bag as dab<br/>    dab.from_sequence(range(100), npartitions=4)<br/>    # Result:<br/>    # dask.bag&lt;from_se..., npartitions=4&gt;
+</pre>
+<p>In the next example, we will demonstrate how to perform a word count of a set of strings using an algorithm that's similar to MapReduce. Given our collection of sequences, we apply <kbd>str.split</kbd>, followed by <kbd>concat</kbd> to obtain a linear list of words in the documents. Then, for each word, we produce a dictionary that contains a word and the value <kbd>1</kbd> (refer to the <em>An introduction to MapReduce</em> section for an illustration). We then write a <em>Reduce</em> step using the <kbd>foldby</kbd> operator to calculate the word count.</p>
+<p>The <kbd>foldby</kbd> transformation is useful to implement a Reduce step that combines the word counts without having to shuffle all the elements over the network. Imagine that our word dataset is divided into two partitions. A good strategy to calculate the total count is to first sum the word occurrences in each partition and then combine those partial sums to get the final result. The following figure illustrates the concept. On the left, we have our input partitions. The partial sum is calculated for each individual partition (this is done using a binary operation, <strong>binop</strong>), and then the final sums are computed by combining the partial sums using a <strong>combine</strong> function.</p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full image-border" height="300" src="assets/B06440_08CHPNO_04.png" width="349"/></div>
+<p>The following code illustrates how to use <kbd>Bag</kbd> and the <kbd>foldby</kbd> operator to compute the word count. For the <kbd>foldby</kbd> operator, we need to define two functions that take five arguments:</p>
+<ul>
+<li><kbd>key</kbd>: This is a function that returns the key for the reduce operation.</li>
+<li><kbd>binop</kbd>: This is a function that takes two arguments: <kbd>total</kbd> and <kbd>x</kbd>. Given a <kbd>total</kbd> value (the values accumulated so far), <kbd>binop</kbd> incorporates the next item into the total.</li>
+<li><kbd>initial</kbd>: This is the initial value for the <kbd>binop</kbd> accumulation.</li>
+<li><kbd>combine</kbd>: This is a function that combines the totals for each partition (in this case it is a simple sum).</li>
+<li><kbd>initial_combine</kbd>: This is the initial value for the <kbd>combine</kbd> accumulation.</li>
+</ul>
+<p>Now, let's look at the code:</p>
+<pre>
+    collection = dab.from_sequence(["the cat sat on the mat",<br/>                                    "the dog sat on the mat"], npartitions=2)<br/><br/><strong>    binop = lambda total, x: total + x["count"]<br/>    combine = lambda a, b: a + b</strong><br/>    (collection<br/>     .map(str.split)<br/>     .concat()<br/>     .map(lambda x: {"word": x, "count": 1})<br/>     <strong>.foldby(lambda x: x["word"], binop, 0, combine, 0)</strong><br/>     .compute())<br/>    # Output:<br/>    # [('dog', 1), ('cat', 1), ('sat', 2), ('on', 2), ('mat', 2), ('the', 4)]
+</pre>
+<p>As we just saw, expressing complex operations in an efficient way using <kbd>Bag</kbd> can become cumbersome. For this reason, Dask provides another data structure designed for analytical workloads--<kbd>dask.dataframe.DataFrame</kbd>. A <kbd>DataFrame</kbd> can be initialized in Dask using a variety of methods, such as from <kbd>CSV</kbd> files on distributed filesystems, or directly from a <kbd>Bag</kbd>. Just like <kbd>da.array</kbd> provides an API that closely mirrors NumPy features, Dask <kbd>DataFrame</kbd> can be used as a distributed version of <kbd>pandas.DataFrame</kbd>.</p>
+<p>As a demonstration, we will re-implement the word count using a <kbd>DataFrame</kbd>. We first load the data to obtain a <kbd>Bag</kbd> of words, and then we convert the <kbd>Bag</kbd> to a <kbd>DataFrame</kbd> using the <kbd>to_dataframe</kbd> method. By passing a column name to the <kbd>to_dataframe</kbd> method, we can initialize a <kbd>DataFrame</kbd>, which contains a single column, named <kbd>words</kbd>:</p>
+<pre>
+    collection = dab.from_sequence(["the cat sat on the mat",<br/>                                    "the dog sat on the mat"], npartitions=2)<br/>    words = collection.map(str.split).concat()<br/>    df = words.to_dataframe(['words'])<br/>    df.head()<br/>    # Result:<br/>    #   words<br/>    # 0   the<br/>    # 1   cat<br/>    # 2   sat<br/>    # 3    on<br/>    # 4   the
+</pre>
+<p>Dask <kbd>DataFrame</kbd> closely replicates the <kbd>pandas.DataFrame</kbd> API. To compute the word count, we only need to call the <kbd>value_counts</kbd> method on the words column, and Dask will automatically devise a parallel computation strategy. To trigger the calculation, it is sufficient to call the <kbd>compute</kbd> method:</p>
+<pre>
+    df.words.value_counts().compute()<br/>    # Result:<br/>    # the    4<br/>    # sat    2<br/>    # on     2<br/>    # mat    2<br/>    # dog    1<br/>    # cat    1<br/>    # Name: words, dtype: int64
+</pre>
+<p>An interesting question one may ask is "<em>what kind of algorithm does DataFrame use under the hood?</em>". The answer can be found by looking at the upper part of the generated Dask graph, which is displayed in the following figure. The first two rectangles at the bottom represent two partitions of the dataset, which are stored as two <kbd>pd.Series</kbd> instances. To calculate the overall count, Dask will first execute <kbd>value_counts</kbd> on each of the <kbd>pd.Series</kbd> and then combine the counts along with the <kbd>value_counts_aggregate</kbd> step:</p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full image-border" height="469" src="assets/B06440_08CHPNO_05.png" width="324"/></div>
+<p>As you can see, both Dask <kbd>array</kbd> and <kbd>DataFrame</kbd> take advantage of the fast vectorized implementations of NumPy and Pandas to achieve excellent performance and stability.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Dask distributed</h1>
+            </header>
+
+            <article>
+                
+<p>The first iterations of the Dask project were designed to run on a single computer using a thread-based or a process-based scheduler. Recently, the implementation of a new distributed backend can be used to set up and run Dask graphs on a network of computers.</p>
+<div class="packt_infobox">Dask distributed is not installed automatically with Dask. The library is available through the <kbd>conda</kbd> package manager (use the <kbd>$ conda install distributed</kbd> command ) as well as <kbd>pip</kbd> (with the <kbd>$ pip install distributed</kbd> command).</div>
+<p>Getting started with Dask distributed is really easy. The most basic setup is obtained by instantiating a <kbd>Client</kbd> object:</p>
+<pre>
+    from dask.distributed import Client<br/>     <br/>    client = Client()<br/>    # Result:<br/>    # &lt;Client: scheduler='tcp://127.0.0.1:46472' processes=4 cores=4&gt;
+</pre>
+<p>By default, Dask will start a few key processes (on the local machine) necessary for scheduling and executing distributed tasks through the <kbd>Client</kbd> instance. The main components of a Dask cluster are a single <em>scheduler</em> and a collection of <em>workers</em>.</p>
+<p>The <strong>scheduler</strong> is the process responsible for distributing the work across the workers and to monitor and manage the results. Generally, when a task is submitted to the user, the scheduler will find a free worker and submit a task for execution. Once the worker is done, the scheduler is informed that the result is available.</p>
+<p>A worker is a process that accepts incoming tasks and produces results. Workers can reside on different machines over the network. Workers execute tasks using <kbd>ThreadPoolExecutor</kbd>. This can be used to achieve parallelism when using functions that do not acquire the GIL (such as Numpy, Pandas, and Cython functions in <kbd>nogil</kbd> blocks). When executing pure Python code, it is advantageous to start many single-threaded worker processes as this will enable parallelism for code that acquires the GIL.</p>
+<p>The <kbd>Client</kbd> class can be used to submit tasks manually to the scheduler using familiar asynchronous methods. For example, to submit a function for execution on the cluster, one can use the <kbd>Client.map</kbd> and <kbd>Client.submit</kbd> methods. In the following code, we demonstrate the use of <kbd>Client.map</kbd> and <kbd>Client.submit</kbd> to calculate the square of a few numbers. The <kbd>Client</kbd> will submit a series of tasks to the scheduler and we will receive a <kbd>Future</kbd> instance for each task:</p>
+<pre>
+    def square(x):<br/>       return x ** 2<br/><br/>    fut = client.submit(square, 2)<br/>    # Result:<br/>    # &lt;Future: status: pending, key: square-05236e00d545104559e0cd20f94cd8ab&gt;<br/><br/>    client.map(square)<br/>    futs = client.map(square, [0, 1, 2, 3, 4])<br/>    # Result:<br/>    # [&lt;Future: status: pending, key: square-d043f00c1427622a694f518348870a2f&gt;,<br/>    #  &lt;Future: status: pending, key: square-9352eac1fb1f6659e8442ca4838b6f8d&gt;,<br/>    #  &lt;Future: status: finished, type: int, key: <br/>    #  square-05236e00d545104559e0cd20f94cd8ab&gt;,<br/>    #  &lt;Future: status: pending, key: <br/>    #  square-c89f4c21ae6004ce0fe5206f1a8d619d&gt;,<br/>    #  &lt;Future: status: pending, key: <br/>    #  square-a66f1c13e2a46762b092a4f2922e9db9&gt;]
+</pre>
+<p>So far, this is quite similar to what we saw in the earlier chapters with <kbd>TheadPoolExecutor</kbd> and <kbd>ProcessPoolExecutor</kbd>. Note however, that Dask Distributed not only submits the tasks, but also caches the computation results on the worker memory. You can see caching in action by looking at the preceding code example. When we first invoke <kbd>client.submit</kbd>, the <kbd>square(2)</kbd> task is created and its status is set to <em>pending</em>. When we subsequently invoke <kbd>client.map</kbd>,  the <kbd>square(2)</kbd> task is resubmitted to the scheduler, but this time, rather than recalculating its value, the scheduler directly retrieves the result for the worker. As a result, the third <kbd>Future</kbd> returned by map already has a finished status.</p>
+<p>Results from a collection of <kbd>Future</kbd> instances can be retrieved using the <kbd>Client.gather</kbd> method:</p>
+<pre>
+    client.gather(futs)<br/>    # Result:<br/>    # [0, 1, 4, 9, 16]
+</pre>
+<p><kbd>Client</kbd> can also be used to run arbitrary Dask graphs. For example, we can trivially run our approximation of pi by passing the <kbd>client.get</kbd> function as an optional argument to <kbd>pi.compute</kbd>:</p>
+<pre>
+    pi.compute(get=client.get)
+</pre>
+<p>This feature makes Dask extremely scalable as it is possible to develop and run algorithms on the local machine using one of the simpler schedulers and, in case the performance is not satisfactory, to reuse the same algorithms on a cluster of hundreds of machines.  </p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Manual cluster setup</h1>
+            </header>
+
+            <article>
+                
+<p>To instantiate scheduler and workers manually, one can use the <kbd>dask-scheduler</kbd> and <kbd>dask-worker</kbd> command-line utilities. First, we can initialize a scheduler using the <kbd>dask-scheduler</kbd> command:</p>
+<pre>
+<strong>$ dask-scheduler</strong><br/><strong>distributed.scheduler - INFO - -----------------------------------------------</strong><br/><strong>distributed.scheduler - INFO - Scheduler at: tcp://192.168.0.102:8786</strong><br/><strong>distributed.scheduler - INFO - bokeh at: 0.0.0.0:8788</strong><br/><strong>distributed.scheduler - INFO - http at: 0.0.0.0:9786</strong><br/><strong>distributed.bokeh.application - INFO - Web UI: http://127.0.0.1:8787/status/</strong><br/><strong>distributed.scheduler - INFO - -----------------------------------------------</strong>
+</pre>
+<p>This will provide an address for the scheduler and a Web UI address that can be accessed to monitor the state of the cluster. Now, we can assign some workers to the scheduler; this can be accomplished using the <kbd>dask-worker</kbd> command and by passing the address of the scheduler to the worker. This will automatically start a worker with four threads:</p>
+<pre>
+<strong>$ dask-worker 192.168.0.102:8786</strong><br/><strong>distributed.nanny - INFO - Start Nanny at: 'tcp://192.168.0.102:45711'</strong><br/><strong>distributed.worker - INFO - Start worker at: tcp://192.168.0.102:45928</strong><br/><strong>distributed.worker - INFO - bokeh at: 192.168.0.102:8789</strong><br/><strong>distributed.worker - INFO - http at: 192.168.0.102:46154</strong><br/><strong>distributed.worker - INFO - nanny at: 192.168.0.102:45711</strong><br/><strong>distributed.worker - INFO - Waiting to connect to: tcp://192.168.0.102:8786</strong><br/><strong>distributed.worker - INFO - -------------------------------------------------</strong><br/><strong>distributed.worker - INFO - Threads: 4</strong><br/><strong>distributed.worker - INFO - Memory: 4.97 GB</strong><br/><strong>distributed.worker - INFO - Local Directory: /tmp/nanny-jh1esoo7</strong><br/><strong>distributed.worker - INFO - -------------------------------------------------</strong><br/><strong>distributed.worker - INFO - Registered to: tcp://192.168.0.102:8786</strong><br/><strong>distributed.worker - INFO - -------------------------------------------------</strong><br/><strong>distributed.nanny - INFO - Nanny 'tcp://192.168.0.102:45711' starts worker process 'tcp://192.168.0.102:45928'</strong>
+</pre>
+<p>The Dask scheduler is fairly resilient in the sense that if we add and remove a worker, it is able to track which results are unavailable and recompute them on-demand. Finally, in order to use the initialized scheduler from a Python session, it is sufficient to initialize a <kbd>Client</kbd> instance and provide the address for the scheduler:</p>
+<pre>
+<strong>client = Client(address='192.168.0.102:8786')</strong><br/><strong># Result: </strong><br/><strong># &lt;Client: scheduler='tcp://192.168.0.102:8786' processes=1 cores=4&gt;</strong>
+</pre>
+<p>Dask also provides a convenient diagnostic Web UI that can be used to monitor the status and time spent for each of the tasks performed on the cluster. In the next figure, the <strong>Task Stream</strong> shows the time taken for executing the pi estimation. In the plot, each horizontal gray line corresponds to a thread used by the workers (in our case, we have one worker with four threads, also called <strong>Worker Core</strong>), and each rectangular box corresponds to a task, colored so that the same task types have the same color (for example, addition, power, or exponent). From this plot, you can observe how all the boxes are very small and far from each other. This means that the tasks are quite small compared to the overhead of communication.</p>
+<p>In this case, an increase in chunk size, which implies to an increase in the time required to run each task compared to the time of communication, will be beneficial.</p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full image-border" height="447" src="assets/B06440_08CHPNO_06.png" width="865"/> </div>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Using PySpark</h1>
+            </header>
+
+            <article>
+                
+<p>Nowadays, Apache Spark is one of the most popular projects for distributed computing. Developed in Scala, Spark was released in 2014, and integrates with HDFS and provides several advantages and improvements over the Hadoop MapReduce framework.</p>
+<p>Contrary to Hadoop MapReduce, Spark is designed to process data interactively and supports APIs for the Java, Scala, and Python programming languages. Given its different architecture, especially by the fact that Spark keep results in memory, Spark is generally much faster than Hadoop MapReduce. </p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Setting up Spark and PySpark</h1>
+            </header>
+
+            <article>
+                
+<p>Setting up PySpark from scratch requires the installation of the Java and Scala runtimes, the compilation of the project from source, and the configuration of Python and Jupyter notebook so that they can be used alongside the Spark installation. An easier and less error-prone way to set up PySpark is to use an already configured Spark cluster made available through a <strong>Docker</strong> container.  </p>
+<div class="packt_infobox">Docker can be downloaded at <a href="https://www.docker.com/">https://www.docker.com/</a> . If you're new to containers, you can read the next chapter for an introduction.</div>
+<p>To set up a Spark cluster, it is sufficient to go in this chapter's code files (where a file named <kbd>Dockerfile</kbd> is located) and issue the following command:</p>
+<pre>
+<strong>$ docker build -t pyspark<br/></strong>
+</pre>
+<p>This command will automatically download, install, and configure Spark, Python, and Jupyter notebook in an isolated environment. To start Spark and a Jupyter notebook session, you can execute the following command:</p>
+<pre>
+<strong>$ docker run -d -p 8888:8888 -p 4040:4040 pyspark</strong><br/>22b9dbc2767c260e525dcbc562b84a399a7f338fe1c06418cbe6b351c998e239
+</pre>
+<p>The command will print a unique ID (called <em>container id</em>) that you can use to reference the application container and will start Spark and Jupyter notebook in the background. The <kbd>-p</kbd> option ensures that we can access the SparkUI and Jupyter network ports from the local machine. After issuing the command, you can open a browser to <kbd>http://127.0.0.1:8888</kbd> to access the Jupyter notebook session. You can test the correct initialization of Spark by creating a new notebook and executing the following content inside a cell:</p>
+<pre>
+    import pyspark<br/>    sc = pyspark.SparkContext('local[*]')<br/><br/>    rdd = sc.parallelize(range(1000))<br/>    rdd.first()<br/>    # Result:<br/>    # 0
+</pre>
+<p>This will initialize a <kbd>SparkContext</kbd> and take the first element in a collection (those new terms will be explained in detail later). Once the <kbd>SparkContext</kbd> is initialized, we can also head over to <a href="http://127.0.0.1:4040">http://127.0.0.1:4040</a> to open the Spark Web UI.</p>
+<p>Now that the setup is complete, we will understand how Spark works and how to implement simple parallel algorithms using its powerful API.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Spark architecture</h1>
+            </header>
+
+            <article>
+                
+<p>A Spark cluster is a set of processes distributed over different machines. The <strong>Driver Program</strong> is a process, such as a Scala or Python interpreter, used by the user to submit the tasks to be executed.</p>
+<p>The user can build task graphs, similar to Dask, using a special API and submit those tasks to the <strong>Cluster Manager</strong> that is responsible for assigning these tasks to <strong>Executors</strong>, processes responsible for executing the tasks. In a multi-user system, the Cluster Manager is also responsible for allocating resources on a per-user basis.</p>
+<p>The user interacts with the Cluster Manager through the Driver Program. The class responsible for communication between the user and the Spark cluster is called <kbd>SparkContext</kbd>. This class is able to connect and configure the Executors on the cluster based on the resources available to the user.</p>
+<p>For its most common use-cases, Spark manages its data through a data structure called <strong>Resilient Distributed Datasets</strong> (<strong>RDD</strong>), which represents a collection of items. RDDs are capable of handling massive datasets by separating their elements into partitions and operating on the partitions in parallel (note that this mechanism is mainly hidden from the user). RDDs can also be stored in memory (optionally, and when appropriate) for fast access and to cache expensive intermediate results.</p>
+<p>Using RDDs, it is possible to define tasks and transformations (similarly to how we were automatically generating computation graphs in Dask) and, when requested, the Cluster Manager will automatically dispatch and execute tasks on the available Executors.</p>
+<p>The Executors will receive the tasks from the Cluster Manager, execute them, and keep the results around if needed. Note that an Executor can have multiple cores and each node in the cluster may have multiple Executors. Generally speaking, Spark is fault tolerant on Executor's failures.</p>
+<p>In the following diagram, we show how the aforementioned components interact in a Spark cluster. The <strong>Driver Program</strong> interacts with the <strong>Cluster Manager</strong> that manages the <strong>Executor</strong> instances on different nodes (each Executor instance can also have multiple threads). Note that, even if the <strong>Driver Program</strong> doesn't directly control the Executors, the results, which are stored in the <strong>Executor</strong> instances, are transferred directly between the Executors and the Driver Program. For this reason, it's important that the <strong>Driver Program</strong> is network-reachable from the <strong>Executor</strong> processes: </p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full image-border" height="293" src="assets/B06440_08CHPNO_07.png" width="449"/></div>
+<p>A natural question to ask is: How is Spark, a software written in Scala, able to execute Python code? The integration is done through the <kbd>Py4J</kbd> library, which maintains a Python process under-the-hood and communicates with it through sockets (a form of interprocess communication). In order to run the tasks, Executors maintain a series of Python processes so that they are able to process Python code in parallel. </p>
+<p>RDDs and variables defined in a Python process in the Driver Program are serialized, and the communication between the Cluster Manager and the Executors (including shuffling) is dealt with by Spark's Scala code. The extra serialization steps necessary for the Python and Scala interchange, all contribute to the overhead of communication; therefore, when using PySpark, extra care must be taken to ensure that the data structures used are serialized efficiently and that the data partitions are big enough so that the cost of communication is negligible compared to the cost of execution. </p>
+<p>The following diagram illustrates the additional Python processes needed for PySpark execution. These additional Python processes come with associated memory costs and an extra layer of indirection that complicate error reporting:</p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full image-border" height="278" src="assets/B06440_08CHPNO_08.png" width="427"/></div>
+<p>Despite these drawbacks, PySpark is still a widely used tool because it bridges the vivid Python ecosystem with the industrial strength of the Hadoop infrastructure. </p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Resilient Distributed Datasets</h1>
+            </header>
+
+            <article>
+                
+<p>The easiest way to create an RDD in Python is with the <kbd>SparkContext.parallelize</kbd> method. This method was also used earlier where we parallelized a collection of integers between <kbd>0</kbd> and <kbd>1000</kbd>:</p>
+<pre>
+    rdd = sc.parallelize(range(1000))<br/>    # Result:<br/>    # PythonRDD[3] at RDD at PythonRDD.scala:48
+</pre>
+<p>The <kbd>rdd</kbd> collection will be divided into a number of partitions which, in this case, correspond to a default value of four (the default value can be changed using configuration options). To explicitly specify the number of partitions, one can pass an extra argument to <kbd>parallelize</kbd>:</p>
+<pre>
+    rdd = sc.parallelize(range(1000), 2)<br/>    rdd.getNumPartitions() # This function will return the number of partitions<br/>    # Result:<br/>    # 2
+</pre>
+<p>RDDs support a lot of functional programming operators, similar to what we used back in <a href="2b46e5c0-5308-4073-b1c6-4232a881b39f.xhtml">Chapter 6</a>, <em>Implementing Concurrency</em>, with reactive programming and data streams (even though, in that case, the operators were designed to work on events over time rather than normal collections). For example, we may illustrate the basic <kbd>map</kbd> function which, by now, should be quite familiar. In the following code, we use <kbd>map</kbd> to calculate the square of a series of numbers:</p>
+<pre>
+    square_rdd = rdd.map(lambda x: x**2)<br/>    # Result:<br/>    # PythonRDD[5] at RDD at PythonRDD.scala:48
+</pre>
+<p>The <kbd>map</kbd> function will return a new RDD but won't compute anything just yet. In order to trigger the execution, you can use the <kbd>collect</kbd> method, which will retrieve all the elements in the collection, or <kbd>take</kbd>, which will return only the first ten elements:</p>
+<pre>
+    square_rdd.collect()<br/>    # Result:<br/>    # [0, 1, ... ]<br/><br/>    square_rdd.take(10)<br/>    # Result:<br/>    # [0, 1, 4, 9, 16, 25, 36, 49, 64, 81]
+</pre>
+<p>For a comparison between PySpark, Dask, and the other parallel programming libraries we explored in the earlier chapters, we will reimplement the approximation of pi. In the PySpark implementation, we will first create two RDDs of random numbers using <kbd>parallelize</kbd>, then we combine the datasets using the <kbd>zip</kbd> function (this is equivalent to Python's <kbd>zip</kbd>), and we finally test whether the random points are inside the circle:</p>
+<pre>
+    import numpy as np<br/><br/>    N = 10000<br/>    x = np.random.uniform(-1, 1, N)<br/>    y = np.random.uniform(-1, 1, N)<br/><br/>    rdd_x = sc.parallelize(x)<br/>    rdd_y = sc.parallelize(y)<br/><br/>    hit_test = rdd_x.zip(rdd_y).map(lambda xy: xy[0] ** 2 + xy[1] ** 2 &lt; 1)<br/>    pi = 4 * hit_test.sum()/N
+</pre>
+<p>It's important to note that both the <kbd>zip</kbd> and <kbd>map</kbd> operations produce new RDDs and do not actually execute the instruction on the underlying data. In the preceding example, code execution is triggered when we call the <kbd>hit_test.sum</kbd> function, which returns an integer. This behavior is different from the Dask API where the whole computation (including the final result, <kbd>pi</kbd>) did not trigger the execution.</p>
+<p>We can now move on to a more interesting application to demonstrate more RDD methods. We will learn how to count the number of visits each user of a website performs in a day. In a real-world scenario, the data would have been collected in a database and/or stored in a distributed filesystem, such as HDFS. However, in our example, we will generate some data that we will then analyze.</p>
+<p>In the following code, we generate a list of dictionaries, each containing a <kbd>user</kbd> (selected among twenty users) and a <kbd>timestamp</kbd>. The steps to produce the dataset are as follows:</p>
+<ol>
+<li>Create a pool of 20 users (the <kbd>users</kbd> variable).</li>
+<li>Define a function that returns a random time between two dates.</li>
+<li>For 10,000 times, we choose a random user from our <kbd>users</kbd> pool and a random timestamp between the dates January 1, 2017 and January 7, 2017.</li>
+</ol>
+<pre>
+      import datetime<br/><br/>      from uuid import uuid4<br/>      from random import randrange, choice<br/><br/>      # We generate 20 users<br/>      n_users = 20 <br/>      users = [uuid4() for i in range(n_users)]<br/><br/>      def random_time(start, end):<br/>          '''Return a random timestamp between start date and end <br/>          date'''<br/>          # We select a number of seconds<br/>          total_seconds = (end - start).total_seconds()<br/>          return start + <br/>          datetime.timedelta(seconds=randrange(total_seconds))<br/><br/>      start = datetime.datetime(2017, 1, 1)<br/>      end = datetime.datetime(2017, 1, 7)<br/><br/>      entries = []<br/>      N = 10000<br/>      for i in range(N):<br/>          entries.append({<br/>           'user': choice(users),<br/>           'timestamp': random_time(start, end)<br/>          })
+</pre>
+<p>With the dataset at hand, we can start asking questions and use PySpark to find the answers. One common question is "<em>How many times has a given user visited the website?.</em>" A naive way to compute this result can be achieved by grouping the entries RDD by user (using the <kbd>groupBy</kbd> operator) and counting how many items are present for each user. In PySpark, <kbd>groupBy</kbd> takes a function as argument to extract the grouping key for each element and returns a new RDD that contain tuples of the <kbd>(key, group)</kbd> form. In the following example, we use the user ID as the key for our <kbd>groupBy</kbd>, and we inspect the first element using <kbd>first</kbd>:</p>
+<pre>
+    entries_rdd = sc.parallelize(entries)<br/>    entries_rdd.groupBy(lambda x: x['user']).first()<br/>    # Result:<br/>    # (UUID('0604aab5-c7ba-4d5b-b1e0-16091052fb11'),<br/>    #  &lt;pyspark.resultiterable.ResultIterable at 0x7faced4cd0b8&gt;)
+</pre>
+<p>The return value of <kbd>groupBy</kbd> contains a <kbd>ResultIterable</kbd> (which is basically a list) for each user ID. To count the number of visits per user, it's sufficient to calculate the length of each <kbd>ResultIterable</kbd>:</p>
+<pre>
+    (entries_rdd<br/>     .groupBy(lambda x: x['user'])<br/>     <strong>.map(lambda kv: (kv[0], len(kv[1])))</strong><br/>     .take(5))<br/>    # Result:<br/>    # [(UUID('0604aab5-c7ba-4d5b-b1e0-16091052fb11'), 536),<br/>    #  (UUID('d72c81c1-83f9-4b3c-a21a-788736c9b2ea'), 504),<br/>    #  (UUID('e2e125fa-8984-4a9a-9ca1-b0620b113cdb'), 498),<br/>    #  (UUID('b90acaf9-f279-430d-854f-5df74432dd52'), 561),<br/>    #  (UUID('00d7be53-22c3-43cf-ace7-974689e9d54b'), 466)]
+</pre>
+<p>Even though this algorithm may work well in small datasets, <kbd>groupBy</kbd> requires us to collect and store the whole set of entries for each user in memory, and this can exceed the memory capacity of an individual node. Since we don't need the list but only the count, there's a better way to calculate this number without having to hold the list of visits for each user in memory.</p>
+<div class="packt_tip">When dealing with an RDD of <kbd>(key, value)</kbd> pairs, it is possible to use <kbd>mapValues</kbd> to apply a function only to the values. In the preceding code, we can replace the <kbd>map(lambda kv: (kv[0], len(kv[1])))</kbd> call with <kbd>mapValues(len)</kbd> for better readability.</div>
+<p>For a more efficient calculation, we can leverage the <kbd>reduceByKey</kbd> function, which will perform a step similar to the Reduce step that we saw in the <em>An introduction to MapReduce</em> section. The <kbd>reduceByKey</kbd> function can be called from an RDD of tuples that contain a key as their first element and a value as their second element, and accepts a function as its first argument that will calculate the reduction.  A simple example of the <kbd>reduceByKey</kbd> function is illustrated in the following snippet. We have a few string keys associated with integer numbers, and we want to get the sum of the values for each key; the reduction, expressed as a lambda, corresponds to the sum of the elements:</p>
+<pre>
+    rdd = sc.parallelize([("a", 1), ("b", 2), ("a", 3), ("b", 4), ("c", 5)])<br/>    rdd.reduceByKey(lambda a, b: a + b).collect()<br/>    # Result:<br/>    # [('c', 5), ('b', 6), ('a', 4)]
+</pre>
+<p>The <kbd>reduceByKey</kbd> function is much more efficient than <kbd>groupBy</kbd> because the reduction is parallelizable and doesn't require the in-memory storage of the groups; also, it limits the data shuffled between Executors (it performs similar operations to Dask's <kbd>foldby</kbd>, which was explained earlier). At this point, we can rewrite our visit count calculation using <kbd>reduceByKey</kbd>:</p>
+<pre>
+    (entries_rdd<br/>     .map(lambda x: (x['user'], 1))<br/>     .reduceByKey(lambda a, b: a + b)<br/>     .take(3))<br/>    # Result:<br/>    # [(UUID('0604aab5-c7ba-4d5b-b1e0-16091052fb11'), 536),<br/>    #  (UUID('d72c81c1-83f9-4b3c-a21a-788736c9b2ea'), 504),<br/>    #  (UUID('e2e125fa-8984-4a9a-9ca1-b0620b113cdb'), 498)]
+</pre>
+<p>With Spark's RDD API, it is also easy to answer questions such as "<em>How many visits did the website receive each day?.</em>" This can be computed using <kbd>reduceByKey</kbd> with the appropriate key (which is the date extracted from the timestamp). In the following example, we demonstrate the calculation. Also, note the usage of the <kbd>sortByKey</kbd> operator to return the counts sorted by date:</p>
+<pre>
+    (entries_rdd<br/>     .map(lambda x: (x['timestamp'].date(), 1))<br/>     .reduceByKey(lambda a, b: a + b)<br/>     .sortByKey()<br/>     .collect())<br/>    # Result:<br/>    # [(datetime.date(2017, 1, 1), 1685),<br/>    #  (datetime.date(2017, 1, 2), 1625),<br/>    #  (datetime.date(2017, 1, 3), 1663),<br/>    #  (datetime.date(2017, 1, 4), 1643),<br/>    #  (datetime.date(2017, 1, 5), 1731),<br/>    #  (datetime.date(2017, 1, 6), 1653)]
+</pre>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Spark DataFrame</h1>
+            </header>
+
+            <article>
+                
+<p>For numerical and analytical tasks, Spark provides a convenient interface available through the <kbd>pyspark.sql</kbd> module (also called SparkSQL). The module includes a <kbd>spark.sql.DataFrame</kbd> class that can be used for efficient SQL-style queries similar to those of Pandas. Access to the SQL interface is provided through the <kbd>SparkSession</kbd> class:</p>
+<pre>
+    from pyspark.sql import SparkSession<br/>    spark = SparkSession.builder.getOrCreate()
+</pre>
+<p><kbd>SparkSession</kbd> can then be used to create a <kbd>DataFrame</kbd> through the function <kbd>createDataFrame</kbd>. The function <kbd>createDataFrame</kbd> accepts either a RDD, a list, or a <kbd>pandas.DataFrame</kbd>.</p>
+<p>In the following example, we will create a <kbd>spark.sql.DataFrame</kbd> by converting an RDD, <kbd>rows</kbd>, which contains a collection of <kbd>Row</kbd> instances. The <kbd>Row</kbd> instances represent an association between a set of column names and a set of values, just like a row in a <kbd>pd.DataFrame</kbd>. In this example, we have two columns--<kbd>x</kbd> and <kbd>y</kbd>--to which we will associate random numbers:</p>
+<pre>
+    # We will use the x_rdd and y_rdd defined previously.<br/>    rows = rdd_x.zip(rdd_y).map(lambda xy: <strong>Row(x=float(xy[0]), y=float(xy[1]))</strong>)<br/><br/>    rows.first() # Inspect the first element<br/>    # Result:<br/>    # Row(x=0.18432163061239137, y=0.632310101419016)
+</pre>
+<p>After obtaining our collection of <kbd>Row</kbd> instances, we can combine them in a <kbd>DataFrame</kbd>, as follows. We can also inspect the <kbd>DataFrame</kbd> content using the <kbd>show</kbd> method:</p>
+<pre>
+    df = spark.createDataFrame(rows)<br/>    df.show(5)<br/>    # Output:<br/>    # +-------------------+--------------------+<br/>    # |                  x|                   y|<br/>    # +-------------------+--------------------+<br/>    # |0.18432163061239137|   0.632310101419016|<br/>    # | 0.8159145525577987| -0.9578448778029829|<br/>    # |-0.6565050226033042|  0.4644773453129496|<br/>    # |-0.1566191476553318|-0.11542211978216432|<br/>    # | 0.7536730082381564| 0.26953055476074717|<br/>    # +-------------------+--------------------+<br/>    # only showing top 5 rows
+</pre>
+<p><kbd>spark.sql.DataFrame</kbd> supports performing transformations on the distributed dataset using a convenient SQL syntax. For example, you can use the <kbd>selectExpr</kbd> method to calculate a value using a SQL expression. In the following code, we compute the hit test using the <kbd>x</kbd> and <kbd>y</kbd> columns and the <kbd>pow</kbd> SQL function:</p>
+<pre>
+    hits_df = df.selectExpr("pow(x, 2) + pow(y, 2) &lt; 1 as hits")<br/>    hits_df.show(5)<br/>    # Output:<br/>    # +-----+<br/>    # | hits|<br/>    # +-----+<br/>    # | true|<br/>    # |false|<br/>    # | true|<br/>    # | true|<br/>    # | true|<br/>    # +-----+<br/>    # only showing top 5 rows
+</pre>
+<p>To demonstrate the expressivity of SQL, we can also calculate the estimation of pi using a single expression. The expression involves using SQL functions such as <kbd>sum</kbd>, <kbd>pow</kbd>, <kbd>cast</kbd>, and <kbd>count</kbd>:</p>
+<pre>
+    result = df.selectExpr('<strong>4 * sum(cast(pow(x, 2) + <br/>                           pow(y, 2) &lt; 1 as int))/count(x) as pi</strong>')<br/>    result.first()<br/>    # Result:<br/>    # Row(pi=3.13976)
+</pre>
+<p>Spark SQL follows the same syntax as Hive, a SQL engine for distributed datasets built on Hadoop. Refer to <a href="https://cwiki.apache.org/confluence/display/Hive/LanguageManual">https://cwiki.apache.org/confluence/display/Hive/LanguageManual</a> for a complete syntax reference.</p>
+<p>DataFrames are a great way to leverage the power and optimization of Scala while using the Python interface. The main reason is that queries are interpreted symbolically by SparkSQL and the execution happens directly in Scala without having to pass intermediate results through Python. This greatly reduces the serialization overhead and takes advantage of the query optimizations performed by SparkSQL. Optimizations and query planning allows the use of SQL operators, such as <kbd>GROUP BY</kbd>, without incurring in performance penalties, such as the one we experienced using <kbd>groupBy</kbd> directly on an RDD.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Scientific computing with mpi4py</h1>
+            </header>
+
+            <article>
+                
+<p>Even though Dask and Spark are great technologies widely used in the IT industry, they have not been widely adopted in academic research. High-performance supercomputers with thousands of processors have been used in academia for decades to run intense numerical applications. For this reason, supercomputers are generally configured using a very different software stack that focuses on a computationally-intensive algorithm implemented in a low-level language, such as C, Fortran, or even assembly.</p>
+<p>The principal library used for parallel execution on these kinds of systems is <strong>Message Passing Interface</strong> (<strong>MPI</strong>), which, while less convenient or sophisticated than Dask or Spark, is perfectly capable of expressing parallel algorithms and achieving excellent performance. Note that, contrary to Dask and Spark, MPI does not follow the MapReduce model and is best used for running thousands of processes with very little data sent between them.</p>
+<p>MPI works quite differently compared to what we've seen so far. Parallelism in MPI is achieved by running <em>the same script</em> in multiple processes (which possibly exist on different nodes); communication and synchronization between processes is handled by a designated process, which is commonly called <strong>root</strong> and is usually identified by a <kbd>0</kbd> ID. </p>
+<p>In this section, we will briefly demonstrate the main concepts of MPI using its <kbd>mpi4py</kbd> Python interface. In the following example, we demonstrate the simplest possible parallel code with MPI. The code imports the MPI module and retrieves <kbd>COMM_WORLD</kbd>, which is an interface that can be used to interact with other MPI processes. The <kbd>Get_rank</kbd> function will return an integer identifier for the current process:</p>
+<pre>
+    from mpi4py import MPI<br/><br/>    comm = MPI.COMM_WORLD<br/>    rank = comm.Get_rank()<br/>    print("This is process", rank)
+</pre>
+<p>We can place the preceding code in a file, <kbd>mpi_example.py</kbd>, and execute it. Running this script normally won't do anything special as it involves the execution of a single process:</p>
+<pre>
+<strong>    $ python mpi_example.py</strong><br/>    This is process 0
+</pre>
+<p>MPI jobs are meant to be executed using the <kbd>mpiexec</kbd> command, which takes a <kbd>-n</kbd> option to indicate the number of parallel processes. Running the script using the following command will generate four independent executions of the same script, each with a different ID:</p>
+<pre>
+<strong>    $ mpiexec -n 4 python mpi_example.py</strong><br/>    This is process 0<br/>    This is process 2<br/>    This is process 1<br/>    This is process 3
+</pre>
+<p>Distributing processes among the network is performed automatically through a resource manager (such as TORQUE). Generally, supercomputers are configured by the system administrator, which will also provide instructions on how to run MPI software.</p>
+<p>To get a feel as to what an MPI program looks like, we will reimplement the approximation of <em>pi</em>. The complete code is shown here. The program will do the following:</p>
+<ul>
+<li>Create a random array of <kbd>N / n_procs</kbd> size for each process so that each process will test the same amount of samples (<kbd>n_procs</kbd> is obtained through the <kbd>Get_size</kbd> function)</li>
+<li>In each separate process, calculate the sum of the hit tests and store it in <kbd>hits_counts</kbd>, which will represent the partial counts for each process</li>
+<li>Use the <kbd>reduce</kbd> function to calculate the total sum of the partial counts. When using reduce, we need to specify the <kbd>root</kbd> argument to specify which process will receive the result</li>
+<li>Print the final result only on the process corresponding to the root process:</li>
+</ul>
+<pre>
+      from mpi4py import MPI<br/><br/>      comm = MPI.COMM_WORLD<br/>      rank = comm.Get_rank()<br/><br/>      import numpy as np<br/><br/>      N = 10000<br/><br/>      n_procs = comm.Get_size()<br/><br/>      print("This is process", rank)<br/><br/>      # Create an array<br/>      x_part = np.random.uniform(-1, 1, int(N/n_procs))<br/>      y_part = np.random.uniform(-1, 1, int(N/n_procs))<br/><br/>      hits_part = x_part**2 + y_part**2 &lt; 1<br/>      hits_count = hits_part.sum()<br/><br/>      print("partial counts", hits_count)<br/><br/>      total_counts = comm.reduce(hits_count, root=0)<br/><br/>      if rank == 0:<br/>         print("Total hits:", total_counts)<br/>         print("Final result:", 4 * total_counts/N)
+</pre>
+<p>We can now place the preceding code in a file named <kbd>mpi_pi.py</kbd> and execute it using <kbd>mpiexec</kbd>. The output shows how the four process executions are intertwined until we get to the <kbd>reduce</kbd> call:</p>
+<pre>
+<strong>$ mpiexec -n 4 python mpi_pi.py</strong><br/><strong>This is process 3</strong><br/><strong>partial counts 1966</strong><br/><strong>This is process 1</strong><br/><strong>partial counts 1944</strong><br/><strong>This is process 2</strong><br/><strong>partial counts 1998</strong><br/><strong>This is process 0</strong><br/><strong>partial counts 1950</strong><br/><strong>Total hits: 7858</strong><br/><strong>Final result: 3.1432</strong>
+</pre>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Summary</h1>
+            </header>
+
+            <article>
+                
+<p>Distributed processing can be used to implement algorithms capable of handling massive datasets by distributing smaller tasks across a cluster of computers. Over the years, many software packages, such as Apache Hadoop, have been developed to implement performant and reliable execution of distributed software.</p>
+<p>In this chapter, we learned about the architecture and usage of Python packages, such as Dask and PySpark, which provide powerful APIs to design and execute programs capable of scaling to hundreds of machines. We also briefly looked at MPI, a library that has been used for decades to distribute work on supercomputers designed for academic research.</p>
+<p>Throughout this book, we explored several techniques to improve the performance of our program, and to increase the speed of our programs and the size of the datasets we are able to process. In the next chapter, we will describe the strategies and best practices to write and maintain high-performance code.  </p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </body></html>

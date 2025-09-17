@@ -1,0 +1,492 @@
+<html><head></head><body>
+        <section>
+
+            <header>
+                <h1 class="header-title">Benchmarking and Profiling</h1>
+            </header>
+
+            <article>
+                
+<p>Recognizing the slow parts of your program is the single most important task when it comes to speeding up your code. Luckily, in most cases, the code that causes the application to slow down is a very small fraction of the program. By locating those critical sections, you can focus on the parts that need improvement without wasting time in micro-optimization.</p>
+<p><strong>Profiling</strong> is the technique that allows us to pinpoint the most resource-intensive spots in an application. A <strong>profiler</strong> is a program that runs an application and monitors how long each function takes to execute, thus detecting the functions in which your application spends most of its time.</p>
+<p>Python provides several tools to help us find these bottlenecks and measure important performance metrics. In this chapter, we will learn how to use the standard <kbd>cProfile</kbd> module and the <kbd>line_profiler</kbd> third-party package.  We will also learn how to profile an application's memory consumption through the  <kbd>memory_profiler</kbd> tool. Another useful tool that we will cover is <em>KCachegrind</em>, which can be used to graphically display the data produced by various profilers.</p>
+<p><strong>Benchmarks</strong> are small scripts used to assess the total execution time of your application. We will learn how to write benchmarks and how to accurately time your programs.</p>
+<p>The list of topics we will cover in this chapter is as follows:</p>
+<ul>
+<li>General principles of high performance programming</li>
+<li>Writing tests and benchmarks</li>
+<li>The Unix <kbd>time</kbd> command</li>
+<li>The Python <kbd>timeit</kbd> module</li>
+<li>Testing and benchmarking with <kbd>pytest</kbd></li>
+<li>Profiling your application</li>
+<li>The <kbd>cProfile</kbd> standard tool</li>
+<li>Interpreting profiling results with KCachegrind</li>
+<li><kbd>line_profiler</kbd> and  <kbd>memory_profiler</kbd> tools</li>
+<li>Disassembling Python code through the <kbd>dis</kbd> module</li>
+</ul>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Designing your application</h1>
+            </header>
+
+            <article>
+                
+<p>When designing a performance-intensive program, the very first step is to write your code without bothering with small optimizations:</p>
+<div class="packt_quote">"Premature optimization is the root of all evil."</div>
+<div class="CDPAlignRight CDPAlign">- <strong>Donald Knuth</strong></div>
+<p>In the early development stages, the design of the program can change quickly and may require large rewrites and reorganizations of the code base. By testing different prototypes without the burden of optimization, you are free to devote your time and energy to ensure that the program produces correct results and that the design is flexible. After all, who needs an application that runs fast but gives the wrong answer?</p>
+<p>The mantras that you should remember when optimizing your code are as follows:</p>
+<ul>
+<li><strong>Make it run</strong>: We have to get the software in a working state, and ensure that it produces the correct results. This exploratory phase serves to better understand the application and to spot major design issues in the early stages.</li>
+<li><strong>Make it right</strong>: We want to ensure that the design of the program is solid. Refactoring should be done before attempting any performance optimization. This really helps separate the application into independent and cohesive units that are easier to maintain.</li>
+<li><strong>Make it fast</strong>: Once our program is working and is well structured, we can focus on performance optimization. We may also want to optimize memory usage if that constitutes an issue.</li>
+</ul>
+<p>In this section, we will write and profile a <em>particle simulator</em> test application. The <strong>simulator</strong> is a program that takes some particles and simulates their movement over time according to a set of laws that we impose. These particles can be abstract entities or correspond to physical objects, for example, billiard balls moving on a table, molecules in gas, stars moving through space, smoke particles, fluids in a chamber, and so on.</p>
+<p>Computer simulations are useful in fields such as Physics, Chemistry, Astronomy, and many other disciplines. The applications used to simulate systems are particularly performance-intensive and scientists and engineers spend an inordinate amount of time optimizing these codes. In order to study realistic systems, it is often necessary to simulate a very high number of bodies and every small increase in performance counts.</p>
+<p>In our first example, we will simulate a system containing particles that constantly rotate around a central point at various speeds, just like the hands of a clock.</p>
+<p>The necessary information to run our simulation will be the starting positions of the particles, the speed, and the rotation direction. From these elements, we have to calculate the position of the particle in the next instant of time. An example system is shown in the following figure. The origin of the system is the <kbd>(0, 0)</kbd> point, the position is indicated by the <strong>x</strong>, <strong>y</strong> vector and the velocity is indicated by the <strong>vx</strong>, <strong>vy</strong> vector:</p>
+<div class="packt_figure CDPAlignCenter CDPAlign"><img class="aligncenter size-full image-border" height="344" src="assets/B06440_01_01.png" width="344"/></div>
+<p>The basic feature of a circular motion is that the particles always move perpendicular to the direction connecting the particle and the center. To move the particle, we simply change the position by taking a series of very small steps (which correspond to advancing the system for a small interval of time) in the direction of motion, as shown in the following figure:</p>
+<div class="packt_figure CDPAlignCenter CDPAlign"><img class="aligncenter size-full image-border" height="335" src="assets/B06440_01_02.png" width="350"/></div>
+<p>We will start by designing the application in an object-oriented way. According to our requirements, it is natural to have a generic <kbd>Particle</kbd> class that stores the particle positions, <kbd>x</kbd> and <kbd>y</kbd>, and their angular velocity, <kbd>ang_vel</kbd>:</p>
+<pre>
+    class Particle: <br/>        def __init__(self, x, y, ang_vel): <br/>            self.x = x <br/>            self.y = y <br/>            self.ang_vel = ang_vel
+</pre>
+<p>Note that we accept positive and negative numbers for all the parameters (the sign of <kbd>ang_vel</kbd> will simply determine the direction of rotation).</p>
+<p>Another class, called <kbd>ParticleSimulator</kbd>, will encapsulate the laws of motion and will be responsible for changing the positions of the particles over time. The <kbd>__init__</kbd> method will store a list of <kbd>Particle</kbd> instances and the <kbd>evolve</kbd> method will change the particle positions according to our laws.</p>
+<p>We want the particles to rotate around the position corresponding to the <kbd>x=0</kbd> and <kbd>y=0</kbd> coordinates, at a constant speed. The direction of the particles will always be perpendicular to the direction from the center (refer to the first figure of this chapter). To find the direction of the movement along the <em>x</em> and <em>y</em> axes (corresponding to the Python <kbd>v_x</kbd> and <kbd>v_y</kbd> variables), it is sufficient to use these formulae:</p>
+<pre>
+    v_x = -y / (x**2 + y**2)**0.5<br/>    v_y = x / (x**2 + y**2)**0.5
+</pre>
+<p>If we let one of our particles move, after a certain time <em>t</em>, it will reach another position following a circular path. We can approximate a circular trajectory by dividing the time interval, <em>t</em>, into tiny time steps, <em>dt</em>, where the particle moves in a straight line tangentially to the circle. The final result is just an approximation of a circular motion. In order to avoid a strong divergence, such as the one illustrated in the following figure, it is necessary to take very small time steps:</p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full image-border" height="295" src="assets/B06440_01_03.png" width="305"/></div>
+<p>In a more schematic way, we have to carry out the following steps to calculate the particle position at time <em>t</em>:</p>
+<ol>
+<li>Calculate the direction of motion ( <kbd>v_x</kbd> and <kbd>v_y</kbd>).</li>
+<li>Calculate the displacement (<kbd>d_x</kbd> and <kbd>d_y</kbd>), which is the product of time step, angular velocity, and direction of motion.</li>
+<li>Repeat steps 1 and 2 for enough times to cover the total time <em>t</em>.</li>
+</ol>
+<p>The following code shows the full <kbd>ParticleSimulator</kbd> implementation:</p>
+<pre>
+    class ParticleSimulator: <br/><br/>        def __init__(self, particles): <br/>            self.particles = particles <br/><br/>        def evolve(self, dt): <br/>            timestep = 0.00001 <br/>            nsteps = int(dt/timestep) <br/>     <br/>            for i in range(nsteps):<br/>                for p in self.particles:<br/>                    # 1. calculate the direction <br/>                    norm = (p.x**2 + p.y**2)**0.5 <br/>                    v_x = -p.y/norm <br/>                    v_y = p.x/norm <br/><br/>                    # 2. calculate the displacement <br/>                    d_x = timestep * p.ang_vel * v_x <br/>                    d_y = timestep * p.ang_vel * v_y <br/><br/>                    p.x += d_x <br/>                    p.y += d_y <br/>                    # 3. repeat for all the time steps
+</pre>
+<p>We can use the <kbd>matplotlib</kbd> library to visualize our particles. This library is not included in the Python standard library, and it can be easily installed using the <kbd>pip install matplotlib</kbd> command.</p>
+<div class="packt_infobox">Alternatively, you can use the Anaconda Python distribution (<a href="https://store.continuum.io/cshop/anaconda/"><span class="URLPACKT">https://store.continuum.io/cshop/anaconda/</span></a>) that includes <kbd>matplotlib</kbd> and most of the other third-party packages used in this book. Anaconda is free and is available for Linux, Windows, and Mac.</div>
+<p>To make an interactive visualization, we will use the <kbd>matplotlib.pyplot.plot</kbd> function to display the particles as points and the <kbd>matplotlib.animation.FuncAnimation</kbd> class to animate the evolution of the particles over time.</p>
+<p>The <kbd>visualize</kbd> function takes a particle <kbd>ParticleSimulator</kbd> instance as an argument and displays the trajectory in an animated plot. The steps necessary to display the particle trajectory using the <kbd>matplotlib</kbd> tools are as follows:</p>
+<ul>
+<li>Set up the axes and use the <kbd>plot</kbd> function to display the particles. <kbd>plot</kbd> takes a list of <em>x</em> and <em>y</em> coordinates.</li>
+<li>Write an initialization function, <kbd>init</kbd>, and a function, <kbd>animate</kbd>, that updates the <em>x</em> and <em>y </em>coordinates using the <kbd>line.set_data</kbd> method.</li>
+<li>Create a <kbd>FuncAnimation</kbd> instance by passing the <kbd>init</kbd> and <kbd>animate</kbd> functions plus the <kbd>interval</kbd> parameters, which specify the update interval, and <kbd>blit</kbd>, which improves the update rate of the image.</li>
+<li>Run the animation with <kbd>plt.show()</kbd>:</li>
+</ul>
+<pre>
+    from matplotlib import pyplot as plt <br/>    from matplotlib import animation <br/><br/>    def visualize(simulator): <br/><br/>        X = [p.x for p in simulator.particles] <br/>        Y = [p.y for p in simulator.particles] <br/><br/>        fig = plt.figure() <br/>        ax = plt.subplot(111, aspect='equal') <br/>        line, = ax.plot(X, Y, 'ro') <br/>     <br/>        # Axis limits <br/>        plt.xlim(-1, 1) <br/>        plt.ylim(-1, 1) <br/><br/>        # It will be run when the animation starts <br/>        def init(): <br/>            line.set_data([], []) <br/>            return line, # The comma is important!<br/><br/>        def animate(i): <br/>            # We let the particle evolve for 0.01 time units <br/>            simulator.evolve(0.01) <br/>            X = [p.x for p in simulator.particles] <br/>            Y = [p.y for p in simulator.particles] <br/><br/>            line.set_data(X, Y) <br/>            return line, <br/><br/>        # Call the animate function each 10 ms <br/>        anim = animation.FuncAnimation(fig,<br/>                                       animate,<br/>                                       init_func=init,<br/>                                       blit=True,<br/>                                       interval=10) <br/>        plt.show()
+</pre>
+<p>To test things out, we define a small function, <kbd>test_visualize</kbd>, that animates a system of three particles rotating in different directions. Note that the third particle completes a round three times faster than the others:</p>
+<pre>
+    def test_visualize(): <br/>        particles = [Particle(0.3, 0.5, 1), <br/>                     Particle(0.0, -0.5, -1), <br/>                     Particle(-0.1, -0.4, 3)] <br/><br/>        simulator = ParticleSimulator(particles) <br/>        visualize(simulator) <br/><br/>    if __name__ == '__main__': <br/>        test_visualize()
+</pre>
+<p>The <kbd>test_visualize</kbd> function is helpful to graphically understand the system time evolution. In the following section, we will write more test functions to properly verify program correctness and measure performance.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Writing tests and benchmarks</h1>
+            </header>
+
+            <article>
+                
+<p>Now that we have a working simulator, we can start measuring our performance and tune-up our code so that the simulator can handle as many particles as possible. As a first step, we will write a test and a benchmark.</p>
+<p>We need a test that checks whether the results produced by the simulation are correct or not. Optimizing a program commonly requires employing multiple strategies; as we rewrite our code multiple times, bugs may easily be introduced. A solid test suite ensures that the implementation is correct at every iteration so that we are free to go wild and try different things with the confidence that, if the test suite passes, the code will still work as expected.</p>
+<p>Our test will take three particles, simulate them for 0.1 time units, and compare the results with those from a reference implementation. A good way to organize your tests is using a separate function for each different aspect (or unit) of your application. Since our current functionality is included in the <kbd>evolve</kbd> method, our function will be named <kbd>test_evolve</kbd>. The following code shows the <kbd>test_evolve</kbd> implementation. Note that, in this case, we compare floating point numbers up to a certain precision through the <kbd>fequal</kbd> function:</p>
+<pre>
+    def test_evolve(): <br/>        particles = [Particle( 0.3,  0.5, +1), <br/>                     Particle( 0.0, -0.5, -1), <br/>                     Particle(-0.1, -0.4, +3)] <br/><br/>        simulator = ParticleSimulator(particles) <br/><br/>        simulator.evolve(0.1) <br/><br/>        p0, p1, p2 = particles <br/><br/>        def fequal(a, b, eps=1e-5): <br/>            return abs(a - b) &lt; eps <br/><br/>        assert fequal(p0.x, 0.210269) <br/>        assert fequal(p0.y, 0.543863) <br/><br/>        assert fequal(p1.x, -0.099334) <br/>        assert fequal(p1.y, -0.490034) <br/><br/>        assert fequal(p2.x,  0.191358) <br/>        assert fequal(p2.y, -0.365227) <br/><br/>    if __name__ == '__main__': <br/>        test_evolve()
+</pre>
+<p>A test ensures the correctness of our functionality but gives little information about its running time.  A benchmark is a simple and representative use case that can be run to assess the running time of an application. Benchmarks are very useful to keep score of how fast our program is with each new version that we implement.</p>
+<p>We can write a representative benchmark by instantiating a thousand <kbd>Particle</kbd> objects with random coordinates and angular velocity, and feed them to a <kbd>ParticleSimulator</kbd> class. We then let the system evolve for 0.1 time units:</p>
+<pre>
+    from random import uniform <br/><br/>    def benchmark(): <br/>        particles = [Particle(uniform(-1.0, 1.0), <br/>                              uniform(-1.0, 1.0), <br/>                              uniform(-1.0, 1.0)) <br/>                      for i in range(1000)] <br/><br/>        simulator = ParticleSimulator(particles) <br/>        simulator.evolve(0.1) <br/><br/>    if __name__ == '__main__': <br/>        benchmark()
+</pre>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Timing your benchmark</h1>
+            </header>
+
+            <article>
+                
+<p>A very simple way to time a benchmark is through the Unix <kbd>time</kbd> command. Using the <kbd>time</kbd> command, as follows, you can easily measure the execution time of an arbitrary process:</p>
+<pre>
+    <strong>$ time python simul.py</strong><br/><strong>real    0m1.051s</strong><br/><strong>user    0m1.022s</strong><br/><strong>sys     0m0.028s</strong>
+</pre>
+<div class="packt_infobox">The <kbd>time</kbd> command is not available for Windows. To install Unix tools, such as <kbd>time</kbd>, on Windows you can use the <kbd>cygwin</kbd> shell, downloadable from the official website (<a href="http://www.cygwin.com/"><span class="URLPACKT">http://www.cygwin.com/</span></a>). Alternatively, you can use similar PowerShell commands, such as <kbd>Measure-Command</kbd> (<a href="https://msdn.microsoft.com/en-us/powershell/reference/5.1/microsoft.powershell.utility/measure-command">https://msdn.microsoft.com/en-us/powershell/reference/5.1/microsoft.powershell.utility/measure-command</a>), to measure execution time.</div>
+<p>By default, <kbd>time</kbd> displays three metrics:</p>
+<ul>
+<li><kbd>real</kbd>: The actual time spent running the process from start to finish, as if it was measured by a human with a stopwatch</li>
+<li><kbd>user</kbd>: The cumulative time spent by all the CPUs during the computation</li>
+<li><kbd>sys</kbd>: The cumulative time spent by all the CPUs during system-related tasks, such as memory allocation</li>
+</ul>
+<p>Note that sometimes <kbd>user</kbd> + <kbd>sys</kbd> might be greater than <kbd>real</kbd>, as multiple processors may work in parallel.</p>
+<div class="packt_tip"><kbd>time</kbd> also offers richer formatting options. For an overview, you can explore its manual (using the <kbd>man time</kbd> command). If you want a summary of all the metrics available, you can use the <kbd>-v</kbd> option.</div>
+<p>The Unix <kbd>time</kbd> command is one of the simplest and more direct ways to benchmark a program. For an accurate measurement, the benchmark should be designed to have a long enough execution time (in the order of seconds) so that the setup and tear-down of the process is small compared to the execution time of the application. The <kbd>user</kbd> metric is suitable as a monitor for the CPU performance, while the <kbd>real</kbd> metric also includes the time spent in other processes while waiting for I/O operations.</p>
+<p>Another convenient way to time Python scripts is the <kbd>timeit</kbd> module. This module runs a snippet of code in a loop for <em>n</em> times and measures the total execution times. Then, it repeats the same operation <em>r</em> times (by default, the value of <em>r</em> is <kbd>3</kbd>) and records the time of the best run. Due to this timing scheme, <kbd>timeit</kbd> is an appropriate tool to accurately time small statements in isolation.</p>
+<p>The <kbd>timeit</kbd> module can be used as a Python package, from the command line or from <em>IPython</em>.</p>
+<p>IPython is a Python shell design that improves the interactivity of the Python interpreter. It boosts tab completion and many utilities to time, profile, and debug your code. We will use this shell to try out snippets throughout the book. The IPython shell accepts <strong>magic commands</strong>--statements that start with a <kbd>%</kbd> symbol--that enhance the shell with special behaviors. Commands that start with <kbd>%%</kbd> are called <strong>cell magics</strong>, which can be applied on multi-line snippets (termed as <strong>cells</strong>).</p>
+<p>IPython is available on most Linux distributions through <kbd>pip</kbd> and is included in Anaconda.</p>
+<div class="packt_tip">You can use IPython as a regular Python shell (<kbd>ipython</kbd>), but it is also available in a Qt-based version (<kbd>ipython qtconsole</kbd>) and as a powerful browser-based interface (<kbd>jupyter notebook</kbd>).</div>
+<p>In IPython and command-line interfaces, it is possible to specify the number of loops or repetitions with the <kbd>-n</kbd> and <kbd>-r</kbd> options. If not specified, they will be automatically inferred by <kbd>timeit</kbd>. When invoking <kbd>timeit</kbd> from the command line, you can also pass some setup code, through the <kbd>-s</kbd> option, which will execute before the benchmark. In the following snippet, the IPython command line and Python module version of <kbd>timeit</kbd> are demonstrated: </p>
+<pre class="CDPAlignCenter CDPAlign CDPAlignLeft">
+<strong># IPython Interface </strong><br/><strong>$ ipython </strong><br/><strong>In [1]: from simul import benchmark </strong><br/><strong>In [2]: %timeit benchmark() </strong><br/><strong>1 loops, best of 3: 782 ms per loop </strong><br/><br/><strong># Command Line Interface </strong><br/><strong>$ python -m timeit -s 'from simul import benchmark' 'benchmark()'</strong><br/><strong>10 loops, best of 3: 826 msec per loop </strong><br/><br/><strong># Python Interface </strong><br/><strong># put this function into the simul.py script </strong><br/><br/><strong>import timeit</strong><br/><strong>result = timeit.timeit('benchmark()',</strong><br/><strong> setup='from __main__ import benchmark',</strong><br/><strong> number=10)</strong><br/><br/><strong># result is the time (in seconds) to run the whole loop </strong><br/><strong>result = timeit.repeat('benchmark()',</strong><br/><strong> setup='from __main__ import benchmark',</strong><br/><strong> number=10,</strong><br/><strong> repeat=3) </strong><br/><strong># result is a list containing the time of each repetition (repeat=3 in this case)</strong>
+</pre>
+<p>Note that while the command line and IPython interfaces automatically infer a reasonable number of loops <kbd>n</kbd>, the Python interface requires you to explicitly specify a value through the <kbd>number</kbd> argument.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Better tests and benchmarks with pytest-benchmark</h1>
+            </header>
+
+            <article>
+                
+<p>The Unix <kbd>time</kbd> command is a versatile tool that can be used to assess the running time of small programs on a variety of platforms. For larger Python applications and libraries, a more comprehensive solution that deals with both testing and benchmarking is <kbd>pytest</kbd>, in combination with its <kbd>pytest-benchmark</kbd> plugin.</p>
+<p>In this section, we will write a simple benchmark for our application using the <kbd>pytest</kbd> testing framework. For the interested reader, the <kbd>pytest</kbd> documentation, which can be found at <a href="http://doc.pytest.org/en/latest/">http://doc.pytest.org/en/latest/,</a> is the best resource to learn more about the framework and its uses.</p>
+<div class="packt_tip packt_infobox">You can install <kbd>pytest</kbd> from the console using the <kbd>pip install pytest</kbd> command. The benchmarking plugin can be installed, similarly, by issuing the <kbd>pip install pytest-benchmark</kbd> command.</div>
+<p>A testing framework is a set of tools that simplifies writing, executing, and debugging tests and provides rich reports and summaries of the test results. When using the <kbd>pytest</kbd> framework, it is recommended to place tests separately from the application code. In the following example, we create the <kbd>test_simul.py</kbd> file, which contains the <kbd>test_evolve</kbd> function:</p>
+<pre>
+    from simul import Particle, ParticleSimulator<br/><br/>    def test_evolve():<br/>        particles = [Particle( 0.3,  0.5, +1),<br/>                     Particle( 0.0, -0.5, -1),<br/>                     Particle(-0.1, -0.4, +3)]<br/><br/>        simulator = ParticleSimulator(particles)<br/><br/>        simulator.evolve(0.1)<br/>    <br/>        p0, p1, p2 = particles<br/><br/>        def fequal(a, b, eps=1e-5):<br/>            return abs(a - b) &lt; eps<br/><br/>        assert fequal(p0.x, 0.210269)<br/>        assert fequal(p0.y, 0.543863)<br/><br/>        assert fequal(p1.x, -0.099334)<br/>        assert fequal(p1.y, -0.490034)<br/><br/>        assert fequal(p2.x,  0.191358)<br/>        assert fequal(p2.y, -0.365227)
+</pre>
+<p>The  <kbd>pytest</kbd> executable can be used from the command line to discover and run tests contained in Python modules. To execute a specific test, we can use the <kbd>pytest path/to/module.py::function_name</kbd> syntax. To execute <kbd>test_evolve</kbd>,  we can type the following command in a console to obtain simple but informative output:</p>
+<pre>
+<strong>$ pytest test_simul.py::test_evolve</strong><br/><br/><strong>platform linux -- Python 3.5.2, pytest-3.0.5, py-1.4.32, pluggy-0.4.0</strong><br/><strong>rootdir: /home/gabriele/workspace/hiperf/chapter1, inifile: plugins:</strong><br/><strong>collected 2 items </strong><br/><br/><strong>test_simul.py .</strong><br/><br/><strong>=========================== 1 passed in 0.43 seconds ===========================</strong>
+</pre>
+<p>Once we have a test in place, it is possible for you to execute your test as a benchmark using the <kbd>pytest-benchmark</kbd> plugin. If we change our <kbd>test</kbd> function so that it accepts an argument named <kbd>benchmark</kbd>, the <kbd>pytest</kbd> framework will automatically pass the <kbd>benchmark</kbd> resource as an argument (in <kbd>pytest</kbd> terminology, these resources are called <em>fixtures</em>). The benchmark resource can be called by passing the function that we intend to benchmark as the first argument, followed by the additional arguments. In the following snippet, we illustrate the edits necessary to benchmark the <kbd>ParticleSimulator.evolve</kbd> function:</p>
+<pre>
+    from simul import Particle, ParticleSimulator<br/><br/>    def test_evolve(benchmark):<br/>        # ... previous code<br/>        <strong>benchmark(simulator.evolve, 0.1)</strong>
+</pre>
+<p>To run the benchmark, it is sufficient to rerun the <kbd>pytest test_simul.py::test_evolve</kbd> command. The resulting output will contain detailed timing information regarding the <kbd>test_evolve</kbd> function, as shown:</p>
+<p><img class="aligncenter size-full image-border" src="assets/B06440_01_04.png"/></p>
+<p>For each test collected, <kbd>pytest-benchmark</kbd> will execute the benchmark function several times and provide a statistic summary of its running time. The output shown earlier is very interesting as it shows how running times vary between runs.<br/>
+In this example, the benchmark in <kbd>test_evolve</kbd> was run <kbd>34</kbd> times (column <kbd>Rounds</kbd>), its timings ranged between <kbd>29</kbd> and <kbd>41</kbd> ms (<kbd>Min</kbd> and <kbd>Max</kbd>), and the <kbd>Average</kbd> and <kbd>Median</kbd> times were fairly similar at about <kbd>30</kbd> ms, which is actually very close to the best timing obtained. This example demonstrates how there can be substantial performance variability between runs, and that when taking timings with one-shot tools such as <kbd>time</kbd>, it is a good idea to run the program multiple times and record a representative value, such as the minimum or the median.</p>
+<p><kbd>pytest-benchmark</kbd> has many more features and options that can be used to take accurate timings and analyze the results. For more information, consult the documentation at <a href="http://pytest-benchmark.readthedocs.io/en/stable/usage.html">http://pytest-benchmark.readthedocs.io/en/stable/usage.html</a>.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Finding bottlenecks with cProfile</h1>
+            </header>
+
+            <article>
+                
+<p>After assessing the correctness and timing the execution time of the program, we are ready to identify the parts of the code that need to be tuned for performance. Those parts are typically quite small compared to the size of the program.</p>
+<p>Two profiling modules are available through the Python standard library:</p>
+<ul>
+<li><strong>The</strong> <kbd>profile</kbd> <strong>module</strong>: This module is written in pure Python and adds a significant overhead to the program execution. Its presence in the standard library is because of its vast platform support and because it is easier to extend.</li>
+<li><strong>The</strong> <kbd>cProfile</kbd> <strong>module</strong>: This is the main profiling module, with an interface equivalent to <kbd>profile</kbd>. It is written in C, has a small overhead, and is suitable as a general purpose profiler.</li>
+</ul>
+<p>The <kbd>cProfile</kbd> module can be used in three different ways:</p>
+<ul>
+<li>From the command line</li>
+<li>As a Python module</li>
+<li>With IPython</li>
+</ul>
+<p><kbd>cProfile</kbd> does not require any change in the source code and can be executed directly on an existing Python script or function. You can use <kbd>cProfile</kbd> from the command line in this way:</p>
+<pre>
+<strong>$ python -m cProfile simul.py</strong>
+</pre>
+<p>This will print a long output containing several profiling metrics of all of the functions called in the application. You can use the <kbd>-s</kbd> option to sort the output by a specific metric. In the following snippet ,the output is sorted by the <kbd>tottime</kbd> metric, which will be described here:</p>
+<pre>
+<strong>$ python -m cProfile <strong>-s tottime</strong> simul.py</strong>
+</pre>
+<p>The data produced by <kbd>cProfile</kbd> can be saved in an output file by passing the <kbd>-o</kbd> option. The format that <kbd>cProfile</kbd> uses is readable by the <kbd>stats</kbd> module and other tools. The usage of the  <kbd>-o</kbd> <span>option is as follows:</span></p>
+<pre>
+<strong>$ python -m cProfile <strong>-o prof.out</strong> simul.py</strong>
+</pre>
+<p>The usage of cProfile as a Python module requires invoking the <kbd>cProfile.run</kbd> function in the following way:</p>
+<pre>
+    from simul import benchmark<br/>    import cProfile<br/><br/>    cProfile.run("benchmark()")
+</pre>
+<p>You can also wrap a section of code between method calls of a <kbd>cProfile.Profile</kbd> object, as shown:</p>
+<pre>
+    from simul import benchmark<br/>    import cProfile<br/><br/>    pr = cProfile.Profile()<br/>    pr.enable()<br/>    benchmark()<br/>    pr.disable()<br/>    pr.print_stats()
+</pre>
+<p><kbd>cProfile</kbd> can also be used interactively with IPython. The <kbd>%prun</kbd> magic command lets you profile an individual function call, as illustrated:</p>
+<p><img class="aligncenter size-full image-border" src="assets/Screenshot-from-2017-05-14-20-02-26.png"/></p>
+<p>The <kbd>cProfile</kbd> output is divided into five columns:</p>
+<ul>
+<li><kbd>ncalls</kbd>: The number of times the function was called.</li>
+<li><kbd>tottime</kbd>: The total time spent in the function without taking into account the calls to other functions.</li>
+<li><kbd>cumtime</kbd>: The time in the function including other function calls.</li>
+<li><kbd>percall</kbd>: The time spent for a single call of the function--it can be obtained by dividing the total or cumulative time by the number of calls.</li>
+<li><kbd>filename:lineno</kbd>: The filename and corresponding line numbers. This information is not available when calling C extensions modules.</li>
+</ul>
+<p>The most important metric is <kbd>tottime</kbd>, the actual time spent in the function body excluding subcalls, which tell us exactly where the bottleneck is.</p>
+<p>Unsurprisingly, the largest portion of time is spent in the <kbd>evolve</kbd> function. We can imagine that the loop is the section of the code that needs performance tuning.<br/>
+<kbd>cProfile</kbd> only provides information at the function level and does not tell us which specific statements are responsible for the bottleneck. Fortunately, as we will see in the next section, the  <kbd>line_profiler</kbd> tool is capable of providing line-by-line information of the time spent in the function.</p>
+<p>Analyzing the <kbd>cProfile</kbd> text output can be daunting for big programs with a lot of calls and subcalls. Some visual tools aid the task by improving navigation with an interactive, graphical interface.</p>
+<p>KCachegrind is a <strong>Graphical User Interface <span>(</span>GUI<span>)</span></strong> useful to analyze the profiling output emitted by <kbd>cProfile</kbd>.</p>
+<div class="packt_infobox">KCachegrind is available in the Ubuntu 16.04 official repositories. The Qt port, QCacheGrind, can be downloaded for Windows from <a href="http://sourceforge.net/projects/qcachegrindwin/">http://sourceforge.net/projects/qcachegrindwin/</a>. Mac users can compile QCacheGrind using Mac Ports (<a href="http://www.macports.org/"><span class="URLPACKT">http://www.macports.org/</span></a>) by following the instructions present in the blog post at <a href="http://blogs.perl.org/users/rurban/2013/04/install-kachegrind-on-macosx-with-ports.html">http://blogs.perl.org/users/rurban/2013/04/install-kachegrind-on-macosx-with-ports.html</a>.</div>
+<p>KCachegrind can't directly read the output files produced by <kbd>cProfile</kbd>. Luckily, the <kbd>pyprof2calltree</kbd> third-party Python module is able to convert the <kbd>cProfile</kbd> output file into a format readable by KCachegrind.</p>
+<div class="packt_infobox">You can install <kbd>pyprof2calltree</kbd> from the Python Package Index using the command <kbd>pip install pyprof2calltree</kbd>.</div>
+<p>To best show the KCachegrind features, we will use another example with a more diversified structure. We define a <kbd>recursive</kbd> function, <kbd>factorial</kbd>, and two other functions that use <kbd>factorial</kbd>, named <kbd>taylor_exp</kbd> and <kbd>taylor_sin</kbd>. They represent the polynomial coefficients of the Taylor approximations of <kbd>exp(x)</kbd> and <kbd>sin(x)</kbd>:</p>
+<pre>
+    def factorial(n): <br/>        if n == 0: <br/>            return 1.0 <br/>        else: <br/>            return n * factorial(n-1) <br/><br/>    def taylor_exp(n): <br/>        return [1.0/factorial(i) for i in range(n)] <br/><br/>    def taylor_sin(n): <br/>        res = [] <br/>        for i in range(n): <br/>            if i % 2 == 1: <br/>               res.append((-1)**((i-1)/2)/float(factorial(i))) <br/>            else: <br/>               res.append(0.0) <br/>        return res <br/><br/>    def benchmark(): <br/>        taylor_exp(500) <br/>        taylor_sin(500) <br/><br/>    if __name__ == '__main__': <br/>        benchmark()
+</pre>
+<p>To access profile information, we first need to generate the <kbd>cProfile</kbd> output file:</p>
+<pre>
+<strong>$ python -m cProfile -o prof.out taylor.py</strong>
+</pre>
+<p>Then, we can convert the output file with <kbd>pyprof2calltree</kbd> and launch KCachegrind:</p>
+<pre>
+<strong>$ pyprof2calltree -i prof.out -o prof.calltree</strong><br/><strong>$ kcachegrind prof.calltree # or qcachegrind prof.calltree</strong>
+</pre>
+<p>The output is shown in the following screenshot:</p>
+<p><br/>
+<img class="aligncenter size-full image-border" src="assets/Screenshot-from-2017-01-14-15-29-36.png"/></p>
+<p>The preceding screenshot shows the KCachegrind user interface. On the left, we have an output fairly similar to <kbd>cProfile</kbd>. The actual column names are slightly different: <span class="packt_screen">Incl.</span> translates to <kbd>cProfile</kbd> module's <kbd>cumtime</kbd> and <span class="packt_screen">Self</span> translates to <kbd>tottime</kbd>. The values are given in percentages by clicking on the <span class="packt_screen">Relative</span> button on the menu bar. By clicking on the column headers, you can sort them by the corresponding property.</p>
+<p>On the top right, a click on the <span class="packt_screen">Callee Map</span> tab will display a diagram of the function costs. In the diagram, the time percentage spent by the function is proportional to the area of the rectangle. Rectangles can contain sub-rectangles that represent subcalls to other functions. In this case, we can easily see that there are two rectangles for the <kbd>factorial</kbd> function<span class="WW-DefaultParagraphFont">.</span> The one on the left corresponds to the calls made by <kbd>taylor_exp</kbd> and the one on the right to the calls made by <kbd>taylor_sin</kbd>.</p>
+<p>On the bottom right, you can display another diagram, the <em>call graph</em>, by clicking on the <span class="packt_screen">Call Graph</span> tab. A call graph is a graphical representation of the calling relationship between the functions; each square represents a function and the arrows imply a calling relationship. For example, <kbd>taylor_exp</kbd> calls <kbd>factorial</kbd> <span class="packt_screen">500</span> times, and <kbd>taylor_sin</kbd> calls factorial <span class="packt_screen">250</span> times. KCachegrind also detects recursive calls: <kbd>factorial</kbd> calls itself <span class="packt_screen">187250</span> times.</p>
+<p>You can navigate to the <span class="packt_screen">Call Graph</span> or the <span class="packt_screen">Caller Map</span> tab by double-clicking on the rectangles; the interface will update accordingly, showing that the timing properties are relative to the selected function. For example, double-clicking on <kbd>taylor_exp</kbd> will cause the graph to change, showing only the contribution of <kbd>taylor_exp</kbd> to the total cost.</p>
+<div class="packt_infobox"><strong>Gprof2Dot</strong> (<a href="https://github.com/jrfonseca/gprof2dot">https://github.com/jrfonseca/gprof2dot</a>) is another popular tool used to produce call graphs. Starting from output files produced by one of the supported profilers, it will generate a <kbd>.dot</kbd> diagram representing the call graph.</div>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Profile line by line with line_profiler</h1>
+            </header>
+
+            <article>
+                
+<p>Now that we know which function we have to optimize, we can use the <kbd>line_profiler</kbd> module that provides information on how time is spent in a line-by-line fashion. This is very useful in situations where it's difficult to determine which statements are costly. The <kbd>line_profiler</kbd> module is a third-party module that is available on the Python Package Index and can be installed by following the instructions at <a href="https://github.com/rkern/line_profiler">https://github.com/rkern/line_profiler</a>.</p>
+<p>In order to use <kbd>line_profiler</kbd>, we need to apply a <kbd>@profile</kbd> decorator to the functions we intend to monitor. Note that you don't have to import the <kbd>profile</kbd> function from another module as it gets injected in the global namespace when running the <kbd>kernprof.py</kbd> profiling script. To produce profiling output for our program, we need to add the <kbd>@profile</kbd> decorator to the <kbd>evolve</kbd> function:</p>
+<pre>
+    @profile <br/>    def evolve(self, dt): <br/>        # code
+</pre>
+<p>The <kbd>kernprof.py</kbd> script will produce an output file and will print the result of the profiling on the standard output. We should run the script with two options:</p>
+<ul>
+<li><kbd>-l</kbd> to use the <kbd>line_profiler</kbd> function</li>
+<li><kbd>-v</kbd> to immediately print the results on screen</li>
+</ul>
+<p>The usage of <kbd>kernprof.py</kbd> is illustrated in the following line of code:</p>
+<pre>
+<strong>$ kernprof.py -l -v simul.py</strong>
+</pre>
+<p>It is also possible to run the profiler in an IPython shell for interactive editing. You should first load the <kbd>line_profiler</kbd> extension that will provide the <kbd>lprun</kbd> magic command. Using that command, you can avoid adding the <kbd>@profile</kbd> decorator:</p>
+<p><img class="aligncenter size-full image-border" src="assets/Screenshot-from-2017-05-14-19-59-35.png"/></p>
+<p>The output is quite intuitive and is divided into six columns:</p>
+<ul>
+<li><kbd>Line #</kbd>: The number of the line that was run</li>
+<li><kbd>Hits</kbd>: The number of times that line was run</li>
+<li><kbd>Time</kbd>: The execution time of the line in microseconds (<kbd>Time</kbd>)</li>
+<li><kbd>Per Hit</kbd>: Time/hits</li>
+<li><kbd>% Time</kbd>: Fraction of the total time spent executing that line</li>
+<li><kbd>Line Contents</kbd>: The content of the line</li>
+</ul>
+<p>By looking at the percentage column, we can get a pretty good idea of where the time is spent. In this case, there are a few statements in the <kbd>for</kbd> loop body with a cost of around 10-20 percent each.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Optimizing our code</h1>
+            </header>
+
+            <article>
+                
+<p>Now that we have identified where exactly our application is spending most of its time, we can make some changes and assess the change in performance.</p>
+<p>There are different ways to tune up our pure Python code. The way that produces the most remarkable results is to improve the <em>algorithms</em> used. In this case, instead of calculating the velocity and adding small steps, it will be more efficient (and correct as it is not an approximation) to express the equations of motion in terms of radius, <kbd>r</kbd>, and angle, <kbd>alpha</kbd>, (instead of <kbd>x</kbd> and <kbd>y</kbd>), and then calculate the points on a circle using the following equation:</p>
+<pre>
+    x = r * cos(alpha) <br/>    y = r * sin(alpha)
+</pre>
+<p>Another way lies in minimizing the number of instructions. For example, we can precalculate the <kbd>timestep * p.ang_vel</kbd> factor that doesn't change with time. We can exchange the loop order (first we iterate on particles, then we iterate on time steps) and put the calculation of the factor outside the loop on the particles.</p>
+<p>The line-by-line profiling also showed that even simple assignment operations can take a considerable amount of time. For example, the following statement takes more than 10 percent of the total time:</p>
+<pre>
+    v_x = (-p.y)/norm
+</pre>
+<p>We can improve the performance of the loop by reducing the number of assignment operations performed. To do that, we can avoid intermediate variables by rewriting the expression into a single, slightly more complex statement (note that the right-hand side gets evaluated completely before being assigned to the variables):</p>
+<pre>
+    p.x, p.y = p.x - t_x_ang*p.y/norm, p.y + t_x_ang * p.x/norm
+</pre>
+<p>This leads to the following code:</p>
+<pre>
+        def evolve_fast(self, dt): <br/>            timestep = 0.00001 <br/>            nsteps = int(dt/timestep) <br/><br/>            # Loop order is changed <br/>            for p in self.particles: <br/>                t_x_ang = timestep * p.ang_vel <br/>                for i in range(nsteps): <br/>                    norm = (p.x**2 + p.y**2)**0.5 <br/>                    p.x, p.y = (p.x - t_x_ang * p.y/norm,<br/>                                p.y + t_x_ang * p.x/norm)
+</pre>
+<p>After applying the changes, we should verify that the result is still the same by running our test. We can then compare the execution times using our benchmark:</p>
+<pre>
+<strong>$ time python simul.py # Performance Tuned</strong><br/><strong>real    0m0.756s</strong><br/><strong>user    0m0.714s</strong><br/><strong>sys    0m0.036s</strong><br/><br/><strong>$ time python simul.py # Original</strong><br/><strong>real    0m0.863s</strong><br/><strong>user    0m0.831s</strong><br/><strong>sys    0m0.028s</strong>
+</pre>
+<p>As you can see, we obtained only a modest increment in speed by making a pure Python micro-optimization.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">The dis module</h1>
+            </header>
+
+            <article>
+                
+<p>Sometimes it's not easy to estimate how many operations a Python statement will take. In this section, we will dig into the Python internals to estimate the performance of individual statements. In the CPython interpreter, Python code is first converted to an intermediate representation, the <strong>bytecode</strong>, and then executed by the Python interpreter.</p>
+<p>To inspect how the code is converted to bytecode, we can use the <kbd>dis</kbd> Python module (<kbd>dis</kbd> stands for disassemble). Its usage is really simple; all that is needed is to call the <kbd>dis.dis</kbd> function on the <kbd>ParticleSimulator.evolve</kbd> method:</p>
+<pre>
+    import dis <br/>    from simul import ParticleSimulator <br/>    dis.dis(ParticleSimulator.evolve)
+</pre>
+<p>This will print, for each line in the function, a list of bytecode instructions. For example, the <kbd>v_x = (-p.y)/norm</kbd> statement is expanded in the following set of instructions:</p>
+<pre>
+    29           85 LOAD_FAST                5 (p) <br/>                 88 LOAD_ATTR                4 (y) <br/>                 91 UNARY_NEGATIVE        <br/>                 92 LOAD_FAST                6 (norm) <br/>                 95 BINARY_TRUE_DIVIDE    <br/>                 96 STORE_FAST               7 (v_x)
+</pre>
+<p><kbd>LOAD_FAST</kbd> loads a reference of the <kbd>p</kbd> variable onto the stack and <kbd>LOAD_ATTR</kbd> loads the <kbd>y</kbd> attribute of the item present on top of the stack. The other instructions, <kbd>UNARY_NEGATIVE</kbd> and <kbd>BINARY_TRUE_DIVIDE</kbd>, simply do arithmetic operations on top-of-stack items. Finally, the result is stored in <kbd>v_x</kbd> (<kbd>STORE_FAST</kbd>).</p>
+<p>By analyzing the <kbd>dis</kbd> output, we can see that the first version of the loop produces <kbd>51</kbd> bytecode instructions while the second gets converted into <kbd>35</kbd> instructions.</p>
+<p>The <kbd>dis</kbd> module helps discover how the statements get converted and serves mainly as an exploration and learning tool of the Python bytecode representation.</p>
+<p>To improve our performance even further, we can keep trying to figure out other approaches to reduce the amount of instructions. It's clear, however, that this approach is ultimately limited by the speed of the Python interpreter and it is probably not the right tool for the job. In the following chapters, we will see how to speed up <span>interpreter-limited</span> calculations by executing fast specialized versions written in a lower level language (such as C or Fortran).</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Profiling memory usage with memory_profiler</h1>
+            </header>
+
+            <article>
+                
+<p>In some cases, high memory usage constitutes an issue. For example, if we want to handle a huge number of particles, we will incur a memory overhead due to the creation of many <kbd>Particle</kbd> instances.</p>
+<p>The <kbd>memory_profiler</kbd> module summarizes, in a way similar to <kbd>line_profiler</kbd>, the memory usage of the process.</p>
+<div class="packt_infobox">The <kbd>memory_profiler</kbd> package is also available on the Python Package Index. You should also install the <kbd>psutil</kbd> module (<a href="https://github.com/giampaolo/psutil">https://github.com/giampaolo/psutil</a>) as an optional dependency that will make <kbd>memory_profiler</kbd> considerably faster.</div>
+<p>Just like <kbd>line_profiler</kbd>, <kbd>memory_profiler</kbd> also requires the instrumentation of the source code by placing a <kbd>@profile</kbd> decorator on the function we intend to monitor. In our case, we want to analyze the <kbd>benchmark</kbd> function.</p>
+<p>We can slightly change <kbd>benchmark</kbd> to instantiate a considerable amount (<kbd>100000</kbd>) of <kbd>Particle</kbd> instances and decrease the simulation time:</p>
+<pre>
+    def benchmark_memory(): <br/>        particles = [Particle(uniform(-1.0, 1.0), <br/>                              uniform(-1.0, 1.0), <br/>                              uniform(-1.0, 1.0)) <br/>                      for i in range(100000)] <br/><br/>        simulator = ParticleSimulator(particles) <br/>        simulator.evolve(0.001)
+</pre>
+<p>We can use <kbd>memory_profiler</kbd> from an IPython shell through the <kbd>%mprun</kbd> magic command as shown in the following screenshot:</p>
+<p><img class="aligncenter size-full image-border" src="assets/Screenshot-from-2017-05-14-19-53-49.png"/></p>
+<div class="packt_tip">It is possible to run <kbd>memory_profiler</kbd> from the shell using the <kbd>mprof run</kbd> command after adding the <kbd>@profile</kbd> decorator.</div>
+<p>From the <kbd>Increment</kbd> column, we can see that 100,000 <kbd>Particle</kbd> objects take <kbd>23.7 MiB</kbd> of memory.</p>
+<div class="packt_tip packt_infobox">1 MiB (mebibyte) is equivalent to  1,048,576 bytes. It is different from 1 MB (<em>megabyte</em>), which is equivalent to 1,000,000 bytes.</div>
+<p>We can use <kbd>__slots__</kbd> on the <kbd>Particle</kbd> class to reduce its memory footprint. This feature saves some memory by avoiding storing the variables of the instance in an internal dictionary. This strategy, however, has a drawback--it prevents the addition of attributes other than the ones specified in <kbd>__slots__</kbd> :</p>
+<pre>
+    class Particle:<br/>        __slots__ = ('x', 'y', 'ang_vel') <br/><br/>        def __init__(self, x, y, ang_vel): <br/>            self.x = x <br/>            self.y = y <br/>            self.ang_vel = ang_vel
+</pre>
+<p>We can now rerun our benchmark to assess the change in memory consumption, the result is displayed in the following screenshot:</p>
+<p><img class="aligncenter size-full image-border" src="assets/Screenshot-from-2017-05-14-19-45-34.png"/></p>
+<p>By rewriting the <kbd>Particle</kbd> class using <kbd>__slots__</kbd>, we can save about <kbd>10 MiB</kbd> of memory.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Summary</h1>
+            </header>
+
+            <article>
+                
+<p>In this chapter, we introduced the basic principles of optimization and applied those principles to a test application. When optimizing, the first thing to do is test and identify the bottlenecks in the application. We saw how to write and time a benchmark using the <kbd>time</kbd> Unix command, the Python <kbd>timeit</kbd> module, and the full-fledged <kbd>pytest-benchmark</kbd> package. We learned how to profile our application using <kbd>cProfile</kbd>, <kbd>line_profiler</kbd>, and <kbd>memory_profiler</kbd>, and how to analyze and navigate the profiling data graphically with KCachegrind.</p>
+<p>In the next chapter, we will explore how to improve performance using algorithms and data structures available in the Python standard library. We will cover scaling, sample usage of several data structures, and learn techniques such as caching and memoization.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </body></html>

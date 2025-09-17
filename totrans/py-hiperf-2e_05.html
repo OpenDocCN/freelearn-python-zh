@@ -1,0 +1,554 @@
+<html><head></head><body>
+        <section>
+
+            <header>
+                <h1 class="header-title">Exploring Compilers</h1>
+            </header>
+
+            <article>
+                
+<p>Python is a mature and widely used language and there is a large interest in improving its performance by compiling functions and methods directly to machine code rather than executing instructions in the interpreter. We have already seen a compiler example in <a href="ce893a62-a46c-4575-8163-01921cf8bb7b.xhtml">Chapter 4</a>, <em>C Performance with Cython</em>, where Python code is enhanced with types, compiled to efficient C code, and the interpreter calls are side-stepped.</p>
+<p>In this chapter, we will explore two projects--Numba and PyPy--that approach compilation in a slightly different way. <strong>Numba</strong> is a library designed to compile small functions on the fly. Instead of transforming Python code to C, Numba analyzes and compiles Python functions directly to machine code. <strong>PyPy</strong> is a replacement interpreter that works by analyzing the code at runtime and optimizing the slow loops automatically.</p>
+<p>These tools are called <strong>Just</strong>-<strong>In</strong>-<strong>Time</strong> (<strong>JIT</strong>) compilers because the compilation is performed at runtime rather than before running the code (in other cases, the compiler is called ahead-of-time or AOT).</p>
+<p>The list of topics to be covered in this chapter is as follows:</p>
+<ul>
+<li>Getting started with Numba</li>
+<li>Implementing fast functions with native mode compilation</li>
+<li>Understanding and implementing universal functions</li>
+<li>JIT classes</li>
+<li>Setting up PyPy</li>
+<li>Running the particle simulator with PyPy</li>
+<li>Other interesting compilers</li>
+</ul>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Numba</h1>
+            </header>
+
+            <article>
+                
+<p>Numba was started in 2012 by Travis Oliphant, the original author of NumPy, as a library for compiling individual Python functions at runtime using the <strong>Low-Level Virtual Machine</strong> (<strong>LLVM</strong>) toolchain.</p>
+<p>LLVM is a set of tools designed to write compilers. LLVM is language agnostic and is used to write compilers for a wide range of languages (an important example is the clang compiler). One of the core aspects of LLVM is the intermediate representation (the LLVM IR), a very low-level platform-agnostic language similar to assembly, that can be compiled to machine code for the specific target platform.</p>
+<p>Numba works by inspecting Python functions and by compiling them, using LLVM, to the IR. As we have already seen in the last chapter, the speed gains can be obtained when we introduce types for variables and functions. Numba implements clever algorithms to guess the types (this is called type inference) and compiles type-aware versions of the functions for fast execution.</p>
+<p>Note that Numba was developed to improve the performance of numerical code. The development efforts often prioritize the optimization of applications that intensively use NumPy arrays.</p>
+<div class="packt_infobox">
+<p>Numba is evolving really fast and can have substantial improvements between releases and, sometimes, backward incompatible changes.  To keep up, ensure that you refer to the release notes for each version. In the rest of this chapter, we will use Numba version 0.30.1; ensure that you install the correct version to avoid any error.</p>
+<p>The complete code examples in this chapter can be found in the <kbd>Numba.ipynb</kbd> notebook.</p>
+</div>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">First steps with Numba</h1>
+            </header>
+
+            <article>
+                
+<p>Getting started with Numba is fairly straightforward. As a first example, we will implement a function that calculates the sum of squares of an array. The function definition is as follows:</p>
+<pre>
+    def sum_sq(a):<br/>        result = 0<br/>        N = len(a)<br/>        for i in range(N):<br/>            result += a[i]<br/>        return result
+</pre>
+<p>To set up this function with Numba, it is sufficient to apply the <kbd>nb.jit</kbd> decorator:</p>
+<pre>
+    from numba import nb<br/><br/>    @nb.jit<br/>    def sum_sq(a):<br/>        ...
+</pre>
+<p>The <kbd>nb.jit</kbd> decorator won't do much when applied. However, when the function will be invoked for the first time, Numba will detect the type of the input argument, <kbd>a</kbd> , and compile a specialized, performant version of the original function.</p>
+<p>To measure the performance gain obtained by the Numba compiler, we can compare the timings of the original and the specialized functions. The original, undecorated function can be easily accessed through the <kbd>py_func</kbd> attribute. The timings for the two functions are as follows:</p>
+<pre>
+    import numpy as np<br/><br/>    x = np.random.rand(10000)<br/><br/>    # Original<br/>    %timeit sum_sq.py_func(x)<br/>    100 loops, best of 3: 6.11 ms per loop<br/><br/>    # Numba<br/>    %timeit sum_sq(x)<br/>    100000 loops, best of 3: 11.7 µs per loop
+</pre>
+<p>From the previous code, you can see how the Numba version (11.7 µs) is one order of magnitude faster than the Python version (6.11 ms). We can also compare how this implementation stacks up against NumPy standard operators:</p>
+<pre>
+    %timeit (x**2).sum()<br/>    10000 loops, best of 3: 14.8 µs per loop
+</pre>
+<p>In this case, the Numba compiled function is marginally faster than NumPy vectorized operations. The reason for the extra speed of the Numba version is likely that the NumPy version allocates an extra array before performing the sum in comparison with the in-place operations performed by our <kbd>sum_sq</kbd> function.</p>
+<p>As we didn't use array-specific methods in <kbd>sum_sq</kbd>, we can also try to apply the same function on a regular Python list of floating point numbers. Interestingly, Numba is able to obtain a substantial speed up even in this case, as compared to a list comprehension:</p>
+<pre>
+    x_list = x.tolist()<br/>    %timeit sum_sq(x_list)<br/>    1000 loops, best of 3: 199 µs per loop<br/><br/>    %timeit sum([x**2 for x in x_list])<br/>    1000 loops, best of 3: 1.28 ms per loop
+</pre>
+<p>Considering that all we needed to do was apply a simple decorator to obtain an incredible speed up over different data types, it's no wonder that what Numba does looks like magic. In the following sections, we will dig deeper and understand how Numba works and evaluate the benefits and limitations of the Numba compiler.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Type specializations</h1>
+            </header>
+
+            <article>
+                
+<p>As shown earlier, the <kbd>nb.jit</kbd> decorator works by compiling a specialized version of the function once it encounters a new argument type. To better understand how this works, we can inspect the decorated function in the <kbd>sum_sq</kbd> example.</p>
+<p>Numba exposes the specialized types using the <kbd>signatures</kbd> attribute. Right after the <kbd>sum_sq</kbd> definition, we can inspect the available specialization by accessing the <kbd>sum_sq.signatures</kbd>, as follows:</p>
+<pre>
+    sum_sq.signatures<br/>    # Output:<br/>    # []
+</pre>
+<p>If we call this function with a specific argument, for instance, an array of <kbd>float64</kbd> numbers, we can see how Numba compiles a specialized version on the fly. If we also apply the function on an array of <kbd>float32</kbd>, we can see how a new entry is added to the <kbd>sum_sq.signatures</kbd> list:</p>
+<pre>
+    x = np.random.rand(1000).astype('float64')<br/>    sum_sq(x)<br/>    sum_sq.signatures<br/>    # Result:<br/>    # [(array(float64, 1d, C),)]<br/><br/>    x = np.random.rand(1000).astype('float32')<br/>    sum_sq(x)<br/>    sum_sq.signatures<br/>    # Result:<br/>    # [(array(float64, 1d, C),), (array(float32, 1d, C),)]
+</pre>
+<p>It is possible to explicitly compile the function for certain types by passing a signature to the <kbd>nb.jit</kbd> function.</p>
+<p>An individual signature can be passed as a tuple that contains the type we would like to accept. Numba provides a great variety of types that can be found in the <kbd>nb.types</kbd> module, and they are also available in the top-level <kbd>nb</kbd> namespace. If we want to specify an array of a specific type, we can use the slicing operator, <kbd>[:]</kbd>, on the type itself. In the following example, we demonstrate how to declare a function that takes an array of <kbd>float64</kbd> as its only argument:</p>
+<pre>
+    @nb.jit((nb.float64[:],))<br/>    def sum_sq(a):
+</pre>
+<p>Note that when we explicitly declare a signature, we are prevented from using other types, as demonstrated in the following example. If we try to pass an array, <kbd>x</kbd>, as <kbd>float32</kbd>, Numba will raise a <kbd>TypeError</kbd>:</p>
+<pre>
+    sum_sq(x.astype('float32'))<br/>    # <span class="ansicyan"><span class="ansigreen"><span class="ansired">TypeError: No matching definition for argument type(s) <br/>    array(float32, 1d, C)</span></span></span>
+</pre>
+<p>Another way to declare signatures is through type strings. For example, a function that takes a <kbd>float64</kbd> as input and returns a <kbd>float64</kbd> as output can be declared with the <kbd>float64(float64)</kbd> string. Array types can be declared using a <kbd>[:]</kbd> suffix. To put this together, we can declare a signature for our <kbd>sum_sq</kbd> function, as follows:</p>
+<pre>
+    @nb.jit("float64(float64[:])")<br/>    def sum_sq(a):
+</pre>
+<p>You can also pass multiple signatures by passing a list:</p>
+<pre>
+    @nb.jit(["float64(float64[:])",<br/>             "float64(float32[:])"])<br/>    def sum_sq(a):
+</pre>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Object mode versus native mode</h1>
+            </header>
+
+            <article>
+                
+<p>So far, we have shown how Numba behaves when handling a fairly simple function. In this case, Numba worked exceptionally well, and we obtained great performance on arrays and lists.</p>
+<p>The degree of optimization obtainable from Numba depends on how well Numba is able to infer the variable types and how well it can translate those standard Python operations to fast type-specific versions. If this happens, the interpreter is side-stepped and we can get performance gains similar to those of Cython.</p>
+<p>When Numba cannot infer variable types, it will still try and compile the code, reverting to the interpreter when the types can't be determined or when certain operations are unsupported. In Numba, this is called <strong>object mode</strong> and is in contrast to the interpreter-free scenario, called <strong>native mode</strong>.</p>
+<p>Numba provides a function, called <kbd>inspect_types</kbd>, that helps understand how effective the type inference was and which operations were optimized. As an example, we can take a look at the types inferred for our <kbd>sum_sq</kbd> function:</p>
+<pre>
+    sum_sq.inspect_types()
+</pre>
+<p>When this function is called, Numba will print the type inferred for each specialized version of the function. The output consists of blocks that contain information about variables and types associated with them. For example, we can examine the <kbd>N = len(a)</kbd> line:</p>
+<pre>
+    # --- LINE 4 --- <br/>    #   a = arg(0, name=a)  :: array(float64, 1d, A)<br/>    #   $0.1 = global(len: &lt;built-in function len&gt;)  :: <br/>    Function(&lt;built-in function len&gt;)<br/>    #   $0.3 = call $0.1(a)  :: (array(float64, 1d, A),) -&gt; int64<br/>    #   N = $0.3  :: int64<br/><br/>    N = len(a)
+</pre>
+<p>For each line, Numba prints a thorough description of variables, functions, and intermediate results. In the preceding example, you can see (second line) that the argument <kbd>a</kbd> is correctly identified as an array of <kbd>float64</kbd> numbers. At <kbd>LINE 4</kbd>, the input and return type of the <kbd>len</kbd> function is also correctly identified (and likely optimized) as taking an array of <kbd>float64</kbd> numbers and returning an <kbd>int64</kbd>.</p>
+<p>If you scroll through the output, you can see how all the variables have a well-defined type. Therefore, we can be certain that Numba is able to compile the code quite efficiently. This form of compilation is called <strong>native mode</strong>.</p>
+<p>As a counter example, we can see what happens if we write a function with unsupported operations. For example, as of version 0.30.1, Numba has limited support for string operations.</p>
+<p>We can implement a function that concatenates a series of strings, and compiles it as follows:</p>
+<pre>
+    @nb.jit<br/>    def concatenate(strings):<br/>        result = ''<br/>        for s in strings:<br/>            result += s<br/>        return result
+</pre>
+<p>Now, we can invoke this function with a list of strings and inspect the types:</p>
+<pre>
+    concatenate(['hello', 'world'])<br/>    concatenate.signatures<br/>    # Output: [(reflected list(str),)]<br/>    concatenate.inspect_types()
+</pre>
+<p>Numba will return the output of the function for the <kbd>reflected list (str)</kbd> type. We can, for instance, examine how line 3 gets inferred. The output of <kbd>concatenate.inspect_types()</kbd> is reproduced here:</p>
+<pre>
+    # --- LINE 3 --- <br/>    #   strings = arg(0, name=strings)  :: pyobject<br/>    #   $const0.1 = const(str, )  :: pyobject<br/>    #   result = $const0.1  :: pyobject<br/>    #   jump 6<br/>    # label 6<br/><br/>    result = ''
+</pre>
+<p>You can see how this time, each variable or function is of the generic <kbd>pyobject</kbd> type rather than a specific one. This means that, in this case, Numba is unable to compile this operation without the help of the Python interpreter. Most importantly, if we time the original and compiled function, we note that the compiled function is about three times <em>slower</em> than the pure Python counterpart:</p>
+<pre>
+    x = ['hello'] * 1000<br/>    %timeit concatenate.py_func(x)<br/>    10000 loops, best of 3: 111 µs per loop<br/><br/>    %timeit concatenate(x)<br/>    1000 loops, best of 3: 317 µs per loop
+</pre>
+<p>This is because the Numba compiler is not able to optimize the code and adds some extra overhead to the function call.</p>
+<p>As you may have noted, Numba compiled the code without complaints even if it is inefficient. The main reason for this is that Numba can still compile other sections of the code in an efficient manner while falling back to the Python interpreter for other parts of the code. This compilation strategy is called <strong>object mode</strong>.</p>
+<p>It is possible to force the use of native mode by passing the <kbd>nopython=True</kbd> option to the <kbd>nb.jit</kbd> decorator. If, for example, we apply this decorator to our concatenate function, we observe that Numba throws an error on first invocation:</p>
+<pre>
+    @nb.jit(nopython=True)<br/>    def concatenate(strings):<br/>        result = ''<br/>        for s in strings:<br/>            result += s<br/>        return result<br/><br/>    concatenate(x)<br/><span class="ansicyan"><span class="ansigreen"><span class="ansired">    # Exception:<br/>    # TypingError: Failed at nopython (nopython frontend)</span></span></span>
+</pre>
+<p>This feature is quite useful for debugging and ensuring that all the code is fast and correctly typed.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Numba and NumPy</h1>
+            </header>
+
+            <article>
+                
+<p>Numba was originally developed to easily increase performance of code that uses NumPy arrays. Currently, many NumPy features are implemented efficiently by the compiler.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Universal functions with Numba</h1>
+            </header>
+
+            <article>
+                
+<p>Universal functions are special functions defined in NumPy that are able to operate on arrays of different sizes and shapes according to the broadcasting rules. One of the best features of Numba is the implementation of fast <kbd>ufuncs</kbd>.</p>
+<p>We have already seen some <kbd>ufunc</kbd> examples in <a href="fb5356db-d238-4571-b5de-663a8400ad6d.xhtml">Chapter 3</a><em>, Fast Array Operations with NumPy and Pandas</em>. For instance, the <kbd>np.log</kbd> function is a <kbd>ufunc</kbd> because it can accept scalars and arrays of different sizes and shapes. Also, universal functions that take multiple arguments still work according to the  broadcasting rules. Examples of universal functions that take multiple arguments are <kbd>np.sum</kbd> or <kbd>np.difference</kbd>.</p>
+<p>Universal functions can be defined in standard NumPy by implementing the scalar version and using the <kbd>np.vectorize</kbd> function to enhance the function with the broadcasting feature. As an example, we will see how to write the <em>Cantor pairing function</em>.</p>
+<p>A pairing function is a function that encodes two natural numbers into a single natural number so that you can easily interconvert between the two representations. The Cantor pairing function can be written as follows:</p>
+<pre>
+    import numpy as np<br/><br/>    def cantor(a, b):<br/>        return  int(0.5 * (a + b)*(a + b + 1) + b)
+</pre>
+<p>As already mentioned, it is possible to create a ufunc in pure Python using the <kbd>np.vectorized</kbd> decorator:</p>
+<pre>
+    @np.vectorize<br/>    def cantor(a, b):<br/>        return  int(0.5 * (a + b)*(a + b + 1) + b)<br/><br/>    cantor(np.array([1, 2]), 2)<br/>    # Result:<br/>    # array([ 8, 12])
+</pre>
+<p>Except for the convenience, defining universal functions in pure Python is not very useful as it requires a lot of function calls affected by interpreter overhead. For this reason, ufunc implementation is usually done in C or Cython, but Numba beats all these methods by its convenience.</p>
+<p>All that is needed to do in order to perform the conversion is using the equivalent decorator, <kbd>nb.vectorize</kbd>. We can compare the speed of the standard <kbd>np.vectorized</kbd> version which, in the following code, is called <kbd>cantor_py</kbd>, and the same function is implemented using standard NumPy operations:</p>
+<pre>
+    # Pure Python<br/>    %timeit cantor_py(x1, x2)<br/>    100 loops, best of 3: 6.06 ms per loop<br/>    # Numba<br/>    %timeit cantor(x1, x2)<br/>    100000 loops, best of 3: 15 µs per loop<br/>    # NumPy<br/>    %timeit (0.5 * (x1 + x2)*(x1 + x2 + 1) + x2).astype(int)<br/>    10000 loops, best of 3: 57.1 µs per loop
+</pre>
+<p>You can see how the Numba version beats all the other options by a large margin! Numba works extremely well because the function is simple and type inference is possible.</p>
+<div class="packt_infobox">An additional advantage of universal functions is that, since they depend on individual values, their evaluation can also be executed in parallel. Numba provides an easy way to parallelize such functions by passing the <kbd>target="cpu"</kbd> or <kbd>target="gpu"</kbd> keyword argument to the <kbd>nb.vectorize</kbd> decorator.</div>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Generalized universal functions</h1>
+            </header>
+
+            <article>
+                
+<p>One of the main limitations of universal functions is that they must be defined on scalar values. A generalized universal function, abbreviated <kbd>gufunc</kbd>, is an extension of universal functions to procedures that take arrays.</p>
+<p>A classic example is the matrix multiplication. In NumPy, matrix multiplication can be applied using the <kbd>np.matmul</kbd> function, which takes two 2D arrays and returns another 2D array. An example usage of <kbd>np.matmul</kbd> is as follows:</p>
+<pre>
+    a = np.random.rand(3, 3)<br/>    b = np.random.rand(3, 3)<br/><br/>    c = np.matmul(a, b)<br/>    c.shape<br/>    # Result:<br/>    # (3, 3)
+</pre>
+<p>As we saw in the previous subsection, a <kbd>ufunc</kbd> broadcasts the operation over arrays of <em>scalars</em>, its natural generalization will be to broadcast over an array of <em>arrays</em>. If, for instance, we take two arrays of 3 by 3 matrices, we will expect <kbd>np.matmul</kbd> to take to match the matrices and take their product. In the following example, we take two arrays containing 10 matrices of shape <kbd>(3, 3)</kbd>. If we apply <kbd>np.matmul</kbd>, the product will be applied <em>matrix-wise</em> to obtain a new array containing the 10 results (which are, again, <kbd>(3, 3)</kbd> matrices):</p>
+<pre>
+    a = np.random.rand(10, 3, 3)<br/>    b = np.random.rand(10, 3, 3)<br/><br/>    c = np.matmul(a, b)<br/>    c.shape<br/>    # Output<br/>    # (10, 3, 3)
+</pre>
+<p>The usual rules for broadcasting will work in a similar way. For example, if we have an array of <kbd>(3, 3)</kbd> matrices, which will have a shape of <kbd>(10, 3, 3)</kbd>, we can use <kbd>np.matmul</kbd> to calculate the matrix multiplication of each element with a single <kbd>(3, 3)</kbd> matrix. According to the broadcasting rules, we obtain that the single matrix will be repeated to obtain a size of <kbd>(10, 3, 3)</kbd>:</p>
+<pre>
+    a = np.random.rand(10, 3, 3)<br/>    b = np.random.rand(3, 3) # Broadcasted to shape (10, 3, 3)<br/>    c = np.matmul(a, b)<br/>    c.shape<br/>    # Result:<br/>    # (10, 3, 3)
+</pre>
+<p>Numba supports the implementation of efficient generalized universal functions through the <kbd>nb.guvectorize</kbd> decorator. As an example, we will implement a function that computes the euclidean distance between two arrays as a <kbd>gufunc</kbd>. To create a <kbd>gufunc</kbd>, we have to define a function that takes the input arrays, plus an output array where we will store the result of our calculation.</p>
+<p>The <kbd>nb.guvectorize</kbd> decorator requires two arguments:</p>
+<ul>
+<li>The types of the input and output: two 1D arrays as input and a scalar as output</li>
+<li>The so called layout string, which is a representation of the input and output sizes; in our case, we take two arrays of the same size (denoted arbitrarily by <kbd>n</kbd>), and we output a scalar</li>
+</ul>
+<p>In the following example, we show the implementation of the <kbd>euclidean</kbd> function using the <kbd>nb.guvectorize</kbd> decorator:</p>
+<pre>
+    @nb.guvectorize(['float64[:], float64[:], float64[:]'], '(n), (n) -<br/>    &gt; ()')<br/>    def euclidean(a, b, out):<br/>        N = a.shape[0]<br/>        out[0] = 0.0<br/>        for i in range(N):<br/>            out[0] += (a[i] - b[i])**2
+</pre>
+<p>There are a few very important points to be made. Predictably, we declared the types of the inputs <kbd>a</kbd> and <kbd>b</kbd> as <kbd>float64[:]</kbd>, because they are 1D arrays. However, what about the output argument? Wasn't it supposed to be a scalar? Yes, however, <strong>Numba treats scalar argument as arrays of size 1</strong>. That's why it was declared as <kbd>float64[:]</kbd>.</p>
+<p>Similarly, the layout string indicates that we have two arrays of size <kbd>(n)</kbd> and the output is a scalar, denoted by empty brackets--<kbd>()</kbd>. However, the array out will be passed as an array of size 1.</p>
+<p>Also, note that we don't return anything from the function; all the output has to be written in the <kbd>out</kbd> array.</p>
+<div class="packt_tip">The letter <kbd>n</kbd> in the layout string is completely arbitrary; you may choose to use <kbd>k</kbd>  or other letters of your liking. Also, if you want to combine arrays of uneven sizes, you can use layouts strings, such as <kbd>(n, m)</kbd>.</div>
+<p>Our brand new <kbd>euclidean</kbd> function can be conveniently used on arrays of different shapes, as shown in the following example:</p>
+<pre>
+    a = np.random.rand(2)<br/>    b = np.random.rand(2)<br/>    c = euclidean(a, b) # Shape: (1,)<br/><br/>    a = np.random.rand(10, 2)<br/>    b = np.random.rand(10, 2)<br/>    c = euclidean(a, b) # Shape: (10,)<br/><br/>    a = np.random.rand(10, 2)<br/>    b = np.random.rand(2)<br/>    c = euclidean(a, b) # Shape: (10,)
+</pre>
+<p>How does the speed of <kbd>euclidean</kbd> compare to standard NumPy? In the following code, we benchmark a NumPy vectorized version with our previously defined <kbd>euclidean</kbd> function:</p>
+<pre>
+    a = np.random.rand(10000, 2)<br/>    b = np.random.rand(10000, 2)<br/><br/>    %timeit ((a - b)**2).sum(axis=1)<br/>    1000 loops, best of 3: 288 µs per loop<br/><br/>    %timeit euclidean(a, b)<br/>    10000 loops, best of 3: 35.6 µs per loop
+</pre>
+<p>The Numba version, again, beats the NumPy version by a large margin!</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">JIT classes</h1>
+            </header>
+
+            <article>
+                
+<p>As of today, Numba doesn't support optimization of generic Python objects. This limitation, however, doesn't have a huge impact on numerical codes as they usually involve arrays and math operations exclusively.</p>
+<p>Nevertheless, certain data structures are much more naturally implemented using objects; therefore, Numba provides support for defining classes that can be used and compiled to fast, native code.</p>
+<p>Bear in mind that this is one of the newest (almost experimental) features, and it is extremely useful as it allows us to extend Numba to support fast data structures that are not easily implemented with arrays.</p>
+<p>As an example, we will show how to implement a simple linked list using JIT classes. A linked list can be implemented by defining a <kbd>Node</kbd> class that contains two fields: a value and the next item in the list. As you can see in the following figure, each <strong>Node</strong> connects to the next and holds a value, and the last node contains a broken link, to which we assign a value of <strong>None</strong>:</p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full image-border" src="assets/linked_list.png"/></div>
+<p>In Python, we can define the <kbd>Node</kbd> class as follows:</p>
+<pre>
+    class Node:<br/>        def __init__(self, value):<br/>            self.next = None<br/>            self.value = value
+</pre>
+<p>We can manage the collection of <kbd>Node</kbd> instances by creating another class, called <kbd>LinkedList</kbd>. This class will keep track of the head of the list (in the preceding figure, this corresponds to the <strong>Node</strong> with <strong>value</strong> <strong>3</strong>). To insert an element in the front of the list, we can simply create a new <strong>Node</strong> and link it to the current head.</p>
+<p>In the following code, we develop the initialization function for <kbd>LinkedList</kbd> and the <kbd>LinkedList.push_back</kbd> method that inserts an element in the front of the list using the strategy outlined earlier:</p>
+<pre>
+    class LinkedList:<br/>    <br/>        def __init__(self):<br/>            self.head = None<br/>    <br/>        def push_front(self, value):<br/>            if self.head == None:<br/>                self.head = Node(value)<br/>            else:<br/>                # We replace the head<br/>                new_head = Node(value)<br/>                new_head.next = self.head<br/>                self.head = new_head
+</pre>
+<p>For debugging purposes, we can also implement the <kbd>LinkedList.show</kbd> method that traverses and prints each element in the list. The method is shown in the following snippet:</p>
+<pre>
+        def show(self):<br/>            node = self.head<br/>            while node is not None:<br/>                print(node.value)<br/>                node = node.next
+</pre>
+<p>At this point, we can test our <kbd>LinkedList</kbd> and see whether it behaves correctly. We can create an empty list, add a few elements, and print its content. Note that since we are pushing elements at the front of the list, the last elements inserted will be the first to be printed:</p>
+<pre>
+    lst = LinkedList()<br/>    lst.push_front(1)<br/>    lst.push_front(2)<br/>    lst.push_front(3)<br/>    lst.show()<br/>    # Output:<br/>    # 3<br/>    # 2<br/>    # 1
+</pre>
+<p>Finally, we can implement a function, <kbd>sum_list</kbd>, that returns the sum of the elements in the linked list. We will use this method to time differences between the Numba and pure Python version:</p>
+<pre>
+    @nb.jit<br/>    def sum_list(lst):<br/>        result = 0<br/>        node = lst.head<br/>        while node is not None:<br/>            result += node.value<br/>            node = node.next<br/>        return result
+</pre>
+<p>If we measure the execution time of the original <kbd>sum_list</kbd> version and the <kbd>nb.jit</kbd> version, we see that there is not much difference. The reason is that Numba cannot infer the type of classes:</p>
+<pre>
+    lst = LinkedList()<br/>    [lst.push_front(i) for i in range(10000)]<br/><br/>    %timeit sum_list.py_func(lst)<br/>    1000 loops, best of 3: 2.36 ms per loop<br/><br/>    %timeit sum_list(lst)<br/>    100 loops, best of 3: 1.75 ms per loop
+</pre>
+<p>We can improve the performance of <kbd>sum_list</kbd> by compiling the <kbd>Node</kbd> and <kbd>LinkedList</kbd> classes using the <kbd>nb.jitclass</kbd> decorator.</p>
+<p>The <kbd>nb.jitclass</kbd> decorator takes a single argument that contains the attribute types. In the <kbd>Node</kbd> class, the attribute types are <kbd>int64</kbd> for <kbd>value</kbd> and <kbd>Node</kbd> for <kbd>next</kbd>. The <kbd>nb.jitclass</kbd> decorator will also compile all the methods defined for the class. Before delving into the code, there are two observations that need to be made.</p>
+<p>First, the attribute declaration has to be done before the class is defined, but how do we declare a type we haven't defined yet? Numba provides the <kbd>nb.deferred_type()</kbd> function, which can be used for this purpose.</p>
+<p>Second, the <kbd>next</kbd> attribute can be either <kbd>None</kbd> or a <kbd>Node</kbd> instance. This is what is called an optional type, and Numba provides a utility, called <kbd>nb.optional</kbd>, that lets you declare variables that can be (optionally) <kbd>None</kbd>.</p>
+<p>This <kbd>Node</kbd> class is illustrated in the following code sample. As you can see,  <kbd>node_type</kbd> is predeclared using <kbd>nb.deferred_type()</kbd>. The attributes are declared as a list of pairs containing the attribute name and the type (also note the use of <kbd>nb.optional</kbd>). After the class declaration, we are required to declare the deferred type:</p>
+<pre>
+    node_type = nb.deferred_type()<br/><br/>    node_spec = [<br/>        ('next', nb.optional(node_type)),<br/>        ('value', nb.int64)<br/>    ]<br/><br/>    @nb.jitclass(node_spec)<br/>    class Node:<br/>        # Body of Node is unchanged<br/><br/>    node_type.define(Node.class_type.instance_type)
+</pre>
+<p>The <kbd>LinkedList</kbd> class can be easily compiled, as follows. All that's needed is to define the <kbd>head</kbd> attribute and to apply the <kbd>nb.jitclass</kbd> decorator:</p>
+<pre>
+    ll_spec = [<br/>        ('head', nb.optional(Node.class_type.instance_type))<br/>    ]<br/><br/>    @nb.jitclass(ll_spec)<br/>    class LinkedList:<br/>        # Body of LinkedList is unchanged<br/><br/>
+</pre>
+<p>We can now measure the execution time of the <kbd>sum_list</kbd> function when we pass a JIT <kbd>LinkedList</kbd>:</p>
+<pre>
+    lst = LinkedList()<br/>    [lst.push_front(i) for i in range(10000)]<br/><br/>    %timeit sum_list(lst)<br/>    1000 loops, best of 3: 345 µs per loop<br/><br/>    %timeit sum_list.py_func(lst)<br/>    100 loops, best of 3: 3.36 ms per loop
+</pre>
+<p>Interestingly, when using a JIT class from a compiled function, we obtain a substantial performance improvement against the pure Python version. However, using the JIT class from the original <kbd>sum_list.py_func</kbd> actually results in worse performance. Ensure that you use JIT classes only inside compiled functions!</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Limitations in Numba</h1>
+            </header>
+
+            <article>
+                
+<p>There are some instances where Numba cannot properly infer the variable types and will refuse to compile. In the following example, we define a function that takes a nested list of integers and returns the sum of the element in every sublist. In this case, Numba will raise <kbd>ValueError</kbd> and refuse to compile:</p>
+<pre>
+    a = [[0, 1, 2], <br/>         [3, 4], <br/>         [5, 6, 7, 8]]<br/><br/>    @nb.jit<br/>    def sum_sublists(a):<br/>        result = []<br/>        for sublist in a:<br/>            result.append(sum(sublist))<br/>        return result<br/><br/>    sum_sublists(a)<br/>    # ValueError: cannot compute fingerprint of empty list
+</pre>
+<p>The problem with this code is that Numba is not able to determine the type of the list and fails. A way to fix this problem is to help the compiler determine the right type by initializing the list with a sample element and removing it at the end:</p>
+<pre>
+    @nb.jit<br/>    def sum_sublists(a):<br/>        result = [0]<br/>        for sublist in a:<br/>            result.append(sum(sublist))<br/>        return result[1:]
+</pre>
+<p>Among other features that are not yet implemented in the Numba compiler are function and class definitions, list, set and dict comprehension, generators, the <kbd>with</kbd> statement, and <kbd>try</kbd> <kbd>except</kbd> blocks. Note, however, that many of these features may become supported in the future.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">The PyPy project</h1>
+            </header>
+
+            <article>
+                
+<p>PyPy is a very ambitious project at improving the performance of the Python interpreter. The way PyPy improves performance is by automatically compiling slow sections of the code at runtime.</p>
+<p>PyPy is written in a special language called RPython (rather than C) that allows developers to quickly and reliably implement advanced features and improvements. RPython means <em>Restricted Python</em> because it implements a restricted subset of the Python language targeted to the compiler development.</p>
+<p>As of today, PyPy version 5.6 supports a lot of Python features and is a possible choice for a large variety of applications.</p>
+<p>PyPy compiles code using a very clever strategy, called <em>tracing JIT compilation</em>. At first, the code is executed normally using interpreter calls. PyPy then starts to profile the code and identifies the most intensive loops. After the identification takes place, the compiler then observes (<em>traces</em>) the operations and is able to compile its optimized, interpreter-free version.</p>
+<p>Once an optimized version of the code is present, PyPy is able to run the slow loop much faster than the interpreted version.</p>
+<p>This strategy can be contrasted with what Numba does. In Numba, the units of compilation are methods and functions, while the PyPy focus is just slow loops. Overall, the focus of the projects is also very different as Numba has a limited scope for numerical code and requires a lot of instrumentation while PyPy aims at replacing the CPython interpreter.</p>
+<p>In this section, we will demonstrate and benchmark PyPy on our particle simulator application.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Setting up PyPy</h1>
+            </header>
+
+            <article>
+                
+<p>PyPy is distributed as a precompiled binary that can be downloaded from <a href="http://pypy.org/download.html">http://pypy.org/download.html</a>, and it currently supports Python versions 2.7 (beta support in PyPy 5.6) and 3.3 (alpha support in PyPy 5.5). In this chapter, we will demonstrate the usage of the 2.7 version.</p>
+<p>Once PyPy is downloaded and unpacked, you can locate the interpreter in the <kbd>bin/pypy</kbd> directory relative to the unpacked archive. You can initialize a new virtual environment where we can install additional packages using the following command:</p>
+<pre>
+<strong>$ /path/to/bin/pypy -m ensurepip<br/>$ /path/to/bin/pypy -m pip install virtualenv<br/>$ /path/to/bin/virtualenv my-pypy-env</strong>
+</pre>
+<p>To activate the environment, we will use the following command:</p>
+<pre>
+<strong>$ source my-pypy-env/bin/activate<br/></strong>
+</pre>
+<p>At this point, you can verify that the binary Python is linked to the PyPy executable by typing <kbd>python -V</kbd>. At this point, we can go ahead and install some packages we may need. As of version 5.6, PyPy has limited support for software that uses the Python C API (most notably, packages such as <kbd>numpy</kbd> and <kbd>matplotlib</kbd>). We can go ahead and install them in the usual way:</p>
+<pre>
+<strong>(my-pypy-env) $ pip install numpy matplotlib</strong>
+</pre>
+<div class="packt_tip">On certain platforms, installation of <kbd>numpy</kbd> and <kbd>matplotlib</kbd> can be tricky. You can skip the installation step and remove any imports on these two packages from the scripts we will run.</div>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Running a particle simulator in PyPy</h1>
+            </header>
+
+            <article>
+                
+<p>Now that we have successfully set up the PyPy installation, we can go ahead and run our particle simulator. As a first step, we will time the particle simulator from <a href="4db2c3e6-3485-41a5-8450-07220f6d80ec.xhtml">Chapter 1</a>, <em>Benchmarking and Profiling</em>, on the standard Python interpreter. If the virtual environment is still active, you can issue the command deactivate to exit the environment. We can confirm that the Python interpreter is the standard one by using the <kbd>python -V</kbd> command:</p>
+<pre>
+<strong>(my-pypy-env) $ deactivate<br/>$ python -V<br/>Python 3.5.2 :: Continuum Analytics, Inc.</strong>
+</pre>
+<p>At this point, we can time our code using the <kbd>timeit</kbd> command-line interface:</p>
+<pre>
+<strong>$ python -m timeit --setup "from simul import benchmark" "benchmark()"</strong><br/><strong>10 loops, best of 3: 886 msec per loop</strong>
+</pre>
+<p>We can reactivate the environment and run the exact same code from PyPy. On Ubuntu, you may have problems importing the <kbd>matplotlib.pyplot</kbd> module. You can try issuing the following <kbd>export</kbd> command to fix the issue or removing the <kbd>matplotlib</kbd> imports from <kbd>simul.py</kbd>:</p>
+<pre>
+<strong>$ export MPLBACKEND='agg'</strong>
+</pre>
+<p>Now, we can go ahead and time the code using PyPy:</p>
+<pre>
+<strong>$ source my-pypy-env/bin/activate</strong><br/><strong>Python 2.7.12 (aff251e54385, Nov 09 2016, 18:02:49)</strong><br/><strong>[PyPy 5.6.0 with GCC 4.8.2]</strong><br/><br/><strong>(my-pypy-env) $ python -m timeit --setup "from simul import benchmark" "benchmark()"</strong><br/><strong>WARNING: timeit is a very unreliable tool. use perf or something else for real measurements</strong><br/><strong>10 loops, average of 7: 106 +- 0.383 msec per loop (using standard deviation)</strong>
+</pre>
+<p>Note that we obtained a large, more than eight times, speedup! PyPy, however, warns us that the <kbd>timeit</kbd> module can be unreliable. We can confirm our timings using the <kbd>perf</kbd> module, as suggested by PyPy:</p>
+<pre>
+<strong>(my-pypy-env) $ pip install perf<br/>(my-pypy-env) $ python -m perf timeit --setup 'from simul import benchmark' 'benchmark()'</strong><br/><strong>.......</strong><br/><strong>Median +- std dev: 97.8 ms +- 2.3 ms</strong>
+</pre>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Other interesting projects</h1>
+            </header>
+
+            <article>
+                
+<p>Over the years, many projects attempted to improve Python performance through several strategies and, sadly, many of them failed. As of today, there are a few projects that survive and hold the promise for a faster Python.</p>
+<p>Numba and PyPy are mature projects that are steadily improving over the years. Features are continuously being added and they hold great promise for the future of Python.</p>
+<p><strong>Nuitka</strong> is a program developed by Kay Hayen that compiles Python code to C. As of right now (version 0.5.x), it provides extreme compatibility with the Python language and produces efficient code that results in moderate performance improvements over CPython.</p>
+<p>Nuitka is quite different than Cython in the sense that it focuses on extreme compatibility with the Python language, and it doesn't extend the language with additional constructs.</p>
+<p><strong>Pyston</strong> is a new interpreter developed by Dropbox that powers JIT compilers. It differs substantially from PyPy as it doesn't employ a tracing JIT, but rather a method-at-a-time JIT (similar to what Numba does). Pyston, like Numba, is also built on top of the LLVM compiler infrastructure.</p>
+<p>Pyston is still in early development (alpha stage) and only supports Python 2.7. Benchmarks show that it is faster than CPython but slower than PyPy; that said, it is still an interesting project to follow as new features are added and compatibility is increased.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Summary</h1>
+            </header>
+
+            <article>
+                
+<p>Numba is a tool that compiles fast, specialized versions of Python functions at runtime. In this chapter, we learned how to compile, inspect, and analyze functions compiled by Numba. We also learned how to implement fast NumPy universal functions that are useful in a wide array of numerical applications. Finally, we implemented more complex data structures using the <kbd>nb.jitclass</kbd> decorator.</p>
+<p>Tools such as PyPy allow us to run Python programs unchanged to obtain significant speed improvements. We demonstrated how to set up PyPy, and we assessed the performance improvements on our particle simulator application.</p>
+<p>We also, briefly, described the current ecosystem of the Python compilers and compared them with each other. </p>
+<p>In the next chapter, we will learn about concurrency and asynchronous programming. Using these techniques, we will be able to improve the responsiveness and design of applications that spend a lot of time waiting for network and disk resources. </p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </body></html>
