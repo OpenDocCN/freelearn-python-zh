@@ -1,0 +1,364 @@
+<html><head></head><body>
+  <div id="sbo-rt-content"><div class="chapter" title="Chapter 5. Working with Legacy Code"><div class="titlepage"><div><div><h1 class="title"><a id="ch05"/>Chapter 5. Working with Legacy Code</h1></div></div></div><p>Having a solid set of unit tests is critical for a successful project. As you have seen so far, not only do unit tests help prevent bugs from getting into the code, but they also help in many other ways such as guiding the design, enabling us to refactor the code and keep it more maintainable, as well as a reference where you can see what the expected behavior is supposed to be.</p><p>TDD is the best way to ensure that our code has all the properties mentioned in the preceding paragraph. But, as anyone who has worked on larger, more complex projects knows, there are always pieces of code that don't have tests. Usually, this is the code written many years ago, long before we started practicing TDD. Or, it might have been the code that was written in a hurry to meet an urgent deadline.</p><p>Either way, this is the code that does not have associated tests. The code is often messy. It has a ton of dependencies on other classes. And now, we need to add a new feature to this code. How do we approach this? Should we just go in there and hack in our new feature? Or is there a better way?</p><div class="section" title="What is legacy code?"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec38"/>What is legacy code?</h1></div></div></div><p>In this chapter, we <a id="id218" class="indexterm"/>will use the term <span class="strong"><strong>legacy code</strong></span> to mean any code that does not have unit tests. This is a rather broad definition, since it includes the code that was written long ago as well as recent code, which, for some reason, was written without tests. Although not strictly about the old code, this is a popular definition in the TDD community, made mainstream by Michael Feathers' excellent book <span class="emphasis"><em>Working Effectively with Legacy Code</em></span> (Prentice Hall, 2004), and this is the meaning we will adopt in this book as well.</p><p>There are five steps to working with the legacy code:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem"><span class="strong"><strong>Understanding the code</strong></span>: If we are lucky, we will have some great documentation that will help us understand the code that we are going to touch. More likely, documentation will be scant or not present altogether. Since there are no tests, we cannot read the tests to try to understand what the code is supposed to do. And for really old code, chances are that the person who wrote the code does not work for your organization anymore. It sounds like the perfect storm to mess with us, but as anyone who has worked on large production projects can attest, this is the norm for the majority of the codebase. So, our first step is to just understand the code and figure out what is going on.</li><li class="listitem"><span class="strong"><strong>Breaking dependencies</strong></span>: Once we start to understand the code, our next step would be to write some tests for the code. This is not straightforward for the legacy code because the design is often a spaghetti mess of dependencies with other files and classes. We need some way to break these dependencies before we can write unit tests.</li><li class="listitem"><span class="strong"><strong>Writing tests</strong></span>: We are now finally in a position to write some unit tests for the code we are about to modify.</li><li class="listitem"><span class="strong"><strong>Refactoring</strong></span>: Now that we have tests, we can start applying some of the refactoring techniques that we saw earlier in this book.</li><li class="listitem"><span class="strong"><strong>Implementing the new feature</strong></span>: Having cleaned up the code, we can now implement the new feature, with tests, of course.</li></ol></div><p>Although the<a id="id219" class="indexterm"/> preceding steps are shown as a linear sequence, it is important to understand that the steps often take place in a non-linear way. For example, while trying to understand a large method, we might take a small piece of code, extract it to a method, look at it in greater detail, and then write a couple of tests for it, finally going back to the original method and looking at another piece of the method. We might then come back to our extracted methods and extract them into a new class. The steps go back and forth until we are in a position to safely implement the new feature without the risk of breaking stuff.</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Understanding the code"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec39"/>Understanding the code</h1></div></div></div><p>The following<a id="id220" class="indexterm"/> is the code that we are going to be looking at in this chapter:</p><div class="informalexample"><pre class="programlisting">from datetime import datetime
+
+from .stock import Stock
+from .rule import PriceRule
+
+class AlertProcessor:
+    def __init__(self):
+        self.exchange = {"GOOG": Stock("GOOG"), "AAPL": Stock("AAPL")}
+        rule_1 = PriceRule("GOOG", lambda stock: stock.price &gt; 10)
+        rule_2 = PriceRule("AAPL", lambda stock: stock.price &gt; 5)
+        self.exchange["GOOG"].updated.connect(
+            lambda stock: print(stock.symbol, stock.price) \
+                if rule_1.matches(self.exchange) else None)
+        self.exchange["AAPL"].updated.connect(
+            lambda stock: print(stock.symbol, stock.price) \
+                if rule_2.matches(self.exchange) else None)
+
+        updates = []
+        with open("updates.csv", "r") as fp:
+            for line in fp.readlines():
+                symbol, timestamp, price = line.split(",")
+                updates.append((symbol, datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%f"), int(price)))
+
+        for symbol, timestamp, price in updates:
+            stock = self.exchange[symbol]
+            stock.update(timestamp, price)</pre></div><p>This is a piece <a id="id221" class="indexterm"/>of code that does something. All we know is that it takes some updates from a file and runs it through some alerts. The following is what the <code class="literal">updates.csv</code> file looks like:</p><div class="informalexample"><pre class="programlisting">GOOG,2014-02-11T14:10:22.13,5
+AAPL,2014-02-11T00:00:00.0,8
+GOOG,2014-02-11T14:11:22.13,3
+GOOG,2014-02-11T14:12:22.13,15
+AAPL,2014-02-11T00:00:00.0,10
+GOOG,2014-02-11T14:15:22.13,21</pre></div><p>We now need to add a few features to this code:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">We need to be able to get updates from a network server</li><li class="listitem" style="list-style-type: disc">We need to be able to send an e-mail when an alert is matched</li></ul></div><p>Before we can get started, we need to be able to understand the current code. We do this by characterization tests.</p><div class="section" title="What are characterization tests?"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec29"/>What are characterization tests?</h2></div></div></div><p>
+<span class="strong"><strong>Characterization tests</strong></span> are tests that describe the current behavior of the code. We aren't writing the<a id="id222" class="indexterm"/> tests against a predefined expectation. Instead, we<a id="id223" class="indexterm"/> write the tests against the actual behavior. You may ask what this accomplishes since the test can't fail if we are going to look at the current behavior and write a test that looks for the same thing. However, the thing to remember is that we aren't trying to find bugs. Instead, by writing tests against the current behavior, we are building up a safety net of tests. If we break something <a id="id224" class="indexterm"/>during the process of refactoring, the test will fail <a id="id225" class="indexterm"/>and we will know that we have to undo our changes.</p></div><div class="section" title="Using the Python interactive shell to understand the code"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec30"/>Using the Python interactive shell to understand the code</h2></div></div></div><p>So what<a id="id226" class="indexterm"/> does this piece of code do? Let's open <a id="id227" class="indexterm"/>up the Python interactive shell and take a look. The interactive shell is a great help because it allows us to play around with the code, trying different input values and seeing what kind of output we get. Let's open the class now as follows:</p><div class="informalexample"><pre class="programlisting"><span class="strong"><strong>&gt;&gt;&gt; from stock_alerter.legacy import AlertProcessor</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; processor = AlertProcessor()</strong></span>
+<span class="strong"><strong>AAPL 8</strong></span>
+<span class="strong"><strong>GOOG 15</strong></span>
+<span class="strong"><strong>AAPL 10</strong></span>
+<span class="strong"><strong>GOOG 21</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt;</strong></span>
+</pre></div><p>As we can see, just instantiating the class has caused the code to run and we have some output printed on the terminal. This is not surprising given that all the code is within the <code class="literal">__init__</code> method.</p></div><div class="section" title="Writing a characterization test"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec31"/>Writing a characterization test</h2></div></div></div><p>Okay, we <a id="id228" class="indexterm"/>now have something to write a <a id="id229" class="indexterm"/>test for. We understand that when the input in the <code class="literal">updates.csv</code> file is as follows:</p><div class="informalexample"><pre class="programlisting">GOOG,2014-02-11T14:10:22.13,5
+AAPL,2014-02-11T00:00:00.0,8
+GOOG,2014-02-11T14:11:22.13,3
+GOOG,2014-02-11T14:12:22.13,15
+AAPL,2014-02-11T00:00:00.0,10
+GOOG,2014-02-11T14:15:22.13,21</pre></div><p>Then, the output when we instantiate the class is as follows:</p><div class="informalexample"><pre class="programlisting">AAPL 8
+GOOG 15
+AAPL 10
+GOOG 21</pre></div><p>We may not yet know why this is the output or how it was calculated, but this is enough to get started with a test. The following is what the test looks like:</p><div class="informalexample"><pre class="programlisting">import unittest
+from unittest import mock
+
+from ..legacy import AlertProcessor
+
+class AlertProcessorTest(unittest.TestCase):
+    @mock.patch("builtins.print")
+    def test_processor_characterization_1(self, mock_print):
+        AlertProcessor()
+        mock_print.assert_has_calls([mock.call("AAPL", 8),
+                                     mock.call("GOOG", 15),
+                                     mock.call("AAPL", 10),
+                                     mock.call("GOOG", 21)])</pre></div><p>All this<a id="id230" class="indexterm"/> test does is to mock out the <code class="literal">print</code> function and<a id="id231" class="indexterm"/> then instantiate the class. We assert that the required data is printed out.</p><p>Is this a great unit test? Probably not. For one, it still takes the input from the <code class="literal">updates.csv</code> file. Ideally, we would have mocked out the file access. But it doesn't matter at the moment. This test passes and it will be a safety net when we start modifying the code. That is all we need the test to do for now.</p></div><div class="section" title="Using pdb to understand the code"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec32"/>Using pdb to understand the code</h2></div></div></div><p>The Python interactive shell is a great way to understand the code at the boundaries of method calls. It allows us to pass in various combinations of input and see what kind of output we get. But what if we want to see what is going on within a function or method? This is <a id="id232" class="indexterm"/>where <code class="literal">pdb</code> can be extremely useful.</p><p>
+<span class="strong"><strong>pdb</strong></span> is a <a id="id233" class="indexterm"/>Python Debugger, and it supplies as a part of the Python standard library. It has a number of features such as being able to step through the execution line by line, see how variables change, and set and remove breakpoints. pdb is very powerful, and there are a number of good books that cover it in detail. We won't go through all the features in this book, but just give a short example of how it can be used to understand the code.</p><p>To execute the code from within <code class="literal">pdb</code>, run the following lines in the interactive shell:</p><div class="informalexample"><pre class="programlisting"><span class="strong"><strong>&gt;&gt;&gt; import pdb</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; from stock_alerter.legacy import AlertProcessor</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; pdb.run("AlertProcessor()")</strong></span>
+<span class="strong"><strong>&gt; &lt;string&gt;(1)&lt;module&gt;()</strong></span>
+<span class="strong"><strong>(Pdb)</strong></span>
+</pre></div><p>The <code class="literal">pdb.run</code> method allows us to specify any string as a parameter. That string is executed within the debugger. In this case, we are instantiating the class that starts executing all the code.</p><p>At this point, we get the <code class="literal">(Pdb)</code> prompt from where we can walk through the execution, line by line. You can get help on the various commands available by typing <code class="literal">help</code>, as shown in the following:</p><div class="informalexample"><pre class="programlisting">(Pdb) help
+
+Documented commands (type help &lt;topic&gt;):
+EOF    c          d        h         list      q        rv       undisplay
+a      cl         debug    help      ll        quit     s        unt
+alias  clear      disable  ignore    longlist  r        source   until
+args   commands   display  interact  n         restart  step     up
+b      condition  down     j         next      return   tbreak   w
+break  cont       enable   jump      p         retval   u        whatis
+bt     continue   exit     l         pp        run      unalias  where
+
+Miscellaneous help topics:
+pdb  exec
+
+(Pdb)</pre></div><p>Or, you <a id="id234" class="indexterm"/>can also get help by typing <code class="literal">help &lt;command&gt;</code> for help on a specific <a id="id235" class="indexterm"/>command:</p><div class="informalexample"><pre class="programlisting">(Pdb) help s
+s(tep)
+        Execute the current line, stop at the first possible occasion
+        (either in a function that is called or in the current
+        function).
+(Pdb)</pre></div></div><div class="section" title="Some common pdb commands"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec33"/>Some common pdb commands</h2></div></div></div><p>Most of the time, we <a id="id236" class="indexterm"/>will use the following commands:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">s</code>: This executes one line of code (going inside a function call if required)</li><li class="listitem" style="list-style-type: disc"><code class="literal">n</code>: This executes code until you reach the next line in the current function</li><li class="listitem" style="list-style-type: disc"><code class="literal">r</code>: This executes code until the current function returns</li><li class="listitem" style="list-style-type: disc"><code class="literal">q</code>: This quits the debugger</li><li class="listitem" style="list-style-type: disc"><code class="literal">b</code>: This sets a breakpoint on a particular line of a file</li><li class="listitem" style="list-style-type: disc"><code class="literal">cl</code>: This<a id="id237" class="indexterm"/> clears breakpoints</li><li class="listitem" style="list-style-type: disc"><code class="literal">c</code>: This continues execution until a breakpoint is encountered or until the end of execution</li></ul></div><p>These commands should be enough to move around code and try to inspect what is going on. pdb has a ton of other commands that we won't cover here.</p></div><div class="section" title="Walking through a pdb session"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec34"/>Walking through a pdb session</h2></div></div></div><p>Let's now <a id="id238" class="indexterm"/>put this into practice. The following is a walk-through of our code using <code class="literal">pdb</code>.</p><p>First, we run our command within <code class="literal">pdb</code> as follows:</p><div class="informalexample"><pre class="programlisting"><span class="strong"><strong>&gt;&gt;&gt; import pdb</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; from stock_alerter.legacy import AlertProcessor</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; pdb.run("AlertProcessor()")</strong></span>
+<span class="strong"><strong>&gt; &lt;string&gt;(1)&lt;module&gt;()</strong></span>
+<span class="strong"><strong>(Pdb)</strong></span>
+</pre></div><p>Let's step into the first line as follows:</p><div class="informalexample"><pre class="programlisting">(Pdb) <span class="strong"><strong>s</strong></span>
+--Call—
+&gt; c:\projects\tdd_with_python\src\stock_alerter\legacy.py(8)__init__()
+-&gt; def __init__(self):
+(Pdb)</pre></div><p>pdb tells us that we are now within the <code class="literal">__init__</code> method. The <code class="literal">n</code> command will take us through the first few lines of this method, as shown in the following:</p><div class="informalexample"><pre class="programlisting">(Pdb) <span class="strong"><strong>n</strong></span>
+&gt; c:\projects\tdd_with_python\src\stock_alerter\legacy.py(9)__init__()
+-&gt; self.exchange = {"GOOG": Stock("GOOG"), "AAPL": Stock("AAPL")}
+(Pdb) <span class="strong"><strong>n</strong></span>
+&gt; c:\projects\tdd_with_python\src\stock_alerter\legacy.py(10)__init__()
+-&gt; rule_1 = PriceRule("GOOG", lambda stock: stock.price &gt; 10)
+(Pdb) <span class="strong"><strong>n</strong></span>
+&gt; c:\projects\tdd_with_python\src\stock_alerter\legacy.py(11)__init__()
+-&gt; rule_2 = PriceRule("AAPL", lambda stock: stock.price &gt; 5)
+(Pdb) <span class="strong"><strong>n</strong></span>
+&gt; c:\projects\tdd_with_python\src\stock_alerter\legacy.py(12)__init__()
+-&gt; self.exchange["GOOG"].updated.connect(
+(Pdb) <span class="strong"><strong>n</strong></span>
+&gt; c:\projects\tdd_with_python\src\stock_alerter\legacy.py(13)__init__()
+-&gt; lambda stock: print(stock.symbol, stock.price) \
+(Pdb) <span class="strong"><strong>n</strong></span>
+&gt; c:\projects\tdd_with_python\src\stock_alerter\legacy.py(15)__init__()
+-&gt; self.exchange["AAPL"].updated.connect(
+(Pdb) <span class="strong"><strong>n</strong></span>
+&gt; c:\projects\tdd_with_python\src\stock_alerter\legacy.py(16)__init__()
+-&gt; lambda stock: print(stock.symbol, stock.price) \
+(Pdb) <span class="strong"><strong>n</strong></span>
+&gt; c:\projects\tdd_with_python\src\stock_alerter\legacy.py(18)__init__()
+-&gt; updates = []
+(Pdb)</pre></div><p>We can <a id="id239" class="indexterm"/>examine the initialization that seems to have been done by looking at some of the variables as follows:</p><div class="informalexample"><pre class="programlisting">(Pdb) <span class="strong"><strong>self.exchange</strong></span>
+{'GOOG': &lt;stock_alerter.stock.Stock object at 0x0000000002E59400&gt;, 'AAPL': &lt;stock_alerter.stock.Stock object at 0x0000000002E593C8&gt;}
+(Pdb) <span class="strong"><strong>rule_1</strong></span>
+&lt;stock_alerter.rule.PriceRule object at 0x0000000002E205F8&gt;</pre></div><p>We can even try executing some of the local variables with various input as follows:</p><div class="informalexample"><pre class="programlisting">(Pdb) <span class="strong"><strong>test_stock = Stock("GOOG")</strong></span>
+(Pdb) <span class="strong"><strong>test_stock.update(datetime.now(), 100)</strong></span>
+(Pdb) <span class="strong"><strong>rule_1.matches({"GOOG": test_stock})</strong></span>
+True
+(Pdb)</pre></div><p>This helps us understand the state of various objects during different parts of execution.</p><p>The next section of code is the part where we open the file and read it. Let's skip ahead of this by putting a breakpoint on line 25 and executing right to it with the <code class="literal">c</code> command, as shown in the following:</p><div class="informalexample"><pre class="programlisting">(Pdb) <span class="strong"><strong>b stock_alerter\legacy.py:25</strong></span>
+Breakpoint 1 at c:\projects\tdd_with_python\src\stock_alerter\legacy.py:25
+(Pdb) <span class="strong"><strong>c</strong></span>
+&gt; c:\projects\tdd_with_python\src\stock_alerter\legacy.py(25)__init__()
+-&gt; for symbol, timestamp, price in updates:
+(Pdb)</pre></div><p>Now that the file reading part is done, we can inspect the format of data that was read by examining the updates local variable. The <code class="literal">pp</code> command does a pretty print so that the output is <a id="id240" class="indexterm"/>easier to read, as shown in the following:</p><div class="informalexample"><pre class="programlisting">(Pdb) <span class="strong"><strong>pp updates</strong></span>
+[('GOOG', datetime.datetime(2014, 2, 11, 14, 10, 22, 130000), 5),
+ ('AAPL', datetime.datetime(2014, 2, 11, 0, 0), 8),
+ ('GOOG', datetime.datetime(2014, 2, 11, 14, 11, 22, 130000), 3),
+ ('GOOG', datetime.datetime(2014, 2, 11, 14, 12, 22, 130000), 15),
+ ('AAPL', datetime.datetime(2014, 2, 11, 0, 0), 10),
+ ('GOOG', datetime.datetime(2014, 2, 11, 14, 15, 22, 130000), 21)]</pre></div><p>Looks like the file got parsed into a list of tuples, each containing <code class="literal">(stock symbol, timestamp, price)</code>. Let's see what would happen if we had only the GOOG updates, as shown in the following:</p><div class="informalexample"><pre class="programlisting">(Pdb) <span class="strong"><strong>updates = [update for update in updates if update[0] == "GOOG"]</strong></span>
+(Pdb) <span class="strong"><strong>pp updates</strong></span>
+[('GOOG', datetime.datetime(2014, 2, 11, 14, 10, 22, 130000), 5),
+ ('GOOG', datetime.datetime(2014, 2, 11, 14, 11, 22, 130000), 3),
+ ('GOOG', datetime.datetime(2014, 2, 11, 14, 12, 22, 130000), 15),
+ ('GOOG', datetime.datetime(2014, 2, 11, 14, 15, 22, 130000), 21)]</pre></div><p>There we go. As we can see, it is even possible to change the values held by local variables midway during execution. The following is the output when we run the remainder of the code:</p><div class="informalexample"><pre class="programlisting">(Pdb) cl
+Clear all breaks? y
+Deleted breakpoint 4 at c:\projects\tdd_with_python\src\stock_alerter\legacy.py:25
+(Pdb) c
+GOOG 15
+GOOG 21
+&gt;&gt;&gt;</pre></div><p>The <code class="literal">cl</code> command clears the breakpoint, and we use the <code class="literal">c</code> command to run to the end of the execution. The output with the modified the updates variable gets printed. Since the execution is complete at this point, we are returned back to the interactive shell.</p><p>Our exploration is done for now. At any point, we could have quit the debugger as follows:</p><div class="informalexample"><pre class="programlisting">(Pdb) <span class="strong"><strong>q</strong></span>
+&gt;&gt;&gt;</pre></div><p>Quitting the debugger takes us back to the interactive shell. At this point, we might add a few more <a id="id241" class="indexterm"/>characterization tests based on the exploration that we just did.</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Techniques to break dependencies"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec40"/>Techniques to break dependencies</h1></div></div></div><p>Now that we've seen some techniques to help us understand the code, our next step is to break dependencies. This<a id="id242" class="indexterm"/> will help us write further characterization tests. To do this, we will <span class="emphasis"><em>very carefully</em></span> start modifying the code. All the while, we will try to stick to the following goals:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Make small changes that are very unlikely to break</li><li class="listitem" style="list-style-type: disc">Try to change the public interface as little as possible</li></ul></div><p>Why these goals? Because we have a lack of tests, we have to be careful with the changes we make. Hence, small changes are better. We also need to be careful of changing the public interface because we have to go and fix all the other files and modules that use this class.</p><div class="section" title="The Rope refactoring library"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec35"/>The Rope refactoring library</h2></div></div></div><p>The <span class="strong"><strong>Rope refactoring library</strong></span> is a library to perform automated refactoring of your code. For example, you <a id="id243" class="indexterm"/>could select a few lines and then type the command to extract it into a method. The library will automatically create this method with the appropriate code, parameters, and return value, and will automatically place a call to the newly extracted method in place of the original code. Automated refactoring in Python is a little tricky because the dynamic nature of the language makes it difficult to identify all the changes correctly. However, it is ideal for making small changes, like we are going to do in this chapter.</p><p>Since it is a library, Rope doesn't have any UI for performing the refactorings. Instead, it is integrated into the development environment, as either an IDE or a text editor. Most popular IDEs and text <a id="id244" class="indexterm"/>editors have support for integrating with Rope. Rope is<a id="id245" class="indexterm"/> available at <a class="ulink" href="https://github.com/python-rope/rope">https://github.com/python-rope/rope</a>.</p><p>If your IDE or text editor of choice supports integration with Rope, or has built-in refactoring capabilities, then use it as far as possible.</p></div><div class="section" title="Separate initialization from execution"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec36"/>Separate initialization from execution</h2></div></div></div><p>One of the <a id="id246" class="indexterm"/>problems that the class we are working with has is that the whole execution happens in the <code class="literal">__init__</code> method. This means that as soon as the class is constructed, everything is executed before we have a change to set up mocks or make other changes that will help us write characterization tests. Luckily, there is a simple solution to this. We will simply move the<a id="id247" class="indexterm"/> execution part into a separate method as follows:</p><div class="informalexample"><pre class="programlisting">class AlertProcessor:
+    def __init__(self):
+        self.exchange = {"GOOG": Stock("GOOG"), "AAPL": Stock("AAPL")}
+        rule_1 = PriceRule("GOOG", lambda stock: stock.price &gt; 10)
+        rule_2 = PriceRule("AAPL", lambda stock: stock.price &gt; 5)
+        self.exchange["GOOG"].updated.connect(
+            lambda stock: print(stock.symbol, stock.price) \
+                          if rule_1.matches(self.exchange) else None)
+        self.exchange["AAPL"].updated.connect(
+            lambda stock: print(stock.symbol, stock.price) \
+                          if rule_2.matches(self.exchange) else None)
+
+    def run(self):
+        updates = []
+        with open("updates.csv", "r") as fp:
+            for line in fp.readlines():
+                symbol, timestamp, price = line.split(",")
+                updates.append(
+                       (symbol,
+                        datetime.strptime(timestamp,
+                                          "%Y-%m-%dT%H:%M:%S.%f"),
+                        int(price)))
+
+        for symbol, timestamp, price in updates:
+            stock = self.exchange[symbol]
+            stock.update(timestamp, price)</pre></div><p>The astute reader would have observed that we have just broken our second goal—to minimize changes to the public interface. The change that we've made has changed the interface. If there are other modules using this class, they would have only constructed the class, assuming all the processing is complete. We have to now go and find all the places where we are creating this class and add a call to the <code class="literal">run</code> method. Otherwise, the class will not work as expected.</p><p>To prevent having to fix all the callers, we can call the run method ourselves from within the initializer like the following:</p><div class="informalexample"><pre class="programlisting">def __init__(self):
+    self.exchange = {"GOOG": Stock("GOOG"), "AAPL": Stock("AAPL")}
+    rule_1 = PriceRule("GOOG", lambda stock: stock.price &gt; 10)
+    rule_2 = PriceRule("AAPL", lambda stock: stock.price &gt; 5)
+    self.exchange["GOOG"].updated.connect(
+        lambda stock: print(stock.symbol, stock.price) \
+                      if rule_1.matches(self.exchange) else None)
+    self.exchange["AAPL"].updated.connect(
+        lambda stock: print(stock.symbol, stock.price) \
+                      if rule_2.matches(self.exchange) else None)
+    self.run()</pre></div><p>All the tests <a id="id248" class="indexterm"/>pass again, but once again, all the codes get executed the moment we instantiate the class. Are we back to square one? Let's see in the next section.</p></div><div class="section" title="Use default values for parameters"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec37"/>Use default values for parameters</h2></div></div></div><p>One of the most useful features of Python is the concept of being able to set a default value<a id="id249" class="indexterm"/> for a parameter. This allows us to change the interface, while making it look just the same for existing callers.</p><p>In the previous section, we moved a piece of code into the run method, and we called this method from the <code class="literal">__init__</code> method. It seems like we haven't really changed anything, but that is misleading.</p><p>Here is the next change to the <code class="literal">__init__</code> method:</p><div class="informalexample"><pre class="programlisting">def __init__(self, autorun=True):
+    self.exchange = {"GOOG": Stock("GOOG"), "AAPL": Stock("AAPL")}
+    rule_1 = PriceRule("GOOG", lambda stock: stock.price &gt; 10)
+    rule_2 = PriceRule("AAPL", lambda stock: stock.price &gt; 5)
+    self.exchange["GOOG"].updated.connect(
+        lambda stock: print(stock.symbol, stock.price) \
+                      if rule_1.matches(self.exchange) else None)
+    self.exchange["AAPL"].updated.connect(
+        lambda stock: print(stock.symbol, stock.price) \
+                      if rule_2.matches(self.exchange) else None)
+    if autorun:
+        self.run()</pre></div><p>What we have done is to introduce a new parameter called <code class="literal">autorun</code> and set the default value as <code class="literal">True</code>. We then wrap the call to the <code class="literal">run</code> method with a conditional. Only if <code class="literal">autorun</code> is <code class="literal">True</code> will the <code class="literal">run</code> method be called.</p><p>All the existing callers who use this class will be unchanged—when the constructor is called without parameters, the <code class="literal">autorun</code> parameter will be set to <code class="literal">True</code> and the <code class="literal">run</code> method will be called. Everything will be as expected.</p><p>But adding the parameter gives us the option to explicitly set the <code class="literal">autorun</code> parameter to <code class="literal">False</code> in our tests, and thus avoid the <code class="literal">run</code> method from being called. We can now instantiate the class, then set up any mocks or other test initialization that we want, and then <a id="id250" class="indexterm"/>proceed to manually call the <code class="literal">run</code> method in the test.</p><p>The following is the same characterization test that we wrote earlier, rewritten to take advantage of this new functionality:</p><div class="informalexample"><pre class="programlisting">def test_processor_characterization_2(self):
+    processor = AlertProcessor(autorun=False)
+    with mock.patch("builtins.print") as mock_print:
+        processor.run()
+    mock_print.assert_has_calls([mock.call("AAPL", 8),
+                                 mock.call("GOOG", 15),
+                                 mock.call("AAPL", 10),
+                                 mock.call("GOOG", 21)])</pre></div><p>Bingo! That one change seems small now, but it is the change that enables us to write all the characterization tests that follow.</p></div><div class="section" title="Extract the method and test"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec38"/>Extract the method and test</h2></div></div></div><p>It is very <a id="id251" class="indexterm"/>difficult to test methods that are large. This<a id="id252" class="indexterm"/> is because tests can only check inputs, outputs, and interactions. It becomes a problem if there are just a couple of lines within the whole method that we want to test.</p><p>Let's take a look at the <code class="literal">run</code> method again, as shown in the following:</p><div class="informalexample"><pre class="programlisting">def run(self):
+    updates = []
+    with open("updates.csv", "r") as fp:
+        for line in fp.readlines():
+            symbol, timestamp, price = line.split(",")
+            updates.append((symbol, datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%f"), int(price)))
+
+    for symbol, timestamp, price in updates:
+        stock = self.exchange[symbol]
+        stock.update(timestamp, price)</pre></div><p>Suppose we want to just write characterization tests for the code in the second loop. How can do that? A simple way is to extract those lines into a separate method, as shown in the following:</p><div class="informalexample"><pre class="programlisting">def do_updates(self, updates):
+    for symbol, timestamp, price in updates:
+        stock = self.exchange[symbol]
+        stock.update(timestamp, price)</pre></div><p>And we need to call the<a id="id253" class="indexterm"/> new method in the original <a id="id254" class="indexterm"/>place, as shown in the following:</p><div class="informalexample"><pre class="programlisting">def run(self):
+    updates = []
+    with open("updates.csv", "r") as fp:
+        for line in fp.readlines():
+            symbol, timestamp, price = line.split(",")
+            updates.append((symbol, datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%f"), int(price)))
+    self.do_updates(updates)</pre></div><p>We can now write characterization tests for this new method as follows:</p><div class="informalexample"><pre class="programlisting">def test_processor_characterization_3(self):
+    processor = AlertProcessor(autorun=False)
+    mock_goog = mock.Mock()
+    processor.exchange = {"GOOG": mock_goog}
+    updates = [("GOOG", datetime(2014, 12, 8), 5)]
+    processor.do_updates(updates)
+    mock_goog.update.assert_called_with(datetime(2014, 12, 8), 5)</pre></div><p>Ideally, we try to extract small groups of code so that the Extract Method refactoring is easy to perform without mistakes. Remember, we don't have the safety net of existing unit test here.</p></div><div class="section" title="Inject dependencies"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec39"/>Inject dependencies</h2></div></div></div><p>In the <a id="id255" class="indexterm"/>previous characterization test, we instantiated the class and then proceeded to replace the exchange instance variable with another one in which the Stock class was mocked out. Another way of achieving this aim is to use the earlier trick of introducing default variables like the following:</p><div class="informalexample"><pre class="programlisting">def __init__(self, autorun=True, exchange=None):
+    if exchange is None:
+        self.exchange = {"GOOG": Stock("GOOG"), "AAPL": Stock("AAPL")}
+    else: 
+        self.exchange = exchange
+    rule_1 = PriceRule("GOOG", lambda stock: stock.price &gt; 10)
+    rule_2 = PriceRule("AAPL", lambda stock: stock.price &gt; 5)
+    self.exchange["GOOG"].updated.connect(
+        lambda stock: print(stock.symbol, stock.price) \
+            if rule_1.matches(self.exchange) else None)
+    self.exchange["AAPL"].updated.connect(
+        lambda stock: print(stock.symbol, stock.price) \
+            if rule_2.matches(self.exchange) else None)
+    if autorun:
+        self.run()</pre></div><p>This allows <a id="id256" class="indexterm"/>us to inject in a mock when writing the characterization test, as shown in the following:</p><div class="informalexample"><pre class="programlisting">def test_processor_characterization_4(self):
+    mock_goog = mock.Mock()
+    mock_aapl = mock.Mock()
+    exchange = {"GOOG": mock_goog, "AAPL": mock_aapl}
+    processor = AlertProcessor(autorun=False, exchange=exchange)
+    updates = [("GOOG", datetime(2014, 12, 8), 5)]
+    processor.do_updates(updates)
+    mock_goog.update.assert_called_with(datetime(2014, 12, 8), 5)</pre></div></div><div class="section" title="Inherit and test"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec40"/>Inherit and test</h2></div></div></div><p>Another <a id="id257" class="indexterm"/>way to achieve this goal is by writing a class that inherits from <code class="literal">AlertProcessor</code>, but includes parameters for the dependencies.</p><p>For example, we could create a class like the following in the test file:</p><div class="informalexample"><pre class="programlisting">class TestAlertProcessor(AlertProcessor):
+    def __init__(self, exchange):
+        AlertProcessor.__init__(self, autorun=False)
+        self.exchange = exchange</pre></div><p>This class inherits from <code class="literal">AlertProcessor</code> and takes in the parameters that we want to mock out in our characterization tests. The <code class="literal">__init__</code> method calls the original class initializer and then overrides the <code class="literal">exchange</code> parameter with the value passed to it.</p><p>In the unit test, we can instantiate the test class instead of the real one. We pass in an exchange that contains mock stock objects. The mocks get set, and we can test that the right calls were made, as shown in the following:</p><div class="informalexample"><pre class="programlisting">def test_processor_characterization_5(self):
+    mock_goog = mock.Mock()
+    mock_aapl = mock.Mock()
+    exchange = {"GOOG": mock_goog, "AAPL": mock_aapl}
+    processor = TestAlertProcessor(exchange)
+    updates = [("GOOG", datetime(2014, 12, 8), 5)]
+    processor.do_updates(updates)
+    mock_goog.update.assert_called_with(datetime(2014, 12, 8), 5)</pre></div><p>The <a id="id258" class="indexterm"/>advantage of this method compared to injecting dependencies via default parameters is that it does not require changing any code in the original class.</p></div><div class="section" title="Stubbing local methods"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec41"/>Stubbing local methods</h2></div></div></div><p>Most of the time, we use mocks to double for other classes or functions apart from the class being <a id="id259" class="indexterm"/>tested. For example, we mocked out the <code class="literal">Stock</code> objects in the example from the previous section, and we mocked out the <code class="literal">print</code> built-in function earlier in the chapter.</p><p>However, Python does not stop us from mocking out methods of the same class that we are testing. This is a powerful way of testing complex classes.</p><p>Let's say that we want to test the code in the <code class="literal">run</code> method that parses the file, without executing the part that updates the stock values. The following is a test that does just that:</p><div class="informalexample"><pre class="programlisting">def test_processor_characterization_6(self):
+    processor = AlertProcessor(autorun=False)
+    processor.do_updates = mock.Mock()
+    processor.run()
+    processor.do_updates.assert_called_with([
+        ('GOOG', datetime(2014, 2, 11, 14, 10, 22, 130000), 5),
+        ('AAPL', datetime(2014, 2, 11, 0, 0), 8),
+        ('GOOG', datetime(2014, 2, 11, 14, 11, 22, 130000), 3),
+        ('GOOG', datetime(2014, 2, 11, 14, 12, 22, 130000), 15),
+        ('AAPL', datetime(2014, 2, 11, 0, 0), 10),
+        ('GOOG', datetime(2014, 2, 11, 14, 15, 22, 130000), 21)])</pre></div><p>In the test above, we stub out the <code class="literal">do_updates</code> method of the class before executing the <code class="literal">run</code> method. When we execute <code class="literal">run</code>, it parses the file, then instead of running the <code class="literal">do_updates</code> local method, it executes our mocked out method instead. Since the real method is stubbed out, the code does not update the <code class="literal">Stock</code> or print anything to the screen. All that functionality has been stubbed out. We then test whether the parsing was correct by checking whether the right parameters were passed to the <code class="literal">do_updates</code> method.</p><p>Stubbing out a local method is a good way to understand a more complex class because it allows us to write characterization tests for small parts of the class in isolation.</p></div><div class="section" title="Extract the method and stub"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec42"/>Extract the method and stub</h2></div></div></div><p>Sometimes, a method is quite long and we want to stub out a part of the method. We can combine the <a id="id260" class="indexterm"/>above techniques by extracting the part we want to stub out into a local method, and then stub out the method in the test.</p><p>The following is what our <code class="literal">run</code> method currently looks like:</p><div class="informalexample"><pre class="programlisting">def run(self):
+    updates = []
+    with open("updates.csv", "r") as fp:
+        for line in fp.readlines():
+            symbol, timestamp, price = line.split(",")
+            updates.append((symbol, datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%f"), int(price)))
+    self.do_updates(updates)</pre></div><p>Let's say that we want the tests to skip the part of the method where the file is read and parsed.</p><p>We first extract the lines into a method as follows:</p><div class="informalexample"><pre class="programlisting">def parse_file(self):
+    updates = []
+    with open("updates.csv", "r") as fp:
+        for line in fp.readlines():
+            symbol, timestamp, price = line.split(",")
+            updates.append((symbol, datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%f"), int(price)))
+    return updates</pre></div><p>Then, we replace the lines in the <code class="literal">run</code> method with a call to the newly extracted method as follows:</p><div class="informalexample"><pre class="programlisting">def run(self):
+    updates = self.parse_file()
+    self.do_updates(updates)</pre></div><p>Finally, the characterization test mocks out the newly extracted method, gives it a return value, and calls the <code class="literal">run</code> method, as shown in the following:</p><div class="informalexample"><pre class="programlisting">def test_processor_characterization_7(self):
+    processor = AlertProcessor(autorun=False)
+    processor.parse_file = mock.Mock()
+    processor.parse_file.return_value = [
+        ('GOOG', datetime(2014, 2, 11, 14, 12, 22, 130000), 15)]
+    with mock.patch("builtins.print") as mock_print:
+        processor.run()
+    mock_print.assert_called_with("GOOG", 15)</pre></div><p>With the file parsing lines extracted into a separate method, we can easily write a number of different characterization tests for different combinations of inputs. For example, the following is <a id="id261" class="indexterm"/>another characterization test that checks nothing is printed to screen for a different input:</p><div class="informalexample"><pre class="programlisting">def test_processor_characterization_8(self):
+    processor = AlertProcessor(autorun=False)
+    processor.parse_file = mock.Mock()
+    processor.parse_file.return_value = [
+        ('GOOG', datetime(2014, 2, 11, 14, 10, 22, 130000), 5)]
+    with mock.patch("builtins.print") as mock_print:
+        processor.run()
+    self.assertFalse(mock_print.called)</pre></div><p>We can also use this technique to test hard to access code such as <code class="literal">lambda</code> functions. We extract the <code class="literal">lambda</code> function into a separate function, which enables us to write characterization tests for it separately or mock it when writing tests for other parts of the code.</p><p>Let's do the following for our code. First, extract the <code class="literal">lambda</code> function to a local method.</p><div class="informalexample"><pre class="programlisting">def print_action(self, stock, rule):
+    print(stock.symbol, stock.price) \
+        if rule.matches(self.exchange) else None</pre></div><p>Then, replace the <code class="literal">print</code> lines with a call to the method as follows:</p><div class="informalexample"><pre class="programlisting">self.exchange["GOOG"].updated.connect(
+    lambda stock: self.print_action(stock, rule_1))
+self.exchange["AAPL"].updated.connect(
+    lambda stock: self.print_action(stock, rule_2))</pre></div><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note20"/>Note</h3><p>Notice how we have made the call. We still use a lambda function, but delegate to the local method with the appropriate parameters.</p></div></div><p>We can now mock out this method when writing the characterization tests for the <code class="literal">do_updates</code> method:</p><div class="informalexample"><pre class="programlisting">def test_processor_characterization_9(self):
+    processor = AlertProcessor(autorun=False)
+    processor.print_action = mock.Mock()
+    processor.do_updates([
+        ('GOOG', datetime(2014, 2, 11, 14, 12, 22, 130000), 15)])
+    self.assertTrue(processor.print_action.called)</pre></div></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="The cycle continues"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec41"/>The cycle continues</h1></div></div></div><p>All the techniques mentioned in the last section help us isolate pieces of code and break dependencies with other classes. This allows us to introduce stubs and mocks, making it easier to write more detailed characterization tests. The Extract Method refactoring is used a lot and is a great technique to<a id="id262" class="indexterm"/> isolate small sections of code.</p><p>The whole process is iterative. In a typical session, we might look at a piece of code via <code class="literal">pdb</code>, and then decide to extract it to a method. We might then experiment with passing different inputs to the extracted method in the interactive shell, following which we might write a few characterization tests. We would then go back to another section of the class and write more tests after mocking or stubbing the new method, following which we might go back into <code class="literal">pdb</code> or the interactive shell to take a look at another piece of code.</p><p>Throughout the process, we keep making small changes that are unlikely to break and keep running all our existing characterization tests to test that we haven't broken anything.</p></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Time to refactor"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec42"/>Time to refactor</h1></div></div></div><p>After a while, we might end up with a pretty good suite of characterization tests for the legacy code. We <a id="id263" class="indexterm"/>can now approach this code like any other well-tested<a id="id264" class="indexterm"/> code and start applying the bigger refactorings with an aim to improve the design before adding our new features.</p><p>For example, we might decide to extract the <code class="literal">print_action</code> method into a separate <code class="literal">Action</code> class, or the <code class="literal">parse_file</code> method into a <code class="literal">Reader</code> class.</p><p>The following is a <code class="literal">FileReader</code> class where we have moved the contents from the <code class="literal">parse_file</code> local method:</p><div class="informalexample"><pre class="programlisting">class FileReader:
+    def __init__(self, filename):
+        self.filename = filename
+
+    def get_updates(self):
+        updates = []
+        with open("updates.csv", "r") as fp:
+            for line in fp.readlines():
+                symbol, timestamp, price = line.split(",")
+                updates.append((symbol, datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%f"), int(price)))
+        return updates</pre></div><p>We then use<a id="id265" class="indexterm"/> the Inject Dependencies pattern to pass the <code class="literal">reader</code> as a <a id="id266" class="indexterm"/>parameter to the constructor:</p><div class="informalexample"><pre class="programlisting">def __init__(self, autorun=True, reader=None, exchange=None):
+    self.reader = reader if reader else FileReader("updates.csv")
+    if exchange is None:
+        self.exchange = {"GOOG": Stock("GOOG"), "AAPL": Stock("AAPL")}
+    else:
+        self.exchange = exchange
+    rule_1 = PriceRule("GOOG", lambda stock: stock.price &gt; 10)
+    rule_2 = PriceRule("AAPL", lambda stock: stock.price &gt; 5)
+    self.exchange["GOOG"].updated.connect(
+        lambda stock: self.print_action(stock, rule_1))
+    self.exchange["AAPL"].updated.connect(
+        lambda stock: self.print_action(stock, rule_2))
+    if autorun:
+        self.run()</pre></div><p>And change the run method to call the reader:</p><div class="informalexample"><pre class="programlisting">def run(self):
+    updates = self.reader.get_updates()
+    self.do_updates(updates)</pre></div><p>Notice how we are setting a default value so that other classes that use this class do not need to be changed. This allows us to override the <code class="literal">reader</code> parameter in tests as well as in new code, while the existing code will work fine without changes.</p><p>We can now write a test for this by passing in a mock object to the constructor:</p><div class="informalexample"><pre class="programlisting">def test_processor_gets_values_from_reader(self):
+    mock_reader = mock.MagicMock()
+    mock_reader.get_updates.return_value = \
+        [('GOOG', datetime(2014, 2, 11, 14, 12, 22, 130000), 15)]
+    processor = AlertProcessor(autorun=False, reader=mock_reader)
+    processor.print_action = mock.Mock()
+    processor.run()
+    self.assertTrue(processor.print_action.called)</pre></div><p>We can do the same by extracting the <code class="literal">print_action</code> method into an <code class="literal">Action</code> class and passing it in as a parameter.</p><p>Remember our original goals?</p><p>Right at the start of this chapter, we had said that we wanted to implement the following two features:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">We need to be able to get updates from a network server</li><li class="listitem" style="list-style-type: disc">We need to be able to send an e-mail when an alert is matched</li></ul></div><p>The original design didn't make it easy to add this functionality, and we would have needed to hack around the code—a dangerous and bug prone proposition.</p><p>Our newly<a id="id267" class="indexterm"/> refactored design now makes adding these features easy. All <a id="id268" class="indexterm"/>we need to do is to create new classes, say something like <code class="literal">NetworkReader</code>, which reads input from a server. We pass an instance of this object to the initializer via the reader parameter. <code class="literal">AlertProcessor</code> will then get updates from the server.</p><p>We can do the same with by implementing an <code class="literal">EmailAction</code> class and passing that object into this class.</p><div class="section" title="Long-term refactoring"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec43"/>Long-term refactoring</h2></div></div></div><p>We've managed to<a id="id269" class="indexterm"/> safely add the new features to our legacy<a id="id270" class="indexterm"/> code. But our work doesn't stop here. There are places where we added default parameters to the <code class="literal">__init__</code> method so that we didn't break existing code that used this class. Over time, we would want to go to each of these places and change them to use the new interface. Once we have changed all the places, we can then remove the default parameters from the interface and the whole codebase would have migrated to the new interface.</p><p>The cool thing about this is that we don't have to do all the changes in one go. The codebase never stays broken for any length of time. We can make these changes over time, one by one, and the application is always working correctly at every point.</p><p>The other thing we need to do is to go back to our characterization tests and clean them up. Remember the first characterization test we wrote? It is as follows:</p><div class="informalexample"><pre class="programlisting">import unittest
+from unittest import mock
+
+from ..legacy import AlertProcessor
+
+class AlertProcessorTest(unittest.TestCase):
+    @mock.patch("builtins.print")
+    def test_processor_characterization_1(self, mock_print):
+        AlertProcessor()
+        mock_print.assert_has_calls([mock.call("AAPL", 8),
+                                     mock.call("GOOG", 15),
+                                     mock.call("AAPL", 10),
+                                     mock.call("GOOG", 21)])</pre></div><p>At the beginning of this chapter, we mentioned that this is not a great unit test, but it is good enough as a characterization test. Well, now is the time to revisit this test and make it better. Having refactored the design, we can now pass in a mock object for the reader. The test will <a id="id271" class="indexterm"/>no longer depend on the existence of <a id="id272" class="indexterm"/>the <code class="literal">updates.csv</code> file.</p><p>There were also a number of tests where we had patched out the print function. Once we refactor the design to take an <code class="literal">Action</code> class as an input, we would no longer need to patch this function as we can just pass in a mock action object to the initializer.</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Summary"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec43"/>Summary</h1></div></div></div><p>In this chapter, you saw how to handle the hairy problem of working with the legacy code. We defined the legacy code as any code that does not contain tests. It is an unfortunate fact of life that we have to deal with such code. Fortunately there are a number of techniques available that allow us to safely work with such code. The interactive shell as well as the extremely powerful debugger are a huge help in understanding typical spaghetti code.</p><p>The dynamic nature of Python also makes it easy to break dependencies. We can use default value parameters to maintain compatibility with existing code while refactoring to a better design. Powerful patching features as well as the ability to dynamically alter existing instance variables and local methods allow us to write characterization tests that would normally have been much more difficult.</p><p>Now that you have seen many ways to write tests, let's look at ways to keep everything maintainable. We will do this in the next chapter.</p></div></div>
+</body></html>
