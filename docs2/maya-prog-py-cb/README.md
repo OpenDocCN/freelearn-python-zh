@@ -1,6 +1,6 @@
-# Go 编程蓝图
+# Maya Python 编程秘籍
 
-> 原文：[`zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66`](https://zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66)
+> 原文：[`zh.annas-archive.org/md5/20b40462713b482ecbd4c267c31718a8`](https://zh.annas-archive.org/md5/20b40462713b482ecbd4c267c31718a8)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 

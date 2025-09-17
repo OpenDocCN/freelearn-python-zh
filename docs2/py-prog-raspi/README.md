@@ -1,4 +1,4 @@
-# Go 编程蓝图
+# Python 树莓派项目
 
 > 原文：[`zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66`](https://zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66)
 > 
