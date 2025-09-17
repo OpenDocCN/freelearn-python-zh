@@ -1,0 +1,693 @@
+<html><head></head><body>
+  <div id="sbo-rt-content"><div class="chapter" title="Chapter 7. Working with Videos"><div class="titlepage"><div><div><h1 class="title"><a id="ch07"/>Chapter 7. Working with Videos</h1></div></div></div><div class="blockquote"><blockquote class="blockquote"><p>Photographs capture the moment, but it is the video that helps us relive that moment! Video has become a major part of our lives. We preserve our memories by capturing the family vacation on a camcorder. When it comes to digitally preserving those recorded memories, the digital video processing plays an important role. In the previous chapter, to learn various audio processing techniques, the GStreamer multimedia framework was used. We will continue to use GStreamer for learning the fundamentals of video processing.</p></blockquote></div><p>In this chapter, we shall:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Develop a simple command-line video player</li><li class="listitem" style="list-style-type: disc">Perform basic video manipulations such as cropping, resizing, and tweaking the parameters such as brightness, contrast, and saturation levels of a streaming video</li><li class="listitem" style="list-style-type: disc">Add text string on top of a video stream</li><li class="listitem" style="list-style-type: disc">Learn how to convert video between different video formats</li><li class="listitem" style="list-style-type: disc">Write a utility that separates audio and video tracks from an input video file</li><li class="listitem" style="list-style-type: disc">Mix audio and video tracks to create a single video file</li><li class="listitem" style="list-style-type: disc">Save one or more video frames as still images</li></ul></div><p>So let's get on with it.</p><p><a id="id293" class="indexterm"/>
+</p><div class="section" title="Installation prerequisites"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec01"/>Installation prerequisites</h1></div></div></div><p>We will use Python bindings of GStreamer multimedia framework to process video data. See the installation instructions in<a class="link" href="ch05.html" title="Chapter 5. Working with Audios"> Chapter 5</a>,<span class="emphasis"><em> Working with Audios</em></span> to install GStreamer and other dependencies.</p><p>For video processing, we will be using several GStreamer plugins not introduced earlier. Make sure that these plugins are available in your GStreamer installation by running the<code class="literal"> gst-inspect-0.10</code> command from the console (gst-inspect-0.10.exe for Windows XP users). Otherwise, you will need to install these plugins or use an alternative if available.</p><p>Following is a list of additional plugins we will use in this chapter:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">autoconvert:</code> Determines an appropriate converter based on the capabilities. It will be used extensively used throughout this chapter.<a id="id294" class="indexterm"/></li><li class="listitem" style="list-style-type: disc"><code class="literal">autovideosink:</code> Automatically selects a video sink to display a streaming video.<a id="id295" class="indexterm"/></li><li class="listitem" style="list-style-type: disc"><code class="literal">ffmpegcolorspace:</code> Transforms the color space into a color space format that can be displayed by the video sink.<a id="id296" class="indexterm"/></li><li class="listitem" style="list-style-type: disc"><code class="literal">capsfilter:</code> It's the capabilities filter used to restrict the type of media data passing down stream, discussed extensively in this chapter.<a id="id297" class="indexterm"/></li><li class="listitem" style="list-style-type: disc"><code class="literal">textoverlay:</code> Overlays a text string on the streaming video. Used in the<span class="emphasis"><em> Adding text and time on a video stream</em></span> section.<a id="id298" class="indexterm"/></li><li class="listitem" style="list-style-type: disc"><code class="literal">timeoverlay:</code> Adds a timestamp on top of the video buffer.<a id="id299" class="indexterm"/></li><li class="listitem" style="list-style-type: disc"><code class="literal">clockoverlay:</code> Puts current clock time on the streaming video.<a id="id300" class="indexterm"/></li><li class="listitem" style="list-style-type: disc"><code class="literal">videobalance:</code> Used to adjust brightness, contrast, and saturation of the images. It is used in the<span class="emphasis"><em> Video manipulations and effects</em></span> section.<a id="id301" class="indexterm"/></li><li class="listitem" style="list-style-type: disc"><code class="literal">videobox:</code> Crops the video frames by specified number of pixels used in the<span class="emphasis"><em> Cropping</em></span> section.<a id="id302" class="indexterm"/></li><li class="listitem" style="list-style-type: disc"><code class="literal">ffmux_mp4:</code> Provides<code class="literal"> muxer</code> element for MP4 video muxing.<a id="id303" class="indexterm"/></li><li class="listitem" style="list-style-type: disc"><code class="literal">ffenc_mpeg4:</code> Encodes data into MPEG4 format.<a id="id304" class="indexterm"/></li><li class="listitem" style="list-style-type: disc"><code class="literal">ffenc_png:</code> Encodes data in PNG format used in the<span class="emphasis"><em> Saving video frames as images</em></span> section.<a id="id305" class="indexterm"/></li></ul></div></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Playing a video"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec02"/>Playing a video</h1></div></div></div><p>Earlier, we saw how to play an audio. Like audio, there are different ways in which a video can be streamed. The simplest of these methods is to use the<code class="literal"> playbin</code> plugin. Another method is to go by the basics, where we create a conventional pipeline and create and link the required pipeline elements. If we only want to play the 'video' track of a video file, then the latter technique is very similar to the one illustrated for audio playback. However, almost always, one would like to hear the audio track for the video being streamed. There is additional work involved to accomplish this. The following diagram is a representative GStreamer pipeline that shows how the data flows in case of a video playback.<a id="id306" class="indexterm"/>
+</p><div class="mediaobject"><img src="images/0165_07_01.jpg" alt="Playing a video"/></div><p>In this illustration, the<code class="literal"> decodebin</code> uses an appropriate decoder to decode the media data from the source element. Depending on the type of data (audio or video), it is then further streamed to the audio or video processing elements through the<code class="literal"> queue</code> elements. The two<code class="literal"> queue</code> elements,<code class="literal"> queue1</code> and<code class="literal"> queue2</code>, act as media data buffer for audio and video data respectively. When the queue elements are added and linked in the pipeline, the thread creation within the pipeline is handled internally by the GStreamer.<a id="id307" class="indexterm"/>
+</p></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Time for action - video player!"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec03"/>Time for action -  video player!</h1></div></div></div><p>Let's write a simple video player utility. Here we will not use the<code class="literal"> playbin</code> plugin. The use of<code class="literal"> playbin</code> will be illustrated in a later sub-section. We will develop this utility by constructing a GStreamer pipeline. The key here is to use the queue as a data buffer. The audio and video data needs to be directed so that this 'flows' through audio or video processing sections of the pipeline respectively.<a id="id308" class="indexterm"/>
+</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Download the file<code class="literal"> PlayingVidio.py</code> from the Packt website. The file has the source code for this video player utility.<a id="id309" class="indexterm"/></li><li class="listitem">The following code gives an overview of the Video player class and its methods.<div class="informalexample"><pre class="programlisting">import time
+import thread
+import gobject
+import pygst
+pygst.require("0.10")
+import gst
+import os
+class VideoPlayer:
+def __init__(self):
+pass
+def constructPipeline(self):
+pass
+def connectSignals(self):
+pass
+def decodebin_pad_added(self, decodebin, pad):
+pass
+def play(self):
+pass
+def message_handler(self, bus, message):
+pass
+# Run the program
+player = VideoPlayer()
+thread.start_new_thread(player.play, ())
+gobject.threads_init()
+evt_loop = gobject.MainLoop()
+evt_loop.run()
+</pre></div></li><li class="listitem">As you can see, the overall structure of the code and the main program execution code remains the same as in the audio processing examples. The thread module is used to create a new thread for playing the video. The method VideoPlayer.play is sent on this thread. The gobject.threads_init() is an initialization function for facilitating the use of Python threading within the gobject modules. The main event loop for executing this program is created using gobject and this loop is started by the call evt_loop.run().<div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="tip18"/>Tip</h3><p>Instead of using<code class="literal"> thread</code> module you can make use of<code class="literal"> threading</code> module as well. The code to use it will be something like:</p></div></div></li><li class="listitem"><code class="literal"> import threading</code></li><li class="listitem"><code class="literal"> threading.Thread(target=player.play).start()</code><p>You will need to replace the line thread.start_new_thread(player.play, ()) in earlier code snippet with line 2 illustrated in the code snippet within this note. Try it yourself!
+<a id="id310" class="indexterm"/>
+</p></li><li class="listitem">Now let's discuss a few of the important methods, starting with<code class="literal"> self.contructPipeline:</code><div class="informalexample"><pre class="programlisting">1 def constructPipeline(self):
+2 # Create the pipeline instance
+3 self.player = gst.Pipeline()
+4
+5 # Define pipeline elements
+6 self.filesrc = gst.element_factory_make("filesrc")
+7 self.filesrc.set_property("location",
+8 self.inFileLocation)
+9 self.decodebin = gst.element_factory_make("decodebin")
+10
+11 # audioconvert for audio processing pipeline
+12 self.audioconvert = gst.element_factory_make(
+13 "audioconvert")
+14 # Autoconvert element for video processing
+15 self.autoconvert = gst.element_factory_make(
+16 "autoconvert")
+17 self.audiosink = gst.element_factory_make(
+18 "autoaudiosink")
+19
+20 self.videosink = gst.element_factory_make(
+21 "autovideosink")
+22
+23 # As a precaution add videio capability filter
+24 # in the video processing pipeline.
+25 videocap = gst.Caps("video/x-raw-yuv")
+26 self.filter = gst.element_factory_make("capsfilter")
+27 self.filter.set_property("caps", videocap)
+28 # Converts the video from one colorspace to another
+29 self.colorSpace = gst.element_factory_make(
+30 "ffmpegcolorspace")
+31
+32 self.videoQueue = gst.element_factory_make("queue")
+33 self.audioQueue = gst.element_factory_make("queue")
+34
+35 # Add elements to the pipeline
+36 self.player.add(self.filesrc,
+37 self.decodebin,
+38 self.autoconvert,
+39 self.audioconvert,
+40 self.videoQueue,
+41 self.audioQueue,
+42 self.filter,
+43 self.colorSpace,
+44 self.audiosink,
+45 self.videosink)
+46
+47 # Link elements in the pipeline.
+48 gst.element_link_many(self.filesrc, self.decodebin)
+49
+50 gst.element_link_many(self.videoQueue, self.autoconvert,
+51 self.filter, self.colorSpace,
+52 self.videosink)
+53
+54 gst.element_link_many(self.audioQueue,self.audioconvert,
+55 self.audiosink)
+</pre></div></li><li class="listitem">In various audio processing applications, we have used several of the elements defined in this method. First, the pipeline object,<code class="literal"> self.player</code>, is created. The<code class="literal"> self.filesrc</code> element specifies the input video file. This element is connected to a<code class="literal"> decodebin</code>.<a id="id311" class="indexterm"/></li><li class="listitem">On line 15,<code class="literal"> autoconvert</code> element is created. It is a GStreamer<code class="literal"> bin</code> that automatically selects a converter based on the capabilities (caps). It translates the decoded data coming out of the<code class="literal"> decodebin</code> in a format playable by the video device. Note that before reaching the video sink, this data travels through a<code class="literal"> capsfilter</code> and<code class="literal"> ffmpegcolorspace</code> converter. The<code class="literal"> capsfilter</code> element is defined on line 26. It is a filter that restricts the allowed capabilities, that is, the type of media data that will pass through it. In this case, the<code class="literal"> videoCap</code> object defined on line 25 instructs the filter to only allow<code class="literal"> video-xraw-yuv</code> capabilities .</li><li class="listitem">The<code class="literal"> ffmpegcolorspace</code> is a plugin that has the ability to convert video frames to a different color space format. At this time, it is necessary to explain what a color space is. A variety of colors can be created by use of basic colors. Such colors form, what we call, a<span class="strong"><strong> color space</strong></span>. A common example is an rgb color space where a range of colors can be created using a combination of red, green, and blue colors. The color space conversion is a representation of a video frame or an image from one color space into the other. The conversion is done in such a way that the converted video frame or image is a closer representation of the original one.<a id="id312" class="indexterm"/><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="tip19"/>Tip</h3><p>The video can be streamed even without using the combination of<code class="literal"> capsfilter</code> and the<code class="literal"> ffmpegcolorspace</code>. However, the video may appear distorted. So it is recommended to use<code class="literal"> capsfilter</code> and<code class="literal"> ffmpegcolorspace</code> converter. Try linking the<code class="literal"> autoconvert</code> element directly to the<code class="literal"> autovideosink</code> to see if it makes any difference.</p></div></div></li><li class="listitem">Notice that we have created two sinks, one for audio output and the other for the video. The two<code class="literal"> queue</code> elements are created on lines 32 and 33. As mentioned earlier, these act as media data buffers and are used to send the data to audio and video processing portions of the GStreamer pipeline. The code block 35-45 adds all the required elements to the pipeline.<a id="id313" class="indexterm"/></li><li class="listitem">Next, the various elements in the pipeline are linked. As we already know, the<code class="literal"> decodebin</code> is a plugin that determines the right type of decoder to use. This element uses dynamic pads. While developing audio processing utilities, we connected the<code class="literal"> pad-added</code> signal from<code class="literal"> decodebin</code> to a method<code class="literal"> decodebin_pad_added</code>. We will do the same thing here; however, the contents of this method will be different. We will discuss that later.</li><li class="listitem">On lines 50-52, the video processing portion of the pipeline is linked. The<code class="literal"> self.videoQueue</code> receives the video data from the<code class="literal"> decodebin</code>. It is linked to an<code class="literal"> autoconvert</code> element discussed earlier. The<code class="literal"> capsfilter</code> allows only<code class="literal"> video-xraw-yuv</code> data to stream further. The<code class="literal"> capsfilter</code> is linked to a<code class="literal"> ffmpegcolorspace</code> element, which converts the data into a different color space. Finally, the data is streamed to the<code class="literal"> videosink</code>, which, in this case, is an<code class="literal"> autovideosink</code> element. This enables the 'viewing' of the input video. The audio processing portion of the pipeline is very similar to the one used in earlier chapter.</li><li class="listitem">Now we will review the<code class="literal"> decodebin_pad_added</code> method.<div class="informalexample"><pre class="programlisting">1 def decodebin_pad_added(self, decodebin, pad):
+2 compatible_pad = None
+3 caps = pad.get_caps()
+4 name = caps[0].get_name()
+5 print "\n cap name is =%s"%name
+6 if name[:5] == 'video':
+7 compatible_pad = (
+8 self.videoQueue.get_compatible_pad(pad, caps) )
+9 elif name[:5] == 'audio':
+10 compatible_pad = (
+11 self.audioQueue.get_compatible_pad(pad, caps) )
+12
+13 if compatible_pad:
+14 pad.link(compatible_pad)
+</pre></div></li><li class="listitem">This method captures the<code class="literal"> pad-added</code> signal, emitted when the<code class="literal"> decodebin</code> creates a dynamic pad. In an earlier chapter, we simply linked the<code class="literal"> decodebin</code> pad with a compatible pad on the<code class="literal"> autoaudioconvert</code> element. We could do this because the<code class="literal"> caps</code> or the type media data being streamed was always the audio data. However, here the media data can either represent an audio or video data. Thus, when a dynamic pad is created on the<code class="literal"> decodebin</code>, we must check what<code class="literal"> caps</code> this<code class="literal"> pad</code> has. The name of the<code class="literal"> get_name</code> method of<code class="literal"> caps</code> object returns the type of media data handled. For example, the name can be of the form<code class="literal"> video/x-raw-rgb</code> when it is a video data or<code class="literal"> audio/x-raw-int</code> for audio data. We just check the first five characters to see if it is video or audio media type. This is done by the code block 4-11 in the code snippet. The<code class="literal"> decodebin pad</code> with video media type is linked with the compatible pad on<code class="literal"> self.videoQueue</code> element. Similarly, the<code class="literal"> pad</code> with audio<code class="literal"> caps</code> is linked with the one on<code class="literal"> self.audioQueue</code>.<a id="id314" class="indexterm"/></li><li class="listitem">Review the rest of the code from the<code class="literal"> PlayingVideo.py</code>. Make sure you specify an appropriate video file path for the variable<code class="literal"> self.inFileLocation</code> and then run this program from the command prompt as:<div class="informalexample"><pre class="programlisting">$python PlayingVideo.py
+</pre></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: none">This should open a GUI window where the video will be streamed. The audio output will be synchronized with the playing video.</li></ul></div></li></ol></div><div class="section" title="What just happened?"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec01"/>What just happened?</h2></div></div></div><p>We created a command-line video player utility. We learned how to create a GStreamer pipeline that can play synchronized audio and video streams. It explained how the<code class="literal"> queue</code> element can be used to process the audio and video data in a pipeline. In this example, the use of GStreamer plugins such as<code class="literal"> capsfilter</code> and<code class="literal"> ffmpegcolorspace</code> was illustrated. The knowledge gained in this section will be applied in the upcoming sections in this chapter.</p></div><div class="section" title="Have a go hero add playback controls"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec02"/>Have a go hero add playback controls</h2></div></div></div><p>In<a class="link" href="ch06.html" title="Chapter 6. Audio Controls and Effects"> Chapter 6</a>,<span class="emphasis"><em> Audio Controls and Effects</em></span> we learned different techniques to control the playback of an audio. Develop command-line utilities that will allow you to pause the video or directly jump to a specified position on the video track.<a id="id315" class="indexterm"/>
+</p></div><div class="section" title="Playing video using 'playbin'"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec03"/>Playing video using 'playbin'</h2></div></div></div><p>The goal of the previous section was to introduce you to the fundamental method of processing input video streams. We will use that method one way or another in the future discussions. If just video playback is all that you want, then the simplest way to accomplish this is by means of<code class="literal"> playbin</code> plugin. The video can be played just by replacing the<code class="literal"> VideoPlayer.constructPipeline</code> method in file<code class="literal"> PlayingVideo.py</code> with the following code. Here,<code class="literal"> self.player</code> is a<code class="literal"> playbin</code> element. The<code class="literal"> uri</code> property of<code class="literal"> playbin</code> is set as the input video file path.<a id="id316" class="indexterm"/>
+</p><p>The goal of the previous section was to introduce you to the fundamental method of processing input video streams. We will use that method one way or another in the future discussions. If just video playback is all that you want, then the simplest way to accomplish this is by means of<code class="literal"> playbin</code> plugin. The video can be played just by replacing the<code class="literal"> VideoPlayer.constructPipeline</code> method in file<code class="literal"> PlayingVideo.py</code> with the following code. Here,<code class="literal"> self.player</code> is a<code class="literal"> playbin</code> element. The<code class="literal"> uri</code> property of<code class="literal"> playbin</code> is set as the input video file path.</p><div class="informalexample"><pre class="programlisting">def constructPipeline(self):
+self.player = gst.element_factory_make("playbin")
+self.player.set_property("uri",
+"file:///" + self.inFileLocation)
+</pre></div></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Video format conversion"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec04"/>Video format conversion</h1></div></div></div><p>Saving the video in a different file format is one of the frequently performed tasks for example, the task of converting a recorded footage on to your camcorder to a format playable on a DVD player. So let's list out the elements we need in a pipeline to carry out the video format conversion.<a id="id317" class="indexterm"/>
+</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">A<code class="literal"> filesrc</code> element to stream the video file and a<code class="literal"> decodebin</code> to decode the encoded input media data.</li><li class="listitem" style="list-style-type: disc">Next, the audio processing elements of the pipeline, such as<code class="literal"> audioconvert</code>, an encoder to encode the raw audio data into an appropriate audio format to be written.</li><li class="listitem" style="list-style-type: disc">The video processing elements of the pipeline, such as a video encoder element to encode the video data.</li><li class="listitem" style="list-style-type: disc">A multiplexer or a<span class="strong"><strong> muxer</strong></span> that takes the encoded audio and video data streams and puts them into a single channel.</li><li class="listitem" style="list-style-type: disc">There needs to be an element that, depending on the media type, can send the media data to an appropriate processing unit. This is accomplished by<code class="literal"> queue</code> elements that act as data buffers. Depending on whether it is an audio or video data, it is streamed to the audio or video processing elements. The queue is also needed to stream the encoded data from audio pipeline to the multiplexer.<a id="id318" class="indexterm"/></li><li class="listitem" style="list-style-type: disc">Finally, a<code class="literal"> filesink</code> element to save the converted video file (containing both audio and video tracks).</li></ul></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Time for action - video format converter"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec05"/>Time for action -  video format converter</h1></div></div></div><p>We will create a video conversion utility that will convert an input video file into a format specified by the user. The file you need to download from the Packt website is<code class="literal"> VideoConverter.py</code>. This file can be run from the command line as:<a id="id319" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">python VideoConverter.py [options]
+</pre></div><p>Where, the options are as follows:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">--input_path:</code> The full path of the video file we wish to convert. The video format of the input files. The format should be in a supported list of formats. The supported input formats are MP4, OGG, AVI, and MOV.</li><li class="listitem" style="list-style-type: disc"><code class="literal">--output_path:</code> The full path of the output video file. If not specified, it will create a folder<code class="literal"> OUTPUT_VIDEOS</code> within the input directory and save the file there with same name.</li><li class="listitem" style="list-style-type: disc"><code class="literal">--output_format:</code> The audio format of the output file. The supported output formats are OGG and MP4.<div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="tip20"/>Tip</h3><p>As we will be using a<code class="literal"> decodebin</code> element for decoding the input media data; there is actually a wider range of input formats this utility can handle. Modify the code in<code class="literal"> VideoPlayer.processArguments</code> or add more formats to dictionary<code class="literal"> VideoPlayer.supportedInputFormats</code>.</p></div></div></li></ul></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">If not done already, download the file<code class="literal"> VideoConverter.py</code> from the Packt website.</li><li class="listitem">The overall structure of the code is:<div class="informalexample"><pre class="programlisting">import os, sys, time
+import thread
+import getopt, glob
+import gobject
+import pygst
+pygst.require("0.10")
+import gst
+class VideoConverter:
+def __init__(self):
+pass
+def constructPipeline(self):
+pass
+def connectSignals(self):
+pass
+def decodebin_pad_added(self, decodebin, pad):
+pass
+def processArgs(self):
+pass
+def printUsage(self):
+pass
+def printFinalStatus(self, starttime, endtime):
+pass
+def convert(self):
+pass
+def message_handler(self, bus, message):
+pass
+# Run the converter
+converter = VideoConverter()
+thread.start_new_thread(converter.convert, ())
+gobject.threads_init()
+evt_loop = gobject.MainLoop()
+</pre></div><div class="informalexample"><pre class="programlisting">evt_loop.run()
+</pre></div><p>A new thread is created by calling<code class="literal"> thread.start_new_thread</code>, to run the application. The method<code class="literal"> VideoConverter.convert</code> is sent on this thread. It is similar to the<code class="literal"> VideoPlayer.play</code> method discussed earlier. Let's review some key methods of the class<code class="literal"> VideoConverter</code>.</p></li><li class="listitem">The<code class="literal"> __init__</code> method contains the initialization code. It also calls methods to process command-line arguments and then build the pipeline. The code is illustrated as follows:<div class="informalexample"><pre class="programlisting">1 def __init__(self):
+2 # Initialize various attrs
+3 self.inFileLocation = ""
+4 self.outFileLocation = ""
+5 self.inputFormat = "ogg"
+6 self.outputFormat = ""
+7 self.error_message = ""
+8 # Create dictionary objects for
+9 # Audio / Video encoders for supported
+10 # file format
+11 self.audioEncoders = {"mp4":"lame",
+12 "ogg": "vorbisenc"}
+13
+14 self.videoEncoders={"mp4":"ffenc_mpeg4",
+15 "ogg": "theoraenc"}
+16
+17 self.muxers = {"mp4":"ffmux_mp4",
+18 "ogg":"oggmux" }
+19
+20 self.supportedOutputFormats = self.audioEncoders.keys()
+21
+22 self.supportedInputFormats = ("ogg", "mp4",
+23 "avi", "mov")
+24
+25 self.pipeline = None
+26 self.is_playing = False
+27
+28 self.processArgs()
+29 self.constructPipeline()
+30 self.connectSignals()
+</pre></div></li><li class="listitem">To process the video file, we need audio and video encoders. This utility will support the conversion to only MP4 and OGG file formats. This can be easily extended to include more formats by adding appropriate encoders and muxer plugins. The values of the self.audioEncoders and self.videoEncoders dictionary objects specify the encoders to use for the streaming audio and video data respectively. Therefore, to store the video data in MP4 format, we use the ffenc_mp4 encoder. The encoders illustrated in the code snippet should be a part of the GStreamer installation on your computer. If not, visit the GStreamer website to find out how to install these plugins. The values of dictionary self.muxers represent the multiplexer to use in a specific output format.<a id="id320" class="indexterm"/></li><li class="listitem">The<code class="literal"> constructPipeline</code> method does the main conversion job. It builds the required pipeline, which is then set to playing state in the<code class="literal"> convert</code> method.<a id="id321" class="indexterm"/><div class="informalexample"><pre class="programlisting">1 def constructPipeline(self):
+2 self.pipeline = gst.Pipeline("pipeline")
+3
+4 self.filesrc = gst.element_factory_make("filesrc")
+5 self.filesrc.set_property("location",
+6 self.inFileLocation)
+7
+8 self.filesink = gst.element_factory_make("filesink")
+9 self.filesink.set_property("location",
+10 self.outFileLocation)
+11
+12 self.decodebin = gst.element_factory_make("decodebin")
+13 self.audioconvert = gst.element_factory_make(
+14 "audioconvert")
+15
+16 audio_encoder = self.audioEncoders[self.outputFormat]
+17 muxer_str = self.muxers[self.outputFormat]
+18 video_encoder = self.videoEncoders[self.outputFormat]
+19
+20 self.audio_encoder= gst.element_factory_make(
+21 audio_encoder)
+22 self.muxer = gst.element_factory_make(muxer_str)
+23 self.video_encoder = gst.element_factory_make(
+24 video_encoder)
+25
+26 self.videoQueue = gst.element_factory_make("queue")
+27 self.audioQueue = gst.element_factory_make("queue")
+28 self.queue3 = gst.element_factory_make("queue")
+29
+30 self.pipeline.add( self.filesrc,
+31 self.decodebin,
+32 self.video_encoder,
+33 self.muxer,
+34 self.videoQueue,
+35 self.audioQueue,
+36 self.queue3,
+37 self.audioconvert,
+38 self.audio_encoder,
+39 self.filesink)
+40
+41 gst.element_link_many(self.filesrc, self.decodebin)
+42
+43 gst.element_link_many(self.videoQueue,
+44 self.video_encoder, self.muxer, self.filesink)
+45
+46 gst.element_link_many(self.audioQueue,self.audioconvert,
+47 self.audio_encoder, self.queue3,
+48 self.muxer)
+</pre></div></li><li class="listitem">In an earlier section, we covered several of the elements used in the previous pipeline. The code on lines 43 to 48 establishes linkage for the audio and video processing elements. On line 44, the multiplexer, self.muxer is linked with the video encoder element. It puts the separate parts of the stream in this case, the video and audio data, into a single file. The data output from audio encoder, self.audio_encoder, is streamed to the muxer via a queue element, self.queue3. The muxed data coming out of self.muxer is then streamed to the self.filesink.<a id="id322" class="indexterm"/></li><li class="listitem">Let's quickly review the<code class="literal"> VideoConverter.convert</code> method.<div class="informalexample"><pre class="programlisting">1 def convert(self):
+2 # Record time before beginning Video conversion
+3 starttime = time.clock()
+4
+5 print "\n Converting Video file.."
+6 print "\n Input File: %s, Conversion STARTED..." %
+7 self.inFileLocation
+8
+9 self.is_playing = True
+10 self.pipeline.set_state(gst.STATE_PLAYING)
+11 while self.is_playing:
+12 time.sleep(1)
+13
+14 if self.error_message:
+15 print "\n Input File: %s, ERROR OCCURED." %
+16 self.inFileLocation
+17 print self.error_message
+18 else:
+19 print "\n Input File: %s, Conversion COMPLETE " %
+20 self.inFileLocation
+21
+22 endtime = time.clock()
+23 self.printFinalStatus(starttime, endtime)
+24 evt_loop.quit()
+</pre></div></li><li class="listitem">On line 10, the GStreamer pipeline built earlier is set to playing. When the conversion is complete, it will generate the End Of Stream (EOS) message. The self.is_playing flag is modified in the method self.message_handler. The while loop on line 11 is executed until the EOS message is posted on the bus or some error occurs. Finally, on line 24, the main execution loop is terminated.<div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="tip21"/>Tip</h3><p>On line 3, we make a call to<code class="literal"> time.clock()</code>. This actually gives the CPU time spent on the process.</p></div></div></li><li class="listitem">The other methods such as<code class="literal"> VideoConverter.decodebin_pad_added</code> are identical to the one developed in the<span class="emphasis"><em> Playing a video</em></span> section. Review the remaining methods from the file<code class="literal"> VideoConverter.py</code> and then run this utility by specifying appropriate command-line arguments. The following screenshot shows sample output messages when the program is run from the console window.<a id="id323" class="indexterm"/><div class="mediaobject"><img src="images/0165_07_02.jpg" alt="Time for action - video format converter"/></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: none">This is a sample run of the video conversion utility from the console.</li></ul></div></li></ol></div><div class="section" title="What just happened?"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec04"/>What just happened?</h2></div></div></div><p>We created another useful utility that can convert video files from one format to the other. We learned how to encode the audio and video data into a desired output format and then use a multiplexer to put these two data streams into a single file.</p></div><div class="section" title="Have a go hero batch-convert the video files"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec05"/>Have a go hero batch-convert the video files</h2></div></div></div><p>The video converter developed in previous sections can convert a single video file at a time. Can you make it a batch-processing utility? Refer to the code for the audio conversion utility developed in the<span class="emphasis"><em> Working with Audios</em></span> chapter. The overall structure will be very similar. However, there could be challenges in converting multiple video files because of the use of queue elements. For example, when it is done converting the first file, the data in the queue may not be flushed when we start conversion of the other file. One crude way to address this would be to reconstruct the whole pipeline and connect signals for each audio file. However, there will be a more efficient way to do this. Think about it!</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Video manipulations and effects"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec06"/>Video manipulations and effects</h1></div></div></div><p>Suppose you have a video file that needs to be saved with an adjusted default brightness level. Alternatively, you may want to save another video with a different aspect ratio. In this section, we will learn some of the basic and most frequently performed operations on a video. We will develop code using Python and GStreamer for tasks such as resizing a video or adjusting its contrast level.<a id="id324" class="indexterm"/>
+</p><div class="section" title="Resizing"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec06"/>Resizing</h2></div></div></div><p>The data that can flow through an element is described by the capabilities (caps) of a pad on that element. If a decodebin element is decoding video data, the capabilities of its dynamic pad will be described as, for instance,<code class="literal"> video/x-raw-yuv</code>. Resizing a video with GStreamer multimedia framework can be accomplished by using a<code class="literal"> capsfilter</code> element, that has<code class="literal"> width</code> and<code class="literal"> height</code> parameters specified. As discussed earlier, the<code class="literal"> capsfilter</code> element limits the media data type that can be transferred between two elements. For example, a<code class="literal"> cap</code> object described by the string,<code class="literal"> video/x-raw-yuv, width=800, height=600</code> will set the width of the video to 800 pixels and the height to 600 pixels.<a id="id325" class="indexterm"/>
+</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Time for action - resize a video"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec07"/>Time for action -  resize a video</h1></div></div></div><p>We will now see how to resize a streaming video using the<code class="literal"> width</code> and<code class="literal"> height</code> parameters described by a GStreamer<code class="literal"> cap</code> object.<a id="id326" class="indexterm"/>
+</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Download the file<code class="literal"> VideoManipulations.py</code> from the Packt website. The overall class design is identical to the one studied in the<span class="emphasis"><em> Playing a video</em></span> section.</li><li class="listitem">The methods<code class="literal"> self.constructAudioPipeline()</code> and<code class="literal"> self.constructVideoPipeline()</code>, respectively, define and link elements related to audio and video portions of the main pipeline object<code class="literal"> self.player</code>. As we have already discussed most of the audio/video processing elements in earlier sections, we will only review the<code class="literal"> constructVideoPipeline</code> method here.<div class="informalexample"><pre class="programlisting">1 def constructVideoPipeline(self):
+2 # Autoconvert element for video processing
+3 self.autoconvert = gst.element_factory_make(
+4 "autoconvert")
+5 self.videosink = gst.element_factory_make(
+6 "autovideosink")
+7
+8 # Set the capsfilter
+9 if self.video_width and self.video_height:
+10 videocap = gst.Caps(
+11 "video/x-raw-yuv," "width=%d, height=%d"%
+12 (self.video_width,self.video_height))
+13 else:
+14 videocap = gst.Caps("video/x-raw-yuv")
+15
+16 self.capsFilter = gst.element_factory_make(
+17 "capsfilter")
+18 self.capsFilter.set_property("caps", videocap)
+19
+20 # Converts the video from one colorspace to another
+21 self.colorSpace = gst.element_factory_make(
+22 "ffmpegcolorspace")
+23
+24 self.videoQueue = gst.element_factory_make("queue")
+25
+26 self.player.add(self.videoQueue,
+27 self.autoconvert,
+28 self.capsFilter,
+29 self.colorSpace,
+30 self.videosink)
+31
+32 gst.element_link_many(self.videoQueue,
+33 self.autoconvert,
+34 self.capsFilter,
+35 self.colorSpace,
+36 self.videosink)
+</pre></div></li><li class="listitem">The capsfilter element is defined on line 16. It is a filter that restricts the type of media data that will pass through it. The videocap is a GStreamer cap object created on line 10. This cap specifies the width and height parameters of the streaming video. It is set as a property of the capsfilter, self.capsFilter. It instructs the filter to only stream video-xraw-yuv data with width and height specified by the videocap object.<a id="id327" class="indexterm"/><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="tip22"/>Tip</h3><p>In the source file, you will see an additional element<code class="literal"> self.videobox</code> linked in the pipeline. It is omitted in the above code snippet. We will see what this element is used for in the next section.</p></div></div></li><li class="listitem">The rest of the code is straightforward. We already covered similar methods in earlier discussions. Develop the rest of the code by reviewing the file<code class="literal"> VideoManipulations.py</code>. Make sure to specify an appropriate video file path for the variable<code class="literal"> self.inFileLocation</code> .Then run this program from the command prompt as:<div class="informalexample"><pre class="programlisting">$python VideoManipulations.py
+</pre></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: none">This should open a GUI window where the video will be streamed. The default size of this window will be controlled by the parameters self.video_width and self.video_height specified in the code.</li></ul></div></li></ol></div><div class="section" title="What just happened?"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec07"/>What just happened?</h2></div></div></div><p>The command-line video player developed earlier was extended in the example we just developed. We used<code class="literal"> capsfilter</code> plugin to specify the<code class="literal"> width</code> and<code class="literal"> height</code> parameters of the streaming video and thus resize the video.</p></div><div class="section" title="Cropping"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec08"/>Cropping</h2></div></div></div><p>Suppose you have a video that has a large 'gutter space' at the bottom or some unwanted portion on a side that you would like to trim off. The<code class="literal"> videobox</code> GStreamer plugin facilitates cropping the video from left, right, top, or bottom.<a id="id328" class="indexterm"/>
+</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Time for action - crop a video"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec08"/>Time for action -  crop a video</h1></div></div></div><p>Let's add another video manipulation feature to the command-line video player developed earlier.<a id="id329" class="indexterm"/>
+</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">The file we need here is the one used in the earlier section,<code class="literal"> VideoManipulations.py</code>.</li><li class="listitem">Once again, we will focus our attention on the<code class="literal"> constructVideoPipeline</code> method of the class<code class="literal"> VideoPlayer</code>. The following code snippet is from this method. The rest of the code in this method is identical to the one reviewed in the earlier section.<a id="id330" class="indexterm"/><div class="informalexample"><pre class="programlisting">1 self.videobox = gst.element_factory_make("videobox")
+2 self.videobox.set_property("bottom", self.crop_bottom )
+3 self.videobox.set_property("top", self.crop_top )
+4 self.videobox.set_property("left", self.crop_left )
+5 self.videobox.set_property("right", self.crop_right )
+6
+7 self.player.add(self.videoQueue,
+8 self.autoconvert,
+9 self.videobox,
+10 self.capsFilter,
+11 self.colorSpace,
+12 self.videosink)
+13
+14 gst.element_link_many(self.videoQueue,
+15 self.autoconvert,
+16 self.videobox,
+17 self.capsFilter,
+18 self.colorSpace,
+19 self.videosink)
+</pre></div></li><li class="listitem">The code is self-explanatory. The<code class="literal"> videobox</code> element is created on line 1. The properties of<code class="literal"> videobox</code> that crop the streaming video are set on lines 2-5. It receives the media data from the<code class="literal"> autoconvert</code> element. The source pad of<code class="literal"> videobox</code> is connected to the sink of either<code class="literal"> capsfilter</code> or directly the<code class="literal"> ffmpegcolorspace</code> element.</li><li class="listitem">Develop the rest of the code by reviewing the file<code class="literal"> VideoManipulations.py</code>. Make sure to specify an appropriate video file path for the variable<code class="literal"> self.inFileLocation</code>. Then run this program from the command prompt as:<div class="informalexample"><pre class="programlisting">$python VideoManipulations.py
+</pre></div><p>This should open a GUI window where the video will be streamed. The video will be cropped from left, right, bottom, and top sides by the parameters<code class="literal"> self.crop_left, self.crop_right, self.crop_bottom</code>, and<code class="literal"> self.crop_top</code> respectively.</p></li></ol></div><div class="section" title="What just happened?"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec09"/>What just happened?</h2></div></div></div><p>We extended the video player application further to add a GStreamer element that can crop the video frames from sides. The<code class="literal"> videobox</code> plugin was used to accomplish this task.<a id="id331" class="indexterm"/>
+</p></div><div class="section" title="Have a go hero add borders to a video"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec10"/>Have a go hero add borders to a video</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">In the previous section, we used<code class="literal"> videobox</code> element to trim the video from sides. The same plugin can be used to add a border around the video. If you set negative values for<code class="literal"> videobox</code> properties, such as, bottom, top, left and right, instead of cropping the video, it will add black border around the video. Set negative values of parameters such as<code class="literal"> self.crop_left</code> to see this effect.<a id="id332" class="indexterm"/></li><li class="listitem">The video cropping can be accomplished by using<code class="literal"> videocrop</code> plugin. It is similar to the<code class="literal"> videobox</code> plugin, but it doesn't support adding a border to the video frames. Modify the code and use this plugin to crop the video.</li></ol></div></div><div class="section" title="Adjusting brightness and contrast"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec11"/>Adjusting brightness and contrast</h2></div></div></div><p>We saw how to adjust the brightness and contrast level in<a class="link" href="ch03.html" title="Chapter 3. Enhancing Images"> Chapter 3</a>,<span class="emphasis"><em> Enhancing Images</em></span>. If you have a homemade video recorded in poor lighting conditions, you would probably adjust its brightness level. The contrast-level highlights the difference between the color and brightness level of each video frame. The<code class="literal"> videobalance</code> plugin can be used to adjust the brightness, contrast, hue, and saturation. The next code snippet creates this element and sets the brightness and contrast properties. The brightness property can accept values in the range<code class="literal"> -1</code> to<code class="literal"> 1</code>, the default (original) brightness level is<code class="literal"> 0</code>. The contrast can have values in the range<code class="literal"> 0</code> to<code class="literal"> 2</code> with the default value as<code class="literal"> 1</code>.<a id="id333" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">self.videobalance = gst.element_factory_make("videobalance")
+self.videobalance.set_property("brightness", 0.5)
+self.videobalance.set_property("contrast", 0.5)
+</pre></div><p>The<code class="literal"> videobalance</code> is then linked in the GStreamer pipeline as:</p><div class="informalexample"><pre class="programlisting">gst.element_link_many(self.videoQueue,
+self.autoconvert,
+self.videobalance,
+self.capsFilter,
+self.colorSpace,
+self.videosink)
+</pre></div><p>Review the rest of the code from file<code class="literal"> VideoEffects.py</code>.</p></div><div class="section" title="Creating a gray scale video"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec12"/>Creating a gray scale video</h2></div></div></div><p>The video can be rendered as gray scale by adjusting the saturation property of the<code class="literal"> videobalance</code> plugin. The saturation can have a value in the range<code class="literal"> 0</code> to<code class="literal"> 2</code>. The default value is<code class="literal"> 1</code>. Setting this value to<code class="literal"> 0.0</code> converts the images to gray scale. The code is illustrated as follows:<a id="id334" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">self.videobalance.set_property("saturation", 0.0)
+</pre></div><p>You can refer to the file<code class="literal"> VideoEffects.py</code>, which illustrates how to use the<code class="literal"> videobalance</code> plugin to adjust saturation and other parameters discussed in earlier sections.</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Adding text and time on a video stream"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec09"/>Adding text and time on a video stream</h1></div></div></div><p>Ability to add a text string or a subtitles track to a video is yet another desirable feature one needs when processing videos. The GStreamer plugin<code class="literal"> textoverlay</code> enables overlaying informative text string, such as the name of the file, on top of a video stream. The other useful plugins such as<code class="literal"> timeoverlay</code> and<code class="literal"> clockoverlay</code> provide a way to put the video buffer timestamp and the CPU clock time on top of the streaming video.<a id="id335" class="indexterm"/>
+</p></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Time for action - overlay text on a video track"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec10"/>Time for action -  overlay text on a video track</h1></div></div></div><p>Let's see how to add a text string on a video track. We will write a simple utility, which essentially has the same code structure as the one we developed in the<span class="emphasis"><em> Playing a video</em></span> section. This tool will also add the buffer timestamp and the current CPU clock time on the top of the video. For this section, it is important that you have<code class="literal"> textoverlay, timeoverlay</code>, and<code class="literal"> clockoverlay</code> plugins available in your GStreamer installation. Otherwise, you need to install these plugins or use some other plugins, such as<code class="literal"> cairotextoverlay</code>, if available.<a id="id336" class="indexterm"/>
+</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Download the file<code class="literal"> VideoTextOverlay.py</code> from the Packt website.</li><li class="listitem">The<code class="literal"> constructVideoPipeline</code> method of the class<code class="literal"> VideoPlayer</code> is illustrated in the following code snippet:<a id="id337" class="indexterm"/><div class="informalexample"><pre class="programlisting">1 def constructVideoPipeline(self):
+2 # Autoconvert element for video processing
+3 self.autoconvert = gst.element_factory_make(
+4 "autoconvert")
+5 self.videosink = gst.element_factory_make(
+6 "autovideosink")
+7
+8 # Set the capsfilter
+9 videocap = gst.Caps("video/x-raw-yuv")
+10 self.capsFilter = gst.element_factory_make(
+11 "capsfilter")
+12 self.capsFilter.set_property("caps", videocap)
+13
+14 # Converts the video from one colorspace to another
+15 self.colorSpace = gst.element_factory_make(
+16 "ffmpegcolorspace")
+17
+18 self.videoQueue = gst.element_factory_make("queue")
+19
+20 self.textOverlay = gst.element_factory_make(
+21 "textoverlay")
+22 self.textOverlay.set_property("text", "hello")
+23 self.textOverlay.set_property("shaded-background",
+24 True)
+25
+26 self.timeOverlay = gst.element_factory_make(
+27 "timeoverlay")
+28 self.timeOverlay.set_property("valign", "top")
+29 self.timeOverlay.set_property("shaded-background",
+30 True)
+31
+32 self.clockOverlay = gst.element_factory_make(
+33 "clockoverlay")
+34 self.clockOverlay.set_property("valign", "bottom")
+35 self.clockOverlay.set_property("halign", "right")
+36 self.clockOverlay.set_property("shaded-background",
+37 True)
+38
+39 self.player.add(self.videoQueue,
+40 self.autoconvert,
+41 self.textOverlay,
+42 self.timeOverlay,
+43 self.clockOverlay,
+44 self.capsFilter,
+45 self.colorSpace,
+46 self.videosink)
+47
+48 gst.element_link_many(self.videoQueue,
+49 self.autoconvert,
+50 self.capsFilter,
+51 self.textOverlay,
+52 self.timeOverlay,
+53 self.clockOverlay,
+54 self.colorSpace,
+55 self.videosink)
+</pre></div></li><li class="listitem">As you can see, the elements for overlaying text, time, or clock can be simply added and linked in a GStreamer pipeline like other elements. Let's discuss various properties of these elements now. On lines 20-23, the textoverlay element is defined. The text property sets the text string that appears on the streaming video. To ensure that the text string is clearly visible in the video, we add a background contrast to this text. This is done on line 23 by setting the shaded-background property to True. The other properties of this plugin help fix the text position on the video. Run gst-inspect-0.10 on textoverlay plugin to see what these properties are.<a id="id338" class="indexterm"/></li><li class="listitem">Next, on lines 25-36, the time and clock overlay elements are defined. The properties are similar to the ones available in<code class="literal"> textoverlay</code> plugin. The clock time will appear on the bottom-left corner of the streaming video. This is accomplished by setting the<code class="literal"> valign</code> and<code class="literal"> halign</code> properties. These three elements are then linked in the GStreamer pipeline. The internal order in which they are linked doesn't matter.</li><li class="listitem">Develop the rest of the code by reviewing the file<code class="literal"> VideoTextOverlay.py</code>. Make sure you specify an appropriate video file path for the variable<code class="literal"> self.inFileLocation</code>. Then run this program from the command prompt as:<div class="informalexample"><pre class="programlisting">$python VideoTextOverlay.py
+</pre></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: none">This should open a GUI window where the video will be streamed. The video will show a text string "hello" along with the running time and the clock time. This is illustrated by the following snapshot of a video frame.</li></ul></div><div class="mediaobject"><img src="images/0165_07_03.jpg" alt="Time for action - overlay text on a video track"/></div><p>The screenshot depicts a video frame showing text, time, and clock overlay.</p></li></ol></div><div class="section" title="What just happened?"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec13"/>What just happened?</h2></div></div></div><p>We learned how to use elements such as<code class="literal"> textoverlay, timeoverlay</code>, and<code class="literal"> clockoverlay</code> in a GStreamer pipeline to add text string, timestamp, and clock respectively, on top of a video buffer. The<code class="literal"> textoverlay</code> element can be used further to add a subtitle track to the video file.</p></div><div class="section" title="Have a go hero add subtitles to a video track!"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec14"/>Have a go hero add subtitles to a video track!</h2></div></div></div><p>Extend the code we just developed to add a subtitles track to the video file. To add a subtitle track, you will need the<code class="literal"> subparse</code> plugin. Note that this plugin is not available by default in the windows installation of GStreamer using the GStreamer-WinBuilds binary. Thus, Windows users may need to install this plugin separately. Review the<code class="literal"> subparse</code> plugin reference to see how to accomplish this task. The following code snippet shows how to create the<code class="literal"> subparse</code> element.<a id="id339" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">self.subtitlesrc = gst.element_factory_make("filesrc")
+self.subtitlesrc.set_property("location",
+"/path/to/subtitles/file")
+self.subparse = gst.element_factory_make("subparse")
+</pre></div></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Separating audio and video tracks"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec11"/>Separating audio and video tracks</h1></div></div></div><p>There are times when you would like to separate an audio and a video track. Imagine that you have a collection of your favorite video songs. You are going on a long drive and the old CD player in your car can only play audio files in a specific file format. Let's write a utility that can separate out the audio from a video file!<a id="id340" class="indexterm"/>
+</p></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Time for action - audio and video tracks"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec12"/>Time for action -  audio and video tracks</h1></div></div></div><p>We will develop code that takes a video file as an input and then creates two output files, one with only the audio track of the original file and the other with the video portion.</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Download the file<code class="literal"> SeparatingAudio.py</code> from the Packt website. The structure of the class<code class="literal"> AudioSeparator</code> is similar to the one seen in the<span class="emphasis"><em> Playing a Video</em></span> section. We will review two methods of this class,<code class="literal"> constructPipeline</code> and<code class="literal"> decodebin_pad_added</code>.</li><li class="listitem">Let's start with the code in the<code class="literal"> constructPipeline</code> method.<div class="informalexample"><pre class="programlisting">1 def constructPipeline(self):
+2 # Create the pipeline instance
+3 self.player = gst.Pipeline()
+4
+5 # Define pipeline elements
+6 self.filesrc = gst.element_factory_make("filesrc")
+7
+8 self.filesrc.set_property("location",
+9 self.inFileLocation)
+10
+11 self.decodebin = gst.element_factory_make("decodebin")
+12
+13 self.autoconvert = gst.element_factory_make(
+14 "autoconvert")
+15
+16 self.audioconvert = gst.element_factory_make(
+17 "audioconvert")
+18
+19 self.audio_encoder = gst.element_factory_make("lame")
+20
+21 self.audiosink = gst.element_factory_make("filesink")
+22 self.audiosink.set_property("location",
+23 self.audioOutLocation)
+24
+25 self.video_encoder = gst.element_factory_make("
+26 ffenc_mpeg4")
+27 self.muxer = gst.element_factory_make("ffmux_mp4")
+28
+29 self.videosink = gst.element_factory_make("filesink")
+30 self.videosink.set_property("location",
+31 self.videoOutLocation)
+32
+33 self.videoQueue = gst.element_factory_make("queue")
+34 self.audioQueue = gst.element_factory_make("queue")
+35 # Add elements to the pipeline
+36 self.player.add(self.filesrc,
+37 self.decodebin,
+38 self.videoQueue,
+39 self.autoconvert,
+40 self.video_encoder,
+41 self.muxer,
+42 self.videosink,
+43 self.audioQueue,
+44 self.audioconvert,
+45 self.audio_encoder,
+46 self.audiosink)
+47
+49 # Link elements in the pipeline.
+50 gst.element_link_many(self.filesrc, self.decodebin)
+51
+52 gst.element_link_many(self. videoQueue,
+53 self.autoconvert,
+54 self.video_encoder,
+55 self.muxer,
+56 self.videosink)
+57
+58 gst.element_link_many(self.audioQueue,
+59 self.audioconvert,
+60 self.audio_encoder,
+61 self.audiosink)
+</pre></div></li><li class="listitem">We have already used all the necessary elements in various examples. The key here is to link them properly. The self.audiosink and self.videoSink elements are filesink elements that define audio and video output file locations respectively. Note that, in this example, we will save the output audio in MP3 format and video in MP4 format. Thus, the lame encoder is used for the audio file whereas we use encoder ffenc_mpeg4 and multiplexer ffmux_mp4 for the video output. Note that we have not used ffmpegcolorspace element. It just helps to get an appropriate color space format for the video sink (in this case, the output video file). In this case, it is not needed. You can always link it in the pipeline if the output file doesn't appropriately display the video frames. The media data decoded by self.decodebin needs to be streamed to the audio and video portions of the pipeline, using the queue elements as data buffers.<a id="id341" class="indexterm"/></li><li class="listitem">The<code class="literal"> decodebin</code> creates dynamic pads to decode the input audio and video data. The<code class="literal"> decodebin_pad_added</code> method needs to check the capabilities (caps) on the dynamic pad of the<code class="literal"> decodebin</code>.<a id="id342" class="indexterm"/><div class="informalexample"><pre class="programlisting">1 def decodebin_pad_added(self, decodebin, pad):
+2 compatible_pad = None
+3 caps = pad.get_caps()
+4 name = caps[0].get_name()
+5 print "\n cap name is = ", name
+6 if name[:5] == 'video':
+7 compatible_pad = (
+8 self.videoQueue.get_compatible_pad(pad, caps) )
+9 elif name[:5] == 'audio':
+10 compatible_pad = (
+11 self. audioQueue.get_compatible_pad(pad,caps) )
+12
+13 if compatible_pad:
+14 pad.link(compatible_pad)
+</pre></div></li><li class="listitem">This check is done by the code block 6-12. If capabilities indicate it's an audio data, the<code class="literal"> decodebin pad</code> is linked to the compatible pad on<code class="literal"> self.audioQueue</code>. Similarly, a link between to<code class="literal"> self.videoQueue</code> and<code class="literal"> self.decodebin</code> is created when<code class="literal"> caps</code> indicate it is the video data.</li><li class="listitem">You can work through the remaining code in the file<code class="literal"> SeparatingAudio.py</code>. Replace the paths represented by<code class="literal"> self.inFileLocation, self.audioOutLocation</code>, and<code class="literal"> self.videoOutLocation</code> with appropriate paths on your computer and then run this utility as:<div class="informalexample"><pre class="programlisting">$python SeparatingAudio.py
+</pre></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: none">This should create two output files a file in MP3 format that contains only the audio track from the input file and a file in MP4 format containing the video track.</li></ul></div></li></ol></div><div class="section" title="What just happened?"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec15"/>What just happened?</h2></div></div></div><p>We build a GStreamer pipeline that separates audio and video tracks from an input video file. Several of the GStreamer elements that we learned about in a number of examples earlier were used to develop this utility. We also learned how to use the capabilities (caps) on the dynamic pads of<code class="literal"> decodebin</code> to make proper linkage between the<code class="literal"> decodebin</code> and the<code class="literal"> queue</code> elements.</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Mixing audio and video tracks"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec13"/>Mixing audio and video tracks</h1></div></div></div><p>Suppose you have recorded your friend's wedding on your camcorder. For some specific moments, you would like to mute all other sounds and replace those with background music. To accomplish this, first you need to save the video track without the audio as a separate file. We just learned that technique. Then you need to combine this video track with audio track containing the background music you wish to play. Let's now learn how to mix audio and video tracks into a single video file.<a id="id343" class="indexterm"/>
+</p></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Time for action - audio/video track mixer"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec14"/>Time for action -  audio/video track mixer</h1></div></div></div><p>We will develop a program that generates a video output file, by mixing an audio and a video track. Think about what change we will need to incorporate when compared to the audio/video track separation utility developed earlier. In that application, two<code class="literal"> filesink</code> elements were required as two output files were created. Here, we need the opposite. We require two<code class="literal"> filesrc</code> elements containing the audio and video data and a single<code class="literal"> filesink</code> element that will contain both the audio and the video track.<a id="id344" class="indexterm"/>
+</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Download the file<code class="literal"> AudioVideoMixing.py</code> from the Packt website. We will review some of the important methods of class<code class="literal"> AudioVideoMixer</code>.</li><li class="listitem">The<code class="literal"> constructPipeline</code> method, as usual, builds the GStreamer pipeline with all necessary elements.<div class="informalexample"><pre class="programlisting">1 def constructPipeline(self):
+2 self.pipeline = gst.Pipeline("pipeline")
+3
+4 self.audiosrc = gst.element_factory_make("filesrc")
+5 self.audiosrc.set_property("location",
+6 self.audioInLocation)
+7
+8 self.videosrc = gst.element_factory_make("filesrc")
+9 self.videosrc.set_property("location",
+10 self.videoInLocation)
+11
+12 self.filesink = gst.element_factory_make("filesink")
+13 self.filesink.set_property("location",
+14 self.outFileLocation)
+15
+16 self.audio_decodebin = gst.element_factory_make(
+17 "decodebin")
+18 self.video_decodebin= gst.element_factory_make(
+19 "decodebin")
+20
+21 self.audioconvert = gst.element_factory_make(
+22 "audioconvert")
+23 self.audio_encoder= gst.element_factory_make("lame")
+24
+25 self.video_encoder = (
+26 gst.element_factory_make("ffenc_mpeg4") )
+27 self.muxer = gst.element_factory_make("ffmux_mp4")
+28 self.queue = gst.element_factory_make("queue")
+29
+audio-video track mixerdeveloping30
+31 videocap = gst.Caps("video/x-raw-yuv")
+32 self.capsFilter = gst.element_factory_make(
+33 "capsfilter")
+34 self.capsFilter.set_property("caps", videocap)
+35 # Converts the video from one colorspace to another
+36 self.colorSpace = gst.element_factory_make(
+37 "ffmpegcolorspace")
+38
+39 self.pipeline.add( self.videosrc,
+40 self. video_decodebin,
+41 self.capsFilter,
+42 self.colorSpace,
+43 self.video_encoder,
+44 self.muxer,
+45 self.filesink)
+46
+47 self.pipeline.add(self.audiosrc,
+48 self.audio_decodebin,
+49 self.audioconvert,
+50 self.audio_encoder,
+51 self.queue)
+52
+53 # Link audio elements
+54 gst.element_link_many(self.audiosrc,
+55 self.audio_decodebin)
+56 gst.element_link_many( self.audioconvert,
+57 self.audio_encoder,
+58 self.queue, self.muxer)
+59 #Link video elements
+60 gst.element_link_many(self.videosrc,
+61 self.video_decodebin)
+62 gst.element_link_many(self.capsFilter,
+63 self.colorSpace,
+64 self.video_encoder,
+65 self.muxer,
+66 self.filesink)
+</pre></div></li><li class="listitem">The audio and video file sources are defined by the elements<code class="literal"> self.audiosrc</code> and<code class="literal"> self.videosrc</code> respectively. These are connected to two separate<code class="literal"> decodebins</code> (see lines 54 and 59). The<code class="literal"> pad-added</code> signals of<code class="literal"> self.audio_decodebin</code> and<code class="literal"> self.video_decodebin</code> are connected in the<code class="literal"> connectSignals</code> method.<a id="id346" class="indexterm"/><p>The audio and video data then travels through a chain of audio and video processing elements respectively. The data is encoded by their respective encoders. The encoded data streams are combined so that the output video file contains both audio and video tracks. This job is done by the multiplexer, self.muxer. It is linked with the video encoder element. The audio data is streamed to the muxer through a queue element (line 57). The data is 'muxed' and fed to the filesink element, self.filesink. Note that the ffmpegcolorspace element and the capsfilter, self.capsfiter is not really required. In this case, the output video should have proper display format. You can try running this application by removing those two elements to see if it makes any difference.
+</p></li><li class="listitem">In the<code class="literal"> decodebin_pad_added</code> method, we will check a few extra things before linking the dynamic pads.<div class="informalexample"><pre class="programlisting">1 def decodebin_pad_added(self, decodebin, pad):
+2 compatible_pad = None
+3 caps = pad.get_caps()
+4 name = caps[0].get_name()
+5 print "\n cap name is =%s"%name
+6 if ( name[:5] == 'video' and
+7 (decodebin is self.video_decodebin) ):
+8 compatible_pad = (
+9 self.capsFilter.get_compatible_pad(pad, caps) )
+10 elif ( name[:5] == 'audio' and
+11 (decodebin is self.audio_decodebin) ):
+12 compatible_pad = (
+13 self.audioconvert.get_compatible_pad(pad, caps) )
+14
+15 if compatible_pad:
+16 pad.link(compatible_pad)
+</pre></div></li><li class="listitem">It could happen that each of the input files contains audio as well as video data. For example, both self.audiosrc and self.videosrc represent different video files with both audio and video data. The file self.audiosrc is linked to self.audio_decodebin. Thus, we should make sure that when the self.audio_decodebin generates a pad-added signal, the dynamic pad is linked only when its caps have audio data. On similar lines, the pad on self.video_decodebin is linked only when caps represent video data. This is ensured by the code block 6 13.</li><li class="listitem">Develop the rest of the code by reviewing file<code class="literal"> AudioVideoMixer.py</code>. Replace the paths represented by,<code class="literal"> self.audioInLocation, self.videoInLocation</code>, and<code class="literal"> self.outFileLocation</code> with appropriate paths on your computer and then run this utility as:<a id="id347" class="indexterm"/><div class="informalexample"><pre class="programlisting">$python AudioVideoMixer.py
+</pre></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: none">This should create an output video file in MP4 format that contains the audio and video tracks from the specified input files!</li></ul></div></li></ol></div><div class="section" title="What just happened?"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec16"/>What just happened?</h2></div></div></div><p>We developed a tool that mixes input audio and video tracks and stores them into a single output file. To accomplish this task we used most of the audio/video processing elements that were used in video conversion utility. We learned how to link the dynamic pads on<code class="literal"> decodebin</code> based on the streaming data represented by its 'caps'. The multiplexer plugin<code class="literal"> ffmux_mp4</code> element was used to put the audio and video data together.</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Saving video frames as images"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec15"/>Saving video frames as images</h1></div></div></div><p>Imagine that you have a wildlife video and it has recorded a very special moment. You would like to save this image. Let's learn how this can be achieved using the GStreamer framework.<a id="id348" class="indexterm"/>
+</p></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Time for action - saving video frames as images"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec16"/>Time for action -  saving video frames as images</h1></div></div></div><p>This file can be run from the command line as:</p><div class="informalexample"><pre class="programlisting">python ImagesFromVideo.py [options]
+</pre></div><p>Here the<code class="literal"> [options]</code> are:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">--input_file:</code> The full path to input video file from which one or more frames need to be captured and saved as images.</li><li class="listitem" style="list-style-type: disc"><code class="literal">--start_time:</code> The position in seconds on the video track. This will be the starting position from which one or more video frames will be captured as still image(s). The first snapshot will always be at<code class="literal"> start_time</code>.</li><li class="listitem" style="list-style-type: disc"><code class="literal">--duration:</code> The duration (in seconds) of the video track starting from the<code class="literal"> start_time</code>. 'N' number of frames will be captured starting from the<code class="literal"> start_time</code>.</li><li class="listitem" style="list-style-type: disc"><code class="literal">--num_of_captures:</code> Total number of frames that need to be captured from<code class="literal"> start_time</code> (including it) up to,<code class="literal"> end_time= start_time + duration</code> (but not including the still image at<code class="literal"> end_time)</code>.</li></ul></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">If not already done, download the file<code class="literal"> ImagesFromVideo.py</code> from the Packt website. Following is an outline of the code for saving video frames.<a id="id349" class="indexterm"/><div class="informalexample"><pre class="programlisting">import os, sys, time
+import thread
+import gobject
+import pygst
+pygst.require("0.10")
+import gst
+from optparse import OptionParser
+class ImageCapture:
+def __init__(self):
+pass
+def connectSignals(self):
+pass
+def constructPipeline(self):
+pass
+def gnonlin_pad_added(self, gnonlin_elem, pad):
+pass
+def captureImage(self):
+pass
+def capture_single_image(self, media_start_time):
+pass
+def message_handler(self, bus, message):
+pass
+def printUsage(self):
+pass
+def printFinalStatus(self, starttime, endtime):
+pass
+# Run the program
+imgCapture = ImageCapture()
+thread.start_new_thread(imgCapture.captureImage, ())
+gobject.threads_init()
+evt_loop = gobject.MainLoop()
+evt_loop.run()
+</pre></div></li><li class="listitem">The program execution starts by calling the captureImage method. The gnlfilesource element discussed in audio processing chapters will be used here to seek a particular frame on the streaming video. The capture_single_image does the main job of saving a single frame as an image. We will discuss some of these methods next.</li><li class="listitem">Let's start with the<code class="literal"> constructPipeline</code> method which defines and links various elements needed to capture the video frames.<a id="id350" class="indexterm"/><div class="informalexample"><pre class="programlisting">1 def constructPipeline(self):
+2 self.pipeline = gst.Pipeline()
+3 self.gnlfilesrc = (
+4 gst.element_factory_make("gnlfilesource") )
+5
+6 self.gnlfilesrc.set_property("uri",
+7 "file:///" + self.inFileLocation)
+8 self.colorSpace = gst.element_factory_make(
+9 "ffmpegcolorspace")
+10
+11 self.encoder= gst.element_factory_make("ffenc_png")
+12
+13 self.filesink = gst.element_factory_make("filesink")
+14
+15 self.pipeline.add(self.gnlfilesrc,
+16 self.colorSpace,
+17 self.encoder,
+18 self.filesink)
+19
+20 gst.element_link_many(self.colorSpace,
+21 self.encoder,
+22 self.filesink)
+</pre></div></li><li class="listitem">We already know how to create and connect the gnlfilesource element (called self.gnlfilesrc). In the examples we have seen so far, the encoder element used in a GStreamer pipeline encoded the streaming media data either in an audio or a video format. On line 11, we define a new encoder element that enables saving a particular frame in the streaming video as an image. In this example, we use the encoder ffenc_png to save the video frame as an image file with PNG file format. This plugin should be available by default in your GStreamer installation. If not, you will need to install it. There are similar plugins available to save the image in different file formats. For example, use jpegenc plugin to save it as a JPEG image and so on.<p>The self.gnlfilesrc uses dynamic pad, which is connected to an appropriate pad on ffmpegcolorspace discussed earlier. The self.colorspace element converts the color space and this video data is then encoded by the ffenc_png element. The self.filesink defines the location to save a particular video frame as an image.
+<a id="id351" class="indexterm"/>
+</p></li><li class="listitem">The<code class="literal"> captureImage</code> is the main controlling method. The overall structure is very similar to the audio conversion utility developer in<a class="link" href="ch05.html" title="Chapter 5. Working with Audios"> Chapter 5</a>,<span class="emphasis"><em> Working with Audios</em></span>. This method runs the top-level controlling loop to capture the frames specified as an argument to the program.<div class="informalexample"><pre class="programlisting">1 def captureImage(self):
+2 # Record start time
+3 starttime = time.clock()
+4
+5 # Note: all times are in nano-seconds
+6 media_end = self.media_start_time + self.media_duration
+7 start = self.media_start_time
+8 while start &lt; media_end:
+9 self.capture_single_image(start)
+10 start += self.deltaTime
+11
+12 endtime = time.clock()
+13 self.printFinalStatus(starttime, endtime)
+14 evt_loop.quit()
+</pre></div></li><li class="listitem">The method capture_single_image does the main job of saving each of these frames. The self.media_start_time defines the position on the streaming video from which this utility should start saving the video frames as images. This is specified as a command-line argument to this utility. The media_end variable defines the position on the video track at which the program should 'stop' capturing the still images (the video frames). The self.media_start_time is when the first video frame will be saved as an image. This is the initial value assigned to the local variable start, which is then incremented in the loop.<p>The while loop (lines 8-10) calls the capture_single_image method for each of the video frames we wish to save as an image. The self.deltaTime variable defines the incremental time steps for capturing video frames. Its value is determined in the constructor as follows:
+</p><div class="informalexample"><pre class="programlisting">self.deltaTime = int(self.media_duration / self.numberOfCaptures)
+</pre></div></li><li class="listitem">Here, self.numberOfCaptures is specified as an argument. If this argument is not specified, it will save only a single frame as an image. It is used to increment the variable start.</li><li class="listitem">Now, let's see what<code class="literal"> ImageCapture.capture_single_image</code> does. As the name suggests, its job is to save a single image corresponding to the video frame at<code class="literal"> media_start_time</code> in the streaming video.<a id="id352" class="indexterm"/><div class="informalexample"><pre class="programlisting">1 def capture_single_image(self, media_start_time):
+2 # Set media_duration as int as
+3 # gnlfilesrc takes it as integer argument
+4 media_duration = int(0.01*gst.SECOND)
+5
+6 self.gnlfilesrc.set_property("media-start",
+7 media_start_time)
+8 self.gnlfilesrc.set_property("media-duration",
+9 media_duration)
+10
+11 # time stamp in seconds, added to the name of the
+12 # image to be saved.
+13 time_stamp = float(media_start_time)/gst.SECOND
+14 outFile = os.path.join(self.outputDirPath,
+15 "still_%.4f.png"%time_stamp )
+16 print "\n outfile = ", outFile
+17 self.filesink.set_property("location", outFile)
+18 self.is_playing = True
+19 self.pipeline.set_state(gst.STATE_PLAYING)
+20 while self.is_playing:
+21 time.sleep(1)
+</pre></div></li><li class="listitem">The media_duration is set to a very small value (0.01 seconds), just enough to play the video frame at media_start_time. The media_start_time and media_duration used to set the properties of the gnlfilesource represented by self.gnlfilesrc. On line 14, the location of the output image file is specified. Note that the filename is appended with a timestamp that represents the time on the timeline of the streaming video, at which this snapshot was taken. After setting up the necessary parameter, the pipeline is 'started' on line 20 and will be played until the EOS message is posted on the bus, that is, when it finishes writing the output PNG file.<p>Review the remaining methods from the file ImagesFromVideo.py and then run this utility by specifying appropriate command-line arguments. The following screenshot shows sample output messages when the program is run from the console window.
+</p><div class="mediaobject"><img src="images/0165_07_04.jpg" alt="Time for action - saving video frames as images"/></div></li></ol></div><div class="section" title="What just happened?"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec17"/>What just happened?</h2></div></div></div><p>We developed a very useful application that can save specified frames in a streaming video as image files. To accomplish this, we re-used several of the GStreamer elements/plugins studied earlier. For example, elements such as<code class="literal"> gnlfilesource, ffmpegcolorspace</code>, and so on were used to construct the GStreamer pipeline. Additionally, we used an image encoder to save the video data in an image format.<a id="id353" class="indexterm"/>
+</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Summary"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec17"/>Summary</h1></div></div></div><p>We learned fundamentals of GStreamer API in previous chapters on audio processing.</p><p>In this chapter we moved one step further to develop some useful video processing utilities using Python and GStreamer. To accomplish this task, we learned about several new GStreamer plugins required for processing videos.</p><p>Specifically, we covered:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Pipeline that handles audio and video: We learned how to build a GStreamer pipeline that can handle both audio and video tracks from the input video file. This was used to 'play' a video file and it was also the basic pipeline used in several video-processing tools developed in this chapter.</li><li class="listitem" style="list-style-type: disc">Separating audio/video: With the help of example, we learned how to save an audio/video track of a video file into two different files.</li><li class="listitem" style="list-style-type: disc">Mixing audio/video: We wrote a program that can mix an audio and video stream into a single video file.</li><li class="listitem" style="list-style-type: disc">Video effects: How to adjust the properties such as brightness, contrast, and saturation for a streaming video.</li><li class="listitem" style="list-style-type: disc">Text overlay: We developed a utility that can add text, timestamp, and clock strings on the streaming video.</li><li class="listitem" style="list-style-type: disc">Still images from video: We learned how to save a video frame of a streaming video as an image.</li></ul></div><p>This concludes our discussion on video processing using Python and GStreamer. For the audio as well as video processing, we mostly developed various command-line tools. It gave us a good understanding of the use of the underlying components of a multimedia framework. There was no user interface component involved in our discussion. The default GUI appeared only while playing a video.</p><p>The focus of the next chapter will be on GUI-based audio and video applications.</p></div></div>
+</body></html>
