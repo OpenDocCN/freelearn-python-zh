@@ -1,4 +1,4 @@
-# 第一章 使用 Requests 与网络交互
+# 第一章：使用 Requests 与网络交互
 
 在这些现代日子里，从网络服务中读取数据和获取信息往往是一项至关重要的任务。每个人都知道**应用程序编程接口**（**API**）是如何让 Facebook 将“赞”按钮的使用推广到整个网络，并在社交通信领域占据主导地位的。它具有自己的特色，能够影响商业发展、产品开发和供应链管理。在这个阶段，学习一种有效处理 API 和打开网络 URL 的方法是当务之急。这将极大地影响许多网络开发过程。
 
@@ -96,7 +96,7 @@ print handler.getcode()
 print handler.headers.getheader('content-type')
 
 # ------
-# 200
+
 # 'application/json'
 
 ```
@@ -115,7 +115,7 @@ print r.status_code
 print r.headers['content-type']
 
 # ------
-# 200
+
 # 'application/json'
 
 ```
