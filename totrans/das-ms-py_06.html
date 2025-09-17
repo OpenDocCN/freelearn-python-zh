@@ -1,0 +1,459 @@
+<html><head></head><body>
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Parallel Processing</h1>
+                </header>
+            
+            <article>
+                
+<p>In the previous chapter, we created a text mode utility program and you learned about several of Python's built-in packages. In this chapter, we're going to see how to use both the high-level <kbd>concurrent.futures</kbd> package and the lower-level multiprocessing package to help us write parallel programs. Both are part of the Python standard library.</p>
+<p>We will cover the following two topics in detail:</p>
+<ul>
+<li>Using the <kbd>concurrent.futures</kbd> package</li>
+<li>Using multiprocessing packages</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Using the concurrent.futures package</h1>
+                </header>
+            
+            <article>
+                
+<p>In this section, we're focusing on <kbd>concurrent.futures</kbd>, the more abstract and easier to use of the two packages mentioned earlier. Our focus will be on the four main operations in <kbd>concurrent.futures</kbd>. We will then move on to the usage of future objects and end with the implications of the mechanism of data transfer between processes.</p>
+<p>Some programs are what we call CPU-bound, which means that the primary factor which determines how long the program takes to complete its tasks is how fast the computer can run through its instructions. Interestingly, most programs that we use on a daily basis are not CPU-bound. However, for those that are, we can often speed them up by breaking them into separate processes. </p>
+<p>This difference can be illustrated as follows:</p>
+<div class="packt_figure CDPAlignCenter CDPAlign"><img height="253" width="385" class="image-border" src="assets/c0524bf3-8935-496e-9b07-4930f8c11c05.jpg"/></div>
+<p>In the preceding figure, on the left-hand side, we have a CPU-bound program. It has many things to do, represented by circles and the speed of execution depends on how quickly the CPU can process. On the right-hand side, we have a program that is not CPU-bound, which means, most of the time, it is waiting for the execution.</p>
+<p>The processes can run simultaneously on different CPU cores or even on completely separate CPUs. This has the net effect of increasing the number of program instructors executed per second, which means that CPU-bound programs run faster than the programs that are not CPU-bound.</p>
+<p>In some programming languages, we can see the same benefit by running multiple threads for a single program. However, as I mentioned earlier, most programs are not CPU-bound, so the creators of Python have chosen to optimize Python's threading system for the common case, which has the side effect of making Python threads not very useful for improving the speed of CPU-bound programs.</p>
+<div class="packt_infobox">Besides, it's easier for the operating system to optimize the execution of multiple processes than multiple threads within a process. So, even if threading were a viable option, multiple processes would be a better choice for a CPU-bound program.</div>
+<p>We already saw one very low-level approach to launching a process and communicating with it in our discussion of the <kbd>subprocess</kbd> module (refer to the <em>Executing other programs with subprocess</em> section in <a href="b7c332de-4fe1-4482-886b-b4573aa0d997.xhtml" target="_blank"><span class="ChapterrefPACKT">Chapter 5</span></a>, <em>Making a Command-Line Utility</em>). However, for cases where the reason we want to do that is because our program is broken up into a bunch of cooperative processes that work together, Python provides us with a couple of higher-level toolkits that make things easier. The more abstract of Python's parallel processing toolkits is called <kbd>concurrent.futures</kbd>.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">The concurrent.futures module</h1>
+                </header>
+            
+            <article>
+                
+<p>The <kbd>concurrent.futures</kbd> module is designed for programs that can be structured with one controlling process and several worker processes, where the controlling process hands out jobs to worker processes and then collects and collates the results. The following simple code example of a CPU-bound task uses the <kbd>concurrent.futures</kbd> module:</p>
+<div class="CDPAlignCenter CDPAlign"><img height="349" width="417" class="aligncenter size-full wp-image-814 image-border" src="assets/58dd1edd-1850-42d9-b963-4cc77ef73e1b.jpg"/><br/></div>
+<p>That's a fairly generic model, especially, for CPU-bound programs. So, <kbd>concurrent.futures</kbd> is as widely applicable as it is simple to use, and the preceding code example shows that it is simple.</p>
+<p>The basic usage is to just import it, create a <kbd>ProcessPoolExecutor</kbd> object, and then call that object's <kbd>map</kbd> or <kbd>submit</kbd> methods to send work to the worker processes. When we're completely done with the <kbd>ProcessPoolExecutor</kbd> and we know we'll never need it again, we call its <kbd>shutdown</kbd> method or allow the <kbd>with</kbd> statement to do it for us. The <kbd>ProcessPoolExecutor</kbd> object will take care of all the twitchy little details of creating and communicating with the worker processes.</p>
+<p>Before going ahead with the <kbd>map</kbd> and <kbd>submit</kbd> methods, let's find out more about <kbd>ProcessPoolExecutor</kbd> and what it does.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Calling ProcessPoolExecutor</h1>
+                </header>
+            
+            <article>
+                
+<p>When we call the <kbd>ProcessPoolExecutor</kbd> map or submit methods (which we'll discuss later in this section), we're asking it to call a function with the given parameters. But we want that function call to happen inside a worker process. This has some implications that might not be obvious:</p>
+<ul>
+<li>First of all, it means that the function and its parameters need to be <strong>picklable</strong>, which is another way of saying that Python needs to know how to turn them into a byte string that it could send to the worker process.</li>
+</ul>
+<p style="padding-left: 60px">For functions, that basically means any function is OK, unless it was defined within the body of another function.</p>
+<p style="padding-left: 60px">For the parameters, it means that most objects will work, but generators and a few other kinds of special object can't be passed.</p>
+<div style="padding-left: 60px" class="packt_infobox">Being aware that both the function and the parameters passed to it can easily bring along information we didn't intend to send when they get pickled for communication to the worker processes is important.</div>
+<p style="padding-left: 60px">If any of the objects we sent to the <kbd>ProcessPoolExecutor</kbd> object references other objects, those objects get pickled up and sent too. It's entirely possible to end up sending most of the state of our program. That's particularly worth noting when the function we're asking to run is a method of an object.</p>
+<p style="padding-left: 60px">If the function is a method of an object, the whole object will get pickled and sent to the worker process, which means that the function call will be happening with a copy of the original object as its self-parameter, not the original object.</p>
+<ul>
+<li>Second, the return value of the function is pickled and returned to the controlling process. All of the warnings about passing parameters to the called function applied to the return value too.</li>
+</ul>
+<p style="padding-left: 60px">So, for example, if the function can't return a generator object and its return value contains references to a bunch of objects, copies of them will end up being sent to the controlling process.</p>
+<ul>
+<li>Third and finally, the <kbd>concurrent.futures</kbd> code that's running in the worker processes needs to be able to import the modules that our original code was loaded from.</li>
+</ul>
+<p style="padding-left: 60px">This means that we may need to use the <kbd>if __name__ == '__main__'</kbd> trick to keep the worker processes from getting stuck running complete copies of our program, when all they wanted to do was import the module and find the function we were asking to have run.</p>
+<p>We already saw the <kbd>map</kbd> method of <kbd>ProcessPoolExecutor</kbd> in our example, but let's look a little closer.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Using the map method</h1>
+                </header>
+            
+            <article>
+                
+<p>The <kbd>map</kbd> method takes a function as its first parameter. We can also pass it one or more intervals, which will be used to figure out the parameters for each call to the function:</p>
+<div class="CDPAlignCenter CDPAlign"><img height="171" width="292" class="aligncenter size-full wp-image-815 image-border" src="assets/89c49ec5-c2bc-4a44-abc0-940d117acad6.jpg"/></div>
+<p>Refer to the preceding code example, if we ask <kbd>pool</kbd> to map the <kbd>foo</kbd> function to the list <kbd>[1, 2, 3]</kbd> and <kbd>[4, 5, 6]</kbd>, the result is that the <kbd>foo</kbd> function will be called with <kbd>1</kbd> and <kbd>4</kbd> as its parameters, called again with <kbd>2</kbd> and <kbd>5</kbd> as its parameters, and called a third time with <kbd>3</kbd> and <kbd>6</kbd> as its parameters.</p>
+<div class="packt_infobox">There's no guarantee in which order these three calls will happen, though. After all, they're likely to each run in different processes and the relationship between process scheduling and wall-clock time is partly dependent on unpredictable factors.</div>
+<p>The <kbd>map</kbd> method hides that fact by waiting for all the calls to finish and produce the results, then returning an iterator over those results in the proper order.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Using the submit method</h1>
+                </header>
+            
+            <article>
+                
+<p>Sometimes, the <kbd>map</kbd> method is too simple. What if we want to handle the results as each worker produces them, instead of waiting for all the workers to get done? What if we decide not to run the function after all? What if we want to run different functions in worker processes at the same time? For that matter, what if we want to pass keyword arguments to the function? We could do all that and more using the <kbd>submit</kbd> method.</p>
+<p>Each call to the <kbd>submit</kbd> method translates to a single call to the function that we pass as the first parameter of the <kbd>submit</kbd> method. The rest of the parameters and keyword arguments we pass to <kbd>submit</kbd> are passed into the function after being sent to the worker process.</p>
+<p>Let's look at an example of the <kbd>submit</kbd> method in action:</p>
+<div class="CDPAlignCenter CDPAlign"><img height="355" width="420" class="aligncenter size-full wp-image-817 image-border" src="assets/f9f98218-0a01-4420-a855-8bfc340b363a.jpg"/></div>
+<p>So, for each time we call <kbd>submit</kbd>, one worker process calls one function with one set of parameters. The <kbd>submit</kbd> method does not wait for the worker process to finish running the function before returning. In fact, it doesn't even wait for the worker process to start running the function and so <kbd>submit</kbd> does not return the result of the called function. Instead, it returns a <kbd>future</kbd> object.</p>
+<div class="packt_infobox">A <kbd>future</kbd> object is in some sense an IOU for the result of the function. If we have a <kbd>future</kbd> object, we can use it to check whether the worker process has finished running the function to get the result returned by the function or even to set up a callback that will be called when the function finally does finish running. We can even use the <kbd>future</kbd> object to remove the function call from the queue of jobs that should be shared out to the worker.</div>
+<p>The <kbd>done</kbd> and <kbd>result</kbd> methods of a <kbd>future</kbd> object are the ones we'll use most often.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">The done and result methods</h1>
+                </header>
+            
+            <article>
+                
+<p>The <kbd>done</kbd> method returns <kbd>true</kbd> if the job is done and <kbd>false</kbd> if it's not. A job is done if it was cancelled, if it raised an exception, or if the job function has returned, as shown in the following code example:</p>
+<div class="CDPAlignCenter CDPAlign"><img height="278" width="307" class="aligncenter size-full wp-image-818 image-border" src="assets/27bcf882-7524-4194-9e91-6314d2d92c6a.jpg"/></div>
+<p>The <kbd>result</kbd> method returns the return value of the job function if it completed successfully. If the job function raised an exception instead of returning a value, the worker process will catch the exception and hand it back to the controlling process as the result of the job.</p>
+<p>In the preceding code example, calling the <kbd>result</kbd> method will re-raise the exception, so it can be handled properly.</p>
+<p class="mce-root"><strong>The timeout parameter</strong></p>
+<p>The timeout parameter is an important parameter in the <kbd>result</kbd> method. It is useful if we want to call the <kbd>result</kbd> method before the job is done.</p>
+<p>If we call the <kbd>result</kbd> method before the job function is done, then the <kbd>result</kbd> method will wait for the job to complete before it returns. This could be very useful, but sometimes we don't want to wait indefinitely. If the job isn't done quickly, we want to go on and do something else for a while.</p>
+<p>In such a case, we should pass the number of seconds we're willing to wait to the <kbd>timeout</kbd> parameter of the <kbd>result</kbd> method, as shown in the following code example:</p>
+<div class="CDPAlignCenter CDPAlign"><img height="356" width="332" class="aligncenter size-full wp-image-819 image-border" src="assets/c578c83f-35d8-45f7-964e-d791cab5bcce.jpg"/></div>
+<p>Along with the <kbd>timeout</kbd> parameter, we will add a <kbd>TimeoutError</kbd> exception. If the <kbd>timeout</kbd> parameter expires without a result being produced, a timeout error will be raised.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">The wait and as_completed functions</h1>
+                </header>
+            
+            <article>
+                
+<p>There is a pair of functions in the <kbd>concurrent.futures</kbd> package that let's wait on several futures at once. They're called <kbd>wait</kbd> and <kbd>as_completed</kbd>. The following code example represents the <kbd>wait</kbd> function:</p>
+<div class="CDPAlignCenter CDPAlign"><img height="275" width="448" class="aligncenter size-full wp-image-820 image-border" src="assets/0da427e6-d85c-428c-aa27-d30a7530a0d0.jpg"/></div>
+<p>The <kbd>wait</kbd> function waits until all the <kbd>futures</kbd> are ready to deliver the results or until a timeout expires. Then, it returns a set of <kbd>futures</kbd> that are done and a set of <kbd>futures</kbd> that aren't. In contrast, the <kbd>as_completed</kbd> function returns an iterator that produces <kbd>futures</kbd> one by one as they become ready to produce the results.</p>
+<p>In rare cases, the <kbd>done</kbd> and <kbd>result</kbd> methods of future and the <kbd>wait</kbd> and <kbd>as_completed</kbd> functions of the <kbd>concurrent.futures</kbd> package aren't sufficient to let a program process futures at the proper times.</p>
+<p>For those occasions, it's possible to have the <kbd>future</kbd> call a function when the result becomes available. We can do that by passing a function into the <kbd>add done callback</kbd> method of <kbd>future</kbd>.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">The add done callback function</h1>
+                </header>
+            
+            <article>
+                
+<p>The <kbd>future</kbd> object will remember that function and when the <kbd>job</kbd> function is done, the <kbd>callback</kbd> function will be called with the <kbd>future</kbd> object as its only parameter. The code in the <kbd>callback</kbd> function can then call the future's <kbd>result</kbd> method to get the return value or exception that the job produced.</p>
+<div class="packt_infobox">The <kbd>callback</kbd> function will always be called in the controlling process, but it might not be called in the same thread as the main part of the program.</div>
+<p>When we use <kbd>add done callback</kbd>, we need to be careful of thread synchronization issues, which is a big reason to prefer the <kbd>wait</kbd> or <kbd>as_completed</kbd> functions when possible. The <kbd>future</kbd> objects also have a <kbd>cancel</kbd> method.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">The cancel method</h1>
+                </header>
+            
+            <article>
+                
+<p>The <kbd>cancel</kbd> method tries to tell the system that we don't want the call to happen after all (refer to the following code example):</p>
+<div class="CDPAlignCenter CDPAlign"><img height="256" width="315" class="aligncenter size-full wp-image-821 image-border" src="assets/2d1acd3f-7c47-4b19-8b6e-b1be11141176.jpg"/></div>
+<div class="CDPAlignCenter CDPAlign"/>
+<p>This code example is not guaranteed to work because if a worker process has already begun a job, that job is no longer cancellable.</p>
+<ul>
+<li>If the job connected to a <kbd>future</kbd> object can't be cancelled, the <kbd>cancel</kbd> method returns <kbd>false</kbd></li>
+<li>If the cancellation succeeded, the <kbd>cancel</kbd> method returns <kbd>true</kbd></li>
+</ul>
+<p>The <kbd>concurrent.futures</kbd> module is perfectly suited to farming out computational tasks to multiple processes to take advantage of the CPU power of multicore and multiprocessor computers. The <kbd>map</kbd>, <kbd>submit</kbd>, <kbd>wait</kbd>, and <kbd>as_completed</kbd> functions are usually all you need for that kind of task.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Using the multiprocessing packages</h1>
+                </header>
+            
+            <article>
+                
+<p>In the previous section, we saw that the <kbd>concurrent.futures</kbd> package makes it very simple to farm out computational jobs to worker processes. If the program we need doesn't fit into the <em>send out jobs and collect the results</em> model, we're probably better off working at a somewhat lower level of abstraction.</p>
+<p>So, let's now move on to look at another package that helps us handle multiprocess programs that don't fit that model, but the pieces are only partly independent of each other. From time to time, they need to pass information between themselves, not just back to the controlling process. We can't do that with <kbd>concurrent.futures</kbd> because it just doesn't fit into the model that <kbd>concurrent.futures</kbd> uses to describe parallel processing.</p>
+<p>Alternatively, what if we need to be able to cancel a job after a worker process has started running it? Again, that doesn't fit the <kbd>concurrent.futures</kbd> model. The <kbd>concurrent.futures</kbd> model is powerful, but its power is based in simplicity and so it's not too hard to imagine scenarios it can't handle.</p>
+<p>When we need to build our own model of how parallel processing should work, we can use the <kbd>multiprocessing</kbd> module as the foundation.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Process class in the multiprocessing module</h1>
+                </header>
+            
+            <article>
+                
+<p>The <kbd>multiprocessing</kbd> module contains a class called <kbd>Process</kbd> that represents the ability to run code in a separate process.</p>
+<p>Probably the simplest way to use the <kbd>Process</kbd> class is to subclass it and override the <kbd>run</kbd> method, which is the entry point for code in the other process, as shown in this code example:</p>
+<div class="CDPAlignCenter CDPAlign"><img height="145" width="269" class="aligncenter size-full wp-image-822 image-border" src="assets/acfdc246-1a84-427b-88e3-40cf06301d78.jpg"/></div>
+<p>In the preceding example, we created a specific kind of process that calculates some square numbers. Then, we created an instance and started running it. When we called <kbd>start</kbd>, the <kbd>multiprocessing</kbd> module did the necessary work to make sure that the <kbd>run</kbd> method was executed in a new process.</p>
+<div class="packt_infobox">By the way, all of the warnings we discussed in the  <kbd>concurrent.futures</kbd> module section (<em>Using the concurrent.futures package</em>) about pickling and importing modules applies to the <kbd>multiprocessing</kbd> module as well. When it comes to moving data between processes and importing code, they work in the same way.</div>
+<p>So far, we haven't seen anything that we couldn't do better with <kbd>concurrent.futures</kbd>, but it changes when we start using <strong>queues</strong>, <strong>pipes</strong>, and <strong>managers</strong>. Let's have a look at them in detail.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Queues</h1>
+                </header>
+            
+            <article>
+                
+<p>Queues are communication channels that are appropriate for one to many, many to one, and many to many communications between cooperating processes. Depending on how they're used, that makes them ideal for posting tasks to a worker process when we don't care which worker ends up doing the task and for collecting the results of multiple worker processes.</p>
+<p>Any process can put a picklable object into a queue and any process can remove the next available object from the queue.</p>
+<p>Queues are <strong>First In First Out</strong> (<strong>FIFO</strong>) data structures, which means that objects are removed from the queue in the same order that they're added. The <kbd>JoinableQueue</kbd> class adds a method, which allows a process to wait until the queue has been emptied by other processes. OK, let's take a closer look at <kbd>queue</kbd> objects:</p>
+<div class="CDPAlignCenter CDPAlign"><img height="270" width="302" class="aligncenter size-full wp-image-823 image-border" src="assets/f9b7dad3-fbba-429b-a5ff-6207cd0563f8.jpg"/></div>
+<p>Refer to the preceding code example; there are three methods that are primarily useful: <kbd>put</kbd>, <kbd>get</kbd>, and <kbd>get_nowait</kbd>.</p>
+<ul>
+<li>When we call <kbd>put</kbd>, an object is placed at the back of the queue.</li>
+<li>When we call <kbd>get</kbd>, an object is removed from the queue and returned, unless the queue is empty. If the queue is empty, the process that called <kbd>get</kbd> waits until it is able to remove and return an object, which will happen after some other process puts an object into the queue.</li>
+<li>When we call <kbd>get_nowait</kbd> on the other hand, it either removes and returns the object at the front of the queue or it raises a <kbd>q.empty</kbd> exception.</li>
+<li>Finally, we could pass a <kbd>timeout</kbd> parameter to the <kbd>get</kbd> method, in which case it will either remove and return an object within that many seconds or raise <kbd>q.empty</kbd>.</li>
+</ul>
+<p>We could pass queue objects around between processes by making them part of the process's initial data, or by sending them through pre-existing queues or pipes, or even by storing them in a manager. Queues are designed to be shared between processes. Moving on, let's look at pipes.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Pipes</h1>
+                </header>
+            
+            <article>
+                
+<p>Pipes are one-to-one communication channels. When we call a pipe, we get back a pair of objects that each serve as one end of the communication stream. If we give one end each to a pair of processes, they could send messages and data back and forth through the pipe.</p>
+<p>Each end of the pipe has the same methods. The interesting methods are <kbd>send</kbd>, <kbd>recv</kbd>, and <kbd>poll</kbd>. Consider the following code example:</p>
+<div class="CDPAlignCenter CDPAlign"><img height="157" width="330" class="aligncenter size-full wp-image-824 image-border" src="assets/a68fdf21-ed42-4702-bfda-1438352943e0.jpg"/></div>
+<p>In the preceding code example, we see these:</p>
+<ul>
+<li>The <kbd>send</kbd> method accepts an object as its parameter and sends it to the other endpoint.</li>
+<li>The <kbd>recv</kbd> method waits for something to be sent from the other endpoint, and then returns it.</li>
+<li>The <kbd>poll</kbd> method returns <kbd>true</kbd> if there's an object way to be received and <kbd>false</kbd> if there is not.</li>
+</ul>
+<p>The <kbd>poll</kbd> method can accept a <kbd>timeout</kbd> parameter. If we give it a number for the timeout and there's not currently anything waiting to be received, the <kbd>poll</kbd> function will wait for up to that many seconds for data to arrive and then return <kbd>true</kbd>. If no data arrives before the timeout expires, the <kbd>poll</kbd> method will return <kbd>false</kbd>.</p>
+<p>If we pass <kbd>None</kbd> as the <kbd>poll</kbd> method's <kbd>timeout</kbd> parameter, it will wait until data arrives before returning, no matter how long it takes. Like queue objects, pipe endpoints can be sent to other processes as they're launched or through other queues, pipes, and so on after the process is running.</p>
+<p>Using queues and pipes as the only connection between the processes is usually considered best because this maximizes the ability of the processes to work in parallel.</p>
+<p>If it's possible to organize a parallel program that way, it should be. If we find that we need to share some variables between several processes though, we can do it using a <kbd>Manager</kbd> object. Let's look at manager now.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Manager</h1>
+                </header>
+            
+            <article>
+                
+<p>A manager represents a special process with only one job-keeping track of the variables that other processes need.</p>
+<div class="packt_infobox">Accessing variables stored in a manager is much slower than accessing a process's local variables and it could lead to situations where processes trying to access variables at the same time slow each other down. On the other hand, if we actually need shared variables, at least the manager handles them correctly and as efficiently as possible.</div>
+<p>Now, managers can handle many types of data, but we're going to focus on their ability to store <strong>dictionaries</strong>, <strong>lists</strong>, and <strong>namespaces</strong>.</p>
+<p>Normally, when we send an object to another process, the other process actually gets a copy of that object; this means if the other process changes the object it receives, we don't see those changes in the original process.</p>
+<p>A manager lets us create objects that behave more like queues in that, if we send the object to another process and that process changes the object, we do see the changes in the original process or any other process that has access to the object. Consider this code example:</p>
+<div class="CDPAlignCenter CDPAlign"><img height="257" width="295" class="aligncenter size-full wp-image-825 image-border" src="assets/b9f18527-af52-4092-b5e2-e7ed732799f3.jpg"/></div>
+<p>The <kbd>manager.dict()</kbd> and <kbd>manager.list()</kbd> methods in the preceding code example create special dictionaries or lists that could be shared between processes. The <kbd>Namespace</kbd> method, which does indeed start with a capital <kbd>N</kbd>, creates a more generic shared object on which we can set attributes to share them between processes.</p>
+<p>When we have shared data that is being accessed by multiple streams of execution, which is exactly what manager provides, we have to be careful to keep the data access synchronized. To help with that, managers can also create some standard synchronization primitives, such as <strong>locks</strong>, <strong>events</strong>, <strong>conditions</strong>, and <strong>semaphores</strong>.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">The lock object</h1>
+                </header>
+            
+            <article>
+                
+<p>Lock objects are the simplest of the synchronization tools. They have a pair of methods called <kbd>acquire</kbd> and <kbd>release</kbd>, as shown in the following code example:</p>
+<div class="CDPAlignCenter CDPAlign"><img height="133" width="222" class="aligncenter size-full wp-image-826 image-border" src="assets/2c60f959-8294-44be-92af-dbc13647b3e7.jpg"/></div>
+<p>After a process calls <kbd>acquire</kbd>, any other process that calls <kbd>acquire</kbd> is forced to wait until the first process calls <kbd>release</kbd>. Then, the <kbd>acquire</kbd> call in one of the waiting processes returns, allowing that process to proceed. In other words, code between an <kbd>acquire</kbd> call and <kbd>release</kbd> call can count on being the only code accessing whatever data the <kbd>lock</kbd> object is protecting.</p>
+<div class="packt_infobox">Notice that the <kbd>lock</kbd> object doesn't know what data it's protecting. It's up to us as programmers to define and respect that association in our own minds.</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">The event object</h1>
+                </header>
+            
+            <article>
+                
+<p>Event objects allow a process to proceed immediately if a flag is <kbd>true</kbd> or wait until the flag becomes <kbd>true</kbd>.</p>
+<p>The flag is set to <kbd>false</kbd> by calling the <kbd>event.clear</kbd> method or <kbd>true</kbd> by calling its <kbd>event.set</kbd> method, as shown in this code example:</p>
+<div class="CDPAlignCenter CDPAlign"><img height="144" width="221" class="aligncenter size-full wp-image-827 image-border" src="assets/b6ddd297-0f66-4310-92e6-ad047ed3bc20.jpg"/></div>
+<p>When we call the <kbd>event.wait</kbd> method, it will return immediately if the flag is <kbd>true</kbd> else it will pause execution until another process calls <kbd>set</kbd> and then return.</p>
+<p>Event objects are useful for making a process pause until some specific thing happens.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">The condition object</h1>
+                </header>
+            
+            <article>
+                
+<p>The condition objects combine some of the features of <kbd>lock</kbd> and <kbd>event</kbd> objects. Like a <kbd>lock</kbd>, they have <kbd>acquire</kbd> and <kbd>release</kbd> methods that can be used to protect data from simultaneous access.</p>
+<p>However, a <kbd>condition</kbd> object also has a <kbd>wait</kbd> method and a <kbd>notify</kbd> method, which can be used to wait until some other process does something and to wake up a waiting process as shown in the following code example:</p>
+<div class="CDPAlignCenter CDPAlign"><img height="300" width="261" class="aligncenter size-full wp-image-829 image-border" src="assets/da130d6e-6844-4625-acac-7ceb901e14ec.jpg"/></div>
+<p>Condition objects are useful for creating data structures that synchronize access to their contents and wait when they don't have any data to return. The <kbd>get</kbd> and <kbd>put</kbd> methods of the <kbd>queue</kbd> class could be implemented using a <kbd>condition</kbd> object.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">The semaphore object</h1>
+                </header>
+            
+            <article>
+                
+<p>The <kbd>semaphore</kbd> objects look a lot like <kbd>lock</kbd> objects. The difference is that, where the <kbd>lock</kbd> objects always ensured that exactly one process has acquired the lock at a given time, <kbd>semaphore</kbd> objects ensure that no more than a fixed number of processes can acquire it at the same time.</p>
+<p>This can be seen using the following code example:</p>
+<div class="CDPAlignCenter CDPAlign"><img height="161" width="264" class="aligncenter size-full wp-image-830 image-border" src="assets/8333a564-780c-4c21-b85f-ca4a10dfe265.jpg"/></div>
+<p>This is useful for doing things such as limiting the number of worker processes that can access the hard disk at the same time.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Summary</h1>
+                </header>
+            
+            <article>
+                
+<p>In this chapter, you learned how to use <kbd>concurrent.futures</kbd> to make a particularly common multiprocess case extremely simply. We also saw how to use the <kbd>multiprocessing</kbd> package to define what worker processes do and how they interact.</p>
+<p>So, now we know quite a lot about how to help CPU-bound programs take advantage of multicore and multiprocessor hardware to run faster. Most programs aren't CPU-bound though, they're I/O-bound, which means they spend most of their time waiting for input from various sources. Parallel processing doesn't help in that situation, but asynchronous I/O does, and that's the topic for our next chapter.</p>
+
+
+            </article>
+
+            
+        </section>
+    </body></html>
