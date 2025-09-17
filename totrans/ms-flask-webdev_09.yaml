@@ -1,7 +1,9 @@
 - en: Creating Asynchronous Tasks with Celery
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 使用 Celery 创建异步任务
 - en: While creating web apps, it is vital to keep the time taken to process a request
     below or around 50 ms. On web applications or web services that have a medium
     to high rate of requests per second, response time becomes even more paramount.
@@ -10,54 +12,80 @@
     server that can be avoided, should be avoided. However, it is quite common to
     have requirements to operations in a web app that take longer than a couple of
     seconds, especially when complex database operations or image processing are involved.
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: 在创建 Web 应用时，保持处理请求所需的时间低于或大约 50 毫秒至关重要。在每秒请求率中等到高的 Web 应用或 Web 服务中，响应时间变得更加重要。想象一下请求就像需要至少以与流速相同的速度处理的液体流，否则就会溢出。任何可以避免的服务器上的额外处理都应该避免。然而，在
+    Web 应用中，对需要超过几秒钟的操作的要求相当常见，尤其是在涉及复杂的数据库操作或图像处理时。
 - en: In building an application that is able to scale horizontally, it should be
     possible to decouple all the heavy processing procedures from the web server's
     layer, and couple them to a worker's layer that can independently scale itself.
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: 在构建一个能够水平扩展的应用时，应该能够将所有重型处理过程从 Web 服务器层解耦，并将它们耦合到一个可以独立扩展自己的工作层。
 - en: To protect our user experience and site reliability, a task queue named Celery
     will be used to move these operations out of the Flask process.
+  id: totrans-3
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了保护我们的用户体验和网站可靠性，将使用名为 Celery 的任务队列将这些操作从 Flask 进程中移出。
 - en: 'In this chapter, we will cover the following topics:'
+  id: totrans-4
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，我们将涵盖以下主题：
 - en: Using Docker to run RabbitMQ and Redis
+  id: totrans-5
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 使用 Docker 运行 RabbitMQ 和 Redis
 - en: Celery and Flask integration
+  id: totrans-6
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: Celery 和 Flask 集成
 - en: Learning to identify processes that should run outside the web server
+  id: totrans-7
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 学习识别应该在 Web 服务器外部运行的进程
 - en: Creating and calling several types of tasks from simple asynchronous to complex
     workflows
+  id: totrans-8
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 从简单的异步任务到复杂的流程创建和调用多种类型的任务
 - en: Using Celery as a scheduler with beats
+  id: totrans-9
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 将 Celery 作为带有 beats 的调度器使用
 - en: What is Celery?
+  id: totrans-10
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 什么是 Celery？
 - en: '**Celery** is an asynchronous task queue written in Python. Celery runs multiple
     tasks, which are user-defined functions, concurrently, through the Python multiprocessing
     library. Celery receives messages that tell it to start a task from a **broker**,
     which is usually called a message queue, as shown in the following diagram:'
+  id: totrans-11
   prefs: []
   type: TYPE_NORMAL
+  zh: '**Celery** 是一个用 Python 编写的异步任务队列。Celery 通过 Python 的多进程库并发运行多个任务，这些任务是由用户定义的函数。Celery
+    从一个称为 **broker** 的消息队列接收消息，以启动任务，通常称为消息队列，如下面的图所示：'
 - en: '![](img/bcdd964a-f516-4b59-b8cd-3e4392304658.png)'
+  id: totrans-12
   prefs: []
   type: TYPE_IMG
+  zh: '![图片](img/bcdd964a-f516-4b59-b8cd-3e4392304658.png)'
 - en: A **message queue** is a system specifically designed to send data between producer
     processes and consumer processes. **Producer processes** are any programs that
     create messages to be sent to the queue, and **consumer processes** are any programs
@@ -71,8 +99,12 @@
     difference is like the difference between **AJAX** and **WebSockets**, in that AJAX
     requires constant contact with the server, while WebSockets are just a continuous
     bidirectional communication stream.
+  id: totrans-13
   prefs: []
   type: TYPE_NORMAL
+  zh: '**消息队列** 是一个专门设计用来在生产者进程和消费者进程之间发送数据的系统。**生产者进程** 是任何创建要发送到队列的消息的程序，而 **消费者进程**
+    是任何从队列中取出消息的程序。从生产者发送的消息存储在一个 **先进先出**（**FIFO**）队列中，其中最早的项目首先被检索。消息存储直到消费者接收消息，之后消息被删除。消息队列提供实时消息，不依赖于轮询，这意味着持续检查进程的状态。当消息从生产者发送时，消费者正在监听它们与消息队列的连接以获取新消息；消费者不是不断联系队列。这种差异类似于
+    **AJAX** 和 **WebSockets** 之间的差异，AJAX 需要持续与服务器保持联系，而 WebSockets 只是一个双向的持续通信流。'
 - en: It is possible to replace the message queue with a traditional database. Celery
     even comes with built-in support for SQLAlchemy to allow this. However, using
     a database as a broker for Celery is highly discouraged. Using a database in place
@@ -81,147 +113,220 @@
     making lots of reads goes up quickly. Under medium loads, using a database requires
     the producer to make lots of writes to the database at the same time as the consumer
     is reading.
+  id: totrans-14
   prefs: []
   type: TYPE_NORMAL
+  zh: 可以用传统的数据库替换消息队列。Celery甚至内置了对SQLAlchemy的支持，以允许这样做。然而，使用数据库作为Celery的代理被高度不建议。用数据库代替消息队列需要消费者不断轮询数据库以获取更新。此外，由于Celery使用多进程进行并发，进行大量读取的连接数量会迅速增加。在中等负载下，使用数据库需要生产者在消费者读取的同时对数据库进行大量写入。
 - en: 'It is also possible to use a message queue as a broker and a database to store
     the results of the tasks. In the preceding diagram, the message queue was used
     for sending task requests and task results. However, using a database to store
     the end result of the task allows the final product to be stored indefinitely,
     whereas the message queue will throw out the data as soon as the producer receives
     the data, as shown in the following diagram:'
+  id: totrans-15
   prefs: []
   type: TYPE_NORMAL
+  zh: 还可以使用消息队列作为代理和数据库来存储任务的结果。在上面的图中，消息队列用于发送任务请求和任务结果。然而，使用数据库存储任务最终结果允许最终产品无限期地存储，而消息队列将在生产者接收数据后立即丢弃数据，如下面的图所示：
 - en: '![](img/03a68834-f6ae-4b8f-aa49-36634765da94.png)'
+  id: totrans-16
   prefs: []
   type: TYPE_IMG
+  zh: '![图片](img/03a68834-f6ae-4b8f-aa49-36634765da94.png)'
 - en: This database is often a key/value NoSQL store to help handle the load. This
     is useful if you plan on doing analytics on previously run tasks, but otherwise
     it's safer to just stick with the message queue.
+  id: totrans-17
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个数据库通常是一个键/值NoSQL存储，有助于处理负载。如果你计划对之前运行的任务进行数据分析，这很有用，但否则，坚持使用消息队列会更安全。
 - en: There is even an option to drop the results of tasks entirely, and not have
     the results returned at all. This has the downside that the producer has no way
     of knowing if a task was successful or not, but often, this is permissible in
     smaller projects.
+  id: totrans-18
   prefs: []
   type: TYPE_NORMAL
+  zh: 甚至有一个选项可以完全丢弃任务的结果，并且根本不返回结果。这的缺点是生产者无法知道任务是否成功，但在较小的项目中，这通常是可接受的。
 - en: For our stack, we will use RabbitMQ as the message broker. RabbitMQ runs on
     all major operating systems and is very simple to be set up and run. Celery also
     supports RabbitMQ without any extra libraries, and is the recommended message
     queue in the Celery documentation.
+  id: totrans-19
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于我们的堆栈，我们将使用RabbitMQ作为消息代理。RabbitMQ运行在所有主要操作系统上，并且非常简单易设置和运行。Celery也支持RabbitMQ，无需任何额外库，并且在Celery文档中被推荐为消息队列。
 - en: At the time of writing, there is no way to use RabbitMQ with Celery in Python
     3\. You can use Redis, however, instead of RabbitMQ. The only difference will
     be the connection strings. For more information, see [http://docs.celeryproject.org/en/latest/getting-started/brokers/redis.html](http://docs.celeryproject.org/en/latest/getting-started/brokers/redis.html).
+  id: totrans-20
   prefs: []
   type: TYPE_NORMAL
+  zh: 在撰写本文时，无法在Python 3中使用RabbitMQ与Celery结合。然而，你可以使用Redis来替代RabbitMQ。唯一的区别将是连接字符串。更多信息，请参阅[http://docs.celeryproject.org/en/latest/getting-started/brokers/redis.html](http://docs.celeryproject.org/en/latest/getting-started/brokers/redis.html)。
 - en: Setting up Celery and RabbitMQ
+  id: totrans-21
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 设置Celery和RabbitMQ
 - en: 'To install Celery on our `virtualenv`, we need to add it to our `requirements.txt` file:'
+  id: totrans-22
   prefs: []
   type: TYPE_NORMAL
+  zh: 要在我们的`virtualenv`上安装Celery，我们需要将其添加到我们的`requirements.txt`文件中：
 - en: '[PRE0]'
+  id: totrans-23
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: As always, use the provided `init.sh` script, or use the procedure explained here to
     create and install all dependencies on a Python virtual environment.
+  id: totrans-24
   prefs: []
   type: TYPE_NORMAL
+  zh: 如往常一样，使用提供的`init.sh`脚本，或者使用这里解释的步骤在Python虚拟环境中创建和安装所有依赖项。
 - en: 'We will also need a Flask extension to help handle the initialization of Celery:'
+  id: totrans-25
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们还需要一个Flask扩展来帮助处理Celery的初始化：
 - en: '[PRE1]'
+  id: totrans-26
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: The Flask documentation states that Flask extensions for Celery are unnecessary.
     However, getting the Celery server to work with Flask's application context, when
     your app is organized with an application factory, is significant. So, we will
     use `Flask-Celery-Helper` to do the heavy lifting.
+  id: totrans-27
   prefs: []
   type: TYPE_NORMAL
+  zh: Flask文档指出，Flask扩展对于Celery是不必要的。然而，当你的应用使用应用工厂组织时，使Celery服务器与Flask的应用上下文协同工作是很重要的。因此，我们将使用`Flask-Celery-Helper`来完成这项繁重的工作。
 - en: 'Next, RabbitMQ needs to be up and running. To do this easily, we will use a
     Docker container. Make sure you have Docker installed and properly set up; if
     not, then check out [Chapter 1](2d7573ed-1b2f-48df-9fac-9423d3f1cd51.xhtml), *Getting
     Started*, for instructions. First, we will need a very simple Dockerfile:'
+  id: totrans-28
   prefs: []
   type: TYPE_NORMAL
+  zh: 接下来，RabbitMQ 需要启动并运行。为了轻松完成此操作，我们将使用 Docker 容器。请确保您已安装并正确设置了 Docker；如果没有，请查看[第
+    1 章](2d7573ed-1b2f-48df-9fac-9423d3f1cd51.xhtml)，*入门*，以获取说明。首先，我们需要一个非常简单的 Dockerfile：
 - en: '[PRE2]'
+  id: totrans-29
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: This is all it takes to build and run a RabbitMQ Docker image with the management
     interface. We are using a Docker Hub image that is available for download at [https://hub.docker.com/_/rabbitmq/](https://hub.docker.com/_/rabbitmq/).
     Visit the Hub page for further configuration details.
+  id: totrans-30
   prefs: []
   type: TYPE_NORMAL
+  zh: 构建和运行带有管理界面的 RabbitMQ Docker 镜像只需要这些步骤。我们使用的是 Docker Hub 上的镜像，您可以在[https://hub.docker.com/_/rabbitmq/](https://hub.docker.com/_/rabbitmq/)下载。访问
+    Hub 页面以获取更多配置细节。
 - en: 'Next, let''s build our image issue the following command:'
+  id: totrans-31
   prefs: []
   type: TYPE_NORMAL
+  zh: 接下来，让我们构建我们的镜像，执行以下命令：
 - en: '[PRE3]'
+  id: totrans-32
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: 'The `-t` flag is used to tag our image with a friendly name; in this case, `blog-rmq`.
     Then run the newly created image in the background using the following command:'
+  id: totrans-33
   prefs: []
   type: TYPE_NORMAL
+  zh: '`-t` 标志用于给我们的镜像添加一个友好的名称；在这种情况下，`blog-rmq`。然后使用以下命令在后台运行新创建的镜像：'
 - en: '[PRE4]'
+  id: totrans-34
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: The `-d` flag is to run the container in the background (daemon). The `-p` flag
     is for port mapping between the container and our host/desktop.
+  id: totrans-35
   prefs: []
   type: TYPE_NORMAL
+  zh: '`-d` 标志用于在后台（守护进程）运行容器。`-p` 标志用于容器和我们的主机/桌面之间的端口映射。'
 - en: 'Let''s check if it''s properly running:'
+  id: totrans-36
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们检查它是否正常运行：
 - en: '[PRE5]'
+  id: totrans-37
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: Let's check out the RabbitMQ management interface. In your browser, navigate
     to `http://localhost:15672` and log in using the configured credentials set up
     on the Dockerfile. In this case, our username is `rabbitmq`, and our password
     is also `rabbitmq`.
+  id: totrans-38
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们来看看 RabbitMQ 的管理界面。在您的浏览器中，导航到 `http://localhost:15672` 并使用 Dockerfile 上配置的凭据登录。在这种情况下，我们的用户名是
+    `rabbitmq`，密码也是 `rabbitmq`。
 - en: If you need more information, RabbitMQ maintains a detailed list of installation
     and configuration instructions for each operating system at [https://www.rabbitmq.com/download.html](https://www.rabbitmq.com/download.html).
+  id: totrans-39
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果您需要更多信息，RabbitMQ 在 [https://www.rabbitmq.com/download.html](https://www.rabbitmq.com/download.html)
+    维护了针对每个操作系统的详细安装和配置说明列表。
 - en: 'After RabbitMQ is installed, go to a Terminal window and run the following
     command:'
+  id: totrans-40
   prefs: []
   type: TYPE_NORMAL
+  zh: 安装 RabbitMQ 后，打开一个终端窗口并运行以下命令：
 - en: '[PRE6]'
+  id: totrans-41
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: Creating tasks in Celery
+  id: totrans-42
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 在 Celery 中创建任务
 - en: As stated before, Celery tasks are just user-defined functions that perform
     some operations. But before any tasks can be written, our Celery object needs
     to be created. This is the object that the Celery server will import to handle
     running and scheduling all of the tasks.
+  id: totrans-43
   prefs: []
   type: TYPE_NORMAL
+  zh: 如前所述，Celery 任务只是执行某些操作的用户定义函数。但在编写任何任务之前，我们的 Celery 对象需要被创建。这是 Celery 服务器将导入以处理运行和调度所有任务的对象。
 - en: 'At a bare minimum, Celery needs one configuration variable to run, and that
     is the connection to the message broker. The connection is defined the same as
     the SQLAlchemy connection; that is, as a URL. The backend, which stores our tasks''
     results, is also defined as a URL, as shown in the following code:'
+  id: totrans-44
   prefs: []
   type: TYPE_NORMAL
+  zh: 至少，Celery 需要一个配置变量来运行，那就是连接到消息代理。连接的定义方式与 SQLAlchemy 连接相同；也就是说，作为一个 URL。存储我们任务结果的后端也被定义为
+    URL，如下面的代码所示：
 - en: '[PRE7]'
+  id: totrans-45
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: 'In the `__init__.py` file, the `Celery` class from `Flask-Celery-Helper` will
     be initialized:'
+  id: totrans-46
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 `__init__.py` 文件中，将初始化来自 `Flask-Celery-Helper` 的 `Celery` 类：
 - en: '[PRE8]'
+  id: totrans-47
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: 'So, in order for our Celery process to work with the database and any other
     Flask extensions, it needs to work within our application context. In order to
     do so, Celery will need to create a new instance of our application for each process.
@@ -229,347 +334,513 @@
     and register our Celery instance on it. In a new file, named `celery_runner.py`,
     in the top-level directory—the same location where `manage.py` resides—we have
     the following:'
+  id: totrans-48
   prefs: []
   type: TYPE_NORMAL
+  zh: 因此，为了使我们的 Celery 进程能够与数据库和任何其他 Flask 扩展一起工作，它需要在我们的应用程序上下文中运行。为此，Celery 需要为每个进程创建我们应用程序的新实例。像大多数
+    Celery 应用程序一样，我们需要一个 Celery 工厂来创建应用程序实例并在其上注册我们的 Celery 实例。在一个名为 `celery_runner.py`
+    的新文件中，位于顶级目录——与 `manage.py` 所在的位置相同——我们有以下内容：
 - en: '[PRE9]'
+  id: totrans-49
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: The `make_celery` function wraps every call to each Celery task in a Python
     `with` block. This makes sure that every call to any Flask extension will work
     as it is working with our app. Also, make sure not to name the Flask app instance
     `app`, as Celery tries to import any object named `app` or `celery` as the Celery
     application instance. So naming your Flask object `app` will cause Celery to try
     to use it as a Celery object.
+  id: totrans-50
   prefs: []
   type: TYPE_NORMAL
+  zh: '`make_celery`函数将每个Celery任务的调用都包装在Python的`with`块中。这确保了每次调用任何Flask扩展都将像与我们的应用程序一起工作一样工作。同时，确保不要将Flask应用程序实例命名为`app`，因为Celery试图将任何名为`app`或`celery`的对象导入为Celery应用程序实例。所以将你的Flask对象命名为`app`会导致Celery试图将其用作Celery对象。'
 - en: 'Now we can write our first task. It will be a simple task to start with; one
     that just returns any string passed to it. We have a new file in the blog module
     directory, named `tasks.py`. In this file, find the following:'
+  id: totrans-51
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在我们可以编写我们的第一个任务了。它将是一个简单的任务；一个只返回传递给它的任何字符串的任务。我们在博客模块目录中有一个新文件，名为`tasks.py`。在这个文件中，找到以下内容：
 - en: '[PRE10]'
+  id: totrans-52
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: 'Now, the final piece of the puzzle is to run the Celery process, which is called
     a **worker**, in a new Terminal window. Again, this is the process that will be
     listening to our message broker for commands to start new tasks:'
+  id: totrans-53
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，最后一部分是要在一个新的终端窗口中运行Celery进程，这被称为**工作进程**。同样，这是将监听我们的消息代理以接收启动新任务的命令的过程：
 - en: '[PRE11]'
+  id: totrans-54
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: The `loglevel` flag is there, so you will see the confirmation that a task was
     received, and its output was available, in the Terminal window.
+  id: totrans-55
   prefs: []
   type: TYPE_NORMAL
+  zh: '`loglevel`标志在那里，所以你会在终端窗口中看到任务已被接收，并且其输出可用的确认信息。'
 - en: 'Now, we can send commands to our Celery worker. Open a Flask shell session,
     as follows:'
+  id: totrans-56
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，我们可以向我们的Celery工作进程发送命令。打开Flask shell会话，如下所示：
 - en: '[PRE12]'
+  id: totrans-57
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: The function can be called as if it were any other function, and doing so will
     execute the function in the current process. However, calling the `delay` method
     on the task will send a message to the worker process to execute the function
     with the given arguments.
+  id: totrans-58
   prefs: []
   type: TYPE_NORMAL
+  zh: 函数可以被调用，就像它是任何其他函数一样，这样做将在当前进程中执行该函数。然而，在任务上调用`delay`方法将向工作进程发送消息，以使用给定的参数执行该函数。
 - en: 'In the Terminal window that is running the Celery worker, you should see something
     like the following:'
+  id: totrans-59
   prefs: []
   type: TYPE_NORMAL
+  zh: 在运行Celery工作进程的终端窗口中，你应该看到如下类似的内容：
 - en: '[PRE13]'
+  id: totrans-60
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: 'As with any asynchronous task, the `ready` method can be used to tell if the
     task has successfully been completed. If `True`, the `get` method can be used
     to retrieve the result of the tasks as follows:'
+  id: totrans-61
   prefs: []
   type: TYPE_NORMAL
+  zh: 与任何异步任务一样，可以使用`ready`方法来判断任务是否成功完成。如果为`True`，则可以使用`get`方法按如下方式检索任务的结果：
 - en: '[PRE14]'
+  id: totrans-62
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: The `get` method causes the current process to wait until the `ready` function
     returns `True` to retrieve the result. So, calling `get` immediately after calling
     the task essentially makes the task synchronous. Because of this, it's rather
     rare for tasks to actually return a value to the producer. The vast majority of
     tasks perform some operation and then exit.
+  id: totrans-63
   prefs: []
   type: TYPE_NORMAL
+  zh: '`get`方法会导致当前进程等待直到`ready`函数返回`True`以检索结果。因此，在调用任务后立即调用`get`实际上会使任务变为同步。正因为如此，任务实际上返回值给生产者的情况相当罕见。绝大多数任务执行一些操作然后退出。'
 - en: 'When a task is run on the Celery worker, the state of the task can be accessed
     via the `state` attribute. This allows for a more fine-grained understanding of
     what the task is currently doing in the worker process. The available states are
     as follows:'
+  id: totrans-64
   prefs: []
   type: TYPE_NORMAL
+  zh: 当在Celery工作进程中运行任务时，可以通过`state`属性访问任务的状态。这允许更细致地了解任务在工作进程中的当前操作。可用的状态如下：
 - en: '`FAILURE`: The task failed, and all of the retries failed as well.'
+  id: totrans-65
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`FAILURE`：任务失败，所有重试都失败了。'
 - en: '`PENDING`: The task has not yet been received by the worker.'
+  id: totrans-66
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`PENDING`：任务尚未被工作进程接收。'
 - en: '`RECEIVED`: The task has been received by the worker, but is not yet processing.'
+  id: totrans-67
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`RECEIVED`：任务已被工作进程接收，但尚未处理。'
 - en: '`RETRY`: The task failed and is waiting to be retried.'
+  id: totrans-68
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`RETRY`：任务失败，正在等待重试。'
 - en: '`REVOKED`: The task was stopped.'
+  id: totrans-69
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`REVOKED`：任务被停止。'
 - en: '`STARTED`: The worker has started processing the task.'
+  id: totrans-70
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`STARTED`：工作进程已经开始处理任务。'
 - en: '`SUCCESS`: The task was completed successfully.'
+  id: totrans-71
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`SUCCESS`：任务成功完成。'
 - en: 'In Celery, if a task fails, then the task can recall itself with the `retry`
     method, as follows:'
+  id: totrans-72
   prefs: []
   type: TYPE_NORMAL
+  zh: 在Celery中，如果任务失败，则任务可以使用`retry`方法调用自己，如下所示：
 - en: '[PRE15]'
+  id: totrans-73
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: 'The `bind` parameter in the decorator function tells Celery to pass a reference
     to the task object as the first parameter in the function. Using the `self` parameter,
     the `retry` method can be called, which will rerun the task with the same parameters.
     There are several other parameters that can be passed to the function decorator
     to change the behavior of the task:'
+  id: totrans-74
   prefs: []
   type: TYPE_NORMAL
+  zh: 装饰器函数中的 `bind` 参数告诉 Celery 将任务对象的引用作为函数的第一个参数传递。使用 `self` 参数，可以调用 `retry` 方法，这将使用相同的参数重新运行任务。还可以将几个其他参数传递给函数装饰器以改变任务的行为：
 - en: '`max_retries`: This is the maximum number of times the task can be retried
     before it is declared as failed.'
+  id: totrans-75
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`max_retries`：这是任务在被视为失败之前可以重试的最大次数。'
 - en: '`default_retry_delay`: This is the time in seconds to wait before running the
     task again. It''s a good idea to keep this at around a minute or so if you expect
     that the conditions that led to the task failing are transitory; for example,
     network errors.'
+  id: totrans-76
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`default_retry_delay`：这是在再次运行任务之前等待的时间（以秒为单位）。如果你预计导致任务失败的条件是暂时的，例如网络错误，那么将其保持在约一分钟左右是个好主意。'
 - en: '`rate_limit`: This specifies the total number of unique calls to this task
     that are allowed to run in a given interval. If the value is an integer, then
     it represents the total number of calls that this task that is allowed to run
     per second. The value can also be a string in the form of *x/m*,for *x* number
     of tasks per minute, or *x/h*, for *x* number of tasks per hour. For example,
     passing in *5/m* will only allow this task to be called five times a minute.'
+  id: totrans-77
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`rate_limit`：这指定了在给定间隔内允许运行此任务的总唯一调用次数。如果值是整数，则表示每秒允许此任务运行的调用次数总和。该值也可以是形式为
+    *x/m* 的字符串，表示每分钟 *x* 个任务，或 *x/h*，表示每小时 *x* 个任务。例如，传入 *5/m* 将只允许此任务每分钟被调用五次。'
 - en: '`time_limit`: If this is specified, then the task will be killed if it runs
     longer than the specified number of seconds.'
+  id: totrans-78
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`time_limit`：如果指定了此参数，则如果任务运行时间超过指定的秒数，则将其终止。'
 - en: '`ignore_result`: If the task''s return value isn''t used, then don''t send
     it back.'
+  id: totrans-79
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`ignore_result`：如果任务没有使用返回值，则不要将其发送回去。'
 - en: It's a good idea to specify all of these for each task to avoid any chance that
     a task will not be run.
+  id: totrans-80
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于每个任务指定所有这些参数是一个好主意，以避免任何任务可能不会运行的机会。
 - en: Running Celery tasks
+  id: totrans-81
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 运行 Celery 任务
 - en: 'The `delay` method is a shorthand version of the `apply_async` method, which
     is called in this format:'
+  id: totrans-82
   prefs: []
   type: TYPE_NORMAL
+  zh: '`delay` 方法是 `apply_async` 方法的简写版本，其调用格式如下：'
 - en: '[PRE16]'
+  id: totrans-83
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: 'However, the `args` keyword can be implicit, as shown here:'
+  id: totrans-84
   prefs: []
   type: TYPE_NORMAL
+  zh: 然而，`args` 关键字可以是隐式的，如下所示：
 - en: '[PRE17]'
+  id: totrans-85
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: 'Calling `apply_async` allows you to define some extra functionality in the
     task call that you cannot specify in the `delay` method. First, the `countdown`
     option specifies the amount of time in seconds that the worker, upon receiving
     the task, should wait before running it:'
+  id: totrans-86
   prefs: []
   type: TYPE_NORMAL
+  zh: 调用 `apply_async` 允许你在任务调用中定义一些在 `delay` 方法中无法指定的额外功能。首先，`countdown` 选项指定了工作员在接收到任务后应该等待多长时间（以秒为单位）再运行它：
 - en: '[PRE18]'
+  id: totrans-87
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: The `countdown` is not a guarantee that the task will be run after `600` seconds.
     The `countdown` option only says that the task is up for processing after *x*
     number of seconds. If all of the worker processes are busy with the other tasks,
     then it will not be run immediately.
+  id: totrans-88
   prefs: []
   type: TYPE_NORMAL
+  zh: '`countdown` 并不保证任务将在 `600` 秒后运行。`countdown` 选项仅表示任务在 *x* 秒后将可供处理。如果所有工作进程都忙于其他任务，则它不会立即运行。'
 - en: 'Another keyword argument that `apply_async` gives is the `eta` argument. `eta`
     is passed through a Python `datetime` object that specifies exactly when the task
     should be run. Again, `eta` is not reliable:'
+  id: totrans-89
   prefs: []
   type: TYPE_NORMAL
+  zh: '`apply_async` 提供的另一个关键字参数是 `eta` 参数。`eta` 通过 Python `datetime` 对象传递，指定任务应该运行的确切时间。同样，`eta`
+    不可靠：'
 - en: '[PRE19]'
+  id: totrans-90
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE19]'
 - en: Celery workflows
+  id: totrans-91
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: Celery 工作流
 - en: 'Celery provides many ways to group multiple, dependent tasks together, or to
     execute many tasks in parallel. These methods take a large amount of influence
     from language features found in functional programming languages. However, to
     understand how this works, we first need to understand signatures. Consider the
     following task:'
+  id: totrans-92
   prefs: []
   type: TYPE_NORMAL
+  zh: Celery 提供了许多方法来将多个依赖任务组合在一起，或者并行执行多个任务。这些方法在很大程度上受到了函数式编程语言中发现的语言特性的影响。然而，要理解这是如何工作的，我们首先需要了解签名。考虑以下任务：
 - en: '[PRE20]'
+  id: totrans-93
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE20]'
 - en: 'Let''s see a **signature** in action to understand it. Open up a Flask shell
     and enter the following:'
+  id: totrans-94
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们看看 **签名** 的实际应用来理解它。打开 Flask shell 并输入以下内容：
 - en: '[PRE21]'
+  id: totrans-95
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE21]'
 - en: Calling the signature (sometimes referred to as a **subtask**) of a task creates
     a function that can be passed to the other functions to be executed. Executing
     the signature, like the third to last line in the preceding example, executes
     the function in the current process, and not in the worker.
+  id: totrans-96
   prefs: []
   type: TYPE_NORMAL
+  zh: 调用一个任务的签名（有时称为**子任务**）创建一个可以传递给其他函数执行的函数。执行签名，就像前面示例中的倒数第三行，将在当前进程中执行函数，而不是在工作者进程中。
 - en: Partials
+  id: totrans-97
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 偏函数
 - en: 'The first application of task signatures is functional programming style partials.
     **Partials** are functions, which originally take many arguments, but an operation
     is applied to the original function to return a new function, so the first *n*
     arguments are always the same. Consider the following example, where we have a
     `multiply` function that is not a task:'
+  id: totrans-98
   prefs: []
   type: TYPE_NORMAL
+  zh: 任务签名首次应用是功能编程风格的偏函数。**偏函数**是函数，原本接受多个参数，但通过对一个原始函数应用操作来返回一个新的函数，因此前**n**个参数总是相同的。考虑以下示例，我们有一个`multiply`函数，它不是一个任务：
 - en: '[PRE22]'
+  id: totrans-99
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE22]'
 - en: 'This is a fictional API, but is very close to the Celery version:'
+  id: totrans-100
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是一个虚构的API，但非常接近Celery版本：
 - en: '[PRE23]'
+  id: totrans-101
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE23]'
 - en: The output in the worker window should show `16`. Basically, we created a new
     function, saved to partial, that will always multiply its input by four.
+  id: totrans-102
   prefs: []
   type: TYPE_NORMAL
+  zh: 工作者窗口中的输出应显示`16`。基本上，我们创建了一个新的函数，保存到偏函数中，该函数将始终将其输入乘以四。
 - en: Callbacks
+  id: totrans-103
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 回调
 - en: 'Once a task is completed, it is very common to run another task, based on the
     output of the previous task. To achieve this, the `apply_async` function has a
     `link` method, used as follows:'
+  id: totrans-104
   prefs: []
   type: TYPE_NORMAL
+  zh: 一旦任务完成，根据前一个任务的输出运行另一个任务是非常常见的。为了实现这一点，`apply_async`函数有一个`link`方法，用法如下：
 - en: '[PRE24]'
+  id: totrans-105
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE24]'
 - en: The worker output should show that both the `multiply` task and the `log` task
     returned `16`.
+  id: totrans-106
   prefs: []
   type: TYPE_NORMAL
+  zh: 工作者的输出应显示`multiply`任务和`log`任务都返回了`16`。
 - en: 'If you have a function that does not take input, or your callback does not
     need the result of the original method, then the task signature must be marked
     as immutable with the `si` method:'
+  id: totrans-107
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你有一个不接受输入的函数，或者你的回调不需要原始方法的返回结果，那么任务签名必须使用`si`方法标记为不可变：
 - en: '[PRE25]'
+  id: totrans-108
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE25]'
 - en: '**Callbacks** can be used to solve real-world problems. If we wanted to send
     a welcome email every time a task created a new user, then we could produce that
     effect with the following call:'
+  id: totrans-109
   prefs: []
   type: TYPE_NORMAL
+  zh: '**回调**可以用来解决实际问题。如果我们想在每次任务创建新用户时发送欢迎邮件，那么我们可以通过以下调用产生这种效果：'
 - en: '[PRE26]'
+  id: totrans-110
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE26]'
 - en: 'Partials and callbacks can be combined to produce some powerful effects:'
+  id: totrans-111
   prefs: []
   type: TYPE_NORMAL
+  zh: 偏函数和回调可以组合起来产生一些强大的效果：
 - en: '[PRE27]'
+  id: totrans-112
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE27]'
 - en: It's important to note that, if this call were saved and the `get` method was
     called on it, the result would be `16`, rather than `64`. This is because the
     `get` method does not return the results for callback methods. This will be solved
     with later methods.
+  id: totrans-113
   prefs: []
   type: TYPE_NORMAL
+  zh: 重要的是要注意，如果这个调用被保存，并且对其调用`get`方法，结果将是`16`，而不是`64`。这是因为`get`方法不会为回调方法返回结果。这个问题将在后续方法中得到解决。
 - en: Group
+  id: totrans-114
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 组
 - en: 'The `group` function takes a list of signatures and creates a callable function
     to execute all of the signatures in parallel, then returns a list of all of the
     results as follows:'
+  id: totrans-115
   prefs: []
   type: TYPE_NORMAL
+  zh: '`group`函数接受一个签名列表，创建一个可调用的函数来并行执行所有签名，然后返回所有结果，如下所示：'
 - en: '[PRE28]'
+  id: totrans-116
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE28]'
 - en: Chain
+  id: totrans-117
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 链
 - en: 'The `chain` function takes task signatures and passes the value of each result
     to the next value in the chain, returning one result, as follows:'
+  id: totrans-118
   prefs: []
   type: TYPE_NORMAL
+  zh: '`chain`函数接受任务签名并将每个结果的值传递给链中的下一个值，返回一个结果，如下所示：'
 - en: '[PRE29]'
+  id: totrans-119
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE29]'
 - en: 'Chains and partials can be taken a bit further. Chains can be used to create
     new functions when using partials, and chains can be nested as follows:'
+  id: totrans-120
   prefs: []
   type: TYPE_NORMAL
+  zh: 链和偏函数可以进一步扩展。链可以在使用偏函数时创建新函数，并且链可以嵌套，如下所示：
 - en: '[PRE30]'
+  id: totrans-121
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE30]'
 - en: Chord
+  id: totrans-122
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 和弦
 - en: 'The `chord` function creates a signature that will execute a `group` of signatures
     and pass the final result to a callback:'
+  id: totrans-123
   prefs: []
   type: TYPE_NORMAL
+  zh: '`chord`函数创建一个签名，将执行一组签名并将最终结果传递给回调：'
 - en: '[PRE31]'
+  id: totrans-124
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE31]'
 - en: Just like the link argument, the callback is not returned with the `get` method.
+  id: totrans-125
   prefs: []
   type: TYPE_NORMAL
+  zh: 就像链接参数一样，回调不会被`get`方法返回。
 - en: 'Using the `chain` syntax with a group and a callback automatically creates
     a chord signature:'
+  id: totrans-126
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用组和回调的`chain`语法会自动创建一个和弦签名：
 - en: '[PRE32]'
+  id: totrans-127
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE32]'
 - en: Running tasks periodically
+  id: totrans-128
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 定期运行任务
 - en: Celery also has the ability to call tasks periodically. For those familiar with
     *******nix** operating systems, this system is a lot like the command-line utility
     `cron`, but it has the added benefit of being defined in our source code rather
@@ -578,242 +849,366 @@
     13](380101ac-fb85-4e2e-b664-8d6de77928f4.xhtml), *Deploying Flask Apps*. In addition,
     all of the tasks are run within the application context, whereas a Python script
     called by `cron` would not be.
+  id: totrans-129
   prefs: []
   type: TYPE_NORMAL
+  zh: Celery 还具有定期调用任务的能力。对于那些熟悉 *******nix** 操作系统的人来说，这个系统很像命令行工具 `cron`，但它有一个额外的优点，即它在我们的源代码中定义，而不是在某个系统文件中定义。因此，当我们的代码准备好发布到生产环境时——我们将在这个[第13章](380101ac-fb85-4e2e-b664-8d6de77928f4.xhtml)达到这个阶段——*部署
+    Flask 应用程序*，这将更容易更新我们的代码。此外，所有任务都在应用程序上下文中运行，而由 `cron` 调用的 Python 脚本则不是。
 - en: 'To add periodic tasks, add the following to the `DevConfig` configuration object:'
+  id: totrans-130
   prefs: []
   type: TYPE_NORMAL
+  zh: 要添加周期性任务，请将以下内容添加到 `DevConfig` 配置对象中：
 - en: '[PRE33]'
+  id: totrans-131
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE33]'
 - en: This `configuration` variable defines that the `log` task should be run every
     30 seconds, with the `args` tuple passed as the parameters. Any `timedelta` object
     can be used to define the interval to run the task on.
+  id: totrans-132
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个`配置`变量定义了`log`任务应该每30秒运行一次，并将`args`元组作为参数传递。任何`timedelta`对象都可以用来定义运行任务的间隔。
 - en: 'To run the periodic tasks, another specialised worker, named a `beat` worker,
     is needed. In another Terminal window, run the following command:'
+  id: totrans-133
   prefs: []
   type: TYPE_NORMAL
+  zh: 要运行周期性任务，需要一个名为`beat`的专用工作者。在另一个终端窗口中，运行以下命令：
 - en: '[PRE34]'
+  id: totrans-134
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE34]'
 - en: If you now watch the Terminal output for the main `Celery` worker, you should
     now see a log event every 30 seconds.
+  id: totrans-135
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你现在查看主 `Celery` 工作者的控制台输出，你应该现在每30秒看到一个日志事件。
 - en: What if your task needs to run on much more specific intervals; say, for example,
     every Tuesday in June at 3 am and 5 pm? For very specific intervals, there is
     the Celery `crontab` object.
+  id: totrans-136
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你的任务需要在更具体的间隔上运行；比如说，例如，在六月的每个星期二凌晨3点和下午5点？对于非常具体的间隔，有 Celery 的 `crontab`
+    对象。
 - en: 'To illustrate how the `crontab` object represents intervals, consider the following
     examples:'
+  id: totrans-137
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了说明 `crontab` 对象如何表示间隔，考虑以下示例：
 - en: '[PRE35]'
+  id: totrans-138
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE35]'
 - en: 'The object has the following arguments:'
+  id: totrans-139
   prefs: []
   type: TYPE_NORMAL
+  zh: 该对象有以下参数：
 - en: '`minute`'
+  id: totrans-140
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`minute`'
 - en: '`hour`'
+  id: totrans-141
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`hour`'
 - en: '`day_of_week`'
+  id: totrans-142
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`day_of_week`'
 - en: '`day_of_month`'
+  id: totrans-143
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`day_of_month`'
 - en: '`month_of_year`'
+  id: totrans-144
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`month_of_year`'
 - en: Each of these arguments can take various inputs. With plain integers, they operate
     much like the `timedelta` object, but can also take strings and lists. When passed
     a list, the task will execute on every moment that is in the list. When passed
     a string in the form of **/x*, the task will execute every moment that the modulo
     operation returns zero. Also, the two forms can be combined to form a comma-separated
     string of integers and divisions.
+  id: totrans-145
   prefs: []
   type: TYPE_NORMAL
+  zh: 这些参数可以接受各种输入。使用纯整数时，它们的工作方式与 `timedelta` 对象类似，但也可以接受字符串和列表。当传递一个列表时，任务将在列表中的每个时刻执行。当传递一个形式为
+    **/x* 的字符串时，任务将在模运算返回零的每个时刻执行。这两种形式也可以组合成一个由逗号分隔的整数和除法字符串。
 - en: Monitoring Celery
+  id: totrans-146
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 监控 Celery
 - en: 'When our code is pushed to the server, our `Celery` worker will not be run
     in the Terminal window—rather, it will be run as a background task. Because of
     this, Celery provides many command-line arguments to monitor the status of your
     `Celery` worker and tasks. These commands take the following form:'
+  id: totrans-147
   prefs: []
   type: TYPE_NORMAL
+  zh: 当我们的代码推送到服务器时，我们的 `Celery` 工作者不会在终端窗口中运行——而是作为后台任务运行。因此，Celery 提供了许多命令行参数来监控你的
+    `Celery` 工作者和任务的状态。这些命令的形式如下：
 - en: '[PRE36]'
+  id: totrans-148
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE36]'
 - en: 'The main tasks to view the status of your workers are as follows:'
+  id: totrans-149
   prefs: []
   type: TYPE_NORMAL
+  zh: 查看您工作者状态的 主要任务如下：
 - en: '`status`: This prints the running workers and if they are up.'
+  id: totrans-150
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`status`: 这将打印正在运行的工作者以及它们是否处于活动状态。'
 - en: '`result`: When passed a task ID, this shows the return value and final status
     of the task.'
+  id: totrans-151
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`result`: 当传递一个任务 ID 时，这将显示任务的返回值和最终状态。'
 - en: '`purge`: Using this, all messages in the broker will be deleted.'
+  id: totrans-152
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`purge`: 使用这个，将删除代理中的所有消息。'
 - en: '`inspect active`: This lists all active tasks.'
+  id: totrans-153
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`inspect active`: 这列出了所有活动任务。'
 - en: '`inspect scheduled`: This lists all tasks that have been scheduled with the
     `eta` argument.'
+  id: totrans-154
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`inspect scheduled`: 这列出了所有带有 `eta` 参数已安排的任务。'
 - en: '`inspect registered`: This lists all of the tasks waiting to be processed.'
+  id: totrans-155
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`inspect registered`: 这列出了所有等待处理的任务。'
 - en: '`inspect stats`: This returns a dictionary full of statics on the currently
     running workers and the broker.'
+  id: totrans-156
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`inspect stats`: 这将返回一个包含当前运行中的工作者和代理的静态信息的字典。'
 - en: Web-based monitoring with Flower
+  id: totrans-157
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 基于 Web 的监控使用 Flower
 - en: '**Flower** is a web-based, real-time management tool for Celery. In Flower,
     all active, queued, and completed tasks can be monitored. Flower also provides
     graphs and statics on how long each task has been sitting in the queue versus
     how long its execution took, and the arguments to each of those tasks.'
+  id: totrans-158
   prefs: []
   type: TYPE_NORMAL
+  zh: '**Flower**是一个基于Web的Celery实时管理工具。在Flower中，可以监控所有活跃的、排队的和完成的任务。Flower还提供了关于每个任务在队列中等待了多久以及执行了多久，以及每个任务的参数的图表和统计数据。'
 - en: 'To install `flower`, use the `pip` command, as follows:'
+  id: totrans-159
   prefs: []
   type: TYPE_NORMAL
+  zh: 要安装`flower`，使用以下`pip`命令：
 - en: '[PRE37]'
+  id: totrans-160
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE37]'
 - en: 'To run it, just treat `flower` as a Celery command, as follows:'
+  id: totrans-161
   prefs: []
   type: TYPE_NORMAL
+  zh: 要运行它，只需将`flower`当作Celery命令来运行，如下所示：
 - en: '[PRE38]'
+  id: totrans-162
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE38]'
 - en: 'Now, open your browser to `http://localhost:5555`. It''s best to familiarize
     yourself with the interface while tasks are running, so go to the command line
     and type the following:'
+  id: totrans-163
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，打开你的浏览器到`http://localhost:5555`。最好在任务运行时熟悉界面，所以请在命令行中输入以下内容：
 - en: '[PRE39]'
+  id: totrans-164
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE39]'
 - en: 'Your worker process will now start processing 10,000 tasks. Browse around the
     different pages while the tasks are running to see how `flower` interacts with
     your worker while it''s really churning, as shown here:'
+  id: totrans-165
   prefs: []
   type: TYPE_NORMAL
+  zh: 你的worker进程现在将开始处理10,000个任务。在任务运行时浏览不同的页面，看看`flower`如何与你的worker交互，如图所示：
 - en: '![](img/dd0af794-6345-440f-a8b6-f02b99026662.png)'
+  id: totrans-166
   prefs: []
   type: TYPE_IMG
+  zh: '![图片](img/dd0af794-6345-440f-a8b6-f02b99026662.png)'
 - en: Creating a reminder app
+  id: totrans-167
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 创建提醒应用
 - en: Let's get into some real-world example applications of Celery. Suppose another
     page on our site now requires a reminders feature. Users can create reminders
     that will send an email to a specified location at a specified time. We will need
     a model, a task, and a way to call our task automatically every time a model is
     created.
+  id: totrans-168
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们来看看Celery的一些实际应用示例。假设我们网站上的另一个页面现在需要一个提醒功能。用户可以创建提醒，在指定时间将电子邮件发送到指定的位置。我们需要一个模型、一个任务以及每次创建模型时自动调用我们的任务的方法。
 - en: 'Let''s start with the following basic SQLAlchemy model:'
+  id: totrans-169
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们从以下基本的SQLAlchemy模型开始：
 - en: '[PRE40]'
+  id: totrans-170
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE40]'
 - en: 'Now, we need a task that will send an email to the location in the model. In
     our `blog/tasks.py` file, look up the following task:'
+  id: totrans-171
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，我们需要一个任务，该任务将向模型中的位置发送电子邮件。在我们的`blog/tasks.py`文件中查找以下任务：
 - en: '[PRE41]'
+  id: totrans-172
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE41]'
 - en: Note that our task takes a primary key, rather than a model. This is a hedge
     against a race condition, as a passed model could be stale by the time the worker
     finally gets around to processing it. You will also have to replace the placeholder
     emails and login details with your own login info.
+  id: totrans-173
   prefs: []
   type: TYPE_NORMAL
+  zh: 注意，我们的任务接受一个主键，而不是一个模型。这是为了防止竞争条件，因为传递的模型在worker最终处理它时可能已经过时。你还需要将占位符电子邮件和登录详情替换成你自己的登录信息。
 - en: How do we have our task called when the user creates a reminder model? We will
     use an SQLAlchemy feature, named `events`. SQLAlchemy allows us to register callbacks
     on our models that will be called when specific changes are made to our models.
     Our task will use the `after_insert` event, which is called after new data is
     entered into the database, whether the model is brand new or being updated.
+  id: totrans-174
   prefs: []
   type: TYPE_NORMAL
+  zh: 当用户创建一个提醒模型时，我们如何调用我们的任务？我们将使用一个名为`events`的SQLAlchemy功能。SQLAlchemy允许我们在模型上注册回调，当我们的模型发生特定变化时会被调用。我们的任务将使用`after_insert`事件，该事件在将新数据输入数据库后调用，无论模型是全新的还是正在更新。
 - en: 'We need a callback in `blog/tasks.py`:'
+  id: totrans-175
   prefs: []
   type: TYPE_NORMAL
+  zh: 在`blog/tasks.py`中，我们需要一个回调：
 - en: '[PRE42]'
+  id: totrans-176
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE42]'
 - en: 'Now, in `blog/__init__.py`, we will register our callback on our model:'
+  id: totrans-177
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，在`blog/__init__.py`中，我们将在我们的模型上注册回调：
 - en: '[PRE43]'
+  id: totrans-178
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE43]'
 - en: Now, every time a model is saved, a task is registered that will send an email
     to our user.
+  id: totrans-179
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，每次模型被保存时，都会注册一个任务，该任务将向我们的用户发送电子邮件。
 - en: Creating a weekly digest
+  id: totrans-180
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 创建每周摘要
 - en: Say our blog has a lot of people who don't use RSS, and prefer mailing lists.
     We need some way to create a list of new posts at the end of every week to increase
     our site's traffic. To solve this problem, we will create a digest task that will
     be called by a beat worker at 10 am, every Saturday.
+  id: totrans-181
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们的博客有很多不使用RSS的人，他们更喜欢使用邮件列表。我们需要一种方法在每周结束时创建一篇新帖子的列表，以增加我们网站的流量。为了解决这个问题，我们将创建一个摘要任务，该任务将在每周六上午10点由一个beat
+    worker调用。
 - en: 'First, in `blog/tasks.py`, let''s create our task as follows:'
+  id: totrans-182
   prefs: []
   type: TYPE_NORMAL
+  zh: 首先，在`blog/tasks.py`中，让我们创建以下任务：
 - en: '[PRE44]'
+  id: totrans-183
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE44]'
 - en: 'We will also need to add a periodic schedule to our configuration object in
     `config.py` to manage our task:'
+  id: totrans-184
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们还需要在我们的`config.py`配置对象中添加一个周期性调度来管理我们的任务：
 - en: '[PRE45]'
+  id: totrans-185
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE45]'
 - en: 'We also need to configure our SMTP server so that we are able to send emails.
     This can be done using Gmail or your corporate email credentials. Add your chosen
     account information to the configuration object in `config.py` :'
+  id: totrans-186
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们还需要配置我们的 SMTP 服务器，以便我们能够发送电子邮件。这可以通过使用 Gmail 或您的公司电子邮件凭证来完成。将您选择的账户信息添加到 `config.py`
+    中的配置对象：
 - en: '[PRE46]'
+  id: totrans-187
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE46]'
 - en: 'Finally, we need our email template. Unfortunately, HTML in email clients is
     terribly outdated. Every single email client has different rendering bugs and
     quirks, and the only way to find them is to open your email in all the clients.
@@ -821,27 +1216,42 @@
     amount of selectors and attributes. In order to compensate, we have to use the
     web development methods of 10 years ago; that is, designing tables with inline
     styles. Here is our `digest.html` file:'
+  id: totrans-188
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后，我们需要我们的电子邮件模板。不幸的是，电子邮件客户端中的 HTML 已经非常过时。每个电子邮件客户端都有不同的渲染错误和怪癖，唯一的办法是打开所有客户端中的电子邮件。许多电子邮件客户端甚至不支持
+    CSS，而那些支持 CSS 的客户端支持的选择器和属性也非常有限。为了弥补这一点，我们不得不使用 10 年前的网络开发方法；也就是说，使用内联样式设计表格。下面是我们的
+    `digest.html` 文件：
 - en: '[PRE47]'
+  id: totrans-189
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE47]'
 - en: Now, at the end of every week, our digest task will be called, and will send
     an email to all the users present in our mailing list.
+  id: totrans-190
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，在每周的末尾，我们的摘要任务将被调用，并将向所有在我们的邮件列表中的用户发送电子邮件。
 - en: Summary
+  id: totrans-191
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 摘要
 - en: Celery is a very powerful task queue that allows programmers to defer the processing
     of slower tasks to another process. Now that you understand how to move complex
     tasks out of the Flask process, we will take a look at a collection of Flask extensions
     that simplify some common tasks seen in Flask apps.
+  id: totrans-192
   prefs: []
   type: TYPE_NORMAL
+  zh: Celery 是一个非常强大的任务队列，允许程序员将较慢的任务的处理推迟到另一个进程。现在你已经了解了如何将复杂任务从 Flask 进程中移出，我们将查看一系列简化
+    Flask 应用中常见任务的 Flask 扩展。
 - en: In the next chapter, you will learn how to leverage some great community-built
     Flask extensions to improve performance, debug, and even quickly create an administration
     back office.
+  id: totrans-193
   prefs: []
   type: TYPE_NORMAL
+  zh: 在下一章中，你将学习如何利用一些优秀的社区构建的 Flask 扩展来提高性能、调试，甚至快速创建一个管理后台。
