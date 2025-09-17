@@ -1,0 +1,680 @@
+<html><head></head><body>
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Useful Flask Extensions</h1>
+                </header>
+            
+            <article>
+                
+<p>As we have seen throughout this book, Flask is designed to be as small as possible, while still giving you the flexibility and tools needed to create web applications. However, there are a lot of features that are common to many web applications, which means that many applications will require code that does the same task for each web application. To solve this problem, and avoid reinventing the wheel, people have created extensions for Flask, and we have seen many Flask extensions already throughout the book. This chapter will focus on some of the more useful Flask extensions that don't have enough content to separate them out into their own chapter, but will save you a lot of time and frustration.</p>
+<p>In this chapter, you will learn how to do the following:</p>
+<ul>
+<li>Developing a debug toolbar, with great backend performance metrics</li>
+<li>Page cache using Redis or memcached</li>
+<li>Creating an administration back office, with CRUD functionality for all your models</li>
+<li>Enabling internationalization (i18n), and translating your site into multiple languages</li>
+<li>Sending emails easily</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Flask CLI</h1>
+                </header>
+            
+            <article>
+                
+<p>In <a href="2d7573ed-1b2f-48df-9fac-9423d3f1cd51.xhtml"><span class="ChapterrefPACKT">Chapter 1</span></a>, <em>Getting Started</em>, we introduced some basic features and learned how to use Flask CLI. Now, we are going to see how to make good use of this feature.</p>
+<p>In Flask CLI, you can create custom commands to be run within the application context. Flask <span>CLI </span>itself uses <strong>Click</strong>,which is a library developed by the creator of <span>Flask</span> to create command-line tools with complex arguments early.</p>
+<p class="mce-root"/>
+<div class="packt_tip">For further details on Click, take a look at the documentation, available at <a href="http://click.pocoo.org">http://click.pocoo.org</a>.<a href="http://click.pocoo.org"/></div>
+<p>Our goal is to create a set of commands to help us manage and deploy our Flask app. The first problem to tackle is where and how we <span>are </span>going to create these command-line functions. Since our CLI is an application global utility, we are going to place it in <kbd>webapp/cli.py</kbd><span>:</span></p>
+<pre><span>import logging<br/><strong>import </strong></span><strong>click</strong><br/><span>from </span>.auth.models <span>import </span>User<span>, </span>db<br/><br/>log = logging.getLogger(__name__)<br/><br/><strong><span>def </span><span>register</span>(app):</strong><br/><strong>    @<span>app.cli.command</span>(<span>'create-user'</span>)</strong><br/><strong>    @<span>click.argument</span>(<span>'username'</span>)</strong><br/><strong>    @<span>click.argument</span>(<span>'password'</span>)</strong><br/>    <span>def </span><span>create_user</span>(username<span>, </span>password):<br/>        user= User()<br/>        user.username = username<br/>        user.set_password(password)<br/>        <span>try</span>:<br/>            db.session.add(user)<br/>            db.session.commit()<br/>            click.echo(<span>'User {0} Added.'</span>.format(username))<br/>        <span>except </span><span>Exception </span><span>as </span>e:<br/>            log.error(<span>"Fail to add new user: %s Error: %s" <br/></span>            % (username<span>, </span>e))<br/>            db.session.rollback()<br/>...</pre>
+<p>We are going to develop all of our functions inside the <kbd>register</kbd><span> function, so that we don't have to import our Flask app from the main module. Doing so would result in a circular dependency import. Next, take note of the following decorators we use:</span></p>
+<ul>
+<li><span> <kbd>@app.cli.command</kbd> registers that our function has a new command-line command; if no argument is passed, then <kbd>Click</kbd> will assume the function's name.</span></li>
+<li><span><kbd>@click.argument</kbd> adds a command-line argument; in our case, for username and password (needed to create the user credentials). Arguments are positional command-line options.</span></li>
+</ul>
+<p><span>We register all of our command-line functions in <kbd>main.py</kbd>. Note the highlighted text in the following snippet, where we call the previously created <kbd>register</kbd> method:</span></p>
+<pre><span>import </span>os<br/><span>from </span>webapp <span>import </span>create_app<br/><strong><span>from </span>webapp.cli <span>import </span>register</strong><br/><br/>env = os.environ.get(<span>'WEBAPP_ENV'</span><span>, </span><span>'dev'</span>)<br/>app = create_app(<span>'config.%sConfig' </span>% env.capitalize())<br/><strong>register(app)</strong><br/><br/><span>if </span>__name__ == <span>'__main__'</span>:<br/>    app.run()</pre>
+<p>From the CLI, let's try our newly created command as follows:</p>
+<pre># First we need to export our FLASK_APP env var<br/><strong>$ export FLASK_APP=main.py</strong><br/><strong>$ flask create-user user10 password</strong><br/>User user10 Added.<br/><strong>$ flask run<br/></strong> * Serving Flask app "main"<br/>2018-08-12 20:25:43,031:INFO:werkzeug: * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)<strong><br/></strong></pre>
+<p>Next, you can go to your web browser and log in to our blog using the newly created <kbd>user10</kbd> credentials.</p>
+<p>The provided code also includes a <kbd>list-users</kbd><span> </span>command, but its implementation should be straightforward for you by now, without any additional explanation here. Let's focus on a simple and handy function to show all of our app's routes:</p>
+<pre>@<span>app.cli.command</span>(<span>'list-routes'</span>)<br/><span>def </span><span>list_routes</span>():<br/>    <span>for </span>url <span>in </span>app.url_map.iter_rules():<br/>        click.echo(<span>"%s %s %s" </span>% (url.rule<span>, </span>url.methods<span>, </span>url.endpoint))</pre>
+<p class="mce-root"/>
+<p><span>The </span><kbd>list-routes</kbd><span> command lists all of the routes registered on the </span><kbd>app</kbd><span> object, and the URL tied to that route. This is very useful while debugging Flask extensions, as it makes it trivial to see whether or not the registration of its blueprints is working.</span></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Flask Debug Toolbar</h1>
+                </header>
+            
+            <article>
+                
+<p><strong>Flask Debug Toolbar</strong> is a Flask extension that aids development by adding debugging tools into the web view of your application. It gives you information on things such as the bottlenecks of your view rendering code, and how many SQLAlchemy queries it took to render the view.</p>
+<p>As always, we will use <kbd>pip</kbd> to install Flask Debug Toolbar and add it to our <kbd>requirements.txt</kbd><span> file</span>:</p>
+<pre><strong>$ source venv/bin/activate<br/>(venv) $ pip install -r requirements</strong></pre>
+<p>Next, we need to add Flask Debug Toolbar to the <kbd>webapp/__init__.py</kbd> file. As we will be modifying this file a lot in this chapter, here is the start of the file so far, along with the code to initialize Flask Debug Toolbar:</p>
+<pre>...
+from flask_debugtoolbar import DebugToolbarExtension 
+ 
+...
+debug_toolbar = DebugToolbarExtension()<br/>...<br/>def create_app(config):<br/>...<br/>    debug_toolbar.init_app(app)<br/>...</pre>
+<p>This is all that is needed to get Flask Debug Toolbar up and running. If the <kbd>DEBUG</kbd> variable in your app's <kbd>config</kbd> is set to <kbd>true</kbd>, the toolbar will appear. If <kbd>DEBUG</kbd> is not set to <kbd>true</kbd>, the toolbar will not be injected into the page:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-634 image-border" src="assets/21d3d10e-70e0-49a7-81ad-5d2b1fcd2ad3.png" style="width:162.50em;height:88.83em;"/></p>
+<p>On the right-hand side of the screen, you will see the toolbar. Each section is a link that will display a table of values on the page. To get a list of all the functions that were called in order to render the view, click the checkbox next to <span class="packt_screen">Profiler</span> to enable it, then reload the page and click on <span class="packt_screen">Profiler</span>. This view easily allows you to quickly diagnose which parts of your apps are the slowest, or are called the most.</p>
+<p>By default, Flask Debug Toolbar intercepts <kbd>HTTP 302 redirect</kbd> requests. To disable this, add the following to your configuration:</p>
+<pre>class DevConfig(Config): 
+    DEBUG = True 
+    DEBUG_TB_INTERCEPT_REDIRECTS = False </pre>
+<p>Also, if you are using Flask-MongoEngine, you can view all of the queries that were made to render the page, by overriding which panels are rendered and adding MongoEngine's custom panel as follows:</p>
+<pre>class DevConfig(Config): 
+    DEBUG = True 
+    DEBUG_TB_PANELS = [
+        'flask_debugtoolbar.panels.versions.VersionDebugPanel', 
+        'flask_debugtoolbar.panels.timer.TimerDebugPanel', 
+        'flask_debugtoolbar.panels.headers.HeaderDebugPanel', 
+        'flask_debugtoolbar.panels.<br/>         request_vars.RequestVarsDebugPanel',        <br/>         'flask_debugtoolbar.panels.config_vars.<br/>         ConfigVarsDebugPanel ',         <br/>         'flask_debugtoolbar.panels.template.<br/>         TemplateDebugPanel',        'flask_debugtoolbar.panels.<br/>         logger.LoggingPanel',        'flask_debugtoolbar.panels.<br/>         route_list.RouteListDebugPanel'        <br/>        'flask_debugtoolbar.panels.profiler.<br/>         ProfilerDebugPanel',        'flask_mongoengine.panels.<br/>         MongoDebugPanel' 
+    ] 
+    DEBUG_TB_INTERCEPT_REDIRECTS = False </pre>
+<p>This will add a panel to the toolbar that is very similar to the default SQLAlchemy one.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Flask Caching</h1>
+                </header>
+            
+            <article>
+                
+<p>In <a href="2f42c8ba-61f2-4855-bc61-af2c22f24800.xhtml"><span class="ChapterrefPACKT">Chapter 7</span></a>, <em>Using NoSQL with Flask</em>, we learned that page load time is one of the most important factors that will determine the success or failure of your web app. Despite the facts that our pages do not change very often, and that new posts will not be made very often, we still render the template and query the database every single time the page is asked for by our users' browsers.</p>
+<p>Flask Caching solves this problem by allowing us to store the results of our view functions and return the stored results, rather than render the template again. First, we need to install Flask Caching on our virtual environment. This was already done when running the <kbd>init.sh</kbd> bash script. The <kbd>init.sh</kbd> script will first install all the <span>declared</span><span> </span><span>dependencies in</span> <kbd>requirements.txt</kbd><span>:</span></p>
+<pre>...<br/>Flask-Caching<br/>...</pre>
+<p>Next, initialize it in <kbd>webapp/__init__.py</kbd> as follows:</p>
+<pre>from flask_caching import Cache 
+...
+cache = Cache()<br/>... <br/>def create_app(config):<br/>...<br/>    cache.init_app(app)<br/>...</pre>
+<p>Before we can start caching our views, we need to tell Flask Cache how we want to store the results of our new functions:</p>
+<pre>class DevConfig(Config): 
+ 
+    CACHE_TYPE = 'simple'</pre>
+<p>The <kbd>simple</kbd> option tells Flask Cache to store the results in memory in a Python dictionary, which, for the vast majority of Flask apps, is adequate. We'll cover more types of cache backends later in this section.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Caching views and functions</h1>
+                </header>
+            
+            <article>
+                
+<p>In order to cache the results of a view function, simply add a decorator to any function:</p>
+<pre>...<br/><strong>from .. import cache</strong><br/>...<br/><br/>@<span>blog_blueprint.route</span>(<span>'/'</span>)<br/>@<span>blog_blueprint.route</span>(<span>'/&lt;int:page&gt;'</span>)<br/><strong>@<span>cache.cached</span>(<span>timeout</span>=<span>60</span>)</strong><br/><span>def </span><span>home</span>(page=<span>1</span>):<br/>    posts = <br/>    Post.query.order_by(Post.publish_date.desc()).paginate(page<span>, <br/></span>    current_app.config[<span>'POSTS_PER_PAGE'</span>]<span>, </span><span>False</span>)<br/>    recent<span>, </span>top_tags = sidebar_data()<br/><br/>    <span>return </span>render_template(<br/>        <span>'home.html'</span><span>,<br/></span><span>        </span><span>posts</span>=posts<span>,<br/></span><span>        </span><span>recent</span>=recent<span>,<br/></span><span>        </span><span>top_tags</span>=top_tags<br/>    )</pre>
+<p>The <kbd>timeout</kbd> parameter specifies how many seconds the cached result should last, before the function should again be run <span>and stored. To confirm that the view is actually being cached, check the SQLAlchemy section of the Debug toolbar. Also, we can see the impact that caching has on page load times, by activating the profiler and comparing the times for before and after. On the author's top-of-the-range laptop, the main blog page takes 34 ms to render, mainly due to the eight different queries that are made to the database. But, after the cache is activated, this decreases to 0.08 ms. That's a 462.5 percent increase in speed!</span></p>
+<p>View functions are not the only thing that can be cached. To cache any Python function, simply add a similar decorator to the function definition, as follows:</p>
+<pre>@cache.cached(timeout=7200, key_prefix='sidebar_data') 
+def sidebar_data(): 
+    recent = Post.query.order_by( 
+        Post.publish_date.desc() 
+    ).limit(5).all() 
+ 
+    top_tags = db.session.query( 
+        Tag, func.count(tags.c.post_id).label('total') 
+    ).join( 
+        tags 
+    ).group_by( 
+        Tag 
+    ).order_by('total DESC').limit(5).all() 
+ 
+    return recent, top_tags </pre>
+<p>The <kbd>key_prefix</kbd> <span>keyword </span><span>argument </span>is necessary in order for Flask Caching to properly store the results of <span>non-view functions</span>. This needs to be unique for every function cached, or the results of the functions will override each other. Also, note that the timeout for this function is set to two hours, rather than the 60 seconds, as in the previous examples. This is because the results for this function are less likely to change than the view functions, and if the data is stale, it is not as big of an issue as it would be for the view functions.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Caching functions with parameters</h1>
+                </header>
+            
+            <article>
+                
+<p>However, the normal cache decorator does not take function parameters into account. If we cached a function that took parameters with the normal cache decorator, it would return the same result for every parameter set. In order to fix this, we use the <kbd>memoize</kbd> function:</p>
+<pre>...<br/>from .. import db, cache<br/>...<br/><br/>class User(db.Model):<br/>... <br/>    @<span>cache.memoize</span>(<span>60</span>)<br/><span>    def </span><span>has_role</span>(<span>self</span><span>, </span>name):<br/>        <span>for </span>role <span>in </span><span>self</span>.roles:<br/>            <span>if </span>role.name == name:<br/>                <span>return </span><span>True<br/></span><span>        </span><span>return </span><span>False</span></pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p><kbd>Memoize</kbd> stores the parameters passed to the function as well as the result. In the preceding example, <kbd>memoize</kbd> is being used to store the result of the <kbd>verify_auth_token</kbd> method, which is called many times, and queries the database every single time. This method can safely memoized, because it returns the same result every time if the same token is passed to it. The only exception to this rule is if the user object gets deleted during the 60 seconds that the function is stored, but this is very unlikely.</p>
+<p>Be careful not to <kbd>memoize</kbd> or cache functions that rely on either globally-scoped variables, or on constantly changing data. This can lead to some very subtle bugs, and in the worst case, data race. The best candidates for memoization are what are referred to as pure functions. <strong>Pure functions</strong> are functions that will produce the same result when the same parameters are passed to it. It does not matter how many times the function is run. Pure functions also don't have any <em>side effects</em>, which means that they do not change globally scoped variables. This also means that pure functions cannot do any I/O operations. While the <kbd>verify_auth_token</kbd> function is not pure, because it does database I/O, this is okay, because, as was stated before, it is very unlikely that the underlying data will change.</p>
+<p>While we are developing the application, we do not want the view functions to be cached, because results will be changing all the time. To fix this, set the <kbd>CACHE_TYPE</kbd> variable to <kbd>null</kbd> and, in the production configuration, set the <kbd>CACHE_TYPE</kbd> variable to simple, so when the app is deployed, everything works as expected:</p>
+<pre>class ProdConfig(Config): 
+ 
+    CACHE_TYPE = 'simple'
+ 
+class DevConfig(Config): 
+ 
+    CACHE_TYPE = 'null' </pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Caching routes with query strings</h1>
+                </header>
+            
+            <article>
+                
+<p>Some routes, such as our <kbd>home</kbd> and <kbd>post</kbd> routes, take the parameters through the URL and return content specific to those parameters. We run into a problem if routes like these are cached, as the first rendering of the route will be returned for all requests, regardless of the URL parameters. The solution to this is rather simple. The <kbd>key_prefix</kbd> keyword argument in the cache method can be either a string or a function, which will be executed to dynamically generate a key.</p>
+<p>This means that a function can be created to create, in turn, a key that is tied to the URL parameters, so that each request only returns a cached page if that specific combination of parameters was called before. In the <kbd>blog/controllers.py</kbd> file, find the following function:</p>
+<pre><span>def </span><span>make_cache_key</span>(<span>*args</span><span>, </span><span>**kwargs</span>):<br/>    path = request.path<br/>    args = <span>str</span>(<span>hash</span>(<span>frozenset</span>(request.args.items())))<br/>    messages = <span>str</span>(<span>hash</span>(<span>frozenset</span>(get_flashed_messages())))<br/>    <span>return </span>(path + args + messages).encode(<span>'utf-8'</span>)</pre>
+<p>We use this function to create a cache key, using a mixture of URL paths, arguments, and Flask messages. This will prevent messages from not being shown when a user logs out. We will be using this type of cache key generation on the home view and show post by ID.</p>
+<p>Now, each individual post page will be cached for 10 minutes.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Using Redis as a cache backend</h1>
+                </header>
+            
+            <article>
+                
+<p>If the amount of view functions, or the number of unique parameters, passed to your cached functions becomes too large for memory, you can use a different backend for the cache. As was mentioned in <a href="2f42c8ba-61f2-4855-bc61-af2c22f24800.xhtml"><span class="ChapterrefPACKT">Chapter 7</span></a>, <em>Using NoSQL with Flask</em>, Redis can be used as a backend for the cache. To implement that functionality, all that needs to be done is to add the following configuration variables to the <kbd>ProdConfig</kbd> class, as follows:</p>
+<pre>class ProdConfig(Config): 
+    ... 
+    CACHE_TYPE = 'redis' 
+    CACHE_REDIS_HOST = 'localhost' 
+    CACHE_REDIS_PORT = '6379' 
+    CACHE_REDIS_PASSWORD = 'password' 
+    CACHE_REDIS_DB = '0' </pre>
+<p>If you replace the values of the variables with your own data, Flask Cache will automatically create a connection to your <kbd>redis</kbd> database and use it to store the results of the functions. All that is needed is to install the Python <kbd>redis</kbd> library. This is already installed after issuing the <kbd>init.sh</kbd><span> script, which we did to set up the work environment for this chapter. You will find the library i</span>n <kbd>requirements.txt</kbd><strong>:</strong></p>
+<pre>...<br/>redis<br/>...</pre>
+<p>If you want to test your Redis cache, we have prepared a Docker composer file that includes RabbitMQ and Redis. To launch it, just issue the following on the <span>CLI</span>:</p>
+<pre><strong># Start dockers for RMQ and Redis in the background<br/>$ docker-compose up -d<br/></strong>Creating rabbitmq ... done<strong><br/></strong>Creating redis ... done<strong><br/># Check the currently active containers</strong><br/><strong>$ docker container list</strong><br/>CONTAINER ID IMAGE COMMAND CREATED STATUS PORTS NAMES<br/>3266cbdee1d7 redis "docker-entrypoint.s…" 43 seconds ago Up 58 seconds 0.0.0.0:6379-&gt;6379/tcp redis<br/>64a99718442c rabbitmq:3-management "docker-entrypoint.s…" 43 seconds ago Up 58 seconds 4369/tcp, 5671/tcp, 0.0.0.0:5672-&gt;5672/tcp, 15671/tcp, 25672/tcp, 0.0.0.0:15672-&gt;15672/tcp rabbitmq</pre>
+<p>Remember to test your application using the production configuration as follows:</p>
+<pre><strong>$ export WEBAPP_ENV=prod</strong><br/><strong>$ export FLASK_APP=main.py</strong><br/><strong>$ flask run</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Using memcached as a cache backend</h1>
+                </header>
+            
+            <article>
+                
+<p>Just like the Redis backend, the memcached backend provides an alternative way of storing results, should the storage constraints become too limiting. In contrast to Redis, memcached is designed to cache objects for later use and reduce load on the database. Both Redis and memcached serve the same purpose, and choosing one over the other comes down to personal preference. To use memcached, we need to install its Python library with the following command:</p>
+<pre><strong>$ pip install memcache</strong></pre>
+<p>The process of connecting to your memcached server is handled in the configuration object, just like the Redis setup:</p>
+<pre>class ProdConfig(Config): 
+    ... 
+    CACHE_TYPE = 'memcached' 
+    CACHE_KEY_PREFIX = 'flask_cache' 
+    CACHE_MEMCACHED_SERVERS = ['localhost:11211'] </pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Flask Assets</h1>
+                </header>
+            
+            <article>
+                
+<p>Another bottleneck in web applications is the amount of HTTP requests required to download the CSS and JavaScript libraries for the page. The extra files can only be downloaded after HTML for the page has been loaded and parsed. To combat this, many modern browsers download many of these libraries at once, but there is a limit to how many simultaneous requests the browser can make.</p>
+<p>Several things can be done on the server to reduce the amount of time spent downloading these files. The main technique that developers use to solve this is to concatenate all of the JavaScript libraries into one file, and all of the CSS libraries into another, while removing all of the whitespace and carriage returns from the resulting files (also known as <strong>minification</strong>). This reduces the overhead of multiple HTTP requests, and can reduce file's size by up to 30 percent. Another technique is to tell the browser to cache the files locally, with specialized HTTP headers, so the file is only loaded again once it changes. These can be tedious to do manually, because they need to be done after every deployment to the server.</p>
+<p>Thankfully, Flask Assets implements all the discussed techniques. Flask Assets works by giving it a list of files and a way to concatenate them, and then adding a special control block into your templates, in place of the normal link and script tags. Flask Assets will then add in a <kbd>link</kbd> or a <kbd>script</kbd> tag that links to the new generated file. To get started, Flask Assets needs to be installed. We also need to install <kbd>cssmin</kbd> and <kbd>jsmin</kbd>—you can find these dependencies in <kbd>requirements.txt</kbd>.</p>
+<p>Now, the collections of files to be concatenated, named bundles, need to be created. In <kbd>ewebapp/__init__.py</kbd>, we have the following:</p>
+<pre>...<br/>from flask_assets import Environment, Bundle 
+...
+assets_env = Environment() 
+ 
+main_css = Bundle( 
+    'css/bootstrap.css', 
+    filters='cssmin', 
+    output='css/common.css' 
+) 
+ 
+main_js = Bundle( 
+    'js/jquery.js', 
+    'js/bootstrap.js', 
+    filters='jsmin', 
+    output='js/common.js' 
+) </pre>
+<p>Each <kbd>Bundle</kbd> object takes an infinite number of files as positional arguments to define the files to be bundled, a keyword argument <kbd>filters</kbd> to define the filters to send the files through, and an <kbd>output</kbd> that defines the filename in the <kbd>static</kbd> folder to which the result will be saved.</p>
+<div class="packt_infobox">The <kbd>filters</kbd> keyword can be a single value or a list. To get the full list of available filters, including automatic Less and CSS compilers, see the docs at <a href="http://webassets.readthedocs.org/en/latest/"><span class="URLPACKT">http://webassets.readthedocs.org/en/latest/</span></a>.</div>
+<p>While it's true that, because our site is light on styles, the CSS bundle only <span>has </span>one file in it, it's still a good idea to put the file in a bundle for two reasons. Firstly, while we are in development, we can use the un-minified versions of the libraries, which makes debugging easier. When the app is deployed to production, the libraries are automatically minified. Secondly, these libraries will be sent to the browser with the cache headers, when linking them normally in HTML would not.</p>
+<p>Before Flask Assets can be tested, three more changes need to be made. First, in the <kbd>_init_.py</kbd> format, the extension and bundles need to be registered:</p>
+<pre>from .extensions import ( 
+    bcrypt, 
+    oid, 
+    login_manager, 
+    principals, 
+    rest_api, 
+    celery, 
+    debug_toolbar, 
+    cache, 
+    assets_env, 
+    main_js, 
+    main_css 
+) 
+ 
+def create_app(object_name): 
+    ... 
+    assets_env.init_app(app) 
+ 
+    assets_env.register("main_js", main_js) 
+    assets_env.register("main_css", main_css) </pre>
+<p>Next, the <kbd>DevConfig</kbd> class needs an extra variable to tell Flask Assets not <span>to</span><span> </span><span>compile the libraries while in development:</span></p>
+<pre>class DevConfig(Config): 
+    DEBUG = True 
+    DEBUG_TB_INTERCEPT_REDIRECTS = False 
+    ASSETS_DEBUG = True</pre>
+<p>Finally, the link and script tags in both of the <kbd>base.html</kbd> files need to be replaced with the control block from Flask Assets. We have the following in the files already:</p>
+<pre>&lt;link rel="stylesheet" <br/> href=https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootst<br/> rap.min.css&gt;</pre>
+<p>Replace the preceding snippet with the following:</p>
+<pre>{% assets "main_css" %} 
+&lt;link rel="stylesheet" type="text/css" href="{{ ASSET_URL }}" <br/> /&gt; 
+{% endassets %} </pre>
+<p>Likewise, find the following in the <span><kbd>base.html</kbd> files:</span></p>
+<pre>&lt;script <br/> src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery<br/> .min.js"&gt;&lt;/script&gt;&lt;script <br/> src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstr<br/> ap.min.js"&gt;&lt;/script&gt;</pre>
+<p>Again, replace the preceding code with the following:</p>
+<pre>{% assets "main_js" %} 
+&lt;script src="{{ ASSET_URL }}"&gt;&lt;/script&gt; 
+{% endassets %} </pre>
+<p>Now, if you reload the page, all of the CSS and JavaScript will be handled by Flask Assets.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Flask Admin</h1>
+                </header>
+            
+            <article>
+                
+<p>In <a href="433b4f3b-4e05-4a63-ae8b-ec2e392877b4.xhtml"><span class="ChapterrefPACKT">Chapter 6</span></a>, <em>Securing Your App</em>, we created an interface to allow users to create and edit blog posts without having to use the CLI. This was adequate to demonstrate the security measures presented in the chapter, but there is still no way for posts to be deleted, or to assign tags to posts, using the interface. We also do not have a way to delete or edit comments that is hidden from regular users. What our app needs is a fully featured administrator interface, in the same vein as the WordPress interface. This is such a common requirement for apps that a Flask extension, called Flask Admin, was produced to help developers create administrator interfaces <span>easily</span>. Once more, we can find Flask Admin on the list of dependencies in <kbd>requirements.txt</kbd>.</p>
+<p>Since we are going to create a full administrator interface, with forms, views and templates, Flask Admin is a good candidate for a new module on our application. First, take a look at our new application structure:</p>
+<pre>./<br/>  webapp/<br/>    <strong>admin/</strong><br/><strong>      __init__.py</strong><br/><strong>      forms.py</strong><br/><strong>      controllers.py</strong><br/>    api/<br/>    auth/<br/>    blog/<br/>    templates/<br/>      <strong>admin/</strong><br/><strong>          ...<br/></strong>      auth/<br/>      blog/<br/>      ...<br/> ...</pre>
+<p>As usual, we need to create the  <kbd>create_module</kbd> function in our <kbd>webapp/admin/__init__.py</kbd> file:</p>
+<pre>...<br/>from flask_admin import Admin 
+...
+admin = Admin()<br/><br/>def create_module(app, **kwargs):<br/>    admin.init_app(app)<br/>    ....<br/><br/></pre>
+<p>Then, call the <kbd>create_module</kbd><span> function in the main</span> <kbd>webapp/__init__.py</kbd> file:</p>
+<pre> 
+def create_app(object_name): <br/>    ...<br/>    from .admin import create_module as admin_create_module
+    ...<br/>    admin_create_module(app)</pre>
+<p>Flask Admin works by registering view classes on the <kbd>admin</kbd> object that define one or more routes. Flask Admin has three main types of views: <kbd>ModelView</kbd>, <kbd>FileAdmin</kbd>, and <kbd>BaseView</kbd>. Next, we are going to see how to use these views and customize them.</p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p>Finally, we add a navigation bar option to the admin interface, and only render it to the users that have the admin role. So, in the <kbd>templates/navbar.html</kbd><span> file, insert the following:</span></p>
+<pre>{% <strong>if current_user.is_authenticated and current_user.has_role('admin')</strong> %}<br/><span>&lt;li </span><span>class=</span><span>"nav-item"</span><span>&gt;<br/></span><span>    &lt;a </span><span>class=</span><span>"nav-link" </span><span>href=</span><span>"{{url_for('admin.index')}}"</span><span>&gt;<br/></span>    Admin<span>&lt;span </span><span>class=</span><span>"sr-only"</span><span>&gt;</span>(current)<span>&lt;/span&gt;&lt;/a&gt;<br/></span><span>&lt;/li&gt;<br/></span>{% endif %}</pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Creating basic admin pages</h1>
+                </header>
+            
+            <article>
+                
+<p>The <kbd>BaseView</kbd> class allows normal Flask pages to be added to your <kbd>admin</kbd> interface. This is normally the least used type of view in Flask Admin setups, but if you wish to include something like custom reporting with JavaScript charting libraries, you can do it with a base view alone. As expected, we are going to define our views in the <kbd>admin/controllers.py</kbd> file:</p>
+<pre>from flask.ext.admin import BaseView, expose 
+ 
+class CustomView(BaseView): 
+    @expose('/')<br/>    @login_required<br/>    @has_role('admin')
+    def index(self): 
+        return self.render('admin/custom.html') 
+ 
+    @expose('/second_page')<br/>    @login_required<br/>    @has_role('admin')
+    def second_page(self):
+        return self.render('admin/second_page.html') </pre>
+<p>In a subclass of <kbd>BaseView</kbd>, multiple views can be registered at once, if they are defined together. Keep in mind, however, that each subclass of <kbd>BaseView</kbd> requires at least one exposed method on the <kbd>/</kbd> <span>path.</span> Also, methods other than the method within the <kbd>/</kbd> <span>path </span>will not be in the navigation of the administrator interface, and will have to be linked to the other pages in the class. The expose and <kbd>self.render</kbd> functions work exactly the same as their counterparts in the normal Flask API.</p>
+<p>To have your templates inherit the default styles of Flask Admin, we create a new folder in the templates directory, named <kbd>admin</kbd>, containing a file named <kbd>custom.html</kbd>, and add the following Jinja code:</p>
+<pre>{% extends 'admin/master.html' %} 
+{% block body %} 
+    This is the custom view! 
+    &lt;a href="{{ url_for('.second_page') }}"&gt;Link&lt;/a&gt; 
+{% endblock %} </pre>
+<p>To view this template, an instance of <kbd>CustomView</kbd> needs to be registered on the <kbd>admin</kbd> object. This will be done in the <kbd>create_module</kbd> function, following the same structure and logic as for the API module:</p>
+<pre>...<br/>from .controllers import CustomView 
+...
+def create_module(object_name):
+    ,,,
+    admin.add_view(CustomView(name='Custom'))</pre>
+<p>The <kbd>name</kbd> keyword argument specifies that the label, used in the navigation bar on the top of the <kbd>admin</kbd> interface, should read <kbd>Custom</kbd>. After you have registered <kbd>CustomView</kbd> to the <kbd>admin</kbd> object, your <kbd>admin</kbd> interface should now have a second link in the navigation bar, as shown in the following screenshot:</p>
+<div class="packt_figure CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-635 image-border" src="assets/53cf3e18-3657-4f5f-a025-99e502d0e002.png" style="width:162.50em;height:24.58em;"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Creating database admin pages</h1>
+                </header>
+            
+            <article>
+                
+<p>The main power of Flask Admin comes from the fact that you can automatically create administrator pages for your data by giving Flask Admin your SQLAlchemy or MongoEngine models. Creating these pages is very easy; in <kbd>admin.py</kbd>, you just need to write the following code:</p>
+<pre>from flask_admin.contrib.sqla import ModelView 
+# or, if you use MongoEngine 
+# from flask_admin.contrib.mongoengine import ModelView 
+ 
+class CustomModelView(ModelView): 
+    pass</pre>
+<p>Then, in <kbd>admin/__init__.py</kbd>, register <span> the database </span><kbd>session</kbd><span> object and </span>the class with the model you wish to use, as follows:</p>
+<pre>from flask_admin import Admin<br/>from .controllers import CustomView, CustomModelView 
+from webapp.blog.models import db, Reminder, Post, Comment, Tag<br/>from webapp.auth.models import User, Role 
+<br/>admin = Admin()<br/>def create_module(app, **kwargs): 
+    admin.init_app(app)
+    admin.add_view(CustomView(name='Custom'))
+    models = [User, Role, Comment, Tag, Reminder]
+ 
+    for model in models: 
+       <strong>admin.add_view(CustomModelView(model, db.session, <br/>       category='models'))</strong><br/>...</pre>
+<p>The <kbd>category</kbd> keyword tells Flask Admin to put all of the views with the same category value into the same drop-down menu on the navigation bar. If you go to the browser now, you will see a new drop-down menu labeled <span class="packt_screen">Models</span>, with links to the admin pages of all of the tables in the database, as follows:</p>
+<div class="packt_figure CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-636 image-border" src="assets/dd891965-d771-4133-b666-3a74a4965b4e.png" style="width:162.50em;height:100.08em;"/></div>
+<p>The generated interface for each model provides a lot of functionality. New posts can be created, and the existing posts can be deleted in bulk. All of the fields can be set from this interface, including the relationship fields, which are implemented as searchable drop-down menus. The <kbd>date</kbd> and <kbd>datetime</kbd> fields even have custom JavaScript inputs with drop-down <span>calendar</span> menus. Overall, this is a huge improvement to the hand-created interface that was created in <span class="ChapterrefPACKT"><a href="433b4f3b-4e05-4a63-ae8b-ec2e392877b4.xhtml">Chapter 6</a></span>, <em>Securing Your App</em>.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Enhancing administration for the post page</h1>
+                </header>
+            
+            <article>
+                
+<p>While this interface is a huge step up in quality, there are some features missing. We no longer have the WYSIWYG editor that was available in the original interface, but this page can be improved by enabling some of the more powerful Flask Admin features.</p>
+<p>To add the WYSIWYG editor back into the <kbd>post</kbd> creation page, we will need a new <kbd>WTForms</kbd> field, as Flask Admin constructs its forms with Flask WTF. We will also need to override the <kbd>textarea</kbd> field in the <kbd>post</kbd> edit and creation page with this new field type. The first thing that needs to be done is to create the new field type in <kbd>admin/forms.py</kbd> by using the <kbd>textarea</kbd> field as a base, as follows:</p>
+<pre>from wtforms import ( 
+    widgets, 
+    TextAreaField
+) 
+
+class CKTextAreaWidget(widgets.TextArea):
+    def __call__(self, field, **kwargs):
+        kwargs.setdefault('class_', 'ckeditor') 
+        return super(CKTextAreaWidget, self).__call__(field, <br/>         **kwargs)
+ 
+class CKTextAreaField(TextAreaField): 
+    widget = CKTextAreaWidget() </pre>
+<p>In this code, we created a new field type, <kbd>CKTextAreaField</kbd>, that adds a widget to the <kbd>textarea</kbd>. All that the widget does is adds a class to the HTML tag. Now, to add this field to the <kbd>Post</kbd> admin page, the <kbd>Post</kbd> will need its own <kbd>ModelView</kbd>:</p>
+<pre>from webapp.forms import CKTextAreaField 
+ 
+class PostView(CustomModelView):
+    form_overrides = dict(text=CKTextAreaField)
+    column_searchable_list = ('text', 'title')
+    column_filters = ('publish_date',)
+ 
+    create_template = 'admin/post_edit.html'
+    edit_template = 'admin/post_edit.html'</pre>
+<p>There are several new things in this code. First, the <kbd>form_overrides</kbd> class variable tells Flask Admin to override the field type of the name text with this new field type. The <kbd>column_searchable_list</kbd> function defines which columns are searchable via text. Adding this will allow Flask Admin to include a search field on the overview page, with which we can search the values of the defined fields. Next, the <kbd>column_filters</kbd> class variable tells Flask Admin to create a <kbd>filters</kbd> interface on the overview page of this model. The <kbd>filters</kbd> interface allows columns that are not text to be filtered down by adding conditions to the shown rows. An example that could be implemented with the preceding code is to create a filter that shows all rows with <kbd>publish_date</kbd> values greater than January 1, 2015.</p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p>Finally, the <kbd>create_template</kbd> and <kbd>edit_template</kbd> class variables allow you to define custom templates for Flask Admin to use. For the custom template that we will be using, we need to create a new file, <kbd>post_edit.html</kbd>, in the <kbd>admin</kbd> folder. In this template, we will include the same JavaScript library that was used in <a href="433b4f3b-4e05-4a63-ae8b-ec2e392877b4.xhtml"><span class="ChapterrefPACKT">Chapter 6</span></a>, <em>Securing Your App</em>, as shown here:</p>
+<pre>{% extends 'admin/model/edit.html' %} 
+{% block tail %} 
+    {{ super() }} 
+    &lt;script 
+        src="//cdn.ckeditor.com/4.4.7/standard/ckeditor.js"&gt; 
+    &lt;/script&gt; 
+{% endblock %} </pre>
+<p>Finally, to add our newly created customized view to Flask-Admin, we need to add it to the <kbd>create_module</kbd> function in the <kbd>admin/__init__.py</kbd> file:</p>
+<pre><span>def </span><span>create_module</span>(app<span>, </span><span>**kwargs</span>):<br/>    ...<br/>    admin.add_view(PostView(Post<span>, </span>db.session<span>, </span><span>category</span>=<span>'Models'</span>))<br/>    ...    </pre>
+<p>The tail block of the inherited template is located at the end of the file. Once the template is created, your <kbd>post</kbd> edit and creation page should look like this:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-637 image-border" src="assets/bd0e778c-7096-4441-97c8-4fad385505b4.png" style="width:162.50em;height:84.58em;"/></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Creating file system admin pages</h1>
+                </header>
+            
+            <article>
+                
+<p>Another common function that most <kbd>admin</kbd> interfaces cover is being able to access the server's file system from the web. Thankfully, Flask Admin includes this feature with the <kbd>FileAdmin</kbd> class:</p>
+<pre>class CustomFileAdmin(FileAdmin):<br/>    pass</pre>
+<p>Now, just import the new class into your <kbd>admin/__init__.py</kbd> file, and pass in the path that you wish to be accessible from the web:</p>
+<pre>admin.add_view(CustomFileAdmin(app.static_folder<span>,</span><span>'/static/'</span><span>,</span><span>name</span>=<span>'Static Files'</span>))</pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Securing Flask Admin</h1>
+                </header>
+            
+            <article>
+                
+<p>Currently, the entire <kbd>admin</kbd> interface is accessible to the world—let's fix that. The routes in the <kbd>CustomView</kbd> can be secured just like any other route, as follows:</p>
+<pre>class CustomView(BaseView): 
+    @expose('/') 
+    <strong>@login_required 
+    @has_role('admin')</strong> 
+    def index(self): 
+        return self.render('admin/custom.html') 
+ 
+    @expose('/second_page') 
+    <strong>@login_required <br/>    @has_role('admin')</strong> 
+    def second_page(self): 
+        return self.render('admin/second_page.html') </pre>
+<p>To secure the <kbd>ModeView</kbd> and <kbd>FileAdmin</kbd> subclasses, they need to have a method named <kbd>is_accessible</kbd> defined, which either returns <kbd>true</kbd> or <kbd>false</kbd>:</p>
+<pre>class CustomModelView(ModelView): 
+    def is_accessible(self): 
+        return current_user.is_authenticated and 
+               current_user.has_role('admin') 
+ 
+class CustomFileAdmin(FileAdmin): 
+    def is_accessible(self): 
+        return current_user.is_authenticated and 
+               current_user.has_role('admin') </pre>
+<p>Because we set up our authentication correctly in <a href="433b4f3b-4e05-4a63-ae8b-ec2e392877b4.xhtml"><span class="ChapterrefPACKT">Chapter 6</span></a>, <em>Securing Your App</em>, this task was trivial.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Flask-Babel</h1>
+                </header>
+            
+            <article>
+                
+<p>In this section, we will explore a way to enable internationalization for our blog. This is an essential feature for building global websites with multi-language support. We will be using the Flask-Babel extension, again created by the author of Flask. As always, we will make sure this dependency exists in our <kbd>requirements.txt</kbd><span>:</span></p>
+<pre>...<br/>Flask-Babel<br/>...</pre>
+<p>Flask-Babel uses the Babel Python library for i18 and localization, and adds some utilities and Flask integration. To use Flask-Babel, first we need to configure Babel in the <kbd>babel/babel.cfg</kbd><span> file:</span></p>
+<pre><strong>[python: webapp/**.py]</strong><br/><strong>[jinja2: webapp/templates/**.html]</strong><br/>encoding = utf-8<br/>extensions=jinja2.ext.autoescape,jinja2.ext.with_</pre>
+<p>We configure Babel to look for text to translate in Python files in the <kbd>webapp</kbd><span> directory only, and to extract text from <kbd>Jinja2</kbd> templates in the <kbd>webapp/templates</kbd> directory.</span></p>
+<p>Then, we need to create a translations directory on <kbd>webapp/translations</kbd>, where all the translations for our supported languages will be.</p>
+<p>Babel comes with a command-line utility, named <kbd>pybabel</kbd><span>. We will use it to set up all the languages that our blog will support, in addition to triggering an extract process, updating, and compiling. First, to create a new language, enter the following command:</span></p>
+<pre><span><strong>$ pybabel init -i ./babel/messages.pot -d ./webapp/translations -l pt</strong> </span></pre>
+<p>Portuguese, or <kbd>pt</kbd>, is already initialized in the provided support code, but you could try creating a new language. Just change <kbd>pt</kbd><span> to some other language. After this, you can check <kbd>webapp/translations</kbd>, and should see that Babel has created a new directory with our language code. This directory contains a <kbd>messages.po</kbd> file, where we are going to write the translations necessary for the extracted text, and a <kbd>messages.mo</kbd> compiled version of the <kbd>messages.po</kbd> file.</span></p>
+<p class="mce-root"/>
+<p>Next, to trigger Babel to search for text to be translated on our application, use this command:</p>
+<pre>$ <strong>pybabel extract -v -F ./babel/babel.cfg -o ./babel/messages.pot .</strong></pre>
+<p><span> This will update the <kbd>messages.pot</kbd> main file with all the text that needs to be translated. Then, we tell Babel to update all the <kbd>messages.po</kbd> files for all the supported languages with the following command:</span></p>
+<pre><strong>$ pybabel update -i ./babel/messages.pot -d webapp/translations</strong></pre>
+<p>Now, the <kbd>messages.po</kbd><span> files will contain something like this:</span></p>
+<pre># Portuguese translations for PROJECT.<br/># Copyright (C) 2018 ORGANIZATION<br/># This file is distributed under the same license as the PROJECT project.<br/># FIRST AUTHOR &lt;EMAIL@ADDRESS&gt;, 2018.<br/>#<br/>msgid ""<br/>msgstr ""<br/>"Project-Id-Version: PROJECT VERSION\n"<br/>...<br/><br/>#: webapp/templates/head.html:5<br/>msgid "Welcome to this Blog"<br/>msgstr ""<br/><br/>#: webapp/templates/macros.html:57<br/>msgid "Read More"<br/>msgstr ""<br/><br/>...</pre>
+<p>Here, the translator will need to update <kbd>msgstr</kbd><span> with the translated text from <kbd>msgid</kbd>. English to some target language. After this is done, we will tell Babel to compile the <kbd>messages.po</kbd> files and generate updated <kbd>messages.mo</kbd> files with the following command:</span></p>
+<pre><strong>$ pybabel compile -d ./webapp/translations</strong></pre>
+<p>How does Babel identify which text to translate on our application? Simple—<kbd>Jinja2</kbd> is already prepared for Babel, so on our templates, we just have to enter the following:</p>
+<pre>&lt;h1&gt;{{_('Some text to translate')}}&lt;/h1&gt;</pre>
+<p><kbd>_('text')</kbd><span> is an alias for the <kbd>gettext</kbd> function, and will return a translation for the string if one exists, and <kbd>ngettext</kbd> for text that can become plural.</span></p>
+<p>For Flask<strong> </strong>integration, we are going to create a new module named <kbd>webapp/babel</kbd><span>. This is where we will initialize the extension. To do this, add the following to the </span><kbd>babel/__init__.py</kbd> file:</p>
+<pre><span>from </span>flask <span>import</span><span> </span>has_request_context<span>, </span>session<br/><span>from </span>flask_babel <span>import </span>Babel<br/><br/>babel = Babel()<br/>...<br/><span>def </span><span>create_module</span>(app<span>, </span><span>**kwargs</span>):<br/>    babel.init_app(app)<br/>    <span>from </span>.controllers <span>import </span>babel_blueprint<br/>    app.register_blueprint(babel_blueprint)</pre>
+<p>Then, we need to define a function that returns the current locale code to Flask-Babel. The best place to add it is in the <kbd>babel/__init__.py</kbd> file:</p>
+<pre>...<br/><strong>@</strong><span><strong>babel.localeselector</strong><br/></span><span>def </span><span>get_locale</span>():<br/>    <span>if </span>has_request_context():<br/>        locale = session.get(<span>'locale'</span>)<br/>        <span>if </span>locale:<br/>            <span>return </span>locale<br/>        session[<span>'locale'</span>] = <span>'en'<br/></span><span>        </span><span>return </span>session[<span>'locale'</span>]<br/>...</pre>
+<p>We will use the session to hold the currently selected locale, and if none exists, we'll fall back to English. Our function is decorated with <kbd>@babel.localeselector</kbd><span> to register our function on Flask-Babel.</span></p>
+<p>Next, we need to define an endpoint that can be called to switch the current selected language. This endpoint will set the session locale to the new language and redirect to the home page. Do this by adding the following code to the <kbd>babel/controllers.py</kbd> file:</p>
+<pre><span>from </span>flask <span>import </span>Blueprint<span>, </span>session<span>, </span>redirect<span>, </span>url_for<br/><br/>babel_blueprint = Blueprint(<br/>    <span>'babel'</span><span>,<br/></span><span>    </span>__name__<span>,<br/></span><span>    </span><span>url_prefix</span>=<span>"/babel"<br/></span>)<br/><br/><br/>@<span>babel_blueprint.route</span>(<span>'/&lt;string:locale&gt;'</span>)<br/><span>def </span><span>index</span>(locale):<br/>    session[<span>'locale'</span>] = locale<br/>    <span>return </span>redirect(url_for(<span>'blog.home'</span>))</pre>
+<p>Finally, we will create a way for our users to change the current language. This will be done on the navigation bar. To do this, add the following to the <kbd>templates/navbar.html</kbd> file:</p>
+<pre><span>...<br/>&lt;ul </span><span>class=</span><span>"navbar-nav ml-auto"</span><span>&gt;<br/></span><span>    &lt;li </span><span>class=</span><span>"nav-item dropdown"</span><span>&gt;<br/></span><span>        &lt;a </span><span>class=</span><span>"nav-link dropdown-toggle" </span><span>href=</span><span>"#" <br/></span><span>        id=</span><span>"navbarDropdown" </span><span>role=</span><span>"button" </span><span>data-toggle=</span><span>"dropdown"</span><span>&gt;<br/></span><span>            </span>Lang<br/>        <span>&lt;/a&gt;<br/></span><span>        &lt;div </span><span>class=</span><span>"dropdown-menu"</span><span>&gt;<br/></span><span>            &lt;a </span><span>class=</span><span>"dropdown-item" </span><span>href=</span><span>"<strong>{{url_for('babel.index', <br/>            locale='en')}}</strong>"</span><span>&gt;</span>en<span>&lt;/a&gt;<br/></span><span>            &lt;a </span><span>class=</span><span>"dropdown-item" </span><span>href=</span><span>"<strong>{{url_for('babel.index', <br/>            locale='pt')}}</strong>"</span><span>&gt;</span>pt<span>&lt;/a&gt;<br/></span><span>        &lt;/div&gt;<br/></span><span>    &lt;/li&gt;<br/>...<br/>&lt;/ul&gt;</span></pre>
+<p>The new navigation bar options will send us to our Babel index endpoint with the selected language. Any new languages that we want to support should be added here. Finally, we just have to call Babel's <kbd>create_module</kbd><span> function on our main <kbd>__init__.py</kbd> file:</span></p>
+<pre>def create_app():<br/>...<br/>    from babel import create_module as babel_create_module<br/>...<br/>    babel_create_module(app)</pre>
+<p>And that's it. We now have all the necessary configurations in place to support any language on our blog application.</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-638 image-border" src="assets/0264c6b3-d3e0-4420-829d-b6a38b377432.png" style="width:41.33em;height:13.42em;"/></p>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Flask Mail</h1>
+                </header>
+            
+            <article>
+                
+<p>The final Flask extension that this chapter will cover is Flask Mail, which allows you to connect and configure your SMTP client from Flask's configuration. Flask Mail will also help to simplify application testing in <a href="9ffdc8da-2c26-4e97-8738-eebc7629535c.xhtml"><span class="ChapterrefPACKT">Chapter 12</span></a>, <em>Testing Flask Apps</em>. The first step is to install Flask Mail with <kbd>pip</kbd>. You should already have done this in this chapter, in our <kbd>init.sh</kbd><span> script, so let's check our dependencies file for the following to make sure:</span></p>
+<pre><strong>...<br/>Flask-Mail<br/>...</strong></pre>
+<p><kbd>flask_mail</kbd> will connect to our SMTP server of choice by reading the configuration variables in our <kbd>app</kbd> object, so we need to add those values to our <kbd>config</kbd> object:</p>
+<pre>class DevConfig(Config): 
+ 
+    MAIL_SERVER = 'localhost' 
+    MAIL_PORT = 25 
+    MAIL_USERNAME = 'username' 
+    MAIL_PASSWORD = 'password' </pre>
+<p>Finally, the <kbd>mail</kbd> object is initialized on the <kbd>app</kbd> object in <kbd>_init_.py</kbd>:</p>
+<pre>...<br/>from flask_mail import Mail<br/>...<br/>mail = Mail()
+ 
+def create_app(object_name): 
+...
+    mail.init_app(app)<br/>...</pre>
+<p>To see how Flask Mail can simplify our emailing code, consider the following—this code snippet is the Remind task that we created in <a href="5672073f-7a18-4865-9800-a2124147042c.xhtml"><span class="ChapterrefPACKT">Chapter 9</span></a>, <em>Creating Asynchronous Tasks with Celery</em>, but uses Flask Mail instead of the standard library SMTP module:</p>
+<pre>from flask_mail import Message<br/>from .. import celery, mail<br/><br/>@<span>celery.task</span>(<br/>    <span>bind</span>=<span>True</span><span>,<br/></span><span>    </span><span>ignore_result</span>=<span>True</span><span>,<br/></span><span>    </span><span>default_retry_delay</span>=<span>300</span><span>,<br/></span><span>    </span><span>max_retries</span>=<span>5<br/></span>)<br/><span>def </span><span>remind</span>(self<span>, </span>pk):<br/>    logs.info(<span>"Remind worker %d" </span>% pk)<br/>    reminder = Reminder.query.get(pk)<br/>    msg = Message(<span>body</span>=<span>"Text %s" </span>% <span>str</span>(reminder.text)<span>, <br/></span><span>    recipients</span>=[reminder.email]<span>, </span><span>subject</span>=<span>"Your reminder"</span>)<br/>    <span>try</span>:<br/>        mail.send(msg)<br/>        logs.info(<span>"Email sent to %s" </span>% reminder.email)<br/>        <span>return<br/></span><span>    except </span><span>Exception </span><span>as </span>e:<br/>        logs.error(e)<br/>        self.retry(<span>exc</span>=e)</pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Summary</h1>
+                </header>
+            
+            <article>
+                
+<p>The tasks in this chapter have allowed us to grow the functionality of our app significantly. We now have a fully featured administrator interface, a useful debugging tool in the browser, two tools that greatly speed up page load times, and a utility to make sending emails less of a headache.</p>
+<p>As was stated at the start of this chapter, Flask is bare-bones, and allows you to pick and choose the functionality that you want. Therefore, it is important to keep in mind that it is not necessary to include all of these extensions in your app. If you are the only content creator working on your app, the CLI might be all you need, because adding in these features takes up development time (and maintenance time, when they inevitably break). This warning is given at the end of the chapter, because one of the main reasons many Flask apps become unwieldy is because they include so many extensions, that testing and maintaining all of them becomes a very large task.</p>
+<p>In the next chapter, you will learn the internals of how an extension works, and how to create your own extension.</p>
+
+
+            </article>
+
+            
+        </section>
+    </body></html>

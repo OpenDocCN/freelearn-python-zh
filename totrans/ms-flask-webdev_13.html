@@ -1,0 +1,845 @@
+<html><head></head><body>
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Deploying Flask Apps</h1>
+                </header>
+            
+            <article>
+                
+<p>Now that we have reached the last chapter of the book, and have a fully functioning web app made in Flask, the final step in our development cycle is to make the app available for the world. There are many different approaches for hosting your Flask app, each of them with its own pros and cons. This chapter will cover the best solutions and guide you through situations in which you should choose one over the other.</p>
+<p>In this chapter, we will cover the following:</p>
+<ul>
+<li>A brief introduction to the most commonly used web servers and gateway interfaces</li>
+<li>How to deploy on various cloud services</li>
+<li>How to build Docker images</li>
+<li>How to describe services using Docker compose</li>
+<li>How to describe your infrastructure using AWS CloudFormation (IaC)</li>
+<li>How to set up and work with a CI/CD system to easily build, test, review, and deploy our application</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Web servers and gateway interfaces</h1>
+                </header>
+            
+            <article>
+                
+<p>In this section, we will make a quick introduction to the most commonly used web servers and <strong>Web Server Gateway Interfaces</strong> (<strong>WSGI</strong>), and their differences and configuration. A WSGI is an application-agnostic layer between the web server and the python application itself.</p>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Gevent</h1>
+                </header>
+            
+            <article>
+                
+<p>The simplest option to get a web server up and running is to use a Python library, named <kbd>gevent</kbd>, to host your application. <kbd>Gevent</kbd> is a Python library that adds an alternative way of doing concurrent programming,<span>called co-routines,</span> outside of the Python threading library. Gevent has an interface to run WSGI applications that is both simple and has good performance. A simple gevent server can easily handle hundreds of concurrent users, which is 99% more than the users of websites on the internet will ever have. The downside to this option is that its simplicity means a lack of configuration options. There is no way, for example, to add rate limiting to the server, or to add HTTPS traffic. This deployment option is purely for sites that you don't expect to receive a huge amount of traffic. Remember YAGNI: only upgrade to a different web server if you really need to.</p>
+<div class="packt_infobox">Co-routines are a bit outside of the scope of this book, but a good explanation can be found at <a href="https://en.wikipedia.org/wiki/Coroutine"><span class="URLPACKT">https://en.wikipedia.org/wiki/Coroutine</span></a>.</div>
+<p>To install <kbd>gevent</kbd>, we will use <kbd>pip</kbd> with the following command:</p>
+<pre>    <strong>$ pip install gevent</strong></pre>
+<p>In the root of the project directory, i<span>n a new file</span> named <kbd>gserver.py</kbd>, add the following:</p>
+<pre>    <strong>from gevent.wsgi import WSGIServer</strong>
+    <strong>from webapp import create_app</strong>
+    
+    <strong>app = create_app('webapp.config.ProdConfig')</strong>
+    
+    <strong>server = WSGIServer(('', 80), app)</strong>
+    <strong>server.serve_forever()</strong></pre>
+<p>To run the server with supervisor, just change the command value to the following:</p>
+<pre>    <strong>[program:webapp]</strong>
+    <strong>command=python gserver.py </strong>
+    <strong>directory=/home/deploy/webapp</strong>
+    <strong>user=deploy</strong></pre>
+<p>Now when you deploy, <kbd>gevent</kbd> will <span>automatically </span>be installed for you by running your <kbd>requirements.txt</kbd> on every deployment; that is, if you are properly pip freezing after every new dependency is added.</p>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Tornado</h1>
+                </header>
+            
+            <article>
+                
+<p><strong>Tornado</strong> is another very simple way to deploy WSGI apps purely with Python. Tornado is a web server that is designed to handle thousands of simultaneous connections. If your application needs real-time data, Tornado also supports WebSockets for continuous, long-lived connections to the server.</p>
+<div class="packt_infobox">Do not use Tornado in production on a Windows server. The Windows version of Tornado is not only slower—it is also considered beta-stage quality software.</div>
+<p>To use Tornado with our application, we will use Tornado's <kbd>WSGIContainer</kbd> in order to wrap the application object to make it Tornado-compatible. Then, Tornado will start to listen on port <em>80</em> for requests until the process is terminated. In a new file, named <kbd>tserver.py</kbd>, add the following:</p>
+<pre>    <strong>from tornado.wsgi import WSGIContainer</strong>
+    <strong>from tornado.httpserver import HTTPServer</strong>
+    <strong>from tornado.ioloop import IOLoop</strong>
+    <strong>from webapp import create_app</strong>
+    
+    <strong>app = WSGIContainer(create_app("webapp.config.ProdConfig"))</strong>
+    <strong>http_server = HTTPServer(app)</strong>
+    <strong>http_server.listen(80)</strong>
+    <strong>IOLoop.instance().start()</strong></pre>
+<p>To run the Tornado with supervisor privileges, just change the command value to the following:</p>
+<pre>    <strong>[program:webapp]</strong>
+    <strong>command=python tserver.py </strong>
+    <strong>directory=/home/deploy/webapp</strong>
+    <strong>user=deploy</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Nginx and uWSGI</h1>
+                </header>
+            
+            <article>
+                
+<p>If you need better performance or more options for customization, the most popular way to deploy a Python web application is to use a <span>Nginx </span>web server as a frontend for the WSGI-based <span>uWSGI </span>server by using a reverse proxy. A <em>reverse proxy</em> is a program in networks that retrieves contents for a client from a server, as if it returned from the proxy itself. This process is shown in the following diagram:</p>
+<div class="packt_figure CDPAlignCenter CDPAlign"><img src="assets/6547d721-3adc-45eb-baa1-850483f73ff3.png" style="width:38.50em;height:15.92em;"/></div>
+<p><strong>Nginx</strong> and <strong>uWSGI</strong> are used like this, because this way, we get the power of the Nginx frontend, while having the customization of uWSGI.</p>
+<p><strong>Nginx</strong> is a very powerful web server that became popular by providing the best combination of speed and customization. Nginx is consistently faster than other web severs, such as Apache's httpd, and has native support for WSGI applications. It achieves this speed thanks to the developers taking several good architecture decisions, as well as not going to try to cover a large amount of use cases, as Apache does. The latter point here was a <span>decision taken early on in development of Nginx. </span>Having a smaller feature set makes it much easier to maintain and optimize the code. From a programmer's perspective, it is also much easier to configure Nginx, as there is no giant default configuration file (<kbd>httpd.conf</kbd>) that can be overridden with <kbd>.htaccess</kbd> files in each of your project directories.</p>
+<p><strong>uWSGI</strong> is a web server that supports several different types of server interfaces, including WSGI. uWSGI handles the severing of the application content, as well as things such as the load balancing of traffic across several different processes and threads.</p>
+<p>To install uWSGI, we will use a <kbd>pip</kbd> command, as follows:</p>
+<pre>    <strong>$ pip install uwsgi</strong></pre>
+<p class="mce-root"/>
+<p>In order to run our application, uWSGI needs a file with an accessible WSGI application. In a file named <kbd>wsgi.py</kbd> in the top level of the project directory.</p>
+<p>To test uWSGI, we can run it from the <strong>command-line interface</strong> (<strong>CLI</strong>) with the following commands:</p>
+<pre>    <strong>$ uwsgi --socket 127.0.0.1:8080 </strong>
+    <strong>--wsgi-file wsgi.py </strong>
+    <strong>--callable app </strong>
+    <strong>--processes 4 </strong>
+    <strong>--threads 2</strong> </pre>
+<p>If you are running this on your server, you should be able to access port 8080 and see your app (if you don't have a firewall, that is).</p>
+<p>What this command does is load the app object from the <kbd>wsgi.py</kbd> file, and make it accessible from <kbd>localhost</kbd> on port <em>8080</em>. It also spawns four different processes with two threads each, which are automatically load balanced by a master process. This amount of processes is overkill for the vast majority of websites. To start off, use a single process with two threads and scale up from there.</p>
+<p>Instead of adding all of the configuration options on the CLI, we can create a text file to hold our configuration, which gives us the same benefits for configuration that were listed in the <em>Gevent<span> </span></em>section, about supervisor. In the root of the project directory, create a file named <kbd>uwsgi.ini</kbd> and add the following code:</p>
+<pre>    <strong>[uwsgi]</strong>
+    <strong>socket = 127.0.0.1:8080</strong>
+    <strong>wsgi-file = wsgi.py</strong>
+    <strong>callable = app</strong>
+    <strong>processes = 4</strong>
+    <strong>threads = 2</strong>
+  </pre>
+<div class="packt_infobox">uWSGI supports hundreds of configuration options, as well as several official and unofficial plugins. To leverage the full power of uWSGI, you can explore the documentation at <a href="http://uwsgi-docs.readthedocs.org/"><span class="URLPACKT">http://uwsgi-docs.readthedocs.org/</span></a>.</div>
+<p>Let's <span>now</span><span> run the server from supervisor:</span></p>
+<pre>    <strong>[program:webapp]</strong>
+    <strong>command=uwsgi uwsgi.ini</strong>
+    <strong>directory=/home/deploy/webapp</strong>
+    <strong>user=deploy</strong>
+  </pre>
+<p class="mce-root"/>
+<p>Because we are installing Nginx from the OS's package manager, the OS will handle the running of Nginx for us.</p>
+<div class="packt_infobox">At the time of writing, the Nginx version in the official Debian package manager is several years old. To install the most recent version, follow the instructions available at <a href="http://wiki.nginx.org/Install">http<span class="URLPACKT">://wiki.nginx.org/Install</span></a>.</div>
+<p>Next, we need to create an Nginx configuration file, and then, <span>when we push the code,</span> we need to copy the configuration file to the <kbd>/etc/nginx/sites-available/</kbd> directory. In the root of the project directory, create a new file named <kbd>nginx.conf</kbd>, and add the following:</p>
+<pre>server { 
+    listen 80; 
+    server_name your_domain_name; 
+ 
+    location / { 
+        include uwsgi_params; 
+        uwsgi_pass 127.0.0.1:8080; 
+    } 
+     
+    location /static { 
+        alias /home/deploy/webapp/webapp/static; 
+    } 
+} </pre>
+<p>What this configuration file does is tells Nginx to listen for incoming requests on port <em>80</em>, and forwards all requests to the WSGI application that is listening on port <em>8080</em>. Also, it makes an exception for any requests for static files, and instead sends those requests directly to the file system. Bypassing uWSGI for static files gives a great boost to performance, as Nginx is really good at serving static files quickly.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Apache and uWSGI</h1>
+                </header>
+            
+            <article>
+                
+<p>Using Apache httpd with uWSGI mostly requires the same setup. First off, we need an Apache configuration file, so let's create a new file, named <span><kbd>apache.conf</kbd>,</span> in the root of our project directory, and add the following code:</p>
+<pre>&lt;VirtualHost *:80&gt; 
+    &lt;Location /&gt; 
+        ProxyPass / uwsgi://127.0.0.1:8080/ 
+    &lt;/Location&gt; 
+&lt;/VirtualHost&gt; </pre>
+<p class="mce-root"/>
+<p>This file simply tells Apache to pass all requests on port <em>80</em> to the uWSGI web server listening on port <em>8080</em>. However, this functionality requires an extra Apache plugin from uWSGI, named <kbd>mod-proxy-uwsgi</kbd>.</p>
+<p>Next, we will cover several solutions for deploying our application on <strong>Platform as a Service</strong> (<strong>PaaS</strong>) and <strong>Infrastructure as a Service</strong> (<strong>IaaS</strong>) utilities. You will learn how to create several types of environments and make our example Blog application available to the world.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Deploying on Heroku</h1>
+                </header>
+            
+            <article>
+                
+<p><strong>Heroku</strong> is the first of the <strong>Platform as a Service</strong> (<strong>PaaS</strong>) providers that this chapter will cover. PaaS is a service given to web developers that allows them to host their websites on a platform that is controlled and maintained by someone else. At the cost of some freedom, you gain assurances that your website will automatically scale with the number of users your site has, with no extra work on your part. Using PaaS utilities may, however, tend to be more expensive than running your own servers.</p>
+<p>Heroku is a PaaS utility that aims to provide ease of use to web developers by hooking into already existing tools, and not requiring any large changes in the app. Heroku works by reading a file named <kbd>Procfile</kbd>, which contains commands that your Heroku dyno (basically a virtual machine sitting on a server) will run. Before we begin, you will need a Heroku account. If you wish to just experiment, there is a free account available.</p>
+<p><span>In the root of the directory, i</span>n a new file named <kbd>Procfile</kbd>, we have the following:</p>
+<pre>web: uwsgi heroku-uwsgi.ini</pre>
+<p>This tells Heroku that we have a process named <kbd>web</kbd>, which will run the uWSGI command and pass the <kbd>uwsgi.ini</kbd> file. Heroku also needs a file named <kbd>runtime.txt</kbd>, which will tell Heroku what Python runtime you wish to use—at the time of writing, the latest Python release is 3.7.0:</p>
+<pre><strong>python-3.7.0</strong></pre>
+<p>Next, make sure that <strong>uwsgi</strong> is present in the <kbd>requirements.txt</kbd> file.</p>
+<p>Finally, we need to make some modifications to the <kbd>uwsgi.ini</kbd> file that we made earlier:</p>
+<pre>    [uwsgi]
+    http-socket = :$(PORT)
+    die-on-term = true
+    wsgi-file = wsgi.py
+    callable = app
+    processes = 4
+    threads = 2</pre>
+<p>We set the port on which uWSGI listens to the environment variable port, because Heroku does not directly expose the dyno to the internet. Instead, it has a very complicated load balancer and reverse proxy system, so we need to have uWSGI listening on the port that Heroku needs us to listen on. Also, we set <span class="packt_screen">die-on-term</span> to true, so that uWSGI listens for a signal termination event from the OS correctly.</p>
+<p>To work with Heroku's command-line tools, we first need to install them, which can be done from <a href="https://toolbelt.heroku.com"><span class="URLPACKT">https://toolbelt.heroku.com</span></a>.</p>
+<p>Next, you need to log in to your account:</p>
+<pre><strong>$ heroku login</strong></pre>
+<p>We can test our setup to make sure that it will work on Heroku before we deploy it, by using the <kbd>foreman</kbd> command:</p>
+<pre><strong>$ foreman start web</strong></pre>
+<p>The <kbd>foreman</kbd> command simulates the same production environment that Heroku uses to run our app. To create the dyno, which will run the application on Heroku's servers, we will use the <kbd>create</kbd> command. Then, we can push Heroku<span> to the remote branch </span>on our G<span>it</span> repository to have Heroku servers automatically pull down our changes:</p>
+<pre><strong>$ heroku create</strong>
+<strong>$ git push heroku master</strong></pre>
+<p>If everything went well, you should now have a working application on your new Heroku dyno. You can open a new tab to your new web application with the following command:</p>
+<pre><strong>$ heroku open</strong></pre>
+<p>To see the app in action in a Heroku deployment, visit <a href="https://mastering-flask.herokuapp.com/"><span class="URLPACKT">https://mastering-flask.herokuapp.com/</span></a>.</p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Using Heroku Postgres</h1>
+                </header>
+            
+            <article>
+                
+<p>Maintaining a database properly is a full-time job. Thankfully, we can use one of Heroku's built-in features in order to automate this process for us. Heroku Postgres offers a database that is maintained and hosted entirely by Heroku. Because we are using SQLAlchemy, using Heroku Postgres is trivial. In your dyno's dashboard, there is a link to your <span class="packt_screen">Heroku Postgres</span> information. By clicking on it, you will be taken to a page similar to the following screenshot:</p>
+<div class="packt_figure CDPAlignCenter CDPAlign"><img src="assets/d7d77ee8-61c8-46ff-9354-bea69d15beca.png"/></div>
+<p>By clicking on the <span class="packt_screen">URL</span> field, you will be given an SQLAlchemy URL, which you can copy <span>directly</span><span> </span><span>to your production configuration object.</span></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Using Celery on Heroku</h1>
+                </header>
+            
+            <article>
+                
+<p>We have our production web server and database set up, but we still need to set up Celery. Using one of Heroku's many plugins, we can host a RabbitMQ instance in the cloud, while running the Celery worker on the dyno. The first step is to tell Heroku to run your Celery worker in <kbd>Procfile</kbd>:</p>
+<pre>web: uwsgi heroku-uwsgi.ini celery: celery worker -A celery_runner</pre>
+<p>Next, to install the Heroku RabbitMQ plugin with the free plan (the <kbd>lemur</kbd> plan), use the following command:</p>
+<pre><strong>$  heroku addons:create cloudamqp:lemur</strong></pre>
+<div class="packt_infobox">To get the full list of Heroku add-ons, go to <a href="https://elements.heroku.com/addons"><span class="URLPACKT">https://elements.heroku.com/addons</span></a>.</div>
+<p>At the same location on the dashboard where Heroku Postgres was listed, you will now find <span class="packt_screen">CloudAMQP</span>:</p>
+<div class="packt_figure CDPAlignCenter CDPAlign"><img src="assets/a0579d3f-1e34-4b2f-b01d-5b8ebfb9ac06.png"/></div>
+<p>Clicking on <span><span class="packt_screen">CloudAMQP</span> </span>will also give you a screen with a URL, which you can copy and paste into your production configuration:</p>
+<div class="packt_figure CDPAlignCenter CDPAlign"><img src="assets/ed113cc9-8bb1-4a24-b6be-0dce512a0284.png"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Deploying on Amazon Web Services</h1>
+                </header>
+            
+            <article>
+                
+<p><strong>Amazon Web Services</strong> (<strong>AWS</strong>) is a collection of services maintained by Amazon, and built on top of the same infrastructure that runs A<span class="URLPACKT">mazon.com</span>. To deploy our Flask code, we will be using Amazon Elastic Beanstalk <span>in this section</span>, while the database will be hosted on Amazon's <strong>Relational Database Service</strong> (<strong>RDS</strong>), and our messaging queue for Celery will be hosted on Amazon's <strong>Simple Queue Service</strong> (<strong>SQS</strong>).</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Using Flask on Amazon Elastic Beanstalk</h1>
+                </header>
+            
+            <article>
+                
+<p>Elastic Beanstalk is a platform for web applications that offers many powerful features for developers, so they don't have to worry about maintaining servers. For example, your Elastic Beanstalk application will automatically scale by utilizing more and more servers as the number of people using your app at once grows. For Python apps, Elastic Beanstalk uses Apache, in combination with <kbd>mod_wsgi</kbd>, to connect to WSGI applications—if your deployment is simple with mid-to-low load, there is no extra configuration needed.</p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p><span>Before we begin, you will need an </span><span class="URLPACKT">Amazon.com</span><span> account to log in to the console. Next,</span> you need to install <strong>awscli</strong> and configure it with your credentials—you must generate an AWS access key and secret: go to the AWS console, choose IAM service, choose your user, then choose the <span class="packt_screen">Security Credentials</span> tab, and click on the <span class="packt_screen">Create access key</span>. Next, we need to install awsebcli to manage Elastic Beanstalk from the CLI:</p>
+<pre><strong>$ pip install awsebcli --upgrade --user</strong></pre>
+<p>Next, from the root directory of our project, we are going to configure the CLI and create a new Elastic Beanstalk application:</p>
+<pre><strong>$ eb init<br/><br/></strong>Enter Application Name<br/>(default is "Chapter-13"):<strong> myblog<br/></strong>Application myblog has been created.<br/><br/>It appears you are using Python. Is this correct?<br/>(Y/n):<strong> Y<br/><br/></strong>Select a platform version.<br/>1) Python 3.6<br/>2) Python 3.4<br/>3) Python 3.4 (Preconfigured - Docker)<br/>4) Python 2.7<br/>5) Python<br/>(default is 1):<strong> 1<br/></strong>Cannot setup CodeCommit because there is no Source Control setup, continuing with initialization<br/>Do you want to set up SSH for your instances?<br/>(Y/n):<strong> Y<br/><br/></strong>Select a keypair.<br/>1) aws-sshkey<br/>2) [ Create new KeyPair ]<br/>(default is 1):<strong> 1<br/></strong></pre>
+<p>Elastic Beanstalk looks for a file named<span> </span><kbd>application.py</kbd><span> </span>in your project directory, and it expects to find a WSGI application, named <kbd>application</kbd>, in that file:</p>
+<pre><span>import </span>os<br/><span>from </span>webapp <span>import </span>create_app<br/><span>from </span>webapp.cli <span>import </span>register<br/><br/>env = os.environ.get(<span>'WEBAPP_ENV'</span><span>, </span><span>'dev'</span>)<br/><strong>application</strong> = create_app(<span>'config.%sConfig' </span>% env.capitalize())<br/>register(application)</pre>
+<p class="mce-root"/>
+<p>Next, we are going to create a development environment. Each Elastic Beanstalk application can contain one or many environments. But as things currently stand, our application will fail—we need to tell Elastic Beanstalk how to install Flask-YouTube on Python's virtual environment and initialize the database. To do this, we need to extend the default setup.</p>
+<p>In the root directory, we need a directory named <kbd>.ebextensions</kbd>. This is where we create a lot of extra configuration and setup scripts. In <kbd>.ebextensions</kbd><span>, we create two shell scripts that will run in the post-deploy phase. So, in the <kbd>.ebextensions/10_post_deploy.config</kbd> file, add the following code:</span></p>
+<pre>files:<br/>   "/opt/elasticbeanstalk/hooks/appdeploy/post/01_install_flask_youtube.sh":<br/>        mode: "000755"<br/>        owner: root<br/>        group: root<br/>        content: |<br/>            #!/usr/bin/env bash<br/><br/>            cd /opt/python/current/app<br/>            . /opt/python/current/env<br/>            source /opt/python/run/venv/bin/activate<br/>            sh install_flask_youtube.sh<br/><br/>    "/opt/elasticbeanstalk/hooks/appdeploy/post/02_migrate_database.sh":<br/>        mode: "000755"<br/>        owner: root<br/>        group: root<br/>        content: |<br/>            #!/usr/bin/env bash<br/>...</pre>
+<p>Using YAML notation here, we tell Elastic Beanstalk to create two shell scripts to install Flask-YouTube and create or migrate the database. The location of these files is special—<kbd>/opt/elasticbeanstalk/hooks/appdeploy/post</kbd> is where we can drop scripts to be executed after deploying. These scripts are executed in alphabetic order. Also, take note of the following locations:</p>
+<ul>
+<li><kbd>/opt/python/current/app</kbd>: This is the deploy location of the application.</li>
+<li><kbd>/opt/python/current/env</kbd>: This is a file containing defined environment variables on <span>Elastic Beanstalk</span>.</li>
+<li><kbd>/opt/python/run/venv</kbd>: This is python's <kbd>virtualenv</kbd>, and is where <span>Elastic Beanstalk </span>installed all our defined dependencies.</li>
+</ul>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p><span>Now, for our environment creation, run the following commands:</span></p>
+<pre><strong>$ eb create myblog-dev<br/>$ # Setup this environment variable<br/>$ eb setenv WEBAPP_ENV=Dev</strong></pre>
+<p>Finally, after the environment has finished provisioning the infrastructure and deployment, we can check out our application using the following command:</p>
+<pre><strong>$ eb open</strong></pre>
+<p>To deploy new versions of our application, we just have to run this command:</p>
+<pre><strong>$ eb deploy</strong></pre>
+<p>Note that our development environment uses SQLite, so the database is on a file on the web server itself. On each deployment or instance recreation, this database is recreated.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Using Amazon RDS</h1>
+                </header>
+            
+            <article>
+                
+<p><strong>Amazon RDS</strong> is a database-hosting platform in the cloud that automatically manages several things, such as recovery on node failure, scheduled backups, and master/slave setups.</p>
+<p>To use RDS, go to the <span class="packt_screen">Services</span> tab on the AWS console and click on <span class="packt_screen">Relational Database Service</span>. </p>
+<p>Now, create and configure a new database—make sure that on the <span class="packt_screen">Publicly accessible </span>option, you choose <span class="packt_screen">No</span>. Choose the same VPC as the instances, and register your admin credentials carefully. Now, wait a few minutes for the instance creation. After that, choose your instance, go to the details configuration, and find the field for the <strong>endpoint</strong>—it should look something like <span><kbd>myblog.c7pdwgffmbqdm.eu-central-1.rds.amazonaws.com</kbd>. Our production configuration uses system environment variables to set up the database URI, so we have to configure Elastic Beanstalk to set the <kbd>DB_URI</kbd> environment variable.</span></p>
+<p>To use these environment variables, we need to change our blog's <kbd>config.py</kbd><span> file to use the actual OS environment variables, as follows:</span></p>
+<pre><span>class </span><span>ProdConfig</span>(Config):<br/>    SQLALCHEMY_TRACK_MODIFICATIONS = <span>False<br/></span><span>    </span>SQLALCHEMY_DATABASE_URI = os.environ.get(<span>'DB_URI'</span><span>, </span><span>''</span>)<br/><br/>    CELERY_BROKER_URL = os.environ.get(<span>'CELERY_BROKER_URL'</span><span>, </span><span>''</span>)<br/>    CELERY_RESULT_BACKEND = os.environ.get(<span>'CELERY_BROKER_URL'</span><span>, </span><span>''</span>)<br/><br/>    CACHE_TYPE = <span>'redis'<br/></span><span>    </span>CACHE_REDIS_HOST = os.environ.get(<span>'REDIS_HOST'</span><span>, </span><span>''</span>)<br/>    CACHE_REDIS_PORT = <span>'6379'<br/></span><span>    </span>CACHE_REDIS_PASSWORD = <span>''<br/></span><span>    </span>CACHE_REDIS_DB = <span>'0'</span></pre>
+<p><span>Make sure your instances can connect to the database. If you chose the security group default options and RDS creation, then the wizard will have created a security group for you (the default name is '<kbd>rds-launch-wizard</kbd>'). On EC2, edit this security group and open port 3306 to your instances' VPC CIDR.</span></p>
+<p>In <kbd>.ebextensions</kbd>, take a look at the <kbd>01_env.config</kbd>—this is where we set our environment variables:</p>
+<pre>option_settings:<br/>  aws:elasticbeanstalk:application:environment:<br/>    WEBAPP_ENV: Prod<br/>    DB_URI: mysql://admin:password@myblog.c4pdwhkmbyqm.eu-central-1.rds.amazonaws.com:3306/myblog<br/>    CELERY_BROKER_URL: sqs://sqs.us-east-1.amazonaws.com/arn:aws:sqs:eu-central-1:633393569065:myblog-sqs/myblog-sqs</pre>
+<p><span>Finally, let's create the production environment with the following command:</span></p>
+<pre><span><strong>$ eb create myblog-prod<br/></strong></span></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Using Celery with Amazon SQS</h1>
+                </header>
+            
+            <article>
+                
+<p>In order to use Celery on AWS, we need to have our Elastic Beanstalk instance run our Celery worker in the background, as well as set up an SQS messaging queue. For Celery to support SQS, it needs to install a helper library from <kbd>pip</kbd>. Once more, verify that our <kbd>requirements.txt</kbd> file contains the <strong>boto3</strong> package. Elastic Beanstalk will look at this file and create a virtual environment from it.</p>
+<p class="mce-root"/>
+<p>Setting up a new messaging queue on SQS is very easy. Go to the <span class="packt_screen">Services</span> tab and click on <span class="packt_screen">Simple Queue Service</span> in the applications tab, then click on <strong><span class="packt_screen">Create New Queue</span></strong><span class="packt_screen">.</span> After a very short configuration screen, you should see a screen much like the following:</p>
+<div class="packt_figure CDPAlignCenter CDPAlign"><img src="assets/f22c7501-612e-4e62-b7cc-0f12df21d56a.png"/></div>
+<p>Next, we have to give our instances access to the newly created SQS. The easiest way to do this is editing the Elastic Beanstalk default instance profile (this is not recommended, however—you should create a separate instance profile and associate all your instances with it using <kbd>.ebextensions</kbd> option settings). The default IAM instance profile is named <a href="https://console.aws.amazon.com/iam/home#/roles/aws-elasticbeanstalk-ec2-role">aws-elasticbeanstalk-ec2-role</a>. Go to IAM service, then roles, then choose the <a href="https://console.aws.amazon.com/iam/home#/roles/aws-elasticbeanstalk-ec2-role">aws-elasticbeanstalk-ec2-role</a> role. Next, click on <span class="packt_screen">Add inline policy</span> and follow the wizard to give access to the newly created SQS.</p>
+<p>Now we have to change our <kbd>CELERY_BROKER_URL</kbd> to the new URL, which takes the following format:</p>
+<pre><strong>$ eb setenv CELERY_BROKER_URL=sqs://sqs.us-east-1.amazonaws.com/arn:aws:sqs:us-east-1:&lt;AWS_ACCOUNT_ID&gt;:myblog-sqs/myblog-sqs</strong></pre>
+<p>Change the <kbd>AWS_ACCOUNT_ID</kbd> value to your AWS account ID.</p>
+<p>Finally, we need to tell Elastic Beanstalk to run a Celery worker in the background. Once more, we can do this in <kbd>.ebextensions</kbd>. Create a file named <kbd>11_celery_start.config</kbd>, and insert the following code into it:</p>
+<pre>commands:<br/>    celery_start:<br/>        command: |<br/>              #!/usr/bin/env bash<br/>              cd /opt/python/current/app<br/>              . /opt/python/current/env<br/>              source /opt/python/run/venv/bin/activate<br/>              celery multi start worker1 -A celery_runner</pre>
+<p>Note that this kind of Celery worker deployment lives on the web server (which is not recommended), and will also scale along with the web servers in line with demand. A better option would be to explore the worker feature from Elastic Beanstalk, but this would imply a complete rework of the feature, and we'd suffer from subsequent vendor lock-in.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Using Docker</h1>
+                </header>
+            
+            <article>
+                
+<p>Docker is a container-based technology created in 2013 by Docker, Inc. Container technology is not new, and has been around for some time on Unix OS, with chroot created in 1982, Solaris Zones in 2004, and WPAR available on AIX or OS400 systems (although WPAR is more of a virtualization technology than a container). Later, two important features were integrated on Linux: <strong>namespaces</strong><span>, which </span>isolate OS function names, and<span> </span><strong>cgroups</strong>, a collection of processes that are bound by configuration and resource limits. These new features gave birth to Linux containers, so why use Docker?</p>
+<p>Mainly, because Docker made configuration definitions simple. Using a very easy-to-write Dockerfile, you can describe how to provision your container and create a new image with it. Each Dockerfile line will create a new FS layer using UnionFS, which makes changes very quick to apply, and it's equally easy to roll back and forward between changes. Also Docker, Inc. created an open image repository, where you can find quality images of almost any Linux software available . We have already used some of these for Redis and RabbitMQ in <a href="5672073f-7a18-4865-9800-a2124147042c.xhtml" target="_blank">Chapter 9</a>, <em>Creating Asynchronous Tasks with Celery</em>.</p>
+<p>Docker has gained enormous traction and hype. Some of its best features are the following:</p>
+<ul>
+<li>Solving dependency issues from the OS: Since we are packing a thin OS with your container image, it is safe to assume that what runs on your laptop will run on production as well.</li>
+<li>Containers are very light, and users are able to run multiple containers on the same VM or hardware host, which can reduce operations costs and increase efficiency.</li>
+<li>Containers bootstrap very quickly, enabling your infrastructure to scale equally quickly, if, for example, you needed to address an <span>increase in</span> workload.</li>
+<li>Developers can easily share their application with other developers using containers.</li>
+<li>Docker supports DevOps principles: developers and operations can and should work together on the image and architecture definition, using Dockerfile or Docker Compose. </li>
+</ul>
+<p>If we consider the differences in features on offer from Docker containers versus VMs, let's remember that containers share the same kernel and normally run a single process, while VMs run a fully featured guest OS:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-380 image-border" src="assets/5ef2a593-2af8-4fb8-9282-79e7c50ac68a.png" style="width:42.58em;height:19.25em;"/></p>
+<p>This architecture makes containers very lightweight and quick to spawn.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Creating Docker images</h1>
+                </header>
+            
+            <article>
+                
+<p>Throughout the previous chapters, our Blog application has grown from a simple three-tier architecture to a multi-tier one. We now need to address a web server, database, cache system, and queue. We are going to define each of these layers as Docker containers.</p>
+<p>First, let's begin with our web server and Flask application. For this, we will be using an Nginx frontend, and a WSGI, called uWSGI, for the backend. </p>
+<p>A Dockerfile is a text file that contains special instructions with which we use to specify our Docker image and how it should be run. The build process is going to execute the commands one by one, creating a new layer on each one. Some of the most used Dockerfile commands include the following:</p>
+<ul>
+<li><kbd>FROM</kbd><strong>: </strong>Specifies the base image that our new image is based upon. We can start from a really thin OS, such as Alpine, or directly from an RabbitMQ image.</li>
+<li><kbd>EXPOSE</kbd>:<strong> </strong>Informs Docker that the container listens on a specified network port/protocol. </li>
+<li><kbd>ENV</kbd>:<strong> </strong>Sets environment variables.</li>
+<li><kbd>WORKDIR</kbd>: Establishes the base directory for the Dockerfile.</li>
+<li><kbd>RUN</kbd>:<strong> </strong>Runs bash Linux commands on a new layer. This is normally used to install additional packages.</li>
+<li><kbd>COPY</kbd>:<strong> </strong>Copies files or directories from local filesystem to the Docker image.</li>
+<li><kbd>CMD</kbd>:<strong> </strong>There can be only one instance of CMD. It specifies how the container should be run.</li>
+<li><kbd>ENTRYPOINT</kbd>: This has the same objective as CMD, but is a script in Docker.</li>
+</ul>
+<div class="packt_tip">For a full reference of Dockerfile commands, check out the documentation at <a href="https://docs.docker.com/engine/reference/builder/#usage">https://docs.docker.com/engine/reference/builder/#usage</a>.<a href="https://docs.docker.com/engine/reference/builder/#usage"/></div>
+<p>Our directory structure for Docker deploy is going to be the following:</p>
+<pre><strong>/</strong><br/>  <strong>deploy/</strong><br/>  <strong>docker/</strong><br/>    <strong>docker-compose.yml</strong> -&gt; Compose file<br/>    <strong>ecs-docker-compose.yml</strong> -&gt; Specific compose file for AWS ECS<br/>    <strong>Dockerfile_frontend</strong> -&gt; Dockerfile for the frontends<br/>    <strong>Dockerfile_worker</strong> -&gt; Dockerfile for the workers<br/>    <strong>prod.env</strong> -&gt; Production environment variables<br/>    <strong>worker_entrypoing.sh</strong> -&gt; entrypoint for the celery worker<br/>  <strong>supervisor_worker.sh</strong> -&gt; Supervisor conf file for the celery worker<br/>  <strong>uwsgi.ini</strong> -&gt; Conf. file for uWSGI</pre>
+<p>The images we are going to create will be used with Docker Compose (more on this later in this chapter), so they will not work on a standalone basis. If you don't want to use Docker Compose, very few modification are needed for the images to work—you just have to change the <kbd>prod.env</kbd><span> file.</span></p>
+<p>First, let's create a Dockerfile for our web server. We will use a previous image that already contains NGINX and uWSGI, saving us the work to install and configure them. Our <kbd>Dockerfile_frontend</kbd><span> is the Dockerfile containing the definition for creating frontend images:</span></p>
+<pre>FROM tiangolo/uwsgi-nginx:python3.6<br/><br/># Create and set directory where the code will live<br/>RUN mkdir /srv/app<br/>WORKDIR /srv/app<br/><br/># Copy our code<br/>COPY . .<br/># Install all python packages required<br/>RUN pip install -r requirements.txt<br/>RUN sh install_flask_youtube.sh<br/><br/># Setup NGINX and uWSGI<br/>COPY ./deploy/uwsgi.ini /etc/uwsgi/uwsgi.ini<br/>ENV NGINX_WORKER_OPEN_FILES 2048<br/>ENV NGINX_WORKER_CONNECTIONS 2048<br/>ENV LISTEN_PORT 80<br/><br/>EXPOSE 80</pre>
+<p>First, in the preceding snippet, we base our image on <kbd>uwsgi-nginx:python3.6</kbd><span>, which means we are going to use Python 3.6. Next, we create and set the directory where our application will live—this will be in <kbd>/srv/app</kbd>. Then we copy all our local content (myblog code) to the image itself using the <kbd>COPY . .</kbd>. Next, we copy the configuration file for our WSGI, finally configuring the number of workers that NGINX will use. At the end, we inform Docker that this image will be listening on port 80, using <kbd>EXPOSE 80</kbd>.</span></p>
+<p>Next, let's take a look at our Celery worker Dockerfile:</p>
+<pre>FROM ubuntu<br/>RUN  apt-get update &amp;&amp; \<br/>     apt-get install -y supervisor python3-pip python3-dev libmysqlclient-dev mysql-client<br/>RUN mkdir /srv/app<br/>WORKDIR /srv/app<br/>COPY . .<br/>RUN pip3 install -r requirements.txt<br/>RUN sh install_flask_youtube.sh<br/><br/>COPY ./deploy/supervisor_worker.conf /etc/supervisor/conf.d/celery_worker.conf<br/>COPY ./deploy/docker/worker_entrypoint.sh .<br/>ENTRYPOINT ["sh", "./worker_entrypoint.sh"]</pre>
+<p class="mce-root"/>
+<p>This time, our base image is going to be Ubuntu (in particular, a really thin Ubuntu version for Docker). We are going to use the<span> </span><strong>supervisor</strong> Python package to monitor and launch our Celery process, so if Celery crashes for some reason, supervisor will restart it. So, at the OS level, we are installing the supervisor, Python 3, and MySQL client packages. Take a look at the <kbd>worker_entrypoint.sh</kbd><span> shell script in the preceding code block, where we are doing some interesting things:</span></p>
+<ul>
+<li>We are waiting for MySQL to become available. When using Docker Compose, we can define the order that each task (that is, each Docker container) is launched, but we don't have a way to know if the service is already available.</li>
+<li>Next, we use the Flask CLI and Alembic to create or migrate our database.</li>
+<li>Finally, we insert test data to our database (simply because it's nice to have for the readers), so that when you launch the app, it's in a workable state with some fake post data already present.</li>
+</ul>
+<p>To build and create our images, execute the following Docker commands on the shell in the root directory of our project:</p>
+<pre><strong>$ docker build -f deploy/docker/Dockerfile_frontend -t myblog:latest . </strong></pre>
+<p>This will create an image named<span> </span><strong>myblog </strong>with the tag<span> </span><strong>latest</strong>. As part of production best practices, you should tag your images with your project version, also using a<span> </span><strong>git </strong>tag. This way, we can always be sure what code is in which images; for example, what changed between <kbd>myblog:1.0</kbd> and <kbd>myblog:1.1</kbd>.</p>
+<p>Finally, create the Celery worker image with the following command:</p>
+<pre><strong>$ docker build -f deploy/docker/Dockerfile_worker -t myblog_worker:latest .<br/></strong></pre>
+<p>Now that we have our custom images created, we are ready to go to the next section, where we are going define our of all infrastructure and link the containers to each other.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Docker Compose</h1>
+                </header>
+            
+            <article>
+                
+<p><strong>Docker Compose</strong> is a tool for defining our multi-layer application. This is where we define all the services needed to run our application, configure them, and link them together.</p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p>Docker Compose is based on YAML files, which is where all the definition happens, so let's dive right into it and take a look at the <kbd>deploy/docker/docker-compose.yaml</kbd><span> file:</span></p>
+<pre><span>version: </span><span>'3'<br/></span><span>services:<br/></span><span>  db:<br/></span><span>    image: </span>mysql:5.7<br/>    <span>env_file:<br/></span><span>      </span>- prod.env<br/>  <span>rmq:<br/></span><span>    image: </span>rabbitmq:3-management<br/>    <span>env_file:<br/></span><span>      </span>- prod.env<br/>    ports:<br/>      - 15672:15672<br/>  <span>redis:<br/></span><span>      </span><span>image: </span>redis<br/>  <span>worker:<br/></span><span>    image: </span>myblog_worker:latest<br/>    <span>depends_on:<br/></span><span>      </span>- db<br/>      - rmq<br/>    <span>env_file:<br/></span><span>      </span>- prod.env<br/>  <span>frontend:<br/></span><span>    image: </span>myblog<br/>    <span>depends_on:<br/></span><span>      </span>- db<br/>      - rmq<br/>    <span>env_file:<br/></span><span>      </span>- prod.env<br/>    <span>restart: </span>always<br/>    <span>ports:<br/></span><span>      </span>- 80:80</pre>
+<p><span>In Docker Compose, we have defined the following services:</span></p>
+<ul>
+<li><strong>mysql</strong>: This is based on the Docker Hub community image for MySQL 5.7. All the custom configuration happens with environment variables, as defined in the <kbd>prod.env</kbd><span> file.</span></li>
+<li><strong>rmq</strong>: Rabbit MQ is based on the Docker Hub community image, customized by us to create user credentials, cookies, and VHOST. This will install the management interface as well, which can be accessed on <kbd>http://localhost:15672</kbd>.</li>
+<li><strong>redis</strong>: This is the Redis service for our cache.</li>
+<li><strong>worker</strong>: This uses our previously built <kbd>myblog_worker</kbd> Docker image.</li>
+<li><strong>frontend</strong>: This u<span>ses our previously built <kbd>myblog_worker</kbd> Docker image.</span></li>
+</ul>
+<p>This is a very simple composer definition. Note <kbd>depends_on</kbd>, where we define which services depend on other services. So, for example, our frontend service is going to depend on the database and Rabbit MQ. The <kbd>ports</kbd><span> key is a list of exposed ports; in this case, the frontend port 80 is going to be exposed by the Docker host on port 80 also. This way, we can access our application on the Docker host IP port 80, or by using a load balancer in front of the Docker hosts. On your machine with Docker already installed, you can access the application on <kbd> http://localhost</kbd>.</span></p>
+<p>The use of <span>the </span><kbd>prod.env</kbd><span> file is important, because this way, we can define different configurations for different environments and still use the same compose file. Using the same compose file across environments obeys another Twelve-Factor App rule about making the infrastructure components the same across all environments.</span></p>
+<p><span>Let's take a look at the <kbd>prod.env</kbd> file:</span></p>
+<pre><strong>WEBAPP_ENV=Prod</strong><br/>DB_HOST=db<br/>DB_URI=mysql://myblog:password@db:3306/myblog<br/>CELERY_BROKER_URL=amqp://rabbitmq:rabbitmq@rmq//<br/>REDIS_HOST=redis<br/>MYSQL_ROOT_PASSWORD=rootpassword<br/>MYSQL_DATABASE=myblog<br/>MYSQL_USER=myblog<br/>MYSQL_PASSWORD=password<br/>RABBITMQ_ERLANG_COOKIE=SWQOKODSQALRPCLNMEQG<br/>RABBITMQ_DEFAULT_USER=rabbitmq<br/>RABBITMQ_DEFAULT_PASS=rabbitmq<br/>RABBITMQ_DEFAULT_VHOST=/</pre>
+<p>This file environment variables will set actual OS-level environment variables so that it's simple to use them on the configuration file for our application. This will comply with another of the Twelve-Factor App rules from <kbd>https://12factor.net/</kbd>. </p>
+<p><span>At the top, we set our application environment for production configuration using </span><kbd>WEBAPP_ENV=Prod</kbd><span>.</span></p>
+<p>The<span> </span><kbd>MYSQL_*</kbd><span> </span>variables is where we configure the MySQL 5.7 container. We set the root password and an initial database to create (if necessary) a user and password for this database.</p>
+<p class="mce-root"/>
+<p>It's important to note that the <kbd>REDIS_HOST</kbd><span> , <kbd>DB_URI</kbd>, <kbd>CELERY_BROKER_URL</kbd> variables are using the actual host names that each container will use to communicate with the other containers. By default, these are the service names, which makes everything pretty simple. So, the frontend container accesses the database using the <kbd>db</kbd> network hostname.</span></p>
+<p>Finally, let's start our application:</p>
+<pre><strong>$ docker-compose -f deploy/docker/docker-compose.yml up</strong></pre>
+<p>Wait for all the containers to start up, then open your browser and go to <kbd>http://localhost</kbd>.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Deploying Docker containers on AWS</h1>
+                </header>
+            
+            <article>
+                
+<p>To deploy on AWS, we are going to use the <strong>Amazon Elastic Container Service</strong> (<strong>ECS</strong>). ECS is a service that provides a scalable cluster for Docker, without the need to install any software to orchestrate your containers. It's based on <strong>AWS Auto Scaling Groups</strong> (<strong>ASG</strong>), which scale <span>instances</span><span> </span><span>up or down with Docker installed. This scaling is triggered by monitoring metrics, such as CPU usage or network load. ECS also migrates all containers from an instance that, for some reason, terminates, or gets its service impaired. ECS thus acts as a cluster. After this, the ASG will spawn a new instance to replace the faulty one.</span></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">CloudFormation Basics</h1>
+                </header>
+            
+            <article>
+                
+<p><span>AWS provides many services, each of which has many configuration options. You also need to wire these services up. To effectively and reliably create, configure, update, or destroy these services, we are going to show you how to use an <strong>IaC</strong> (<strong>Infrastructure as code</strong>) technology from AWS, called CloudFormation. <strong>CloudFormation</strong> is not a complex technology, but follows the extension of all AWS services and configuration options. The details and operation of CloudFormation could be subject to a book on its own.</span></p>
+<p>CloudFormation is an extended data structure that you write using JSON or YAML. I say extended, because it's possible to use references, functions, and conditions. A CloudFormation file is composed of the following sections:</p>
+<pre><span><strong>AWSTemplateFormatVersion</strong>: "version date"<br/><strong>Description</strong>: "Some description about the stack"<br/><strong>Parameters</strong>: Input parameters to configure the stack<br/><strong>Metadata</strong>: Aditional data about the template, also useful to group parameters on the UI<br/><strong>Mappings</strong>: Data mappings definitions<br/><strong>Conditions</strong>: Setup conditions to setup resources or configuration<br/><strong>Transform</strong>: Mainly used for AWS serverless<br/><strong>Resources</strong>: Resource definitions, this is the only required section<br/><strong>Output</strong>: Section to output data, you can use it return the DNS name to access the created application<br/></span></pre>
+<p>Let's take a quick look at the provided CloudFormation file in<span> </span><kbd>./deploy/docker/cfn_myblog.yml</kbd><span>. We are going to follow all the CloudFormation sections, one be one. First, let's examine the <strong>Parameters</strong> section:</span></p>
+<pre><span>...<br/><strong>Parameters</strong>:<br/></span><span>  ApplicationName:<br/></span><span>    Description: </span>The application name<br/>    <span>Type: </span>String<br/>    <span>Default: </span>ecs001<br/>  <span>Environment:<br/></span><span>    Description: </span>Application environment that will use the Stack<br/>    <span>Type: </span>String<br/>    <span>Default: </span>prod<br/>    <span>AllowedValues:<br/></span><span>    </span>- dev<br/>    - stg<br/>    - prod<br/>  <span>InstanceType:<br/></span><span>    Description: </span>Which instance type should we use to build the ECS cluster?<br/>    <span>Type: </span>String<br/>    <span>Default: </span>t2.medium<br/>...</pre>
+<p>Without going into much detail, in this file, an input parameter is defined by a name, and may contain a description, a type, a default value, and rules for accepted values. All these values will be referenced later when configuring our infrastructure. These values are going to be filled when deploying or updating the CloudFormation stack.</p>
+<p>Next, look at<span> the </span><strong>Mappings</strong> section:</p>
+<pre><span><strong>...<br/>Mappings</strong>:<br/></span><span>  AWSRegionToAMI:<br/></span><span>    us-east-2:<br/></span><span>        AMI: </span>ami-b86a5ddd<br/>    <span>us-east-1:<br/></span><span>        AMI: </span>ami-a7a242da<br/>    <span>us-west-2:<br/></span><span>        AMI: </span>ami-92e06fea<br/>...</pre>
+<p class="mce-root"/>
+<p>This is simply a convenient data structure for mapping AWS regions into AMIs. An AMI is a base OS image that we are using for our Docker VMs. Each AMI has a different identification in each region, so we need to map them out to make our stack deployable on any AWS region. On our case, we will be using Amazon ECS-optimized <span>Linux</span>.</p>
+<p>Now, let's consider the<span> </span><strong>Metadata</strong> section:</p>
+<pre><span><strong>...<br/>Metadata</strong>:<br/></span><span>  AWS::CloudFormation::Interface:<br/></span><span>    ParameterGroups:<br/></span><span>    </span>- <span>Label:<br/></span><span>        default: </span>System Information (Tags)<br/>      <span>Parameters:<br/></span><span>      </span>- Environment<br/>      - ApplicationName<br/>    - <span>Label:<br/></span><span>        default: </span>Networking<br/>      <span>Parameters:<br/></span><span>      </span>- VPC<br/>      - <span>Subnets<br/>...</span></pre>
+<p>Here, we are declaring an <kbd>Interface</kbd> to group our parameters. This is just to make the parameters display in a nicer way to whomever is going to deploy the stack. Remember that the parameters section is a dictionary, and that dictionary keys have no order.</p>
+<p>The main, and more important section is<span> </span><strong>Resources</strong>. We are not going to go into full detail on this, rather, we'll just quickly highlight the main infrastructure resources we are going to create and how they are wired. First, for the database, we are going to use another AWS service, called <strong>RDS</strong>, and create a MySQL server:</p>
+<pre><span><strong>Resources</strong>:<br/>...<br/>DB:<br/></span><strong><span>  Type: </span>AWS::RDS::DBInstance</strong><br/>  <span>Properties:<br/></span><span>    AllocatedStorage: </span><span>"30"<br/></span><span>    </span><span>DBInstanceClass: </span><span>"db.t2.medium"<br/></span><span>    </span><span>Engine: </span><span>"MariaDB"<br/></span><span>    </span><span>EngineVersion: </span><span>"10.2.11"<br/></span><span>    </span><span>MasterUsername: </span><strong>!Ref DBUsername</strong><br/>    <span>MasterUserPassword: </span><strong>!Ref DBPassword</strong><br/>    <span>DBSubnetGroupName: </span><strong>!Ref DBSubnetGrou</strong>p<br/>    <span>VPCSecurityGroups:<br/></span><span>      </span>- <strong><span>Ref: </span>DBSecurityGroup</strong></pre>
+<p class="mce-root"/>
+<p>Each resource has a type. For RDS, this is <kbd>AWS::RDS:DBInstance</kbd>. Each type has its own specific set of properties. Also, notice how <kbd>!Ref</kbd><span> declares values that are references from other resources or parameters. <kbd>DBUsername</kbd> and <kbd>DBPassword</kbd> are parameters, but <kbd>DBSubnetGroup</kbd> and <kbd>DBSecurityGroup</kbd> are resources created by CloudFormation to set up the network ACL and subnet placement for our database.</span></p>
+<p>The ECS cluster resource declaration is as follows:</p>
+<pre><span>ECSCluster:<br/></span><span>  Type: </span><span>"AWS::ECS::Cluster"<br/></span><span>  </span><span>Properties:<br/></span><span>    ClusterName: </span><strong>!Sub ${Environment}-${ApplicationName}</strong><br/><br/><span>ECSAutoScalingGroup:<br/></span><span>  Type: </span>AWS::AutoScaling::AutoScalingGroup<br/>  <span>Properties:<br/></span><span>...<br/><br/>ECSLaunchConfiguration:<br/></span><span>  Type: </span>AWS::AutoScaling::LaunchConfiguration<br/>  <span>Properties:<br/></span><span>...<br/><br/></span><span>ECSRole:<br/></span><span>  Type: </span>AWS::IAM::Role<br/>  <span>Properties:<br/></span><span>...<br/>ECSInstanceProfile:<br/></span><span>  Type: </span>AWS::IAM::InstanceProfile<br/>  <span>Properties:<br/></span>...<br/><span>ECSServiceRole:<br/></span><span>  Type: </span>AWS::IAM::Role<br/>  <span>Properties:</span><span><br/>...</span></pre>
+<p>All these definitions belong to the ECS cluster. This cluster can be used to provision many different applications, so it would make sense to declare these definitions on a separate CloudFormation file, or use nested stacks. To simplify the deployment, we will use a single file to create our application. First, we create the ECS cluster, and set its name to be a concatenation with the <kbd>Environment</kbd> and<span> </span><kbd>ApplicationName</kbd> <span>parameters.</span> This is done using the <kbd>!Sub</kbd> <span>CloudFormation function</span>.</p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p>Next, we declare the <strong>Auto Scaling Group</strong> (<strong>ASG</strong>) for our cluster, and set up the way AWS is going to provision each instance that belongs to this ASG. These are the<span> </span><kbd>ECSAutoScalingGroup</kbd><span> </span>and<span> </span><kbd>ECSLaunchConfiguration</kbd><span> </span>resources. Finally, <kbd>ECSRole</kbd>,<span> </span><kbd>ECSInstanceProfile</kbd><span>, </span>and<span> </span><kbd>ECSServiceRole</kbd><span> </span>are used to set up the security permissions needed for the ECS cluster to fetch Docker images, work with AWS load balancers (ELB), S3, and so on. These permissions are the standard used by AWS as an example, and can be most certainly be downgraded. </p>
+<p>Now, for our application, we are going to define ECS services and ECS task definitions. A task definition is where we define one or more container definitions that reference the Docker image to use, along with environment variables. Then, the ECS service references an ECS task definition, and may tie it up with a load balancer and set up deployment configuration options, such as performance limits and auto scaling options (yes, the ECS cluster can scale up or down on load shifts, but our containers may scale up or down independently as well):</p>
+<pre><span>FrontEndTask:<br/></span><span>  DependsOn: </span>WorkerTask<br/>  <span>Type: </span><span>"AWS::ECS::TaskDefinition"<br/></span><span>  </span><span>Properties:<br/></span><span>    ContainerDefinitions:<br/></span><span>      </span>-<br/>        <span>Name: </span><span>"frontend"<br/></span><span>        </span><span>Image: </span>!Ref DockerFrontEndImageArn<br/>        <span>Cpu: </span><span>"10"<br/>        Memory: "500"<br/></span><span>        </span><span>PortMappings:<br/></span><span>          </span>-<br/>            <span>ContainerPort: </span><span>"80"<br/></span><span>            </span><span>HostPort: </span><span>"80"</span><span><br/></span><span>        </span><span>Environment:<br/></span><span>          </span>-<br/>            <span>Name: </span><span>"WEBAPP_ENV"<br/></span><span>            </span><span>Value: </span>!Ref Environment<br/>          -<br/>            <span>Name: </span><span>"CELERY_BROKER_URL"<br/></span><span>            </span><span>Value: </span>!Sub <span>"amqp://${RMQUsername}:${RMQPassword}@${ELBRMQ.DNSName}:5672//"<br/></span><span>          </span>-<br/>            <span>Name: </span><span>"DB_URI"<br/></span><span>            </span><span>Value: </span>!Sub <span>"mysql://${DBUsername}:${DBPassword}@${DB.Endpoint.Address}:3306/myblog"<br/></span><span>          </span>-<br/>            <span>Name: </span><span>"REDIS_HOST"<br/></span><span>            </span><span>Value: </span>!Sub ${ELBRedis.DNSName}</pre>
+<p>This is the task definition for our frontend containers. You may notice that this is the CloudFormation version of the Docker Compose service that we've already seen. We declare a name for our container,<span> </span><kbd>Name: "frontend"</kbd><span>, </span>that will later be referenced in the load balancers. Next, the image:<span> </span><kbd>!Ref DockerFrontEndImageArn</kbd><span> </span>is a reference to an input parameter. This will allow us to easily deploy new versions of our blog application. The port mappings for Docker are declared in<span> </span><kbd>PortMappings</kbd>. This is a list of key values, repeating the keys for<span> </span><kbd>ContainerPort</kbd><span> </span>and<span> </span><kbd>HostPort</kbd>. The environment is, once again, a list of key values, and here we make the "wiring" for DB, RMQ, and Redis from other resources we are creating. For example, here is how we use <kbd>DB_URI</kbd>:</p>
+<pre>-<br/>            <span>Name: </span><span>"DB_URI"<br/></span><span>            </span><span>Value: </span>!Sub <span>"mysql://${DBUsername}:${DBPassword}@${DB.Endpoint.Address}:3306/myblog"</span></pre>
+<p>This <kbd>Value</kbd> is where we construct the URI for the database, using our already known<span> </span><kbd>!Sub</kbd><span> </span>function and a reference for<span> </span><kbd>DBUsername</kbd><span> </span>and<span> </span><kbd>DBPassword</kbd>. The<span> </span><kbd>DB.Endpoint.Address</kbd> is how we can reference the DNS name that AWS created for our newly created MySQL server.</p>
+<p>In the service definition, we tie our container to an AWS Elastic Load Balancer, and make some deployment configuration:</p>
+<pre><span>MyBlogFrontendService:<br/></span><span>  Type: </span><span>"AWS::ECS::Service"<br/></span><span>  </span><span>Properties:<br/></span><span>    Cluster: </span>!Ref ECSCluster<br/>    <span>DeploymentConfiguration:<br/></span><span>      MaximumPercent: 2</span>00<br/>      <span>MinimumHealthyPercent: </span>50<br/>    <span>DesiredCount: </span>2<br/>    <span>TaskDefinition: </span>!Ref <span>FrontEndTask</span><br/>    <span>LoadBalancers:<br/></span><span>      </span>-<br/>        <span>ContainerName: </span><span>'frontend'<br/></span><span>        </span><span>ContainerPort: </span>80<br/>        <span>LoadBalancerName: </span>!Ref ELBFrontEnd<br/>  <span>DependsOn:<br/></span><span>    </span>- ECSServiceRole<br/>    - <span>FrontEndTask</span></pre>
+<p class="mce-root"/>
+<p>First, we declare that this service will run on our newly created ECS cluster, using<span> </span><kbd>Cluster: !Ref ECSCluster</kbd>. Then, using the<span> </span><kbd>DeploymentConfiguration</kbd><span> </span>and<span> </span><kbd>DesiredCount</kbd>, we say that this service will start with two containers (for high availability) and allow it to scale up and down between 4 and 1. This obeys the following formulas: </p>
+<ul>
+<li>The maximum number of containers = DesiredCount * (MaximumPercent / 100)</li>
+<li>The minimum number of containers = DesiredCount * (MinimumPercent / 100)</li>
+</ul>
+<p>So, applying the formulas to our case gives us the following:</p>
+<ul>
+<li>4 = 2 * (200/100)</li>
+<li>1 = 2 * (50/100)</li>
+</ul>
+<p>With<span> </span><kbd>TaskDefinition: !RefFrontEndTask</kbd><span>, we say that this service uses our previous frontend task definition. And finally, with the <kbd>LoadBalancers</kbd> key property, we tie our service with a load balancer. This means that our two newly created containers will evenly receive requests from the users, and new containers will automatically be registered on the load balancer as they are created, as well.</span></p>
+<p>Finally, let's look at the load balancer definition:</p>
+<pre><span>ELBFrontEnd:<br/></span><span>  Type: </span>AWS::ElasticLoadBalancing::LoadBalancer<br/>  <span>Properties:<br/></span><span>    SecurityGroups:<br/></span><span>    </span>- <span>Fn::GetAtt:<br/></span><span>      </span>- ELBFrontEndSecurityGroup<br/>      - GroupId<br/>    <span>Subnets:<br/></span><span>      Ref: </span>Subnets<br/>    <span>Scheme: </span>internet-facing<br/>    <span>CrossZone: </span>true<br/>    <span>Listeners:<br/></span><span>    </span>- <span>LoadBalancerPort: </span><span>'80'<br/></span><span>      </span><span>InstancePort: </span><span>'80'<br/></span><span>      </span><span>Protocol: </span>HTTP<br/>      <span>InstanceProtocol: </span>HTTP<br/>    <span>HealthCheck:<br/></span><span>      Target: </span>TCP:80<br/>      <span>HealthyThreshold: </span><span>'2'<br/></span><span>      </span><span>UnhealthyThreshold: </span><span>'3'<br/></span><span>      </span><span>Interval: </span><span>'10'<br/></span><span>      </span><span>Timeout: </span><span>'5'</span></pre>
+<p class="mce-root"/>
+<p>This is an AWS classic ELB definition, where we associate the ELB with a network security group, which serves more or less like a firewall. This is done with the<span> </span><kbd>SecurityGroups</kbd><span> </span>key property. Next, we define in which subnets the ELB is going to serve. Each subnet is created in a different AWS availability zone, each of which represent a data center in an AWS region (each region contains two or more data centers, or availability zones). Then, we define that this ELB is going to be exposed to the internet using<span> </span><kbd>Scheme: internet-facing</kbd>. For<span> </span><kbd>Listeners</kbd><span>, </span>we say that port 80 of the ELB is mapped to port 80 of the Docker host. And finally, we define a health check for the service, and the period for which this will occur. </p>
+<div class="packt_tip">Check out more details on ELB CloudFormation definitions at <a href="https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-elb.html">https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-elb.html</a>.<a href="https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-elb.html"/></div>
+<p>We further create the following resources i<span>n the <kbd>./deploy/docker/cfn_myblog.yml</kbd> </span>YAML file provided by <span>CloudFormation:</span></p>
+<ul>
+<li>Several security groups for ELBs and Docker hosts</li>
+<li>Task definition and the respective service for our myblog Celery workers</li>
+<li><span>Task definition and the respective service for our RabbitMQ container</span></li>
+<li><span>Task definition and the respective service for our Redis container</span></li>
+<li>Load balancer for the Redis container</li>
+<li>Load balancer for RabbitMQ </li>
+</ul>
+<p><span>Using a load balancer for RabbitMQ is a cheap way to get service discovery functionality—it's strange to balance load on a single instance, but if the Docker host, located where our RabbitMQ is, crashes for some reason, then the RabbitMQ container is going to be created on another Docker host, and the application needs to be able to find it </span><span>dynamically</span><span>.</span></p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Create and update a CloudFormation stack</h1>
+                </header>
+            
+            <article>
+                
+<p>We can create and deploy our CloudFormation stack using the console or the CLI. To create it using the console, choose the AWS CloudFormation service, and then click on the <span class="packt_screen">Create Stack</span> button. You will see the following form:</p>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/462ffb4f-b781-49f1-8851-98dfca713ea6.png"/></p>
+<p>Choose the <span class="packt_screen">Upload a template to Amazon S3</span> <span>option, then </span>choose the <kbd>deploy/docker/cfn_myblog.yaml</kbd> file from the provided code, and click <span class="packt_screen">Next</span>. Now, we need to fill the stack parameters as follows:</p>
+<ul>
+<li><span class="packt_screen">Stack Name</span>: Provide a name to identify this stack; use whatever you want.</li>
+<li><span class="packt_screen">Environment</span>: Choose the environment of this stack for production, staging, and development.</li>
+<li><span class="packt_screen">ApplicationName</span>: Here, use whatever you want to identify the ECS cluster.</li>
+<li><span class="packt_screen">VPC</span>: Choose an AWS VPC.</li>
+<li><span class="packt_screen">Subnets</span>: From the drop-down menu, choose all the subnets that belong to the VPC (if you have public and private subnets, choose only public subnets, remember that the ELB's are internet facing).</li>
+<li><span class="packt_screen">ClusterSize</span>: This is the ECS cluster size; leave the default setting of <kbd>2</kbd> here.</li>
+<li><span class="packt_screen">InstanceType</span>: This is the AWS instance type for the Docker hosts.</li>
+<li><span class="packt_screen">KeyName</span>: This is the AWS key pair, and needs to be one that we created <span>previously. W</span>e can use the private key to SSH to the Docker hosts.</li>
+<li><span><span class="packt_screen">DockerFrontEndImageArn</span>: This is the ARN of the ECR repository to which we uploaded our Docker image for the frontend.</span></li>
+<li><span><span class="packt_screen">DockerWorkerImageArn</span>: This is the ARN of the ECR repository to which we uploaded our Docker image for the worker.</span></li>
+<li><span><span class="packt_screen">DBUsername</span>, <span class="packt_screen">DBPassword</span>, <span class="packt_screen">RMQUsername</span>, and <span class="packt_screen">RMQPassword</span>: These are all the credentials for the database and RabbitMQ; choose whatever values you want.</span></li>
+</ul>
+<p>After filing all the parameters, click <span class="packt_screen">Next</span>. An Options form is presented—just click <span class="packt_screen">Next </span>again. A review page is presented with our parameters and possible stack changes. Here, we need to check the <strong><span class="packt_screen">I acknowledge that AWS CloudFormation might create IAM resources with custom names.</span></strong> option, and click <span class="packt_screen">Create</span>. The creation of all the resources is going to take a few minutes—wait for the <span class="packt_screen">CREATE_COMPLETED</span> state. To check out our application, just go to the <span class="packt_screen">Output</span> tab and click on the URL.</p>
+<p>Now, let's see how easily we can develop and deploy a code change. First, make a simple code change. For example, in the <kbd>webapp/templates/head.html</kbd> file, find the following line:</p>
+<pre><span>...<br/>&lt;h1&gt;&lt;a </span><span>class=</span><span>"text-white" </span><span>href=</span><span>"{{ url_for('blog.home') }}"</span><span>&gt;</span>My Blog<span>&lt;/a&gt;&lt;/h1&gt;<br/>...</span></pre>
+<p>Now, change the preceding line to the following:</p>
+<pre><span>...<br/>&lt;h1&gt;&lt;a </span><span>class=</span><span>"text-white" </span><span>href=</span><span>"{{ url_for('blog.home') }}"</span><span>&gt;</span>My Blog v2<span>&lt;/a&gt;&lt;/h1&gt;<br/>...</span></pre>
+<p>Then create a new Docker image, and tag it with <kbd>v2</kbd>, as shown here:</p>
+<pre><strong>$ docker build -f deploy/docker/Dockerfile_frontend -t myblog:v2 .</strong></pre>
+<p>Next, push this image to AWS ECR using the following command:</p>
+<pre><strong>$ ecs-cli push myblog:v2</strong></pre>
+<p class="mce-root"/>
+<p>Then, go to AWS console and choose our previously created stack. On <span class="packt_screen">Actions</span>, choose <span class="packt_screen">Update Stack</span>. On the first form, choose <span class="packt_screen">Use current template</span>. Then, in the input parameters, we need to change <kbd><span>DockerFrontEndImageArn</span></kbd>—update it with the new tag, and postfix it with<span> </span><kbd>:v2</kbd>. The new ARN should look something like this: <kbd>XXXXXXXX.dkr.ecr.eu-central-1.amazonaws.com/myblog:v2</kbd><strong>. </strong>Then, click <span class="packt_screen">Next</span>, and on the <span class="packt_screen">Options</span> forms click <span class="packt_screen">Next</span> again. On the preview form, notice how, in the <span class="packt_screen">Preview your Changes</span> section, the updater identifies exactly what needs to be updated. In this case, <span><kbd>FrontEndTask</kbd> and </span><kbd><span>MyBlogFrontendService</span></kbd> are selected for updates, so let's update them. While we wait for the <span class="packt_screen">UPDATE_COMPLETE</span> state, just keep using the application—notice how no downtime occurs. After one to two minutes. notice how our Blog displays the main title as <span class="packt_screen">My Blog v2</span>.</p>
+<p>In the next section, we will see how to integrate this approach with a modern CI/CD system to build, run tests, check code quality, and deploy on different environments.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Building and deploying highly available applications readily</h1>
+                </header>
+            
+            <article>
+                
+<p>Whether our web app is on the cloud or in a data center, we should aim for reliability. Reliability can impact the <span>user</span> is various ways, either by downtime, data loss, application error, response time degradation, or even on <span>user deploy delay</span>. Next, we are going to cover some aspects to help you think about architecture and reliability, to help you plan ahead to handle issues, such as failures or increased load. First of all, we will cover the necessary steps for you to deploy rapidly and, of course, reliably.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Building and deploying reliably</h1>
+                </header>
+            
+            <article>
+                
+<p>With today's demanding markets, we need to build and deploy easily and quickly. But the speed of our deployment must also deliver reliability. One of the steps needed to achieve this is to use automation via scripts, or with CI/CD tools. </p>
+<p>To help us set up the entire process, we should use a CI/CD tool, such as Jenkins, Bamboo, TeamCity, or Travis. First, what exactly is CI/CD?</p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p><strong>CI</strong> stands for <strong>Continuous Integration</strong>, and is the process defined for integrating software changes, made by many developers, into a main repository—and, of course, doing so quickly and reliably. Let's enumerate what we need, from bottom to top:</p>
+<ul>
+<li>First, it is imperative to use a source control and versioning system, such as Git, along with a well established and internally defined branching model, such as <strong>GitFlow</strong>. This will give us a clear view of code changes, along with the ability to accept and test them, at either feature or hotfix level. This will also make it easy to rollback to a previous version.</li>
+<li>Before approving any merges proposed by pull requests, make sure to set up automated triggering of tests and reviewing of code. Pull-request reviewers can then make more informed decisions before approving a merge. Failed tests are certainly a warning sign that we want to see before merging code that will end up on production. Fail fast, and don't be afraid to fail often.</li>
+</ul>
+<p>As was said previously, we have several tools to automate this process. One easy way to do this is to use GitHub with Travis and landscape.io. You can freely create an account on all three of them and try them out. After this, just create the following two files on your repository.</p>
+<p>Create a <kbd>.travis.yml</kbd> file, which should contain the following:</p>
+<pre><span>language: </span>python<br/><span>python:<br/></span><span>  </span>- <span>"3.6"<br/></span><span>  </span>- <span>"3.3"<br/></span><span>  </span>- <span>"2.7"<br/></span><span>install:<br/></span><span>  </span>- <span>"pip install --upgrade"<br/></span><span>  </span>- <span>"pip -V"<br/></span><span>  </span>- <span>"pip install -r requirements.txt"<br/></span><span>  </span>- <span>"pip install coveralls"<br/></span><span>script:<br/></span><span>  </span>- coverage run --source webapp --branch -m unittest discover<br/><span>after_success:<br/></span><span>  </span>coveralls</pre>
+<p>This is all we need to have automated tests running on every commit. Also, our tests will run independently using Python versions 3.6, 3.3, and 2.7. GitHub and Travis integration will also give us the result of these tests on every pull request.</p>
+<p>For code quality control, landscape.io is very easy to use with GitHub (other tools include flake8, Sonarqube, and Codacy, for example).</p>
+<p class="mce-root"/>
+<p>To set up landscape.io, we just have to create the following <span><kbd>.landscape.yml</kbd> </span>file at the root of our project:</p>
+<pre><span>ignore-paths:<br/></span><span>  </span>- migrations<br/>  - deploy<br/>  - babel</pre>
+<p>Further automation can be achieved by merging every branch <span>automatically </span>to the develop branch, for example, but we need a third tool to automate this process on GitHub.</p>
+<p><strong>CD</strong> stands for<strong> Continuous Delivery</strong>,<strong> </strong>and is based on reduced cycles of development and the actual delivery of changes. This must be done quickly and reliably, and rollback should always be accounted for. To help us define and execute this process, we can use <strong>Jenkins/Blue Ocean pipelines.</strong></p>
+<p>Using Jenkins pipelines, we can define the entire pipeline process, from build to deployment. This process is defined using a <kbd>Jenkinsfile</kbd><span> at the root of our project. First, let's create and start our Jenkins CI server from the CLI, as follows:</span></p>
+<pre><span><br/>docker </span>run \<br/>  --rm \<br/>  -u root \<br/>  -p 8080:8080 \<br/>  -v jenkins-data:/var/jenkins_home \<br/>  -v /var/run/docker.sock:/var/run/docker.sock \<br/>  -v <span>"$HOME"</span>:/home \<br/>  jenkinsci/blueocean</pre>
+<p>On start, the Docker output will show the following:</p>
+<pre>...<br/>INFO: Pre-instantiating singletons in org.springframework.beans.factory.support.DefaultListableBeanFactory@340c828a: defining beans [filter,legacy]; root of factory hierarchy<br/>Sep 16, 2018 11:39:39 AM jenkins.install.SetupWizard init<br/>INFO:<br/><br/>*************************************************************<br/>*************************************************************<br/>*************************************************************<br/><br/>Jenkins initial setup is required. An admin user has been created and a password generated.<br/>Please use the following password to proceed to installation:<br/><br/><strong>476c3b81f2gf4n30a7f9325568dec9f7</strong><br/><br/>This may also be found at: /var/jenkins_home/secrets/initialAdminPassword<br/><br/>*************************************************************<br/>*************************************************************<br/>*************************************************************<br/><br/></pre>
+<p>Copy the password from your output and open Jenkins in your browser by going to <kbd>http://localhost:8080</kbd>. On startup, Jenkins will ask for a one-time password—paste in the password <span>provided</span> by the Docker output. Next, Jenkins will ask you for some initial configuration. This consists of creating an Admin user, and installing plugins (for our example, you can simply accept the suggested plugins).</p>
+<p>To set up an automated approach to build and deploy our Docker images to AWS ECR, we need an extra plugin called <span class="packt_screen">Amazon ECR</span>. To install this plugin, go to <span class="packt_screen">Manage Jenkins</span>, then choose <span class="packt_screen">Manage Plugins</span>, and click on the <span class="packt_screen">Available</span> <span>Tab </span>for a list of available and not-yet-installed plugins. From this list, choose the <span class="packt_screen">Amazon ECR</span> plugin, and finally click on the <span class="packt_screen">Install without restart</span> option.</p>
+<p>Next, we must configure a set of credentials, so that Jenkins can authenticate on AWS and push our newly built Docker images. For this, on the left-hand menu, choose <span class="packt_screen">Credentials</span>, then choose <span class="packt_screen">Jenkins credential scope</span> and <span class="packt_screen">Global credentials</span>. Now, on the left-hand panel, choose <span class="packt_screen">Add credentials</span> and fill the form with the following info:</p>
+<ul>
+<li><span class="packt_screen">Kind</span>: AWS Credentials</li>
+<li><span class="packt_screen">Scope</span>: Global</li>
+<li><span class="packt_screen">ID</span>: ecr-credentials</li>
+<li><span class="packt_screen">Description</span>: ecr-credentials</li>
+<li><span class="packt_screen">Access Key ID</span>: Use the AWS Access Key ID that you already created in the previous section for pushing your Docker images</li>
+<li><span class="packt_screen">Secret Access key</span>:  Use the <span>AWS Secret Access Key that you already created in the previous section for pushing your Docker images</span></li>
+</ul>
+<div class="packt_tip">For security reasons, it's better to choose the IAM role approach. However, for the sake of simplicity, we are using AWS keys here. If you still want to use AWS keys, remember to never use your personal keys on automation processes—instead, create a specific user for the process with contained and managed privileges.</div>
+<p>Now we are ready to create our first CI/CD pipeline. Follow these steps:</p>
+<ol>
+<li>On the main page, choose the <span class="packt_screen">Create new Jobs</span> link</li>
+<li>On the input box for "<span class="packt_screen">nter an item name</span>, write <kbd>myblog</kbd></li>
+<li>Choose the <span class="packt_screen">Multibranch pipeline</span> <span>option</span>. Then click <span class="packt_screen">Ok</span></li>
+</ol>
+<p>On the Jobs configuration, you need to fill in the following fields:</p>
+<ul>
+<li><span class="packt_screen">Branch Sources</span>: Create new Jenkins' credentials for your GitHub account, or set up using your own credentials from your private Git repository. Then, choose the GitHub repository for this book, or use your private repository URL. </li>
+<li>Then, for now, remove all behaviors except "<span class="packt_screen">Discover branches</span>", as shown here:</li>
+</ul>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/2fd29995-b9d8-4b05-af7d-6d2cdf3e6895.png"/></p>
+<p class="mce-root"/>
+<p>On the "Build Configuration" job section, change the "Script Path" to <kbd>Chapter-13/Jenkinsfile</kbd> if you're using this book's GitHub repository. This is required because the repository is organised by chapters, and the <kbd>Jenkinsfile</kbd> is not at the root of the repository.</p>
+<p>This is all it takes, because the heavy lifting is done using the <kbd>Jenkinsfile</kbd> pipeline definition. Let's take a look at this file:</p>
+<pre>pipeline {<br/>    agent any<br/><br/>    <strong>parameters</strong> {<br/>        string(description: 'Your AWS ECR URL: http://&lt;AWS ACCOUNT NUMBER&gt;.dkr.ecr.&lt;REGION&gt;.amazonaws.com', name: '<strong>ecrURL</strong>')<br/>    }<br/><br/>    environment {<br/>        CHAPTER = 'Chapter-13'<br/>        ECRURL = "<strong>${params.ecrURL}</strong>"<br/>        ECRCRED = 'ecr:eu-central-1:ecr-credentials'<br/>    }<br/>...</pre>
+<div class="packt_tip">The Jenkins pipeline definition gives you a huge amount of configuration options. We can even use Groovy scripts embedded in it. Please take a look at the documentation for more details, available at <a href="https://jenkins.io/doc/book/pipeline/jenkinsfile/">https://jenkins.io/doc/book/pipeline/jenkinsfile/</a>.<a href="https://jenkins.io/doc/book/pipeline/jenkinsfile/"/></div>
+<p>On the <kbd>pipeline</kbd> main section, we have created a manual parameter for you to fill out the AWS ECR URL to which the images should be pushed. This section also configures some necessary environment variable to make our stages more dynamic. </p>
+<p>Next, let's take a look at the pipeline stages section:</p>
+<pre>....<br/>stages {<br/>    <strong>stage('Build')</strong> {<br/>        steps {<br/>            echo "Building"<br/>            checkout scm<br/>        }<br/>    }<br/>    <strong>stage('Style')</strong> {<br/>        agent {<br/>            docker 'python:3'<br/>        }<br/><br/>        steps {<br/>            sh '''<br/>                #!/bin/bash<br/><br/>                cd "${CHAPTER}"<br/>                python -m pip install -r requirements.txt<br/>                cd Flask-YouTube<br/>                python setup.py build<br/>                python setup.py install<br/>                cd ..<br/>                python -m pip install flake8<br/>                flake8 --max-line-length 120 webapp<br/>            '''<br/>        }<br/>    }<br/>...</pre>
+<p>The <kbd>stages</kbd> section will hold all the stages necessary to build, test, check, and deploy our application. The build declared with <kbd>stage('Build')</kbd> just executes a checkout of our repository using <kbd>checkout scm</kbd>.</p>
+<p>In the <em>Style</em> stage, we will check the code style using <strong>flake8</strong>. We are assuming that a critical style problem is enough to make the pipeline fail, and never deploy the application. To run it, we tell Jenkins to run a Docker container with Python 3 by using the <kbd>docker 'python:3'</kbd> command, and inside, we install all the necessary dependencies and run <strong>flake8 </strong>against our code.</p>
+<p>Next you will find a <em>Test</em> stage, which very similar to the St<em>y</em>le stage. Notice that we can easily define tests for Python 3 and 2.7 using specific Docker containers to run it.</p>
+<p>The Docker build stage is as follows:</p>
+<pre>stage('Build docker images') {<br/>    agent any<br/>    steps {<br/>        echo 'Creating new images...'<br/>        script {<br/>             def frontend = docker.build("myblog:${env.BUILD_ID}", "-f ${CHAPTER}/deploy/docker/Dockerfile_frontend ${CHAPTER}")<br/>             def worker = docker.build("myblog_worker:${env.BUILD_ID}", "-f ${CHAPTER}/deploy/docker/Dockerfile_worker ${CHAPTER}")<br/>        }<br/>    }<br/>}</pre>
+<p>In this stage, we use Groovy to build our images for the frontend and Celery workers. The images will be produced and tagged with the Jenkins build identification, which we can use as an <kbd>env.BUILD_ID</kbd><span> environment variable</span>.</p>
+<p>In the final stage, we push the newly created images to the AWS ECR Docker image repository as follows:</p>
+<pre>stage('Publish Docker Image') {<br/>    agent any<br/>    steps {<br/>        echo 'Publishing new images...'<br/>        script {<br/>            docker.withRegistry(ECRURL, ECRCRED)<br/>            {<br/>                docker.image("myblog:${env.BUILD_ID}").push()<br/>                docker.image("myblog_worker:${env.BUILD_ID}").push()<br/>            }<br/>        }<br/>    }<br/>}</pre>
+<p><span>Finally, to run our job, choose the "myblog" job, then "master," and on the left panel, choose "Build with parameters." Fill in your AWS ECR URL (this URL takes the form</span> <span><kbd>http://&lt;ACCOUNT_NUMBER&gt;.dkr.ecr.&lt;REGION&gt;.amazonaws.com</kbd>), and then click <span class="packt_screen">Build</span>. After the build is done, we just have to update our CloudFormation with the newly created Docker images.</span></p>
+<p>A great final stage would be to update the previously deployed CloudFormation, scripting the process with what we've already tested in this book, in the previous <em>Create and Update a CloudFormation Stack</em> section. For this, we could use the "pipeline: AWS steps" plugin.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Creating highly available applications that scale</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root"><strong>High availability</strong> (<strong>HA</strong>) and scalability is an ever more important subject. It should be taken into consideration from the development phase, all the way up to the release stage. Monolithic architectures, where all the features and services that comprise your application can't be separated or are installed on one single instance, will not resist failure, and won't scale either. Vertical scaling will only go so far, and <span>in case of failure,</span> will increase recovery times, as well as the impact on the user. This is an important and complex subject and, as you may have guessed, there is no single solution to solve it.</p>
+<p>To think about HA, we have to be pessimistic. Remember—failure can't be eliminated, but failure points can be identified, and recovery plans should be put in place so that downtime takes seconds or minutes, instead of hours or even days.</p>
+<p>First, let's think about all the components that our Blog application has, and identify the stateless ones:</p>
+<ul>
+<li><strong>Frontend</strong>: Webserver and uWSGI – stateless</li>
+<li><strong>Celery workers</strong>: Celery <span>–</span> stateless</li>
+<li><strong>Message queue</strong>: RabbitMQ or AWS SQS <span>–</span> state</li>
+</ul>
+<p class="mce-root"/>
+<ul>
+<li><strong>Cache</strong>: Redis <span>–</span> state</li>
+<li><strong>Database</strong>: SQL or NoSQL <span>–</span> state</li>
+</ul>
+<p>Our first goal is to identify all the <strong>Single Points of Failure</strong> (<strong>SPOF</strong>) in our application, and try to eliminate them. For this, we have to think about redundancy:</p>
+<ul>
+<li><strong>Frontend</strong>: This is a stateless service that receives direct requests from the users. We can balance these requests using a load balancer, and by always having at least two instances. If one fails, the other immediately starts receiving all the load. Looks good? Maybe, but can a single instance support all the load? Huge response times are a failure too, so think about it—maybe you need at least three instances. Next, can your load balancer fail too? This is not a problem when using some sort of cloud-based load balancer, such as AWS ELB or ALB, but if you aren't using these, then set up redundancy on this layer as well.</li>
+<li><strong>Celery workers</strong>: Workers are stateless, and a complete failure does not have an immediate impact on users. You can have at least one instance, as long as recovery is done automatically, or failure can be easily identified and a failed instance can <span>rapidly </span>be replaced with a new one.</li>
+<li><strong>Message queue</strong>: If using AWS SQS or CloudMQ, failure is already accounted for. If not, a clustered RabbitMQ can be an option, or you can make sure that message loss is an option, and that RabbitMQ replacement is automatic, or can at least be rapidly executed.</li>
+<li><strong>Cache: </strong>Make sure you have more then one memcached instance (using cluster key sharding), or your application can gracefully account for failure. Remember that a memcached replacement comes with a cold cache, which can have a huge impact on the database, depending on your load.</li>
+<li><strong>Database</strong>: Make sure you have an SQL or NoSQL slave/cluster in place, ready to replace writes from the failed master. </li>
+</ul>
+<p>Layers that contain state are more problematic, and a small failure (seconds or milliseconds) may be inevitable. Hot standbys or cold standbys should be accounted for. It's very useful to test system failures of all your services while load testing. Redundancy is like a software feature—if not tested, it's probably broken.</p>
+<p>Scaling can be verified with load tests. It's a very good idea to include it somewhere along the way in your production pipeline release. <strong>Locust</strong> is an excellent Python tool to implement highly configurable load tests that can scale to any load level you want. These kinds of tests are a great opportunity to verify your high availability setup. Take down instances while simulating your expected load, and load test until you break your stack. This way you will know your limits—knowing what will break first <em>before</em> it breaks on production will help you test performance tuning.</p>
+<p class="mce-root"/>
+<div class="packt_infobox">Locust python package documentation is available at <a href="https://docs.locust.io/en/stable/">https://docs.locust.io/en/stable/</a>.</div>
+<p>Scaling using cloud infrastructure, such as AWS, Azure, and GCP, is all about automation. You need to set up your instances automatically, so that monitoring metrics can <span>automatically </span>trigger the creation of new VMs or Dockers containers.</p>
+<p>Finally, please make sure you backup your database periodically. The delta time between backups is a point of possible data loss, so identify it and report back. Also, it's very important to restore your production backups—again, if not tested, then they're probably broken.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Monitoring and collecting logs</h1>
+                </header>
+            
+            <article>
+                
+<p>Monitor all your systems and components, collect OS level metrics, and produce application metrics. You have great tools for doing this, including DataDog; NewRelic; a combination of StatsD, Graphana, InfluxDB, and Prometheus; and ELK.</p>
+<p>Set up alarms on failures based on metric thresholds. It's very important not to go overboard on the amount of alarms you create—make sure that a critical alarm really implies that the system is down or severely impaired. Set up time charts so that you can identify issues or upscale necessities <span>early</span>.</p>
+<p>Collect logs from OS, applications, and cloud services. Parsing, structuring, and adding metadata to your logs enriches your data, and enables proper log aggregation, filtering, and charting. Being able to easily filter all of your logs relative to a specific user, IP, or country is a step forward.</p>
+<p>Log collection has become more critical on the cloudc and even more so on containers, because they are short-lived and break your applications down into microservices, so that by the time something happens, your logs may no longer exist, or you may have to manually go through dozens, if not thousands, of log files to find out what was and is happening. This is increasingly becoming impossible to do. There are many good solutions out there, however: y<span>ou can use ELK (ElasticSearch, logstash, and Kibana) or EFK (ElasticSearch, Fluentd, and Kibana) stacks, Sumo logic, or DataDog.</span></p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Summary</h1>
+                </header>
+            
+            <article>
+                
+<p>As this chapter explained, there are many different options for hosting your application, each with their own pros and cons. Deciding on one depends on the amount of time and money you are willing to spend, as well as the total number of users you expect.</p>
+<p>Now, we have reached the conclusion of the book. I hope that this book was helpful in building your understanding of Flask, and how it can be used to create applications of any degree of complexity with both ease and simple maintainability.</p>
+<p>Web application development is a fast paced area that touches different technologies and concepts. Don't stop here—keep improving your Python skills, read about UX design, improve your knowledge on CSS and HTML, master SQL and query performance, and develop a single page application using Flask and Javascript. Each chapter of this book is an invitation for further knowledge.</p>
+
+
+            </article>
+
+            
+        </section>
+    </body></html>
