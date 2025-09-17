@@ -1,4 +1,4 @@
-# 在 Flask 中使用 NoSQL
+# 第七章：在 Flask 中使用 NoSQL
 
 **NoSQL**（代表**Not Only SQL**）数据库是指任何非关系型数据存储。它通常侧重于速度和可扩展性。过去七年中，NoSQL 一直在 Web 开发世界中掀起风暴。像 Netflix 和 Google 这样的大公司已经宣布，他们正在将许多服务迁移到 NoSQL 数据库，许多较小的公司也效仿了它们的做法。
 

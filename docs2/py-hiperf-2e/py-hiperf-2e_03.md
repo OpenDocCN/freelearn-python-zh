@@ -1,4 +1,4 @@
-# 使用 NumPy 和 Pandas 进行快速数组操作
+# 第三章：使用 NumPy 和 Pandas 进行快速数组操作
 
 NumPy 是 Python 中科学计算的 **de facto** 标准。它通过提供灵活的多维数组扩展了 Python，允许快速简洁的数学计算。
 

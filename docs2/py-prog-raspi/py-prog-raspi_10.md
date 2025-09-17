@@ -1,4 +1,4 @@
-# 使用 Raspberry Pi Zero 进行家庭自动化
+# 第十章：使用 Raspberry Pi Zero 进行家庭自动化
 
 如章节标题所示，我们将在本章讨论涉及 Raspberry Pi Zero 的家庭改进项目。我们选择的项目使得每个示例都可以作为一个周末项目执行。
 

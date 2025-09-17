@@ -1,4 +1,4 @@
-# 算术运算、循环和闪烁的 LED 灯
+# 第二章：算术运算、循环和闪烁的 LED 灯
 
 在上一章中，我们讨论了如何在屏幕上打印一行文本。在本章中，我们将回顾 Python 中的算术运算和变量。我们还将讨论字符串和 Python 中的用户输入。你将了解 Raspberry Pi 的 GPIO 及其特性，并使用 Python 编写代码，通过 Raspberry Pi 的 GPIO 使 LED 闪烁。我们还将讨论控制 Raspberry Pi 的 GPIO 的实际应用。
 
