@@ -1,6 +1,6 @@
-# Go 编程蓝图
+# Tkinter Python GUI 编程
 
-> 原文：[`zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66`](https://zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66)
+> 原文：[`zh.annas-archive.org/md5/58fd70e00e744a0db971c3fca67cd80e`](https://zh.annas-archive.org/md5/58fd70e00e744a0db971c3fca67cd80e)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 

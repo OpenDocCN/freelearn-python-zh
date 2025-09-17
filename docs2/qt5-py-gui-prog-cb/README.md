@@ -1,6 +1,6 @@
-# Go 编程蓝图
+# QT5 Python GUI 编程秘籍
 
-> 原文：[`zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66`](https://zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66)
+> 原文：[`zh.annas-archive.org/md5/261ce8c146dbb5cb015ee100187951c5`](https://zh.annas-archive.org/md5/261ce8c146dbb5cb015ee100187951c5)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 

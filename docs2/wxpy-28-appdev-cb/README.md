@@ -1,6 +1,6 @@
-# Go 编程蓝图
+# wxPython 2.8 应用开发秘籍
 
-> 原文：[`zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66`](https://zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66)
+> 原文：[`zh.annas-archive.org/md5/bf3dbd6b96d5f04d0cead4622f834a62`](https://zh.annas-archive.org/md5/bf3dbd6b96d5f04d0cead4622f834a62)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 
