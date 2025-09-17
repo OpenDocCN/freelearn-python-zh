@@ -1,0 +1,520 @@
+- en: Chapter 6. Handling Return Data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: When the Salt Master issues a command to a Minion and the task completes successfully,
+    there will always be return data. The `salt` command normally listens for return
+    data, and if it is sent back in time, it will be displayed using an outputter.
+    But whether or not that happens, the Minion will always send return data back
+    to the Master, and any other destinations configured as returners.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This chapter is all about handling that return data, using both returner and
+    outputter modules. We''ll talk about:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: How data is returned to the Master
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Writing returner modules
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Extending returners to be used as external job caches
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Troubleshooting returners
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Writing outputter modules
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Troubleshooting outputters
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Returning data to external destinations
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The most important type of module to handle return data is called a returner.
+    When the Master publishes a task (called a job) to a target, it assigns a job
+    ID (or JID) to it. When a Minion finishes that job, it sends the resulting data
+    back to the Master, along with the JID that is associated with it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Returning data to the master
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Salt's architecture is based on the publish-subscribe pattern, known colloquially
+    as pub/sub. In this design, one or more clients subscribe to a message queue.
+    When a message is published to the queue, any current subscribers receive a copy,
+    which they usually process in some way.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Salt in fact makes use of two message queues, both of which are managed by the
+    Master. The first is used by the Master to publish commands to its Minions. Each
+    Minion can see the messages published to this queue, but they will only react
+    to them if the Minions are included in the target. A message targeted to `'*'`
+    will be processed by all Minions that are connected, whereas one targeted to `192.168.0.0/16`
+    using the `-s` command-line option will only be processed by Minions whose IP
+    address starts with `192.168`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The second message queue is also hosted by the Master, but messages are published
+    to it from Minions, and the Master itself is the subscriber. These messages are
+    normally stored in the Master's job cache. Returners can be configured to send
+    these messages to other destinations, and some returners can also use those destinations
+    as the job cache itself. If the `salt` command is still listening when those messages
+    are received, then it will also send the data to an outputter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Listening to event data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Every time a message is published to the queue, an event is also fired along
+    Salt's event bus. You can use the `state.event` runner to listen to the event
+    bus and display those messages in real time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Make sure you have the `salt-master` service running, and the `salt-minion`
+    service on at least one machine connected to it. On the Master, run the following
+    command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In another terminal, issue a command to one or more Minions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the terminal that is running the event listener, you will see the job go
+    out to the Minions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: The information contained in this event is no more than a timestamp indicating
+    when the job was created, and a list of Minions that the specified target (in
+    our example, all of them) are expected to execute the job and return data from
+    it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is a very small task, so almost immediately you should start seeing return
+    data show up from Minions. Because each Minion responds individually, you will
+    see one entry per Minion:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: Take note of the tags used for each event. The event that was created when the
+    Master created the job has a tag that contains just the JID. Each return event
+    contains a tag that is namespaced with `salt/job/<JID>/ret/<Minion ID>`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'After a few seconds, the salt command will also return, and notify you which
+    Minions did and did not finish the job that was assigned to them:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: In our case, `achatz` was active, and able to return `True` as requested. Unfortunately,
+    `trotter` isn't around anymore, and so wasn't able to do what we need.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When returners listen to Minions
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Each time the Master receives a response from a Minion, it will call out to
+    a returner. If a job targets, say, 400 Minions, then you should expect the returner
+    to be executed 400 times, one for each Minion.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is not normally a problem. If a returner connects to a database, then that
+    database is likely to be able to handle 400 responses very quickly. However, if
+    you create a returner that sends messages to humans, such as the SMTP returner
+    that ships with Salt, then you can expect 400 individual e-mails to be sent; one
+    per Minion.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There is one more thing to keep in mind: returners were originally designed
+    to be executed on Minions. The idea behind this was to offload the work to Minions
+    so that in a large environment, a Master wouldn''t be required to handle all of
+    the work necessary to, say, connect to a database once per Minion per job.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Returners can now be run either by a Master or by a Minion, and when writing
+    your own returners, you should expect either to be a possibility. We will discuss
+    the configuration for this later in the chapter, when we talk about job caches.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s go ahead and see an example of this in action. Connect to one of your
+    Minions and stop the `salt-minion` service. Then start it running in the foreground,
+    using the `info` log level:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then connect to the Master and issue a job directly to it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Switch back to the Minion, and you will see some information about the job:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now issue the command again, but with the `--return` flag set to `local`. This
+    returner will display the return data directly to the local console:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Switch back to the Minion again to check out the return data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: Your first returner
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Go ahead and open up `salt/returners/local.py`. There''s not much in here,
+    but what we''re interested in is the `returner()` function. It''s very, very small:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: In fact, all it does is accept return data as `ret`, and then print it to the
+    console. It doesn't even attempt any sort of pretty printing; it just dumps it
+    as is.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is in fact the bare minimum that a returner needs: a `returner()` function
+    that accepts a dictionary, and then does something with it. Let''s go ahead and
+    create our own returner, which stores job information locally in JSON format.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Save this file, on a Minion, and then issue a job to it. It doesn''t matter
+    whether or not you restart the `salt-minion` service; returner modules use `LazyLoader`.
+    But we''ll go ahead and use `salt-call` anyway:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Go ahead and look inside the `/tmp/` directory:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If you take a look inside that file, you will see return data that looks very
+    similar to what we received from the local returner, except that it is in JSON
+    format:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: Using job caches
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In a way, our JSON returner is a job cache, because it caches return data. Unfortunately,
+    it doesn't contain any code to do anything with the data once it's saved. By updating
+    the logic and adding a few functions, we can extend the functionality.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Right now, our returner behaves like little more than a set of log files. Let''s
+    change it to behave more like a flat-file database. We''ll use the JID as the
+    access key, and format the directory structure based on the dates in the JIDs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We haven''t changed anything except for the directory structure, and how it''s
+    handled. The private function `_job_path()` will standardize the directory structure,
+    and can be used by future functions. We''ve also made use of `salt.syspaths` to
+    detect where Salt is configured to keep cache files on this machine. When run
+    against a Minion called `dufresne`, the path used to store the return data will
+    look like:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: We'll also need to store information about the job itself. The `return.json`
+    file contains some information about the job, but not all of it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s go ahead and add a function that saves the metadata about the job. This
+    metadata is called the load, and contains a `jid`, a dictionary called `clear_load`
+    that contains the bulk of the metadata, and a list called `minions`, which will
+    contain a list of all of the Minions that were included in the target:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: Once again, we generate the path that the data will be written to. The `clear_load`
+    dictionary will be written to `load.json` inside that path. The list of Minions
+    is a little trickier, since it may contain an empty list. If it does, we use a
+    class inside `salt.utils.minions` called `CkMinions` to generate that list, based
+    on the target that was used for the job. Once we have that list, we write it as
+    `minions.json`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Testing this is also a little trickier, because it requires a job that was generated
+    from the Master in order to generate all of the metadata that is needed. We also
+    need to let the Master know that we're using an external job cache.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, edit the master configuration file and add an `ext_job_cache` line,
+    which is set to `local_json`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '**External job cache versus Master job cache**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: When the Master is set to use an external job cache (with the `ext_job_cache`)
+    setting, the returner code will be executed on the Minion. This will relieve load
+    on the Master since each Minion will be recording its own job data, instead of
+    asking the Master to. However, any credentials necessary to connect to the job
+    cache (for instance, if a database was used) will need to be accessible to the
+    Minion.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When the Master is set to use a Master job cache (with the `master_job_cache`)
+    setting, the returner code will be executed on the Master. This will increase
+    the workload on the Master, but will save you from having to make credentials
+    available to Minions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once you''ve turned on the job cache, let''s go ahead and restart both the
+    Master and the Minion, and try things out:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now we have the information being saved, but we don't have any way to retrieve
+    it, outside of manually looking inside the files. Let's go ahead and complete
+    our returner with some functions that can read the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we need a function that just returns information about the job load:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We also need a function that gets the return data from each job. These two
+    functions will be used together by the `jobs` runner:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We don''t need to restart the Master to be able to test this, since the jobs
+    runner doesn''t require the Master to be running:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We''ll also need a function that returns a list of JIDs, along with some basic
+    information about their associated jobs. This function will make use of another
+    import, which we will use to quickly locate the `load.json` files:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Once again, we test this with the `jobs` runner:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: The final module
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Once we have compiled all of the code together, the final module will look
+    like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: Troubleshooting returners
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: As you have seen, there are a number of different pieces of Salt that use different
+    parts of the returner. Some of these require a Master to be running, which makes
+    them a little trickier to troubleshoot. Here are some strategies that can help.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Testing with salt-call
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The `returner()` function can be tested with the `salt-call` command. When doing
+    this, simple `print` statements can be used to display information to your console.
+    If there are typos, Python will display error messages. If the problem pertains
+    to technically valid, but still buggy code, then `print` statements can be used
+    to track down the problem.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Testing with the Master running
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The `save_load()` function requires a job to be generated on the Master, to
+    one or more Minions. This of course requires both a Master and at least one Minion
+    to be running. You can run them in the foreground in separate terminals, in order
+    to see the output from `print` statements:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: If you are using `ext_job_cache`, then it is the Minion that you will want to
+    be watching. If you are using the `master_job_cache`, then watch the Master.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Testing with runners
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The `get_load()`, `get_jid()`, and `get_jids()` functions are all used by the
+    `jobs` runner. This runner doesn't require either Master or Minions to be running;
+    it only requires that the data store that is being used by the returner is available.
+    Again, `print` statements inside these functions will display information when
+    the `jobs` runner is used.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Writing outputter modules
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: When the `salt` command is used, any return data that is received during the
+    wait period will be displayed to the user. Outputter modules are used in this
+    case to display that data to the console (or more accurately, to `STDOUT`), usually
+    in a format that is somewhat user-friendly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Pickling our output
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Because Salt already ships with a `json` outputter, we''ll take advantage of
+    the fact that output data is technically going to `STDOUT`, and put together an
+    `outputter` that uses a serializer (`pickle`) that may dump binary data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: This `outputter` is about as simple as it gets. The only required function is
+    called `output()`, and it accepts a dictionary. It doesn't matter what the dictionary
+    is called, so long as the function has one defined.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `pickle` library is built into Python, and as you saw with the `pickle`
+    renderer, is very easy to use: we just tell it to dump out the data into a string,
+    which is returned to Salt.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As usual, we can test this `outputter` using `salt-call`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: If you take a look at some of the other outputters that ship with Salt, you'll
+    notice that some are just as simple. Even the `json` outputter doesn't do any
+    extra work, outside of formatting the output. Most execution modules will make
+    use of the `nested` outputter by default. `nested` uses a format based on YAML,
+    but with color-coded data. The `state` functions, however, use the `highstate`
+    outputter, which builds upon nested to return an aggregated version of the data,
+    with statistics about the success of the state run.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Troubleshooting outputters
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Outputters can be one of the easiest types of module to troubleshoot. You should
+    be able to test any of them using the `salt-call` command.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When testing, start with a simple `test.ping`, just to make sure that you are
+    getting some output in the first place. Once you're satisfied that your `output()`
+    function is returning simple data that looks correct, take a look at `grains.items`,
+    which will make use of both lists and dictionaries.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You may find it useful to test your output against another outputter that is
+    known to work well. I find that the `pprint` outputter tends to be the most succinct
+    at displaying data in a format that is easy to read, but takes the least amount
+    of screen real-estate:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Return data command is always sent to the Master, even after the `salt` command
+    has finished listening for it. The event bus picks up those messages and can store
+    them in an external job cache. If the `salt` command is still listening, then
+    it will be displayed using an `outputter`. But specifying a returner will always
+    send return data someplace to be processed, so long as the Master itself is still
+    running.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Returners can be specified using the `--return` flag, or can be set to run by
+    default on the Minion using the `ext_job_cache` `master` configuration option,
+    or on the Master using the `master_job_cache` `master` configuration option.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now that we have ways of handling return data, it''s time to create more intelligent
+    processes to execute our commands. Next up: runners.'
+  prefs: []
+  type: TYPE_NORMAL

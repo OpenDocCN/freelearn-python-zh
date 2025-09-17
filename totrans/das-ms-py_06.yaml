@@ -1,0 +1,701 @@
+- en: Parallel Processing
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapter, we created a text mode utility program and you learned
+    about several of Python's built-in packages. In this chapter, we're going to see
+    how to use both the high-level `concurrent.futures` package and the lower-level
+    multiprocessing package to help us write parallel programs. Both are part of the
+    Python standard library.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will cover the following two topics in detail:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the `concurrent.futures` package
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using multiprocessing packages
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using the concurrent.futures package
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this section, we're focusing on `concurrent.futures`, the more abstract and
+    easier to use of the two packages mentioned earlier. Our focus will be on the
+    four main operations in `concurrent.futures`. We will then move on to the usage
+    of future objects and end with the implications of the mechanism of data transfer
+    between processes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Some programs are what we call CPU-bound, which means that the primary factor
+    which determines how long the program takes to complete its tasks is how fast
+    the computer can run through its instructions. Interestingly, most programs that
+    we use on a daily basis are not CPU-bound. However, for those that are, we can
+    often speed them up by breaking them into separate processes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This difference can be illustrated as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/c0524bf3-8935-496e-9b07-4930f8c11c05.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: In the preceding figure, on the left-hand side, we have a CPU-bound program.
+    It has many things to do, represented by circles and the speed of execution depends
+    on how quickly the CPU can process. On the right-hand side, we have a program
+    that is not CPU-bound, which means, most of the time, it is waiting for the execution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The processes can run simultaneously on different CPU cores or even on completely
+    separate CPUs. This has the net effect of increasing the number of program instructors
+    executed per second, which means that CPU-bound programs run faster than the programs
+    that are not CPU-bound.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In some programming languages, we can see the same benefit by running multiple
+    threads for a single program. However, as I mentioned earlier, most programs are
+    not CPU-bound, so the creators of Python have chosen to optimize Python's threading
+    system for the common case, which has the side effect of making Python threads
+    not very useful for improving the speed of CPU-bound programs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Besides, it's easier for the operating system to optimize the execution of multiple
+    processes than multiple threads within a process. So, even if threading were a
+    viable option, multiple processes would be a better choice for a CPU-bound program.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We already saw one very low-level approach to launching a process and communicating
+    with it in our discussion of the `subprocess` module (refer to the *Executing
+    other programs with subprocess* section in [Chapter 5](b7c332de-4fe1-4482-886b-b4573aa0d997.xhtml),
+    *Making a Command-Line Utility*). However, for cases where the reason we want
+    to do that is because our program is broken up into a bunch of cooperative processes
+    that work together, Python provides us with a couple of higher-level toolkits
+    that make things easier. The more abstract of Python's parallel processing toolkits
+    is called `concurrent.futures`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The concurrent.futures module
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The `concurrent.futures` module is designed for programs that can be structured
+    with one controlling process and several worker processes, where the controlling
+    process hands out jobs to worker processes and then collects and collates the
+    results. The following simple code example of a CPU-bound task uses the `concurrent.futures`
+    module:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/58dd1edd-1850-42d9-b963-4cc77ef73e1b.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: That's a fairly generic model, especially, for CPU-bound programs. So, `concurrent.futures`
+    is as widely applicable as it is simple to use, and the preceding code example
+    shows that it is simple.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The basic usage is to just import it, create a `ProcessPoolExecutor` object,
+    and then call that object's `map` or `submit` methods to send work to the worker
+    processes. When we're completely done with the `ProcessPoolExecutor` and we know
+    we'll never need it again, we call its `shutdown` method or allow the `with` statement
+    to do it for us. The `ProcessPoolExecutor` object will take care of all the twitchy
+    little details of creating and communicating with the worker processes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before going ahead with the `map` and `submit` methods, let's find out more
+    about `ProcessPoolExecutor` and what it does.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Calling ProcessPoolExecutor
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'When we call the `ProcessPoolExecutor` map or submit methods (which we''ll
+    discuss later in this section), we''re asking it to call a function with the given
+    parameters. But we want that function call to happen inside a worker process.
+    This has some implications that might not be obvious:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: First of all, it means that the function and its parameters need to be **picklable**,
+    which is another way of saying that Python needs to know how to turn them into
+    a byte string that it could send to the worker process.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: For functions, that basically means any function is OK, unless it was defined
+    within the body of another function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For the parameters, it means that most objects will work, but generators and
+    a few other kinds of special object can't be passed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Being aware that both the function and the parameters passed to it can easily
+    bring along information we didn't intend to send when they get pickled for communication
+    to the worker processes is important.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If any of the objects we sent to the `ProcessPoolExecutor` object references
+    other objects, those objects get pickled up and sent too. It's entirely possible
+    to end up sending most of the state of our program. That's particularly worth
+    noting when the function we're asking to run is a method of an object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If the function is a method of an object, the whole object will get pickled
+    and sent to the worker process, which means that the function call will be happening
+    with a copy of the original object as its self-parameter, not the original object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Second, the return value of the function is pickled and returned to the controlling
+    process. All of the warnings about passing parameters to the called function applied
+    to the return value too.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: So, for example, if the function can't return a generator object and its return
+    value contains references to a bunch of objects, copies of them will end up being
+    sent to the controlling process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Third and finally, the `concurrent.futures` code that's running in the worker
+    processes needs to be able to import the modules that our original code was loaded
+    from.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: This means that we may need to use the `if __name__ == '__main__'` trick to
+    keep the worker processes from getting stuck running complete copies of our program,
+    when all they wanted to do was import the module and find the function we were
+    asking to have run.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We already saw the `map` method of `ProcessPoolExecutor` in our example, but
+    let's look a little closer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the map method
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The `map` method takes a function as its first parameter. We can also pass
+    it one or more intervals, which will be used to figure out the parameters for
+    each call to the function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/89c49ec5-c2bc-4a44-abc0-940d117acad6.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Refer to the preceding code example, if we ask `pool` to map the `foo` function
+    to the list `[1, 2, 3]` and `[4, 5, 6]`, the result is that the `foo` function
+    will be called with `1` and `4` as its parameters, called again with `2` and `5`
+    as its parameters, and called a third time with `3` and `6` as its parameters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's no guarantee in which order these three calls will happen, though. After
+    all, they're likely to each run in different processes and the relationship between
+    process scheduling and wall-clock time is partly dependent on unpredictable factors.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `map` method hides that fact by waiting for all the calls to finish and
+    produce the results, then returning an iterator over those results in the proper
+    order.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the submit method
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Sometimes, the `map` method is too simple. What if we want to handle the results
+    as each worker produces them, instead of waiting for all the workers to get done?
+    What if we decide not to run the function after all? What if we want to run different
+    functions in worker processes at the same time? For that matter, what if we want
+    to pass keyword arguments to the function? We could do all that and more using
+    the `submit` method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Each call to the `submit` method translates to a single call to the function
+    that we pass as the first parameter of the `submit` method. The rest of the parameters
+    and keyword arguments we pass to `submit` are passed into the function after being
+    sent to the worker process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s look at an example of the `submit` method in action:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/f9f98218-0a01-4420-a855-8bfc340b363a.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: So, for each time we call `submit`, one worker process calls one function with
+    one set of parameters. The `submit` method does not wait for the worker process
+    to finish running the function before returning. In fact, it doesn't even wait
+    for the worker process to start running the function and so `submit` does not
+    return the result of the called function. Instead, it returns a `future` object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A `future` object is in some sense an IOU for the result of the function. If
+    we have a `future` object, we can use it to check whether the worker process has
+    finished running the function to get the result returned by the function or even
+    to set up a callback that will be called when the function finally does finish
+    running. We can even use the `future` object to remove the function call from
+    the queue of jobs that should be shared out to the worker.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `done` and `result` methods of a `future` object are the ones we'll use
+    most often.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The done and result methods
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The `done` method returns `true` if the job is done and `false` if it''s not.
+    A job is done if it was cancelled, if it raised an exception, or if the job function
+    has returned, as shown in the following code example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/27bcf882-7524-4194-9e91-6314d2d92c6a.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The `result` method returns the return value of the job function if it completed
+    successfully. If the job function raised an exception instead of returning a value,
+    the worker process will catch the exception and hand it back to the controlling
+    process as the result of the job.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the preceding code example, calling the `result` method will re-raise the
+    exception, so it can be handled properly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**The timeout parameter**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The timeout parameter is an important parameter in the `result` method. It is
+    useful if we want to call the `result` method before the job is done.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we call the `result` method before the job function is done, then the `result`
+    method will wait for the job to complete before it returns. This could be very
+    useful, but sometimes we don't want to wait indefinitely. If the job isn't done
+    quickly, we want to go on and do something else for a while.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In such a case, we should pass the number of seconds we''re willing to wait
+    to the `timeout` parameter of the `result` method, as shown in the following code
+    example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/c578c83f-35d8-45f7-964e-d791cab5bcce.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Along with the `timeout` parameter, we will add a `TimeoutError` exception.
+    If the `timeout` parameter expires without a result being produced, a timeout
+    error will be raised.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The wait and as_completed functions
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'There is a pair of functions in the `concurrent.futures` package that let''s
+    wait on several futures at once. They''re called `wait` and `as_completed`. The
+    following code example represents the `wait` function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/0da427e6-d85c-428c-aa27-d30a7530a0d0.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The `wait` function waits until all the `futures` are ready to deliver the results
+    or until a timeout expires. Then, it returns a set of `futures` that are done
+    and a set of `futures` that aren't. In contrast, the `as_completed` function returns
+    an iterator that produces `futures` one by one as they become ready to produce
+    the results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In rare cases, the `done` and `result` methods of future and the `wait` and
+    `as_completed` functions of the `concurrent.futures` package aren't sufficient
+    to let a program process futures at the proper times.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For those occasions, it's possible to have the `future` call a function when
+    the result becomes available. We can do that by passing a function into the `add
+    done callback` method of `future`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The add done callback function
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The `future` object will remember that function and when the `job` function
+    is done, the `callback` function will be called with the `future` object as its
+    only parameter. The code in the `callback` function can then call the future's
+    `result` method to get the return value or exception that the job produced.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `callback` function will always be called in the controlling process, but
+    it might not be called in the same thread as the main part of the program.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When we use `add done callback`, we need to be careful of thread synchronization
+    issues, which is a big reason to prefer the `wait` or `as_completed` functions
+    when possible. The `future` objects also have a `cancel` method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The cancel method
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The `cancel` method tries to tell the system that we don''t want the call to
+    happen after all (refer to the following code example):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/2d1acd3f-7c47-4b19-8b6e-b1be11141176.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: This code example is not guaranteed to work because if a worker process has
+    already begun a job, that job is no longer cancellable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If the job connected to a `future` object can't be cancelled, the `cancel` method
+    returns `false`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: If the cancellation succeeded, the `cancel` method returns `true`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `concurrent.futures` module is perfectly suited to farming out computational
+    tasks to multiple processes to take advantage of the CPU power of multicore and
+    multiprocessor computers. The `map`, `submit`, `wait`, and `as_completed` functions
+    are usually all you need for that kind of task.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the multiprocessing packages
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous section, we saw that the `concurrent.futures` package makes
+    it very simple to farm out computational jobs to worker processes. If the program
+    we need doesn't fit into the *send out jobs and collect the results* model, we're
+    probably better off working at a somewhat lower level of abstraction.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, let's now move on to look at another package that helps us handle multiprocess
+    programs that don't fit that model, but the pieces are only partly independent
+    of each other. From time to time, they need to pass information between themselves,
+    not just back to the controlling process. We can't do that with `concurrent.futures`
+    because it just doesn't fit into the model that `concurrent.futures` uses to describe
+    parallel processing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Alternatively, what if we need to be able to cancel a job after a worker process
+    has started running it? Again, that doesn't fit the `concurrent.futures` model.
+    The `concurrent.futures` model is powerful, but its power is based in simplicity
+    and so it's not too hard to imagine scenarios it can't handle.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When we need to build our own model of how parallel processing should work,
+    we can use the `multiprocessing` module as the foundation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Process class in the multiprocessing module
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The `multiprocessing` module contains a class called `Process` that represents
+    the ability to run code in a separate process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Probably the simplest way to use the `Process` class is to subclass it and
+    override the `run` method, which is the entry point for code in the other process,
+    as shown in this code example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/acfdc246-1a84-427b-88e3-40cf06301d78.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: In the preceding example, we created a specific kind of process that calculates
+    some square numbers. Then, we created an instance and started running it. When
+    we called `start`, the `multiprocessing` module did the necessary work to make
+    sure that the `run` method was executed in a new process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: By the way, all of the warnings we discussed in the  `concurrent.futures` module
+    section (*Using the concurrent.futures package*) about pickling and importing
+    modules applies to the `multiprocessing` module as well. When it comes to moving
+    data between processes and importing code, they work in the same way.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So far, we haven't seen anything that we couldn't do better with `concurrent.futures`,
+    but it changes when we start using **queues**, **pipes**, and **managers**. Let's
+    have a look at them in detail.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Queues
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Queues are communication channels that are appropriate for one to many, many
+    to one, and many to many communications between cooperating processes. Depending
+    on how they're used, that makes them ideal for posting tasks to a worker process
+    when we don't care which worker ends up doing the task and for collecting the
+    results of multiple worker processes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Any process can put a picklable object into a queue and any process can remove
+    the next available object from the queue.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Queues are **First In First Out** (**FIFO**) data structures, which means that
+    objects are removed from the queue in the same order that they''re added. The
+    `JoinableQueue` class adds a method, which allows a process to wait until the
+    queue has been emptied by other processes. OK, let''s take a closer look at `queue`
+    objects:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/f9b7dad3-fbba-429b-a5ff-6207cd0563f8.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Refer to the preceding code example; there are three methods that are primarily
+    useful: `put`, `get`, and `get_nowait`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: When we call `put`, an object is placed at the back of the queue.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: When we call `get`, an object is removed from the queue and returned, unless
+    the queue is empty. If the queue is empty, the process that called `get` waits
+    until it is able to remove and return an object, which will happen after some
+    other process puts an object into the queue.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: When we call `get_nowait` on the other hand, it either removes and returns the
+    object at the front of the queue or it raises a `q.empty` exception.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Finally, we could pass a `timeout` parameter to the `get` method, in which case
+    it will either remove and return an object within that many seconds or raise `q.empty`.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We could pass queue objects around between processes by making them part of
+    the process's initial data, or by sending them through pre-existing queues or
+    pipes, or even by storing them in a manager. Queues are designed to be shared
+    between processes. Moving on, let's look at pipes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Pipes
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Pipes are one-to-one communication channels. When we call a pipe, we get back
+    a pair of objects that each serve as one end of the communication stream. If we
+    give one end each to a pair of processes, they could send messages and data back
+    and forth through the pipe.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Each end of the pipe has the same methods. The interesting methods are `send`,
+    `recv`, and `poll`. Consider the following code example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/a68fdf21-ed42-4702-bfda-1438352943e0.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In the preceding code example, we see these:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `send` method accepts an object as its parameter and sends it to the other
+    endpoint.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `recv` method waits for something to be sent from the other endpoint, and
+    then returns it.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `poll` method returns `true` if there's an object way to be received and
+    `false` if there is not.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `poll` method can accept a `timeout` parameter. If we give it a number for
+    the timeout and there's not currently anything waiting to be received, the `poll`
+    function will wait for up to that many seconds for data to arrive and then return
+    `true`. If no data arrives before the timeout expires, the `poll` method will
+    return `false`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we pass `None` as the `poll` method's `timeout` parameter, it will wait until
+    data arrives before returning, no matter how long it takes. Like queue objects,
+    pipe endpoints can be sent to other processes as they're launched or through other
+    queues, pipes, and so on after the process is running.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using queues and pipes as the only connection between the processes is usually
+    considered best because this maximizes the ability of the processes to work in
+    parallel.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If it's possible to organize a parallel program that way, it should be. If we
+    find that we need to share some variables between several processes though, we
+    can do it using a `Manager` object. Let's look at manager now.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Manager
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: A manager represents a special process with only one job-keeping track of the
+    variables that other processes need.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Accessing variables stored in a manager is much slower than accessing a process's
+    local variables and it could lead to situations where processes trying to access
+    variables at the same time slow each other down. On the other hand, if we actually
+    need shared variables, at least the manager handles them correctly and as efficiently
+    as possible.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, managers can handle many types of data, but we're going to focus on their
+    ability to store **dictionaries**, **lists**, and **namespaces**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Normally, when we send an object to another process, the other process actually
+    gets a copy of that object; this means if the other process changes the object
+    it receives, we don't see those changes in the original process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A manager lets us create objects that behave more like queues in that, if we
+    send the object to another process and that process changes the object, we do
+    see the changes in the original process or any other process that has access to
+    the object. Consider this code example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/b9f18527-af52-4092-b5e2-e7ed732799f3.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The `manager.dict()` and `manager.list()` methods in the preceding code example
+    create special dictionaries or lists that could be shared between processes. The
+    `Namespace` method, which does indeed start with a capital `N`, creates a more
+    generic shared object on which we can set attributes to share them between processes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When we have shared data that is being accessed by multiple streams of execution,
+    which is exactly what manager provides, we have to be careful to keep the data
+    access synchronized. To help with that, managers can also create some standard
+    synchronization primitives, such as **locks**, **events**, **conditions**, and
+    **semaphores**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The lock object
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Lock objects are the simplest of the synchronization tools. They have a pair
+    of methods called `acquire` and `release`, as shown in the following code example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/2c60f959-8294-44be-92af-dbc13647b3e7.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: After a process calls `acquire`, any other process that calls `acquire` is forced
+    to wait until the first process calls `release`. Then, the `acquire` call in one
+    of the waiting processes returns, allowing that process to proceed. In other words,
+    code between an `acquire` call and `release` call can count on being the only
+    code accessing whatever data the `lock` object is protecting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Notice that the `lock` object doesn't know what data it's protecting. It's up
+    to us as programmers to define and respect that association in our own minds.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The event object
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Event objects allow a process to proceed immediately if a flag is `true` or
+    wait until the flag becomes `true`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The flag is set to `false` by calling the `event.clear` method or `true` by
+    calling its `event.set` method, as shown in this code example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/b6ddd297-0f66-4310-92e6-ad047ed3bc20.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: When we call the `event.wait` method, it will return immediately if the flag
+    is `true` else it will pause execution until another process calls `set` and then
+    return.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Event objects are useful for making a process pause until some specific thing
+    happens.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The condition object
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The condition objects combine some of the features of `lock` and `event` objects.
+    Like a `lock`, they have `acquire` and `release` methods that can be used to protect
+    data from simultaneous access.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'However, a `condition` object also has a `wait` method and a `notify` method,
+    which can be used to wait until some other process does something and to wake
+    up a waiting process as shown in the following code example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/da130d6e-6844-4625-acac-7ceb901e14ec.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Condition objects are useful for creating data structures that synchronize access
+    to their contents and wait when they don't have any data to return. The `get`
+    and `put` methods of the `queue` class could be implemented using a `condition`
+    object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The semaphore object
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The `semaphore` objects look a lot like `lock` objects. The difference is that,
+    where the `lock` objects always ensured that exactly one process has acquired
+    the lock at a given time, `semaphore` objects ensure that no more than a fixed
+    number of processes can acquire it at the same time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This can be seen using the following code example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/8333a564-780c-4c21-b85f-ca4a10dfe265.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: This is useful for doing things such as limiting the number of worker processes
+    that can access the hard disk at the same time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, you learned how to use `concurrent.futures` to make a particularly
+    common multiprocess case extremely simply. We also saw how to use the `multiprocessing`
+    package to define what worker processes do and how they interact.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, now we know quite a lot about how to help CPU-bound programs take advantage
+    of multicore and multiprocessor hardware to run faster. Most programs aren't CPU-bound
+    though, they're I/O-bound, which means they spend most of their time waiting for
+    input from various sources. Parallel processing doesn't help in that situation,
+    but asynchronous I/O does, and that's the topic for our next chapter.
+  prefs: []
+  type: TYPE_NORMAL

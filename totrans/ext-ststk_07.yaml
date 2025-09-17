@@ -1,0 +1,383 @@
+- en: Chapter 7. Scripting with Runners
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: One of the design principles behind Unix is that programs should be small, doing
+    only one thing, but doing it well. Execution modules follow this pattern, using
+    functions that normally do only one thing, grouped with related functions into
+    modules. When a function is executed, it performs that job, and then returns.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In Unix, these small programs can be combined together using a shell script,
+    which ties them into a more powerful tool. Salt''s runner system brings that element
+    of scripting to Salt, using the same language that Salt itself is written in:
+    Python. In this chapter, we will discuss:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Connecting to Salt's local client
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Adding extra logic to execution modules
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Troubleshooting runners
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using Salt's local client
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Runners were originally designed to run on the Master, to combine multiple
+    jobs across Minions into one complete task. In order to communicate with those
+    Minions, a runner needs to use `local_client`. Unlike other components, this is
+    not built directly into runners; you need to initialize the client yourself. Let''s
+    set up a quick example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: These three lines form the basis of setting up and using the local client. First,
+    we import the `salt.client` library. Then, we instantiate a client object, which
+    is used to communicate to Salt. When creating that client object, you do need
+    to tell it where to find Salt's configuration file. Luckily, this is something
+    we get for free in the `__opts__` dictionary, and we're unlikely to need to change
+    it, so that line in your code will probably always look exactly like what we've
+    done here.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The last line uses the `client` object to issue a command to a target. What
+    is returned from that is a list of the Minions that responded, within the specified
+    timeout. Let''s go ahead and break out that last line into components, and discuss
+    each one:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: By now, you should be used to using `'*'` as a target, and know that it refers
+    to all of the Minions. And you should know that `test.ping` is a standard command,
+    often used to check and see which Minions are responding. The timeout is also
+    required, but there's rarely a need to use anything but the configured timeout,
+    so `__opts__['timeout']` will almost always be sufficient.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scripting with the local client
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Runners, like other Salt modules, are based around functions inside of modules.
+    The preceding code is technically correct, but it''s not where it needs to be
+    in order to be used as a runner. Let''s go ahead and create a runner module called
+    `scan`, which we''ll use to collect various pieces of information about all of
+    our Minions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: At the moment, we don't have much, but it is functional as a runner. Our first
+    function is called `up`, but since it's considered bad form to use function names
+    shorter than three characters, we've defined it as `up_(),` and used `__func_alias__`
+    to make it callable as `up`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This function will connect to the local client, issue a `test.ping` to all Minions,
+    and then return a list of which Minions responded. If we were to return `minions`
+    instead of `minions.keys()`, then we would get a list of all of the Minions that
+    responded, and what they responded with. Since we know that `test.ping` will always
+    return `True` (assuming that it returns in the first place), we can skip returning
+    that data. We also sorted the list of Minions, to make it easier to read.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To execute this function, use the `salt-run` command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Why not create the client connection at the top of the module, so that every
+    function can have access to it? Due to the way the loader presents modules to
+    Salt, the `__opts__` dictionary is only available inside functions, so we can't
+    use it at the top of the module. You could hardcode the correct path, but as we
+    all know, hardcoded data is also poor form, and to be avoided.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you only want to define the client once, then consider using a private function
+    called `_get_conn()`, which returns the connection object. However, since it would
+    only contain one line of code, and that line is unlikely to ever change, it's
+    probably not worth it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `scan.up` function that we''ve created tells us which Minions are responding,
+    but you may be more interested in which ones aren''t responding. Those are more
+    likely to tell you when Minions are having connection issues. Let''s go ahead
+    and add a function called `down()`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: First, we need to know which Minions have responded, but we already have a function
+    that reports that to us, so we just use the response from that.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We also need a list of the Minions that are expected to return. We can get this
+    by creating a `salt.key` object, and asking it for a list of Minions whose keys
+    have been accepted by the Master.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now that we have a list of which Minions should respond, we remove the Minions
+    that did respond from that list, and if any Minions are left in the list, then
+    they are the ones that we can assume are down. As before, we''ve sorted the list
+    of Minions as we return them, to make it easy to read:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: Using different targets
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: One major difference that separates the `salt-run` command from the `salt` command
+    is the inability to specify a target on the command line. This is because runners
+    are designed to be able to determine their targets on their own.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s go ahead and update the `up_()` and `down()` functions to allow the
+    user not only to specify their own target but also a target type:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: In our function, the `tgt` argument refers to the target. The local client requires
+    a target to be specified anyway, so we just replace `'*'` in our function with
+    `tgt`. The `tgt_type` is the type of target to be used. By default, Salt uses
+    a target type of `glob` anyway, but users can specify something else (`pcre`,
+    `list`, and so on) if they need to. The name of this argument in the local client
+    is `expr_form`. Check the "Target Selection Options" in the output of `salt --help`
+    to see which options are supported in your version of Salt.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Combining jobs to add more logic
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'One of the most powerful things about runners is the ability to take the output
+    from one job, and use it to start another job. First, let''s define a few things
+    about our infrastructure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We're using Salt Virt to manage some VMs.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Some Minions run hypervisors; others are VMs that run inside those hypervisors.
+    Some do not run a hypervisor, but are also not a VM.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A number of different operating systems are being used, such as Suse, CentOS,
+    and Ubuntu.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: With that in mind, we need to run a report of which hypervisors are running
+    on which operating systems.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We could use this Salt command to discover which Minions are running which
+    operating systems:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'And we could run this command to find out which Minions are virtualized:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'But just because a Minion''s `virtual` grain is set to `physical` doesn''t
+    mean it''s a hypervisor. We could run this command to find out which Minions are
+    running hypervisors:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'However, there''s nothing that can aggregate those data together and tell us
+    which hypervisors are running which operating systems; so let''s put together
+    a function that can do that:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: After we create our `client` object, our first job is to see which Minions actually
+    have a hypervisor running. Then we loop through that list and save the ones that
+    are in another list called `hypers`. Because we're storing that in list form,
+    we can pass it to the client again with an `expr_form` of `list`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We''ve also added something new. The `grains.item` function expects a single
+    argument that tells it which grain to look up. When you need to pass a list of
+    unnamed arguments to a function, pass it in as `arg`. When we run this runner,
+    our output will look something like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Let''s say we want to be able to run an arbitrary Salt command on any machine
+    that shows up in that hypervisor list. We''re going to do two things in our next
+    bit of code. We''re going to break `hyper_os()` into two functions, called `hypers()`
+    and `hyper_os()`, and then add a new function called `hyper_cmd()`, which will
+    make use of the `hypers()` function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: You may notice that each function is able to create its own `client` object,
+    including `hypers()`. This allows us to use `scan.hypers` on its own. However,
+    it also allows us to pass in a `client` object from other functions. This can
+    save a lot of time over creating one `client` object per Salt command.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `hyper_cmd()` function allows us to pass in arguments in a number of different
+    ways, or none at all if necessary. Using it without any arguments would look like
+    this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Using it with an unnamed argument would look like:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'It starts to get tricky when you pass in a list of arguments. By default, Salt
+    is able to convert YAML that is passed in on the command line into data structures
+    that can be used inside of Salt. This means that you can run this command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'And Salt will automatically translate `[one,two]` into a list containing a
+    string of `one` followed by a string of `two`. However, that is not what will
+    happen if you run this command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: In this case, Salt will think that you have passed in a string whose value is
+    `one,two`. If you wanted to allow users to enter lists like that, you would need
+    to detect and parse them out manually.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It gets even trickier if you want to pass in named arguments. The following
+    is valid:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'But it''s pretty horrible to ask users to type that in. Let''s go ahead and
+    shrink our function down by using Python''s own `*` and `**` tools, which allow
+    us to accept arbitrary lists and dictionaries from the command line:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now we can run the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: The final module
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'With all of our code in place, the final module will look like:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: Troubleshooting runners
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In a way, runners are a little easier to troubleshoot than other types of modules.
+    For instance, even though they run on the Master, they don't need the `salt-master`
+    service to be restarted to pick up new changes. In fact, unless you're using the
+    local client, you don't actually have to have the `salt-master` service running.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Working with the salt-master service
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'If you are using the local client, and you try to issue a command without the
+    `salt-master` service running, you will get an error that looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is because, although runners themselves don't rely on the `salt-master`
+    service, Minions do rely on it to receive commands, and send responses back to
+    the Master.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Timeout issues
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: If the Master is running properly and you're not receiving the responses that
+    you expect, think about the targets that you're hitting. It is very common for
+    a runner to issue commands to all Minions, but if you're testing in a large infrastructure,
+    or you have keys on your Master that belong to Minions which are inaccessible
+    or no longer exist, then runner commands can take a long time to return.
+  prefs: []
+  type: TYPE_NORMAL
+- en: While writing your modules, you may want to consider changing the target from
+    `'*'` to one specific Minion, or perhaps to a specific list of Minions (with the
+    `expr_form` set to `'list'`, as we did in our `hyper_os()` and `hyper_cmd()` functions).
+    Just make sure you set it back before you push it into production.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Runners add a scripting element to Salt, using Python. They are designed to
+    run on the Master, but do not require the `salt-master` service to be running,
+    unless they are using the local client to issue commands to Minions. Runners are
+    designed to manage targeting on their own, but you can add elements to allow users
+    to specify targets anyway. They are especially useful for using the output from
+    one job as input for another job, which allows you to wrap your own logic around
+    execution modules.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the next chapter, we will allow the Master to use external sources to store
+    the files that it serves to its Minions. Next up: adding external file servers.'
+  prefs: []
+  type: TYPE_NORMAL

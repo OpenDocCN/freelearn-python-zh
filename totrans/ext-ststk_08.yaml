@@ -1,0 +1,457 @@
+- en: Chapter 8. Adding External File Servers
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Salt Master normally keeps its resources locally on the machine that hosts
+    it. This involves, among other things, files that are served to Minions. The file
+    server loader allows you to use an external resource to store those files, and
+    treat them as if they are local to the Master. In this chapter, we''ll discuss:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding how Salt uses files
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Abstracting external sources to deliver files to Salt
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using Salt's cache system
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Troubleshooting external file servers
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How Salt uses files
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: There are two ways that Salt's built-in file server uses files when communicating
+    with Minions. They can be served whole and intact, or they can be processed by
+    a templating engine, using a renderer module as discussed in [Chapter 5](part0033_split_000.html#VF2I1-d9976ffc65994572ad672a3ef48f1135
+    "Chapter 5. Rendering Data"), *Rendering Data*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In either case, these files are stored in one or more sets of directories,
+    as configured with the `file_roots` directive in the master configuration file.
+    These directories are grouped by environment. When Salt is looking for a file,
+    it will search through the directories in the order in which they are listed.
+    The default environment, `base`, normally uses `/srv/salt/` to store files. Such
+    a configuration would look like:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'What many users don''t realize is that the `file_roots` directive is actually
+    a configuration option that is specific to a file server module called `roots`.
+    This module, along with all other file server modules, is configured using the
+    `fileserver_backend` directive:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This is where you configure any other file server modules to be used within
+    Salt. Once again, modules are configured in the order in which they are to be
+    used. When the Master requests a file for a Minion, Salt will check with each
+    of these modules until it finds a match. When it does, it will stop looking, and
+    serve the file that it has found. That means that if you have the following configuration:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: And Salt finds the requested file inside of Git, it will ignore any files that
+    would otherwise be found on the local filesystem.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Mimicking a filesystem
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: If you have ever written a FUSE filesystem before, you will recognize some of
+    the functions used inside a Salt file server module. Many of the operations used
+    to request a file from an operating system are very similar to the files used
+    by Salt to request a file. When it comes down to it, a Salt file server module
+    is effectively a virtual filesystem, but with an API designed specifically for
+    Salt, rather than for an operating system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you do development with file server modules, you may also notice another
+    trend. While the data that is used may be stored in a remote location, it may
+    be costly in terms of resources to repeatedly retrieve those files. Because of
+    this, a number of file server modules will retrieve files from that remote location
+    and then cache them locally on the Master, only updating them as necessary.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this respect, when you are writing a file server module, you are often only
+    implementing a means of retrieving and caching files, and serving them from the
+    cache. This is not always the best thing to do; a truly dynamic file server based
+    purely on database queries might perform best by always performing a lookup. You
+    need to decide from the beginning what the most appropriate strategy is.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Looking at each function
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The file server that we will be writing will be based on SFTP. Because SFTP
+    calls can be expensive to make, we will use a caching implementation that relies
+    on a popular Python library called Paramiko to retrieve files. For simplicity,
+    we will only allow one SFTP server to be configured, but if you find yourself
+    using this module, you may want to consider allowing multiple endpoints to be
+    configured.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting up our module
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Before we go over the functions that are used, we start setting up the module
+    itself. We will implement a few functions that provide objects that we will use
+    throughout the rest of our module:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: There's quite a bit going on already! Fortunately, you should recognize most
+    of this by now, so this part should go by quickly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We've included a docstring that's a bit longer than usual, but which explains
+    how to configure Salt to use our module. We will see these parameters used when
+    we get to the `__virtual__()` function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we set up our imports. The usage of most of these will be covered as we
+    go through individual functions, but there are a couple that we have wrapped in
+    `try/except` blocks. The first of these is `fcntl`, which is a Unix system call
+    that handles file descriptors. This library is useful for locking files in Unix
+    and Linux, but does not exist in Windows. However, the rest of our module is usable
+    in Windows, so we set a flag now that can be used later, when we need to lock
+    files.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The second import is Paramiko. This is one of the most popular connection libraries
+    available for SSH and SFTP in Python, and simple to use for our purposes. If it
+    has not been installed, then we can return `False` in the `__virtual__()` function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We've added `__virtualname__`, even though it's not strictly necessary, just
+    so that we have a central and easy-to-find place to name our module. We will use
+    this variable in the `__virtual__()` function. We've also added a little logging,
+    which we'll make use of.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before even loading the `__virtual__()` function, we've defined two variables
+    to be used for connecting to the SFTP server. We'll assign a connection to them
+    inside `__virtual__()`, and it will be used throughout the rest of the module.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, we have our `__virtual__()` function. First, we check to see if our
+    module has even been configured for use. If not, there's no point in going any
+    further. We also check to make sure Paramiko is installed. Then we make sure a
+    root directory has been specified for the SFTP server. It's not evident now, but
+    this directory will be required elsewhere. If it's not there, then we're not even
+    going to bother trying to connect to the server.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If it is defined, then we can go ahead and try to make our connection. Paramiko
+    will raise `AuthenticationException` if the rest of our parameters have been incorrectly
+    defined, and in that case of course, we will consider this module unavailable
+    and return `False`. But if all of those stars line up, then we're ready for business!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's go over the functions that we should find inside any given file server
+    module. In each section, we will implement and explain that function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: envs()
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We start off by reporting which environments have been configured for this
+    file server. At the very least, the `base` environment should be supported and
+    reported, but it''s best to offer a mechanism to support other environments as
+    well. Because we''re effectively abstracting a file management mechanism, it''s
+    often easiest to just do this by separating environments into directories:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: This function needs to return a list. Because we've separated out environments
+    into their own directories, all that we need to do for our module is return a
+    list of directories at the root directory that we've configured.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This function is tricky to test, because there's no direct interface for it
+    in any Salt modules. However, it can be tested once the next two functions are
+    in place.
+  prefs: []
+  type: TYPE_NORMAL
+- en: file_list() and dir_list()
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'These two functions are pretty self-explanatory; they connect to the remote
+    endpoint and return a list of all files and directories for that environment:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'What is needed by these two functions is exactly the same, except for whether
+    or not to include files. Because recursion is usually needed anyway, we''ve added
+    a recursive function called `_recur_path()` that can report either just directories
+    or both files and directories. You may notice the check against `entry.st_mode`.
+    You may think of a Unix file mode as a set of permissions, which can be changed
+    using the `chmod` (**ch**ange **mod**e) command. However, the mode also stores
+    which kind of file it is:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: We could use another try/except block to see if we can descend into a directory.
+    But it's a little less work to check the mode. If it starts with `04`, then we
+    know that it is a directory.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Each of these functions requires a `load` argument. If you were to look inside,
+    you would find a dictionary that looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `cmd` field stores what kind of command was used. `prefix` will contain
+    the directory path, inside the environment, which contains any requested files,
+    and `saltenv` tells you the name of the requested environment itself. You will
+    see this argument throughout the module, but it looks largely the same.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s go ahead and look at a couple of Salt commands:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: Keep in mind that `--local` will tell `salt-call` to pretend that it is its
+    own Master. In that case, it will look to the `minion` configuration file for
+    the connection parameters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: find_file()
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Like `file_list()` and `dir_list()`, this function checks a requested path.
+    It then reports whether or not the specified file exists:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: You may have noticed that no SFTP calls are being made in this function. That's
+    because we're using a caching file server, and all that we need to check for right
+    now is to see if the file has been cached. If it has, then Salt will just serve
+    the file from the cache.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you are writing a file server module that does not keep a local cache, then
+    this function should check the remote endpoint to ensure that the file exists.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Speaking of the cache, one of the more important lines in this function is the
+    one that defines the `full` variable. This sets up the directory structure that
+    is to be used for this caching file server. It makes use of `salt.syspaths` to
+    determine the correct directory for your platform; normally, this will be `/var/cache/salt/`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that a `load` is not passed into this function, but `saltenv` that would
+    normally be in the `load` is. Previous versions of Salt passed in `saltenv` as
+    just `env`, and the `**kwargs` functions as a catch-all to keep Python from choking
+    on old implementations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once again, there is no way to test this function directly. It will be used
+    by the `update()` function later on in this section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: serve_file()
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Once a file has been found using `find_file()`, its data is passed to this
+    function in order to return the actual file contents:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: This function is used directly by Salt's own internal file server, which splits
+    files into chunks before delivering them to Minions. If the `gzip` flag is set
+    to `True` in the master configuration file, then each of these chunks will be
+    individually compressed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Since, in our case, this function is serving files from the cache, you can probably
+    get away with using this function as it is printed here, except for the line that
+    defines the `full` variable. If you are not using a caching file server, then
+    you will need to have a way to access and deliver each chunk of a file, as requested.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can test this function using the `cp.get_file` function. This function
+    requires both a filename to download, and a full path to save the file locally:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: update()
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'At regular intervals, Salt will request that an external file server perform
+    maintenance on itself. This function will compare the local file cache (if it
+    is being used) with the remote endpoint, and update Salt with new information:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: Whew! This is a long one! First, we define the cache directory, and if it is
+    not there, then we create it. This is important for caching file servers. Then
+    we ask Salt to clean up old entries, using the built-in `salt.fileserver.reap_fileserver_cache_dir()`
+    function. This passes in a reference to `find_file()` to help with the work.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The next section walks through the remaining files to check their timestamps.
+    Files will only be downloaded if they either have not yet been downloaded, or
+    if there is a more recent copy on the remote SFTP server.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, we loop through each environment to see which files have changed, and
+    download them if necessary. Any directories that don't exist in the local cache
+    will be created. And whether we create a file or a directory, we make sure to
+    update its timestamp so that the cache matches what's on the server.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This function will be run periodically by the Salt Master, but you can force
+    it to run by manually deleting a file from the local cache, and then requesting
+    a copy:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: file_hash()
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'One of the ways that Salt knows that a file has been changed is by keeping
+    track of the file''s hash signature. If a hash changes, then Salt will know that
+    it is time to serve a new copy of the file from the cache:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is the longest function in our example, but thankfully it also needs the
+    least amount of modification, for a caching file server. As with the other examples
+    in this book, you can download a copy of this module from Packt Publishing's website.
+    Once you have it downloaded, you will likely only need to change the value of
+    `cache_path`. However, we will go through this function briefly anyway.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'After setting up a few basics, including the path of the file being hashed,
+    check for the existence of said path, and define where in the cache to keep a
+    copy of the hash. In our case, we''ve set up another directory structure inside
+    the cache, mirroring the original, but with `.hash.<hash_type>` appended to the
+    filename. Resulting files will have names like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: The next section checks to see if the hash file has been created, and if so,
+    whether or not the timestamp matches the local copy. If the timestamp on the existing
+    hash file is too old, then a new hash will be generated.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we get past all of that, then we know it's time to generate a new hash. After
+    determining the hash type to use and setting up a directory to put it in, we get
+    to the section that actually writes the hash to disk. Remember the check for `fcntl`
+    at the beginning of the module? On a busy Salt Master, it's possible that multiple
+    attempts may be made simultaneously to work on the same file. With `fcntl` in
+    place, we can lock that file before writing to it, to avoid corruption.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The final module
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'With all of our functions in place, the final module will look like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: Troubleshooting file servers
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: File server modules can be tricky to troubleshoot, because so many of the pieces
+    need to be in place before others are usable. But there are some tricks that you
+    can keep in mind.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Start small
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: I've tried to present the functions that are necessary, in the order that is
+    easiest for writing and troubleshooting. While `envs()` cannot be called directly,
+    it is easy to write, and can be debugged while working on `file_list()` and `dir_list()`.
+    And those two functions are easy to troubleshoot using the `cp.list_master` and
+    `cp.list_master_dirs` functions, respectively.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Test on a Minion
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: While file server modules are designed to be used on the Master, it is possible
+    to test them on a Minion. Be sure to define all of the appropriate configurations
+    in the `minion` configuration file instead of the `master` file. Use `salt-call
+    --local` to issue commands, and regularly wipe both the local cache (in `/var/salt/cache/`)
+    and any files that were downloaded using `cp.get_file`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: File server modules can be used to present resources on an external endpoint
+    as if they were files sitting on the Master. The default file server module, called
+    `roots`, does in fact use local files on the Master. Many file server modules
+    cache files locally on the Master, to avoid making too many calls to the external
+    source, but this is not always appropriate.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are a number of functions inside a file server module, which work in concert
+    to present a file-server-like interface. Some of these functions cannot be tested
+    directly, but they can still be tested in tandem with other functions that do
+    have a direct external interface.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Despite all of the functions involved, file server modules are relatively easy
+    to write. In the next chapter, we'll talk about cloud modules, which have even
+    more required functions, but which are even easier to write.
+  prefs: []
+  type: TYPE_NORMAL

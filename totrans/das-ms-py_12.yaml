@@ -1,0 +1,641 @@
+- en: Extension Modules and Compiled Code
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we'll discuss how to integrate compiled code into Python programs.
+    We'll take a look at the benefits and drawbacks of our compiled code and see two
+    ways of making a connection between Python's managed environment and code that
+    runs directly on the hardware.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We'll see how to use the `ctypes` package and tie it to the interface of a C
+    dynamic library, calling its functions and receiving their output from within
+    our Python code. We'll also look at an easy way to write compiled code modules
+    so that they could be imported and called directly from Python.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We''ll cover the following topics in detail:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Advantages and disadvantages of compiled code
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Accessing a dynamic library using `ctypes`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Interfacing with C code using Cython
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Advantages and disadvantages of compiled code
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: There are many real advantages of using compiled code. Python is a very productive
+    language, but it may not fulfil the requirements of a lot of people. Sometimes,
+    we need to interface with code written in a different language. One reason for
+    doing this would be in case we need to access some functionality that is written
+    in a different language that doesn't exist in Python.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As long as the code in question is in a dynamic library that has a C-compatible
+    interface, it's relatively easy to call the code from within Python, using the
+    **Foreign Function Interface** (**FFI**) provided by Python's standard ctypes
+    package, which we'll discuss in the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Alternatively, we may need to write some code that runs **Close to Metal** (**CTM**),
+    either to maximize the performance of an algorithm that's proven to be a bottleneck
+    in our project, or interface directly with some piece of hardware. In this case,
+    we'll need to compile custom code and link it to the Python environment. You can
+    easily do this using a tool called **Cython** (for more details, refer to cython.org),
+    which we'll discuss in the third section of this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The downsides of compiled code
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'While working with compiled code is usually absolutely fine, there can be some
+    significant downsides. Let''s take a look at them:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: First and foremost is the fact that it's easy to create ridiculously weird bugs
+    when we work at this level of compiled code. Both `ctypes` and Cython allow us
+    to make a horrible mess in the program's memory, potentially producing any conceivable
+    kind of bug or error. The following diagram illustrates an example of a potential
+    low-level bug. You can imagine how difficult it would be to troubleshoot such
+    bugs.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '![](img/2b4fc3be-18a6-41bb-a1c7-02de4a733dd1.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: If we're lucky, that bug or error would result in a flat-out termination of
+    our program, that is, if it violates the constraints of the operating system's
+    protected memory manager.
+  prefs: []
+  type: TYPE_NORMAL
+- en: I say we'll be lucky because if that doesn't happen, it would mean we've made
+    an effective random change to some part of our program state and who knows what
+    that'll do.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The second downside is that it makes distributing our program more difficult.
+    For a normal Python program, we can distribute a single `.pyz` file to our users
+    or upload a set of tools, a compatible source package, or a neutral operating
+    system wheel file to the **Python Package Index** (**PyPI**). Using compiled code
+    means we have to worry about which operating system and hardware architecture
+    our users employ and provide separate packages for each combination we want to
+    support.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The third downside only applies if we're writing our own compiled code primarily
+    for those use cases where Cython is most useful. The problem is that it could
+    be complex to actually get a compiler installed and working, particularly for
+    people who aren't used to working with compilers. Not only that, if we distribute
+    our project as source code, our users would need to go through the same hassle.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Between the danger of bizarre errors and the annoyance involved in creating
+    and distributing projects that use compiled code, we should generally wait until
+    we have a compelling reason for taking the step of creating or interfacing with
+    compiled code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now we have a pretty good grasp of the benefits of interfacing with compiled
+    code: it gives us access to C-compatible libraries written in other languages.
+    This code lets us optimize the performance of critical algorithms, and it lets
+    us interface directly with hardware or low-level drivers.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Similarly, we know what the drawbacks are, namely the potential and seemingly
+    inexplicable errors and a generally higher level of annoyance and difficulty throughout
+    the development and distribution process. Now, let's take a look at putting some
+    of the knowledge we've gained into action.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Accessing a dynamic library using ctypes
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this section, we're going to narrow down our focus to the Python standard
+    library's `ctypes` package, which allows us to interact with dynamic libraries
+    from within Python.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Locating and linking a dynamic library
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Probably, the most common need to interact with compiled code is when there's
+    a library out there that does exactly what we need but it's not a Python library.
+    Perhaps it was instead written for C, or it has a C interface.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We''re not going to let a little thing like this stop us. Instead, we''ll use
+    `ctypes` to create an interface module for the library. For basic usage, `ctypes`
+    is very simple. We just need to import it, load the dynamic library by the filename,
+    and call a function in that library as shown in the following code example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/29920012-1239-4850-a3cf-9be51f1630ea.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The `CDLL` constructor we called in this example creates a Python object that
+    represents a dynamic library containing C functions. We do need to take care when
+    we define the filename of the library here, because of course different operating
+    systems have different naming conventions for their libraries. The `libc.so.6`
+    attribute, in our example here, is the filename of the C standard library on current
+    versions of Linux.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `ctypes` package includes a utility function, called `ctypes.util.find_library`,
+    to help address this difficulty. If we pass a base name to `find_library`, it
+    will try to find the full name of the version installed on the system, as shown
+    in the following code example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/bc077a2d-e201-45ab-98c2-6bc681198989.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The `ctypes.util.find_library` is pretty useful on Linux and Mac OS X but less
+    so on Windows because Windows dynamic libraries handle multiple versions in a
+    very different way.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It's also worth noting that when we pass the C string to `find_library`, we'll
+    find the C standard library on Linux and Mac OS X. On Windows, the same library
+    is rather arbitrarily called `msvcrt`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For cross-platform library loading, we need to be able to specify several alternate
+    names for the library; try `find_library` on these names (refer to the following
+    code example) and fall back to trying the raw name if `find_library` fails.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/f76438bd-e701-4259-bf81-964332dc115a.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: There's a `load_library` function in the `demo_ctype/libc.py` file, available
+    with this book, which also demonstrates this.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Accessing functions defined in the library
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Once we have the library loaded, we have access to the functions exported from
+    that library, which are exposed as attributes of the library object in Python.
+    We saw this in the previous section when we called C's `printf` function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, it''s important to know that there''s nothing in the C shared library
+    that tells the users of the library what the parameter types of a function are,
+    or the return type, or even how many parameters the function has. This information
+    is used when compiling the library, but it isn''t part of the end result. This
+    means it''s up to us to know how the function is supposed to be used. For example,
+    the C library contains a quick sort function called `qsort`, which is intended
+    to accept several parameters. Let''s see what happens if these parameters aren''t
+    provided:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/c9fa4089-cc8e-43c6-b8dd-80fb3acaeb0d.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: As you can see in the preceding code example, if we omit the parameters, `ctypes`
+    has no way of knowing whether we're making a mistake, and bad things happen with
+    no warning.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Assigning attributes to a function
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: If we're planning on making systematic use of a foreign function, or especially,
+    if we're going to expose it as part of the interface of a module we're writing,
+    it is advisable to tell `ctypes` about the function's signature. We can do this
+    by assigning to the function's `argtypes` and `restype` attributes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `argtypes` attribute should be a list of C data types defined in the `ctypes`
+    package, while `restype` should be one of these packages, as shown in the following
+    code example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/c0d0b711-7cb8-46cc-8d96-2b9811eb23d2.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: As you can see in the code, providing this information to `ctypes` significantly
+    improves the error handling of a foreign function. The `atof` function returns
+    a double-precision floating point number, but `ctypes` wouldn't know about this
+    if we don't tell it so. When `ctypes` doesn't have the information, it just assumes
+    the return value is an integer; this works in many cases, but it would have been
+    useless in this particular example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using a pointer as a parameter of a function
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'It''s pretty common for C functions to accept a pointer as one of the parameters
+    and fill in a value at the address that the pointer refers to. Naturally, `ctypes`
+    allows us to work with this sort of interface by letting us create objects that
+    represent memory locations and passing that object using the pointer to the functions
+    we call. The C `scanf` function works in a way that can be illustrated by the
+    following code example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/93dd9490-e720-4ed1-8004-241ce57244b1.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: In this example, we created two C-style variables called `integer` and `decimal`;
+    then, we used the `scanf` function to fill them with values, based on user input.
+    The `byref` function tells `ctypes` that we're not passing the value of the variable
+    to the function, but that we're passing its memory address, so the function can
+    store something there.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Providing a function signature
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Another common behavior of C functions is filling bytes into a character buffer.
+    We can use the `create_string_buffer` function of `ctypes` to allocate such a
+    buffer and then use the result as a parameter for functions that want a string
+    buffer, as shown in the following code example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/83920145-3f04-4102-b75f-8d56f95971d2.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Let's look at this code now. We do not need to use the `byref` function here,
+    because the character bumper is inherently by reference. There's just no other
+    way to do this in C.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There''s a pitfall here: one that''s been tripping up C programmers for decades.
+    Our string buffer has a specific length, but the function we''re passing to it
+    doesn''t know what that length is. If it starts writing to the buffer and continues
+    beyond the end of the buffer, the program will either crash or begin behaving
+    strangely. Always make sure your buffer is at least large enough for whatever
+    will be written into it.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Providing data structure layouts
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Another thing that is not available in a C shared library is the layout of
+    data structures that the functions use, as shown in the following code example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/b281248c-613f-428e-8c85-f05892d01c77.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Again, `ctypes` gives us a way of filling in the missing information. C''s
+    `tm` structure, which is used for representing date and time information, looks
+    like the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/0b1b9abc-58d4-47a5-b372-a16f6ee0c392.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: As shown in this example, the translation into `ctypes` is straightforward.
+    We need to create a class that would inherit from `ctypes.Structure`, and in that
+    class, we need to create a list called **fields** containing tuples of field name
+    and field type.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once we get this, we could create instances of the class and assign the attributes
+    as we'd expect in Python. But, we can also pass it to C functions as a parameter,
+    either directly or by reference, and we can use it as part of the signature of
+    a foreign function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `ctypes` package provides support for pretty much every feature of the C
+    language, but we've now seen the ones that are most useful for calling into a
+    library function and using its results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Interfacing with C code using Cython
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this section, we're going to look at a third-party tool called Cython, which
+    is another tool for bridging the gap between Python and the software that has
+    been compiled into machine code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we have a situation where we want to implement part of our project in compiled
+    code, we could do this by creating a dynamic library containing the code and calling
+    to it with `ctypes`; however, that''s a roundabout way to get where we want to
+    go. We''d end up writing a lot of code twice: once for the sake of our compiler
+    and then again to tell `ctypes` about details such as function signatures and
+    data structures.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now this is inefficient and violates one of the most important principles of
+    programming—*don't repeat yourself*. There's a tool that's better suited to this
+    situation, as you may have surely guessed, and that tool is Cython.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Working with Cython
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: What Cython does is it translates a Python source code file into a C source
+    code file containing equivalent calls to the Python C API; then it wraps it in
+    the boilerplate necessary to turn it into a Python binary module.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This would be useful enough by itself, but Cython also allows us to inject calls
+    in C functions and low-level data access operations into the module. The end result
+    is that we could pretty much just write our compiled code as if it were Python
+    and still gain the speed or low-level access that prompted our need to compile
+    it in the first place.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The amount of work this saves us over using the Python API directly is considerable.
+    The 100-line Python example included with this course translates into more than
+    5,000 lines of C when compiled. Let's go through this example piece by piece and
+    talk about the differences while comparing it with plain Python.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Additional import methods in Cython
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Cython allows two import mechanisms in addition to the normal ones provided
+    by Python packages. Let's check out these mechanisms in detail.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first mechanism is called `cimport`, and it imports the signatures of compiled
+    functions and data structures from pre-prepared libraries, as shown in the following
+    command line:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: In this case, since Cython comes with a pre-prepared library of all Python C
+    API functions, we were able to use this mechanism to report the needed information
+    about Python's low-level memory allocation and de-allocation functions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The second additional importing mechanism is `cdef extern from`. When we don't
+    already have the signature of a compiled function available, we use the syntax
+    to make it available in the Cython code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The indented block can contain any number of function declarations, type definitions,
+    structure definitions, and so on, as shown in the following code example. Note
+    that these don''t need to be precisely correct, though, just close enough that
+    Cython is able to generate proper C code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'A `cdef extern from` block references a C header file, which is automatically
+    included in the generated C code. While we could simply use the normal Python
+    syntax for the `class` statement, prepending it with `cdef` gives the ability
+    to store raw data values in predefined variable members of the class instances,
+    as shown in the following code example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: Writing extension modules in Cython
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The `num_values` variable in the previous code example is just a chunk of memory
+    that stores bits that represent an integer value. It doesn't have any of the extra
+    data needed to turn it into a Python object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is a bad thing in a way because it means that Python can't do any of the
+    smart things it does to help us write good code quickly.We wouldn't be working
+    with these tools if we didn't have a reason to let them do some of this work for
+    us.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, to resolve this, let's define an extension type called `StatisticalArray`
+    (refer to the following code example), which contains a pointer to a memory location
+    and two integers. The memory location is supposed to contain double-precision
+    floating point numbers. These are raw machine-level values, and while primitive
+    in comparison to Python values, they're very fast because they can be fed directly
+    into CPU operations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/a448ad99-a805-4d80-87fa-afe00b53595c.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: In this code example, we have the functions that set up and dispose of the instances
+    of the `StatisticalArray` class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Notice that the setup function is called `__cinit__`, not `__init__`. Actually,
+    a Cython `cdef` class can have both. The `__cinit__` function's job is to set
+    up the raw variables for the class instance, and the normal `__init__` function
+    is supposed to set up any normal Python variable it contains.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `__cinit__` function is called first, and it's not guaranteed that `self`
+    will actually be a valid Python object itself yet, so it should confine itself
+    only to initializing raw variables. The reason `__cinit__` accepts the extra positional
+    and keyword arguments is because if a Python class inherits from our class and
+    adds more parameters to the signature of `__init__`, the `__cinit__` function
+    will still work.
+  prefs: []
+  type: TYPE_NORMAL
+- en: At the other end of the process, we have the `__dealloc__` function, which needs
+    to release any specially allocated resources associated with the class instance.
+    In the preceding case, we allocated a chunk of memory to `__cinit__`, so we need
+    to release that memory in the `__dealloc__` function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Methods to increase the execution speed of Python code
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Now we are going to define a few of Python''s normal magic methods, which will
+    allow us to iterate over the values stored in our object and access them by indexing.
+    For this, refer to the following code example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/0a066dd8-c2f1-4181-a922-329200742b2c.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The thing to notice in this code example is how little has changed from what
+    we've be doing in a pure Python implementation. The only real differences are
+    the type definitions we provided for every parameter and the local variable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We didn't actually have to provide the type definition for every parameter and
+    local variable. The type definition lets Cython generate plain C code for a lot
+    of the operations we're performing, which means we're using the CPU directly instead
+    of the Python virtual machine. We're trading flexibility for speed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The previous functions were all defined with the `def` keyword as normal for
+    Python, and these functions operate as if they were defined in a normal Python
+    module.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Cython gives us two other options, though. Instead of `def`, we can use `cdef`;
+    in this case, the function is much faster to call, but it''s only for use by other
+    Cython code. This is great for internal help functions and such. Alternatively,
+    we can use `cpdef` (as shown in the following code example); here, the function
+    is accessible from normal Python, but it''s almost as fast as a `cdef` function
+    when called from Cython code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/0811f2f0-ea0e-4629-8e8c-f689c17f9307.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: We've chosen `cpdef` in our case because we want to expose the full feature
+    set to any Python code that uses our compiled module, but we also expect to use
+    the same functionality from within our Cython code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using cpdef in a Cython class
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the following code example, you'll see that we're getting to the reason why
+    we called our class `StatisticalArray`. We implemented several discrete statistical
+    calculations using the values stored in the class instance. You don't need to
+    worry about what `mean`, `variance`, and `covariance` actually do, but let's take
+    a look at how they're actually working.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/61fb2050-6029-4d72-b036-d84f3701b98d.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: In the `mean` function, here, we see a loop that calculates the sum of the values
+    stored in the array. If we were running that code in Python, each cycle through
+    the loop would involve several dictionary lookups and function calls. Cython generates
+    four lines of C code for this that translates into only a few machine code operations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is possible because we told Cython that the `index` variable should be
+    a C integer, and because Cython is smart about handling loops with C integer variables,
+    we gain a similar benefit in both `variance` and `covariance` functions. Again,
+    we just use the Python syntax and give Cython additional information that it can
+    use to optimize the generated code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There is one unusual thing to note with `covariance`, though. At the end of
+    the first line shown in the following screenshot, we see `except? -200.0`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: What is that? Well, as with most of these functions, we gave the `covariance`
+    function an explicit C return type of `double`. That's a big gain in terms of
+    speed. But when the code calling the function is also Cython, and stores the return
+    value in a `cdef` double variable, there's a downside. Normally, Cython would
+    use the return value to signal that an exception has been raised, but how is it
+    supposed to do that when we have changed the return type, since it cannot know
+    which values are valid at that point?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Well, we'll tell it. Adding `except? -200.0` means that if the return value
+    is `-200`, Cython would check to see whether an exception has been raised. If
+    we had left off `?`, it would have meant that `-200` always means there's an exception,
+    which is a bit faster; however, we can't go that far because `-200` is still a
+    potentially valid return variable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Notice that we don''t actually return `-200`; we just raise an exception as
+    normal. Cython takes care of the rest. Here are a couple of more examples of functions
+    that are built using the earlier functions as building blocks:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/542ca636-39ff-4cf1-833d-4b5786a3bc6f.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Thanks to our use of `cpdef`, when we define the `variance` and `covariance`
+    functions, there's very little overhead involved in calling those functions from
+    here.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Compiling an extension module in Python
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: So let's say we've written a somewhat useful Cython class; now, how do we make
+    it available to Python code? Well, we have to compile it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First of all, this means we need to have a compiler. The documentation on cython.org
+    has a tutorial entry and appendix on this process, and I suggest you refer to
+    them if there''s not already a compiler on your system. If you have a compiler,
+    installing Cython is just a matter of asking `pip` to grab it for us:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: The installation can be a little slow because it needs to do some compiling
+    during the installation; just be patient until it finishes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once Cython is installed, we need to create a `setup.py` file describing how
+    to build our extension, as shown in the following code example. For the base case,
+    the process is very straightforward.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The source code we were working on is saved in `statistics.pyx`, as shown in
+    the following code example. The `.pyx` extension is the standard filename extension
+    for Cython source code files.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/0e532917-be58-443e-af3c-a21f42070c91.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Once we do this, the last step is a snap. Once the `build_ext` command is finished,
+    we should have a compiled extension sitting next to our `.pyx` file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, all we have to do is import it and use it as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/aba5b3b4-9805-4737-a700-154fca73000e.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Notice that when we cause an exception in the compiled code, the traceback is
+    fully filled in and points us to the cause and location of the problem. That's
+    a Cython feature and a nice advantage.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we discussed the benefits and drawbacks of using compiled code.
+    We took a look at using Python's standard `ctypes` package to access functions
+    stored in compiled C-compatible dynamic libraries, which is a quick way to gain
+    access to the functionality that was written in other languages.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We also saw how to use Cython to operate with one foot at Python's higher level
+    and C's much lower level of abstraction, with surprisingly little pain involved
+    in bridging the gap. We can use this knowledge to optimize bottlenecks in our
+    programs or access functionality that's only available when we operate close to
+    the hardware.
+  prefs: []
+  type: TYPE_NORMAL
+- en: With this, we've come to the end of this course. I hope you've learned a lot
+    and have gained immense knowledge about Python. Keep learning!
+  prefs: []
+  type: TYPE_NORMAL

@@ -1,0 +1,719 @@
+- en: Coroutines and Asynchronous I/O
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapter, we looked at how to use multiple processes to increase
+    the rate of data processing in our programs. This is great for CPU-bound programs
+    because it allows them to use more than one CPU.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we'll look at the inverse of this case; we'll use a single
+    CPU to handle multiple data processing tasks at once within a single process,
+    which is great for I/O-bound programs. We'll see some of the nuts and bolts of
+    working with asyncio. We'll also discuss asyncio's `future` class and how it's
+    used. Then we'll move on to synchronization and communication between asynchronous
+    coroutine tasks. Lastly, we'll see how to use asyncio and coroutines to write
+    a client-server program to communicate over a network.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The difference between asynchronous processing and parallel processing
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using the asyncio event loop and coroutine scheduler
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Waiting for data to become available
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Synchronizing multiple tasks
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Communicating across a network
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The difference between asynchronous processing and parallel processing
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'When we worked with the `concurrent.futures` module in [Chapter 6](4ce9ba50-f543-43ef-ba28-82c8833dfbcb.xhtml),
+    *Parallel Processing*, we saw a way to make two or more streams of code run at
+    the same time. For reference, have a look at the code example we used in the previous
+    chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/47709d60-41fe-4ebd-a503-8e9b46bec5c7.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: This code helps you create an executor object. Now if you ever wish to run some
+    code in parallel, you could just tell the executor to do it. The executor would
+    give us a future object that we could use later to get the result of the code,
+    and it would then run the code in a separate process. Our original code will keep
+    on running in the original process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We talked about how this could improve the performance of CPU-bound programs—it
+    divides the code into multiple computer cores. Therefore, it's a technique that
+    would be convenient in a lot of other circumstances.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It's handy to be able to tell the computer to "go do this and let me know when
+    you're done".
+  prefs: []
+  type: TYPE_NORMAL
+- en: One place where this ability seems particularly useful is in network server
+    programs, where having a separate stream of execution for each connected client
+    makes the logic and structure of the code much easier to grasp; it's easier to
+    write bug-free servers when they're structured this way.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Multithreading is not good for servers
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: There are ways to write a server that would use only a single stream of execution,
+    but if we have a way of writing servers that would probably introduce fewer bugs,
+    why not? The problem is resource overhead.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Every process running on a computer uses up memory and CPU time, of course;
+    however, in addition to the memory and CPU time, the process needs to run its
+    code as well. The operating system also needs to expend some resources to manage
+    the process. As it happens, the time spent on switching between processes is significant.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Memory overhead is enough; it becomes a limiting factor for how many clients
+    a multiprocess server can handle simultaneously; other internal operating system
+    resources may be even more limiting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For CPU-bound programs, there's a sweet spot that produces optimal results,
+    where the program has one process per CPU core. For an I/O-bound program, which
+    most servers are, any process beyond the first is nothing but overhead. As mentioned,
+    there are ways to write single-process servers that can handle multiple clients
+    at once with much lower overhead per connected client.
+  prefs: []
+  type: TYPE_NORMAL
+- en: These techniques allow a server to handle many more clients at once than what
+    the multiprocess server program could manage. Even when not operating at full
+    capacity, a single-process server leaves the majority of a computer's resources
+    available for other uses.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, on one hand, we have a way of writing servers that is logically structured
+    and less prone to bugs but wastes resources. On the other hand, we have a way
+    of writing servers that is resource efficient but easy to get wrong.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Can we somehow get the best of both the worlds? The answer is, yes!
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Fortunately, Python''s standard `asyncio` module combines low-level techniques
+    that allow a single process to service multiple clients with a cooperative coroutine
+    scheduler. Refer to the following code example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/e8baa894-4303-4f66-9f95-37acb23b76b8.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The end result is a programming interface that looks and acts a lot like `concurrent.futures`
+    but with much lower overhead per stream of code execution. That's great, but what's
+    a cooperative coroutine scheduler? For that matter, what's a coroutine?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Cooperative coroutine scheduler versus coroutine
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Before we get into detail, let''s define these two terms:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A coroutine is a computer science concept, a function that can be paused and
+    resumed at certain intervals within it. Each time it is paused, it sends data
+    out, and each time it is resumed, it receives data.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Python programs can define coroutines using the async and await keywords, and
+    asyncio makes extensive use of them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A cooperative coroutine scheduler is a piece of code that picks up the execution
+    each time a coroutine pauses and decides which coroutine to run next. It's called
+    a scheduler because it keeps track of multiple streams of execution and decides
+    which one gets to run at any given time.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It's called cooperative because the scheduler can't run from one coroutine to
+    another while the first one is still running. It has to wait until the running
+    coroutine pauses itself, then it can select another coroutine to run.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Python coroutines
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In Python coroutines, the pause and resume points are `await` expressions; this
+    is how we call other coroutines. Every time we want to perform a function, we
+    call a coroutine from inside another coroutine. We wait for the coroutine we want
+    to call.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The semantics of the code work as if they call a function from inside another
+    function. The other coroutine runs until it returns and we get back the return
+    value. That's how the code behaves, but what it actually does is quite a bit more
+    interesting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The coroutine scheduler
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'With the coroutine scheduler, the code behaves in the following manner:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first thing that happens is that the coroutine we're running is paused.
+    The coroutine we want to call is handed on to the scheduler, which places it in
+    its list of coroutines that it needs to run.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Then, the scheduler checks whether a coroutine is waiting and why: for example,
+    new data coming from across the network, or a coroutine being returned; if it''s
+    the latter, it adds the waiting coroutines to the list as well.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: After this, the scheduler picks one of the coroutines that needs to be run and
+    resumes it. This means that if a coroutine has a long-running loop that doesn't
+    contain any `await` expressions, it will block any other coroutine from running.
+    It will also keep the program from checking for new incoming data and prevent
+    other assorted input and output operations from being serviced.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: If we have such a loop and there's just no reason to call any other coroutine
+    inside it, we can place the `await asyncio.sleep(0)` statement inside the loop
+    body, which simply gives the scheduler a chance to do its thing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This little bit of extra complexity that comes from the requirement of having
+    `await` expressions is the price of cooperative scheduling, but since the payoff
+    is efficient and logical code for I/O-bound programs, it's often worth it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the asyncio event loop and coroutine scheduler
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: So far, you have learned about Python's coroutines and a bit about how a cooperative
+    coroutine scheduler works. Now, let's try our hand at writing some asynchronous
+    code using Python coroutines and asyncio. We start this by creating a coroutine.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a coroutine
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'It''s easy to create a coroutine—all we have to do is use the `async` keyword
+    on a function and use `await` anytime we want to call other coroutines, as shown
+    in following code example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/769b4bbf-c77b-4daa-a570-211ef1c350bc.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Once we have a coroutine though, we can''t just call it to get the ball rolling.
+    If we try to call it, it immediately returns a `coroutine` object, as shown in
+    the following code example—that''s not much use:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/9b09c416-6948-4da3-aaa2-4ea04f1b23c0.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Instead, we need to add the coroutine to the asyncio's scheduler as a new task.
+    Next, the scheduler runs arranging for coroutines to execute and handling input
+    and output events.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The asyncio scheduler - event_loop
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The `asyncio` package automatically creates a default scheduler, also called
+    `event_loop`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'While it''s possible to create new `event_loop` objects or replace the default
+    one, for our purposes, the default `event_loop` scheduler will work just fine.
+    We could get a reference to it by calling asyncio''s `get_event_loop` function
+    to tell the scheduler that we want it to start a new task, as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/4c92c495-7c39-4d37-abe0-df461275a94c.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: When we run the preceding coroutine, we call asyncio's `ensure_future` function.
+    By default, this will create the task in the default scheduler.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ensure_future
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We can also override default scheduler by passing an explicit `event_loop` scheduler
+    to the loop keyword-only parameter of the `ensure_future` function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice that we didn't just pass the `coroutine` function to `ensure_future`;
+    we actually invoked it right there inside `ensure_future` arguments. We did this
+    because the `ensure_future` function doesn't actually want to refer to the `coroutine`
+    function. The `ensure_future` function is only interested in the `coroutine` object
+    that we saw the `coroutine` function return earlier. The name `ensure_future`
+    might seem somewhat odd. If it's used for launching tasks, why is it called that?
+  prefs: []
+  type: TYPE_NORMAL
+- en: The fact of the matter is that launching tasks is basically just a side effect
+    of what the function conceptually does, which is **wrapping**. Wrap the function's
+    parameter in a future object if necessary. It just so happens that having a future
+    object for the return value of our coroutine would be useless if the coroutine
+    is never scheduled to run; `ensure_future` makes sure that it does.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `ensure_future` function adds a new task to the scheduler, whether it's
+    called from normal code or within a coroutine. This means that any time we want
+    the code to run in its own stream of execution, we can use `ensure_future` to
+    get it going.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Even in the preceding code example, where we added a coroutine to the scheduler
+    as a new task, nothing happened. That''s because the scheduler itself is still
+    not running. However, this is an easily solvable problem. We just need to call
+    either the `run_forever` or `run_until_complete` method of the loop. Finally,
+    our coroutine would actually execute, as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: The run_forever/run_until_complete methods
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'As the names implies, `run_forever` causes `event_loop` to run forever or at
+    least until it''s explicitly stopped by calling its `stop` method. On the other
+    hand, the `run_until_complete` method causes the loop to keep going until a particular
+    future object is ready to provide a value (refer to the following code example):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/ca25e002-02f0-484d-8227-d2fb3a1ab00b.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The return value of `ensure_future` is a future object, so you can easily run
+    the scheduler until a particular task is done. The preceding code example runs
+    two coroutines simultaneously as two separate tasks in the same scheduler. The
+    `coro1()` coroutine contains an infinite loop, so it will never finish; however,
+    the `coro2()` coroutine not only finishes, it also causes the `event_loop` stop
+    method''s (`loop.stop ()`) to force `run_forever` to terminate eventually. This
+    is shown in the following code example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/b0ec700d-397f-4ab0-acd6-b4264d0d3fde.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The preceding example behaves in exactly the same way, except it uses `run_until_complete`
+    to automatically stop the scheduler once `coro2` is finished instead of explicitly
+    calling `stop`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The code looks a little cleaner this way. So, as a rule of thumb, it's probably
+    better to only use stop when some sort of error makes it necessary to dump out
+    of `event_loop`. In both the examples we just saw, there's a line of code to set
+    the logging level to critical. This is because `event_loop` issues an error message
+    if it is stopped while there are tasks, such as `coro1`, still running. In this
+    case, we know it's still running and we don't care, so we suppress the message.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It's usually better to arrange for all our running tasks to exit cleanly, instead
+    of just killing them. This is why the error message is printed. But, in our case,
+    there's no problem, so we just keep the message from printing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Regardless of how we choose to run and stop `event_loop`, once we're completely
+    finished with it, we should call its `close` method. It closes any open files,
+    network sockets, and other I/O channels that `event_loop` is managing and generally
+    cleans up after itself.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Closing event_loop
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'A good way to close `event_loop` is to use the `contextlib.closing` context
+    manager, which guarantees that the `close` method will be called once the `with`
+    block ends. The following code example shows `event_loop` closing:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/20894b8c-08c6-4ec8-a1f0-74639e09c582.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Even in error situations, the `close` method should be called when we're completely
+    done with an `event_loop`, but this doesn't necessarily mean that it should be
+    called right after the `run_forever` or `run_until_complete` call is finished.
+    The `event_loop` is still in a valid state at that point, and it's perfectly OK
+    to, for example, add some new tasks or start the loop again.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you may have probably noticed, an `asyncio event_loop` object basically fulfills
+    the same role as a `concurrent.futures executor` object. From a programming interface
+    point of view, that's not the only similarity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Awaiting data availability
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: asyncio's future objects look and behave pretty much like `concurrent.futures`
+    future objects, but they're not interchangeable. They have subtle differences
+    in behavior and, of course, major differences in how they interact with the underlying
+    systems, which are completely different. Still, each future is a way of referencing
+    the value that may or may not have been computed yet and, if necessary, a way
+    of waiting for that value to become available.
+  prefs: []
+  type: TYPE_NORMAL
+- en: asyncio's future objects
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The most commonly used feature of a future object is to wait for its value
+    to be determined and then retrieve it. For asyncio''s future objects, this is
+    done by simply waiting for the future, as shown in the following code example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/afd5cf75-8b4e-4016-ab08-8305bad580b4.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: This will tell the scheduler to pause the coroutine until the value of the future
+    becomes available, after which the future's value is set in the coroutine as the
+    result of the `await` expression.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If the future represents a raised exception, instead of a value, that exception
+    is raised again from the `await` expression, as shown in the preceding code example.
+    If we don't want to wait, we could call the `done` method to check whether a future
+    is ready; if it is, we could call the `result` method to retrieve the value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, the syntax and semantics are a little different, but the basic idea of a
+    future is the same in asyncio and `concurrent.futures`. When we work with asyncio,
+    we use future objects in all the same places we would in `concurrent.futures`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There''s one scenario where even using future objects doesn''t make it simple
+    to wait for data; this is when we should process a stream of data values as they
+    arrive, as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/417630f9-c240-4e9b-bdee-55b8735dde8a.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Sure, we could loop over an iterator of future objects and wait for each one
+    of them to become ready to provide their values, but that's clumsy and suffers
+    from problems in regard to knowing when to stop the iteration.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Instead, Python provides us with an asynchronous iteration protocol, which allows
+    us to write or fetch the next value function as a coroutine. This means that the
+    iterator can wait for each value to arrive and simply return it. Now our loop
+    will work properly and we will avoid all the confusion about when to stop.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Asynchronous iterations
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Why do we need a special asynchronous iteration for a looping statement and
+    a separate asynchronous iteration protocol?
+  prefs: []
+  type: TYPE_NORMAL
+- en: It's because an asynchronous iteration only makes sense inside of a coroutine.
+    Having a separate looping statement and protocol keeps us from stumbling into
+    ambiguous situations, where the computer isn't sure what we want it to do.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Synchronizing multiple tasks
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this section, we'll take a look at more ways to share data between tasks
+    and synchronize their operations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Synchronization primitives
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The `asyncio` package provides `lock`, `semaphore`, `event`, and `condition`
+    classes that are pretty similar to the ones we looked at in the context of `concurrent.futures`.
+    They provide the same method names and fulfill the same roles. The important difference
+    is that for asyncio''s versions, some of the methods are coroutines and some are
+    not, as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/ab063608-d987-4a1a-89ad-613691f67f0c.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Specifically, in each case, the `acquire` and `wait` methods, if they exist,
+    are coroutines that must be called by `await`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is because they need to be able to pause until some specific thing happens,
+    and only a coroutine can pause and hand over control to the scheduler. Having
+    mentioned lock and the rest, I want to point out that while they are sometimes
+    necessary, they are less often needed under asyncio than they would be in concurrent.futures
+    or other systems that provide multiple streams of execution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is because asyncio's scheduling is cooperative. It's only possible to switch
+    between execution streams and `await` expressions, which means that if there are
+    no await expressions within a critical section of code, it can't be interrupted.
+  prefs: []
+  type: TYPE_NORMAL
+- en: No other task can modify the same data at the same time because no other task
+    has an opportunity to run any code during that time. Plus, Lock and the rest are
+    only needed when a critical section of the code does, in fact, use `await` at
+    least once.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We've seen the `as_completed` and `wait` functions before when we discussed
+    concurrent.futures in the previous chapter. asyncio's versions are coroutines
+    because they too need to suspend until it's time to continue executing, but there's
+    not much of a difference in how we use them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The wait coroutine
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The wait coroutine still waits for a group of futures to end with an optional
+    timeout and returns a list of futures that are ready and a list of futures that
+    are not ready when the time expires. The `as_completed` function still takes a
+    list of futures and produces futures of the results in the order that the results
+    become available. Then, we extract the actual values from the futures with wait
+    and we are good to go.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As shown in the following code example, there''s no telling in which order
+    the results will become available; however, each time a value does become available,
+    it gets printed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/bc87e32c-2f88-44bb-9b06-29ad565672bf.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'asyncio provides some other interesting coroutines for collecting data from
+    futures, particularly: `wait_for` and `gather`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The wait_for coroutine
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The `wait_for` coroutine lets us wait for another coroutine to finish but with
+    a timeout. The first two coroutines in the following code example do the same
+    thing except that if `foo` doesn''t finish within `5` seconds, the second version
+    will raise an asyncio timeout error:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/e1053535-cd6a-4d79-9ed8-021c4e8f72d4.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: In the third code block, we're still doing the same thing, except if `foo` times
+    out, we print a message. Then, there's the `gather` coroutine.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The gather coroutine
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'What the `gather` coroutine does is it takes a bunch of futures and converts
+    them into a single future that will be completed when all the subfutures are completed
+    along with the result in the list of the subfutures'' results, as shown in the
+    following code example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/8a9053d9-16fc-44ef-83bb-ba1aaa16509d.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: There are a bunch of uses for something like that, but one very nice thing we
+    can do with it is use it to construct the future that we pass into `run_until_complete`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In effect, we're telling asyncio that it should run until all these futures
+    are complete. Futures are great for communicating a one-off value between tasks,
+    and events objects are good for sending simple signals. However, sometimes, we
+    want a fully featured communication channel. Fortunately, asyncio provides us
+    with the `Queue` class and a few variants based on it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The asyncio Queue class
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The asyncio''s `Queue` has both `put` and `get` methods as coroutines. So,
+    we need to call them with `await` and we have to already be in a coroutine to
+    call them, unless we were to actually use the `ensure_future` function to launch
+    them as separate tasks as shown in the following code example of the `Queue` class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/af1cc589-95d4-47ff-8c71-5cbdb3806950.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: However, the `Queue` class also has methods called `put_nowait` and `get_nowait`,
+    which are not coroutines, and can be called from anywhere. This makes the `Queue`
+    class quite useful for communicating new data to a system of coroutines as well
+    as sending data between coroutine tasks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Queue types
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: asyncio provides a couple of variant `Queue` types that return their stored
+    values in different orders.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Instances of `PriorityQueue` give back the smallest object they contain according
+    to a less than comparison when we call `get` or `get_nowait`. So, if our priority
+    queue contains `34`, `2`, `5`, and `97`, calling its get coroutine would return
+    `2`. The next time, it would return `5`, then `34`, and then `97`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A `LifoQueue` method, on the other hand, always gives back the most recently
+    added object. It is, in other words, a stack data structure. asyncio also provides
+    a joinable `Queue` class, which adds an extra join coroutine and a method called
+    `task_done`. With a little bit of extra work, using a joinable queue allows coroutines
+    to pause and wait until the queue is emptied.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Communicating across the network
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: So, we've covered how asyncio works and a bunch of tools that could be used
+    to manage the execution of multiple streams of code. That's all great, but what
+    about doing some actual I/O with it?
+  prefs: []
+  type: TYPE_NORMAL
+- en: The primary motivation for people to use asynchronous I/O is because it helps
+    when writing network clients and servers, although that's certainly not the only
+    possible use. So, asyncio not only makes network communications efficient, it
+    also makes them easy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a simple client in asyncio
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Here, we have the code for a simple client-server pair of programs (refer to
+    the following code example):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/289f4dd2-d05b-4a40-8c71-76de750c8996.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: They not only read and write the same few bytes over and over, but they also
+    serve to demonstrate everything needed to communicate across the network.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There will be little information about the client that is mysterious.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Run the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'It runs only a single task that uses asyncio''s high-level API to open a connection
+    and then send and receive data through it. The data is just a string of numbers
+    as shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/9d680910-da40-49f5-ac7b-fdbd666e084f.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Creating a simple server in asyncio
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The server can handle simultaneous connections from many clients at once because
+    the `start_server` coroutine we called launches a new task to run the `start_serve`
+    coroutine each time a client connects to the server.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Each task has the job of handling a connection to a single client, so the server
+    coroutine is almost as simple as the client coroutine.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's a little bit of extra code to handle a connection reset error, which
+    is the exception that gets raised if the client suddenly disconnects while the
+    server's trying to read data from it, and a little more to handle the class where
+    the request is an empty string, which the readline coroutine can only produce
+    if the client has closed the connection in a less precipitous manner.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Handling client disconnections
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In both previous cases, we want the server to stop worrying about a particular
+    client, which we can do simply by returning from the client handling coroutine.
+    The task running the coroutine finishes and that's that.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the launched coroutine on the server, we called another coroutine called
+    `wait_closed`. That pretty much does what it says-it waits for the server to be
+    closed. Without this call, our launched coroutine will immediately terminate and,
+    since we used `run_until_complete`, the whole program will terminate immediately
+    afterward.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This would happen because `start_server` launches a background task and then
+    returns rather than manage the server directly, and that's about it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's a lower-level communication API that asyncio provides, but for the vast
+    majority of cases, this lower-level API is unnecessary. asyncio makes network
+    communications simple.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the earlier sections of this chapter, we learned about coroutines, data exchange
+    between coroutine tasks, and asynchronization. We had a look at using a future
+    to wait for a single value or an asynchronous iterator, which may well use futures
+    internally to wait for a sequence of values. We also looked at tools that we can
+    use to transmit data to and from asynchronous coroutine tasks and force synchronization
+    on them when necessary.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now we've seen how to get a payoff from coroutines and asynchronization using
+    these tools to write a network client or server. In the next chapter, we'll look
+    at various parts of Python that can be redefined within our program source code
+    and how to use them.
+  prefs: []
+  type: TYPE_NORMAL

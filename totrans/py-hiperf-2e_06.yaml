@@ -1,0 +1,1248 @@
+- en: Implementing Concurrency
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: So far, we have explored how to measure and improve the performance of programs
+    by reducing the number of operations performed by the CPU through clever algorithms
+    and more efficient machine code. In this chapter, we will shift our focus to programs
+    where most of the time is spent waiting for resources that are much slower than
+    the CPU, such as persistent storage and network resources.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Asynchronous programming is a programming paradigm that helps to deal with slow
+    and unpredictable resources (such as users) and is widely used to build responsive
+    services and user interfaces. In this chapter, we will show you how to program
+    asynchronously in Python using techniques such as coroutines and reactive programming.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The memory hierarchy
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Callbacks
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Futures
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Event loops
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Writing coroutines with `asyncio`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Converting synchronous code to asynchronous code
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Reactive programming with RxPy
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Working with observables
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Building a memory monitor with RxPY
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Asynchronous programming
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Asynchronous programming is a way of dealing with slow and unpredictable resources.
+    Rather than waiting idle for resources to become available, asynchronous programs
+    are able to handle multiple resources concurrently and efficiently. Programming
+    in an asynchronous way can be challenging because it is necessary to deal with
+    external requests that can arrive in any order, may take a variable amount of
+    time, or may fail unpredictably. In this section, we will introduce the topic
+    by explaining the main concepts and terminology as well as by giving an idea of
+    how asynchronous programs work.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Waiting for I/O
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: A modern computer employs different kinds of memory to store data and perform
+    operations. In general, a computer possesses a combination of expensive memory
+    that is capable of operating at fast speeds and cheaper, and more abundant memory
+    that operates at lower speeds and is used to store a larger amount of data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The memory hierarchy is shown in the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B06440_06CHPNO_01.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: At the top of the memory hierarchy are the CPU registers. Those are integrated
+    in the CPU and are used to store and execute machine instructions. Accessing data
+    in a register generally takes one clock cycle. This means that if the CPU operates
+    at 3 GHz, the time it takes to access one element in a CPU register is in the
+    order of 0.3 nanoseconds.
+  prefs: []
+  type: TYPE_NORMAL
+- en: At the layer just below the **registers**, you can find the CPU cache, which
+    is comprised of multiple levels and is integrated in the processor. The **cache**
+    operates at a slightly slower speed than the **registers** but within the same
+    order of magnitude.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The next item in the hierarchy is the main memory (**RAM**), which holds much
+    more data but is slower than the cache. Fetching an item from memory can take
+    a few hundred clock cycles.
+  prefs: []
+  type: TYPE_NORMAL
+- en: At the bottom layer, you can find persistent storage, such as a rotating disks
+    (HDD) and **Solid State Drives** (**SSD**). These devices hold the most data and
+    are orders of magnitude slower than the main memory. An HDD may take a few milliseconds
+    to seek and retrieve an item, while an SSD is substantially faster and takes only
+    a fraction of a millisecond.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To put the relative speed of each memory type into perspective, if you were
+    to have the CPU with a clock speed of about one second, a register access would
+    be equivalent to picking up a pen from the table. A cache access will be equivalent
+    to picking up a book from the shelf. Moving higher in the hierarchy, a RAM access
+    will be equivalent to loading up the laundry (about twenty x slower than the cache).
+    When we move to persistent storage, things are quite a bit different. Retrieving
+    an element from an SSD will be equivalent to doing a four day trip, while retrieving
+    an element from an HDD can take up to six months! The times can stretch even further
+    if we move on to access resources over the network.
+  prefs: []
+  type: TYPE_NORMAL
+- en: From the preceding example, it should be clear that accessing data from storage
+    and other I/O devices is much slower compared to the CPU; therefore, it is very
+    important to handle those resources so that the CPU is never stuck waiting aimlessly.
+    This can be accomplished by carefully designing software capable of managing multiple,
+    ongoing requests at the same time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Concurrency
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Concurrency is a way to implement a system that is able to deal with multiple
+    requests at the same time. The idea is that we can move on and start handling
+    other resources while we wait for a resource to become available. Concurrency
+    works by splitting a task into smaller subtasks that can be executed out of order
+    so that multiple tasks can be partially advanced without waiting for the previous
+    tasks to finish.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As a first example, we will describe how to implement concurrent access to
+    a slow network resource. Let''s say we have a web service that takes the square
+    of a number, and the time between our request and the response will be approximately
+    one second.  We can implement the `network_request` function that takes a number
+    and returns a dictionary that contains information about the success of the operation
+    and the result. We can simulate such services using the `time.sleep` function,
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We will also write some additional code that performs the request, verifies
+    that the request was successful, and prints the result. In the following code,
+    we define the `fetch_square` function and use it to calculate the square of the
+    number two using a call to `network_request`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Fetching a number from the network will take one second because of the slow
+    network. What if we want to calculate the square of multiple numbers? We can call
+    `fetch_square`, which will start a network request as soon as the previous one
+    is done:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: The previous code will take three seconds to run, but it's not the best we can
+    do. Waiting for the previous result to finish is unnecessary as we can technically
+    submit multiple requests at and wait for them parallely.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following diagram, the three tasks are represented as boxes. The time
+    spent by the CPU processing and submitting the request is in orange while the waiting
+    times are in blue. You can see how most of the time is spent waiting for the resources
+    while our machine sits idle without doing anything else:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B06440_06CHPNO_02.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Ideally, we would like to start other new task while we are waiting for the
+    already submitted tasks to finish. In the following figure, you can see that as
+    soon as we submit our request in **fetch_square(2)**, we can start preparing for
+    **fetch_square(3)** and so on. This allows us to reduce the CPU waiting time and
+    to start processing the results as soon as they become available:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B06440_06CHPNO_03.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: This strategy is made possible by the fact that the three requests are completely
+    independent, and we don't need to wait for the completion of a previous task to
+    start the next one. Also, note how a single CPU can comfortably handle this scenario.
+    While distributing the work on multiple CPUs can further speedup the execution,
+    if the waiting time is large compared to the processing times, the speedup will
+    be minimal.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To implement concurrency, it is necessary to think and code differently; in
+    the following sections, we'll demonstrate techniques and best practices to implement
+    robust concurrent applications.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Callbacks
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The code we have seen so far blocks the execution of the program until the resource
+    is available. The call responsible for the waiting is `time.sleep`. To make the
+    code start working on other tasks, we need to find a way to avoid blocking the
+    program flow so that the rest of the program can go on with the other tasks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One of the simplest ways to accomplish this behavior is through callbacks. The
+    strategy is quite similar to what we do when we request a cab.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Imagine that you are at a restaurant and you've had a few drinks. It's raining
+    outside, and you'd rather not take the bus; therefore, you request a taxi and
+    ask them to call when they're outside so that you can come out, and you don't
+    have to wait in the rain.
+  prefs: []
+  type: TYPE_NORMAL
+- en: What you did in this case is request a taxi (that is, the slow resource) but
+    instead of waiting outside until the taxi arrives, you provide your number and
+    instructions (callback) so that you can come outside when they're ready and go
+    home.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will now show how this mechanism can work in code. We will compare the blocking
+    code of `time.sleep` with the equivalent non-blocking code of `threading.Timer`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For this example, we will write a function, `wait_and_print`, that will block
+    the program execution for one second and then print a message:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If we want to write the same function in a non-blocking way, we can use the
+    `threading.Timer` class. We can initialize a `threading.Timer` instance by passing
+    the amount of time we want to wait and a callback. A **callback** is simply a
+    function that will be called when the timer expires. Note that we have to also
+    call the `Timer.start` method to activate the timer:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: An important feature of the `wait_and_print_async` function is that none of
+    the statements are blocking the execution flow of the program.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How is `threading.Timer` capable of waiting without blocking?
+  prefs: []
+  type: TYPE_NORMAL
+- en: The strategy used by `threading.Timer` involves starting a new thread that is
+    able to execute code in parallel. If this is confusing, don't worry, we will explore
+    threading and parallel programming in detail in the following chapters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This technique of registering callbacks for execution in response to certain
+    events is commonly called the *Hollywood principle*. This is because, after an
+    audition for a role at Hollywood, you may be told "<q>Don't call us, we'll call
+    you</q>", meaning that they won't tell you if they chose you for the role immediately,
+    but they'll call you in case they do.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To highlight the difference between the blocking and non-blocking version of
+    `wait_and_print`, we can test and compare the execution of the two versions. In
+    the output comments, the waiting periods are indicated by `<wait...>`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: The synchronous version behaves in a very familiar way. The code waits for a
+    second, prints `First call`, waits for another second, and then prints the `Second
+    call` and `After call` messages.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the asynchronous version, `wait_and_print_async` *submits  (*rather than
+    *execute*) those calls and moves on *immediately*. You can see this mechanism
+    in action by acknowledging that the `"After submission"` message is printed immediately.
+  prefs: []
+  type: TYPE_NORMAL
+- en: With this in mind, we can explore a slightly more complex situation by rewriting
+    our `network_request` function using callbacks. In the following code, we define
+    the `network_request_async` function. The biggest difference between `network_request_async` and
+    its blocking counterpart is that `network_request_async` *doesn't return anything*.
+    This is because we are merely submitting the request when `network_request_async`
+    is called, but the value is available only when the request is completed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we can't return anything, how do we pass the result of the request? Rather
+    than returning the value, we will pass the result as an argument to the `on_done`
+    callback.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The rest of the function consists of submitting a callback (called `timer_done`)
+    to the `timer.Timer` class that will call `on_done` when it''s ready:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The usage of `network_request_async` is quite similar to `timer.Timer`; all
+    we have to do is pass the number we want to square and a callback that will receive
+    the result *when it''s ready*. This is demonstrated in the following snippet:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, if we submit multiple network requests, we note that the calls get executed
+    concurrently and do not block the code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In order to use `network_request_async` in `fetch_square`, we need to adapt
+    the code to use asynchronous constructs. In the following code, we modify `fetch_square`
+    by defining and passing the `on_done` callback to `network_request_async`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: You may have noted that the asynchronous code is significantly more convoluted
+    than its synchronous counterpart. This is due to the fact that we are required
+    to write and pass a callback every time we need to retrieve a certain result,
+    causing the code to become nested and hard to follow.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Futures
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Futures are a more convenient pattern that can be used to keep track of the
+    results of asynchronous calls. In the preceding code, we saw that rather than
+    returning values, we accept callbacks and pass the results when they are ready.
+    It is interesting to note that, so far, there is no easy way to track the status
+    of the resource.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A **future** is an abstraction that helps us keep track of the requested resources
+    and that we are waiting to become available. In Python, you can find a future
+    implementation in the `concurrent.futures.Future` class. A `Future` instance can
+    be created by calling its constructor with no arguments:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'A future represents a value that is not yet available. You can see that its
+    string representation reports the current status of the result which, in our case,
+    is still pending. In order to make a result available, we can use the `Future.set_result` method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can see that once we set the result, the `Future` will report that the
+    task is finished and can be accessed using the `Future.result` method. It is also
+    possible to subscribe a callback to a future so that, as soon as the result is
+    available, the callback is executed. To attach a callback, it is sufficient to
+    pass a function to the `Future.add_done_callback` method. When the task completes,
+    the function will be called with the `Future` instance as its first argument and
+    the result can be retrieved using the `Future.result()` method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To get a grasp on how futures can be used in practice, we will adapt the `network_request_async`
+    function to use futures. The idea is that, this time, instead of returning nothing,
+    we return a `Future` that will keep track of the result for us. Note two things:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We don't need to accept an `on_done callback` as callbacks can be connected
+    later using the `Future.add_done_callback` method. Also, we pass the generic `Future.set_result`
+    method as the callback for `threading.Timer`.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'This time we are able to return a value, thus making the code a bit more similar
+    to the blocking version we saw in the preceding section:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: Even though we instantiate and manage futures directly in these examples; in
+    practical applications, the futures are handled by frameworks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you execute the preceding code, nothing will happen as the code only consists
+    of preparing and returning a `Future` instance. To enable further operation of
+    the future results, we need to use the `Future.add_done_callback` method. In the
+    following code, we adapt the `fetch_square` function to use futures:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: The code still looks quite similar to the callback version. Futures are a different
+    and slightly more convenient way of working with callbacks. Futures are also advantageous,
+    because they can keep track of the resource status, cancel (unschedule) scheduled
+    tasks, and handle exceptions more naturally.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Event loops
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: So far, we have implemented parallelism using OS threads. However, in many asynchronous
+    frameworks, the coordination of concurrent tasks is managed by an **event loop**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The idea behind an event loop is to continuously monitor the status of the various
+    resources (for example, network connections and database queries) and trigger
+    the execution of callbacks when events take place (for example, when a resource
+    is ready or when a timer expires).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Why not just stick to threading?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Events loops are sometimes preferred as every unit of execution never runs at
+    the same time as another and this can simplify dealing with shared variables,
+    data structures, and resources. Read the next chapter for more details about parallel
+    execution and its shortcomings.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As a first example, we will implement a thread-free version of `threading.Timer`.
+    We can define a `Timer` class that will take a timeout and implement the `Timer.done` method
+    that returns `True` if the timer has expired:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To determine whether the timer has expired, we can write a loop that continuously
+    checks the timer status by calling the `Timer.done` method. When the timer expires,
+    we can print a message and exit the cycle:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: By implementing the timer in this way, the flow of execution is never blocked
+    and we can, in principle, do other work inside the while loop.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Waiting for events to happen by continuously polling using a loop is commonly
+    termed as *busy-waiting*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Ideally, we would like to attach a custom function that executes when the timer
+    goes off, just like we did in `threading.Timer`. To do this, we can implement
+    a method, `Timer.on_timer_done`, that will accept a callback to be executed when
+    the timer goes off:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Note that `on_timer_done` merely stores a reference to the callback. The entity
+    that monitors the event and executes the callback is the loop. This concept is
+    demonstrated as follows. Rather than using the print function, the loop will call
+    `timer.callback` when appropriate:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: As you can see, an asynchronous framework is starting to take place. All we
+    did outside the loop was define the timer and the callback, while the loop took
+    care of monitoring the timer and executing the associated callback. We can further
+    extend our code by implementing support for multiple timers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A natural way to implement multiple timers is to add a few `Timer` instances
+    to a list and modify our event loop to periodically check all the timers and dispatch
+    the callbacks when required. In the following code, we define two timers and attach
+    a callback to each of them. Those timers are added to a list, `timers`, that is
+    continuously monitored by our event loop. As soon as a timer is done, we execute
+    the callback and remove the event from the list:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: The main restriction of an event loop is, since the flow of execution is managed
+    by a continuously running loop, that it **never uses blocking calls**. If we use
+    any blocking statement (such as `time.sleep`) inside the loop, you can imagine
+    how the event monitoring and callback dispatching will stop until the blocking
+    call is done.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To avoid this, rather than using a blocking call, such as `time.sleep`, we let
+    the event loop detect and execute the callback when the resource is ready. By
+    not blocking the execution flow, the event loop is free to monitor multiple resources
+    in a concurrent way.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The notification for events is usually implemented through operating system
+    calls (such as the `select` Unix tool) that will resume the execution of the program
+    whenever an event is ready (in contrast to busy-waiting).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Python standard libraries include a very convenient event loop-based concurrency
+    framework, `asyncio`, which will be the topic of the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The asyncio framework
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: By now, you should have a solid foundation of how concurrency works, and how
+    to use callbacks and futures. We can now move on and learn how to use the `asyncio`
+    package present in the standard library since version 3.4\. We will also explore
+    the brand new `async`/`await` syntax to deal with asynchronous programming in
+    a very natural way.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As a first example, we will see how to retrieve and execute a simple callback
+    using `asyncio`. The `asyncio` loop can be retrieved by calling the `asyncio.get_event_loop()` function.
+    We can schedule a callback for execution using  `loop.call_later` that takes a
+    delay in seconds and a callback. We can also use the `loop.stop` method to halt
+    the loop and exit the program.  To start processing the scheduled call, it is
+    necessary to start the loop, which can be done using `loop.run_forever`. The following
+    example demonstrates the usage of these basic methods by scheduling a callback
+    that will print a message and halt the loop:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: Coroutines
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: One of the main problems with callbacks is that they require you to break the
+    program execution into small functions that will be invoked when a certain event
+    takes place. As we saw in the earlier sections, callbacks can quickly become cumbersome.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Coroutines are another, perhaps a more natural, way to break up the program
+    execution into chunks. They allow the programmer to write code that resembles
+    synchronous code but will execute asynchronously. You may think of a coroutine
+    as a function that can be stopped and resumed. A basic example of coroutines is generators.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Generators can be defined in Python using the `yield` statement inside a function.
+    In the following example, we implement the `range_generator` function, which produces
+    and returns values from `0` to `n`. We also add a print statement to log the internal
+    state of the generator:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'When we call the `range_generator` function, the code is not executed immediately.
+    Note that nothing is printed to output when the following snippet is executed.
+    Instead, a *generator object* is returned:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In order to start pulling values from a generator, it is necessary to use the
+    `next` function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note that every time we invoke `next`, the code runs until it encounters the
+    next `yield` statement and it is necessary to issue another `next` statement to
+    resume the generator execution. You can think of a `yield` statement as a breakpoint
+    where we can stop and resume execution (while also maintaining the internal state
+    of the generator). This ability of stopping and resuming execution can be leveraged
+    by the event loop to allow for concurrency.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It is also possible to *inject* (rather than *extract)* values in the generator
+    through the `yield` statement. In the following example, we declare a function
+    parrot that will repeat each message that we send. To allow a generator to receive
+    a value, you can assign yield to a variable (in our case, it is `message = yield`).
+    To insert values in the generator, we can use the `send` method. In the Python
+    world, a generator that can also receive values is called a *generator-based coroutine*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note that we also need to issue a `generator.send(None)` before we can start
+    sending messages; this is done to bootstrap the function execution and bring us
+    to the first `yield` statement. Also, note that there is an infinite loop inside
+    `parrot`; if we implement this without using generators, we will get stuck running
+    the loop forever!
+  prefs: []
+  type: TYPE_NORMAL
+- en: With this in mind, you can imagine how an event loop can partially progress
+    several of these generators without blocking the execution of the whole program.
+    You can also imagine how a generator can be advanced only when some resource is
+    ready, therefore eliminating the need for a callback.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is possible to implement coroutines in `asyncio` using the `yield` statement.
+    However, Python supports the definition of powerful coroutines using a more intuitive
+    syntax since version 3.5.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To define a coroutine with `asyncio`, you can use the `async def` statement:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As you can see, if we call the `hello` function, the function body is not executed
+    immediately, but a *coroutine object* is returned. The `asyncio` coroutines do
+    not support `next`, but they can be easily run in the `asyncio` event loop using
+    the `run_until_complete` method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: Coroutines defined with the `async def` statement are also called *native coroutines*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `asyncio`  module provides resources (called *awaitables*) that can be
+    requested inside coroutines through the `await` syntax. For example, if we want
+    to wait for a certain time and then execute a statement, we can use the `asyncio.sleep` function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: The result is beautiful, clean code. We are writing perfectly functional asynchronous
+    code without all the ugliness of callbacks!
+  prefs: []
+  type: TYPE_NORMAL
+- en: You may have noted how `await` provides a breakpoint for the event loop so that,
+    as it wait for the resource, the event loop can move on and concurrently manage
+    other coroutines.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Even better, coroutines are also `awaitable`, and we can use the `await` statement
+    to chain coroutines asynchronously. In the following example, we rewrite the `network_request` function,
+    which we defined earlier, by replacing the call to `time.sleep` with `asyncio.sleep`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can follow up by reimplementing `fetch_square`. As you can see, we can await
+    `network_request` directly without needing additional futures or callbacks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The coroutines can be executed individually using `loop.run_until_complete`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: Running tasks using `run_until_complete` is fine for testing and debugging.
+    However, our program will be started with `loop.run_forever` most of the times,
+    and we will need to submit our tasks while the loop is already running.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`asyncio` provides the `ensure_future` function, which schedules coroutines
+    (as well as futures) for execution. `ensure_future` can be used by simply passing
+    the coroutine we want to schedule. The following code will schedule multiple calls
+    to `fetch_square` that will be executed concurrently:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: As a bonus, when passing a coroutine, the `asyncio.ensure_future` function will
+    return a `Task` instance (which is a subclass of `Future`) so that we can take
+    advantage of the await syntax without having to give up the resource tracking
+    capabilities of regular futures.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Converting blocking code into non-blocking code
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: While `asyncio` supports connecting to resources in an asynchronous way, it
+    is required to use blocking calls in certain cases. This happens, for example,
+    when third-party APIs exclusively expose blocking calls (for example, many database
+    libraries), but also when executing long-running computations. In this subsection,
+    we will learn how to deal with blocking APIs and make them compatible with `asyncio`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: An effective strategy for dealing with blocking code is to run it in a separate
+    thread. Threads are implemented at the **Operating System** (**OS**) level and
+    allow parallel execution of blocking code. For this purpose, Python provides the
+    `Executor` interface designed to run tasks in a separate thread and to monitor
+    their progress using futures.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can initialize a `ThreadPoolExecutor` by importing it from the `concurrent.futures`
+    module. The executor will spawn a collection of threads (called `workers`) that
+    will wait to execute whatever task we throw at them. Once a function is submitted,
+    the executor will take care of dispatching its execution to an available worker
+    thread and keep track of the result. The `max_workers` argument can be used to
+    select the number of threads.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that the executor will not destroy a thread once a task is completed. By
+    doing so, it reduces the cost associated with the creation and destruction of
+    threads.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following example, we create a `ThreadPoolExecutor` with three workers,
+    and we submit a `wait_and_return` function that will block the program execution
+    for one second and return a message string. We then use the `submit` method to
+    schedule its execution:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `executor.submit` method immediately schedules the function and returns
+    a future. It is possible to manage the execution of tasks in `asyncio` using the
+    `loop.run_in_executor` method, which works quite similarly to `executor.submit`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `run_in_executor` method will also return an `asyncio.Future` instance
+    that can be awaited from other code, the main difference being that the future
+    will not be run until we start the loop. We can run and obtain the response using
+    `loop.run_until_complete`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As a practical example, we can use this technique to implement concurrent fetching
+    of several web pages. To do this, we will import the popular (blocking) `requests`
+    library and run the `requests.get` function in the executor:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This version of `fetch_url` will not block the execution and allow other coroutines
+    in `asyncio` to run; however, it is not optimal as the function will not fetch
+    a URL in parallel. To do this, we can use `asyncio.ensure_future` or employ the
+    `asyncio.gather` convenience function that will submit all the coroutines at once
+    and gather the results as they come. The usage of `asyncio.gather` is demonstrated
+    here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: The number of URLs you can fetch in parallel with this method will be dependent
+    on the number of worker threads you have. To avoid this limitation, you should
+    use a natively non-blocking library, such as `aiohttp`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Reactive programming
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Reactive programming is a paradigm that aims at building better concurrent
+    systems. Reactive applications are designed to comply with the requirements exemplified
+    by the reactive manifesto:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Responsive**:  The system responds immediately to the user.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Elastic**: The system is capable of handling different levels of load and
+    is able to adapt to accommodate increasing demands.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Resilient**: The system deals with failure gracefully. This is achieved by
+    modularity and avoiding having a single point of failure.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Message driven**: The system should not block and take advantage of events
+    and messages. A message-driven application helps achieve all the previous requirements.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: As you can see, the intent of reactive systems is quite noble, but how exactly
+    does reactive programming work? In this section, we will learn about the principles
+    of reactive programming using the RxPy library.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The RxPy library is part of ReactiveX ([http://reactivex.io/](http://reactivex.io/)),
+    which is a project that implements reactive programming tools for a large variety
+    of languages.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Observables
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: As the name implies, the main idea of reactive programming is to *react* to
+    events. In the preceding section, we saw some examples of this idea with callbacks;
+    you subscribe to them and the callback is executed as soon as the event takes
+    place.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In reactive programming, this idea is expanded by thinking of events as streams
+    of data. This can be exemplified by showing examples of such streams in RxPy.
+    A data stream can be created from an iterator using the `Observable.from_iterable`
+    factory method, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In order to receive data from `obs`, we can use the `Observable.subscribe` method,
+    which will execute the function we pass for each value that the data source emits:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: You may have noted that observables are ordered collections of items just like
+    lists or, more generally, iterators. This is not a coincidence.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The term observable comes from the combination of observer and iterable. An
+    *observer* is an object that reacts to changes of the variable it observes, while
+    an *iterable* is an object that is capable of producing and keeping track of an
+    iterator.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In Python, iterators are objects that define the `__next__` method, and whose
+    elements can be extracted by calling `next`. An iterator can generally be obtained
+    by a collection using `iter`; then we can extract elements using `next` or a `for`
+    loop. Once an element is consumed from the iterator, we can''t go back. We can
+    demonstrate its usage by creating an iterator from a list:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: You can see how, every time we call `next` or we iterate, the iterator produces
+    a value and advances. In a sense, we are *pulling* results from the iterator.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Iterators sound a lot like generators; however, they are more general. In Python,
+    generators are returned by functions that use yield expressions. As we saw, generators
+    support `next`, therefore, they are a special class of iterators.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now you can appreciate the contrast between an iterator and an observable. 
+    An observable*pushes* a stream of data to us whenever it''s ready, but that''s
+    not everything. An observable is also able to tell us when there is an error and
+    where there is no more data. In fact, it is possible to register further callbacks
+    to the `Observable.subscribe` method. In the following example, we create an observable
+    and register callbacks to be called using `on_next` whenever the next item is
+    available and using the `on_completed` argument when there is no more data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: This analogy with the iterator is important because we can use the same techniques
+    that can be used with iterators to handle streams of events.
+  prefs: []
+  type: TYPE_NORMAL
+- en: RxPy provides operators that can be used to create, transform, filter, and group
+    observables. The power of reactive programming lies in the fact that those operations
+    return other observables that can be conveniently chained and composed together.
+    For a quick taste, we will demonstrate the usage of the `take` operator.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Given an observable, `take` will return a new observable that will stop after
+    `n` items. Its usage is straightforward:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: The collection of operations implemented in RxPy is varied and rich, and can
+    be used to build complex applications using these operators as building blocks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Useful operators
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this subsection, we will explore operators that transform the elements of
+    a source observable in some way. The most prominent member of this family of operators
+    is the familiar `map`, which emits the elements of the source observable after
+    applying a function to them. For example, we may use `map` to calculate the square
+    of a sequence of numbers:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: Operators can be represented with marble diagrams that help us better understand
+    how the operator works, especially when taking into account the fact that elements
+    can be emitted over a region of time. In a marble diagram, a data stream (in our
+    case, an observable) is represented by a solid line. A circle (or other shape)
+    identifies a value emitted by the observable, an **X** symbol represents an error,
+    and a vertical line represents the end of the stream.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following figure, we can see the marble diagram of **map**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B06440_06CHPNO_04.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The source observable is placed at the top of the diagram, the transformation
+    is placed in the middle, and the resulting observable is placed at the bottom.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Another example of a transformation is `group_by`, which sorts the items into
+    groups based on a key. The `group_by` operator takes a function that extracts
+    a key when given an element and produces an observable for each key with the elements
+    associated to it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `group_by` operation can be expressed more clearly using a marble diagram.
+    In the following figure, you can see how `group_by` emits two observables. Additionally,
+    the items are dynamically sorted into groups *as soon as they are emitted*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B06440_06CHPNO_05.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We can further understand how `group_by` works with a simple example. Let''s
+    say that we want to group the number according to the fact that they''re even
+    or odd. We can implement this using `group_by` by passing the `lambda x: x % 2` expression
+    as a key function, which will return `0` if the number is even and `1` if the
+    number is odd:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'At this point, if we subscribe and print the content of `obs`, actually two
+    observables are printed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can determine the group key using the `key` attribute. To extract all the
+    even numbers, we can take the first observable (corresponding to a key equal to
+    0) and subscribe to it. In the following code, we show how this works:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs: []
+  type: TYPE_PRE
+- en: With `group_by`, we introduced an observable that emits other observables. This
+    turns out to be quite a common pattern in reactive programming, and there are
+    functions that allow you to combine different observables.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Two useful tools for combining observables are `merge_all` and `concat_all`.
+    Merge takes multiple observables and produces a single observable that contains
+    the element of the two observables in the order they are emitted. This is better
+    illustrated using a marble diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B06440_06CHPNO_06.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '`merge_all` can be compared to a similar operator, `concat_all`, which returns
+    a new observable that emits the elements of all the elements of the first observable,
+    followed by the elements of the second observable and so on. The marble diagram
+    for `concat_all` is presented here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B06440_06CHPNO_07.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'To demonstrate the usage of these two operators, we can apply those operations
+    to the observable of observables returned by `group_by`. In the case of `merge_all`,
+    the items are returned in the same order as they were initially (remember that
+    `group_by` emits elements in the two groups as they come):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE46]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'On the other hand, `concat_all` first returns the even elements and then the
+    odd elements as it waits for the first observable to complete, and then starts
+    emitting the elements of the second observable. This is demonstrated in the following
+    snippet. In this specific example, we also applied a function, `make_replay`;
+    this is needed because, by the time the "even" stream is consumed, the elements
+    of the second stream have already been produced and will not be available to `concat_all`.
+    This concept will become much clearer after reading the *Hot and cold observables* section:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE47]'
+  prefs: []
+  type: TYPE_PRE
+- en: This time around, the even numbers are printed first, followed by the odd numbers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: RxPy also provides the  `merge` and `concat` operations that can be used to
+    combine individual observables
+  prefs: []
+  type: TYPE_NORMAL
+- en: Hot and cold observables
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the preceding section, we learned how to create an observable using the `Observable.from_iterable`
+    method. RxPy provides many other tools to create more interesting event sources.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`Observable.interval` takes a time interval in milliseconds, `period`, and
+    will create an observable that emits a value every time the period has passed.
+    The following line of code can be used to define an observable, `obs`, that will
+    emit a number, starting from zero, every second. We use the `take` operator to
+    limit the timer to four events:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE48]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'A very important fact about `Observable.interval` is that the timer doesn''t
+    start until we subscribe. We can observe this by printing both the index and the
+    delay from when the timer starts definition using `time.time()`, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE49]'
+  prefs: []
+  type: TYPE_PRE
+- en: As you can see, the first element (corresponding to a `0` index) is produced
+    after three seconds, which means that the timer started when we issue the `subscribe(print)`
+    method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Observables, such as `Observable.interval`, are called *lazy* because they
+    start producing values only when requested (think of them as vending machines,
+    which won''t dispense food unless we press the button). In Rx jargon, these kind
+    of observables are called **cold**. A property of cold observables is that, if
+    we attach two subscribers, the interval timer will be started multiple times.
+    This is quite evident from the following example. Here, we add a new subscription
+    0.5 seconds after the first, and you can see how the output of the two subscriptions
+    come at different times:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE50]'
+  prefs: []
+  type: TYPE_PRE
+- en: Sometimes we may not want this behavior as we may want multiple subscribers
+    to subscribe to the same data source. To make the observable produce the same
+    data, we can delay the data production and ensure that all the subscribers will
+    get the same data using the `publish` method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Publish will transform our observable into a `ConnectableObservable`, which
+    won''t start pushing data immediately, but only when we call the `connect` method.
+    The usage of `publish` and `connect` is demonstrated in the following snippet:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE51]'
+  prefs: []
+  type: TYPE_PRE
+- en: In the preceding example, you can see how we first issue `publish`, then we
+    subscribe the first subscriber and, finally, we issue `connect`. When `connect`
+    is issued, the timer will start producing data. The second subscriber joins the
+    party late and, in fact, won't receive the first two messages but will start receiving
+    data from the third and so on. Note how, this time around, the subscribers share
+    the exact same data. This kind of data source, where data is produced independently
+    of the subscribers, is called **hot**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Similar to `publish`, you can use the `replay` method that will produce the
+    data *from the beginning* for each new subscriber. This is illustrated in the
+    following example that, which is identical to the preceding one except that we
+    replaced `publish` with `replay`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE52]'
+  prefs: []
+  type: TYPE_PRE
+- en: You can see how, this time around, even though the second subscriber arrives
+    late to the party, it is still given all the items that have been given out so
+    far.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Another way of creating hot observables is through the `Subject` class. `Subject`
+    is interesting because it''s capable of both receiving and pushing data, and thus
+    it can be used to manually *push* items to an observable. Using `Subject` is very
+    intuitive; in the following code, we create a `Subject` and subscribe to it. Later,
+    we push values to it using the `on_next` method; as soon as we do that, the subscriber
+    is called:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE53]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note that `Subject` is another example of hot observables.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Building a CPU monitor
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Now that we have a grasp on the main reactive programming concepts, we can implement
+    a sample application. In this subsection, we will implement a monitor that will
+    give us real-time information about our CPU usage and is capable of detecting
+    spikes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The complete code for the CPU monitor can be found in the `cpu_monitor.py` file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As a first step, let''s implement a data source. We will use the `psutil` module
+    that provides a function, `psutil.cpu_percent`, that returns the latest available
+    CPU usage as a percent (and doesn''t block):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE54]'
+  prefs: []
+  type: TYPE_PRE
+- en: Since we are developing a monitor, we would like to sample this information
+    over a few time intervals. To accomplish this we can use the familiar `Observable.interval`
+    , followed by `map` just like we did in the previous section. Also, we would like
+    to make this observable *hot* as, for this application, all subscribers should
+    receive a single source of data; to make `Observable.interval` hot,  we can use
+    the `publish` and `connect` methods. The full code for the creation of the `cpu_data`
+    observable is as follows
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE55]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can test our monitor by printing a sample of 4 items
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE56]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now that our main data source is in place, we can implement a monitor visualization
+    using `matplotlib`. The idea is to create a plot that contains a fixed amount
+    of measurements and, as new data arrives, we include the newest measurement and
+    remove the oldest one. This is commonly referred to as a *moving window* and is
+    better understood with an illustration. In the following figure, our `cpu_data`
+    stream is represented as a list of numbers. The first plot is produced as soon
+    as we have the first four numbers and, each time a new number arrives, we shift
+    the window by one position and update the plot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B06440_06CHPNO_08.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'To implement this algorithm, we can write a function, called `monitor_cpu`,
+    that will create and update our plotting window. The function will do the following
+    things:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Initialize an empty plot and set up the correct plot limits.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Transform our `cpu_data` observable to return a moving window over the data.
+    This can be accomplished using the `buffer_with_count` operator, which will take
+    the number of points in our window, `npoints`, as parameters and the shift as `1`.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Subscribe to this new data stream and update the plot with the incoming data.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The complete code for the function is shown here and, as you can see, is extremely
+    compact. Take some time to run the function and play with the parameters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE57]'
+  prefs: []
+  type: TYPE_PRE
+- en: Another feature we may want to develop is, for example, an alert that triggers
+    when the CPU has been high for a certain amount of time as this may indicate that
+    some of the  processes in our machine are working very hard. This can be accomplished
+    by combining `buffer_with_count` and `map`. We can take the CPU stream and a window,
+    and then we will test whether all items have a value higher than twenty percent usage
+    (in a quad-core CPU that corresponds to about one processor working at hundred
+    percent) in the map function. If all the points in the window have a higher than
+    twenty percent usage, we display a warning in our plot window.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The implementation of the new observable can be written as follows and will
+    produce an observable that emits `True` if the CPU has high usage, and `False`
+    otherwise:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE58]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now that the `high_cpu` observable is ready, we can create a `matplotlib` label
+    and subscribe to it for updates:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE59]'
+  prefs: []
+  type: TYPE_PRE
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Asynchronous programming is useful when our code deals with slow and unpredictable
+    resources, such as I/O devices and networks. In this chapter, we explored the
+    fundamental concepts of concurrency and asynchronous programming and how to write
+    concurrent code with the `asyncio` and RxPy libraries.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`asyncio` coroutines are an excellent choice when dealing with multiple, interconnected
+    resources as they greatly simplify the code logic by cleverly avoiding callbacks.
+    Reactive programming is also very good in these situations, but it truly shines
+    when dealing with streams of data that are common in real-time applications and
+    user interfaces.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next two chapters, we will learn about parallel programming and how to
+    achieve impressive performance gain by taking advantage of multiple cores and
+    multiple machines.
+  prefs: []
+  type: TYPE_NORMAL

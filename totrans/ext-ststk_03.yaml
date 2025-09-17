@@ -1,0 +1,868 @@
+- en: Chapter 3. Extending Salt Configuration
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'By now you know how to access configuration variables from the various parts
+    of Salt, except for SDB modules, which will be covered in this chapter. But while
+    setting static configuration is all fine and well, it can be very useful to be
+    able to supply that data from an external source. In this chapter, you''ll learn
+    about:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Writing dynamic grains and external pillars
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Troubleshooting grains and pillars
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Writing and using SDB modules
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Troubleshooting SDB modules
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Setting grains dynamically
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: As you already know, grains hold variables that describe certain aspects of
+    a Minion. This could be information about the operating system, the hardware,
+    the network, and so on. It can also contain statically defined user data, which
+    is configured either in `/etc/salt/minion` or `/etc/salt/grains`. It is also possible
+    to define grains dynamically using grains modules.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting some basic grains
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Grains modules are interesting in that so long as the module is loaded, all
+    public functions will be executed. As each function is executed, it will return
+    a dictionary, which contains items to be merged into the Minion's grains.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's go ahead and set up a new grains module to demonstrate. We'll prepend
+    the names of the return data with a `z` so that it is easy to find.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Go ahead and save this file as `salt/grains/testdata.py`, and then use `salt-call`
+    to display all of the grains, including this one:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Keep in mind that you can also use `grains.item` to display only a single grain:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'It may not look like this module is much good, since this is still just static
+    data that could be defined in the `minion` or `grains` files. But keep in mind
+    that, as with other modules, grains modules can be gated using a `__virtual__()`
+    function. Let''s go ahead and set that up, along with a flag of sorts that will
+    determine whether or not this module will load in the first place:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Go ahead and run the following commands to see this in action:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is very useful for gating the return data from an entire module, whether
+    dynamic or, as this module currently is, static.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You may be wondering why that example checked for the existence of a file,
+    rather than checking the existing Minion configuration. This is to illustrate
+    that the detection of certain system properties is likely to dictate how grains
+    are set. If you want to just set a flag inside the `minion` file, you can pull
+    it out of `__opts__`. Let''s go ahead and add that to the `__virtual__()` function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Go ahead and remove the old flag, and set the new one:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Let''s go ahead and set up this module to return dynamic data as well. Because
+    YAML is so prevalent in Salt, let''s go ahead and set up a function that returns
+    the contents of a YAML file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: You may notice that we've used `salt.utils.fopen()` instead of a standard Python
+    `open()`. Salt's `fopen()` function wraps Python's `open()` with some extra handling,
+    so that files are closed properly on Minions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Save your module, and then issue the following commands to see the result:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: (Not) cross-calling execution modules
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: You may be tempted to try to cross-call an execution module from inside a grains
+    module. Unfortunately, that won't work. The `__virtual__()` function in many execution
+    modules relies heavily on grains. Allowing grains to cross-call to execution modules,
+    before Salt has decided whether or not to even the execution module in the first
+    place, would cause circular dependencies.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Just remember, grains are loaded first, then pillars, then execution modules.
+    If you have code that you plan to use two or more of these types of modules, consider
+    setting up a library for it in the `salt/utils/` directory.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The final grains module
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'With all of the code we''ve put together, the resulting module should look
+    like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: Creating external pillars
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'As you know, pillars are like grains, with a key difference: grains are defined
+    on the Minion, whereas pillars are defined for individual Minions, from the Master.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As far as users are concerned, there''s not a whole lot of difference here,
+    except that pillars must be mapped to targets on the Master, using the `top.sls`
+    file in `pillar_roots`. One such mapping might look like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In this example, we would have a pillar called test defined, which might look
+    like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: Dynamic pillars are still mapped in the `top.sls` file, but that's where the
+    similarities end, so far as configuration is concerned.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Configuring external pillars
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Unlike dynamic grains, which will run so long as their `__virtual__()` function
+    allows them to do so, pillars must be explicitly enabled in the `master` configuration
+    file. Or, if running in local mode as we will be, in the `minion` configuration
+    file. Let''s go ahead and add the following lines to the end of `/etc/salt/minion`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: If we were testing this on the Master, we would need to restart the `salt-master`
+    service. However, since we're testing in local mode on the Minion, this will not
+    be required.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Adding an external pillar
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We''ll also need to create a simple external pillar to get started with. Go
+    ahead and create `salt/pillar/test_pillar.py` with the following content:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Go ahead and save your work, and then test it to make sure it works:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: Let's go over what's happened here. First off, we have a function called `ext_pillar()`.
+    This function is required in all external pillars. It is also the only function
+    that is required. Any others, whether or not named with a preceding underscore,
+    will be private to this module.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This function will always be passed three pieces of data. The first is the
+    ID of the Minion that is requesting this pillar. You can see this in our example
+    already: the `minion_id` where the earlier example was run was `dufresne`. The
+    second is a copy of the static pillars defined for this Minion. The third is an
+    extra piece of data that was passed to this external pillar in the `master` (or
+    in this case, `minion`) configuration file.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s go ahead and update our pillar to show us what each component looks
+    like. Change your `ext_pillar()` function to look like:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Save it, and then modify the `ext_pillar` configuration in your `minion` (or
+    `master`) file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Take a look at your pillar data again:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: You can see the `test_pillar` that we referenced a couple of pages ago. And
+    of course, you can see `minion_id`, just like before. The important part here
+    is `config`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This example was chosen to make it clear where the `config` argument came from.
+    When an external pillar is added to the `ext_pillar` list, it is entered as a
+    dictionary, with a single item as its value. The item that is specified can be
+    a string, boolean, integer, or float. It cannot be a dictionary or a list.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This argument is normally used to pass arguments into the pillar from the configuration
+    file. For instance, the `cmd_yaml` pillar that ships with Salt uses it to define
+    a command that is expected to return data in YAML format:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If the only thing that your pillar requires is to be enabled, then you can
+    just set this to True, and then ignore it. However, you must still set it! Salt
+    will expect that data to be there, and you will receive an error like this if
+    it is not:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Although `minion_id`, `pillar`, and `config` are all passed into the `ext_pillar()`
+    function (in that order), Salt doesn't actually care what you call the variables
+    in your function definition. You could call them Emeril, Mario, and Alton if you
+    wanted (not that you would). But whatever you call them, they must still all be
+    there.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Another external pillar
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Let''s put together another external pillar, so that it doesn''t get confused
+    with our first one. This one''s job is to check the status of a web service. First,
+    let''s write our pillar code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: You've probably noticed that our `docstring` states that This file should be
+    saved as `salt/pillar/http_status.py`. When you check out the Salt codebase, there
+    is a directory called `salt/` that contains the actual code. This is the directory
+    that is referred to in the `docstring`. You will continue to see these comments
+    in the code examples throughout this book.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Save this file as `salt/pillar/http_status.py`. Then go ahead and update your
+    `ext_pillar` configuration to point to it. For now, we''ll use GitHub''s status
+    URL:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Go ahead and save the configuration, and then test the pillar:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If you need to be able to check the status on multiple services, you can use
+    the same external pillar multiple times, but with different configurations. Try
+    updating your `ext_pillar` definition to contain two entries:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now, this can quickly become a problem. GitHub won't be happy with you if you're
+    constantly hitting their status API. So, as nice as it is to get real-time status
+    updates, you may want to do something to throttle your queries. Let's save the
+    status in a file, and return it from there. We will check the file's timestamp
+    to make sure it doesn't get updated more than once a minute.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s go ahead and update the entire external pillar:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now we''ve set a flag called `refresh`, and the URL will only be hit when that
+    flag is `True`. We''ve also defined a file that will cache the content obtained
+    from that URL. The file will contain the name given to the pillar, so it will
+    end up having a name like `/tmp/status-github.json`. The following two lines will
+    retrieve the last modified time of the file, and the current time in seconds:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: And comparing the two, we can determine whether the file is more than 60 seconds
+    old. If we wanted to make the pillar even more configurable, we could even move
+    that `60` to the `config` parameter, and pull it from `comps[2]`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Troubleshooting grains and pillars
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: While writing grains and pillars, you may encounter some difficulties. Let's
+    take a look at the most common problems you might have.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Dynamic grains not showing up
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: You may find that when you issue a `grains.items` command from the Master, your
+    dynamic grains aren't showing up. This can be difficult to track down, because
+    grains are evaluated on the Minion, and any errors aren't likely to make it back
+    over the wire to you.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When you find that dynamic grains aren't showing up as you expect, it's usually
+    easiest to log in to the Minion directly to troubleshoot. Open up a shell and
+    try issuing a `salt-call` command to see if any errors manifest themselves. If
+    they don't immediately, try adding `--log-level=debug` to your command to see
+    if any errors have been hiding at that level. Using a `trace` log level might
+    also be necessary.
+  prefs: []
+  type: TYPE_NORMAL
+- en: External pillars not showing up
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: These can be a little more difficult to pick out. Using `salt-call` is effective
+    in finding errors in grains, because all of the code can be executed without starting
+    up or contacting a service. But pillars come from the Master, unless you're running
+    `salt-call` in `local` mode.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you are able to install your external pillar code on a Minion for testing,
+    then the steps are the same as for checking for grains errors. But if you find
+    yourself in a situation where the Master's environment cannot be duplicated on
+    a Minion, you will need to use a different tactic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Stop the `salt-master` service on the Master, and then start it back up in
+    the foreground, with a debug log level:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then open up another shell and check the pillars for an affected Minion:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: Any errors in the pillar code should manifest themselves in the window with
+    `salt-master` running in the foreground.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Writing SDB modules
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: SDB is a relatively new type of module, and ripe for development. It stands
+    for Simple Database, and it is designed to allow data to be simple to query, using
+    a very short URI. Underlying configuration can be as complex as necessary, so
+    long as the URI that is used to query it is as simple as possible.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Another design goal of SDB is that URIs can mask sensitive pieces of information
+    from being stored directly inside a configuration file. For instance, passwords
+    are often required for other types of modules, such as the `mysql` modules. But
+    it is a poor practice to store passwords in files that are then stored inside
+    a revision control system such as Git.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using SDB to look up passwords on the fly allows references to the passwords
+    to be stored, but not the passwords themselves. This makes it much safer to store
+    files that reference sensitive data, inside revision control systems.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There is one supposed function that may be tempting to use SDB for: storing
+    encrypted data on the Minion, which cannot be read by the Master. It is possible
+    to run agents on a Minion that require local authentication, such as typing in
+    a password from the Minion''s keyboard, or using a hardware encryption device.
+    SDB modules can be made that make use of these agents, and due to their very nature,
+    the authentication credentials themselves cannot be retrieved by the Master.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The problem is that the Master can access anything that a Minion that subscribes
+    to it can. Although the data may be stored in an encrypted database on the Minion,
+    and although its transfer to the Master is certainly encrypted, once it gets to
+    the Master it can still be read in plaintext.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting SDB data
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'There are only two public functions that are used for SDB: `get` and `set`.
+    And in truth, the only important one of these is `get`, since `set` can usually
+    be done outside of Salt entirely. Let''s go ahead and take a look at `get`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For our example, we''ll create a module that reads in a JSON file and then
+    returns the requested key from it. First, let''s set up our JSON file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Go ahead and save that file as `/root/mydata.json`. Then edit the `minion`
+    configuration file and add a configuration profile:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'With those two things in place, we''re ready to start writing our module. JSON
+    has a very simple interface, so there won''t be much here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: You've probably noticed that we've added a couple of extra things outside of
+    the necessary JSON code. First, we imported something called `absolute_import`.
+    This is because this file is called `json.py`, and it's importing another library
+    called `json`. Without `absolute_import`, the file would try to import itself,
+    and be unable to find the necessary functions from the actual `json` library.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `get()` function takes two arguments: `key` and `profile`. `key` refers
+    to the key that will be used to access the data that we need. `profile` is a copy
+    of the profile data that we save in the `minion` configuration file as `myjson`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The SDB URI makes use of these two items. When we build that URI, it will be
+    formatted as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'For instance, if we were to use the `sdb` execution module to retrieve the
+    value of `key1`, our command would look like:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'With this module and profile in place, we can now add lines to the minion configuration
+    (or to grains or pillars, or even the `master` configuration) that look like:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: When a module that uses `config.get` comes across an SDB URI, it will automatically
+    translate it on the fly to the appropriate data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Before we move on, let''s update this function a little bit to do some error
+    handling. If the user makes a typo in the profile (such as `json_fle` instead
+    of `json_file`), or the file being referenced doesn''t exist, or the JSON isn''t
+    formatted correctly, then this module will start spitting out trace back messages.
+    Let''s go ahead and handle all of those, using Salt''s own `CommandExecutionError`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: '`IOError` will catch problems with a path that doesn''t point to a real file.
+    `KeyError` will catch errors with missing profile configuration (which would happen
+    if one of the items was misspelled). `ValueError` will catch problems with an
+    improperly formatted JSON file. This will turn errors like:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: '...into errors like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: Setting SDB data
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The function that is used for `set` may look strange, because `set` is a Python
+    built-in. That means that the function may not be called `set()`; it must be called
+    something else, and then given an alias using the `__func_alias__` dictionary.
+    Let''s go ahead and create a function that does nothing except return the `value`
+    to be set:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: This will be enough for your purposes with read-only data, but in our case,
+    we're going to modify the JSON file. First, let's look at the arguments that are
+    passed into our function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You already know that the key points to the data are to be referenced, and that
+    profile contains a copy of the profile data from the Minion configuration file.
+    And you can probably guess that value contains a copy of the data to be applied.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The value doesn''t change the actual URI; that will always be the same, no
+    matter whether you''re getting or setting data. The execution module itself is
+    what accepts the data to be set, and then sets it. You can see that with:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'With that in mind, let''s go ahead and make our module read in the JSON file,
+    apply the new value, and then write it back out again. For now, we''ll skip error
+    handling, to make it easier to read:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: This function reads in the JSON file as before, then updates the specific value
+    (creating it if necessary), then writes the file back out. When it's finished,
+    it returns the data using the `get()` function, so that the user knows whether
+    it was set properly. If it returns the wrong data, then the user will know that
+    something went wrong. It won't necessarily tell them what went wrong, but it will
+    raise a red flag.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s go ahead and add some error handling to help the user know what went
+    wrong. We''ll go ahead and add in the error handling from the `get()` function
+    too:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Because we did all of that error handling when reading the file, by the time
+    we get to writing it back again, we already know that the path is value, the JSON
+    is valid, and there are no profile errors. However, there could still be errors
+    in saving the file. Try the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We''ve changed the attribute of the file to make it immutable (read-only),
+    and we can no longer write to the file. Without `IOError`, we would get an ugly
+    trace back message just like before. Removing the immutable attribute will allow
+    our function to run properly:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: Using a descriptive docstring
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: With SDB modules, it is more important than ever to add a `docstring` that demonstrates
+    how to configure and use the module. Without it, using the module is all but impossible
+    for the user to figure out, and trying to modify a module is even worse.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `docstring` doesn''t need to be a novel. It should contain enough information
+    to use the module, but not so much that figuring things out becomes confusing
+    and frustrating. You should include not only an example of the profile data but
+    also of an SDB URI to be used with this module:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: Using more complex configuration
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'It may be tempting to create SDB modules that make use of more complicated
+    URIs. For instance, it is entirely possible to create a module that supports a
+    URI such as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'With the preceding URI, the `key` that is passed in would be:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs: []
+  type: TYPE_PRE
+- en: At that point, it would be up to you to parse out the key and translate it into
+    something usable by your code. However, I strongly discourage it!
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The more complex you make an SDB URI, the less it becomes a simple database
+    lookup. You also risk exposing data in an unintended way. Look at the preceding
+    `key` again. It reveals the following information about the database that holds
+    the information that is supposed to be sensitive:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: There is a field (abstracted or real) that is referred to as user. Since users
+    tend to be lazier than they think, this is likely to point to a real database
+    field called user. If that's true, then this exposes a portion of the database
+    schema.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: There is a group called ops. This means that there are other groups as well.
+    Since *ops* typically refers to a team that performs server operations tasks,
+    does that mean that there's a group called *dev* too? And if the dev group is
+    compromised, what juicy pieces of data do they have for an attacker to steal?
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'A day was specified. Does this company rotate passwords on a daily basis? The
+    fact that *monday* was specified implies that there are no more than seven passwords:
+    one for each day of the week.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Rather than putting all of this information into the URL, it is generally better
+    to hide it inside the profile. It''s probably safe to assume that `mydb` refers
+    to a database connection (if we called the profile `mysql`, we would be exposing
+    what kind of database connection). Skipping over any database credentials that
+    would be present, we could use a profile that looks like:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE46]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Assuming that the module in question is able to translate those `field`s into
+    a query, and internally change `sdbkey` to whatever actual `key` was passed in,
+    we could use a URI that looks like:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE47]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can still guess that `curly` refers to a username, which is probably even
+    more obvious when the URI is used with a configuration argument like:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE48]'
+  prefs: []
+  type: TYPE_PRE
+- en: However, it doesn't expose the name of the field in the database.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The final SDB module
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'With all of the code we''ve put together, the resulting module should look
+    like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE49]'
+  prefs: []
+  type: TYPE_PRE
+- en: Using SDB modules
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'There are a number of places where SDB modules can be used. Because SDB retrieval
+    is built into the `config.get` function in the `config` execution module, the
+    following locations can be used to set a value for a Minion:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Minion configuration file
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Grains
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Pillars
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Master configuration file
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'SDB is also supported by Salt Cloud, so you can also set SDB URIs in:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The main cloud configuration file
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Cloud profiles
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Cloud providers
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Cloud maps
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Regardless of where you set an SDB URI, the format is the same:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE50]'
+  prefs: []
+  type: TYPE_PRE
+- en: This can be particularly useful with cloud providers, all of which require credentials,
+    but many of which also use more complex configuration blocks that should be checked
+    into revision control.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Take, for example, the `openstack` Cloud provider:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE51]'
+  prefs: []
+  type: TYPE_PRE
+- en: In this organization, `compute_region` and `compute_name` are probably public.
+    And `identity_url` certainly is (else, how would you authenticate?). But the other
+    information should probably be kept hidden.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you've ever set up OpenStack in Salt Cloud, you've probably used a number
+    of other arguments as well, many of which are probably not sensitive. However,
+    a complex configuration file should probably be kept in a revision control system.
+    With SDB URIs, you can do so without having to worry about exposing the data that
+    is sensitive.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Troubleshooting SDB modules
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We've already covered some error handling that can be added to our SDB modules,
+    but you may still encounter problems. Like grains and pillars, the most common
+    involve data not showing up when expected.
+  prefs: []
+  type: TYPE_NORMAL
+- en: SDB data not showing up
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: You may find that when you include an SDB URI in your configuration, it doesn't
+    resolve as you think it might. If you've made typos in the earlier SDB code, you
+    have probably already figured out that `sdb.get` is more than happy to raise trace
+    backs when there are syntactical errors. But if using `salt-call` on `sdb.get`
+    doesn't raise any errors that you can see, then it may not be a problem in your
+    code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Before you start to blame other services, it''s best to make sure that you''re
+    not to blame. Start logging key pieces of information, to make sure it''s showing
+    up as you expect. Make sure to add the following lines toward the top of your
+    module:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE52]'
+  prefs: []
+  type: TYPE_PRE
+- en: Then you can use `log.debug()` to log those pieces of information. If you're
+    logging sensitive pieces of information, you may want to use `log.trace()` instead,
+    just in case you forget to take the log messages out.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You may want to start with logging the information coming into each function,
+    to make sure it looks like you expect. Let''s go ahead and take a look at our
+    `get()` example from earlier, with some logging added in:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE53]'
+  prefs: []
+  type: TYPE_PRE
+- en: We've only added a couple of log lines here, but we used Python's `pprint` library
+    to format one of them. The `pprint.pformat()` function formats text that is meant
+    to be stored in a string or passed to a function, instead of just dumping it to
+    `STDOUT` like `pprint.pprint()` does.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If your SDB module connects to a service, you may discover that the service
+    itself is unavailable. This may be due to unknown or unintended firewall rules,
+    a network error, or actual downtime on the service itself. Scattering log messages
+    throughout your code will help you discover where it is falling down, so that
+    you can address it there.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The three areas of Salt configuration that can be hooked into using the loader
+    system are dynamic grains, external pillars, and SDB. Grains are generated on
+    the Minion, pillars are generated on the Master, and SDB URIs can be configured
+    in either place.
+  prefs: []
+  type: TYPE_NORMAL
+- en: SDB modules allow configuration to be stored outside, but referenced from, the
+    various parts of the Salt configuration. When accessed from execution modules,
+    they are resolved on the Minion. When accessed from Salt-Cloud, they are resolved
+    on whichever system is running Salt Cloud.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have configuration out of the way, it's time to dive into configuration
+    management, by wrapping state modules around execution modules.
+  prefs: []
+  type: TYPE_NORMAL

@@ -1,0 +1,278 @@
+- en: Chapter 10. Monitoring with Beacons
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '**Beacons** are a newer type of module in Salt which are designed to watch
+    resources on a Minion, and report to the Master when those resources fall out
+    of alignment with what you expect them to look like. In this chapter, we will
+    discuss:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Monitoring external systems with Salt
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Troubleshooting beacons
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Watching for data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'There are two basic types of monitoring services: those that record data, and
+    those that trigger alerts based on that data. On the surface, beacons may look
+    like the second type. They run on a regular interval (as frequently as every second,
+    by default) and when they find data that is important, they send it up to the
+    Master.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, because beacons have access to execution modules on the Minion that
+    they are running on, they can interact with any program on the Minion that an
+    execution module can.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Keeping an eye on things
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Let's go ahead and put together a beacon that monitors `nspawn` containers.
+    It doesn't need to be very complex; indeed, beacons should be as simple as possible,
+    since they are expected to run so often. All that our beacon needs to do is keep
+    an eye on containers that should be running, and those that should be absent.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Containers have become very popular in the modern data center, thanks in large
+    part to Docker and LXC. systemd has its own containering system called `nspawn`,
+    which is a very powerful system in its own right. A number of Linux distributions
+    now ship with systemd, which means that you may already have `nspawn` installed.
+    You can find a more complete discussion of `nspawn` itself on Lennart Pottering''s
+    blog at:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[http://0pointer.net/blog/systemd-for-administrators-part-xxi.html](http://0pointer.net/blog/systemd-for-administrators-part-xxi.html)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we need to set up our `__virtual__()` function. Since `nspawn` is part
+    of `systemd`, and not every Minion will have `systemd` on it, we need to perform
+    a check for it. However, since we''re going to use the `nspawn` execution module
+    that ships with Salt, and it already contains a `__virtual__()` function, all
+    that we really need to do is make sure it is present:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: It makes sense to check specifically for `nspawn.list_running`, since that is
+    the only function that we'll be using here.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Validating configuration
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Beacons will not run unless they know which data to watch for. You probably
+    saw the configuration example in the preceding docstring. The `validate()` function
+    checks the configuration that was passed to this beacon, to make sure that it
+    has been formatted in the correct way.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we were going to be minimalistic about this, then we would just check to
+    make sure that the correct type of data has been passed in. In our case, we''re
+    expecting a dictionary, so we could get away with just checking for that:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'But we''ll go ahead and add just a little more, to make sure that, at the very
+    least, the containers listed are set to one of the required values: `running`
+    or `absent`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: You can skip this function if you need to; if it's not there, then Salt will
+    skip over it. However, it is a good idea to have it there, to help keep bad configuration
+    from causing the beacon to crash with a stacktrace.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The beacon() function
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: As with some of the other types of modules, beacons have a function that is
+    required, since Salt will look for it when trying to use the module. Not surprisingly,
+    this function is called `beacon()`. It is passed the same `config` data as the
+    `validate()` function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Our beacon''s only job is to use `machinectl` to report which containers are
+    currently running on the Minion. Its output looks something like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: We could call this manually and parse the output ourselves, but as I said before,
+    there is already an `nspawn` execution module that ships with Salt, and it has
+    a `list_running()` function that does all of that for us.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'All that we have to do then is get a list of the nodes that are reported as
+    running, and then match it against the list of nodes in the `config` dictionary:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: Rather than stepping through the list of running nodes, we iterate through the
+    list of nodes that were configured. If a node that should be absent shows up in
+    the running list, then we mark it as running. If it should be running but doesn't
+    show up, then we mark it as absent.
+  prefs: []
+  type: TYPE_NORMAL
+- en: That last `else` statement will notify us if something that wasn't marked as
+    running or absent showed up in the list. Since we already did that check in the
+    `validate()` function, this shouldn't be needed. But it's not a bad idea to keep
+    this kind of check in there, just in case your `validate()` function missed something.
+    If you start seeing events from this module that have nodes set to `False`, then
+    you know you need to go back and check the `validate()` function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you''ve been following along and have already started testing this module,
+    then you may notice something, well, obnoxious. By default, beacons are executed
+    once a second. You can change that interval on a per-module basis:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: With that configuration, the `nspawn` beacon will only be executed once every
+    five seconds, instead of every second. That will cut down on the chatter, but
+    also means that your beacon won't necessarily be watching as often as you'd like.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s go ahead and add some code, which will allow the beacon to run as often
+    as you''d like, but send updates on a less regular basis. Let''s say that you
+    have your beacon tied into a monitoring service (through the event reactor), and
+    you want up-to-the-second monitoring, but you don''t need to be told more than
+    once every five minutes that, "oh, by the way, the container is still down":'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: First, we set up an alert interval called `nspawn_alert_interval`, and default
+    it to `360` seconds (or, every five minutes). Because we used `config.get` to
+    look for it, we can configure it in either the `master` or `minion` configuration
+    files, or in a grain or a pillar for the Minion.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Then we make a note of the current time using Python's own `time.time()` function.
+    This function reports the number of seconds since the epoch, which is perfect
+    for our purposes, since our alert interval is also configured in seconds.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As we iterate through the list of configured nodes, we check to see when the
+    last notification was sent out. This is stored in a grain called `nspawn_last_notify`.
+    This isn't a grain that your users will be updating; this is one that the beacon
+    will keep track of.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In fact, you will see that happen for each of the branches in the `if` statement.
+    Whenever the beacon detects that an alert should be sent, it first checks to see
+    if an alert has already been sent during the specified interval. If not, then
+    it sets up an event to be returned.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Watching for beacons
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Beacons use Salt''s event bus to send notifications to the Master. You can
+    use the `event` function in the `state` runner to watch the beacons come in on
+    the event bus. The return from this particular beacon module will look like the
+    following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: Take note of the tag, which contains `salt/beacon/`, followed by the ID of the
+    Minion (`alton`) that fired the beacon, and then the name of the beacon itself
+    (`nspawn`).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The final beacon module
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'When all is said and done, our final beacon module will look like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: Troubleshooting beacons
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Beacons are a type of module that require both a running Master and a running
+    Minion. Running the `salt-master` service in the foreground won''t give you much
+    insight, since the code will be running on the Minion, but running the `salt-minion`
+    service in the foreground will be very helpful:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Set aside a Minion that only has your beacon configured and no others. By default,
+    these beacons will run every second, and that can generate very noisy logs indeed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: Imagine several beacons running at once, each logging its own data for what
+    it's currently doing. That will get old fast.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You will also want to keep an event listener open on the Master:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: Fortunately, beacons are not the sort of thing that you really need to wait
+    around for; just make the machine exhibit the kind of behavior that you're looking
+    for, and then start up the `salt-minion` process. Just make sure to test for any
+    variation of the behavior that you expect to find, whether or not it is expected
+    to return an event.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Beacons give Minions the ability to raise events based on monitored conditions.
+    A `validate()` function is helpful for ensuring that the configuration is correct,
+    but it is not required. A `beacon()` function is required, as it is the function
+    that performs the actual monitoring. Use execution modules when possible to perform
+    the heavy lifting. Beacons can run at very short intervals, but by having them
+    store data in grains, you can set notifications at longer intervals.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now that we have all of the Minion-side modules in the book out of the way,
+    let''s go back and finish up with some Master-side modules. Next up: extending
+    the Master.'
+  prefs: []
+  type: TYPE_NORMAL
