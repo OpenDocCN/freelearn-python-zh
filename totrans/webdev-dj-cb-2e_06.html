@@ -1,0 +1,591 @@
+<html><head></head><body><div class="chapter" title="Chapter&#xA0;6.&#xA0;Model Administration"><div class="titlepage"><div><div><h1 class="title"><a id="ch06"/>Chapter 6. Model Administration</h1></div></div></div><p>In this chapter, we will cover the following topics:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Customizing columns on the change list page</li><li class="listitem" style="list-style-type: disc">Creating admin actions</li><li class="listitem" style="list-style-type: disc">Developing change list filters</li><li class="listitem" style="list-style-type: disc">Customizing default admin settings</li><li class="listitem" style="list-style-type: disc">Inserting a map on a change form</li></ul></div><div class="section" title="Introduction"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec64"/>Introduction</h1></div></div></div><p>The Django framework comes with a built-in administration system for your models. With very little effort, you can set up filterable, searchable, and sortable lists for browsing your models and configure forms to add and edit data. In this chapter, we will go through the advanced techniques to customize administration by developing some practical cases.</p></div></div>
+<div class="section" title="Customizing columns on the change list page"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec65"/>Customizing columns on the change list page</h1></div></div></div><p>Change list views in the default Django administration system let you have an overview of all instances<a class="indexterm" id="id287"/> of the specific models. By default, the <code class="literal">list_display</code> model admin property controls the fields that are shown in different <a class="indexterm" id="id288"/>columns. Additionally, you can have custom functions set there that return the data from relations or display custom HTML. In this recipe, we will create a special function for the <code class="literal">list_display</code> property that shows an image in one of the columns of the list view. As a bonus, we will make one field directly editable in the list view by adding the <code class="literal">list_editable</code> setting.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec214"/>Getting ready</h2></div></div></div><p>To start with, make sure that <code class="literal">django.contrib.admin</code> is in <code class="literal">INSTALLED_APPS</code> in the settings and <code class="literal">AdminSite</code> is hooked in the URL configuration. Then, create a new <code class="literal">products</code> app and put it under <code class="literal">INSTALLED_APPS</code>. This app will have the <code class="literal">Product</code> and <code class="literal">ProductPhoto</code> models, where one product might have multiple photos. For this example, we will also be using <code class="literal">UrlMixin</code>, which was defined in the <span class="emphasis"><em>Creating a model mixin with URL-related methods</em></span> recipe in <a class="link" href="ch02.html" title="Chapter 2. Database Structure">Chapter 2</a>, <span class="emphasis"><em>Database Structure</em></span>.</p><p>Let's <a class="indexterm" id="id289"/>create the <code class="literal">Product</code> and <code class="literal">ProductPhoto</code> models<a class="indexterm" id="id290"/> in the <code class="literal">models.py</code> file, as follows:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong># products/models.py</strong></span>
+# -*- coding: UTF-8 -*-
+from __future__ import unicode_literals
+import os
+from django.db import models
+from django.utils.timezone import now as timezone_now
+from django.utils.translation import ugettext_lazy as _
+from django.core.urlresolvers import reverse
+from django.core.urlresolvers import NoReverseMatch
+from django.utils.encoding import python_2_unicode_compatible
+from utils.models import UrlMixin
+
+def upload_to(instance, filename):
+    now = timezone_now()
+    filename_base, filename_ext = os.path.splitext(filename)
+    return "products/%s/%s%s" % (
+        instance.product.slug,
+        now.strftime("%Y%m%d%H%M%S"),
+        filename_ext.lower(),
+    )
+
+@python_2_unicode_compatible
+class Product(UrlMixin):
+    title = models.CharField(_("title"), max_length=200)
+    slug = models.SlugField(_("slug"), max_length=200)
+    description = models.TextField(_("description"), blank=True)
+    price = models.DecimalField(_("price (€)"), max_digits=8,
+        decimal_places=2, blank=True, null=True)
+
+    class Meta:
+        verbose_name = _("Product")
+        verbose_name_plural = _("Products")
+
+    def __str__(self):
+        return self.title
+
+    def get_url_path(self):
+        try:
+            return reverse("product_detail", kwargs={
+                "slug": self.slug
+            })
+        except NoReverseMatch:
+            return ""
+
+@python_2_unicode_compatible
+class ProductPhoto(models.Model):
+    product = models.ForeignKey(Product)
+    photo = models.ImageField(_("photo"), upload_to=upload_to)
+
+    class Meta:
+        verbose_name = _("Photo")
+        verbose_name_plural = _("Photos")
+
+    def __str__(self):
+        return self.photo.name</pre></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec215"/>How to do it...</h2></div></div></div><p>We will<a class="indexterm" id="id291"/> create a simple administration for<a class="indexterm" id="id292"/> the <code class="literal">Product</code> model that will have instances of the <code class="literal">ProductPhoto</code> model attached to the product as inlines.</p><p>In the <code class="literal">list_display</code> property, we will list the <code class="literal">get_photo()</code> method of the model admin that will be used to show the first photo from many-to-one relationship.</p><p>Let's create an <code class="literal">admin.py</code> file with the following content:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong># products/admin.py</strong></span>
+# -*- coding: UTF-8 -*-
+from __future__ import unicode_literals
+from django.db import models
+from django.contrib import admin
+from django.utils.translation import ugettext_lazy as _
+from django.http import HttpResponse
+
+from .models import Product, ProductPhoto
+
+class ProductPhotoInline(admin.StackedInline):
+    model = ProductPhoto
+    extra = 0
+
+class ProductAdmin(admin.ModelAdmin):
+    list_display = ["title", "get_photo", "price"]
+    list_editable = ["price"]
+
+    fieldsets = (
+        (_("Product"), {
+            "fields": ("title", "slug", "description", "price"),
+        }),
+    )
+    prepopulated_fields = {"slug": ("title",)}
+    inlines = [ProductPhotoInline]
+
+    def get_photo(self, obj):
+        project_photos = obj.productphoto_set.all()[:1]
+        if project_photos.count() &gt; 0:
+            return """&lt;a href="%(product_url)s" target="_blank"&gt;
+                &lt;img src="%(photo_url)s" alt="" width="100" /&gt;
+            &lt;/a&gt;""" % {
+                "product_url": obj.get_url_path(),
+                "photo_url":  project_photos[0].photo.url,
+            }
+        return ""
+    get_photo.short_description = _("Preview")
+    get_photo.allow_tags = True
+
+admin.site.register(Product, ProductAdmin)</pre></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec216"/>How it works...</h2></div></div></div><p>If you<a class="indexterm" id="id293"/> look at the product administration list in the<a class="indexterm" id="id294"/> browser, it will look similar to the following screenshot:</p><div class="mediaobject"><img alt="How it works..." src="graphics/B04912_06_01.jpg"/></div><p>Usually, <a class="indexterm" id="id295"/>the <code class="literal">list_display</code> property defines the<a class="indexterm" id="id296"/> fields to list in the administration list view; for example, <code class="literal">title</code> and <code class="literal">price</code> are the fields of the <code class="literal">Product</code> model.</p><p>Besides the normal field names, the <code class="literal">list_display</code> property accepts a function or another callable, the name of an attribute of the admin model, or the name of the attribute of the model.</p><div class="note" style="" title="Note"><div class="inner"><h3 class="title"><a id="tip15"/>Tip</h3><p>In Python, a callable is a function, method, or a class that implements the <code class="literal">__call__()</code> method. You can check whether a variable is callable using the <code class="literal">callable()</code> function.</p></div></div><p>Each<a class="indexterm" id="id297"/> callable that you use in <code class="literal">list_display</code> will get a model instance passed as the first argument. Therefore, in our example, we <a class="indexterm" id="id298"/>have the <code class="literal">get_photo()</code> method of the model admin that retrieves the <code class="literal">Product</code> instance as <code class="literal">obj</code>. The method tries to get the first <code class="literal">ProductPhoto</code> from the many-to-one relationship and, if it exists, it returns the HTML with the <code class="literal">&lt;img&gt;</code> tag linked to the detail page of <code class="literal">Product</code>.</p><p>You can set several attributes for the callables that you use in <code class="literal">list_display</code>. The <code class="literal">short_description</code> attribute of the callable defines the title shown for the column. The <code class="literal">allow_tags</code> attribute informs administration to not escape the HTML values.</p><p>In addition, the <span class="strong"><strong>Price</strong></span> field is made editable by the <code class="literal">list_editable</code> setting and there is a <span class="strong"><strong>Save</strong></span> button at the bottom to save the whole list of products.</p></div><div class="section" title="There's more..."><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec217"/>There's more...</h2></div></div></div><p>Ideally, the <code class="literal">get_photo()</code> method shouldn't have any hardcoded HTML in it; however, it should load and render a template from a file. For this, you can utilize the <code class="literal">render_to_string()</code> function from <code class="literal">django.template.loader</code>. Then, your presentation logic will be separated from the business logic. I am leaving this as an exercise for you.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec218"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">The <span class="emphasis"><em>Creating a model mixin with URL-related methods</em></span> recipe in <a class="link" href="ch02.html" title="Chapter 2. Database Structure">Chapter 2</a>, <span class="emphasis"><em>Database Structure</em></span></li><li class="listitem" style="list-style-type: disc">The <span class="emphasis"><em>Creating admin actions</em></span> recipe</li><li class="listitem" style="list-style-type: disc">The <span class="emphasis"><em>Developing change list filters</em></span> recipe</li></ul></div></div></div>
+<div class="section" title="Creating admin actions"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec66"/>Creating admin actions</h1></div></div></div><p>The Django<a class="indexterm" id="id299"/> administration system provides actions that we can execute for selected items in the list. There is one action given by default and it is used to delete selected instances. In this recipe, we will create an additional action for the list of the <code class="literal">Product</code> model that allows the administrators to export selected products to Excel spreadsheets.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec219"/>Getting ready</h2></div></div></div><p>We will start with the <code class="literal">products</code> app that we created in the previous recipe.</p><p>Make sure that you have the <code class="literal">xlwt</code> module installed in your virtual environment to create an Excel spreadsheet:</p><div class="informalexample"><pre class="programlisting">(myproject_env)$ pip install xlwt</pre></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec220"/>How to do it...</h2></div></div></div><p>Admin actions are functions that take three arguments: the current <code class="literal">ModelAdmin</code> value, the current <code class="literal">HttpRequest</code> value, and the <code class="literal">QuerySet</code> value containing the selected items. Perform the <a class="indexterm" id="id300"/>following steps to create a custom admin action:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Let's create an <code class="literal">export_xls()</code> function in the <code class="literal">admin.py</code> file of the products app, as follows:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong># products/admin.py</strong></span>
+# -*- coding: UTF-8 -*-
+from __future__ import unicode_literals
+import xlwt
+# ... other imports ...
+
+def export_xls(modeladmin, request, queryset):
+    response = HttpResponse(
+        content_type="application/ms-excel"
+    )
+    response["Content-Disposition"] = "attachment; "\
+        "filename=products.xls"
+    wb = xlwt.Workbook(encoding="utf-8")
+    ws = wb.add_sheet("Products")
+
+    row_num = 0
+
+    ### Print Title Row ###
+    columns = [
+        # column name, column width
+        ("ID", 2000),
+        ("Title", 6000),
+        ("Description", 8000),
+        ("Price (€)", 3000),
+    ]
+
+    header_style = xlwt.XFStyle()
+    header_style.font.bold = True
+
+    for col_num, (item, width) in enumerate(columns):
+        ws.write(row_num, col_num, item, header_style)
+        # set column width
+        ws.col(col_num).width = width
+
+    text_style = xlwt.XFStyle()
+    text_style.alignment.wrap = 1
+
+    price_style = xlwt.XFStyle()
+    price_style.num_format_str = "0.00"
+
+    styles = [
+        text_style, text_style, text_style,
+        price_style, text_style
+    ]
+
+    for obj in queryset.order_by("pk"):
+        row_num += 1
+        project_photos = obj.productphoto_set.all()[:1]
+        url = ""
+        if project_photos:
+            url = "http://{0}{1}".format(
+                request.META['HTTP_HOST'],
+                project_photos[0].photo.url,
+            )
+        row = [
+            obj.pk,
+            obj.title,
+            obj.description,
+            obj.price,
+            url,
+        ]
+        for col_num, item in enumerate(row):
+            ws.write(
+                row_num, col_num, item, styles[col_num]
+            )
+
+    wb.save(response)
+    return response
+
+export_xls.short_description = _("Export XLS")</pre></div></li><li class="listitem">Then, add<a class="indexterm" id="id301"/> the <code class="literal">actions</code> setting to <code class="literal">ProductAdmin</code>, as follows:<div class="informalexample"><pre class="programlisting">class ProductAdmin(admin.ModelAdmin):
+    # ...
+    actions = [export_xls]</pre></div></li></ol></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec221"/>How it works...</h2></div></div></div><p>If you take a look at the product administration list page in the browser, you will see a new action called <span class="strong"><strong>Export XLS</strong></span>, along with the default <span class="strong"><strong>Delete selected Products</strong></span> action, as shown<a class="indexterm" id="id302"/> in the following screenshot:</p><div class="mediaobject"><img alt="How it works..." src="graphics/B04912_06_02.jpg"/></div><p>By default, admin actions do something with <code class="literal">QuerySet</code> and redirect the administrator back to the change list page. However, for more complex actions like these, <code class="literal">HttpResponse</code> can be returned. The <code class="literal">export_xls()</code> function returns <code class="literal">HttpResponse</code> with the content type of the Excel spreadsheet. Using the Content-Disposition header, we set the response to be downloadable with the <code class="literal">products.xls</code> file.</p><p>Then, we <a class="indexterm" id="id303"/>use the xlwt Python module to create the Excel file.</p><p>At first, a workbook with UTF-8 encoding is created. Then, we add a sheet named <code class="literal">Products</code> to it. We will be using the <code class="literal">write()</code> method of the sheet to set the content and style for each cell and the <code class="literal">col()</code> method to retrieve the column and set its width.</p><p>To get an overview of all the columns in the sheet, we will create a list of tuples with column names and widths. Excel uses some magical units for the widths of the columns. They are 1/256 of the width of the zero character in the default font. Next, we will define the header style as bold. As we have the columns defined, we will loop through them and fill the first row with the column names, also assigning the bold style to them.</p><p>Then, we will create a style for normal cells and prices. The text in normal cells will be wrapped in multiple lines. The prices will have a special number style with two numbers after the decimal point.</p><p>Lastly, we will go through <code class="literal">QuerySet</code> of the selected products ordered by ID and print the specified fields in the corresponding cells, also applying the specific styles.</p><p>The workbook is saved to the file-like <code class="literal">HttpResponse</code> object and the resulting Excel sheet looks similar to the following:</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>ID</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Title</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Description</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Price (€)</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Preview</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>1</p>
+</td><td style="text-align: left" valign="top">
+<p>Ryno</p>
+</td><td style="text-align: left" valign="top">
+<p>With the Ryno microcycle, you're not limited to the street or the bike lane. It's a transitional vehicle—it goes most places where a person can walk or ride a bike.</p>
+</td><td style="text-align: left" valign="top">
+<p>3865.00</p>
+</td><td style="text-align: left" valign="top">
+<p><code class="literal">http://127.0.0.1:8000/media/products/ryno/20140523044813.jpg</code></p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>2</p>
+</td><td style="text-align: left" valign="top">
+<p>Mercury Skate</p>
+</td><td style="text-align: left" valign="top">
+<p>The main purpose of designing this Mercury Skate is to decrease the skater's fatigue and provide them with an easier and smoother ride on the pavement.</p>
+</td><td style="text-align: left" valign="top"> </td><td style="text-align: left" valign="top">
+<p><code class="literal">http://127.0.0.1:8000/media/products/mercury-skate/20140521030128.png</code></p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>4</p>
+</td><td style="text-align: left" valign="top">
+<p>Detroit Electric Car</p>
+</td><td style="text-align: left" valign="top">
+<p>The Detroit Electric SP:01 is a limited-edition, two-seat, pure-electric sports car that sets new standards <a class="indexterm" id="id304"/>for performance and handling in electric vehicles.</p>
+</td><td style="text-align: left" valign="top"> </td><td style="text-align: left" valign="top">
+<p><code class="literal">http://127.0.0.1:8000/media/products/detroit-electric-car/20140521033122.jpg</code></p>
+</td></tr></tbody></table></div></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec222"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><a class="link" href="ch09.html" title="Chapter 9. Data Import and Export">Chapter 9</a>, <span class="emphasis"><em>Data Import and Export</em></span></li><li class="listitem" style="list-style-type: disc">The <span class="emphasis"><em>Customizing columns on the change list page</em></span> recipe</li><li class="listitem" style="list-style-type: disc">The <span class="emphasis"><em>Developing change list filters</em></span> recipe</li></ul></div></div></div>
+<div class="section" title="Developing change list filters"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec67"/>Developing change list filters</h1></div></div></div><p>If you want the administrators to be able to filter the change list by date, relation, or field choices, you<a class="indexterm" id="id305"/> need to use the <code class="literal">list_filter</code> property for the admin model. Additionally, there is a possibility of having custom-tailored filters. In this recipe, we will add a filter that allows you to select products by the number of photos attached to them.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec223"/>Getting ready</h2></div></div></div><p>Let's start with the <code class="literal">products</code> app that we created in the previous recipe.</p></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec224"/>How to do it...</h2></div></div></div><p>Execute the following two steps:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">In the <code class="literal">admin.py</code> file, create a <code class="literal">PhotoFilter</code> class extending from <code class="literal">SimpleListFilter</code>, as follows:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong># products/admin.py</strong></span>
+# -*- coding: UTF-8 -*-
+# ... all previous imports go here ...
+from django.db import models
+
+class PhotoFilter(admin.SimpleListFilter):
+    # Human-readable title which will be displayed in the
+    # right admin sidebar just above the filter options.
+    title = _("photos")
+
+    # Parameter for the filter that will be used in the
+    # URL query.
+    parameter_name = "photos"
+
+    def lookups(self, request, model_admin):
+        """
+        Returns a list of tuples. The first element in each
+        tuple is the coded value for the option that will
+        appear in the URL query. The second element is the
+        human-readable name for the option that will appear
+        in the right sidebar.
+        """
+        return (
+            ("zero", _("Has no photos")),
+            ("one", _("Has one photo")),
+            ("many", _("Has more than one photo")),
+        )
+
+    def queryset(self, request, queryset):
+        """
+        Returns the filtered queryset based on the value
+        provided in the query string and retrievable via
+        `self.value()`.
+        """
+        qs = queryset.annotate(
+            num_photos=models.Count("productphoto")
+        )
+        if self.value() == "zero":
+            qs = qs.filter(num_photos=0)
+        elif self.value() == "one":
+            qs = qs.filter(num_photos=1)
+        elif self.value() == "many":
+            qs = qs.filter(num_photos__gte=2)
+        return qs</pre></div></li><li class="listitem">Then, add a list filter to <code class="literal">ProductAdmin</code>, as shown in the following code:<div class="informalexample"><pre class="programlisting">class ProductAdmin(admin.ModelAdmin):
+    # ...
+    list_filter = [PhotoFilter]</pre></div></li></ol></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec225"/>How it works...</h2></div></div></div><p>The list<a class="indexterm" id="id306"/> filter that we just created will be shown in the sidebar of the product list, as follows:</p><div class="mediaobject"><img alt="How it works..." src="graphics/B04912_06_03.jpg"/></div><p>The <code class="literal">PhotoFilter</code> class has translatable title and query parameter names as properties. It also has<a class="indexterm" id="id307"/> two methods: the <code class="literal">lookups()</code> method that defines the choices of the filter and the <code class="literal">queryset()</code> method that defines how to filter <code class="literal">QuerySet</code> objects when a specific value is selected.</p><p>In the <code class="literal">lookups()</code> method, we define three choices: there are no photos, there is one photo, and there is more than one photo attached. In the <code class="literal">queryset()</code> method, we use the <code class="literal">annotate()</code> method of <code class="literal">QuerySet</code> to select the count of photos for each product. This count of the photos is then filtered according to the selected choice.</p><p>To learn <a class="indexterm" id="id308"/>more about the aggregation functions such as <code class="literal">annotate()</code>, refer to the official Django documentation at <a class="ulink" href="https://docs.djangoproject.com/en/1.8/topics/db/aggregation/">https://docs.djangoproject.com/en/1.8/topics/db/aggregation/</a>.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec226"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">The <span class="emphasis"><em>Customizing columns on the change list page</em></span> recipe</li><li class="listitem" style="list-style-type: disc">The <span class="emphasis"><em>Creating admin actions</em></span> recipe</li><li class="listitem" style="list-style-type: disc">The <span class="emphasis"><em>Customizing default admin settings</em></span> recipe</li></ul></div></div></div>
+<div class="section" title="Customizing default admin settings"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec68"/>Customizing default admin settings</h1></div></div></div><p>Django apps as well as third-party apps come with their own administration settings; however, there is a mechanism to switch these settings off and use your own better administration settings. In this recipe, you will learn how to exchange the administration settings<a class="indexterm" id="id309"/> for the <code class="literal">django.contrib.auth</code> app with custom administration settings.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec227"/>Getting ready</h2></div></div></div><p>Create a <code class="literal">custom_admin</code> app and put this app under <code class="literal">INSTALLED_APPS</code> in the settings.</p></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec228"/>How to do it...</h2></div></div></div><p>Insert the following content in the new <code class="literal">admin.py</code> file in the <code class="literal">custom_admin</code> app:</p><div class="informalexample"><pre class="programlisting"># custom_admin/admin.py
+# -*- coding: UTF-8 -*-
+from __future__ import unicode_literals
+from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin, GroupAdmin
+from django.contrib.auth.admin import User, Group
+from django.utils.translation import ugettext_lazy as _
+from django.core.urlresolvers import reverse
+from django.contrib.contenttypes.models import ContentType
+
+class UserAdminExtended(UserAdmin):
+    list_display = ("username", "email", "first_name",
+        "last_name", "is_active", "is_staff", "date_joined",
+        "last_login")
+    list_filter = ("is_active", "is_staff", "is_superuser",
+        "date_joined", "last_login")
+    ordering = ("last_name", "first_name", "username")
+    save_on_top = True
+
+class GroupAdminExtended(GroupAdmin):
+    list_display = ("__unicode__", "display_users")
+    save_on_top = True
+
+    def display_users(self, obj):
+        links = []
+        for user in obj.user_set.all():
+            ct = ContentType.objects.get_for_model(user)
+            url = reverse(
+                "admin:{}_{}_change".format(
+                    ct.app_label, ct.model
+                ),
+                args=(user.id,)
+            )
+            links.append(
+                """&lt;a href="{}" target="_blank"&gt;{}&lt;/a&gt;""".format(
+                    url,
+                    "{} {}".format(
+                        user.first_name, user.last_name
+                    ).strip() or user.username,
+                )
+            )
+        return u"&lt;br /&gt;".join(links)
+    display_users.allow_tags = True
+    display_users.short_description = _("Users")
+   
+admin.site.unregister(User)
+admin.site.unregister(Group)
+admin.site.register(User, UserAdminExtended)
+admin.site.register(Group, GroupAdminExtended)</pre></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec229"/>How it works...</h2></div></div></div><p>The default <a class="indexterm" id="id310"/>user administration list looks similar to the following screenshot:</p><div class="mediaobject"><img alt="How it works..." src="graphics/B04912_06_04.jpg"/></div><p>The <a class="indexterm" id="id311"/>default group administration list looks similar to the following screenshot:</p><div class="mediaobject"><img alt="How it works..." src="graphics/B04912_06_05.jpg"/></div><p>In this recipe, we created two model admin classes, <code class="literal">UserAdminExtended</code> and <code class="literal">GroupAdminExtended</code>, which extend the contributed <code class="literal">UserAdmin</code> and <code class="literal">GroupAdmin</code> classes, respectively, and overwrite some of the properties. Then, we unregistered the existing administration classes for the <code class="literal">User</code> and <code class="literal">Group</code> models and registered the new modified ones.</p><p>The <a class="indexterm" id="id312"/>following screenshot is how the user administration will look now:</p><div class="mediaobject"><img alt="How it works..." src="graphics/B04912_06_06.jpg"/></div><p>The modified user administration settings show more fields than the default settings in the list view, add additional filters and ordering options, and show <span class="strong"><strong>Submit</strong></span> buttons at the top of the editing form.</p><p>In the change list of the new group administration settings, we will display the users who are assigned to the specific groups. This looks similar to the following screenshot in the browser:</p><div class="mediaobject"><img alt="How it works..." src="graphics/B04912_06_07.jpg"/></div></div><div class="section" title="There's more..."><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec230"/>There's more...</h2></div></div></div><p>In our<a class="indexterm" id="id313"/> Python code, we used a new way to format the strings. To learn more about the usage of the <code class="literal">format()</code> method of the string compared to <a class="indexterm" id="id314"/>the old style, refer to the following URL: <a class="ulink" href="https://pyformat.info/">https://pyformat.info/</a>.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec231"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">The <span class="emphasis"><em>Customizing columns on the change list page</em></span> recipe</li><li class="listitem" style="list-style-type: disc">The <span class="emphasis"><em>Inserting a map into a change form</em></span> recipe</li></ul></div></div></div>
+<div class="section" title="Inserting a map into a change form"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec69"/>Inserting a map into a change form</h1></div></div></div><p>Google Maps offer a JavaScript API to insert maps into your websites. In this recipe, we will create<a class="indexterm" id="id315"/> a <code class="literal">locations</code> app with the <code class="literal">Location</code> model <a class="indexterm" id="id316"/>and extend the template of the change form in order to add a map where an administrator can find and mark geographical coordinates of a location.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec232"/>Getting ready</h2></div></div></div><p>We will start with the <code class="literal">locations</code> app that should be put under <code class="literal">INSTALLED_APPS</code> in the settings. Create a <code class="literal">Location</code> model there with a title, description, address, and geographical <a class="indexterm" id="id317"/>coordinates, as<a class="indexterm" id="id318"/> follows:</p><div class="informalexample"><pre class="programlisting"># locations/models.py
+# -*- coding: UTF-8 -*-
+from __future__ import unicode_literals
+from django.db import models
+from django.utils.translation import ugettext_lazy as _
+from django.utils.encoding import python_2_unicode_compatible
+
+COUNTRY_CHOICES = (
+    ("UK", _("United Kingdom")),
+    ("DE", _("Germany")),
+    ("FR", _("France")),
+    ("LT", _("Lithuania")),
+)
+
+@python_2_unicode_compatible
+class Location(models.Model):
+    title = models.CharField(_("title"), max_length=255,
+        unique=True)
+    description = models.TextField(_("description"), blank=True)
+    street_address = models.CharField(_("street address"),
+        max_length=255, blank=True)
+    street_address2 = models.CharField(
+        _("street address (2nd line)"), max_length=255,
+        blank=True)
+    postal_code = models.CharField(_("postal code"),
+        max_length=10, blank=True)
+    city = models.CharField(_("city"), max_length=255, blank=True)
+    country = models.CharField(_("country"), max_length=2,
+        blank=True, choices=COUNTRY_CHOICES)
+    latitude = models.FloatField(_("latitude"), blank=True,
+        null=True,
+        help_text=_("Latitude (Lat.) is the angle between "
+            "any point and the equator "
+            "(north pole is at 90; south pole is at -90)."))
+    longitude = models.FloatField(_("longitude"), blank=True,
+        null=True,
+        help_text=_("Longitude (Long.) is the angle "
+            "east or west of "
+            "an arbitrary point on Earth from Greenwich (UK), "
+            "which is the international zero-longitude point "
+            "(longitude=0 degrees). "
+            "The anti-meridian of Greenwich is both 180 "
+            "(direction to east) and -180 (direction to west)."))
+    class Meta:
+        verbose_name = _("Location")
+        verbose_name_plural = _("Locations")
+
+    def __str__(self):
+        return self.title</pre></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec233"/>How to do it...</h2></div></div></div><p>The <a class="indexterm" id="id319"/>administration of the <code class="literal">Location</code> model is as simple as it <a class="indexterm" id="id320"/>can be. Perform the following steps:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Let's create the administration settings for the <code class="literal">Location</code> model. Note that we are using the <code class="literal">get_fieldsets()</code> method to define the field sets with a description rendered from a template, as follows:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong># locations/admin.py</strong></span>
+# -*- coding: UTF-8 -*-
+from __future__ import unicode_literals
+from django.utils.translation import ugettext_lazy as _
+from django.contrib import admin
+from django.template.loader import render_to_string
+from .models import Location
+
+class LocationAdmin(admin.ModelAdmin):
+    save_on_top = True
+    list_display = ("title", "street_address",
+        "description")
+    search_fields = ("title", "street_address",
+        "description")
+
+
+    def get_fieldsets(self, request, obj=None):
+        map_html = render_to_string(
+            "admin/includes/map.html"
+        )
+        fieldsets = [
+            (_("Main Data"), {"fields": ("title",
+                "description")}),
+            (_("Address"), {"fields": ("street_address",
+                "street_address2", "postal_code", "city",
+                "country", "latitude", "longitude")}),
+            (_("Map"), {"description": map_html,
+                "fields": []}),
+        ]
+        return fieldsets
+
+admin.site.register(Location, LocationAdmin)</pre></div></li><li class="listitem">To create a custom change form template, add a new <code class="literal">change_form.html</code> file under <code class="literal">admin/locations/location/</code> in your <code class="literal">templates</code> directory. This<a class="indexterm" id="id321"/> template will extend from the default <code class="literal">admin/change_form.html</code> template and will overwrite the <code class="literal">extrastyle</code> and <code class="literal">field_sets</code> blocks, as<a class="indexterm" id="id322"/> follows:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>{# myproject/templates/admin/locations/location/change_form.html #}</strong></span>
+{% extends "admin/change_form.html" %}
+{% load i18n admin_static admin_modify %}
+{% load url from future %}
+{% load admin_urls %}
+
+{% block extrastyle %}
+    {{ block.super }}
+    &lt;link rel="stylesheet" type="text/css" href="{{ STATIC_URL }}site/css/locating.css" /&gt;
+{% endblock %}
+
+{% block field_sets %}
+    {% for fieldset in adminform %}
+        {% include "admin/includes/fieldset.html" %}
+    {% endfor %}
+    &lt;script type="text/javascript" src="http://maps.google.com/maps/api/js?language=en"&gt;&lt;/script&gt;
+    &lt;script type="text/javascript" src="{{ STATIC_URL }}site/js/locating.js"&gt;&lt;/script&gt;
+{% endblock %}</pre></div></li><li class="listitem">Then, we need to create the template for the map that will be inserted in the <code class="literal">Map</code> field set:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>{# myproject/templates/admin/includes/map.html #}</strong></span>
+{% load i18n %}
+&lt;div class="form-row"&gt;
+    &lt;div id="map_canvas"&gt;
+        &lt;!-- THE GMAPS WILL BE INSERTED HERE
+        DYNAMICALLY --&gt;
+    &lt;/div&gt;
+    &lt;ul id="map_locations"&gt;&lt;/ul&gt;
+    &lt;div class="buttonHolder"&gt;
+        &lt;button id="locate_address" type="button"
+        class="secondaryAction"&gt;
+            {% trans "Locate address" %}
+        &lt;/button&gt;
+        &lt;button id="remove_geo" type="button"
+        class="secondaryAction"&gt;
+            {% trans "Remove from map" %}
+        &lt;/button&gt;
+    &lt;/div&gt;
+&lt;/div&gt;</pre></div></li><li class="listitem">Of <a class="indexterm" id="id323"/>course, the map won't be styled by <a class="indexterm" id="id324"/>default. Therefore, we have to add some CSS, as shown in the following code:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>/* site_static/site/css/locating.css */</strong></span>
+#map_canvas {
+    width:722px;
+    height:300px;
+    margin-bottom: 8px;
+}
+#map_locations {
+    width:722px;
+    margin: 0;
+    padding: 0;
+    margin-bottom: 8px;
+}
+#map_locations li {
+    border-bottom: 1px solid #ccc;
+    list-style: none;
+}
+#map_locations li:first-child {
+    border-top: 1px solid #ccc;
+}
+.buttonHolder {
+    width:722px;
+}
+#remove_geo {
+    float: right;
+}</pre></div></li><li class="listitem">Then, let's create a <code class="literal">locating.js</code> JavaScript file. We will be using jQuery in this file, as jQuery comes with the contributed administration system and makes the work easy and cross-browser. We don't want to pollute the environment with global variables, therefore, we will start with a closure to make a private scope for variables and functions (a closure is the local variables for a function kept alive after the function has returned), as follows:<div class="informalexample"><pre class="programlisting">// site_static/site/js/locating.js
+(function ($, undefined) {
+    var gMap;
+    var gettext = window.gettext || function (val) {
+        return val;
+    };
+    var gMarker;
+
+    // ... this is where all the further JavaScript
+    // functions go ...
+
+}(django.jQuery));</pre></div></li><li class="listitem">We will<a class="indexterm" id="id325"/> create JavaScript functions one by <a class="indexterm" id="id326"/>one. The <code class="literal">getAddress4search()</code> function will collect the <code class="literal">address</code> string from the address fields that can later be used for geocoding, as follows:<div class="informalexample"><pre class="programlisting">function getAddress4search() {
+    var address = [];
+    var sStreetAddress2 = $('#id_street_address2').val();
+    if (sStreetAddress2) {
+        sStreetAddress2 = ' ' + sStreetAddress2;
+    }
+    address.push($('#id_street_address').val() + sStreetAddress2);
+    address.push($('#id_city').val());
+    address.push($('#id_country').val());
+    address.push($('#id_postal_code').val());
+    return address.join(', ');
+}</pre></div></li><li class="listitem">The <code class="literal">updateMarker()</code> function will take the latitude and longitude arguments and draw or move a marker on the map. It also makes the marker draggable:<div class="informalexample"><pre class="programlisting">function updateMarker(lat, lng) {
+    var point = new google.maps.LatLng(lat, lng);
+    if (gMarker) {
+        gMarker.setPosition(point);
+    } else {
+        gMarker = new google.maps.Marker({
+            position: point,
+            map: gMap
+        });
+    }
+    gMap.panTo(point, 15);
+    gMarker.setDraggable(true);
+    google.maps.event.addListener(gMarker, 'dragend', function() {
+        var point = gMarker.getPosition();
+        updateLatitudeAndLongitude(point.lat(), point.lng());
+    });
+}</pre></div></li><li class="listitem">The <code class="literal">updateLatitudeAndLongitude()</code> function takes the latitude and longitude <a class="indexterm" id="id327"/>arguments and updates the values<a class="indexterm" id="id328"/> for the fields with the IDs <code class="literal">id_latitude</code> and <code class="literal">id_longitude</code>, as follows:<div class="informalexample"><pre class="programlisting">function updateLatitudeAndLongitude(lat, lng) {
+    lat = Math.round(lat * 1000000) / 1000000;
+    lng = Math.round(lng * 1000000) / 1000000;
+    $('#id_latitude').val(lat);
+    $('#id_longitude').val(lng);
+}</pre></div></li><li class="listitem">The <code class="literal">autocompleteAddress()</code> function gets the results from Google Maps geocoding and lists them under the map in order to select the correct one, or if there is just one result, it updates the geographical position and address fields, as follows:<div class="informalexample"><pre class="programlisting">function autocompleteAddress(results) {
+    var $foundLocations = $('#map_locations').html('');
+    var i, len = results.length;
+
+    // console.log(JSON.stringify(results, null, 4));
+
+    if (results) {
+        if (len &gt; 1) {
+            for (i=0; i&lt;len; i++) {
+                $('&lt;a href=""&gt;' + results[i].formatted_address + '&lt;/a&gt;').data('gmap_index', i).click(function (e) {
+                    e.preventDefault();
+                    var result = results[$(this).data('gmap_index')];
+                    updateAddressFields(result.address_components);
+                    var point = result.geometry.location;
+                    updateLatitudeAndLongitude(point.lat(), point.lng());
+                    updateMarker(point.lat(), point.lng());
+                    $foundLocations.hide();
+                }).appendTo($('&lt;li&gt;').appendTo($foundLocations));
+            }
+            $('&lt;a href=""&gt;' + gettext('None of the listed') + '&lt;/a&gt;').click(function (e) {
+                e.preventDefault();
+                $foundLocations.hide();
+            }).appendTo($('&lt;li&gt;').appendTo($foundLocations));
+            $foundLocations.show();
+        } else {
+            $foundLocations.hide();
+            var result = results[0];
+            updateAddressFields(result.address_components);
+            var point = result.geometry.location;
+            updateLatitudeAndLongitude(point.lat(), point.lng());
+            updateMarker(point.lat(), point.lng());
+        }
+    }
+}</pre></div></li><li class="listitem">The <code class="literal">updateAddressFields()</code> function takes a nested dictionary with the address <a class="indexterm" id="id329"/>components as an argument and fills<a class="indexterm" id="id330"/> in all the address fields:<div class="informalexample"><pre class="programlisting">function updateAddressFields(addressComponents) {
+    var i, len=addressComponents.length;
+    var streetName, streetNumber;
+    for (i=0; i&lt;len; i++) {
+        var obj = addressComponents[i];
+        var obj_type = obj.types[0];
+        if (obj_type == 'locality') {
+            $('#id_city').val(obj.long_name);
+        }
+        if (obj_type == 'street_number') {
+            streetNumber = obj.long_name;
+        }
+        if (obj_type == 'route') {
+            streetName = obj.long_name;
+        }
+        if (obj_type == 'postal_code') {
+            $('#id_postal_code').val(obj.long_name);
+        }
+        if (obj_type == 'country') {
+            $('#id_country').val(obj.short_name);
+        }
+    }
+    if (streetName) {
+        var streetAddress = streetName;
+        if (streetNumber) {
+            streetAddress += ' ' + streetNumber;
+        }
+        $('#id_street_address').val(streetAddress);
+    }
+}</pre></div></li><li class="listitem">Finally, we have the initialization function that is called on the page load. It attaches<a class="indexterm" id="id331"/> the <code class="literal">onclick</code> event handlers<a class="indexterm" id="id332"/> to the buttons, creates a Google Map, and initially marks the geoposition that is defined in the <code class="literal">latitude</code> and <code class="literal">longitude</code> fields, as follows:<div class="informalexample"><pre class="programlisting">$(function (){
+    $('#locate_address').click(function() {
+        var oGeocoder = new google.maps.Geocoder();
+        oGeocoder.geocode(
+            {address: getAddress4search()},
+            function (results, status) {
+                if (status === google.maps.GeocoderStatus.OK) {
+                    autocompleteAddress(results);
+                } else {
+                    autocompleteAddress(false);
+                }
+            }
+        );
+    });
+
+    $('#remove_geo').click(function() {
+        $('#id_latitude').val('');
+        $('#id_longitude').val('');
+        gMarker.setMap(null);
+        gMarker = null;
+    });
+
+    gMap = new google.maps.Map($('#map_canvas').get(0), {
+        scrollwheel: false,
+        zoom: 16,
+        center: new google.maps.LatLng(51.511214, -0.119824),
+        disableDoubleClickZoom: true
+    });
+    google.maps.event.addListener(gMap, 'dblclick', function(event) {
+        var lat = event.latLng.lat();
+        var lng = event.latLng.lng();
+        updateLatitudeAndLongitude(lat, lng);
+        updateMarker(lat, lng);
+    });
+    $('#map_locations').hide();
+
+    var $lat = $('#id_latitude');
+    var $lng = $('#id_longitude');
+    if ($lat.val() &amp;&amp; $lng.val()) {
+        updateMarker($lat.val(), $lng.val());
+    }
+});</pre></div></li></ol></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec234"/>How it works...</h2></div></div></div><p>If you look at<a class="indexterm" id="id333"/> the location change form in the browser, you <a class="indexterm" id="id334"/>will see a map shown in a field set followed by the field set containing the address fields, as shown in the following screenshot:</p><div class="mediaobject"><img alt="How it works..." src="graphics/B04912_06_08.jpg"/></div><p>Under<a class="indexterm" id="id335"/> the map, there<a class="indexterm" id="id336"/> are two buttons: <span class="strong"><strong>Locate address</strong></span> and <span class="strong"><strong>Remove from map</strong></span>.</p><p>When you click on the <span class="strong"><strong>Locate address</strong></span> button, the geocoding is called in order to search for the geographical coordinates of the entered address. The result of geocoding is either one or more <a class="indexterm" id="id337"/>addresses with latitudes and longitudes in a<a class="indexterm" id="id338"/> nested dictionary format. To see the structure of the nested dictionary in the console of the developer tools, put the following line in the beginning of the <code class="literal">autocompleteAddress()</code> function:</p><div class="informalexample"><pre class="programlisting">console.log(JSON.stringify(results, null, 4));</pre></div><p>If there is just one result, the missing postal code or other missing address fields are populated, the latitude and longitude are filled in and a marker is put at a specific place on the map. If there are more results, the entire list is shown under the map with the option to select the correct one, as shown in the following screenshot:</p><div class="mediaobject"><img alt="How it works..." src="graphics/B04912_06_09.jpg"/></div><p>Then, the administrator can move the marker on the map by dragging and dropping. Also, a double-click <a class="indexterm" id="id339"/>anywhere on the map will update the geographical <a class="indexterm" id="id340"/>coordinates and marker position.</p><p>Finally, if the <span class="strong"><strong>Remove from map</strong></span> button is clicked, the geographical coordinates are cleaned and the marker is removed.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec235"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">The <span class="emphasis"><em>Using HTML5 data attributes</em></span> recipe in <a class="link" href="ch04.html" title="Chapter 4. Templates and JavaScript">Chapter 4</a>, <span class="emphasis"><em>Templates and JavaScript</em></span></li></ul></div></div></div></body></html>

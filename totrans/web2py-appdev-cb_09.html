@@ -1,0 +1,198 @@
+<html><head></head><body>
+  <div id="sbo-rt-content"><div class="chapter"><div class="titlepage"><div><div><h1 class="title"><a id="ch09"/>Chapter 9. Routing Recipes</h1></div></div></div><p>In this chapter, we will cover the following recipes:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><p>Making cleaner URLs with<code class="literal"> routes.py</code>
+</p></li><li class="listitem"><p>Creating a simple router</p></li><li class="listitem"><p>Adding a URL prefix</p></li><li class="listitem"><p>Associating applications with domains</p></li><li class="listitem"><p>Omitting the application name</p></li><li class="listitem"><p>Removing application names and controllers from URLs</p></li><li class="listitem"><p>Replacing underscores with hyphens in URLs</p></li><li class="listitem"><p>Mapping<code class="literal"> favicons.ico</code> and<code class="literal"> robots.txt</code>
+</p></li><li class="listitem"><p>Using URLs to specify the language</p></li></ul></div><div class="section"><div class="titlepage"><div><div><h1 class="title"><a id="ch09lvl1sec01"/>Introduction</h1></div></div></div><p>At its core, web2py contains a dispatcher that maps URLs into function calls. This mapping is called routing, and it can be configured. This may be necessary in order to shorten URLs, or to deploy a web2py application as a replacement for a pre-existing application, by not wanting to break old external links. web2py comes with two routers, that is, a two-way routing configuration. The old one uses regular expressions to match incoming URLs and map them into the app/controller/function. The new style router instead uses a more holistic approach.<a id="id300" class="indexterm"/>
+</p></div><div class="section"><div class="titlepage"><div><div><h1 class="title"><a id="ch09lvl1sec02"/>Making cleaner URLs with routes.py</h1></div></div></div><p>In web2py, incoming URLs are, by default, interpreted as<code class="literal">http://domain.com/application/controller/function/arg1/arg2?var1=val1&amp;var2=val2</code>.<a id="id301" class="indexterm"/>
+</p><p>That is, the first three elements of the URL are interpreted as the web2py application name, controller name, and function name, with the remaining path elements saved in<code class="literal"> request.args</code> (a<span class="strong"><strong> list)</strong></span>, and the query string saved in<code class="literal"> request.vars</code> (a<span class="strong"><strong> dictionary)</strong></span>.<a id="id302" class="indexterm"/>
+</p><p>If the incoming URL has fewer than three path elements, then the missing elements are filled in using the defaults:<code class="literal"> /init/default/index</code>, or, if there is no application named<code class="literal"> init</code>, they are filled using the<code class="literal"> welcome</code> application:<code class="literal"> /welcome/default/index</code>. web2py's<code class="literal"> URL()</code> function creates a URL path (by default, without a scheme or domain) from its component parts: application, controller, function, args list, and vars dictionary. The results are typically used for<code class="literal"> href</code> links in web pages, and for the argument to the redirect function.</p><p>As part of its routing logic, web2py also supports URL rewriting, in which the configuration file,<code class="literal"> routes.py</code>, specifies rules by which<code class="literal"> URL()</code> rewrites the URL it generates, and by which web2py interprets the incoming URLs. There are two independent rewriting mechanisms, depending on which one is configured in<code class="literal"> routes.py</code>.</p><p>One uses regular-expression pattern matching to rewrite URL strings, while the other uses a routing-parameter dictionary to control the rewriting. We refer to these as the<span class="strong"><strong> pattern-based router</strong></span> and the<span class="strong"><strong> parameter-based router</strong></span>, respectively (sometimes they are referred to as the old router and the new router, respectively, but those terms are not very descriptive, and we will avoid them here).<a id="id303" class="indexterm"/>
+</p><p>An example of usage of the old router is given in the following section. An example of usage of the new router is given in the rest of the chapter.</p><div class="section"><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec01"/>Getting ready</h2></div></div></div><p>Normally web URLs have a structure like<code class="literal"> http://host/app/controller/function/args</code>.<a id="id304" class="indexterm"/>
+</p><p>Now imagine an application where each user has its own home page. For example:<code class="literal"> http://host/app/default/home/johndoe</code>, where<code class="literal"> home</code> is the action that renders pages, and<code class="literal"> johndoe</code> is the<code class="literal"> request.args(0)</code> that tells web2py which use we are looking for. While this is possible, it would be much better to have URLs that look like this:</p><p>
+<code class="literal">http://host/johndoe/home</code>.</p><p>This can be done using the web2py pattern-based routing mechanism.</p><p>We will assume the following minimalist application called<code class="literal"> pages</code>.</p><p>In<code class="literal"> models/db.py</code>, add the following code:</p><div class="informalexample"><pre class="programlisting">
+db = DAL('sqlite://storage.sqlite')
+from gluon.tools import *
+auth = Auth(db)
+auth.settings.extra_fields = [Field('html','text'),Field('css','te
+xt')]
+auth.define_tables(username=True)
+</pre></div><p>Add the following code and the usual scaffolding files to<code class="literal"> controllers/default.py:</code>
+<a id="id305" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">
+def index():
+	return locals()
+	
+def user():
+	return dict(form=auth())
+	
+def home():
+	return db.auth_user(username=request.args(0)).html
+	
+def css():
+	response.headers['content-type']='text/css'
+	return db.auth_user(username=request.args(0)).css
+</pre></div></div><div class="section"><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec02"/>How to do it...</h2></div></div></div><p>We proceed by creating/editing<code class="literal"> routes.py</code> in the main web2py folder, in order to implement the following rules:</p><div class="informalexample"><pre class="programlisting">
+routes_in = (
+	# make sure you do not break admin
+	('/admin','/admin'),
+	('/admin/$anything','/admin/$anything'),
+	# make sure you do not break appadmin
+	('/$app/appadmin','/$app/appadmin'),
+	('/$app/appadmin/$anything','/$app/appadmin/$anything'),
+	# map the specific urls for this the "pages" app
+	('/$username/home','/pages/default/home/$username'),
+	('/$username/css','/pages/default/css/$username'),
+	# leave everything else unchanged
+)
+
+routes_out = (
+	# make sure you do not break admin
+	('/admin','/admin'),
+	('/admin/$anything','/admin/$anything'),
+	# make sure you do not break appadmin
+	('/$app/appadmin','/$app/appadmin'),
+	('/$app/appadmin/$anything','/$app/appadmin/$anything'),
+	# map the specific urls for this the "pages" app
+	('/pages/default/home/$username','/$username/home'),
+	('/pages/default/css/$username','/$username/css'),
+	# leave everything else unchanged
+)
+</pre></div><p>Note that<code class="literal"> $app</code> is a shortcut for the regular expression<code class="literal"> (? P&lt;app&gt;\w+)</code>, and it will match everything not containing slashes.<code class="literal"> $username</code> is a shortcut for<code class="literal"> (? P&lt;username&gt;\w+)</code>. Similarly, you can use other variables.<code class="literal"> $anything</code> is special, since it corresponds with a different regular expression,<code class="literal"> (? P&lt;app&gt;.*)</code>; that is, it will match everything until the end of the URL.</p><p>The critical parts of the code are as follows:<a id="id306" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">
+routes_in=(
+	...
+	('/$username/home','/pages/default/home/$username'),
+	...
+)
+routes_out=(
+	...
+	('/pages/default/home/$username','/$username/home'),
+	...
+)
+</pre></div><p>These map the request for<code class="literal"> home</code>. We then do the same for the<code class="literal"> css</code> action. The rest of the code is not really necessary, but makes sure that you do not accidentally break the<code class="literal"> admin</code> and the<code class="literal"> appadmin</code> URLs.</p></div></div><div class="section"><div class="titlepage"><div><div><h1 class="title"><a id="ch09lvl1sec03"/>Creating a simple router</h1></div></div></div><p>This and the next recipes in this chapter deal with the new parameter-based router, which is generally easier to configure, and handles most common re-writing tasks effectively. If possible, try to use the parameter-based router, but if you need more control for special URL-rewriting tasks, look at the pattern-based router.<a id="id307" class="indexterm"/>
+</p><p>The starting point for using the parameter-based router is to copy the file<code class="literal"> router.example.py</code> to<code class="literal"> routes.py</code>, in the web2py<code class="literal"> base</code> directory. (The file<code class="literal"> routes.example.py</code> serves the same purpose for the pattern-based router.) The<code class="literal"> example</code> file contains basic documentation for its respective routing systems; additional documentation is available online in the web2py book,<a class="link" href="ch04.html" title="Chapter 4. Advanced Forms"> Chapter 4</a>,<span class="emphasis"><em>The Core: URL rewrite and Routes on error..</em></span></p><p>Whenever<code class="literal"> routes.py</code> is changed, you must either restart web2py or, if the admin app is available, load the following URL, for the new configuration to take effect:</p><p>
+<code class="literal">http://yourdomain.com/admin/default/reload_routes</code>
+</p><div class="note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="tip04"/>Note</h3><p>The example routing files contain a set of Python<code class="literal"> doctests</code>. When you make a change to the routing configuration, add to or edit the<code class="literal"> doctests</code> in<code class="literal"> routes.py</code> to check that your configuration does what you expect.</p></div><p>The first problem we want to solve is that we want to eliminate the default application and controller from visible URLs, when possible.</p><div class="section"><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec03"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist"><li class="listitem"><p>Copy<code class="literal"> router.example.py</code> to<code class="literal"> routes.py</code> in the main web2py folder, and edit it as follows. Find the routers<code class="literal"> dict:</code>
+</p><div class="informalexample"><pre class="programlisting">
+routers = dict(
+	# base router
+	BASE = dict(
+		default_application = 'welcome',
+	),
+)
+</pre></div></li><li class="listitem"><p>Change<code class="literal"> default_application</code> from<code class="literal"> welcome</code> to the name of your application. If your default controller and function are not named,<code class="literal"> default</code> and<code class="literal"> index</code> respectively, then specify those defaults as well:</p><div class="informalexample"><pre class="programlisting">
+routers = dict(
+	# base router
+	BASE = dict(
+		default_application = 'myapp',
+		default_controller = 'mycontroller',
+		default_function = 'myfunction',
+	),
+)
+</pre></div></li></ol></div></div></div><div class="section"><div class="titlepage"><div><div><h1 class="title"><a id="ch09lvl1sec04"/>Adding a URL prefix</h1></div></div></div><p>Often when you are running web2py under a production server, the same URL may be shared by multiple applications or services, and you will need to add an extra<code class="literal"> PATH_INFO</code> prefix to identify the web2py service. For example:<a id="id308" class="indexterm"/>
+</p><p>
+<a class="ulink" href="http://example.com/php">http://example.com/php/</a>
+</p><p>
+<a class="ulink" href="http://example.com/web2py/app/default/index">http://example.com/web2py/app/default/index</a>
+</p><p>Here,<code class="literal"> web2py/</code> identifies the web2py service, and<code class="literal"> php/</code> identifies a php service, and the mapping is performed by the web service. You may want to eliminate the extra<code class="literal"> web2py/</code> from the<code class="literal"> PATH_INFO</code>.</p><div class="section"><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec04"/>How to do it...</h2></div></div></div><p>When you specify<code class="literal"> path_prefix</code>, it is prepended to all URLs generated by<code class="literal"> URL()</code>, and stripped from all incoming URLs. For example, if you want your external URLs to look like<code class="literal"> http://example.com/web2py/app/default/index</code>, you can do the following:</p><div class="informalexample"><pre class="programlisting">
+routers = dict(
+	# base router
+	BASE = dict(
+		default_application = 'myapp',
+		path_prefix = 'web2py',
+	),
+)
+</pre></div></div></div><div class="section"><div class="titlepage"><div><div><h1 class="title"><a id="ch09lvl1sec05"/>Associating applications with domains</h1></div></div></div><p>Often, you want to associate specific domains with specific web2py applications, so that incoming URLs directed to specified domains are routed to the appropriate application, without needing the application name in the URL. Again, the parametric router comes in handy.<a id="id309" class="indexterm"/>
+</p><div class="section"><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec05"/>How to do it...</h2></div></div></div><p>Use the parameter-based router's domains feature:</p><div class="informalexample"><pre class="programlisting">
+routers = dict(
+	BASE = dict(
+		domains = {
+			"domain1.com" : "app1",
+			"www.domain1.com" : "app1",
+			"domain2.com" : "app2",
+		},
+		exclusive_domain = True,
+	),
+	# app1 = dict(...),
+	# app2 = dict(...),
+)
+</pre></div><p>In this example,<code class="literal"> domain1.com</code> and<code class="literal"> domain2.com</code> are being served by the same physical host. The configuration specifies that URLs directed to<code class="literal"> domain1.com</code> (and in this case, its subdomain<code class="literal"> www)</code> are to be routed to<code class="literal"> app1</code>, and URLs directed to<code class="literal"> domain2.com</code> are to be routed to<code class="literal"> app2</code>. If<code class="literal"> exclusive_domain</code> is (optionally) set to<code class="literal"> True</code>, then attempts to use the URL to generate a URL referring to<code class="literal"> app2</code> in response to a request from a domain other than<code class="literal"> domain2.com</code> (and similarly for<code class="literal"> app1)</code>, will fail unless they explicitly supply a host name to URL.</p><p>Notice that you can also use the following, to further configure the paths for the two apps:<a id="id310" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">app1 = dict(...),
+app2 = dict(...),
+</pre></div></div></div><div class="section"><div class="titlepage"><div><div><h1 class="title"><a id="ch09lvl1sec06"/>Omitting the application name</h1></div></div></div><p>If you are using the parametric router, you may want to omit the default application name from the visible URLs for static files.<a id="id311" class="indexterm"/>
+</p><div class="section"><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec06"/>How to do it...</h2></div></div></div><p>It is simple; you just turn on the<code class="literal"> map_static</code> flag as follows:</p><div class="informalexample"><pre class="programlisting">
+routers = dict(
+	# base router
+	BASE = dict(
+		default_application = 'myapp',
+		map_static = True,
+	),
+)
+</pre></div><p>Or, if you're using an application-specific router dictionary, turn on the<code class="literal"> map_static</code> flag for each application (that is,<code class="literal"> myapp</code> in the following example):</p><div class="informalexample"><pre class="programlisting">
+routers = dict(
+	# base router
+	BASE = dict(
+		default_application = 'myapp',
+	),
+	myapp = dict(
+		map_static = True,
+	),
+)
+</pre></div></div></div><div class="section"><div class="titlepage"><div><div><h1 class="title"><a id="ch09lvl1sec07"/>Removing application name and controllers from URLs</h1></div></div></div><p>Sometimes, you want to use the parametric router's URL parsing, but you don't want to rewrite visible URLs. Again, you can use the parametric router, but disable URL rewriting.<a id="id312" class="indexterm"/>
+</p><div class="section"><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec07"/>How to do it...</h2></div></div></div><p>Find the router's<code class="literal"> dict</code> in<code class="literal"> routes.py</code>, as follows:</p><div class="informalexample"><pre class="programlisting">
+routers = dict(
+	# base router
+	BASE = dict(
+		default_application = 'welcome',
+	),
+)
+</pre></div><p>After finding it, change it to the following:</p><div class="informalexample"><pre class="programlisting">
+routers = dict(
+	# base router
+	BASE = dict(
+		applications = None,
+		controllers = None,
+	),
+)
+</pre></div></div><div class="section"><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec08"/>How it works...</h2></div></div></div><p>Setting<code class="literal"> applications</code> and<code class="literal"> controllers</code> to<code class="literal"> None</code> (functions and<code class="literal"> languages</code> are set to<code class="literal"> None</code> by default), tells the parametric router not to omit the corresponding parts of the visible URL. web2py's default URL parsing is stricter than many applications might require, since it assumes that URL components might be used for filenames. The parametric router adheres more closely to the HTTP URL RFCs, which makes it friendlier to applications that need more exotic characters in their arguments or query strings. The<code class="literal"> null</code> router in this recipe, enables this parsing without actually rewriting URLs.</p></div></div><div class="section"><div class="titlepage"><div><div><h1 class="title"><a id="ch09lvl1sec08"/>Replacing underscores with hyphens in URLs</h1></div></div></div><p>Underscores in URLs can be ugly, and they can be hard to see when the URL is underlined, as it often is on web pages. A hyphen is a more visually appealing alternative, but you can't, for example, use a hyphen in a function name, because it must also be a legal Python identifier. You can use the parametric router and to map<code class="literal"> -</code> into<code class="literal"> _!</code>
+<a id="id313" class="indexterm"/>
+</p><p>The parametric router's<code class="literal"> map_hyphen</code> flag converts underscores in application, controller, and function names to hyphens in the visible URLs, and back to underscores when the URL is received.<code class="literal"> Args, vars</code> (query string), and possible language selectors are not affected, since hyphens are fine in those fields. As a result, a URL like the following:</p><p>
+<code class="literal">http://some_controller/some_function</code>
+</p><p>Will appear instead as follows:</p><p>
+<code class="literal">http://some-controller/some-function</code>
+</p><p>While the internal controller and function names retain their underscores.</p><div class="section"><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec09"/>How to do it...</h2></div></div></div><p>Turn on the<code class="literal"> map_hyphen</code> flag. In the routers directive, add the following code:</p><div class="informalexample"><pre class="programlisting">
+routers = dict(
+	# base router
+	BASE = dict(
+		default_application = 'myapp',
+	),
+	myapp = dict(
+		map_hyphen = True,
+	),
+)
+</pre></div></div></div><div class="section"><div class="titlepage"><div><div><h1 class="title"><a id="ch09lvl1sec09"/>Mapping favicons.ico and robots.txt</h1></div></div></div><p>Some special files, such as<code class="literal"> robots.txt</code> and<code class="literal"> favicon.ico</code>, are accessed directly as the root path of a URL. Therefore, they must be mapped from the<code class="literal"> root</code> folder into the<code class="literal"> static</code> folder of the application.<a id="id314" class="indexterm"/>
+</p><div class="section"><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec10"/>How to do it...</h2></div></div></div><p>By default, the parameter-based router sets<code class="literal"> root_static</code> as follows:</p><div class="informalexample"><pre class="programlisting">
+routers = dict(
+	# base router
+	BASE = dict(
+		default_application = 'myapp',
+		root_static = ['favicon.ico', 'robots.txt']
+	),
+)
+</pre></div><p>This specifies that the listed files are to be served from the default application's static directory.<a id="id315" class="indexterm"/>
+</p></div></div><div class="section"><div class="titlepage"><div><div><h1 class="title"><a id="ch09lvl1sec10"/>Using URLs to specify the language</h1></div></div></div><p>The recipe<span class="emphasis"><em> Using cookies to set the language</em></span>, in<a class="link" href="ch02.html" title="Chapter 2. Building Your First Application"> Chapter 2</a>, describes how to save a user language preference in a cookie. In this recipe, we describe how to do something similar&amp;mdash;to<span class="strong"><strong> store</strong></span> the user language preference in the URL. One advantage to this approach is that it's then possible to bookmark a link that includes a language preference.<a id="id316" class="indexterm"/>
+</p><div class="section"><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec11"/>How to do it...</h2></div></div></div><p>The parametric router supports an optional<code class="literal"> language</code> field in the URL as a field following the application name:</p><p>
+<a class="ulink" href="http://domain.com/app/lang/controller/function">http://domain.com/app/lang/controller/function</a>
+</p><p>The language field is subject to the usual omission rules: the parametric router will omit the language designator, if when the default language is used its omission does not create ambiguity.</p><p>URL-based language handling will ordinarily be specified in an application-specific parametric router, setting<code class="literal"> default_language</code> and<code class="literal"> languages</code> as follows:</p><div class="informalexample"><pre class="programlisting">
+routers = dict(
+	# base router
+	BASE = dict(
+		default_application = app,
+	),
+	app = dict(
+		default_language = 'en',
+		languages = ['en', 'it', 'pt', 'pt-br'],
+	),
+)
+</pre></div><p>To specify a language for outgoing URLs using<code class="literal"> URL()</code>, set<code class="literal"> request.lang</code> to one of the supported languages. For incoming requests,<code class="literal"> request.lang</code> will be set to the language specified by the incoming URL. As with the language-in-cookie recipe, use<code class="literal"> T.force</code> to force the desired translations in a model file, before translations are to be used. For example, in your model, you can do the following:<a id="id317" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">T.force(request.lang)
+</pre></div></div></div></div></div>
+</body></html>

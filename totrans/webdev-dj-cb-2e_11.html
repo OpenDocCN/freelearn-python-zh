@@ -1,0 +1,1027 @@
+<html><head></head><body><div class="chapter" title="Chapter&#xA0;11.&#xA0;Testing and Deployment"><div class="titlepage"><div><div><h1 class="title"><a id="ch11"/>Chapter 11. Testing and Deployment</h1></div></div></div><p>In this chapter, we will cover the following recipes:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Testing pages with Selenium</li><li class="listitem" style="list-style-type: disc">Testing views with mock</li><li class="listitem" style="list-style-type: disc">Testing API created using Django REST framework</li><li class="listitem" style="list-style-type: disc">Releasing a reusable Django app</li><li class="listitem" style="list-style-type: disc">Getting detailed error reporting via e-mail</li><li class="listitem" style="list-style-type: disc">Deploying on Apache with mod_wsgi</li><li class="listitem" style="list-style-type: disc">Setting up cron jobs for regular tasks</li><li class="listitem" style="list-style-type: disc">Creating and using the Fabric deployment script</li></ul></div><div class="section" title="Introduction"><div class="titlepage"><div><div><h1 class="title"><a id="ch11lvl1sec102"/>Introduction</h1></div></div></div><p>At this point, I expect you to have one or more Django projects or reusable apps developed and ready to show to the public. For the concluding steps of development cycle, we will take a look at how to test your project, distribute reusable apps to others, and publish your website on a remote server. Stay tuned for the final bits and pieces!</p></div></div>
+<div class="section" title="Testing pages with Selenium"><div class="titlepage"><div><div><h1 class="title"><a id="ch11lvl1sec103"/>Testing pages with Selenium</h1></div></div></div><p>Django provides<a class="indexterm" id="id569"/> a possibility to write test suites for your website. Test suites automatically check your website or its components to see whether everything is working correctly. When you modify your code, you can run tests to check whether the changes didn't affect the application's behavior in a wrong way. The world of automated software testing can be divided into five levels: unit testing, integration testing, component interface testing, system testing, and operational acceptance testing. Acceptance tests check the business logic to know whether the project works the way it is supposed to. In this recipe, you will learn how to write acceptance tests with Selenium, which allows you to simulate activities such as filling in forms or clicking on specific DOM elements in a browser.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec353"/>Getting ready</h2></div></div></div><p>Let's start <a class="indexterm" id="id570"/>with the <code class="literal">locations</code> and <code class="literal">likes</code> apps from the <span class="emphasis"><em>Implementing the Like widget</em></span> recipe in <a class="link" href="ch04.html" title="Chapter 4. Templates and JavaScript">Chapter 4</a>, <span class="emphasis"><em>Templates and JavaScript</em></span>.</p><p>If you don't have it yet, install <a class="indexterm" id="id571"/>the Firefox browser from <a class="ulink" href="http://getfirefox.com">http://getfirefox.com</a>.</p><p>Then, install Selenium in your virtual environment, as follows:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>(myproject_env)$ pip install selenium</strong></span>
+</pre></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec354"/>How to do it...</h2></div></div></div><p>We will test the Ajax-based <span class="emphasis"><em>liking</em></span> functionality with Selenium by performing the following steps:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create the <code class="literal">tests.py</code> file in your <code class="literal">locations</code> app with the following content:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong># locations/tests.py</strong></span>
+# -*- coding: UTF-8 -*-
+from __future__ import unicode_literals
+from time import sleep
+from django.test import LiveServerTestCase
+from django.contrib.contenttypes.models import ContentType
+from django.contrib.auth.models import User
+from selenium import webdriver
+from selenium.webdriver.support.ui import WebDriverWait
+from likes.models import Like
+from .models import Location
+
+class LiveLocationTest(LiveServerTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super(LiveLocationTest, cls).setUpClass()
+        cls.browser = webdriver.Firefox()
+        cls.browser.delete_all_cookies()
+        cls.location = Location.objects.create(
+            title="Haus der Kulturen der Welt",
+            slug="hkw",
+            small_image="locations/2015/11/"
+                "20151116013056_small.jpg",
+            medium_image="locations/2015/11/"
+                "20151116013056_medium.jpg",
+            large_image="locations/2015/11/"
+                "20151116013056_large.jpg",
+        )
+        cls.username = "test-admin"
+        cls.password = "test-admin"
+        cls.superuser = User.objects.create_superuser(
+            username=cls.username,
+            password=cls.password,
+            email="",
+        )
+
+    @classmethod
+    def tearDownClass(cls):
+        super(LiveLocationTest, cls).tearDownClass()
+        cls.browser.quit()
+        cls.location.delete()
+        cls.superuser.delete()
+
+    def test_login_and_like(self):
+        # login
+        self.browser.get("%(website)s/admin/login/"
+            "?next=/locations/%(slug)s/" % {
+            "website": self.live_server_url,
+            "slug": self.location.slug,
+        })
+        username_field = \
+            self.browser.find_element_by_id("id_username")
+        username_field.send_keys(self.username)
+        password_field = \
+            self.browser.find_element_by_id("id_password")
+        password_field.send_keys(self.password)
+        self.browser.find_element_by_css_selector(
+            'input[type="submit"]'
+        ).click()
+        WebDriverWait(self.browser, 10).until(
+            lambda x: self.browser.\
+                find_element_by_css_selector(
+                    ".like-button"
+                )
+        )
+        # click on the "like" button
+        like_button = self.browser.\
+            find_element_by_css_selector('.like-button')
+        is_initially_active = \
+            "active" in like_button.get_attribute("class")
+        initial_likes = int(self.browser.\
+            find_element_by_css_selector(
+                ".like-badge"
+            ).text)
+
+        sleep(2) # remove this after the first run
+
+        like_button.click()
+        WebDriverWait(self.browser, 10).until(
+            lambda x: int(
+                self.browser.find_element_by_css_selector(
+                    ".like-badge"
+                ).text
+            ) != initial_likes
+        )
+        likes_in_html = int(
+            self.browser.find_element_by_css_selector(
+                ".like-badge"
+            ).text
+        )
+        likes_in_db = Like.objects.filter(
+            content_type=ContentType.objects.\
+                get_for_model(Location),
+            object_id=self.location.pk,
+        ).count()
+
+        sleep(2) # remove this after the first run
+
+        self.assertEqual(likes_in_html, likes_in_db)
+        if is_initially_active:
+            self.assertLess(likes_in_html, initial_likes)
+        else:
+            self.assertGreater(
+                likes_in_html, initial_likes
+            )
+
+        # click on the "like" button again to switch back
+        # to the previous state
+        like_button.click()
+        WebDriverWait(self.browser, 10).until(
+            lambda x: int(
+                self.browser.find_element_by_css_selector(
+                    ".like-badge"
+                ).text
+            ) == initial_likes
+        )
+
+        sleep(2) # remove this after the first run</pre></div></li><li class="listitem">Tests <a class="indexterm" id="id572"/>will be running in the <code class="literal">DEBUG = False</code> mode; therefore, you have to ensure that all the static files are accessible in your development environment. Make sure that you add the following lines to your project's URL configuration:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong># myproject/urls.py</strong></span>
+# -*- coding: UTF-8 -*-
+from __future__ import unicode_literals
+from django.conf.urls import patterns, include, url
+from django.conf import settings
+from django.conf.urls.static import static
+from django.contrib.staticfiles.urls import \
+    staticfiles_urlpatterns
+
+urlpatterns = patterns("",# …
+)
+
+urlpatterns += staticfiles_urlpatterns()
+<span class="strong"><strong>urlpatterns += static(</strong></span>
+<span class="strong"><strong>    settings.STATIC_URL,</strong></span>
+<span class="strong"><strong>    document_root=settings.STATIC_ROOT</strong></span>
+<span class="strong"><strong>)</strong></span>
+urlpatterns += static(
+    settings.MEDIA_URL,
+    document_root=settings.MEDIA_ROOT
+)</pre></div></li><li class="listitem">Collect static files to make them accessible by the test server, as follows:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>(myproject_env)$ python manage.py collectstatic --noinput</strong></span>
+</pre></div></li><li class="listitem">Run the tests for the <code class="literal">locations</code> app, as shown in the following:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>(myproject_env)$ python manage.py test locations</strong></span>
+<span class="strong"><strong>Creating test database for alias 'default'...</strong></span>
+<span class="strong"><strong>.</strong></span>
+<span class="strong"><strong>--------------------------------------------------------</strong></span>
+<span class="strong"><strong>Ran 1 test in 19.158s</strong></span>
+
+<span class="strong"><strong>OK</strong></span>
+<span class="strong"><strong>Destroying test database for alias 'default'...</strong></span>
+</pre></div></li></ol></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec355"/>How it works...</h2></div></div></div><p>When we run these tests, the Firefox browser will open and go to the administration login page at <code class="literal">http://localhost:8081/admin/login/?next=/locations/hkw/</code>.</p><p>Then, the<a class="indexterm" id="id573"/> username and password fields will get filled in with <code class="literal">test-admin</code> and you will get redirected to the detail page of the <code class="literal">Haus der Kulturen der Welt</code> location, as follows: <code class="literal">http://localhost:8081/locations/hkw/</code>.</p><p>There you will see the <span class="strong"><strong>Like</strong></span> button clicked twice, causing liking and unliking actions.</p><p>Let's see how this works in the test suite. We define a class extending <code class="literal">LiveServerTestCase</code>. This creates a test suite that will run a local server under the <code class="literal">8081</code> port. The <code class="literal">setUpClass()</code>class method will be executed at the beginning of all the tests and the <code class="literal">tearDownClass()</code>class method will be executed after the tests have been run. In the middle, the testing will execute all the methods of the suite whose names start with <code class="literal">test</code>. For each passed test, you will see a dot (<code class="literal">.</code>) in the command-line tool, for each failed test there will be the letter <code class="literal">F</code>, and for each error in the tests you will see the letter <code class="literal">E</code>. At the end, you will see hints about the failed and erroneous tests. As we currently have only one test in the suite for the <code class="literal">locations</code> app, you will only see one dot there.</p><p>When we start testing, a new test database is created. In <code class="literal">setUpClass()</code>, we create a browser object, one location, and one super user. Then, the <code class="literal">test_login_and_like()</code> method is executed, which opens the administration login page, finds the <span class="strong"><strong>username</strong></span> field, types in the administrator's username, finds the <span class="strong"><strong>password</strong></span> field, types in administrator's password, finds the <span class="strong"><strong>submit</strong></span> button, and clicks on it. Then, it waits maximal ten seconds until a DOM element with the<code class="literal">.like-button</code> CSS class can be found on the page.</p><p>As you might remember from the <span class="emphasis"><em>Implementing the Like widget</em></span> recipe in <a class="link" href="ch04.html" title="Chapter 4. Templates and JavaScript">Chapter 4</a>, <span class="emphasis"><em>Templates and JavaScript</em></span>, our widget consists of two elements: a <span class="strong"><strong>Like</strong></span> button and a badge showing the total number of likes. If a button is clicked, either your <code class="literal">Like</code> is added or removed from the database by an Ajax call. Moreover, the badge count is updated to reflect the number of likes in the database, as shown in the following image:</p><div class="mediaobject"><img alt="How it works..." src="graphics/B04912_11_01.jpg"/></div><p>Further in the test, we check what is the initial state of the button is (whether it has the <code class="literal">.active</code> CSS class or not), check the initial number of likes, and simulate a click on the button. We wait maximal 10 seconds until the count in the badge changes. Then, we check whether the count in the badge matches the total likes for the location in the database. We will also check how the count in the badge has changed (increased or decreased). Lastly, we will simulate the click on the button again to switch back to the previous<a class="indexterm" id="id574"/> state.</p><p>The <code class="literal">sleep()</code> functions are in the test just for you to be able to see the whole workflow. You can safely remove them in order to make the tests run faster.</p><p>Finally, the <code class="literal">tearDownClass()</code> method is called, which closes the browser and removes the location and the super user from the test database.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec356"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">The <span class="emphasis"><em>Implementing the Like widget</em></span> recipe in <a class="link" href="ch04.html" title="Chapter 4. Templates and JavaScript">Chapter 4</a>, <span class="emphasis"><em>Templates and JavaScript</em></span></li><li class="listitem" style="list-style-type: disc">The <span class="emphasis"><em>Testing views with mock</em></span> recipe</li><li class="listitem" style="list-style-type: disc">The <span class="emphasis"><em>Testing API created using Django REST Framework</em></span> recipe</li></ul></div></div></div>
+<div class="section" title="Testing views with mock"><div class="titlepage"><div><div><h1 class="title"><a id="ch11lvl1sec104"/>Testing views with mock</h1></div></div></div><p>In this recipe, we will take a look at how to write unit tests. Unit tests are those that check <a class="indexterm" id="id575"/>whether the functions or methods return correct results. We <a class="indexterm" id="id576"/>again take the <code class="literal">likes</code> app and write tests checking whether posting to the <code class="literal">json_set_like()</code> view returns <code class="literal">{"success"; false}</code> in the response for unauthenticated users and returns <code class="literal">{"action": "added", "count": 1, "obj": "Haus der Kulturen der Welt", "success": true}</code> for authenticated users. We will use the <code class="literal">Mock</code> objects to simulate the <code class="literal">HttpRequest</code> and <code class="literal">AnonymousUser</code> objects.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec357"/>Getting ready</h2></div></div></div><p>Let's start with the <code class="literal">locations</code> and <code class="literal">likes</code> apps from the <span class="emphasis"><em>Implementing the Like widget</em></span> recipe in <a class="link" href="ch04.html" title="Chapter 4. Templates and JavaScript">Chapter 4</a>, <span class="emphasis"><em>Templates and JavaScript</em></span>.</p><p>Install the <code class="literal">mock</code> module in your virtual environment, as follows:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>(myproject_env)$ pip install mock</strong></span>
+</pre></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec358"/>How to do it...</h2></div></div></div><p>We will test the <span class="emphasis"><em>liking</em></span> action with mock by performing the following steps:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create the <code class="literal">tests.py</code> file in your <code class="literal">likes</code> app with the following content:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong># likes/tests.py</strong></span>
+# -*- coding: UTF-8 -*-
+from __future__ import unicode_literals
+import mock
+import json
+from django.contrib.contenttypes.models import ContentType
+from django.contrib.auth.models import User
+from django.test import SimpleTestCase
+from locations.models import Location
+
+class JSSetLikeViewTest(SimpleTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super(JSSetLikeViewTest, cls).setUpClass()
+        cls.location = Location.objects.create(
+            title="Haus der Kulturen der Welt",
+            slug="hkw",
+            small_image="locations/2015/11/"
+                "20151116013056_small.jpg",
+            medium_image="locations/2015/11/"
+                "20151116013056_medium.jpg",
+            large_image="locations/2015/11/"
+                "20151116013056_large.jpg",
+        )
+        cls.content_type = \
+            ContentType.objects.get_for_model(Location)
+        cls.username = "test-admin"
+        cls.password = "test-admin"
+        cls.superuser = User.objects.create_superuser(
+            username=cls.username,
+            password=cls.password,
+            email="",
+        )
+
+    @classmethod
+    def tearDownClass(cls):
+        super(JSSetLikeViewTest, cls).tearDownClass()
+        cls.location.delete()
+        cls.superuser.delete()
+
+    def test_authenticated_json_set_like(self):
+        from .views import json_set_like
+        mock_request = mock.Mock()
+        mock_request.user = self.superuser
+        mock_request.method = "POST"
+        response = json_set_like(
+            mock_request,
+            self.content_type.pk,
+            self.location.pk
+        )
+        expected_result = json.dumps({
+            "success": True,
+            "action": "added",
+            "obj": self.location.title,
+            "count": Location.objects.count(),
+        })
+        self.assertJSONEqual(
+            response.content,
+            expected_result
+        )
+
+    def test_anonymous_json_set_like(self):
+        from .views import json_set_like
+        mock_request = mock.Mock()
+        mock_request.user.is_authenticated.return_value = \
+            False
+        mock_request.method = "POST"
+        response = json_set_like(
+            mock_request,
+            self.content_type.pk,
+            self.location.pk
+        )
+        expected_result = json.dumps({
+            "success": False,
+        })
+        self.assertJSONEqual(
+            response.content,
+            expected_result
+        )</pre></div></li><li class="listitem">Run <a class="indexterm" id="id577"/>the <a class="indexterm" id="id578"/>tests for the <code class="literal">likes</code> app, as follows:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>(myproject_env)$ python manage.py test likes</strong></span>
+<span class="strong"><strong>Creating test database for alias 'default'...</strong></span>
+<span class="strong"><strong>..</strong></span>
+<span class="strong"><strong>--------------------------------------------------------</strong></span>
+<span class="strong"><strong>Ran 2 tests in 0.093s</strong></span>
+
+<span class="strong"><strong>OK</strong></span>
+<span class="strong"><strong>Destroying test database for alias 'default'...</strong></span>
+</pre></div></li></ol></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec359"/>How it works...</h2></div></div></div><p>Just like in the previous recipe, when you run tests for the <code class="literal">likes</code> app, at first, a temporary test database is created. Then, the <code class="literal">setUpClass()</code> method is called. Later, the methods <a class="indexterm" id="id579"/>whose names start with <code class="literal">test</code> are executed, and finally<a class="indexterm" id="id580"/> the <code class="literal">tearDownClass()</code> method is called.</p><p>Unit tests inherit from the <code class="literal">SimpleTestCase</code> class. In <code class="literal">setUpClass()</code>, we create a location and a super user. Also, we find out the <code class="literal">ContentType</code> object for the <code class="literal">Location</code> model—we will need it for the view that sets or removes likes for different objects. As a reminder, the view looks similar to the following and returns the JSON string as a result:</p><div class="informalexample"><pre class="programlisting">def json_set_like(request, content_type_id, object_id):
+    # ...all the view logic goes here...
+    return HttpResponse(
+        json_str,
+        content_type="text/javascript; charset=utf-8"
+    )</pre></div><p>In the <code class="literal">test_authenticated_json_set_like()</code> and <code class="literal">test_anonymous_json_set_like()</code> methods, we use the <code class="literal">Mock</code> objects. They are objects that have any attributes or methods. Each undefined attribute or method of a <code class="literal">Mock</code> object is another <code class="literal">Mock</code> object. Therefore, in the shell, you can try chaining attributes as follows:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; import mock</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; m = mock.Mock()</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; m.whatever.anything().whatsoever</strong></span>
+<span class="strong"><strong>&lt;Mock name='mock.whatever.anything().whatsoever' id='4464778896'&gt;</strong></span>
+</pre></div><p>In our tests, we use the <code class="literal">Mock</code> objects to simulate the <code class="literal">HttpRequest</code> and <code class="literal">AnonymousUser</code> objects. For the authenticated user, we still need the real <code class="literal">User</code> object as the view needs the user's ID to save in the database for the <code class="literal">Like</code> object.</p><p>Therefore, we call the <code class="literal">json_set_like()</code> function and see if the returned JSON response is correct: it returns <code class="literal">{"success": false}</code> in the response if the visitor is unauthenticated; and returns something like <code class="literal">{"action": "added", "count": 1, "obj": "Haus der Kulturen der Welt", "success": true}</code> for authenticated users.</p><p>In the end, the <code class="literal">tearDownClass()</code> class method is called that deletes the location and super user from the test database.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec360"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">The <span class="emphasis"><em>Implementing the Like widget</em></span> recipe in <a class="link" href="ch04.html" title="Chapter 4. Templates and JavaScript">Chapter 4</a>, <span class="emphasis"><em>Templates and JavaScript</em></span></li><li class="listitem" style="list-style-type: disc">The <span class="emphasis"><em>Testing pages with Selenium</em></span> recipe</li><li class="listitem" style="list-style-type: disc">The <span class="emphasis"><em>Testing API created using Django REST Framework</em></span> recipe</li></ul></div></div></div>
+<div class="section" title="Testing API created using Django REST framework"><div class="titlepage"><div><div><h1 class="title"><a id="ch11lvl1sec105"/>Testing API created using Django REST framework</h1></div></div></div><p>We already<a class="indexterm" id="id581"/> have an understanding about how<a class="indexterm" id="id582"/> to write operational acceptance and unit tests. In this recipe, we will go through component interface testing for the REST API that we created earlier in this book.</p><div class="note" style="" title="Note"><div class="inner"><h3 class="title"><a id="tip19"/>Tip</h3><p>If you are not familiar with what REST API is and how to use it, you can learn about it<a class="indexterm" id="id583"/> at <a class="ulink" href="http://www.restapitutorial.com/">http://www.restapitutorial.com/</a>.</p></div></div><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec361"/>Getting ready</h2></div></div></div><p>Let's start with the <code class="literal">bulletin_board</code> app from the <span class="emphasis"><em>Using Django REST framework to create API</em></span> recipe in <a class="link" href="ch09.html" title="Chapter 9. Data Import and Export">Chapter 9</a>, <span class="emphasis"><em>Data Import and Export</em></span>.</p></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec362"/>How to do it...</h2></div></div></div><p>To test REST API, perform the following steps:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a <code class="literal">tests.py</code> file in your <code class="literal">bulletin_board</code> app, as follows:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong># bulletin_board/tests.py</strong></span>
+# -*- coding: UTF-8 -*-
+from __future__ import unicode_literals
+from django.contrib.auth.models import User
+from django.core.urlresolvers import reverse
+from rest_framework import status
+from rest_framework.test import APITestCase
+from .models import Category, Bulletin
+
+class BulletinTests(APITestCase):
+    @classmethod
+    def setUpClass(cls):
+        super(BulletinTests, cls).setUpClass()
+        cls.superuser, created = User.objects.\
+            get_or_create(
+                username="test-admin",
+            )
+        cls.superuser.is_active = True
+        cls.superuser.is_superuser = True
+        cls.superuser.save()
+
+        cls.category = Category.objects.create(
+            title="Movies"
+        )
+
+        cls.bulletin = Bulletin.objects.create(
+            bulletin_type="searching",
+            category=cls.category,
+            title="The Matrix",
+            description="There is no Spoon.",
+            contact_person="Aidas Bendoraitis",
+        )
+        cls.bulletin_to_delete = Bulletin.objects.create(
+            bulletin_type="searching",
+            category=cls.category,
+            title="Animatrix",
+            description="Trinity: "
+                "There's a difference, Mr. Ash, "
+                "between a trap and a test.",
+            contact_person="Aidas Bendoraitis",
+        )
+
+    @classmethod
+    def tearDownClass(cls):
+        super(BulletinTests, cls).tearDownClass()
+        cls.category.delete()
+        cls.bulletin.delete()
+        cls.superuser.delete()</pre></div></li><li class="listitem">Add a<a class="indexterm" id="id584"/> method to test the API <a class="indexterm" id="id585"/>call listing the bulletins as shown in the following:<div class="informalexample"><pre class="programlisting">def test_list_bulletins(self):
+    url = reverse("rest_bulletin_list")
+    data = {}
+    response = self.client.get(url, data, format="json")
+    self.assertEqual(
+        response.status_code, status.HTTP_200_OK
+    )
+    self.assertEqual(
+        response.data["count"], Bulletin.objects.count()
+    )</pre></div></li><li class="listitem">Add a <a class="indexterm" id="id586"/>method to test the API call<a class="indexterm" id="id587"/> showing a single bulletin as follows:<div class="informalexample"><pre class="programlisting">def test_get_bulletin(self):
+    url = reverse("rest_bulletin_detail", kwargs={
+        "pk": self.bulletin.pk
+    })
+    data = {}
+    response = self.client.get(url, data, format="json")
+    self.assertEqual(
+        response.status_code, status.HTTP_200_OK
+    )
+    self.assertEqual(response.data["id"], self.bulletin.pk)
+    self.assertEqual(
+        response.data["bulletin_type"],
+        self.bulletin.bulletin_type
+    )
+    self.assertEqual(
+        response.data["category"]["id"],
+        self.category.pk
+    )
+    self.assertEqual(
+        response.data["title"],
+        self.bulletin.title
+    )
+    self.assertEqual(
+        response.data["description"],
+        self.bulletin.description
+    )
+    self.assertEqual(
+        response.data["contact_person"],
+        self.bulletin.contact_person
+    )</pre></div></li><li class="listitem">Add a method to test the API call creating a bulletin if the current user is authenticated, as follows:<div class="informalexample"><pre class="programlisting">def test_create_bulletin_allowed(self):
+    # login
+    self.client.force_authenticate(user=self.superuser)
+
+    url = reverse("rest_bulletin_list")
+    data = {
+        "bulletin_type": "offering",
+        "category": {"title": self.category.title},
+        "title": "Back to the Future",
+        "description": "Roads? Where we're going, "
+            "we don't need roads.",
+        "contact_person": "Aidas Bendoraitis",
+    }
+    response = self.client.post(url, data, format="json")
+    self.assertEqual(
+        response.status_code, status.HTTP_201_CREATED
+    )
+    self.assertTrue(Bulletin.objects.filter(
+        pk=response.data["id"]
+    ).count() == 1)
+
+    # logout
+    self.client.force_authenticate(user=None)</pre></div></li><li class="listitem">Add a<a class="indexterm" id="id588"/> method to test the API call <a class="indexterm" id="id589"/>trying to create a bulletin; however, failing as the current visitor is anonymous, as shown in the following:<div class="informalexample"><pre class="programlisting">def test_create_bulletin_restricted(self):
+    # make sure the user is logged out
+    self.client.force_authenticate(user=None)
+ 
+    url = reverse("rest_bulletin_list")
+    data = {
+        "bulletin_type": "offering",
+        "category": {"title": self.category.title},
+        "title": "Back to the Future",
+        "description": "Roads? Where we're going, "
+            "we don't need roads.",
+        "contact_person": "Aidas Bendoraitis",
+    }
+    response = self.client.post(url, data, format="json")
+    self.assertEqual(
+        response.status_code, status.HTTP_403_FORBIDDEN
+    )</pre></div></li><li class="listitem">Add a method to test the API call changing a bulletin if the current user is authenticated, as follows:<div class="informalexample"><pre class="programlisting">def test_change_bulletin_allowed(self):
+    # login
+    self.client.force_authenticate(user=self.superuser)
+
+    url = reverse("rest_bulletin_detail", kwargs={
+        "pk": self.bulletin.pk
+    })
+
+    # change only title
+    data = {
+        "bulletin_type": self.bulletin.bulletin_type,
+        "category": {
+            "title": self.bulletin.category.title
+        },
+        "title": "Matrix Resurrection",
+        "description": self.bulletin.description,
+        "contact_person": self.bulletin.contact_person,
+    }
+    response = self.client.put(url, data, format="json")
+    self.assertEqual(
+        response.status_code, status.HTTP_200_OK
+    )
+    self.assertEqual(response.data["id"], self.bulletin.pk)
+    self.assertEqual(
+        response.data["bulletin_type"], "searching"
+    )
+
+    # logout
+    self.client.force_authenticate(user=None)</pre></div></li><li class="listitem">Add a <a class="indexterm" id="id590"/>method to test the API call<a class="indexterm" id="id591"/> trying to change a bulletin; however, failing as the current visitor is anonymous:<div class="informalexample"><pre class="programlisting">def test_change_bulletin_restricted(self):
+    # make sure the user is logged out
+    self.client.force_authenticate(user=None)
+
+    url = reverse("rest_bulletin_detail", kwargs={
+        "pk": self.bulletin.pk
+    })
+    # change only title
+    data = {
+        "bulletin_type": self.bulletin.bulletin_type,
+        "category": {
+            "title": self.bulletin.category.title
+        },
+        "title": "Matrix Resurrection",
+        "description": self.bulletin.description,
+        "contact_person": self.bulletin.contact_person,
+    }
+    response = self.client.put(url, data, format="json")
+    self.assertEqual(
+        response.status_code, status.HTTP_403_FORBIDDEN
+    )</pre></div></li><li class="listitem">Add a <a class="indexterm" id="id592"/>method to test the API call <a class="indexterm" id="id593"/>deleting a bulletin if the current user is authenticated, as shown in the following:<div class="informalexample"><pre class="programlisting">def test_delete_bulletin_allowed(self):
+    # login
+    self.client.force_authenticate(user=self.superuser)
+
+    url = reverse("rest_bulletin_detail", kwargs={
+        "pk": self.bulletin_to_delete.pk
+    })
+    data = {}
+    response = self.client.delete(url, data, format="json")
+    self.assertEqual(
+        response.status_code, status.HTTP_204_NO_CONTENT
+    )
+
+    # logout
+    self.client.force_authenticate(user=None)</pre></div></li><li class="listitem">Add a method to test the API call trying to delete a bulletin; however, failing as the current visitor is anonymous:<div class="informalexample"><pre class="programlisting">def test_delete_bulletin_restricted(self):
+    # make sure the user is logged out
+    self.client.force_authenticate(user=None)
+
+    url = reverse("rest_bulletin_detail", kwargs={
+        "pk": self.bulletin_to_delete.pk
+    })
+    data = {}
+    response = self.client.delete(url, data, format="json")
+    self.assertEqual(
+        response.status_code, status.HTTP_403_FORBIDDEN
+    )</pre></div></li><li class="listitem">Run the tests for the <code class="literal">bulletin_board</code> app, as follows:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>(myproject_env)$ python manage.py test bulletin_board</strong></span>
+<span class="strong"><strong>Creating test database for alias 'default'...</strong></span>
+<span class="strong"><strong>........</strong></span>
+<span class="strong"><strong>--------------------------------------------------------</strong></span>
+<span class="strong"><strong>Ran 8 tests in 0.081s</strong></span>
+
+<span class="strong"><strong>OK</strong></span>
+<span class="strong"><strong>Destroying test database for alias 'default'...</strong></span>
+</pre></div></li></ol></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec363"/>How it works...</h2></div></div></div><p>REST API test suite extends the <code class="literal">APITestCase</code> class. Once again, we have the <code class="literal">setUpClass()</code> and <code class="literal">tearDownClass()</code> class methods that will be executed before and after the <a class="indexterm" id="id594"/>different tests. Also, the test suite has<a class="indexterm" id="id595"/> a <code class="literal">client</code> attribute of the <code class="literal">APIClient</code> type that can be used to simulate API calls. It has methods for all standard HTTP calls: <code class="literal">get()</code>, <code class="literal">post()</code>, <code class="literal">put()</code>, <code class="literal">patch()</code>, <code class="literal">delete()</code>, <code class="literal">head()</code>, and <code class="literal">options()</code>; whereas, in our tests, we are using the <code class="literal">GET</code>, <code class="literal">POST</code>, and <code class="literal">DELETE</code> requests. Also, <code class="literal">client</code> has methods to authenticate a user by the login credentials, token, or just the <code class="literal">User</code> object. In our tests, we are authenticating by the third way, just passing a user directly to the <code class="literal">force_authenticate()</code> method.</p><p>The rest of the code is self-explanatory.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec364"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">The <span class="emphasis"><em>Using Django REST framework to create API</em></span> recipe in <a class="link" href="ch09.html" title="Chapter 9. Data Import and Export">Chapter 9</a>, <span class="emphasis"><em>Data Import and Export</em></span></li><li class="listitem" style="list-style-type: disc">The <span class="emphasis"><em>Testing pages with Selenium</em></span> recipe</li><li class="listitem" style="list-style-type: disc">The <span class="emphasis"><em>Testing views with mock</em></span> recipe</li></ul></div></div></div>
+<div class="section" title="Releasing a reusable Django app"><div class="titlepage"><div><div><h1 class="title"><a id="ch11lvl1sec106"/>Releasing a reusable Django app</h1></div></div></div><p>Django <a class="indexterm" id="id596"/>documentation has a tutorial about how to package your<a class="indexterm" id="id597"/> reusable apps so that they can be installed later with <code class="literal">pip</code> in any virtual environment:</p><p><a class="ulink" href="https://docs.djangoproject.com/en/1.8/intro/reusable-apps/">https://docs.djangoproject.com/en/1.8/intro/reusable-apps/</a></p><p>However, there is<a class="indexterm" id="id598"/> an even better way to package and release a reusable Django app using the <span class="strong"><strong>Cookiecutter</strong></span> tool, which creates templates for different coding projects such as new Django CMS website, Flask website, or jQuery plugin. One of the available project templates is <code class="literal">cookiecutter-djangopackage</code>. In this recipe, you will learn how to use it to distribute the reusable <code class="literal">likes</code> app.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec365"/>Getting ready</h2></div></div></div><p>Install <code class="literal">Cookiecutter</code> in your virtual environment:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>(myproject_env)$ pip install cookiecutter</strong></span>
+</pre></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec366"/>How to do it...</h2></div></div></div><p>To release <a class="indexterm" id="id599"/>your <code class="literal">likes</code> app, follow these steps:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Start a new Django app project, as follows:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>(myapp_env)$ cookiecutter \</strong></span>
+<span class="strong"><strong>https://github.com/pydanny/cookiecutter-djangopackage.git</strong></span>
+</pre></div></li><li class="listitem">Answer the questions to create the app template:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>full_name [Your full name here]: Aidas Bendoraitis</strong></span>
+<span class="strong"><strong>email [you@example.com]: aidas@bendoraitis.lt</strong></span>
+<span class="strong"><strong>github_username [yourname]: archatas</strong></span>
+<span class="strong"><strong>project_name [dj-package]: django-likes</strong></span>
+<span class="strong"><strong>repo_name [dj-package]: django-likes</strong></span>
+<span class="strong"><strong>app_name [djpackage]: likes</strong></span>
+<span class="strong"><strong>project_short_description [Your project description goes here]: Django-likes allows your website users to like any object.</strong></span>
+<span class="strong"><strong>release_date [2015-10-02]:</strong></span>
+<span class="strong"><strong>year [2015]:</strong></span>
+<span class="strong"><strong>version [0.1.0]:</strong></span>
+</pre></div></li><li class="listitem">This will create a file structure, as shown in the following image:<div class="mediaobject"><img alt="How to do it..." src="graphics/B04912_11_02.jpg"/></div></li><li class="listitem">Copy<a class="indexterm" id="id600"/> the files of the <code class="literal">likes</code> app from a Django project, where you are using it, to the <code class="literal">django-likes/likes</code> directory.</li><li class="listitem">Add the reusable app project to the Git repository under GitHub.</li><li class="listitem">Explore different files and complete the license, README, documentation, configuration and other files.</li><li class="listitem">Make sure that the app passes the tests:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>(myapp_env)$ pip install -r requirements-test.txt</strong></span>
+<span class="strong"><strong>(myapp_env)$ python runtests.py</strong></span>
+</pre></div></li><li class="listitem">If your package is closed source, create a shareable release as a ZIP archive:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>(myapp_env)$ python setup.py sdist</strong></span>
+</pre></div><p>This will create a <code class="literal">django-likes/dist/django-likes-0.1.0.tar.gz</code> file that can be installed or uninstalled with pip, as follows:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>(myproject_env)$ pip install django-likes-0.1.0.tar.gz</strong></span>
+<span class="strong"><strong>(myproject_env)$ pip uninstall django-likes</strong></span>
+</pre></div></li><li class="listitem">If your<a class="indexterm" id="id601"/> package is open source, register and publish your app on <span class="strong"><strong>Python Package Index</strong></span> (<span class="strong"><strong>PyPI</strong></span>):<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>(myapp_env)$ python setup.py register</strong></span>
+<span class="strong"><strong>(myapp_env)$ python setup.py publish</strong></span>
+</pre></div></li><li class="listitem">Also, to spread the word, add your app to Django packages by submitting a form at <a class="ulink" href="https://www.djangopackages.com/packages/add/">https://www.djangopackages.com/packages/add/</a>.</li></ol></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec367"/>How it works...</h2></div></div></div><p>Cookiecutter fills in the entered requested data in different parts of the Django app project template. As a result, you get the <code class="literal">setup.py</code> file ready for distribution to Python Package Index, Sphinx documentation, BSD as the default license, universal text editor configuration for the project, static files and templates included in your app, and other goodies.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec368"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">The <span class="emphasis"><em>Creating a project file structure</em></span> recipe in <a class="link" href="ch01.html" title="Chapter 1. Getting Started with Django 1.8">Chapter 1</a>, <span class="emphasis"><em>Getting Started with Django 1.8</em></span></li><li class="listitem" style="list-style-type: disc">The <span class="emphasis"><em>Handling project dependencies with pip</em></span> recipe in <a class="link" href="ch01.html" title="Chapter 1. Getting Started with Django 1.8">Chapter 1</a>, <span class="emphasis"><em>Getting Started with Django 1.8</em></span></li><li class="listitem" style="list-style-type: disc">The <span class="emphasis"><em>Implementing the Like widget</em></span> recipe in <a class="link" href="ch04.html" title="Chapter 4. Templates and JavaScript">Chapter 4</a>, <span class="emphasis"><em>Templates and JavaScript</em></span></li></ul></div></div></div>
+<div class="section" title="Getting detailed error reporting via e-mail"><div class="titlepage"><div><div><h1 class="title"><a id="ch11lvl1sec107"/>Getting detailed error reporting via e-mail</h1></div></div></div><p>To perform<a class="indexterm" id="id602"/> system logging, Django uses Python's<a class="indexterm" id="id603"/> built-in logging module. The default Django configuration seems to be quite complex. In this recipe, you will learn how to tweak it in order to send error e-mails with complete HTML, similar to what is provided by Django in the DEBUG mode when an error happens.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec369"/>Getting ready</h2></div></div></div><p>Locate the Django project in your virtual environment.</p></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec370"/>How to do it...</h2></div></div></div><p>The following<a class="indexterm" id="id604"/> procedure will help you send detailed<a class="indexterm" id="id605"/> e-mails about errors:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Open the <code class="literal">myproject_env/lib/python2.7/site-packages/django/utils/log.py</code> file in a text editor and copy the <code class="literal">DEFAULT_LOGGING</code> dictionary to your project's settings as the <code class="literal">LOGGING</code> dictionary.</li><li class="listitem">Add the <code class="literal">include_html</code> setting to the <code class="literal">mail_admins</code> handler, as follows:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong># myproject/conf/base.py or myproject/settings.py</strong></span>
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "filters": {
+        "require_debug_false": {
+            "()": "django.utils.log.RequireDebugFalse",
+        },
+        "require_debug_true": {
+            "()": "django.utils.log.RequireDebugTrue",
+        },
+    },
+    "handlers": {
+        "console": {
+            "level": "INFO",
+            "filters": ["require_debug_true"],
+            "class": "logging.StreamHandler",
+        },
+        "null": {
+            "class": "django.utils.log.NullHandler",
+        },
+        "mail_admins": {
+            "level": "ERROR",
+            "filters": ["require_debug_false"],
+            "class": "django.utils.log.AdminEmailHandler",
+<span class="strong"><strong>            "include_html": True,</strong></span>
+        }
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+        },
+        "django.request": {
+            "handlers": ["mail_admins"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+        "django.security": {
+            "handlers": ["mail_admins"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+        "py.warnings": {
+            "handlers": ["console"],
+        },
+    }
+}</pre></div></li></ol></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec371"/>How it works...</h2></div></div></div><p>Logging <a class="indexterm" id="id606"/>configuration consists of four parts: loggers, handlers, filters, and formatters. The following is how they can be described:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Loggers<a class="indexterm" id="id607"/> are entry points in the logging system. Each logger can have a log level: <code class="literal">DEBUG</code>, <code class="literal">INFO</code>, <code class="literal">WARNING</code>, <code class="literal">ERROR</code>, or <code class="literal">CRITICAL</code>. When a message is written to the logger, the log level of the message is compared with the logger's level. If it meets or exceeds the log level of the logger, it will be further processed by a handler. Otherwise, the message will be ignored.</li><li class="listitem" style="list-style-type: disc">Handlers are engines that define what happens to each message in the logger. They can be written to a console, sent by an e-mail to the administrator, saved to a log file, sent to the Sentry error logging service, and so on. In our case, we set the <code class="literal">include_html</code> parameter for the <code class="literal">mail_admins</code> handler as we want the full HTML with traceback and local variables for the error messages that happen in our Django project.</li><li class="listitem" style="list-style-type: disc">Filters provide additional control over the messages that are passed from the loggers to handlers. For example, in our case, the e-mails will be sent only when the DEBUG mode is set to <code class="literal">False</code>.</li><li class="listitem" style="list-style-type: disc">Formatters are used to define how to render a log message as a string. They are not used in this example; however, for more information about logging, you <a class="indexterm" id="id608"/>can refer to the official documentation at <a class="ulink" href="https://docs.djangoproject.com/en/1.8/topics/logging/">https://docs.djangoproject.com/en/1.8/topics/logging/</a>.</li></ul></div></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec372"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">The <span class="emphasis"><em>Deploying on Apache with mod_wsgi</em></span> recipe</li></ul></div></div></div>
+<div class="section" title="Deploying on Apache with mod_wsgi"><div class="titlepage"><div><div><h1 class="title"><a id="ch11lvl1sec108"/>Deploying on Apache with mod_wsgi</h1></div></div></div><p>There are<a class="indexterm" id="id609"/> many options as to how to deploy your<a class="indexterm" id="id610"/> Django project. In this recipe, I will guide you through the deployment of a Django project on a dedicated Linux server with Virtualmin.</p><p>A dedicated server is a type of Internet hosting, where you lease the whole server that is not shared with anyone else. Virtualmin<a class="indexterm" id="id611"/> is a web-hosting control panel that allows you to manage virtual domains, mailboxes, databases, and entire servers without having deep knowledge of the command-line routines of the server administration.</p><p>To run the Django project, we will be using the Apache web server with the <code class="literal">mod_wsgi</code> module and a MySQL database.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec373"/>Getting ready</h2></div></div></div><p>Make sure<a class="indexterm" id="id612"/> that you have Virtualmin installed on your dedicated Linux server. For instructions, refer to <a class="ulink" href="http://www.virtualmin.com/download.html">http://www.virtualmin.com/download.html</a>.</p></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec374"/>How to do it...</h2></div></div></div><p>Follow these steps to deploy a Django project on a Linux server with Virtualmin:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Log in to Virtualmin as the root user and set <code class="literal">bash</code> instead of <code class="literal">sh</code> as the default shell for the server's users. This can be done by navigating to <span class="strong"><strong>Virtualmin</strong></span> | <span class="strong"><strong>System Customization</strong></span> | <span class="strong"><strong>Custom Shells</strong></span>, as shown in the following screenshot:<div class="mediaobject"><img alt="How to do it..." src="graphics/B04912_11_03.jpg"/></div></li><li class="listitem">Create <a class="indexterm" id="id613"/>a virtual server for your project by<a class="indexterm" id="id614"/> navigating to <span class="strong"><strong>Virtualmin</strong></span> | <span class="strong"><strong>Create Virtual Server</strong></span>. Enable the following features: <span class="strong"><strong>Setup website for domain?</strong></span> and <span class="strong"><strong>Create MySQL database?</strong></span>. The username and password that you set for the domain will also be used for the SSH connections, FTP, and MySQL database access, as follows:<div class="mediaobject"><img alt="How to do it..." src="graphics/B04912_11_04.jpg"/></div></li><li class="listitem">Log in to <a class="indexterm" id="id615"/>your domain administration <a class="indexterm" id="id616"/>panel and set the <code class="literal">A</code> record for your domain to the IP address of your dedicated server.</li><li class="listitem">Connect to the dedicated server via Secure Shell as the root user and install Python libraries, <code class="literal">pip</code>, <code class="literal">virtualenv</code>, <code class="literal">MySQLdb</code>, and <code class="literal">Pillow</code> system wide.</li><li class="listitem">Ensure that the default MySQL database encoding is UTF-8:<div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Edit MySQL configuration file on the remote server, for example, using the nano editor:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ ssh root@myproject.com</strong></span>
+<span class="strong"><strong>root@myproject.com's password:</strong></span>
+
+<span class="strong"><strong>$ nano /etc/mysql/my.cnf</strong></span>
+</pre></div><p>Add or edit the following configurations:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>[client]</strong></span>
+<span class="strong"><strong>default-character-set=utf8</strong></span>
+
+<span class="strong"><strong>[mysql]</strong></span>
+<span class="strong"><strong>default-character-set=utf8</strong></span>
+
+<span class="strong"><strong>[mysqld]</strong></span>
+<span class="strong"><strong>collation-server=utf8_unicode_ci</strong></span>
+<span class="strong"><strong>init-connect='SET NAMES utf8'</strong></span>
+<span class="strong"><strong>character-set-server=utf8</strong></span>
+</pre></div></li><li class="listitem">Press <span class="emphasis"><em>Ctrl</em></span> + <span class="emphasis"><em>O</em></span> to save the changes and <span class="emphasis"><em>Ctrl</em></span> + <span class="emphasis"><em>X</em></span> to exit the nano editor.</li><li class="listitem">Then, restart the MySQL server, as follows:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ /etc/init.d/mysql restart</strong></span>
+</pre></div></li><li class="listitem">Press <span class="emphasis"><em>Ctrl</em></span> + <span class="emphasis"><em>D</em></span> to exit Secure Shell.</li></ol></div></li><li class="listitem">When<a class="indexterm" id="id617"/> you create a domain with Virtualmin, the <a class="indexterm" id="id618"/>user for that domain is created automatically. Connect to the dedicated server via Secure Shell as a user of your Django project and create a virtual environment for your project, as follows:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ ssh myproject@myproject.com</strong></span>
+<span class="strong"><strong>myproject@myproject.com's password:</strong></span>
+
+<span class="strong"><strong>$ virtualenv . --system-site-packages</strong></span>
+<span class="strong"><strong>$ echo source ~/bin/activate &gt;&gt; .bashrc</strong></span>
+<span class="strong"><strong>$ source ~/bin/activate</strong></span>
+<span class="strong"><strong>(myproject)myproject@server$</strong></span>
+</pre></div><div class="note" style="" title="Note"><div class="inner"><h3 class="title"><a id="tip20"/>Tip</h3><p>The <code class="literal">.bashrc</code> script will be called each time you connect to your Django project via Secure Shell as a user related to the domain. The <code class="literal">.bashrc</code> script will automatically activate the virtual environment for this project.</p></div></div></li><li class="listitem">If you host your project code on Bitbucket, you will need to set up SSH keys in order to avoid password prompts when pulling from or pushing to the Git repository:<div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Execute the following commands one by one:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>(myproject)myproject@server$ ssh-keygen</strong></span>
+<span class="strong"><strong>(myproject)myproject@server$ ssh-agent /bin/bash</strong></span>
+<span class="strong"><strong>(myproject)myproject@server$ ssh-add ~/.ssh/id_rsa</strong></span>
+<span class="strong"><strong>(myproject)myproject@server$ cat ~/.ssh/id_rsa.pub</strong></span>
+</pre></div></li><li class="listitem">This last command prints your SSH public key that you need to copy and paste at <span class="strong"><strong>Manage Account</strong></span> | <span class="strong"><strong>SSH keys</strong></span> | <span class="strong"><strong>Add Key</strong></span> on the Bitbucket website.</li></ol></div></li><li class="listitem">Create a <code class="literal">project</code> directory, go to it, and clone your project's code as follows:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>(myproject)myproject@server$ git clone \</strong></span>
+<span class="strong"><strong>git@bitbucket.org:somebitbucketuser/myproject.git myproject</strong></span>
+</pre></div><div class="note" style="" title="Note"><div class="inner"><h3 class="title"><a id="tip21"/>Tip</h3><p>Now, your project path should be something similar to the following: <code class="literal">/home/myproject/project/myproject</code></p></div></div></li><li class="listitem">Install<a class="indexterm" id="id619"/> the Python requirements for your<a class="indexterm" id="id620"/> project, including a specified version of Django, as follows:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>(myproject)myproject@server$ pip install -r requirements.txt</strong></span>
+</pre></div></li><li class="listitem">Create the <code class="literal">media</code>, <code class="literal">tmp</code>, and <code class="literal">static</code> directories under your project's directory.</li><li class="listitem">Also, create <code class="literal">local_settings.py</code> with settings similar to the following:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong># /home/myproject/project/myproject/myproject/local_settings.py</strong></span>
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.mysql",
+        "NAME": "myproject",
+        "USER": "myproject",
+        "PASSWORD": "mypassword",
+    }
+}
+PREPEND_WWW = True
+DEBUG = False
+ALLOWED_HOSTS = ["myproject.com"]</pre></div></li><li class="listitem">Import the database dump that you <a class="indexterm" id="id621"/>created locally. If you are using a Mac, you can do that with an app, <span class="strong"><strong>Sequel Pro</strong></span> (<a class="ulink" href="http://www.sequelpro.com/">http://www.sequelpro.com/</a>), using an SSH connection. You can also upload the database dump to the server by FTP and then run the following in Secure Shell:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>(myproject)myproject@server$ python manage.py dbshell &lt; \</strong></span>
+<span class="strong"><strong>~/db_backups/db.sql</strong></span>
+</pre></div></li><li class="listitem">Collect static files, as follows:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>(myproject)myproject@server$ python manage.py collectstatic \</strong></span>
+<span class="strong"><strong>--noinput</strong></span>
+</pre></div></li><li class="listitem">Go to the <code class="literal">~/public_html</code> directory and create a <code class="literal">wsgi</code> file using the nano editor (or an editor of your choice):<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong># /home/myproject/public_html/my.wsgi</strong></span>
+#!/home/myproject/bin/python
+# -*- coding: utf-8 -*-
+import os, sys, site
+django_path = os.path.abspath(
+    os.path.join(os.path.dirname(__file__),
+    "../lib/python2.6/site-packages/"),
+)
+site.addsitedir(django_path)
+project_path = os.path.abspath(
+    os.path.join(os.path.dirname(__file__),
+    "../project/myproject"),
+)
+sys.path += [project_path]
+os.environ["DJANGO_SETTINGS_MODULE"] = "myproject.settings"
+from django.core.wsgi import get_wsgi_application
+application = get_wsgi_application()</pre></div></li><li class="listitem">Then, create<a class="indexterm" id="id622"/> the <code class="literal">.htaccess</code> file in the <a class="indexterm" id="id623"/>same directory. The <code class="literal">.htaccess</code> file will redirect all the requests to your Django project set in the <code class="literal">wsgi</code> file, as shown in the following:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong># /home/myproject/public_html/.htaccess</strong></span>
+AddHandler wsgi-script .wsgi
+DirectoryIndex index.html
+RewriteEngine On
+RewriteBase /
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME}/index.html !-f
+RewriteCond %{REQUEST_URI} !^/media/
+RewriteCond %{REQUEST_URI} !^/static/
+RewriteRule ^(.*)$ /my.wsgi/$1 [QSA,L]</pre></div></li><li class="listitem">Copy <code class="literal">.htaccess</code> as <code class="literal">.htaccess_live</code>.</li><li class="listitem">Then, also create <code class="literal">.htaccess_maintenace</code> for maintenance cases. This new Apache configuration file will show <code class="literal">temporarily-offline.html</code> for all the users except you, recognized by the IP address of your LAN or computer. You can check your IP by googling <code class="literal">what's my ip</code>. The following is how the <code class="literal">.htaccess_maintenance</code> will look:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong># /home/myproject/public_html/.htaccess_maintenance</strong></span>
+AddHandler wsgi-script .wsgi
+DirectoryIndex index.html
+RewriteEngine On
+RewriteBase /
+RewriteCond %{REMOTE_HOST} !^1\.2\.3\.4$
+RewriteCond %{REQUEST_URI} !/temporarily-offline\.html
+RewriteCond %{REQUEST_URI} !^/media/
+RewriteCond %{REQUEST_URI} !^/static/
+RewriteRule .* /temporarily-offline.html [R=302,L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME}/index.html !-f
+RewriteCond %{REQUEST_URI} !^/media/
+RewriteCond %{REQUEST_URI} !^/static/
+RewriteRule ^(.*)$ /my.wsgi/$1 [QSA,L]</pre></div><div class="note" style="" title="Note"><div class="inner"><h3 class="title"><a id="tip22"/>Tip</h3><p>Replace the IP digits in this file with your own IP.</p></div></div></li><li class="listitem">Then, create an HTML file that will be shown when your website is down:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&lt;!-- /home/myproject/public_html/temporarily-offline.html --&gt;</strong></span>
+The site is being updated... Please come back later.</pre></div></li><li class="listitem">Log in<a class="indexterm" id="id624"/> to the server as the root user via<a class="indexterm" id="id625"/> Secure Shell and edit the Apache configuration:<div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Open the domain configuration file, as follows:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ nano /etc/apache2/sites-available/myproject.mydomain.conf</strong></span>
+</pre></div></li><li class="listitem">Add the following lines before <code class="literal">&lt;/VirtualHost&gt;</code>:<div class="informalexample"><pre class="programlisting">Options -Indexes
+AliasMatch ^/static/\d+/(.*) \
+    "/home/myproject/project/myproject/static/$1"
+AliasMatch ^/media/(.*) \
+    "/home/myproject/project/myproject/media/$1"
+&lt;FilesMatch "\.(ico|pdf|flv|jpe?g|png|gif|js|css|swf)$"&gt;
+    ExpiresActive On
+    ExpiresDefault "access plus 1 year"
+&lt;/FilesMatch&gt;</pre></div></li><li class="listitem">Restart Apache for the changes to take effect:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ /etc/init.d/apache2 restart</strong></span>
+</pre></div></li></ol></div></li><li class="listitem">Set the default scheduled cron jobs. For more information on how to do this, refer to the <span class="emphasis"><em>Setting up cron jobs for regular tasks</em></span> recipe.</li></ol></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec375"/>How it works...</h2></div></div></div><p>With this configuration, files in the <code class="literal">media</code> and <code class="literal">static</code> directories are served directly from Apache; whereas, all the other URLs are handled by the Django project through the <code class="literal">my.wsgi</code> file.</p><p>Using the <code class="literal">&lt;FilesMatch&gt;</code> directive in the Apache site configuration, all media files are set to be<a class="indexterm" id="id626"/> cached for one year. Static URL paths have a<a class="indexterm" id="id627"/> numbered prefix that changes whenever you update the code from the Git repository.</p><p>When you need to update the website and want to set it down for maintenance, you'll have to copy <code class="literal">.htaccess_maintenance</code> to <code class="literal">.htaccess</code>. When you want to set the website up again, you'll have to copy <code class="literal">.htaccess_live</code> to <code class="literal">.htaccess</code>.</p></div><div class="section" title="There's more..."><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec376"/>There's more...</h2></div></div></div><p>To find other <a class="indexterm" id="id628"/>options for hosting your Django project, refer to: <a class="ulink" href="http://djangofriendly.com/hosts/">http://djangofriendly.com/hosts/</a>.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec377"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">The <span class="emphasis"><em>Creating a project file structure</em></span> recipe in <a class="link" href="ch01.html" title="Chapter 1. Getting Started with Django 1.8">Chapter 1</a>, <span class="emphasis"><em>Getting Started with Django 1.8</em></span></li><li class="listitem" style="list-style-type: disc">The <span class="emphasis"><em>Handling project dependencies with pip</em></span> recipe in <a class="link" href="ch01.html" title="Chapter 1. Getting Started with Django 1.8">Chapter 1</a>, <span class="emphasis"><em>Getting Started with Django 1.8</em></span></li><li class="listitem" style="list-style-type: disc">The <span class="emphasis"><em>Setting up STATIC_URL dynamically for Git users</em></span> recipe in <a class="link" href="ch01.html" title="Chapter 1. Getting Started with Django 1.8">Chapter 1</a>, <span class="emphasis"><em>Getting Started with Django 1.8</em></span></li><li class="listitem" style="list-style-type: disc">The <span class="emphasis"><em>Setting UTF-8 as the default encoding for MySQL configuration</em></span> recipe in <a class="link" href="ch01.html" title="Chapter 1. Getting Started with Django 1.8">Chapter 1</a>, <span class="emphasis"><em>Getting Started with Django 1.8</em></span></li><li class="listitem" style="list-style-type: disc">The <span class="emphasis"><em>Creating and using the Fabric deployment script</em></span> recipe</li><li class="listitem" style="list-style-type: disc">The <span class="emphasis"><em>Setting up cron jobs for regular tasks</em></span> recipe</li></ul></div></div></div>
+<div class="section" title="Setting up cron jobs for regular tasks"><div class="titlepage"><div><div><h1 class="title"><a id="ch11lvl1sec109"/>Setting up cron jobs for regular tasks</h1></div></div></div><p>Usually websites have some management tasks to do in the background once in a week, day, or every<a class="indexterm" id="id629"/> hour. This can be achieved using cron jobs that are also known as scheduled tasks. These are scripts that run on the server for the specified period of time. In this recipe, we will create two cron jobs: one to clear sessions from the database and another to back up the database data. Both will be run every night.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec378"/>Getting ready</h2></div></div></div><p>To start with, deploy your Django project on to a remote server. Then, connect to the server by SSH.</p></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec379"/>How to do it...</h2></div></div></div><p>Let's create<a class="indexterm" id="id630"/> the two scripts and make them run regularly by following these steps:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create the <code class="literal">commands</code>, <code class="literal">db_backups</code> and <code class="literal">logs</code> directories in your project's home directory:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>(myproject)myproject@server$ mkdir commands</strong></span>
+<span class="strong"><strong>(myproject)myproject@server$ mkdir db_backups</strong></span>
+<span class="strong"><strong>(myproject)myproject@server$ mkdir logs</strong></span>
+</pre></div></li><li class="listitem">In the <code class="literal">commands</code> directory, create a <code class="literal">cleanup.sh</code> file with the following content:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong># /home/myproject/commands/cleanup.sh</strong></span>
+#! /usr/bin/env bash
+PROJECT_PATH=/home/myproject
+CRON_LOG_FILE=${PROJECT_PATH}/logs/cleanup.log
+
+echo "Cleaning up the database" &gt; ${CRON_LOG_FILE}
+date &gt;&gt; ${CRON_LOG_FILE}
+
+cd ${PROJECT_PATH}
+. bin/activate
+cd project/myproject
+python manage.py cleanup --traceback &gt;&gt; \
+${CRON_LOG_FILE}  2&gt;&amp;1</pre></div></li><li class="listitem">Make the following file executable:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>(myproject)myproject@server$ chmod +x cleanup.sh</strong></span>
+</pre></div></li><li class="listitem">Then, in the same directory, create a <code class="literal">backup_db.sh</code> file with the following content:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong># /home/myproject/commands/cleanup.sh</strong></span>
+#! /usr/bin/env bash
+PROJECT_PATH=/home/myproject
+CRON_LOG_FILE=${PROJECT_PATH}/logs/backup_db.log
+WEEK_DATE=$(LC_ALL=en_US.UTF-8 date +"%w-%A")
+BACKUP_PATH=${PROJECT_PATH}/db_backups/${WEEK_DATE}.sql
+DATABASE=myproject
+USER=my_db_user
+PASS=my_db_password
+
+EXCLUDED_TABLES=(
+django_session
+)
+
+IGNORED_TABLES_STRING=''
+for TABLE in "${EXCLUDED_TABLES[@]}"
+do :
+    IGNORED_TABLES_STRING+=\
+    " --ignore-table=${DATABASE}.${TABLE}"
+done
+
+echo "Creating DB Backup" &gt; ${CRON_LOG_FILE}
+date &gt;&gt; ${CRON_LOG_FILE}
+
+cd ${PROJECT_PATH}
+mkdir -p db_backups
+
+echo "Dump structure" &gt;&gt; ${CRON_LOG_FILE}
+mysqldump -u ${USER} -p${PASS} --single-transaction \
+--no-data ${DATABASE} &gt; ${BACKUP_PATH} 2&gt;&gt; ${CRON_LOG_FILE}
+
+echo "Dump content" &gt;&gt; ${CRON_LOG_FILE}
+mysqldump -u ${USER} -p${PASS} ${DATABASE} \
+${IGNORED_TABLES_STRING} &gt;&gt; ${BACKUP_PATH} 2&gt;&gt; \
+${CRON_LOG_FILE}</pre></div></li><li class="listitem">Make<a class="indexterm" id="id631"/> the following file executable too:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>(myproject)myproject@server$ chmod +x backup_db.sh</strong></span>
+</pre></div></li><li class="listitem">Test the scripts to see whether they are executed correctly by running the scripts and then checking the <code class="literal">*.log</code> files in the <code class="literal">logs</code> directory, as follows:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>(myproject)myproject@server$ ./cleanup.sh</strong></span>
+<span class="strong"><strong>(myproject)myproject@server$ ./backup_db.sh</strong></span>
+</pre></div></li><li class="listitem">In your project's home directory create a <code class="literal">crontab.txt</code> file with the following tasks:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>00 01 * * * /home/myproject/commands/cleanup.sh</strong></span>
+<span class="strong"><strong>00 02 * * * /home/myproject/commands/backup_db.sh</strong></span>
+</pre></div></li><li class="listitem">Install the crontab tasks, as follows:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>(myproject)myproject@server$ crontab -e crontab.txt</strong></span>
+</pre></div></li></ol></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec380"/>How it works...</h2></div></div></div><p>With the current setup, every night <code class="literal">cleanup.sh</code> will be executed at 1 A.M. and <code class="literal">backup_db.sh</code> will be executed at 2 A.M. The execution logs will be saved in <code class="literal">cleanup.log</code> and <code class="literal">backup_db.log</code>. If you get any errors, you should check these files for the traceback.</p><p>The database backup script is a little more complex. Every day of the week, it creates a backup <a class="indexterm" id="id632"/>file for that day called <code class="literal">0-Sunday.sql</code>, <code class="literal">1-Monday.sql</code>, and so on. Therefore, you will be able to restore data backed seven days ago or later. At first, the backup script dumps the database schema for all the tables and then it dumps the data for all the tables, except for the ones listed one under each other in <code class="literal">EXCLUDED_TABLES</code> (currently, that is, <code class="literal">django_session</code>).</p><p>The crontab syntax is this: each line contains a specific period of time and then a task to run at it. The time is defined in five parts separated by spaces, as shown in the following:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Minutes from 0 to 59</li><li class="listitem" style="list-style-type: disc">Hours from 0 to 23</li><li class="listitem" style="list-style-type: disc">Days of month from 1 to 31</li><li class="listitem" style="list-style-type: disc">Months from 1 to 12</li><li class="listitem" style="list-style-type: disc">Days of week from 0 to 7, where 0 is Sunday, 1 is Monday, and so on. 7 is Sunday again.</li></ul></div><p>An asterisk (<code class="literal">*</code>) means that every time frame will be used. Therefore, the following task defines <code class="literal">cleanup.sh</code> to be executed at 1:00 AM every day of a month, every month, and every day of the week:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>00 01 * * * /home/myproject/commands/cleanup.sh</strong></span>
+</pre></div><p>You can<a class="indexterm" id="id633"/> learn more about the specifics of the crontab at <a class="ulink" href="https://en.wikipedia.org/wiki/Cron">https://en.wikipedia.org/wiki/Cron</a>.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec381"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">The <span class="emphasis"><em>Deploying on Apache with mod_wsgi</em></span> recipe</li><li class="listitem" style="list-style-type: disc">The <span class="emphasis"><em>Creating and using the Fabric deployment script</em></span> recipe</li></ul></div></div></div>
+<div class="section" title="Creating and using the Fabric deployment script"><div class="titlepage"><div><div><h1 class="title"><a id="ch11lvl1sec110"/>Creating and using the Fabric deployment script</h1></div></div></div><p>Usually, to<a class="indexterm" id="id634"/> update your site, you have to perform <a class="indexterm" id="id635"/>repetitive tasks such as setting a maintenance page, stopping cron jobs, creating a database backup, pulling new code from a repository, migrating databases, collecting static files, testing, starting cron jobs again, and unsetting the maintenance page. That's quite a tedious work, where mistakes can occur. Also, you need not forget the different routines for staging site (the one where new features can be tested) and production site (which is shown to the public). Fortunately, there is a Python library called <span class="strong"><strong>Fabric</strong></span><a class="indexterm" id="id636"/> that allows you to automate these tasks. In this recipe, you will learn how to create <code class="literal">fabfile.py</code>, the script for Fabric, and how to deploy your project on staging and production environments.</p><p>The Fabric script can be called from the directory that contains it, as follows:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>(myproject_env)$ fab staging deploy</strong></span>
+</pre></div><p>This will deploy the project on the staging server.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec382"/>Getting ready</h2></div></div></div><p>Set up<a class="indexterm" id="id637"/> analogous staging and production websites <a class="indexterm" id="id638"/>using the instructions in the <span class="emphasis"><em>Deploying on Apache with mod_wsgi</em></span> recipe. Install Fabric on your computer globally or in your project's virtual environment, as follows:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ pip install fabric</strong></span>
+</pre></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec383"/>How to do it...</h2></div></div></div><p>We will start by creating a <code class="literal">fabfile.py</code> file in the Django project directory with several functions, as follows:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong># fabfile.py</strong></span>
+# -*- coding: UTF-8 -*-
+from fabric.api import env, run, prompt, local, get, sudo
+from fabric.colors import red, green
+from fabric.state import output
+
+env.environment = ""
+env.full = False
+output['running'] = False
+
+PRODUCTION_HOST = "myproject.com"
+PRODUCTION_USER = "myproject"
+
+def dev():
+    """ chooses development environment """
+    env.environment = "dev"
+    env.hosts = [PRODUCTION_HOST]
+    env.user = PRODUCTION_USER
+    print("LOCAL DEVELOPMENT ENVIRONMENT\n")
+
+def staging():
+    """ chooses testing environment """
+    env.environment = "staging"
+    env.hosts = ["staging.myproject.com"]
+    env.user = "myproject"
+    print("STAGING WEBSITE\n")
+
+def production():
+    """ chooses production environment """
+    env.environment = "production"
+    env.hosts = [PRODUCTION_HOST]
+    env.user = PRODUCTION_USER
+    print("PRODUCTION WEBSITE\n")
+
+def full():
+    """ all commands should be executed without questioning """
+    env.full = True
+
+def deploy():
+    """ updates the chosen environment """
+    if not env.environment:
+        while env.environment not in ("dev", "staging",
+            "production"):
+            env.environment = prompt(red('Please specify target'
+                'environment ("dev", "staging", or '
+                '"production"): '))             print
+    globals()["_update_%s" % env.environment]()</pre></div><p>The <code class="literal">dev()</code>, <code class="literal">staging()</code>, and <code class="literal">production()</code> functions set the appropriate environment for the<a class="indexterm" id="id639"/> current task. Then, the <code class="literal">deploy()</code> function <a class="indexterm" id="id640"/>calls the <code class="literal">_update_dev()</code>, <code class="literal">_update_staging()</code>, or <code class="literal">_update_production()</code> private functions, respectively. Let's define these private functions in the same file, as follows:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">The function for deploying in the development environment will optionally do the following tasks:<div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Update the local database with data from the production database</li><li class="listitem" style="list-style-type: disc">Download media files from the production server</li><li class="listitem" style="list-style-type: disc">Update code from the Git repository</li><li class="listitem" style="list-style-type: disc">Migrate the local database</li></ul></div><p>Let's create this function in the Fabric script file, as follows:</p><div class="informalexample"><pre class="programlisting">def _update_dev():
+    """ updates development environment """
+    run("")  # password request
+    print
+
+    if env.full or "y" == prompt(red("Get latest "
+        "production database (y/n)?"), default="y"):
+        print(green(" * creating production-database "
+            "dump..."))
+        run("cd ~/db_backups/ &amp;&amp; ./backup_db.sh --latest")
+        print(green(" * downloading dump..."))
+        get("~/db_backups/db_latest.sql",
+            "tmp/db_latest.sql")
+        print(green(" * importing the dump locally..."))
+        local("python manage.py dbshell &lt; "
+            "tmp/db_latest.sql &amp;&amp; rm tmp/db_latest.sql")
+        print
+        if env.full or "y" == prompt("Call prepare_dev "
+           "command (y/n)?", default="y"):
+            print(green(" * preparing data for "
+                "development..."))
+            local("python manage.py prepare_dev")
+    print
+
+    if env.full or "y" == prompt(red("Download media "
+        "uploads (y/n)?"), default="y"):
+        print(green(" * creating an archive of media "
+            "uploads..."))
+        run("cd ~/project/myproject/media/ "
+            "&amp;&amp; tar -cz -f "
+            "~/project/myproject/tmp/media.tar.gz *")
+        print(green(" * downloading archive..."))
+        get("~/project/myproject/tmp/media.tar.gz",
+            "tmp/media.tar.gz")
+        print(green(" * extracting and removing archive "
+            "locally..."))
+        for host in env.hosts:
+            local("cd media/ "
+                "&amp;&amp; tar -xzf ../tmp/media.tar.gz "
+                "&amp;&amp; rm tmp/media.tar.gz")
+        print(green(" * removing archive from the "
+            "server..."))
+        run("rm ~/project/myproject/tmp/media.tar.gz")
+    print
+
+    if env.full or "y" == prompt(red("Update code (y/n)?"),
+        default="y"):
+        print(green(" * updating code..."))
+        local("git pull")
+    print
+
+    if env.full or "y" == prompt(red("Migrate database "
+        "schema (y/n)?"), default="y"):
+        print(green(" * migrating database schema..."))
+        local("python manage.py migrate --no-initial-data")
+        local("python manage.py syncdb")
+    print</pre></div></li><li class="listitem" style="list-style-type: disc">The<a class="indexterm" id="id641"/> function for deploying in a <a class="indexterm" id="id642"/>staging environment will optionally do the following tasks:<div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Set a maintenance screen saying that the site is being updated and the visitors should wait or come back later</li><li class="listitem" style="list-style-type: disc">Stop scheduled cron jobs</li><li class="listitem" style="list-style-type: disc">Get the latest data from the production database</li><li class="listitem" style="list-style-type: disc">Get the latest media files from the production database</li><li class="listitem" style="list-style-type: disc">Pull code from the Git repository</li><li class="listitem" style="list-style-type: disc">Collect static files</li><li class="listitem" style="list-style-type: disc">Migrate the database schema</li><li class="listitem" style="list-style-type: disc">Restart the Apache web server</li><li class="listitem" style="list-style-type: disc">Start scheduled cron jobs</li><li class="listitem" style="list-style-type: disc">Unset the maintenance screen</li></ul></div><p>Let's create this function in the Fabric script, as follows:</p><div class="informalexample"><pre class="programlisting">def _update_staging():
+    """ updates testing environment """
+    run("")  # password request
+    print
+
+    if env.full or "y" == prompt(red("Set under-"
+        "construction screen (y/n)?"), default="y"):
+        print(green(" * Setting maintenance screen"))
+        run("cd ~/public_html/ "
+            "&amp;&amp; cp .htaccess_under_construction .htaccess")
+    print
+
+    if env.full or "y" == prompt(red("Stop cron jobs "
+        " (y/n)?"), default="y"):
+        print(green(" * Stopping cron jobs"))
+        sudo("/etc/init.d/cron stop")
+    print
+
+    if env.full or "y" == prompt(red("Get latest "
+        "production database (y/n)?"), default="y"):
+        print(green(" * creating production-database "
+            "dump..."))
+        run("cd ~/db_backups/ &amp;&amp; ./backup_db.sh --latest")
+        print(green(" * downloading dump..."))
+        run("scp %(user)s@%(host)s:"
+            "~/db_backups/db_latest.sql "
+            "~/db_backups/db_latest.sql" % {
+                "user": PRODUCTION_USER,
+                "host": PRODUCTION_HOST,
+            }
+        )
+        print(green(" * importing the dump locally..."))
+        run("cd ~/project/myproject/ &amp;&amp; python manage.py "
+            "dbshell &lt; ~/db_backups/db_latest.sql")
+        print
+        if env.full or "y" == prompt(red("Call "
+            " prepare_staging command (y/n)?"),
+            default="y"):
+            print(green(" * preparing data for "
+                " testing..."))
+            run("cd ~/project/myproject/ "
+                "&amp;&amp; python manage.py prepare_staging")
+    print
+    if env.full or "y" == prompt(red("Get latest media "
+        " (y/n)?"), default="y"):
+        print(green(" * updating media..."))
+        run("scp -r %(user)s@%(host)s:"
+            "~/project/myproject/media/* "
+            " ~/project/myproject/media/" % {
+                "user": PRODUCTION_USER,
+                "host": PRODUCTION_HOST,
+            }
+        )
+    print
+
+    if env.full or "y" == prompt(red("Update code (y/n)?"),
+        default="y"):
+        print(green(" * updating code..."))
+        run("cd ~/project/myproject "
+            "&amp;&amp; git pull")
+    print
+
+    if env.full or "y" == prompt(red("Collect static "
+        "files (y/n)?"), default="y"):
+        print(green(" * collecting static files..."))
+        run("cd ~/project/myproject "
+            "&amp;&amp; python manage.py collectstatic --noinput")
+    print
+
+    if env.full or "y" == prompt(red('Migrate database "
+        " schema (y/n)?'), default="y"):
+        print(green(" * migrating database schema..."))
+        run("cd ~/project/myproject "
+            "&amp;&amp; python manage.py migrate "
+            "--no-initial-data")
+        run("cd ~/project/myproject "
+            "&amp;&amp; python manage.py syncdb")
+    print
+
+    if env.full or "y" == prompt(red("Restart webserver "
+        "(y/n)?"), default="y"):
+        print(green(" * Restarting Apache"))
+        sudo("/etc/init.d/apache2 graceful")
+    print
+
+    if env.full or "y" == prompt(red("Start cron jobs "
+        "(y/n)?"), default="y"):
+        print(green(" * Starting cron jobs"))
+        sudo("/etc/init.d/cron start")
+    print
+
+    if env.full or "y" == prompt(red("Unset under-"
+        "construction screen (y/n)?"), default="y"):
+        print(green(" * Unsetting maintenance screen"))
+        run("cd ~/public_html/ "
+            "&amp;&amp; cp .htaccess_live .htaccess")
+    print</pre></div></li><li class="listitem" style="list-style-type: disc">The<a class="indexterm" id="id643"/> function for deploying in a <a class="indexterm" id="id644"/>production environment will optionally do the following tasks:<div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Set the maintenance screen telling that the site is being updated and the visitors should wait or come back later</li><li class="listitem" style="list-style-type: disc">Stop scheduled cron jobs</li><li class="listitem" style="list-style-type: disc">Back up the database</li><li class="listitem" style="list-style-type: disc">Pull code from the Git repository</li><li class="listitem" style="list-style-type: disc">Collect static files</li><li class="listitem" style="list-style-type: disc">Migrate<a class="indexterm" id="id645"/> the database schema</li><li class="listitem" style="list-style-type: disc">Restart<a class="indexterm" id="id646"/> the Apache web server</li><li class="listitem" style="list-style-type: disc">Start scheduled cron jobs</li><li class="listitem" style="list-style-type: disc">Unset the maintenance screen</li></ul></div><p>Let's create this function in the Fabric script, as follows:</p><div class="informalexample"><pre class="programlisting">def _update_production():
+    """ updates production environment """
+    if "y" != prompt(red("Are you sure you want to "
+        "update " + red("production", bold=True) + \
+        " website (y/n)?"), default="n"):
+        return
+
+    run("")  # password request
+    print
+
+    if env.full or "y" == prompt(red("Set under-"
+        "construction screen (y/n)?"), default="y"):
+        print(green(" * Setting maintenance screen"))
+        run("cd ~/public_html/ "
+            "&amp;&amp; cp .htaccess_under_construction .htaccess")
+    print
+    if env.full or "y" == prompt(red("Stop cron jobs"
+        " (y/n)?"), default="y"):
+        print(green(" * Stopping cron jobs"))
+        sudo("/etc/init.d/cron stop")
+    print
+
+    if env.full or "y" == prompt(red("Backup database "
+        "(y/n)?"), default="y"):
+        print(green(" * creating a database dump..."))
+        run("cd ~/db_backups/ "
+            "&amp;&amp; ./backup_db.sh")
+    print
+
+    if env.full or "y" == prompt(red("Update code (y/n)?"),
+        default="y"):
+        print(green(" * updating code..."))
+        run("cd ~/project/myproject/ "
+            "&amp;&amp; git pull")
+    print
+
+    if env.full or "y" == prompt(red("Collect static "
+        "files (y/n)?"), default="y"):
+        print(green(" * collecting static files..."))
+        run("cd ~/project/myproject "
+            "&amp;&amp; python manage.py collectstatic --noinput")
+    print
+
+    if env.full or "y" == prompt(red("Migrate database "
+        "schema (y/n)?"), default="y"):
+        print(green(" * migrating database schema..."))
+        run("cd ~/project/myproject "
+            "&amp;&amp; python manage.py migrate "
+            "--no-initial-data")
+        run("cd ~/project/myproject "
+            "&amp;&amp; python manage.py syncdb")
+    print
+
+    if env.full or "y" == prompt(red("Restart webserver "
+        "(y/n)?"), default="y"):
+        print(green(" * Restarting Apache"))
+        sudo("/etc/init.d/apache2 graceful")
+    print
+    if env.full or "y" == prompt(red("Start cron jobs "
+        "(y/n)?"), default="y"):
+        print(green(" * Starting cron jobs"))
+        sudo("/etc/init.d/cron start")
+    print
+
+    if env.full or "y" == prompt(red("Unset under-"
+        "construction screen (y/n)?"), default="y"):
+        print(green(" * Unsetting maintenance screen"))
+        run("cd ~/public_html/ "
+            "&amp;&amp; cp .htaccess_live .htaccess")
+    print</pre></div></li></ul></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec384"/>How it works...</h2></div></div></div><p>Each non-private function in a <code class="literal">fabfile.py</code> file becomes a possible argument to be called from<a class="indexterm" id="id647"/> the command-line tool. To see all the available<a class="indexterm" id="id648"/> functions, run the following command:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>(myproject_env)$ fab --list</strong></span>
+<span class="strong"><strong>Available commands:</strong></span>
+<span class="strong"><strong>    deploy      updates the chosen environment</strong></span>
+<span class="strong"><strong>    dev         chooses development environment</strong></span>
+<span class="strong"><strong>    full        all commands should be executed without questioning</strong></span>
+<span class="strong"><strong>    production  chooses production environment</strong></span>
+<span class="strong"><strong>    staging     chooses testing environment</strong></span>
+</pre></div><p>These functions are called in the same order as they are passed to the Fabric script, therefore you need to be careful about the order of the arguments when deploying to different environments:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">To deploy in a development environment, you would run the following command:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>(myproject_env)$ fab dev deploy</strong></span>
+</pre></div><p>This will ask you questions similar to the following:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>Get latest production database (y/n)? [y] _</strong></span>
+</pre></div><p>When answered positively, a specific step will be executed.</p></li><li class="listitem" style="list-style-type: disc">To deploy in a staging environment, you would run the following command:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>(myproject_env)$ fab staging deploy</strong></span>
+</pre></div></li><li class="listitem" style="list-style-type: disc">Finally, to deploy in a production environment, you would run the following command:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>(myproject_env)$ fab production deploy</strong></span>
+</pre></div></li></ul></div><p>For each step of deployment, you will be asked whether you want to do it or skip it. If you want to execute all the steps without any prompts (except the password requests), add a <code class="literal">full</code> parameter to the deployment script, as follows:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>(myproject_env)$ fab dev full deploy</strong></span>
+</pre></div><p>The Fabric script utilizes several basic functions that can be described as follows:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">local()</code>: This<a class="indexterm" id="id649"/> function is used to run a command locally in the current computer</li><li class="listitem" style="list-style-type: disc"><code class="literal">run()</code>: This<a class="indexterm" id="id650"/> function is used to run a command as a specified user on a remote server</li><li class="listitem" style="list-style-type: disc"><code class="literal">prompt()</code>: This<a class="indexterm" id="id651"/> function is used to ask a question</li><li class="listitem" style="list-style-type: disc"><code class="literal">get()</code>: This<a class="indexterm" id="id652"/> function is used to download a file from a remote server to a local computer</li><li class="listitem" style="list-style-type: disc"><code class="literal">sudo()</code>: This<a class="indexterm" id="id653"/> function is used to run a command as the root (or other) user</li></ul></div><p>Fabric uses the Secure Shell connection to perform tasks on remote servers. Each <code class="literal">run()</code> or <code class="literal">sudo()</code> command is executed as a separate connection; therefore, when you want to execute multiple commands at once, you have to either create a <code class="literal">bash</code> script on the server and call it from Fabric or you have to separate the commands using the <code class="literal">&amp;&amp;</code> shell operator, which<a class="indexterm" id="id654"/> executes the next command <a class="indexterm" id="id655"/>only if the previous one was successful.</p><p>We are also using the <code class="literal">scp</code> command to copy files from the production server to the staging server. The syntax of <code class="literal">scp</code> for recursively copying all the files from a specified directory is similar to the following:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>scp -r myproject_user@myproject.com:/path/on/production/server/* \</strong></span>
+<span class="strong"><strong>/path/on/staging/server/</strong></span>
+</pre></div><p>To make the output more user-friendly, we are using colors, as follows:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>print(green(" * migrating database schema..."))</strong></span>
+</pre></div><p>The deployment script expects you to have two management commands: <code class="literal">prepare_dev</code> and <code class="literal">prepare_staging</code>. It's up to you to decide what to put in these commands. Basically, you could change the super user password to a simpler one and change the site domain there. If you don't need such functionality, just remove that from the Fabric script.</p><p>The general rule of thumb is not to store any sensitive data in the Fabric script if it is saved in the Git repository. Therefore, for example, to make a backup of the database, we call the <code class="literal">backup_db.sh</code> script on the remote production server. The content of such a file could be something similar to the following:</p><div class="informalexample"><pre class="programlisting"># ~/db_backups/backup_db.sh
+#!/bin/bash
+if [[ $1 = '--latest' ]]
+then
+    today="latest"
+else
+    today=$(date +%Y-%m-%d-%H%M)
+fi
+mysqldump --opt -u my_db_user -pmy_db_password myproject &gt; \
+    db_$today.sql</pre></div><p>You can make it executable with the following:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ chmod +x backup_db.sh</strong></span>
+</pre></div><p>When the preceding command is run without parameters, it will create a database dump with the<a class="indexterm" id="id656"/> date and time in the filename, for example, <code class="literal">db_2014-04-24-1400.sql</code>, as follows:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ ./backup_db.sh</strong></span>
+</pre></div><p>When<a class="indexterm" id="id657"/> the <code class="literal">--latest</code> parameter is passed, the filename of the dump will be <code class="literal">db_latest.sql</code>:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ ./backup_db.sh --latest</strong></span>
+</pre></div></div><div class="section" title="There's more..."><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec385"/>There's more...</h2></div></div></div><p>Fabric scripts can be used not only for deployment, but also for any routine that you need to perform on remote servers, for example, collecting translatable strings when you are using the Rosetta tool to translate <code class="literal">*.po</code> files online, rebuild search indexes when you are using Haystack for full-text searches, create backups on demand, call custom management commands, and so on.</p><p>To learn more<a class="indexterm" id="id658"/> about Fabric, refer to the following URL: <a class="ulink" href="http://docs.fabfile.org/en/1.10/">http://docs.fabfile.org/en/1.10/</a>.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec386"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">The <span class="emphasis"><em>Deploying on Apache with mod_wsgi</em></span> recipe</li></ul></div></div></div></body></html>

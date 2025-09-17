@@ -1,0 +1,438 @@
+<html><head></head><body>
+  <div id="sbo-rt-content"><div class="chapter"><div class="titlepage"><div><div><h1 class="title"><a id="ch06"/>Chapter 6. Using Third-party Libraries</h1></div></div></div><p>In this chapter, we will cover the following recipes:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><p>Customizing logging</p></li><li class="listitem"><p>Aggregating feeds</p></li><li class="listitem"><p>Displaying Tweets</p></li><li class="listitem"><p>Plotting with matplotlib</p></li><li class="listitem"><p>Extending PluginWiki with an RSS widget</p></li></ul></div><div class="section"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec01"/>Introduction</h1></div></div></div><p>The power of Python comes form the plethora of<span class="strong"><strong> third-party libraries</strong></span> available. The goal of this chapter is not to discuss the APIs of these third-party libraries, as the task would be monumental. The goal, instead, is to show you the proper way to do it by customizing logging, to detect possible problems, by creating your own APIs in the model files, and packaging the new interface as a plugin.</p></div><div class="section"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec02"/>Customizing logging</h1></div></div></div><p>Python's logging capabilities are powerful and flexible, but can be complicated to implement effectively. Moreover, logging in web2py introduces a new problem set. This recipe offers an approach for effective logging in web2py, leveraging Python's native logging functionality.<a id="id207" class="indexterm"/>
+</p><p>Python's native logging framework uses a logger-handler combination, whereby one or more loggers each logs to one or more handlers. The logging framework uses a singleton model for its loggers, so that the following line of code returns a single global<code class="literal"> Logger</code> instance by that name, instantiating it only on first access:</p><div class="informalexample"><pre class="programlisting">logging.getLogger('name')
+</pre></div><p>By default, a Python process starts out with a single root,<code class="literal"> logger (name == ")</code>, with a single handler logging to<code class="literal"> stdout</code>.</p><div class="section"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec01"/>How to do it...</h2></div></div></div><p>Logging in web2py involves some new issues, which are as follows:<a id="id208" class="indexterm"/>
+</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><p>Configuring and controlling logging at the application level</p></li><li class="listitem"><p>Configuring a logger once and only once</p></li><li class="listitem"><p>Implementing a simple syntax for logging</p></li></ul></div><p>Python's native logging framework already maintains a global set of named loggers per process. But in web2py, since the applications run within the same process, loggers are shared across applications. We need a different solution, if we want to configure and control loggers on an application-specific basis.</p><p>An easy way to create application-specific loggers is by including the application name in the name of the logger.</p><div class="informalexample"><pre class="programlisting">logging.getLogger(request.application)
+</pre></div><p>This can be done, for example, in a model file. The same code used across multiple applications will now return separate loggers for each application.</p><p>We want to be able to configure a logger once on start-up. However, when accessing a named logger, Python doesn't provide a way to check if the logger already exists.</p><p>The simplest way to ensure whether a logger is configured only once or not, is to check if it has any handlers, which is done as follows:</p><div class="informalexample"><pre class="programlisting">
+def get_configured_logger(name):
+	logger = logging.getLogger(name)
+	if len(logger.handlers) == 0:
+		# This logger has no handlers, so we can assume
+		# it hasn't yet been configured.
+		# (Configure logger)
+	return logger
+</pre></div><p>Notice that if<code class="literal"> loggername</code> is empty, you need to retrieve Python's root logger. The default root logger already has a handler associated with it, so you would check for a handler count of<code class="literal"> 1</code>. The root logger can't be made application-specific.<a id="id209" class="indexterm"/>
+</p><p>Of course, we don't want to have to call<code class="literal"> get_configured_logger</code> every time we make a log entry. Instead, we can make a global assignment once in the model, and use it throughout our application. The assignment will be executed every time you use the logger in your controller, but instantiation and configuration will only happen at the first access.<a id="id210" class="indexterm"/>
+</p><p>So finally, just place this code in a model:</p><div class="informalexample"><pre class="programlisting">
+import logging, logging.handlers
+def get_configured_logger(name):
+	logger = logging.getLogger(name)
+	if (len(logger.handlers) == 0):
+		# This logger has no handlers, so we can assume
+		# it hasn't yet been configured
+		# (Configure logger)
+		pass
+	return logger
+logger = get_configured_logger(request.application)
+</pre></div><p>Use it in your controllers as in the following examples:</p><div class="informalexample"><pre class="programlisting">logger.debug('debug message')
+logger.warn('warning message')
+logger.info('information message')
+logger.error('error message')
+</pre></div></div><div class="section"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec02"/>There's more...</h2></div></div></div><p>What can we do with a custom application-level logger? We can, for example, re-program logging on Google App Engine, so that messages go in a datastore table. Here is how we can do it:</p><div class="informalexample"><pre class="programlisting">
+import logging, logging.handlers
+
+class GAEHandler(logging.Handler):
+	"""
+	Logging handler for GAE DataStore
+	"""
+	def emit(self, record):
+		from google.appengine.ext import db
+		class Log(db.Model):
+		name = db.StringProperty()
+		level = db.StringProperty()
+		module = db.StringProperty()
+		func_name = db.StringProperty()
+		line_no = db.IntegerProperty()
+		thread = db.IntegerProperty()
+		thread_name = db.StringProperty()
+		process = db.IntegerProperty()
+		message = db.StringProperty(multiline=True)
+		args = db.StringProperty(multiline=True)
+		date = db.DateTimeProperty(auto_now_add=True)
+	log = Log()
+	log.name = record.name
+	log.level = record.levelname
+	log.module = record.module
+	log.func_name = record.funcName
+	log.line_no = record.lineno
+	log.thread = record.thread
+	log.thread_name = record.threadName
+	log.process = record.process
+	log.message = record.msg
+	log.args = str(record.args)
+	log.put()
+	
+def get_configured_logger(name):
+	logger = logging.getLogger(name)
+	if len(logger.handlers) == 0:
+		if request.env.web2py_runtime_gae:
+			# Create GAEHandler
+			handler = GAEHandler()
+		else:
+			# Create RotatingFileHandler
+			import os
+			formatter = "%(asctime)s %(levelname)s " + \
+				"%(process)s %(thread)s "+ \
+				"%(funcName)s():%(lineno)d %(message)s"
+			handler = logging.handlers.RotatingFileHandler(
+				os.path.join(request.folder,'private/app.log'),
+				maxBytes=1024,backupCount=2)
+			handler.setFormatter(logging.Formatter(formatter))
+			handler.setLevel(logging.DEBUG)
+			logger.addHandler(handler)
+			logger.setLevel(logging.DEBUG)
+			logger.debug(name + ' logger created') # Test entry
+		else:
+			logger.debug(name + ' already exists') # Test entry
+	return logger
+	
+#### Assign application logger to a global var
+logger = get_configured_logger(request.application)
+</pre></div><p>You can read more on the subject at the following URLs:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><p>
+<a class="ulink" href="http://docs.python.org/library/logging.html">http://docs.python.org/library/logging.html</a>
+</p></li><li class="listitem"><p>
+<a class="ulink" href="http://github.com/apptactic/apptactic-python/blob/master/logging/custom_handlers.py">http://github.com/apptactic/apptactic-python/blob/master/logging/custom_handlers.py</a>
+</p></li></ul></div></div></div><div class="section"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec03"/>Aggregating feeds</h1></div></div></div><p>In this recipe, we will build an RSS feed aggregator using<span class="strong"><strong> feedparser</strong></span> and<span class="strong"><strong> rss2</strong></span>. We call it<span class="strong"><strong> Planet Web2py</strong></span>, because it will filter the rss items, based on the string<code class="literal"> web2py</code>.<a id="id211" class="indexterm"/>
+</p><div class="section"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec03"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist"><li class="listitem"><p>Create a<code class="literal"> models/db_feed.py</code>, with the following content:</p><div class="informalexample"><pre class="programlisting">
+db.define_table("feed",
+	Field("name"),
+	Field("author"),
+	Field("email", requires=IS_EMAIL()),
+	Field("url", requires=IS_URL(), comment="RSS/Atom feed"),
+	Field("link", requires=IS_URL(), comment="Blog href"),
+	Field("general", "boolean", comment="Many categories (needs filters)"),
+)
+</pre></div></li><li class="listitem"><p>Then in<code class="literal"> controllers/default.py</code>, add a planet function that renders a basic page by fetching all feeds with<code class="literal"> feedparser:</code>
+</p><div class="informalexample"><pre class="programlisting">
+def planet():
+	FILTER = 'web2py'
+	import datetime
+	import re
+	import gluon.contrib.rss2 as rss2
+	import gluon.contrib.feedparser as feedparser
+	
+	# filter for general (not categorized) feeds
+	regex = re.compile(FILTER,re.I)
+	# select all feeds
+	feeds = db(db.feed).select()
+	entries = []
+	
+	for feed in feeds:
+		# fetch and parse feeds
+		d = feedparser.parse(feed.url)
+		for entry in d.entries:
+			# filter feed entries
+			if not feed.general or regex.search(entry.description):
+				# extract entry attributes
+				entries.append({
+					'feed': {'author':feed.author,
+							'link':feed.link,
+							'url':feed.url,
+							'name':feed.name},
+							'title': entry.title,
+							'link': entry.link,
+							'description': entry.description,
+							'author': hasattr(entry, 'author_detail') \
+							and entry.author_detail.name \
+							or feed.author,
+							'date': datetime.datetime(*entry.date_parsed[:6])
+							})
+							
+	# sort entries by date, descending
+	entries.sort(key=lambda x: x['date'],reverse=True)
+	now = datetime.datetime.now()
+	
+	# aggregate rss2 feed with parsed entries
+	rss = rss2.RSS2(title="Planet web2py",
+	link = URL("planet").encode("utf8"),
+	description = "planet author",
+		lastBuildDate = now,
+		items = [rss2.RSSItem(
+				title = entry['title'],
+				link = entry['link'],
+				description = entry['description'],
+				author = entry['author'],
+				# guid = rss2.Guid('unknown'),
+			pubDate = entry['date']) for entry in entries]
+		)
+	# return new rss feed xml
+	response.headers['Content-Type']='application/rss+xml'
+	return rss2.dumps(rss)
+</pre></div></li></ol></div><p>Before you can use this function, you will need to add some feed URLs in<code class="literal"> db.feed</code>, for example, using<code class="literal"> appadmin</code>.<a id="id212" class="indexterm"/>
+</p><p>Sample RSS feeds about web2py are as follows:<a id="id213" class="indexterm"/>
+</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><p>
+<a class="ulink" href="http://reingart.blogspot.com/feeds/posts/default/-/web2py">http://reingart.blogspot.com/feeds/posts/default/-/web2py</a>
+</p></li><li class="listitem"><p>
+<a class="ulink" href="http://web2py.wordpress.com/feed/">http://web2py.wordpress.com/feed/</a>
+</p></li><li class="listitem"><p>
+<a class="ulink" href="http://www.web2pyslices.com/main/slices/get_latest.rss">http://www.web2pyslices.com/main/slices/get_latest.rss</a>
+</p></li><li class="listitem"><p>
+<a class="ulink" href="http://martin.tecnodoc.com.ar/myblog/default/feed_articles.rss">http://martin.tecnodoc.com.ar/myblog/default/feed_articles.rss</a>
+</p></li></ul></div></div><div class="section"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec04"/>There's more...</h2></div></div></div><p>A working example of web2py sample planet can be found at the following URL:</p><p>
+<a class="ulink" href="http://www.web2py.com.ar/planet/">http://www.web2py.com.ar/planet/</a>
+</p><p>Full source code of complete examples (planet-web2py) is published at the Google code project, available at the following URL:</p><p>
+<a class="ulink" href="http://code.google.com/p/planet-web2py/">http://code.google.com/p/planet-web2py/</a>
+</p><p>That application stores<code class="literal"> rss</code> feed entries, to speed-up aggregation, and refresh feeds periodically.<a id="id214" class="indexterm"/>
+</p></div></div><div class="section"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec04"/>Displaying Tweets</h1></div></div></div><p>In this recipe we will show how to display recent tweets using<code class="literal"> simplejson</code>, and fetch the tool included with web2py.<a id="id215" class="indexterm"/>
+</p><div class="section"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec05"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist"><li class="listitem"><p>First, create a<code class="literal"> models/0.py</code> file to store the basic configuration, as follows:</p><div class="informalexample"><pre class="programlisting">TWITTER_HASH = "web2py"
+</pre></div></li><li class="listitem"><p>In<code class="literal"> controllers/default.py</code>, add a Twitter function that renders a basic page section by fetching all tweets with the fetch tool, and parse it with<code class="literal"> simplejson:</code>
+</p><div class="informalexample"><pre class="programlisting">
+@cache(request.env.path_info,time_expire=60*15,
+	cache_model=cache.r
+	am)
+def twitter():
+	session.forget()
+	session._unlock(response)
+	import gluon.tools
+	import gluon.contrib.simplejson as sj
+	try:
+			page = gluon.tools.fetch(' http://search.twitter.com/search.
+	json?q=%%40%s'
+				% TWITTER_HASH)
+			data = sj.loads(page, encoding="utf-8")['results']
+			d = dict()
+			for e in data:
+				d[e["id"]] = e
+			r = reversed(sorted(d))
+			return dict(tweets = [d[k] for k in r])
+		else:
+			return 'disabled'
+	except Exception, e:
+		return DIV(T('Unable to download because:'),BR(),str(e))
+</pre></div></li><li class="listitem"><p>Create a view for the twitter component in views/default/twitter.load where we will render each tweet:</p><div class="informalexample"><pre class="programlisting">
+&lt;OL&gt;
+{{ for t in tweets: }}
+	&lt;LI&gt;
+	{{ =DIV(H5(t["from_user_name"])) }}
+	{{ =DIV(t["text"]) }}
+	&lt;/LI&gt;
+{{ pass }}
+&lt;/OL&gt;
+</pre></div></li><li class="listitem"><p>Then, in<code class="literal"> default/index.html</code>, add the section using LOAD (jQuery) to load the tweets:</p><div class="informalexample"><pre class="programlisting">
+{{if TWITTER_HASH:}}
+	&lt;div class="box"&gt;
+		&lt;h3&gt;{{=T("%s Recent Tweets") % TWITTER_HASH}}&lt;/h3&gt;
+		&lt;div id="tweets"&gt; {{=LOAD('default','twitter.
+load',ajax=True)}}&lt;/div&gt;
+	&lt;/div&gt;{{pass}}
+</pre></div></li></ol></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a id="ch06lvl2sec06"/>There's more...</h3></div></div></div><p>You can use CSS styles to enhance the tweets section. Create a<code class="literal"> static/css/tweets.css</code> file with the following code:</p><div class="informalexample"><pre class="programlisting">
+/* Tweets */
+
+#tweets ol {
+	margin: 1em 0;
+}
+
+#tweets ol li {
+	background: #d3e5ff;
+	list-style: none;
+	-moz-border-radius: 0.5em;
+	border-radius: 0.5em;
+	padding: 0.5em;
+	margin: 1em 0;
+	border: 1px solid #aaa;
+}
+
+#tweets .entry-date {
+	font-weight: bold;
+	display: block;
+}
+</pre></div><p>Then, add the CSS file to the response:<a id="id216" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">
+def index():
+	response.files.append(URL("static","css/tweets.css"))
+	response.flash = T('You are successfully running web2py.')
+	return dict(message=T('Hello World'))
+</pre></div><p>You can further customize this recipe with the following attributes that this tweeter API returns for each tweet:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><p>
+<code class="literal">iso_language_code</code>
+</p></li><li class="listitem"><p>
+<code class="literal">to_user_name</code>
+</p></li><li class="listitem"><p>
+<code class="literal">to_user_id_str</code>
+</p></li><li class="listitem"><p>
+<code class="literal">profile_image_url_https</code>
+</p></li><li class="listitem"><p>
+<code class="literal">from_user_id_str</code>
+</p></li><li class="listitem"><p>
+<code class="literal">text</code>
+</p></li><li class="listitem"><p>
+<code class="literal">from_user_name</code>
+</p></li><li class="listitem"><p>
+<code class="literal">in_reply_to_status_id_str</code>
+</p></li><li class="listitem"><p>
+<code class="literal">profile_image_url</code>
+</p></li><li class="listitem"><p>
+<code class="literal">id'</code>,</p></li><li class="listitem"><p>
+<code class="literal">to_user</code>
+</p></li><li class="listitem"><p>
+<code class="literal">source</code>
+</p></li><li class="listitem"><p>
+<code class="literal">in_reply_to_status_id</code>
+</p></li><li class="listitem"><p>
+<code class="literal">id_str'</code>,</p></li><li class="listitem"><p>
+<code class="literal">from_user</code>
+</p></li><li class="listitem"><p>
+<code class="literal">from_user_id</code>
+</p></li><li class="listitem"><p>
+<code class="literal">to_user_id</code>
+</p></li><li class="listitem"><p>
+<code class="literal">geo</code>
+</p></li><li class="listitem"><p>
+<code class="literal">created_at</code>
+</p></li><li class="listitem"><p>
+<code class="literal">metadata</code>
+</p></li></ul></div><p>Remember that in this recipe we are using a cache to speed-up the page load (15 minutes = 60*15). If you need to change it, modify @cache(…,time_expire=…)</p></div></div></div><div class="section"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec05"/>Plotting with matplotlib</h1></div></div></div><p>
+<span class="strong"><strong>Matplotlib</strong></span> is a state-of-the-art plotting library for Python. Some examples of what it can do can be found at the following URL:<a id="id217" class="indexterm"/>
+</p><p>
+<a class="ulink" href="http://matplotlib.sourceforge.net/gallery.html">http://matplotlib.sourceforge.net/gallery.html</a>
+</p><p>Matplotlib can be used in the following two models:<a id="id218" class="indexterm"/>
+</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><p>PyLab (a Matlab compatibility mode)</p></li><li class="listitem"><p>More pythonic APIs</p></li></ul></div><p>Most of the documentation uses PyLab, and that is a problem, because PyLab shares a global state and it does not work well with web applications. We will need to use the more pythonic APIs.</p><div class="section"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec07"/>How to do it...</h2></div></div></div><p>Matplotlib has many backends that can be used to print in a GUI or to a file.<a id="id219" class="indexterm"/>
+</p><p>In order to use matplotlib in web applications, we need to instruct it to generate plots in real time, print them into a memory-mapped file, and stream the content of the file to the page visitor.</p><p>Here, we show a utility function to plot datasets of the form:</p><div class="informalexample"><pre class="programlisting">name = [(x0,y0),(x1,y1),...(xn,yn)]
+</pre></div><div class="orderedlist"><ol class="orderedlist"><li class="listitem"><p>Create a<code class="literal"> models/matplotlib.py</code> file, containing the following code:</p><div class="informalexample"><pre class="programlisting">
+from matplotlib.backends.backend_agg import FigureCanvasAgg as
+	FigureCanvas
+from matplotlib.figure import Figure
+import cStringIO
+
+def myplot(title='title',xlab='x',ylab='y',mode='plot',
+	data={'xxx':[(0,0),(1,1),(1,2),(3,3)],
+		'yyy':[(0,0,.2,.2),(2,1,0.2,0.2),(2,2,0.2,0.2),
+			(3,3,0.2,0.3)]}):
+	fig=Figure()
+	fig.set_facecolor('white')
+	ax=fig.add_subplot(111)
+	if title: ax.set_title(title)
+	if xlab: ax.set_xlabel(xlab)
+	if ylab: ax.set_ylabel(ylab)
+	legend=[]
+	keys=sorted(data)
+	for key in keys:
+		stream = data[key]
+		(x,y)=([],[])
+	for point in stream:
+		x.append(point[0])
+		y.append(point[1])
+	if mode=='plot':
+		ell=ax.plot(x, y)
+		legend.append((ell,key))
+	if mode=='hist':
+		ell=ax.hist(y,20)
+	if legend:
+		ax.legend([x for (x,y) in legend], [y for (x,y) in
+			legend],
+			'upper right', shadow=True)
+	canvas=FigureCanvas(fig)
+	stream=cStringIO.StringIO()
+	canvas.print_png(stream)
+return stream.getvalue()
+</pre></div></li><li class="listitem"><p>You can now try it, using the following actions in your controller:</p><div class="informalexample"><pre class="programlisting">
+def test_images():
+	return HTML(BODY(
+		IMG(_src=URL('a_plot')),
+		IMG(_src=URL('a_histogram'))))
+		
+def a_plot():
+		response.headers['Content-Type']='image/png'
+		return myplot(data={'data':[(0,0),(1,1),(2,4),(3,9),(4,16)]})
+		
+def a_histogram():
+		response.headers['Content-Type']='image/png'
+		return myplot(data={'data':[(0,0),(1,1),(2,4),(3,9),(4,16)]},
+			mode='hist')
+</pre></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><p>
+<code class="literal">http://.../test_images</code>
+</p></li><li class="listitem"><p>
+<code class="literal">http://.../a_plot.png</code>
+</p></li><li class="listitem"><p>
+<code class="literal">http://.../a_histogram.png</code>
+</p></li></ul></div></li></ol></div></div><div class="section"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec08"/>How it works...</h2></div></div></div><p>When you visit<code class="literal"> test_images</code>, it generates an HTML that includes the plots as images:<a id="id220" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">&lt;img src="http://.../a_plot.png"/&gt;
+&lt;img src="http://.../a_histogram.png"/&gt;
+</pre></div><p>Each of these URLs calls the myplot function in<code class="literal"> models/matplotlib.py</code>. The plot function generates a figure containing one subplot (a set of X-Y axes). It then draws on the subplot called<code class="literal"> ax</code> (connects the dots when<code class="literal"> mode="plot"</code>, and draws histograms when<code class="literal"> mode="hist")</code>, and prints the figure to a memory-mapped canvas called<span class="strong"><strong> stream</strong></span>. It then reads the binary data from the stream and returns it.</p></div><div class="section"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec09"/>There's more...</h2></div></div></div><p>In the example, the critical functions are<code class="literal"> ax.plot</code> and<code class="literal"> ax.hist</code>, which draw on the axes in the subplot. You can now create more plotting functions by copying the provided<code class="literal"> myplot</code> function, by renaming it, and by replacing<code class="literal"> ax.plot</code> or<code class="literal"> ax.hist</code> with other functions for scatter plots, error bars, and so on. Now, it should be straightforward from the matplotlib documentation.</p></div></div><div class="section"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec06"/>Extending PluginWiki with an RSS widget</h1></div></div></div><p>
+<span class="strong"><strong>PluginWiki</strong></span> is the most complex of the web2py plugins. It adds a lot of capabilities; in particular, it adds a CMS to your application, and defines widgets that can be embedded in the CMS pages as well as your own views. This plugin can be extended, and here we show you how to add a new widget.<a id="id221" class="indexterm"/>
+</p><p>For more information about plugin-wiki, see:<a id="id222" class="indexterm"/>
+</p><p>
+<a class="ulink" href="http://web2py.com/examples/default/download">http://web2py.com/examples/default/download</a>
+</p><div class="section"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec10"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist"><li class="listitem"><p>Create a file named<code class="literal"> models/plugin_wiki_rss.py</code>, and add the following code to it:<a id="id223" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">
+class PluginWikiWidgets(PluginWikiWidgets):
+	@staticmethod
+	def aggregator(feed, max_entries=5):
+		import gluon.contrib.feedparser as feedparser
+		d = feedparser.parse(feed)
+		title = d.channel.title
+		link = d.channel.link
+		description = d.channel.description
+		div = DIV(A(B(title[0], _href=link[0])))
+		created_on = request.now
+		for entry in d.entries[0:max_entries]:
+			div.append(A(entry.title,' - ', entry.updated,
+				_href=entry.link))
+			div.append(DIV(description))
+		return div
+</pre></div></li><li class="listitem"><p>Now, you can include this widget in the PluginWiki CMS pages, using the following syntax:</p><div class="informalexample"><pre class="programlisting">
+name:aggregator
+feed:http://rss.cbc.ca/lineup/topstories.xml
+max_entries:4
+</pre></div><p>
+You can also include it in any web2py page using the following syntax:
+</p><div class="informalexample"><pre class="programlisting">
+{{=plugin_wiki.widget('aggregator',max_entries=4,
+	feed='http://rss.cbc.ca/lineup/topstories.xml')}}
+</pre></div></li></ol></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a id="ch06lvl2sec11"/>There's more...</h3></div></div></div><p>web2py user,<span class="strong"><strong> Bogdan</strong></span>, has made some changes to this plugin to make it slicker, by using jQuery UI, which comes with PluginWiki. Here is the improved plugin:<a id="id224" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">
+class PluginWikiWidgets(PluginWikiWidgets):
+	@staticmethod
+	def aggregator(feeds, max_entries=5):
+		import gluon.contrib.feedparser as feedparser
+		lfeeds = feeds.split(",")
+		strg='''
+			&lt;script&gt;
+				var divDia = document.createElement("div");
+				divDia.id ="dialog";
+				document.body.appendChild(divDia);
+				var jQuerydialog=jQuery("#dialog").dialog({
+				autoOpen: false,
+				draggable: false,
+				resizable: false,
+				width: 500
+				});
+			&lt;/script&gt;
+			'''
+			
+	for feed in lfeeds:
+		d = feedparser.parse(feed)
+		title=d.channel.title
+		link = d.channel.link
+		description = d.channel.description
+		created_on = request.now
+		strg+='&lt;a class="feed_title" href="%s"&gt;%s&lt;/a&gt;' % \
+		(link[0],title[0])
+	for entry in d.entries[0:max_entries]:
+	strg+='''
+		&lt;div class="feed_entry"&gt;
+		&lt;a rel="%(description)s" href="%(link)s"&gt;
+		%(title)s - %(updated)s&lt;/a&gt;
+		&lt;script&gt;
+			jQuery("a").mouseover(function () {
+			var msg = jQuery(this).attr("rel");
+			if (msg) {
+				jQuerydialog[0].innerHTML = msg;
+				jQuerydialog.dialog("open");
+				jQuery(".ui-dialog-titlebar").hide();
+				}
+			}).mousemove(function(event) {
+			jQuerydialog.dialog("option", "position", {
+				my: "left top",
+				at: "right bottom",
+				of: event,
+				offset: "10 10"
+				});
+			}).mouseout(function(){
+				jQuerydialog.dialog("close");
+			});
+			&lt;/script&gt;&lt;/div&gt;''' % entry
+			
+return XML(strg)
+</pre></div><p>This modified version of the script does not use helpers, but raw html for speed, is CSS friendly, and uses a dialog pop-up for entry details.<a id="id225" class="indexterm"/>
+</p></div></div></div></div></div>
+</body></html>
