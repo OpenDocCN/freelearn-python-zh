@@ -1,0 +1,345 @@
+<html><head></head><body><div class="chapter" title="Chapter&#xA0;1.&#xA0;Benchmarking and Profiling"><div class="titlepage"><div><div><h1 class="title"><a id="ch01"/>Chapter 1. Benchmarking and Profiling</h1></div></div></div><p>Recognizing the slow parts of your program is the single most important task when it comes to speeding up your code. In most cases, the bottlenecks account for a very small fraction of the program. By specifically addressing those critical spots you can focus on the parts that need improvement without wasting time in micro-optimizations.</p><p>
+<span class="strong"><strong>Profiling</strong></span> is the technique that<a class="indexterm" id="id0"/> allows us to pinpoint the bottlenecks. A <span class="strong"><strong>profiler</strong></span> <a class="indexterm" id="id1"/>is a program that runs the code and observes how long each function takes to run, detecting the slow parts of the program. Python provides several tools to help us find those bottlenecks and navigate the performance metrics. In this chapter, we will learn how to use the standard <code class="literal">cProfile</code> module, <code class="literal">line_profiler</code> and <code class="literal">memory_profiler</code>. We will also learn how to interpret the profiling results using the program<a class="indexterm" id="id2"/> <span class="strong"><strong>KCachegrind</strong></span>.</p><p>You may also want to assess the total execution time of your program and see how it is affected by your changes. We will learn how to write benchmarks and how to accurately time your programs.</p><div class="section" title="Designing your application"><div class="titlepage"><div><div><h1 class="title"><a id="ch01lvl1sec12"/>Designing your application</h1></div></div></div><p>When you are designing a <a class="indexterm" id="id3"/>performance-intensive program, the very first step is to write your code without having optimization in mind; quoting <span class="emphasis"><em>Donald Knuth</em></span>:</p><div class="blockquote"><blockquote class="blockquote"><p>Premature optimization is the root of all evil.</p></blockquote></div><p>In the early development stages, the design of the program can change quickly, requiring you to rewrite and reorganize big chunks of code. By testing different prototypes without bothering about optimizations, you learn more about your program, and this will help you make better design decisions.</p><p>The mantras that you should remember when optimizing your code, are as follows:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>Make it run</strong></span>: We have to get the software in a working state, and be sure that it produces the correct results. This <a class="indexterm" id="id4"/>phase serves to explore the problem that we are trying to solve and to spot major design issues in the early stages.</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>Make it right</strong></span>: We want to make sure that the design of the program is solid. Refactoring should be done before attempting any performance optimization. This really helps separate the application into independent and cohesive units that are easier to maintain.</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>Make it fast</strong></span>: Once our program is working and has a good design we want to optimize the parts of the program that are not fast enough. We may also want to optimize memory usage if that constitutes an issue.</li></ul></div><p>In this section we will profile a test application—<span class="strong"><strong>a particle simulator</strong></span>. <a class="indexterm" id="id5"/>The simulator is a program that takes some particles and evolves them over time according to a set of laws that we will establish. Those particles can either be abstract entities or correspond to physical objects. They can be, for example, billiard balls moving on a table, molecules in gas, stars moving through space, smoke particles, fluids in a chamber, and so on.</p><p>Those simulations are useful in fields such as Physics, Chemistry, and Astronomy, and the programs used to simulate physical systems are typically performance-intensive. In order to study realistic systems it's often necessary to simulate the highest possible number of bodies.</p><p>In our first example, we will simulate a system containing particles that constantly rotate around a central point at various speeds, like the hands of a clock.</p><p>The necessary information to run our simulation will be the starting positions of the particles, the speed, and the rotation direction. From these elements, we have to calculate the position of the particle in the next instant of time.</p><div class="mediaobject"><img alt="Designing your application" src="graphics/8458OS_01_01.jpg"/></div><p>The basic feature of a circular <a class="indexterm" id="id6"/>motion is that the particles always move perpendicularly to the direction connecting the particle and the center, as shown in the preceding image. To move the particle we simply change the position by taking a series of very small steps in the direction of motion, as shown in the following figure:</p><div class="mediaobject"><img alt="Designing your application" src="graphics/8458OS_01_02.jpg"/></div><p>We will start by designing the<a class="indexterm" id="id7"/> application in an object-oriented way. According to our requirements, it is natural to have a generic <code class="literal">Particle</code> class that simply stores the particle position (<span class="emphasis"><em>x</em></span>, <span class="emphasis"><em>y</em></span>) and its angular speed:</p><div class="informalexample"><pre class="programlisting">class Particle:
+    def __init__(self, x, y, ang_speed):
+        self.x = x
+        self.y = y
+        self.ang_speed = ang_speed</pre></div><p>Another class, called <code class="literal">ParticleSimulator</code> will encapsulate our laws of motion and will be responsible for changing the positions of the particles over time. The <code class="literal">__init__</code> method will store a list of <code class="literal">Particle</code> instances and the <code class="literal">evolve</code> method will change the particle positions according to our laws.</p><p>We want the particles to rotate around the point (<span class="emphasis"><em>x</em></span>, <span class="emphasis"><em>y</em></span>), which, here, is equal to (0, 0), at constant speed. The direction of the particles will always be perpendicular to the direction from the center (refer to the first figure of this chapter). To find this vector </p><div class="mediaobject"><img alt="Designing your application" src="graphics/8458OS_01_041.jpg"/></div><p> (corresponding to the Python variables <code class="literal">v_x</code> and <code class="literal">v_y</code>) it is sufficient to use these formulae:</p><div class="mediaobject"><img alt="Designing your application" src="graphics/8458OS_01_06.jpg"/></div><p>If we let one of our particles move, after a certain time <span class="emphasis"><em>dt</em></span>, it will follow a circular path, reaching another position. <a class="indexterm" id="id8"/>To let the particle follow that trajectory we have to divide the time interval <span class="emphasis"><em>dt</em></span> into very small time steps where the particle moves tangentially to the circle. The final result, is just an approximation of a circular motion and, in fact, it's similar to a polygon. The time steps should be very small, otherwise the particle trajectory will diverge quickly, as shown in the following figure:</p><div class="mediaobject"><img alt="Designing your application" src="graphics/8458OS_01_03(1).jpg"/></div><p>In a more schematic way, to calculate the particle position at time <span class="emphasis"><em>dt</em></span> we have to carry out the following steps:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Calculate the direction of motion: <code class="literal">v_x</code>, <code class="literal">v_y</code>.</li><li class="listitem">Calculate the displacement (<code class="literal">d_x</code>, <code class="literal">d_y</code>) which is the product of time and speed and follows the direction of motion.</li><li class="listitem">Repeat steps 1 and 2 for enough time steps to cover the total time <span class="emphasis"><em>dt</em></span>.</li></ol></div><p>The following code shows<a class="indexterm" id="id9"/> the full <code class="literal">ParticleSimulator</code> implementation:</p><div class="informalexample"><pre class="programlisting">class ParticleSimulator:
+
+    def __init__(self, particles):
+        self.particles = particles
+
+    def evolve(self, dt):
+        timestep = 0.00001
+        nsteps = int(dt/timestep)
+
+        for i in range(nsteps):
+            for p in self.particles:
+
+<span class="strong"><strong>                 # 1. calculate the direction</strong></span>
+<span class="strong"><strong>                norm = (p.x**2 + p.y**2)**0.5</strong></span>
+<span class="strong"><strong>                v_x = (-p.y)/norm</strong></span>
+<span class="strong"><strong>                v_y = p.x/norm</strong></span>
+
+<span class="strong"><strong>                # 2. calculate the displacement</strong></span>
+<span class="strong"><strong>                d_x = timestep * p.ang_speed * v_x</strong></span>
+<span class="strong"><strong>                d_y = timestep * p.ang_speed * v_y</strong></span>
+
+<span class="strong"><strong>                p.x += d_x</strong></span>
+<span class="strong"><strong>                p.y += d_y</strong></span>
+<span class="strong"><strong>                  # 3. repeat for all the time steps</strong></span>
+</pre></div><p>We can use the <code class="literal">matplotlib</code> library to visualize our particles. This library is not included in the Python standard library. To install it, you can follow the instructions included in the official documentation at:</p><p>
+<a class="ulink" href="http://matplotlib.org/users/installing.html">http://matplotlib.org/users/installing.html</a>
+</p><div class="note" style="" title="Note"><div class="inner"><h3 class="title"><a id="note02"/>Note</h3><p>Alternatively, you can use the Anaconda Python distribution (<a class="ulink" href="https://store.continuum.io/cshop/anaconda/">https://store.continuum.io/cshop/anaconda/</a>) that includes <code class="literal">matplotlib</code> and most of the other third-party packages used in this book. Anaconda is free and available for Linux, Windows, and Mac.</p></div></div><p>The <code class="literal">plot</code> function included in <code class="literal">matplotlib</code> can display our particles as points on a Cartesian grid and the <code class="literal">FuncAnimation</code> class<a class="indexterm" id="id10"/> can animate the evolution of our particles over time.</p><p>The <code class="literal">visualize</code> function accomplishes this by taking the particle simulator and displaying the trajectory in an animated plot.</p><p>The <code class="literal">visualize</code> function<a class="indexterm" id="id11"/> is structured<a class="indexterm" id="id12"/> as follows:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Setup the axes and display the particles as points using the plot function</li><li class="listitem" style="list-style-type: disc">Write an initialization function (<code class="literal">init</code>) and an update function (<code class="literal">animate</code>) that changes the <span class="emphasis"><em>x</em></span>, <span class="emphasis"><em>y</em></span> coordinates of the data points using the <code class="literal">line.set_data</code> method</li><li class="listitem" style="list-style-type: disc">Create a <code class="literal">FuncAnimation</code> instance passing the functions and some parameters</li><li class="listitem" style="list-style-type: disc">Run the animation with <code class="literal">plt.show()</code><p>The complete implementation of the visualize function is as follows:</p><div class="informalexample"><pre class="programlisting">from matplotlib import pyplot as plt
+from matplotlib import animation
+
+def visualize(simulator):
+
+    X = [p.x for p in simulator.particles]
+    Y = [p.y for p in simulator.particles]
+
+    fig = plt.figure()
+    ax = plt.subplot(111, aspect='equal')
+    line, = ax.plot(X, Y, 'ro')
+
+    # Axis limits
+    plt.xlim(-1, 1)
+    plt.ylim(-1, 1)
+
+    # It will be run when the animation starts
+    def init():
+        line.set_data([], [])
+        return line,
+
+    def animate(i):
+        # We let the particle evolve for 0.1 time units
+        simulator.evolve(0.01)
+        X = [p.x for p in simulator.particles]
+        Y = [p.y for p in simulator.particles]
+
+        line.set_data(X, Y)
+        return line,
+
+    # Call the animate function each 10 ms
+    anim = animation.FuncAnimation(fig, animate, init_func=init, blit=True,# Efficient animation
+                                   interval=10)
+    plt.show()</pre></div></li></ul></div><p>Finally, we define a small test function—<code class="literal">test_visualize</code>—that animates a system of three particles rotating in<a class="indexterm" id="id13"/> different directions. Note that the third particle completes a round three times faster than the others:</p><div class="informalexample"><pre class="programlisting">def test_visualize():
+    particles = [Particle( 0.3,  0.5, +1),
+                 Particle( 0.0, -0.5, -1),
+                 Particle(-0.1, -0.4, +3)]
+ 
+    simulator = ParticleSimulator(particles)
+    visualize(simulator)
+
+if __name__ == '__main__':
+    test_visualize()</pre></div></div></div>
+<div class="section" title="Writing tests and benchmarks"><div class="titlepage"><div><div><h1 class="title"><a id="ch01lvl1sec13"/>Writing tests and benchmarks</h1></div></div></div><p>Now that we have a working simulator, we can start measuring our performance and tuning-up our code, so that our simulator can handle as many particles as possible. The first step in this process is to write a test and a benchmark.</p><p>We need a test that checks <a class="indexterm" id="id14"/>whether the results produced by the simulation are correct <a class="indexterm" id="id15"/>or not. In the optimization process we will rewrite the code to try different solutions; by doing so we may easily introduce bugs. Maintaining a solid test suite is essential to avoid wasting time on broken code.</p><p>Our test will take three particle and let the system evolve for 0.1 time units. We then compare our results, <a class="indexterm" id="id16"/>up to a certain precision, with those from a <a class="indexterm" id="id17"/>reference implementation:</p><div class="informalexample"><pre class="programlisting">def test():
+    particles = [Particle( 0.3,  0.5, +1),
+                 Particle( 0.0, -0.5, -1),
+                 Particle(-0.1, -0.4, +3)]
+
+    simulator = ParticleSimulator(particles)
+
+    simulator.evolve(0.1)
+
+    p0, p1, p2 = particles
+
+    def fequal(a, b):
+        return abs(a - b) &lt; 1e-5
+
+    assert fequal(p0.x, 0.2102698450356825)
+    assert fequal(p0.y, 0.5438635787296997)
+
+    assert fequal(p1.x, -0.0993347660567358)
+    assert fequal(p1.y, -0.4900342888538049)
+
+    assert fequal(p2.x,  0.1913585038252641)
+    assert fequal(p2.y, -0.3652272210744360)
+
+if __name__ == '__main__':
+    test()</pre></div><p>We also want to write a benchmark that can measure the performance of our application. This will provide an indication of how much we have improved over the previous implementation.</p><p>In our benchmark we instantiate 100 <code class="literal">Particle</code> objects with random coordinates and angular velocity, and feed them to a <code class="literal">ParticleSimulator</code> class. We then let the system evolve for 0.1 time units:</p><div class="informalexample"><pre class="programlisting">from random import uniform
+
+def benchmark():
+    particles = [Particle(uniform(-1.0, 1.0),
+                          uniform(-1.0, 1.0),
+                          uniform(-1.0, 1.0))
+                  for i in range(1000)]
+    
+    simulator = ParticleSimulator(particles)
+    simulator.evolve(0.1)
+
+if __name__ == '__main__':
+    benchmark()</pre></div><div class="section" title="Timing your benchmark"><div class="titlepage"><div><div><h2 class="title"><a id="ch01lvl2sec03"/>Timing your benchmark</h2></div></div></div><p>You can easily measure the execution time of any <a class="indexterm" id="id18"/>process from the command line by using the Unix <code class="literal">time</code> command:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ time python simul.py</strong></span>
+<span class="strong"><strong>real    0m1.051s</strong></span>
+<span class="strong"><strong>user    0m1.022s</strong></span>
+<span class="strong"><strong>sys    0m0.028s</strong></span>
+</pre></div><div class="note" style="" title="Note"><div class="inner"><h3 class="title"><a id="note03"/>Note</h3><p>The <code class="literal">time</code> command<a class="indexterm" id="id19"/> is not available for Windows, but can be found in the <code class="literal">cygwin</code> shell that you can download from the official website <a class="ulink" href="http://www.cygwin.com/">http://www.cygwin.com/</a>.</p></div></div><p>By default, <code class="literal">time</code> shows three metrics:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">real</code>: The actual time spent in running the process from start to finish, as if it was measured by a human with a stopwatch</li><li class="listitem" style="list-style-type: disc"><code class="literal">user</code>: The cumulative time spent by all the CPUs during the computation</li><li class="listitem" style="list-style-type: disc"><code class="literal">sys</code>: The cumulative time spent by all the CPUs during system-related tasks such as memory allocation</li></ul></div><p>Notice that sometimes <code class="literal">user</code> + <code class="literal">sys</code> might be greater than <code class="literal">real</code>, as multiple processors may work in parallel.</p><div class="note" style="" title="Note"><div class="inner"><h3 class="title"><a id="tip02"/>Tip</h3><p>
+<code class="literal">time</code> also offers several formatting options; for an overview you can explore its manual (by using the <code class="literal">man time</code> command). If you want a summary of all the metrics available, you can use the <a class="indexterm" id="id20"/>
+<code class="literal">-v</code> option.</p></div></div><p>The Unix <code class="literal">time</code> command is a good way to benchmark your program. To achieve a more accurate measurement, the benchmark should run long enough (in the order of seconds) so that the setup and tear-down of the process become small, compared to the execution time. The <code class="literal">user</code> metric is suitable as a monitor for the CPU performance, as the <code class="literal">real</code> metric includes also the time spent in other processes or waiting for I/O operations.</p><p>Another useful program to <a class="indexterm" id="id21"/>time Python scripts is the <code class="literal">timeit</code> module. This module runs a snippet of code in a loop for <span class="emphasis"><em>n</em></span> times and measures the time taken. Then, it repeats this operation <span class="emphasis"><em>r</em></span> times (by default the value of <span class="emphasis"><em>r</em></span> is 3) and takes the best of those runs. Because of this procedure, <code class="literal">timeit</code> is suitable to accurately time small statements in isolation.</p><p>The <code class="literal">timeit</code> module can be used as a Python module, from the command line, or from <span class="strong"><strong>IPython</strong></span><a class="indexterm" id="id22"/>.</p><p>IPython is a Python shell designed for interactive usage. It boosts tab completion and many utilities to time, profile, and debug your code. We will make use of this shell to try out snippets throughout the book. The IPython shell accepts <a class="indexterm" id="id23"/>
+<span class="strong"><strong>magic commands</strong></span>—statements that start with a <code class="literal">%</code> symbol—that enhance the shell with special behaviors. Commands that start with <code class="literal">%%</code> are called <span class="strong"><strong>cell magics</strong></span><a class="indexterm" id="id24"/>, and these commands can be applied on multi-line snippets (called <span class="strong"><strong>cells</strong></span><a class="indexterm" id="id25"/>).</p><p>IPython is available on most Linux distributions and is included in Anaconda. You can follow the installation instructions in the official documentation at:</p><p>
+<a class="ulink" href="http://ipython.org/install.html">http://ipython.org/install.html</a>
+</p><div class="note" style="" title="Note"><div class="inner"><h3 class="title"><a id="tip03"/>Tip</h3><p>You can use IPython as a regular Python shell (<code class="literal">ipython</code>) but it is also available in a Qt-based version (<code class="literal">ipython qtconsole</code>) and as a powerful browser-based interface (<code class="literal">ipython notebook</code>). </p></div></div><p>In IPython and command line interfaces it is possible to specify the number of loops or repetitions with the options <code class="literal">-n</code> and <code class="literal">-r</code>, otherwise they will be determined automatically. When invoking <code class="literal">timeit</code> from the command line, you can also give a setup code that will run before executing the statement in a loop.</p><p>In the following code we show how to use timeit from IPython, from the command line and as a Python module:</p><div class="informalexample"><pre class="programlisting"># IPython Interface
+$ ipython
+In [1]: from simul import benchmark
+In [2]: %timeit benchmark()
+1 loops, best of 3: 782 ms per loop
+
+# Command Line Interface
+$ python -m timeit -s 'from simul import benchmark' 'benchmark()'10 loops, best of 3: 826 msec per loop
+
+# Python Interface
+# put this function into the simul.py script
+
+import timeit
+result = timeit.timeit('benchmark()',
+                                   setup='from __main__ import benchmark', number=10)
+# result is the time (in seconds) to run the whole loop
+
+result = timeit.repeat('benchmark()', setup='from __main__ import benchmark', number=10, repeat=3)
+# result is a list containing the time of each repetition (repeat=3 in this case)</pre></div><p>Notice that while the command<a class="indexterm" id="id26"/> line and IPython interfaces are automatically determining a reasonable value for <code class="literal">n</code>, the Python interface requires you to explicitly pass it as the <code class="literal">number</code> argument.</p></div></div>
+<div class="section" title="Finding bottlenecks with cProfile"><div class="titlepage"><div><div><h1 class="title"><a id="ch01lvl1sec14"/>Finding bottlenecks with cProfile</h1></div></div></div><p>After assessing the execution time of the program <a class="indexterm" id="id27"/>we are ready to identify the parts of the code that need performance tuning. Those parts are typically quite small, <a class="indexterm" id="id28"/>compared to the size of the program.</p><p>Historically, there are three different profiling modules in Python's standard library:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>The </strong></span><code class="literal">profile</code><span class="strong"><strong> module</strong></span>: This module is <a class="indexterm" id="id29"/>written in pure Python and adds a significant overhead to the program execution. Its presence in the standard library is due mainly to its extendibility.</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>The </strong></span><code class="literal">hotshot</code><span class="strong"><strong> module</strong></span>: A C module <a class="indexterm" id="id30"/>designed to minimize the profiling overhead. Its use is not recommended by the Python community and it is not available in Python 3.</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>The </strong></span><code class="literal">cProfile</code><span class="strong"><strong> module</strong></span>: The main <a class="indexterm" id="id31"/>profiling module, with an interface similar to <code class="literal">profile</code>. It has a small overhead and it is suitable as a general purpose profiler.</li></ul></div><p>We will see how to use the cProfile module in two different ways:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">From the command line</li><li class="listitem" style="list-style-type: disc">From IPython</li></ul></div><p>In order to use <code class="literal">cProfile</code>, no change in the code is required, it can be executed directly on an existing Python script or function.</p><p>You can use <code class="literal">cProfile</code> from the command line in this way:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ python -m cProfile simul.py</strong></span>
+</pre></div><p>This will print a long output containing several profiling metrics. You can use the option <code class="literal">-s</code> to sort the output by a certain metric:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ python -m cProfile -s tottime simul.py</strong></span>
+</pre></div><p>You can save an output file<a class="indexterm" id="id32"/> in a format readable by the <code class="literal">stats</code> module and other tools by passing the <code class="literal">-o</code> option:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ python -m cProfile -o prof.out simul.py</strong></span>
+</pre></div><p>You can also profile interactively from IPython. The <code class="literal">%prun</code> magic command lets you profile a function using <code class="literal">cProfile</code>:</p><div class="informalexample"><pre class="programlisting">In [1]: from simul import benchmark
+In [2]: <span class="strong"><strong>%prun benchmark()</strong></span>
+         707 function calls in 0.793 seconds
+
+   Ordered by: internal time
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.792    0.792    0.792    0.792 simul.py:12(evolve)
+        1    0.000    0.000    0.000    0.000 simul.py:100(&lt;listcomp&gt;)
+      300    0.000    0.000    0.000    0.000 random.py:331(uniform)
+      100    0.000    0.000    0.000    0.000 simul.py:2(__init__)
+        1    0.000    0.000    0.793    0.793 {built-in method exec}
+      300    0.000    0.000    0.000    0.000 {method 'random' of '_random.Random' objects}
+        1    0.000    0.000    0.793    0.793 simul.py:99(benchmark)
+        1    0.000    0.000    0.793    0.793 &lt;string&gt;:1(&lt;module&gt;)
+        1    0.000    0.000    0.000    0.000 simul.py:9(__init__)
+        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}</pre></div><p>The <code class="literal">cProfile</code> output is divided into five columns:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">ncalls</code>: The number of times the function was called.</li><li class="listitem" style="list-style-type: disc"><code class="literal">tottime</code>: The total time spent in the function without taking into account the calls to other functions.</li><li class="listitem" style="list-style-type: disc"><code class="literal">cumtime</code>: The time spent in the function including other function calls.</li><li class="listitem" style="list-style-type: disc"><code class="literal">percall</code>: The time spent for a single call of the function—it can be obtained by dividing the total or cumulative time by the number of calls.</li><li class="listitem" style="list-style-type: disc"><code class="literal">filename:lineno</code>: The filename and corresponding line number. This information is not present when calling C extensions modules.</li></ul></div><p>The most important metric is <code class="literal">tottime</code>, the actual time spent in the function body excluding sub-calls. In our case, the largest portion of time is spent in the <code class="literal">evolve</code> function. We can imagine that the loop is the section of the code that needs performance tuning.</p><p>Analyzing data in a textual way<a class="indexterm" id="id33"/> can be daunting for big programs with a lot of calls and sub-calls. Some graphic tools aid the task by improving the navigation<a class="indexterm" id="id34"/> with an interactive interface.</p><p>KCachegrind is a GUI (Graphical User Interface) useful to analyze the profiling output of different programs.</p><div class="note" style="" title="Note"><div class="inner"><h3 class="title"><a id="note04"/>Note</h3><p>KCachegrind is available in <a class="indexterm" id="id35"/>Ubuntu 13.10 official repositories. The Qt port, QCacheGrind can be downloaded for Windows from the following web page:</p><p>
+<a class="ulink" href="http://sourceforge.net/projects/qcachegrindwin/">http://sourceforge.net/projects/qcachegrindwin/</a>
+</p><p>Mac users can compile QCacheGrind using Mac Ports (<a class="ulink" href="http://www.macports.org/">http://www.macports.org/</a>) by following the instructions present in the blog post at this link:</p><p>
+<a class="ulink" href="http://blogs.perl.org/users/rurban/2013/04/install-kachegrind-on-macosx-with-ports.html">http://blogs.perl.org/users/rurban/2013/04/install-kachegrind-on-macosx-with-ports.html</a>
+</p><p>KCachegrind can't read directly the output files produced by <code class="literal">cProfile</code>. Luckily, the <code class="literal">pyprof2calltree</code> third-party Python module is able to convert the <code class="literal">cProfile</code> output file into a format readable by KCachegrind.</p><p>You can install <code class="literal">pyprof2calltree</code> from source (<a class="ulink" href="https://pypi.python.org/pypi/pyprof2calltree/">https://pypi.python.org/pypi/pyprof2calltree/</a>) or from the Python Package Index (<a class="ulink" href="https://pypi.python.org/">https://pypi.python.org/</a>).</p></div></div><p>To best show the KCachegrind features we will use another example with a more diversified structure. We define <a class="indexterm" id="id36"/>a recursive function <code class="literal">factorial</code>, and two other functions that use <code class="literal">factorial</code>, and they<a class="indexterm" id="id37"/> are <code class="literal">taylor_exp</code> and <code class="literal">taylor_sin</code>. They represent the polynomial coefficients of the Taylor approximations of <code class="literal">exp(x)</code> and <code class="literal">sin(x)</code>:</p><div class="informalexample"><pre class="programlisting">def factorial(n):
+    if n == 0:
+        return 1.0
+    else:
+        return float(n) * factorial(n-1)
+
+def taylor_exp(n):
+    return [1.0/factorial(i) for i in range(n)]
+
+def taylor_sin(n):
+    res = []
+    for i in range(n):
+        if i % 2 == 1:
+           res.append((-1)**((i-1)/2)/float(factorial(i)))
+        else:
+           res.append(0.0)
+    return res
+
+def benchmark():
+    taylor_exp(500)
+    taylor_sin(500)
+
+if __name__ == '__main__':
+    benchmark()</pre></div><p>We need to first generate the <code class="literal">cProfile</code> output file:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ python -m cProfile -o prof.out taylor.py</strong></span>
+</pre></div><p>Then, we can convert the output file with <code class="literal">pyprof2calltree</code> and launch KCachegrind:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ pyprof2calltree -i prof.out -o prof.calltree</strong></span>
+<span class="strong"><strong>$ kcachegrind prof.calltree # or qcachegrind prof.calltree</strong></span>
+</pre></div><div class="mediaobject"><img alt="Finding bottlenecks with cProfile" src="graphics/8458OS_01_03.jpg"/></div><p>The preceding image is a screenshot of the KCachegrind user interface. On the left we have an output fairly similar to <code class="literal">cProfile</code>. The actual column names are slightly different: <span class="strong"><strong>Incl.</strong></span> translates to <code class="literal">cProfile</code> module's <code class="literal">cumtime</code>; <span class="strong"><strong>Self</strong></span> translates to <code class="literal">tottime</code>. The values are given in percentages by clicking on the <span class="strong"><strong>Relative</strong></span> button on the menu bar.<span class="strong"><strong> </strong></span>By clicking on the column headers you can sort by the corresponding property.</p><p>On the top right, a click on<a class="indexterm" id="id38"/> the <span class="strong"><strong>Callee Map</strong></span> tab contains a diagram of the function costs. In the diagram, each function is represented by a rectangle and the time percentage spent by the function is proportional to the area of the rectangle. Rectangles can contain sub-rectangles that<a class="indexterm" id="id39"/> represent sub-calls to other functions. In this case, we can easily see that there are two rectangles for the <code class="literal">factorial</code> function. The one on the left corresponds to the calls made by <code class="literal">taylor_exp</code> and the one on the right to the calls made by <code class="literal">taylor_sin</code>.</p><p>On the bottom right, you can display another diagram—the<a class="indexterm" id="id40"/> call <span class="strong"><strong>graph</strong></span>—by clicking on the <span class="strong"><strong>Call Graph</strong></span> tab. A call graph is a graphical representation of the calling relationship between the functions: each square represents a function and the arrows imply a calling relationship. For example, <code class="literal">taylor_exp</code> calls &lt;listcomp&gt; (a list comprehension) which calls <code class="literal">factorial</code> <span class="strong"><strong>500</strong></span> times <code class="literal">taylor_sin</code> calls factorial <span class="strong"><strong>250</strong></span> times.<a class="indexterm" id="id41"/> KCachegrind also detects recursive calls: <code class="literal">factorial</code> calls itself <span class="strong"><strong>187250</strong></span> times.</p><p>You can navigate to the<a class="indexterm" id="id42"/> <span class="strong"><strong>Call Graph</strong></span> or the <span class="strong"><strong>Caller Map</strong></span> tabs by double-clicking on the rectangles; the interface will update accordingly showing that the timing properties are relative to the selected function. For example, double-clicking on <code class="literal">taylor_exp</code> will cause the graph to change, showing only the <code class="literal">taylor_exp</code> contribution to the total cost.</p><div class="note" style="" title="Note"><div class="inner"><h3 class="title"><a id="note05"/>Note</h3><p>
+<span class="strong"><strong>Gprof2Dot</strong></span> (<a class="ulink" href="https://code.google.com/p/jrfonseca/wiki/Gprof2Dot">https://code.google.com/p/jrfonseca/wiki/Gprof2Dot</a>) is another popular tool used to produce call graphs. Starting from output files produced by one of the supported<a class="indexterm" id="id43"/> profilers, it will generate a <code class="literal">.dot</code> diagram representing the call graph.</p></div></div></div>
+<div class="section" title="Profile line by line with line_profiler"><div class="titlepage"><div><div><h1 class="title"><a id="ch01lvl1sec15"/>Profile line by line with line_profiler</h1></div></div></div><p>Now that we know which function we have to optimize, we can use the <code class="literal">line_profiler</code> module that shows us how time is spent in a line-by-line fashion. This is very useful in situations where it's difficult to determine which statements are costly. The <code class="literal">line_profiler</code> module<a class="indexterm" id="id44"/> is a third-party module that is available on the Python Package Index and can be installed by following the instructions on its website:</p><p>
+<a class="ulink" href="http://pythonhosted.org/line_profiler/">http://pythonhosted.org/line_profiler/</a>
+</p><p>In order to use <code class="literal">line_profiler</code>,<span class="strong"><strong> </strong></span>we need to apply a <code class="literal">@profile</code> decorator to the functions we intend to monitor. Notice that you don't have to import the <code class="literal">profile</code> function<a class="indexterm" id="id45"/> from another module, as it gets injected in the global namespace when running the profiling script <code class="literal">kernprof.py</code>. To produce profiling output for our program we need to add the <code class="literal">@profile</code> decorator to the <code class="literal">evolve</code> function:</p><div class="informalexample"><pre class="programlisting">@profile
+def evolve:
+    # code</pre></div><p>The script <code class="literal">kernprof.py</code> will produce an output file and will print on standard output the result of the profiling. We should run the script with two options:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">-l</code> to use the <code class="literal">line_profiler</code> function</li><li class="listitem" style="list-style-type: disc"><code class="literal">-v</code> to immediately print the results on screen<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ kernprof.py -l -v simul.py</strong></span>
+</pre></div></li></ul></div><p>It is also possible to run the profiler in an IPython shell for interactive editing. You should first load the <code class="literal">line_profiler</code> extension that will provide the magic command <code class="literal">lprun</code>. By using that command<a class="indexterm" id="id46"/> you can avoid adding the <code class="literal">@profile</code> decorator.</p><div class="informalexample"><pre class="programlisting">In [1]: %load_ext line_profiler
+In [2]: from simul import benchmark, ParticleSimulator
+In [3]: %lprun -f ParticleSimulator.evolve benchmark()
+ 
+Timer unit: 1e-06 s
+
+File: simul.py
+Function: evolve at line 12
+Total time: 5.31684 s
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+    12                                               def evolve(self, dt):
+    13         1            9      9.0      0.0          timestep = 0.00001
+    14         1            4      4.0      0.0          nsteps = int(dt/timestep)
+    15                                                   
+    16     10001         5837      0.6      0.1          for i in range(nsteps):
+    17   1010000       517504      0.5      9.7              for p 
+in self.particles:
+    18                                           
+    19   1000000       963498      1.0     18.1                  norm = (p.x**2 + p.y**2)**0.5
+    20   1000000       621063      0.6     11.7                  v_x = (-p.y)/norm
+    21   1000000       577882      0.6     10.9                  v_y = p.x/norm
+    22                                                           
+    23   1000000       672811      0.7     12.7                  d_x = timestep * p.ang_speed * v_x
+    24   1000000       685092      0.7     12.9                  d_y = timestep * p.ang_speed * v_y
+    25                                           
+    26   1000000       650802      0.7     12.2                  p.x += d_x
+    27   1000000       622337      0.6     11.7                  p.y += d_y</pre></div><p>The output is quite intuitive and<a class="indexterm" id="id47"/> is divided into columns:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>Line number</strong></span>: The number of the line that was run</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>Hits</strong></span>: The number of times that line was run</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>Time</strong></span>: The execution time of the line in microseconds (Time)</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>Per Hit</strong></span>: Time divided by hits</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>% Time</strong></span>: Fraction of the total time spent executing that line</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>Line Contents</strong></span>: the source of the corresponding line</li></ul></div><p>By looking at the percentage column we can have a pretty good idea of where the time is spent. In this case, there are a few statements in the <code class="literal">for</code> loop body with a cost of around 10-20 percent each.</p></div>
+<div class="section" title="Optimizing our code"><div class="titlepage"><div><div><h1 class="title"><a id="ch01lvl1sec16"/>Optimizing our code</h1></div></div></div><p>Now that we have identified exactly how the time is spent, we can modify the code and assess the change in performance.</p><p>There are a few different ways to tune up our pure Python code. The way that usually produces the most remarkable<a class="indexterm" id="id48"/> results is to change the <span class="emphasis"><em>algorithm</em></span>. In this case, instead of calculating the velocity and adding small steps, it would be more efficient (and correct, as it is not an approximation) to express the equations of motion in terms of radius <code class="literal">r</code> and angle <code class="literal">alpha</code> (instead of <code class="literal">x</code> and <code class="literal">y</code>), and then calculate the points on a circle using the equation:</p><div class="informalexample"><pre class="programlisting">x = r * cos(alpha)
+y = r * sin(alpha)</pre></div><p>Another way lies in minimizing the number of instructions. For example, we can pre-calculate the factor <code class="literal">timestep * p.ang_speed</code> that doesn't change with time. We can exchange the loop order (first we iterate on particles, then we iterate on time steps) and put the calculation of the factor outside of the loop on the particles.</p><p>The line by line profiling showed also that even simple assignment operations can take a considerable amount of time. For example, the following statement takes more than 10 percent of the total time:</p><div class="informalexample"><pre class="programlisting"> v_x = (-p.y)/norm</pre></div><p>Therefore, a way to optimize the loop is reducing the number of assignment operations. To do that, we can avoid intermediate variables by sacrificing readability and rewriting the expression in a single <a class="indexterm" id="id49"/>and slightly more complex statement (notice that the right-hand side gets evaluated completely before being assigned to the variables):</p><div class="informalexample"><pre class="programlisting">p.x, p.y = p.x - t_x_ang*p.y/norm, p.y + t_x_ang * p.x/norm</pre></div><p>This leads to the following code:</p><div class="informalexample"><pre class="programlisting">    def evolve_fast(self, dt):
+        timestep = 0.00001
+        nsteps = int(dt/timestep)
+        
+        # Loop order is changed
+        for p in self.particles:
+            <span class="strong"><strong>t_x_ang = timestep * p.ang_speed</strong></span>
+            for i in range(nsteps):
+                norm = (p.x**2 + p.y**2)**0.5
+                <span class="strong"><strong>p.x, p.y = (p.x - t_x_ang *  p.y/norm,p.y + t_x_ang * p.x/norm)</strong></span>
+</pre></div><p>After applying the changes we should make sure that the result is still the same, by running our test. We can then compare the execution times using our benchmark:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ time python simul.py # Performance Tuned</strong></span>
+<span class="strong"><strong>real    0m0.756s</strong></span>
+<span class="strong"><strong>user    0m0.714s</strong></span>
+<span class="strong"><strong>sys    0m0.036s</strong></span>
+
+<span class="strong"><strong>$ time python simul.py # Original</strong></span>
+<span class="strong"><strong>real    0m0.863s</strong></span>
+<span class="strong"><strong>user    0m0.831s</strong></span>
+<span class="strong"><strong>sys    0m0.028s</strong></span>
+</pre></div><p>By acting on pure Python we obtained just a modest increment in speed.</p></div>
+<div class="section" title="The dis module"><div class="titlepage"><div><div><h1 class="title"><a id="ch01lvl1sec17"/>The dis module</h1></div></div></div><p>Sometimes, it's not easy to evaluate how many operations a Python statement will take. In this section, we will explore Python internals to estimate the performance of Python statements. Python code gets converted to <a class="indexterm" id="id50"/>an intermediate representation—called <a class="indexterm" id="id51"/>
+<span class="strong"><strong>bytecode</strong></span>—that gets executed by the Python virtual machine.</p><p>To help inspect how the code gets converted into bytecode we can use the Python module <code class="literal">dis</code> (disassemble). Its usage is really simple, it is sufficient to call the function <code class="literal">dis.dis</code> on the <code class="literal">ParticleSimulator.evolve</code> method:</p><div class="informalexample"><pre class="programlisting">import dis
+from simul import ParticleSimulator
+<span class="strong"><strong>dis.dis(ParticleSimulator.evolve)</strong></span>
+</pre></div><p>This will generate, for each line, a list of bytecode instructions. For example, the statement <code class="literal">v_x = (-p.y)/norm</code> is expanded in the following set of instructions:</p><div class="informalexample"><pre class="programlisting">20         85 LOAD_FAST                5 (p)
+             88 LOAD_ATTR                4 (y)
+             91 UNARY_NEGATIVE       
+             92 LOAD_FAST                6 (norm)
+             95 BINARY_TRUE_DIVIDE   
+             96 STORE_FAST               7 (v_x)</pre></div><p>
+<code class="literal">LOAD_FAST</code> loads a reference of the variable <code class="literal">p</code> onto the stack, <code class="literal">LOAD_ATTR</code> loads the <code class="literal">y</code> attribute of the item present on top of the stack. The other instructions (<code class="literal">UNARY_NEGATIVE</code> and <code class="literal">BINARY_TRUE_DIVIDE</code>) simply do arithmetic operations on top-of-stack items. Finally, the result is stored in <code class="literal">v_x</code> (<code class="literal">STORE_FAST</code>).</p><p>By analyzing the complete <code class="literal">dis</code> output we can see that the first version of the loop produces 51 bytecode instructions, while the second gets converted into 35 instructions.</p><p>The <code class="literal">dis</code> module helps discover how the statements get converted and serve mainly as an exploration and learning tool of the Python bytecode representation.</p><p>To improve our performance even further, we could keep trying to figure out other approaches to reduce the amount of instructions. It's clear however, that this approach has some limits and it is probably not the right tool for the job. In the next chapter, we will see how to speed up those kinds of calculations with the help of NumPy.</p></div>
+<div class="section" title="Profiling memory usage with memory_profiler"><div class="titlepage"><div><div><h1 class="title"><a id="ch01lvl1sec18"/>Profiling memory usage with memory_profiler</h1></div></div></div><p>In some cases, memory usage constitutes an issue. For example, if we want to handle a huge number of particles we will have a <a class="indexterm" id="id52"/>memory overhead due to the creation of many <code class="literal">Particle</code> instances.</p><p>The module <code class="literal">memory_profiler</code> summarizes, in a way similar to <code class="literal">line_profiler</code>, the memory usage of the process.</p><div class="note" style="" title="Note"><div class="inner"><h3 class="title"><a id="note06"/>Note</h3><p>The <code class="literal">memory_profiler</code> package<a class="indexterm" id="id53"/> is also available on the Python Package Index. You should also install the <code class="literal">psutil</code> module (<a class="ulink" href="https://code.google.com/p/psutil/">https://code.google.com/p/psutil/</a>) as an optional dependency, it will make <code class="literal">memory_profiler</code> run considerably faster.</p></div></div><p>Just like <code class="literal">line_profiler</code>, <code class="literal">memory_profiler</code> also requires the instrumentation of the source code, by putting a <code class="literal">@profile</code> decorator<a class="indexterm" id="id54"/> on the function we intend to monitor. In our case, we want to analyze the function <code class="literal">benchmark</code>.</p><p>We can slightly change <code class="literal">benchmark</code> to instantiate a considerable amount (100000) of <code class="literal">Particle</code> instances and decrease the simulation time:</p><div class="informalexample"><pre class="programlisting">def benchmark_memory():
+    particles = [Particle(uniform(-1.0, 1.0),
+                          uniform(-1.0, 1.0),
+                          uniform(-1.0, 1.0))
+                  for i in range(100000)]
+    
+    simulator = ParticleSimulator(particles)
+    simulator.evolve(0.001)</pre></div><p>We can use <code class="literal">memory_profiler</code> from an IPython shell through the magic command <code class="literal">%mprun</code>:</p><div class="informalexample"><pre class="programlisting">In [1]: %load_ext memory_profiler
+In [2]: from simul import benchmark_memory
+In [3]: %mprun -f benchmark_memory benchmark_memory()
+
+
+
+Line #    Mem usage    Increment   Line Contents
+==============================================
+   135     45.5 MiB      0.0 MiB   def benchmark_memory():
+   136     45.5 MiB      0.0 MiB       particles = [Particle(uniform(-1.0, 1.0),
+   137                                                       uniform(-1.0, 1.0),
+   138                                                       uniform(-1.0, 1.0))
+<span class="strong"><strong>   139     71.2 MiB     25.7 MiB                     for i in range(100000)]</strong></span>
+   140                                 
+   141     71.2 MiB      0.0 MiB       simulator = ParticleSimulator(particles)
+   142     71.3 MiB      0.1 MiB       simulator.evolve(0.001)</pre></div><div class="note" style="" title="Note"><div class="inner"><h3 class="title"><a id="tip04"/>Tip</h3><p>It is possible to run <code class="literal">memory_profiler</code> from the shell using the <code class="literal">mprof run</code> command after adding the <code class="literal">@profile</code> decorator.</p></div></div><p>From the output we can see that 100000 <code class="literal">Particle</code> objects take 25.7 <span class="strong"><strong>MiB</strong></span> of memory.</p><div class="note" style="" title="Note"><div class="inner"><h3 class="title"><a id="tip05"/>Tip</h3><p>1 MiB (mebibyte) is equivalent to 1024<sup>2</sup> = 1,048,576 bytes. It is different from 1 MB (<span class="emphasis"><em>megabyte</em></span>), which is equivalent to 1000<sup>2</sup> = 1,000,000 bytes.</p></div></div><p>We can use <code class="literal">__slots__</code> on the <code class="literal">Particle</code> class to reduce its memory footprint. This feature saves some memory by <a class="indexterm" id="id55"/>avoiding storing the variables of the instance in an internal dictionary. This <a class="indexterm" id="id56"/>optimization has a drawback: it prevents the addition of attributes other than the ones specified in <code class="literal">__slots__ </code>(to use this feature in Python 2 you should make sure that you are using new-style classes):</p><div class="informalexample"><pre class="programlisting">class Particle: 
+# class Particle(object):  # New-style class for Python 2
+
+    __slots__ = ('x', 'y', 'ang_speed')
+    
+    def __init__(self, x, y, ang_speed):
+        self.x = x
+        self.y = y
+        self.ang_speed = ang_speedWe can now re-run our benchmark:
+In [1]: %load_ext memory_profiler
+In [2]: from simul import benchmark_memory
+In [3]: %mprun -f benchmark_memory benchmark_memory()
+
+Line #    Mem usage    Increment   Line Contents
+==============================================
+   138     45.5 MiB      0.0 MiB   def benchmark_memory():
+   139     45.5 MiB      0.0 MiB       particles = [Particle(uniform(-1.0, 1.0),
+   140                                                       uniform(-1.0, 1.0),
+   141                                                       uniform(-1.0, 1.0))
+<span class="strong"><strong>   142     60.2 MiB     14.7 MiB                     for i in range(100000)]</strong></span>
+   143                                 
+   144     60.2 MiB      0.0 MiB       simulator = ParticleSimulator(particles)
+   145     60.3 MiB      0.1 MiB       simulator.evolve(0.001)</pre></div><p>By rewriting the <code class="literal">Particle</code> class <a class="indexterm" id="id57"/>using <code class="literal">__slots__</code> we <a class="indexterm" id="id58"/>can save 11 MiB of memory.</p></div>
+<div class="section" title="Performance tuning tips for pure Python code"><div class="titlepage"><div><div><h1 class="title"><a id="ch01lvl1sec19"/>Performance tuning tips for pure Python code</h1></div></div></div><p>As a rule of thumb, when optimizing pure Python code, you should look at what is available in the standard library. The standard library contains clever algorithms for the most common data structures such as lists, dicts, and sets. Furthermore, a lot of standard library modules are implemented in C and <a class="indexterm" id="id59"/>have fast processing times. However, it's important to always time the different solutions—the outcomes are often unpredictable.</p><p>The <code class="literal">collections</code> module <a class="indexterm" id="id60"/>provides extra data containers that can efficiently handle some common operations. For example, you can use <code class="literal">deque</code> in place of a list when you need to pop items from the start and append new items at the end. The <code class="literal">collections</code> module also includes a <code class="literal">Counter</code> class that can be used to count repeated elements in an iterable object. Beware, that <code class="literal">Counter</code> can be slower than the equivalent code written with a standard loop over a dictionary:</p><div class="informalexample"><pre class="programlisting">def counter_1():
+    items = [random.randint(0, 10) for i in range(10000)]
+    return Counter(items)
+
+def counter_2():
+    items = [random.randint(0, 10) for i in range(10000)]
+    counter = {}
+    for item in items:
+        if item not in counter:
+            counter[item] = 0
+        else:
+            counter[item] += 1
+    return counter</pre></div><p>You can put the code in a file named <code class="literal">purepy.py</code> and time it through IPython:</p><div class="informalexample"><pre class="programlisting">In [1]: import purepy
+In [2]: %timeit purepy.counter_1()
+100 loops, best of 3: <span class="strong"><strong>10.1 ms per loop</strong></span>
+In [3]: %timeit purepy.counter_2()
+100 loops, best of 3: <span class="strong"><strong>9.11 ms per loop</strong></span>
+</pre></div><p>In general, list comprehension and generators should be preferred in place of explicit loops. Even if the speedup over a standard loop is modest, this is a good practice because it improves readability. We can see in the following example, that both list comprehension and generator expressions are<a class="indexterm" id="id61"/> faster than an explicit loop when combined with the function <code class="literal">sum</code>:</p><div class="informalexample"><pre class="programlisting">def loop():
+    res = []
+    for i in range(100000):
+        res.append(i * i)
+    return sum(res)
+
+def comprehension():
+    return sum([i * i for i in range(100000)])
+
+def generator():
+    return sum(i * i for i in range(100000))</pre></div><p>We can add those functions to <code class="literal">purepy.py</code> and test with IPython:</p><div class="informalexample"><pre class="programlisting">In [1]: import purepy
+In [2]: %timeit <span class="strong"><strong>purepy.loop()</strong></span>
+100 loops, best of 3: <span class="strong"><strong>8.26 ms per loop</strong></span>
+In [3]: %timeit <span class="strong"><strong>purepy.comprehension()</strong></span>
+100 loops, best of 3: <span class="strong"><strong>5.39 ms per loop</strong></span>
+In [4]: %timeit <span class="strong"><strong>purepy.generator()</strong></span>
+100 loops, best of 3: <span class="strong"><strong>5.07 ms per loop</strong></span>
+</pre></div><p>The <code class="literal">bisect</code> module <a class="indexterm" id="id62"/>can help with fast insertion and retrieval of elements, while maintaining a sorted list.</p><p>Raw optimization of pure Python code is not very effective, unless there is a substantial algorithmic advantage. The second-best way to speed up your code is to use external libraries specifically designed<a class="indexterm" id="id63"/> for the purpose, such as <code class="literal">numpy</code>, or to write extensions modules in a more "down to the metal" language such as C with the help of <a class="indexterm" id="id64"/>
+<span class="strong"><strong>Cython</strong></span>.</p></div>
+<div class="section" title="Summary"><div class="titlepage"><div><div><h1 class="title"><a id="ch01lvl1sec20"/>Summary</h1></div></div></div><p>In this chapter, we introduced the basic principles of optimization and we applied those principles to our test application. The most important thing is identifying the bottlenecks in the application before editing the code. We saw how to write and time a benchmark using the <code class="literal">time</code> Unix command and the Python <code class="literal">timeit</code> module. We learned how to profile our application using <code class="literal">cProfile</code>, <code class="literal">line_profiler</code>, and <code class="literal">memory_profiler</code>, and how to analyze and navigate graphically the profiling data with KCachegrind. We surveyed some of the strategies to optimize pure Python code by leveraging the tools available in the standard library.</p><p>In the next chapter, we will see how to use <code class="literal">numpy</code> to dramatically speedup computations in an easy and convenient way.</p></div></body></html>
