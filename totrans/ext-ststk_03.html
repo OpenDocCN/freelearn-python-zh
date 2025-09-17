@@ -1,0 +1,529 @@
+<html><head></head><body>
+<div id="page" style="height:0pt"/><div class="book" title="Chapter&#xA0;3.&#xA0;Extending Salt Configuration"><div class="book" id="LTSU2-d9976ffc65994572ad672a3ef48f1135"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch03" class="calibre1"/>Chapter 3. Extending Salt Configuration</h1></div></div></div><p class="calibre8">By now you know <a id="id74" class="calibre1"/>how to access configuration variables from the various parts of Salt, except for SDB modules, which will be covered in this chapter. But while setting static configuration is all fine and well, it can be very useful to be able to supply that data from an external source. In this chapter, you'll learn about:</p><div class="book"><ul class="itemizedlist"><li class="listitem">Writing dynamic grains and external pillars</li><li class="listitem">Troubleshooting grains and pillars</li><li class="listitem">Writing and using SDB modules</li><li class="listitem">Troubleshooting SDB modules</li></ul></div></div>
+
+<div class="book" title="Chapter&#xA0;3.&#xA0;Extending Salt Configuration">
+<div class="book" title="Setting grains dynamically"><div class="book"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_1"><a id="ch03lvl1sec16" class="calibre1"/>Setting grains dynamically</h1></div></div></div><p class="calibre8">As you <a id="id75" class="calibre1"/>already know, grains hold variables that describe certain aspects of a Minion. This could be information about the operating system, the <a id="id76" class="calibre1"/>hardware, the network, and so on. It can also contain statically defined user data, which is configured either in <code class="email">/etc/salt/minion</code> or <code class="email">/etc/salt/grains</code>. It is also possible to define grains dynamically using grains modules.</p></div></div>
+
+<div class="book" title="Chapter&#xA0;3.&#xA0;Extending Salt Configuration">
+<div class="book" title="Setting grains dynamically">
+<div class="book" title="Setting some basic grains"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_2"><a id="ch03lvl2sec28" class="calibre1"/>Setting some basic grains</h2></div></div></div><p class="calibre8">Grains modules <a id="id77" class="calibre1"/>are interesting in that so long as the module is loaded, all public functions will be executed. As each function is executed, it will return a dictionary, which contains items to be merged into the Minion's grains.</p><p class="calibre8">Let's go ahead and set up a new grains module to demonstrate. We'll prepend the names of the return data with a <code class="email">z</code> so that it is easy to find.</p><div class="informalexample"><pre class="programlisting">'''
+Test module for Extending SaltStack
+
+This module should be saved as salt/grains/testdata.py
+'''
+
+
+def testdata():
+    '''
+    Return some test data
+    '''
+    return {'ztest1': True}</pre></div><p class="calibre8">Go ahead<a id="id78" class="calibre1"/> and save this file as <code class="email">salt/grains/testdata.py</code>, and then use <code class="email">salt-call</code> to display all of the grains, including this one:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong class="calibre2"># salt-call --local grains.items</strong></span>
+<span class="strong"><strong class="calibre2">local:</strong></span>
+<span class="strong"><strong class="calibre2">    ----------</strong></span>
+<span class="strong"><strong class="calibre2">...</strong></span>
+<span class="strong"><strong class="calibre2">    virtual:</strong></span>
+<span class="strong"><strong class="calibre2">        physical</strong></span>
+<span class="strong"><strong class="calibre2">    zmqversion:</strong></span>
+<span class="strong"><strong class="calibre2">        4.1.3</strong></span>
+<span class="strong"><strong class="calibre2">    ztest1:</strong></span>
+<span class="strong"><strong class="calibre2">        True</strong></span>
+</pre></div><p class="calibre8">Keep in mind that you can also use <code class="email">grains.item</code> to display only a single grain:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong class="calibre2"># salt-call --local grains.item ztest</strong></span>
+<span class="strong"><strong class="calibre2">local:</strong></span>
+<span class="strong"><strong class="calibre2">    ----------</strong></span>
+<span class="strong"><strong class="calibre2">    ztest1:</strong></span>
+<span class="strong"><strong class="calibre2">        True</strong></span>
+</pre></div><p class="calibre8">It may not look like this module is much good, since this is still just static data that could be defined in the <code class="email">minion</code> or <code class="email">grains</code> files. But keep in mind that, as with other modules, grains modules can be gated using a <code class="email">__virtual__()</code> function. Let's go ahead and set that up, along with a flag of sorts that will determine whether or not this module will load in the first place:</p><div class="informalexample"><pre class="programlisting">import os.path
+
+
+def __virtual__():
+    '''
+    Only load these grains if /tmp/ztest exists
+    '''
+    if os.path.exists('/tmp/ztest'):
+        return True
+    return False</pre></div><p class="calibre8">Go ahead and run the following commands to see this in action:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong class="calibre2"># salt-call --local grains.item ztest</strong></span>
+<span class="strong"><strong class="calibre2">local:</strong></span>
+<span class="strong"><strong class="calibre2">    ----------</strong></span>
+<span class="strong"><strong class="calibre2">    ztest:</strong></span>
+<span class="strong"><strong class="calibre2"># touch /tmp/ztest</strong></span>
+<span class="strong"><strong class="calibre2"># salt-call --local grains.item ztest</strong></span>
+<span class="strong"><strong class="calibre2">local:</strong></span>
+<span class="strong"><strong class="calibre2">    ----------</strong></span>
+<span class="strong"><strong class="calibre2">    ztest:</strong></span>
+<span class="strong"><strong class="calibre2">        True</strong></span>
+</pre></div><p class="calibre8">This is <a id="id79" class="calibre1"/>very useful for gating the return data from an entire module, whether dynamic or, as this module currently is, static.</p><p class="calibre8">You may be wondering why that example checked for the existence of a file, rather than checking the existing Minion configuration. This is to illustrate that the detection of certain system properties is likely to dictate how grains are set. If you want to just set a flag inside the <code class="email">minion</code> file, you can pull it out of <code class="email">__opts__</code>. Let's go ahead and add that to the <code class="email">__virtual__()</code> function:</p><div class="informalexample"><pre class="programlisting">def __virtual__():
+    '''
+    Only load these grains if /tmp/ztest exists
+    '''
+    if os.path.exists('/tmp/ztest'):
+        return True
+    if __opts__.get('ztest', False):
+        return True
+    return False</pre></div><p class="calibre8">Go ahead and remove the old flag, and set the new one:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong class="calibre2"># rm /tmp/ztest</strong></span>
+<span class="strong"><strong class="calibre2"># echo 'ztest: True' &gt;&gt; /etc/salt/minion</strong></span>
+<span class="strong"><strong class="calibre2"># salt-call --local grains.item ztest</strong></span>
+<span class="strong"><strong class="calibre2">local:</strong></span>
+<span class="strong"><strong class="calibre2">    ----------</strong></span>
+<span class="strong"><strong class="calibre2">    ztest:</strong></span>
+<span class="strong"><strong class="calibre2">        True</strong></span>
+</pre></div><p class="calibre8">Let's go ahead and set up this module to return dynamic data as well. Because YAML is so prevalent in Salt, let's go ahead and set up a function that returns the contents of a YAML file:</p><div class="informalexample"><pre class="programlisting">import yaml
+import salt.utils
+
+
+def yaml_test():
+    '''
+    Return sample data from /etc/salt/test.yaml
+    '''
+    with salt.utils.fopen('/etc/salt/yamltest.yaml', 'r') as fh_:
+        return yaml.safe_load(fh_)</pre></div><p class="calibre8">You may <a id="id80" class="calibre1"/>notice that we've used <code class="email">salt.utils.fopen()</code> instead of a standard Python <code class="email">open()</code>. Salt's <code class="email">fopen()</code> function wraps Python's <code class="email">open()</code> with some extra handling, so that files are closed properly on Minions.</p><p class="calibre8">Save your module, and then issue the following commands to see the result:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong class="calibre2"># echo 'yamltest: True' &gt; /etc/salt/yamltest.yaml</strong></span>
+<span class="strong"><strong class="calibre2"># salt-call --local grains.item yamltest</strong></span>
+<span class="strong"><strong class="calibre2">local:</strong></span>
+<span class="strong"><strong class="calibre2">    ----------</strong></span>
+<span class="strong"><strong class="calibre2">    yamltest:</strong></span>
+<span class="strong"><strong class="calibre2">        True</strong></span>
+</pre></div></div></div></div>
+
+<div class="book" title="Chapter&#xA0;3.&#xA0;Extending Salt Configuration">
+<div class="book" title="Setting grains dynamically">
+<div class="book" title="(Not) cross-calling execution modules"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_3"><a id="ch03lvl2sec29" class="calibre1"/>(Not) cross-calling execution modules</h2></div></div></div><p class="calibre8">You <a id="id81" class="calibre1"/>may be tempted to try to cross-call an execution module from inside a grains module. Unfortunately, that won't work. The <code class="email">__virtual__()</code> function in many execution modules relies heavily on grains. Allowing grains to cross-call to execution modules, before Salt has decided whether or not to even the execution module in the first place, would cause circular dependencies.</p><p class="calibre8">Just remember, grains are loaded first, then pillars, then execution modules. If you have code that you plan to use two or more of these types of modules, consider setting up a library for it in the <code class="email">salt/utils/</code> directory.</p></div></div></div>
+
+<div class="book" title="Chapter&#xA0;3.&#xA0;Extending Salt Configuration">
+<div class="book" title="Setting grains dynamically">
+<div class="book" title="The final grains module"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_4"><a id="ch03lvl2sec30" class="calibre1"/>The final grains module</h2></div></div></div><p class="calibre8">With all <a id="id82" class="calibre1"/>of the code we've put together, the resulting module should look like the following:</p><div class="informalexample"><pre class="programlisting">'''
+Test module for Extending SaltStack.
+
+This module should be saved as salt/grains/testdata.py
+'''
+import os.path
+import yaml
+import salt.utils
+
+
+def __virtual__():
+    '''
+    Only load these grains if /tmp/ztest exists
+    '''
+    if os.path.exists('/tmp/ztest'):
+        return True
+    if __opts__.get('ztest', False):
+        return True
+    return False
+
+
+def testdata():
+    '''
+    Return some test data
+    '''
+    return {'ztest1': True}
+
+
+def yaml_test():
+    '''
+    Return sample data from /etc/salt/test.yaml
+    '''
+    with salt.utils.fopen('/etc/salt/yamltest.yaml', 'r') as fh_:
+        return yaml.safe_load(fh_)</pre></div></div></div></div>
+
+<div id="page" style="height:0pt"/><div class="book" title="Creating external pillars"><div class="book" id="MSDG2-d9976ffc65994572ad672a3ef48f1135"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch03lvl1sec17" class="calibre1"/>Creating external pillars</h1></div></div></div><p class="calibre8">As you <a id="id83" class="calibre1"/>know, pillars are like grains, with a key difference: grains are defined on the Minion, whereas pillars are defined for individual Minions, from the Master.</p><p class="calibre8">As far as <a id="id84" class="calibre1"/>users are concerned, there's not a whole lot of difference here, except that pillars must be mapped to targets on the Master, using the <code class="email">top.sls</code> file in <code class="email">pillar_roots</code>. One such mapping might look like this:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong class="calibre2"># cat /srv/pillar/top.sls</strong></span>
+<span class="strong"><strong class="calibre2">base:</strong></span>
+<span class="strong"><strong class="calibre2">  '*':</strong></span>
+<span class="strong"><strong class="calibre2">    - test</strong></span>
+</pre></div><p class="calibre8">In this example, we <a id="id85" class="calibre1"/>would have a pillar called test defined, which might look like this:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong class="calibre2"># cat /srv/pillar/test.sls</strong></span>
+<span class="strong"><strong class="calibre2">test_pillar: True</strong></span>
+</pre></div><p class="calibre8">Dynamic pillars are still mapped in the <code class="email">top.sls</code> file, but that's where the similarities end, so far as <a id="id86" class="calibre1"/>configuration is concerned.</p></div>
+
+<div class="book" title="Creating external pillars">
+<div class="book" title="Configuring external pillars"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_1"><a id="ch03lvl2sec31" class="calibre1"/>Configuring external pillars</h2></div></div></div><p class="calibre8">Unlike<a id="id87" class="calibre1"/> dynamic grains, which will run so long as their <code class="email">__virtual__()</code> function allows them to do so, pillars must be explicitly enabled in the <code class="email">master</code> configuration file. Or, if running in local mode as we will be, in the <code class="email">minion</code> configuration file. Let's go ahead and add the following lines to the end of <code class="email">/etc/salt/minion</code>:</p><div class="informalexample"><pre class="programlisting">ext_pillar:
+  - test_pillar: True</pre></div><p class="calibre8">If we were testing this on the Master, we would need to restart the <code class="email">salt-master</code> service. However, since we're testing in local mode on the Minion, this will not be required.</p></div></div>
+
+<div class="book" title="Creating external pillars">
+<div class="book" title="Adding an external pillar"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_2"><a id="ch03lvl2sec32" class="calibre1"/>Adding an external pillar</h2></div></div></div><p class="calibre8">We'll also need to<a id="id88" class="calibre1"/> create a simple external pillar to get started with. Go ahead and create <code class="email">salt/pillar/test_pillar.py</code> with the following content:</p><div class="informalexample"><pre class="programlisting">'''
+This is a test external pillar
+'''
+
+
+def ext_pillar(minion_id, pillar, config):
+    '''
+    Return the pillar data
+    '''
+    return {'test_pillar': minion_id}</pre></div><p class="calibre8">Go ahead and save your work, and then test it to make sure it works:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong class="calibre2"># salt-call --local pillar.item test_pillar</strong></span>
+<span class="strong"><strong class="calibre2">local:</strong></span>
+<span class="strong"><strong class="calibre2">    ----------</strong></span>
+<span class="strong"><strong class="calibre2">    test_pillar:</strong></span>
+<span class="strong"><strong class="calibre2">        dufresne</strong></span>
+</pre></div><p class="calibre8">Let's go over <a id="id89" class="calibre1"/>what's happened here. First off, we have a function called <code class="email">ext_pillar()</code>. This function is required in all external pillars. It is also the only function that is required. Any others, whether or not named with a preceding underscore, will be private to this module.</p><p class="calibre8">This function will always be passed three pieces of data. The first is the ID of the Minion that is requesting this pillar. You can see this in our example already: the <code class="email">minion_id</code> where the earlier example was run was <code class="email">dufresne</code>. The second is a copy of the static pillars defined for this Minion. The third is an extra piece of data that was passed to this external pillar in the <code class="email">master</code> (or in this case, <code class="email">minion</code>) configuration file.</p><p class="calibre8">Let's go ahead and update our pillar to show us what each component looks like. Change your <code class="email">ext_pillar()</code> function to look like:</p><div class="informalexample"><pre class="programlisting">def ext_pillar(minion_id, pillar, command):
+    '''
+    Return the pillar data
+    '''
+    return {'test_pillar': {
+        'minion_id': minion_id,
+        'pillar': pillar,
+        'config': config,
+    }}</pre></div><p class="calibre8">Save it, and then modify the <code class="email">ext_pillar</code> configuration in your <code class="email">minion</code> (or <code class="email">master</code>) file:</p><div class="informalexample"><pre class="programlisting">ext_pillar:
+  - test_pillar: Alas, poor Yorik. I knew him, Horatio.</pre></div><p class="calibre8">Take a look at your pillar data again:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong class="calibre2"># salt-call --local pillar.item test_pillar</strong></span>
+<span class="strong"><strong class="calibre2">local:</strong></span>
+<span class="strong"><strong class="calibre2">    ----------</strong></span>
+<span class="strong"><strong class="calibre2">    test_pillar:</strong></span>
+<span class="strong"><strong class="calibre2">        ----------</strong></span>
+<span class="strong"><strong class="calibre2">        config:</strong></span>
+<span class="strong"><strong class="calibre2">            Alas, poor Yorik. I knew him, Horatio.</strong></span>
+<span class="strong"><strong class="calibre2">        minion_id:</strong></span>
+<span class="strong"><strong class="calibre2">            dufresne</strong></span>
+<span class="strong"><strong class="calibre2">        pillar:</strong></span>
+<span class="strong"><strong class="calibre2">            ----------</strong></span>
+<span class="strong"><strong class="calibre2">            test_pillar:</strong></span>
+<span class="strong"><strong class="calibre2">                True</strong></span>
+</pre></div><p class="calibre8">You can see the <code class="email">test_pillar</code> that we referenced a couple of pages ago. And of course, you can see <code class="email">minion_id</code>, just like before. The important part here is <code class="email">config</code>.</p><p class="calibre8">This example was chosen to make it clear where the <code class="email">config</code> argument came from. When an external pillar is added to the <code class="email">ext_pillar</code> list, it is entered as a dictionary, with a single item as its value. The item that is specified can be a string, boolean, integer, or float. It cannot be a dictionary or a list.</p><p class="calibre8">This argument is <a id="id90" class="calibre1"/>normally used to pass arguments into the pillar from the configuration file. For instance, the <code class="email">cmd_yaml</code> pillar that ships with Salt uses it to define a command that is expected to return data in YAML format:</p><div class="informalexample"><pre class="programlisting">ext_pillar:
+- cmd_yaml: cat /etc/salt/testyaml.yaml</pre></div><p class="calibre8">If the only thing that your pillar requires is to be enabled, then you can just set this to True, and then ignore it. However, you must still set it! Salt will expect that data to be there, and you will receive an error like this if it is not:</p><div class="informalexample"><pre class="programlisting">[CRITICAL] The "ext_pillar" option is malformed</pre></div><div class="informalexample" title="Note"><h3 class="title2"><a id="tip07" class="calibre1"/>Tip</h3><p class="calibre8">Although <code class="email">minion_id</code>, <code class="email">pillar</code>, and <code class="email">config</code> are all passed into the <code class="email">ext_pillar()</code> function (in that order), Salt doesn't actually care what you call the variables in your function definition. You could call them Emeril, Mario, and Alton if you wanted (not that you would). But whatever you call them, they must still all be there.</p></div></div></div>
+
+<div class="book" title="Creating external pillars">
+<div class="book" title="Another external pillar"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_3"><a id="ch03lvl2sec33" class="calibre1"/>Another external pillar</h2></div></div></div><p class="calibre8">Let's put together <a id="id91" class="calibre1"/>another external pillar, so that it doesn't get confused with our first one. This one's job is to check the status of a web service. First, let's write our pillar code:</p><div class="informalexample"><pre class="programlisting">'''
+Get status from HTTP service in JSON format.
+
+This file should be saved as salt/pillar/http_status.py
+'''
+import salt.utils.http
+
+
+def ext_pillar(minion_id, pillar, config):
+    '''
+    Call a web service which returns status in JSON format
+    '''
+    comps = config.split()
+    key = comps[0]
+    url = comps[1]
+    status = salt.utils.http.query(url, decode=True)
+    return {key: status['dict']}</pre></div><p class="calibre8">You've probably <a id="id92" class="calibre1"/>noticed that our <code class="email">docstring</code> states that This file should be saved as <code class="email">salt/pillar/http_status.py</code>. When you check out the Salt codebase, there is a directory called <code class="email">salt/</code> that contains the actual code. This is the directory that is referred to in the <code class="email">docstring</code>. You will continue to see these comments in the code examples throughout this book.</p><p class="calibre8">Save this file as <code class="email">salt/pillar/http_status.py</code>. Then go ahead and update your <code class="email">ext_pillar</code> configuration to point to it. For now, we'll use GitHub's status URL:</p><div class="informalexample"><pre class="programlisting">ext_pillar
+  - http_status: github https://status.github.com/api/status.json</pre></div><p class="calibre8">Go ahead and save the configuration, and then test the pillar:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong class="calibre2"># salt-call --local pillar.item github</strong></span>
+<span class="strong"><strong class="calibre2">local:</strong></span>
+<span class="strong"><strong class="calibre2">    ----------</strong></span>
+<span class="strong"><strong class="calibre2">    github:</strong></span>
+<span class="strong"><strong class="calibre2">        ----------</strong></span>
+<span class="strong"><strong class="calibre2">        last_updated:</strong></span>
+<span class="strong"><strong class="calibre2">            2015-12-02T05:22:16Z</strong></span>
+<span class="strong"><strong class="calibre2">        status:</strong></span>
+<span class="strong"><strong class="calibre2">            good</strong></span>
+</pre></div><p class="calibre8">If you need to be able to check the status on multiple services, you can use the same external pillar multiple times, but with different configurations. Try updating your <code class="email">ext_pillar</code> definition to contain two entries:</p><div class="informalexample"><pre class="programlisting">ext_pillar
+  - http_status: github https://status.github.com/api/status.json
+  - http_status: github2 https://status.github.com/api/status.json</pre></div><p class="calibre8">Now, this can quickly become a problem. GitHub won't be happy with you if you're constantly hitting their status API. So, as nice as it is to get real-time status updates, you may want to do something to throttle your queries. Let's save the status in a file, and return it from there. We will check the file's timestamp to make sure it doesn't get updated more than once a minute.</p><p class="calibre8">Let's go ahead and update the entire external pillar:</p><div class="informalexample"><pre class="programlisting">'''
+Get status from HTTP service in JSON format.
+
+This file should be saved as salt/pillar/http_status.py
+'''
+import json
+import time
+import datetime
+import os.path
+import salt.utils.http
+
+
+def ext_pillar(minion_id,  # pylint: disable=W0613
+               pillar,  # pylint: disable=W0613
+               config):
+    '''
+    Return the pillar data
+    '''
+    comps = config.split()
+
+    key = comps[0]
+    url = comps[1]
+
+    refresh = False
+    status_file = '/tmp/status-{0}.json'.format(key)
+    if not os.path.exists(status_file):
+        refresh = True
+    else:
+        stamp = os.path.getmtime(status_file)
+        now = int(time.mktime(datetime.datetime.now().timetuple()))
+        if now - 60 &gt;= stamp:
+            refresh = True
+
+    if refresh:
+        salt.utils.http.query(url, decode=True, decode_out=status_file)
+
+    with salt.utils.fopen(status_file, 'r') as fp_:
+        return {key: json.load(fp_)}</pre></div><p class="calibre8">Now we've set a <a id="id93" class="calibre1"/>flag called <code class="email">refresh</code>, and the URL will only be hit when that flag is <code class="email">True</code>. We've also defined a file that will cache the content obtained from that URL. The file will contain the name given to the pillar, so it will end up having a name like <code class="email">/tmp/status-github.json</code>. The following two lines will retrieve the last modified time of the file, and the current time in seconds:</p><div class="informalexample"><pre class="programlisting">        stamp = os.path.getmtime(status_file)
+        now = int(time.mktime(datetime.datetime.now().timetuple()))</pre></div><p class="calibre8">And comparing the two, we can determine whether the file is more than 60 seconds old. If we wanted to <a id="id94" class="calibre1"/>make the pillar even more configurable, we could even move that <code class="email">60</code> to the <code class="email">config</code> parameter, and pull it from <code class="email">comps[2]</code>.</p></div></div>
+
+<div id="page" style="height:0pt"/><div class="book" title="Troubleshooting grains and pillars" id="NQU21-d9976ffc65994572ad672a3ef48f1135"><div class="book"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch03lvl1sec18" class="calibre1"/>Troubleshooting grains and pillars</h1></div></div></div><p class="calibre8">While <a id="id95" class="calibre1"/>writing grains and pillars, you may<a id="id96" class="calibre1"/> encounter some difficulties. Let's take a look at the most common problems you might have.</p></div>
+
+<div class="book" title="Troubleshooting grains and pillars" id="NQU21-d9976ffc65994572ad672a3ef48f1135">
+<div class="book" title="Dynamic grains not showing up"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_1"><a id="ch03lvl2sec34" class="calibre1"/>Dynamic grains not showing up</h2></div></div></div><p class="calibre8">You <a id="id97" class="calibre1"/>may find that when you issue a <code class="email">grains.items</code> command from the Master, your dynamic grains aren't showing up. This can be difficult to track down, because grains are evaluated on the Minion, and any errors aren't likely to make it back over the wire to you.</p><p class="calibre8">When you find that dynamic grains aren't showing up as you expect, it's usually easiest to log in to the Minion directly to troubleshoot. Open up a shell and try issuing a <code class="email">salt-call</code> command to see if any errors manifest themselves. If they don't immediately, try adding <code class="email">--log-level=debug</code> to your command to see if any errors have been hiding at that level. Using a <code class="email">trace</code> log level might also be necessary.</p></div></div>
+
+<div class="book" title="Troubleshooting grains and pillars" id="NQU21-d9976ffc65994572ad672a3ef48f1135">
+<div class="book" title="External pillars not showing up"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_2"><a id="ch03lvl2sec35" class="calibre1"/>External pillars not showing up</h2></div></div></div><p class="calibre8">These <a id="id98" class="calibre1"/>can be a little more difficult to pick out. Using <code class="email">salt-call</code> is effective in finding errors in grains, because all of the code can be executed without starting up or contacting a service. But pillars come from the Master, unless you're running <code class="email">salt-call</code> in <code class="email">local</code> mode.</p><p class="calibre8">If you are able to install your external pillar code on a Minion for testing, then the steps are the same as for checking for grains errors. But if you find yourself in a situation where the Master's environment cannot be duplicated on a Minion, you will need to use a different tactic.</p><p class="calibre8">Stop the <code class="email">salt-master</code> service on the Master, and then start it back up in the foreground, with a debug log level:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong class="calibre2"># salt-master --log-level debug</strong></span>
+</pre></div><p class="calibre8">Then open up another shell and check the pillars for an affected Minion:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong class="calibre2"># salt &lt;minionid&gt; pillar.items</strong></span>
+</pre></div><p class="calibre8">Any errors in the pillar code should manifest themselves in the window with <code class="email">salt-master</code> running in the foreground.</p></div></div>
+
+<div id="page" style="height:0pt"/><div class="book" title="Writing SDB modules"><div class="book" id="OPEK2-d9976ffc65994572ad672a3ef48f1135"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch03lvl1sec19" class="calibre1"/>Writing SDB modules</h1></div></div></div><p class="calibre8">SDB is a r<a id="id99" class="calibre1"/>elatively new type of module, and ripe for development. It stands for Simple Database, and it is designed to allow data to be simple to query, using a very short URI. Underlying configuration can be as complex as necessary, so long as the URI that is used to query it is as simple as possible.</p><p class="calibre8">Another <a id="id100" class="calibre1"/>design goal of SDB is that URIs can mask sensitive pieces of information from being stored directly inside a configuration file. For instance, passwords are often required for other types of modules, such as the <code class="email">mysql</code> modules. But it is a poor practice to store passwords in files that are then stored inside a revision control system such as Git.</p><p class="calibre8">Using SDB to look up passwords on the fly allows references to the passwords to be stored, but not the passwords themselves. This makes it much safer to store files that reference sensitive data, inside revision control systems.</p><p class="calibre8">There is one supposed function that may be tempting to use SDB for: storing encrypted data on the Minion, which cannot be read by the Master. It is possible to run agents on a Minion that require local authentication, such as typing in a password from the Minion's keyboard, or using a hardware encryption device. SDB modules can be made that make use of these agents, and due to their very nature, the authentication credentials themselves cannot be retrieved by the Master.</p><p class="calibre8">The problem is that the Master can access anything that a Minion that subscribes to it can. Although the data may be stored in an encrypted database on the Minion, and although its transfer to the Master is certainly encrypted, once it gets to the Master it can still be read in plaintext.</p></div>
+
+<div class="book" title="Writing SDB modules">
+<div class="book" title="Getting SDB data"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_1"><a id="ch03lvl2sec36" class="calibre1"/>Getting SDB data</h2></div></div></div><p class="calibre8">There <a id="id101" class="calibre1"/>are only two public functions that are used for SDB: <code class="email">get</code> and <code class="email">set</code>. And in truth, the only important one of these is <code class="email">get</code>, since <code class="email">set</code> can usually be done outside of Salt entirely. Let's go ahead and take a look at <code class="email">get</code>.</p><p class="calibre8">For our example, we'll create a module that reads in a JSON file and then returns the requested key from it. First, let's set up our JSON file:</p><div class="informalexample"><pre class="programlisting">{
+    "user": "larry",
+    "password": "123pass"
+}</pre></div><p class="calibre8">Go ahead and save that file as <code class="email">/root/mydata.json</code>. Then edit the <code class="email">minion</code> configuration file and add a configuration profile:</p><div class="informalexample"><pre class="programlisting">myjson:
+    driver: json
+    json_file: /root/mydata.json</pre></div><p class="calibre8">With <a id="id102" class="calibre1"/>those two things in place, we're ready to start writing our module. JSON has a very simple interface, so there won't be much here:</p><div class="informalexample"><pre class="programlisting">'''
+SDB module for JSON
+
+This file should be saved as salt/sdb/json.py
+'''
+from __future__ import absolute_import
+import salt.utils
+import json
+
+
+def get(key, profile=None):
+    '''
+    Get a value from a JSON file
+    '''
+    with salt.utils.fopen(profile['json_file'], 'r') as fp_:
+        json_data = json.load(fp_)
+    return json_data.get(key, None)</pre></div><p class="calibre8">You've probably noticed that we've added a couple of extra things outside of the necessary JSON code. First, we imported something called <code class="email">absolute_import</code>. This is because this file is called <code class="email">json.py</code>, and it's importing another library called <code class="email">json</code>. Without <code class="email">absolute_import</code>, the file would try to import itself, and be unable to find the necessary functions from the actual <code class="email">json</code> library.</p><p class="calibre8">The <code class="email">get()</code> function takes two arguments: <code class="email">key</code> and <code class="email">profile</code>. <code class="email">key</code> refers to the key that will be used to access the data that we need. <code class="email">profile</code> is a copy of the profile data that we save in the <code class="email">minion</code> configuration file as <code class="email">myjson</code>.</p><p class="calibre8">The SDB URI makes use of these two items. When we build that URI, it will be formatted as:</p><div class="informalexample"><pre class="programlisting">sdb://&lt;profile_name&gt;/&lt;key&gt;</pre></div><p class="calibre8">For instance, if we were to use the <code class="email">sdb</code> execution module to retrieve the value of <code class="email">key1</code>, our command would look like:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong class="calibre2"># salt-call --local sdb.get sdb://myjson/user</strong></span>
+<span class="strong"><strong class="calibre2">local:</strong></span>
+<span class="strong"><strong class="calibre2">    larry</strong></span>
+</pre></div><p class="calibre8">With this module and profile in place, we can now add lines to the minion configuration (or to grains or pillars, or even the <code class="email">master</code> configuration) that look like:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong class="calibre2">username: sdb://myjson/user</strong></span>
+<span class="strong"><strong class="calibre2">password: sdb://myjson/password</strong></span>
+</pre></div><p class="calibre8">When a <a id="id103" class="calibre1"/>module that uses <code class="email">config.get</code> comes across an SDB URI, it will automatically translate it on the fly to the appropriate data.</p><p class="calibre8">Before we move on, let's update this function a little bit to do some error handling. If the user makes a typo in the profile (such as <code class="email">json_fle</code> instead of <code class="email">json_file</code>), or the file being referenced doesn't exist, or the JSON isn't formatted correctly, then this module will start spitting out trace back messages. Let's go ahead and handle all of those, using Salt's own <code class="email">CommandExecutionError</code>:</p><div class="informalexample"><pre class="programlisting">from __future__ import absolute_import
+from salt.exceptions import CommandExecutionError
+import salt.utils
+import json
+
+
+def get(key, profile=None):
+    '''
+    Get a value from a JSON file
+    '''
+    try:
+        with salt.utils.fopen(profile['json_file'], 'r') as fp_:
+            json_data = json.load(fp_)
+        return json_data.get(key, None)
+    except IOError as exc:
+        raise CommandExecutionError (exc)
+    except KeyError as exc:
+        raise CommandExecutionError ('{0} needs to be configured'.format(exc))
+    except ValueError as exc:
+        raise CommandExecutionError (
+            'There was an error with the JSON data: {0}'.format(exc)
+        )</pre></div><p class="calibre8">
+<code class="email">IOError</code> will catch problems with a path that doesn't point to a real file. <code class="email">KeyError</code> will catch errors with missing profile configuration (which would happen if one of the items was misspelled). <code class="email">ValueError</code> will catch problems with an improperly formatted JSON file. This will turn errors like:</p><div class="informalexample"><pre class="programlisting">Traceback (most recent call last):
+  File "/usr/bin/salt-call", line 11, in &lt;module&gt;
+    salt_call()
+  File "/usr/lib/python2.7/site-packages/salt/scripts.py", line 333, in salt_call
+    client.run()
+  File "/usr/lib/python2.7/site-packages/salt/cli/call.py", line 58, in run
+    caller.run()
+  File "/usr/lib/python2.7/site-packages/salt/cli/caller.py", line 133, in run
+    ret = self.call()
+  File "/usr/lib/python2.7/site-packages/salt/cli/caller.py", line 196, in call
+    ret['return'] = func(*args, **kwargs)
+  File "/usr/lib/python2.7/site-packages/salt/modules/sdb.py", line 28, in get
+    return salt.utils.sdb.sdb_get(uri, __opts__)
+  File "/usr/lib/python2.7/site-packages/salt/utils/sdb.py", line 37, in sdb_get
+    return loaded_db[fun](query, profile=profile)
+  File "/usr/lib/python2.7/site-packages/salt/sdb/json_sdb.py", line 49, in get
+    with salt.utils.fopen(profile['json_fil']) as fp_:
+KeyError: 'json_fil'</pre></div><p class="calibre8">...into errors<a id="id104" class="calibre1"/> like this:</p><div class="informalexample"><pre class="programlisting">Error running 'sdb.get': 'json_fil' needs to be configured</pre></div></div></div>
+
+<div class="book" title="Writing SDB modules">
+<div class="book" title="Setting SDB data"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_2"><a id="ch03lvl2sec37" class="calibre1"/>Setting SDB data</h2></div></div></div><p class="calibre8">The function<a id="id105" class="calibre1"/> that is used for <code class="email">set</code> may look strange, because <code class="email">set</code> is a Python built-in. That means that the function may not be called <code class="email">set()</code>; it must be called something else, and then given an alias using the <code class="email">__func_alias__</code> dictionary. Let's go ahead and create a function that does nothing except return the <code class="email">value</code> to be set:</p><div class="informalexample"><pre class="programlisting">__func_alias__ = {
+    'set_': 'set'
+}
+
+
+def set_(key, value, profile=None):
+    '''
+    Set a key/value pair in a JSON file
+    '''
+    return value</pre></div><p class="calibre8">This will be enough for your purposes with read-only data, but in our case, we're going to modify the JSON file. First, let's look at the arguments that are passed into our function.</p><p class="calibre8">You already know that the key points to the data are to be referenced, and that profile contains a copy of the profile data from the Minion configuration file. And you can probably guess that value contains a copy of the data to be applied.</p><p class="calibre8">The value doesn't change the actual URI; that will always be the same, no matter whether you're getting or setting data. The execution module itself is what accepts the data to be set, and then sets it. You can see that with:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong class="calibre2"># salt-call --local sdb.set sdb://myjson/password 321pass</strong></span>
+<span class="strong"><strong class="calibre2">local:</strong></span>
+<span class="strong"><strong class="calibre2">    321pass</strong></span>
+</pre></div><p class="calibre8">With that in mind, let's go ahead and make our module read in the JSON file, apply the new value, and then write it back out again. For now, we'll skip error handling, to make it easier to read:</p><div class="informalexample"><pre class="programlisting">def set_(key, value, profile=None):
+    '''
+    Set a key/value pair in a JSON file
+    '''
+    with salt.utils.fopen(profile['json_file'], 'r') as fp_:
+        json_data = json.load(fp_)
+
+    json_data[key] = value
+
+    with salt.utils.fopen(profile['json_file'], 'w') as fp_:
+        json.dump(json_data, fp_)
+
+    return get(key, profile)</pre></div><p class="calibre8">This function <a id="id106" class="calibre1"/>reads in the JSON file as before, then updates the specific value (creating it if necessary), then writes the file back out. When it's finished, it returns the data using the <code class="email">get()</code> function, so that the user knows whether it was set properly. If it returns the wrong data, then the user will know that something went wrong. It won't necessarily tell them what went wrong, but it will raise a red flag.</p><p class="calibre8">Let's go ahead and add some error handling to help the user know what went wrong. We'll go ahead and add in the error handling from the <code class="email">get()</code> function too:</p><div class="informalexample"><pre class="programlisting">def set_(key, value, profile=None):
+    '''
+    Set a key/value pair in a JSON file
+    '''
+    try:
+        with salt.utils.fopen(profile['json_file'], 'r') as fp_:
+            json_data = json.load(fp_)
+    except IOError as exc:
+        raise CommandExecutionError (exc)
+    except KeyError as exc:
+        raise CommandExecutionError ('{0} needs to be configured'.format(exc))
+    except ValueError as exc:
+        raise CommandExecutionError (
+            'There was an error with the JSON data: {0}'.format(exc)
+        )
+
+    json_data[key] = value
+
+    try:
+        with salt.utils.fopen(profile['json_file'], 'w') as fp_:
+            json.dump(json_data, fp_)
+    except IOError as exc:
+        raise CommandExecutionError (exc)
+
+    return get(key, profile)</pre></div><p class="calibre8">Because we<a id="id107" class="calibre1"/> did all of that error handling when reading the file, by the time we get to writing it back again, we already know that the path is value, the JSON is valid, and there are no profile errors. However, there could still be errors in saving the file. Try the following:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong class="calibre2"># chattr +i /root/mydata.json</strong></span>
+<span class="strong"><strong class="calibre2"># salt-call --local sdb.set sdb://myjson/password 456pass</strong></span>
+<span class="strong"><strong class="calibre2">Error running 'sdb.set': [Errno 13] Permission denied: '/root/mydata.json'</strong></span>
+</pre></div><p class="calibre8">We've changed the attribute of the file to make it immutable (read-only), and we can no longer write to the file. Without <code class="email">IOError</code>, we would get an ugly trace back message just like before. Removing the immutable attribute will allow our function to run properly:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong class="calibre2"># chattr -i /root/mydata.json</strong></span>
+<span class="strong"><strong class="calibre2"># salt-call --local sdb.set sdb://myjson/password 456pass</strong></span>
+<span class="strong"><strong class="calibre2">local:</strong></span>
+<span class="strong"><strong class="calibre2">    456pass</strong></span>
+</pre></div></div></div>
+
+<div class="book" title="Writing SDB modules">
+<div class="book" title="Using a descriptive docstring"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_3"><a id="ch03lvl2sec38" class="calibre1"/>Using a descriptive docstring</h2></div></div></div><p class="calibre8">With <a id="id108" class="calibre1"/>SDB modules, it is more important than ever to add a <code class="email">docstring</code> that demonstrates how to configure and use the module. Without it, using the module is all but impossible for the user to figure out, and trying to modify a module is even worse.</p><p class="calibre8">The <code class="email">docstring</code> doesn't <a id="id109" class="calibre1"/>need to be a novel. It should contain enough information to use the module, but not so much that figuring things out becomes confusing and frustrating. You should include not only an example of the profile data but also of an SDB URI to be used with this module:</p><div class="informalexample"><pre class="programlisting">'''
+SDB module for JSON
+
+Like all sdb modules, the JSON module requires a configuration profile to
+be configured in either the minion or master configuration file. This profile
+requires very little. In the example:
+
+.. code-block:: yaml
+
+    myjson:
+      driver: json
+      json_file: /root/mydata.json
+
+The ``driver`` refers to the json module and json_file is the path to the JSON
+file that contains the data.
+
+.. code-block:: yaml
+
+    password: sdb://myjson/somekey
+'''</pre></div></div></div>
+
+<div class="book" title="Writing SDB modules">
+<div class="book" title="Using more complex configuration"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_4"><a id="ch03lvl2sec39" class="calibre1"/>Using more complex configuration</h2></div></div></div><p class="calibre8">It may <a id="id110" class="calibre1"/>be tempting to create SDB modules that make use of more complicated URIs. For instance, it is entirely possible to create a module that supports a URI such as:</p><div class="informalexample"><pre class="programlisting">sdb://mydb/user=curly&amp;group=ops&amp;day=monday</pre></div><p class="calibre8">With the preceding URI, the <code class="email">key</code> that is passed in would be:</p><div class="informalexample"><pre class="programlisting">user=curly&amp;group=ops&amp;day=monday</pre></div><p class="calibre8">At that point, it would be up to you to parse out the key and translate it into something usable by your code. However, I strongly discourage it!</p><p class="calibre8">The more complex you make an SDB URI, the less it becomes a simple database lookup. You also risk exposing data in an unintended way. Look at the preceding <code class="email">key</code> again. It reveals the following information about the database that holds the information that is supposed to be sensitive:</p><div class="book"><ul class="itemizedlist"><li class="listitem">There is a field (abstracted or real) that is referred to as user. Since users tend to be lazier than they think, this is likely to point to a real database field called user. If that's true, then this exposes a portion of the database schema.</li><li class="listitem">There is a group called ops. This means that there are other groups as well. Since <span class="strong"><em class="calibre9">ops</em></span> typically refers to a team that performs server operations tasks, does that mean that there's a group called <span class="strong"><em class="calibre9">dev</em></span> too? And if the dev group is compromised, what juicy pieces of data do they have for an attacker to steal?</li><li class="listitem">A day was specified. Does this company rotate passwords on a daily basis? The fact that <span class="strong"><em class="calibre9">monday</em></span> was specified implies that there are no more than seven passwords: one for each day of the week.</li></ul></div><p class="calibre8">Rather than <a id="id111" class="calibre1"/>putting all of this information into the URL, it is generally better to hide it inside the profile. It's probably safe to assume that <code class="email">mydb</code> refers to a database connection (if we called the profile <code class="email">mysql</code>, we would be exposing what kind of database connection). Skipping over any database credentials that would be present, we could use a profile that looks like:</p><div class="informalexample"><pre class="programlisting">mydb:
+  driver: &lt;some SDB module&gt;
+  fields:
+    user: sdbkey
+    group: ops
+    day: monday</pre></div><p class="calibre8">Assuming that the module in question is able to translate those <code class="email">field</code>s into a query, and internally change <code class="email">sdbkey</code> to whatever actual <code class="email">key</code> was passed in, we could use a URI that looks like:</p><div class="informalexample"><pre class="programlisting">sdb://mydb/curly</pre></div><p class="calibre8">You can still guess that <code class="email">curly</code> refers to a username, which is probably even more obvious when the URI is used with a configuration argument like:</p><div class="informalexample"><pre class="programlisting">username: sdb://mydb/curly</pre></div><p class="calibre8">However, it doesn't expose the name of the field in the database.</p></div></div>
+
+<div class="book" title="Writing SDB modules">
+<div class="book" title="The final SDB module"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_5"><a id="ch03lvl2sec40" class="calibre1"/>The final SDB module</h2></div></div></div><p class="calibre8">With all of <a id="id112" class="calibre1"/>the code we've put together, the resulting module should look like the following:</p><div class="informalexample"><pre class="programlisting">'''
+SDB module for JSON
+
+Like all sdb modules, the JSON module requires a configuration profile to
+be configured in either the minion or master configuration file. This profile
+requires very little. In the example:
+
+.. code-block:: yaml
+
+    myjson:
+      driver: json
+      json_file: /root/mydata.json
+
+The ``driver`` refers to the json module and json_file is the path to the JSON
+file that contains the data.
+
+.. code-block:: yaml
+
+    password: sdb://myjson/somekey
+'''
+from __future__ import absolute_import
+from salt.exceptions import CommandExecutionError
+import salt.utils
+import json
+
+__func_alias__ = {
+    'set_': 'set'
+}
+
+
+def get(key, profile=None):
+    '''
+    Get a value from a JSON file
+    '''
+    try:
+        with salt.utils.fopen(profile['json_file'], 'r') as fp_:
+            json_data = json.load(fp_)
+        return json_data.get(key, None)
+    except IOError as exc:
+        raise CommandExecutionError (exc)
+    except KeyError as exc:
+        raise CommandExecutionError ('{0} needs to be configured'.format(exc))
+    except ValueError as exc:
+        raise CommandExecutionError (
+            'There was an error with the JSON data: {0}'.format(exc)
+        )
+
+
+def set_(key, value, profile=None):  # pylint: disable=W0613
+    '''
+    Set a key/value pair in a JSON file
+    '''
+    try:
+        with salt.utils.fopen(profile['json_file'], 'r') as fp_:
+            json_data = json.load(fp_)
+    except IOError as exc:
+        raise CommandExecutionError (exc)
+    except KeyError as exc:
+        raise CommandExecutionError ('{0} needs to be configured'.format(exc))
+    except ValueError as exc:
+        raise CommandExecutionError (
+            'There was an error with the JSON data: {0}'.format(exc)
+        )
+
+    json_data[key] = value
+
+    try:
+        with salt.utils.fopen(profile['json_file'], 'w') as fp_:
+            json.dump(json_data, fp_)
+    except IOError as exc:
+        raise CommandExecutionError (exc)
+
+    return get(key, profile)</pre></div></div></div>
+<div class="book" title="Using SDB modules" id="PNV61-d9976ffc65994572ad672a3ef48f1135"><div class="book"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch03lvl1sec20" class="calibre1"/>Using SDB modules</h1></div></div></div><p class="calibre8">There are a <a id="id113" class="calibre1"/>number of places where SDB modules can be <a id="id114" class="calibre1"/>used. Because SDB retrieval is built into the <code class="email">config.get</code> function in the <code class="email">config</code> execution module, the following locations can be used to set a value for a Minion:</p><div class="book"><ul class="itemizedlist"><li class="listitem">Minion configuration file</li><li class="listitem">Grains</li><li class="listitem">Pillars</li><li class="listitem">Master configuration file</li></ul></div><p class="calibre8">SDB is also supported by Salt Cloud, so you can also set SDB URIs in:</p><div class="book"><ul class="itemizedlist"><li class="listitem">The main cloud configuration file</li><li class="listitem">Cloud profiles</li><li class="listitem">Cloud providers</li><li class="listitem">Cloud maps</li></ul></div><p class="calibre8">Regardless of where you set an SDB URI, the format is the same:</p><div class="informalexample"><pre class="programlisting">&lt;setting name&gt;: sdb://&lt;profile name&gt;/&lt;key&gt;</pre></div><p class="calibre8">This can be <a id="id115" class="calibre1"/>particularly useful with cloud providers, all of which require credentials, but many of which also use more complex configuration blocks that should be checked into revision control.</p><p class="calibre8">Take, for example, the <code class="email">openstack</code> Cloud provider:</p><div class="informalexample"><pre class="programlisting">my-openstack-config:
+  identity_url: https://keystone.example.com:35357/v2.0/
+  compute_region: intermountain
+  compute_name: Compute
+  tenant: sdb://openstack_creds/tenant
+  user: sdb://openstack_creds/username
+  ssh_key_name: sdb://openstack_creds/keyname</pre></div><p class="calibre8">In this organization, <code class="email">compute_region</code> and <code class="email">compute_name</code> are probably public. And <code class="email">identity_url</code> certainly is (else, how would you authenticate?). But the other information should probably be kept hidden.</p><p class="calibre8">If you've ever set up OpenStack in Salt Cloud, you've probably used a number of other arguments as well, many of which are probably not sensitive. However, a complex configuration file should probably be kept in a revision control system. With SDB URIs, you can do so without having to worry about exposing the data that is sensitive.</p></div>
+
+<div id="page" style="height:0pt"/><div class="book" title="Troubleshooting SDB modules" id="QMFO1-d9976ffc65994572ad672a3ef48f1135"><div class="book"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch03lvl1sec21" class="calibre1"/>Troubleshooting SDB modules</h1></div></div></div><p class="calibre8">We've <a id="id116" class="calibre1"/>already covered some error handling that<a id="id117" class="calibre1"/> can be added to our SDB modules, but you may still encounter problems. Like grains and pillars, the most common involve data not showing up when expected.</p></div>
+
+<div class="book" title="Troubleshooting SDB modules" id="QMFO1-d9976ffc65994572ad672a3ef48f1135">
+<div class="book" title="SDB data not showing up"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_1"><a id="ch03lvl2sec41" class="calibre1"/>SDB data not showing up</h2></div></div></div><p class="calibre8">You <a id="id118" class="calibre1"/>may find that when you include an SDB URI in your configuration, it doesn't resolve as you think it might. If you've made typos in the earlier SDB code, you have probably already figured out that <code class="email">sdb.get</code> is more than happy to raise trace backs when there are syntactical errors. But if using <code class="email">salt-call</code> on <code class="email">sdb.get</code> doesn't raise any errors that you can see, then it may not be a problem in your code.</p><p class="calibre8">Before you start to blame other services, it's best to make sure that you're not to blame. Start logging key pieces of information, to make sure it's showing up as you expect. Make sure to add the following lines toward the top of your module:</p><div class="informalexample"><pre class="programlisting">import logging
+log = logging.getLogger(__name__)</pre></div><p class="calibre8">Then you can use <code class="email">log.debug()</code> to log those pieces of information. If you're logging sensitive pieces of information, you may want to use <code class="email">log.trace()</code> instead, just in case you forget to take the log messages out.</p><p class="calibre8">You may want to start with logging the information coming into each function, to make sure it looks like you expect. Let's go ahead and take a look at our <code class="email">get()</code> example from earlier, with some logging added in:</p><div class="informalexample"><pre class="programlisting">def get(key, profile=None):
+    '''
+    Get a value from a JSON file
+    '''
+    import pprint
+    log.debug(key)
+    log.debug(pprint.pformat(profile))
+    with salt.utils.fopen(profile['json_file'], 'r') as fp_:
+        json_data = json.load(fp_)
+    return json_data.get(key, None)</pre></div><p class="calibre8">We've only added a couple of log lines here, but we used Python's <code class="email">pprint</code> library to format one of them. The <code class="email">pprint.pformat()</code> function formats text that is meant to be stored in a string or passed to a function, instead of just dumping it to <code class="email">STDOUT</code> like <code class="email">pprint.pprint()</code> does.</p><p class="calibre8">If your SDB module connects to a service, you may discover that the service itself is unavailable. This may be due to unknown or unintended firewall rules, a network error, or actual downtime on the service itself. Scattering log messages throughout your code will help you discover where it is falling down, so that you can address it there.</p></div></div>
+<div class="book" title="Summary" id="RL0A1-d9976ffc65994572ad672a3ef48f1135"><div class="book"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch03lvl1sec22" class="calibre1"/>Summary</h1></div></div></div><p class="calibre8">The three areas of Salt configuration that can be hooked into using the loader system are dynamic grains, external pillars, and SDB. Grains are generated on the Minion, pillars are generated on the Master, and SDB URIs can be configured in either place.</p><p class="calibre8">SDB modules allow configuration to be stored outside, but referenced from, the various parts of the Salt configuration. When accessed from execution modules, they are resolved on the Minion. When accessed from Salt-Cloud, they are resolved on whichever system is running Salt Cloud.</p><p class="calibre8">Now that we have configuration out of the way, it's time to dive into configuration management, by wrapping state modules around execution modules.</p></div></body></html>
