@@ -1,0 +1,6 @@
++   [Python 高性能编程](README.md)
++   [前言](py-hiperf-prog_0.md)
++   [第一章：基准测试和分析](py-hiperf-prog_1.md)
++   [第二章. 使用 NumPy 进行快速数组操作](py-hiperf-prog_2.md)
++   [第三章。使用 Cython 的 C 性能](py-hiperf-prog_3.md)
++   [第四章 并行处理](py-hiperf-prog_4.md)
