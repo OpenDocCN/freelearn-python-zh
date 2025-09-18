@@ -1,6 +1,6 @@
-# Go 编程蓝图
+# Kivy Python 交互式应用和游戏指南
 
-> 原文：[`zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66`](https://zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66)
+> 原文：[`zh.annas-archive.org/md5/6f1edc8ae20cbffd0b2f654cff980f50`](https://zh.annas-archive.org/md5/6f1edc8ae20cbffd0b2f654cff980f50)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 

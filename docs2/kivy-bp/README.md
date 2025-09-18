@@ -1,6 +1,6 @@
-# Go 编程蓝图
+# Kivy 蓝图
 
-> 原文：[`zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66`](https://zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66)
+> 原文：[`zh.annas-archive.org/md5/9c3f4e93a52e8d38197e54db421b1d0d`](https://zh.annas-archive.org/md5/9c3f4e93a52e8d38197e54db421b1d0d)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 

@@ -1,6 +1,6 @@
-# Go 编程蓝图
+# Python 测试学习指南
 
-> 原文：[`zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66`](https://zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66)
+> 原文：[`zh.annas-archive.org/md5/94d2594c4830a60d642d681a0ab6b94a`](https://zh.annas-archive.org/md5/94d2594c4830a60d642d681a0ab6b94a)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 

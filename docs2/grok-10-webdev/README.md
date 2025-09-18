@@ -1,6 +1,6 @@
-# Go 编程蓝图
+# Grok 1.0 Web 开发指南
 
-> 原文：[`zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66`](https://zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66)
+> 原文：[`zh.annas-archive.org/md5/c9fdc46646d0594ac4be07c1fd791801`](https://zh.annas-archive.org/md5/c9fdc46646d0594ac4be07c1fd791801)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 
