@@ -1,0 +1,120 @@
+# 前言
+
+Selenium 是一套用于自动化浏览器的工具。它主要用于测试应用程序，但其用途并不仅限于测试。它还可以用于屏幕抓取以及在浏览器窗口中自动化重复性任务。Selenium 支持在所有主要浏览器上自动化，包括 Firefox、Internet Explorer、Google Chrome、Safari 和 Opera。Selenium WebDriver 现在已成为 W3C 标准，并得到主要浏览器厂商的支持。
+
+Selenium 提供了一套用于自动化与浏览器交互的工具：
+
++   **Selenium IDE**：这是一个用于记录和回放 Firefox 中 Selenium 脚本的 Firefox 插件。它提供了一个图形用户界面来记录使用 Firefox 的用户操作。这是一个开始学习和使用 Selenium 的绝佳工具，但它只能与 Firefox 一起使用，不支持其他浏览器。然而，它可以将记录的脚本转换为 Selenium WebDriver 支持的多种编程语言，这支持在除 Firefox 之外的其他浏览器上运行脚本。
+
++   **Selenium WebDriver**：这是一个用于使用编程语言开发高级 Selenium 脚本的编程接口。我们还可以在多个操作系统（包括 Linux、Windows 和 Mac OS X）上支持 Selenium 的多个浏览器上运行测试。这使得 Selenium 成为一个真正的跨浏览器测试工具。Selenium WebDriver 提供了各种语言的客户端库，包括 Java、C#、Python、Ruby、PHP 和 JavaScript，并更倾向于编写测试脚本。
+
++   **Selenium 独立服务器**：这也被称为 Selenium Grid，允许远程和分布式执行使用 WebDriver 创建的 Selenium 脚本。我们还可以使用独立服务器的网格功能并行运行测试，包括在移动平台（如 Android 或 Apple iOS 的 iPhone 和 iPad）上的测试。
+
+如标题所示，本书将向您介绍 Python 的 Selenium WebDriver 客户端库。您将学习如何使用 Python 中的 Selenium WebDriver 自动化浏览器以测试 Web 应用程序。本书包含从设置 Selenium 到使用 Selenium 的基本和高级功能创建和运行自动化脚本的测试 Web 应用程序的课程。本书假设您对使用 Python 进行编程有基本了解。
+
+# 本书涵盖的内容
+
+第一章, *使用 Selenium WebDriver 和 Python 入门*，从安装 Python 和 Selenium WebDriver 客户端库开始。我们将选择用于 Selenium 脚本开发的 Python 编辑器或 IDE。然后，我们将从测试的应用程序中创建我们的第一个自动化脚本，用于简单的搜索工作流程。在本章结束时，我们将在 Selenium 支持的各种浏览器上运行 Selenium 脚本。
+
+第二章, *使用 unittest 编写测试*，向您展示了如何使用 Selenium 和 unittest 库来测试 Web 应用程序。我们将把脚本转换为 unittest 测试用例。我们将使用 Selenium 和 unittest 创建更多测试。我们将为一系列测试创建一个 TestSuite。我们将运行这些测试并分析结果。在本章末尾，您将学习如何生成 HTML 格式的测试报告，您可以将其分发给项目的各个利益相关者。
+
+第三章, *查找元素*，向您介绍了定位器，它们是自动化浏览器窗口中显示的不同类型用户界面（UI）元素的钥匙。Selenium 使用定位器在页面上查找元素，然后执行操作或检索它们的属性以进行测试。您将学习各种定位元素的方法，包括 XPath 和 CSS。我们将通过在测试的应用程序上使用示例来展示如何使用这些方法。
+
+第四章, *使用 Selenium Python API 进行元素交互*，向您展示了如何使用 Selenium WebDriver 客户端库在 Python 中与不同类型的元素、JavaScript 警报、框架和窗口进行交互。您将学习如何执行诸如向元素发送值、执行点击和从下拉列表中选择选项等操作。您还将看到如何处理框架、不同类型的 JavaScript 警报以及在不同子浏览器窗口之间切换。
+
+第五章, *同步测试*，为您介绍了 Selenium 提供的各种等待方法，以实现测试的可靠和稳健执行。您将学习如何在 Selenium 测试中使用隐式和显式等待来实现同步。您还将学习在我们的测试脚本中实现显式等待的各种方法。
+
+第六章, *跨浏览器测试*，深入探讨了使用 RemoteWebDriver 在远程机器或通过 Selenium Grid 运行跨浏览器测试。您将学习如何使用 RemoteWebDriver 在远程机器上运行测试。我们还将设置一个 Selenium Grid，以在多种浏览器和操作系统组合上运行测试。您还将看到如何在无头浏览器（如 PhantomJS）上执行测试。在本章末尾，我们将看到如何使用 Sauce Labs 和 BrowserStack 等云测试工具，通过 RemoteWebDriver 在云中运行测试。
+
+第七章, *移动设备测试*，展示了如何使用 Selenium WebDriver 和 Appium 在移动设备上测试应用程序。我们将设置 Appium 来测试我们的示例应用程序在 iOS 和 Android 模拟器及设备上。您还将学习如何使用 Appium 运行原生移动应用程序。
+
+第八章, *页面对象和数据驱动测试*，介绍了两个重要的设计模式，以实现可维护和高效的测试框架。你将学习如何使用页面对象来隐藏定位器的技术细节，并将页面上的操作划分为单独的类，创建更易读且易于维护的测试用例。然后，你将学习如何使用 unittest 库创建数据驱动测试。
+
+第九章, *Selenium WebDriver 的高级技术*，深入探讨了使用 Selenium 自动化浏览器进行测试的一些高级技术。你将学习如何使用各种动作方法来模拟复杂的鼠标和键盘操作。你将了解如何处理会话 cookie，在测试运行期间捕获屏幕截图，以及创建整个测试运行的影片。
+
+第十章, *与其他工具和框架的集成*，展示了如何将 Selenium WebDriver 与自动化验收测试框架（如 Behave）和持续集成工具结合使用。你将首先学习如何将 Selenium 与 Behave 集成以创建自动化验收测试。我们将使用 Selenium WebDriver 在 UI 上实现一个示例功能和验收测试。在第章的结尾，我们将设置使用 Jenkins 运行我们创建的测试，作为持续集成的一部分。我们将设置一个日程表，以每天一次的频率运行测试。
+
+在阅读完本书之后，你将学会 Selenium WebDriver 的所有基本功能，以便在 Python 中创建自己的 Web 测试框架。
+
+# 阅读本书所需的条件
+
+要开始阅读本书，你需要具备 Python 的基本编程技能，以及 HTML、JavaScript、CSS 和 XML 等 Web 技术的知识。如果你能够编写简单的 Python 脚本，使用循环和条件语句，定义类，那么你应该能够跟上本书中的每一个示例。我们将花时间解释本书中编写的每一行代码，以便你能够在任何情况下都能创建所需的结果。有一些软件先决条件是必需的，这些将在第一章中解释。你需要能够访问命令行界面终端、Python 解释器和机器上的 Firefox 和 Google Chrome 等 Web 浏览器。你可以从[`www.mozilla.org/en-US/firefox/`](https://www.mozilla.org/en-US/firefox/)下载并安装 Firefox，从[`www.google.com/chrome/`](https://www.google.com/chrome/)下载并安装 Google Chrome。如果你是 Windows 用户，你可能对测试默认安装的 Internet Explorer 感兴趣。
+
+# 本书面向的对象
+
+如果你是一名质量保证/测试专业人士、软件开发人员或使用 Python 的 Web 应用程序开发人员，并想学习 Selenium WebDriver 来自动化浏览器以测试你的 Web 应用程序，那么这本指南是你开始学习的完美选择！作为先决条件，这本书假设你具备 Python 编程语言的基本理解，尽管不需要任何先前的 Selenium WebDriver 知识。到本书结束时，你将获得 Selenium WebDriver 的全面知识，这将有助于你编写自动化测试。
+
+# 惯例
+
+在这本书中，你会找到许多不同风格的文本，以区分不同类型的信息。以下是一些这些风格的示例及其含义的解释。
+
+文本中的代码词汇、数据库表名、文件夹名、文件名、文件扩展名、路径名、虚拟 URL、用户输入和 Twitter 昵称将如下所示：“`pip`工具将下载 Selenium 软件包的最新版本并在你的机器上安装。”
+
+代码块如下设置：
+
+```py
+# create a new Firefox session
+driver = webdriver.Firefox()
+driver.implicitly_wait(30)
+driver.maximize_window()
+```
+
+当我们希望将你的注意力引到代码块的一个特定部分时，相关的行或项目会以粗体显示：
+
+```py
+# run the suite
+xmlrunner.XMLTestRunner(verbosity=2, output='test-reports').
+ run(smoke_tests)
+
+```
+
+任何命令行输入或输出都如下所示：
+
+```py
+pip install -U selenium
+
+```
+
+**新术语**和**重要词汇**以粗体显示。你在屏幕上看到的，例如在菜单或对话框中的文字，在文本中会这样显示：“从**工具**菜单中选择**Internet Options**。”
+
+### 注意
+
+警告或重要注意事项如下所示。
+
+### 小贴士
+
+小贴士和技巧如下所示。
+
+# 读者反馈
+
+我们读者的反馈总是受欢迎的。告诉我们你对这本书的看法——你喜欢什么或不喜欢什么。读者反馈对我们很重要，因为它帮助我们开发出你真正能从中获得最大收益的标题。
+
+要向我们发送一般反馈，只需发送电子邮件至`<feedback@packtpub.com>`，并在邮件主题中提及书籍的标题。
+
+如果你在一个领域有专业知识，并且你对撰写或为书籍做出贡献感兴趣，请参阅我们的作者指南[www.packtpub.com/authors](http://www.packtpub.com/authors)。
+
+# 客户支持
+
+现在你已经是 Packt 图书的骄傲拥有者，我们有许多事情可以帮助你从购买中获得最大收益。
+
+## 下载示例代码
+
+你可以从[`www.packtpub.com`](http://www.packtpub.com)下载你购买的所有 Packt 出版物的示例代码文件。如果你在其他地方购买了这本书，你可以访问[`www.packtpub.com/support`](http://www.packtpub.com/support)并注册，以便将文件直接通过电子邮件发送给你。
+
+## 错误清单
+
+尽管我们已经尽一切努力确保我们内容的准确性，但错误仍然会发生。如果您在我们的某本书中发现错误——可能是文本或代码中的错误——如果您能向我们报告这一点，我们将不胜感激。通过这样做，您可以节省其他读者的挫败感，并帮助我们改进本书的后续版本。如果您发现任何勘误，请通过访问 [`www.packtpub.com/submit-errata`](http://www.packtpub.com/submit-errata)，选择您的书籍，点击**勘误提交表单**链接，并输入您的勘误详情来报告它们。一旦您的勘误得到验证，您的提交将被接受，勘误将被上传到我们的网站或添加到该标题的勘误部分下的现有勘误列表中。
+
+要查看之前提交的勘误表，请访问 [`www.packtpub.com/books/content/support`](https://www.packtpub.com/books/content/support)，并在搜索字段中输入书籍名称。所需信息将出现在**勘误**部分。
+
+## 盗版
+
+在互联网上对版权材料的盗版是一个跨所有媒体的持续问题。在 Packt，我们非常重视保护我们的版权和许可证。如果您在互联网上发现我们作品的任何非法副本，请立即提供位置地址或网站名称，以便我们可以寻求补救措施。
+
+请通过 `<copyright@packtpub.com>` 联系我们，并提供涉嫌盗版材料的链接。
+
+我们感谢您在保护我们作者和我们为您提供有价值内容的能力方面的帮助。
+
+## 问题
+
+如果您在这本书的任何方面有问题，您可以通过 `<questions@packtpub.com>` 联系我们，我们将尽力解决问题。
