@@ -1,4 +1,4 @@
-# 第四章 PTVS 中的 Django
+# 第四章：PTVS 中的 Django
 
 Django 是一个基于**模型-视图-控制器**（**MVC**）模式的 Python 高级 Web 框架；它提供了一系列工具和助手，以创建一个快速开发环境。基于 Django 的网站有很多成功的例子，如 Instagram、Pinterest、Disqus 以及 Dropbox 的部分功能。它自 2006 年开始开发，使其成为 Web 项目的稳固选择，尤其是在选择 Python 作为语言时。有关 Django 的更多信息，请参阅其官方项目网站[`www.djangoproject.com/`](https://www.djangoproject.com/)。
 

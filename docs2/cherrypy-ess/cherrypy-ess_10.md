@@ -1,4 +1,4 @@
-# 第十章 部署
+# 第十章：部署
 
 我们最后一章将在第一部分解释如何配置基于 CherryPy 的应用程序，然后回顾通过使用 Apache 和 lighttpd 部署此类应用程序的不同方法。最后，我们将回顾如何通过内置的 CherryPy HTTP 服务器以及使用 Apache 和 lighttpd 功能来使基于 CherryPy 的应用程序启用 SSL。
 

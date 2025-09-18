@@ -1,4 +1,4 @@
-# 第九章 Selenium WebDriver 高级技术
+# 第九章：Selenium WebDriver 高级技术
 
 到目前为止，本书中我们已看到如何设置 Selenium WebDriver 以测试 Web 应用程序，以及一些用于在浏览器中定位和与各种元素交互的重要特性和 API。
 
