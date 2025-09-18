@@ -1,6 +1,6 @@
-# Go 编程蓝图
+# 精通 Python 高性能
 
-> 原文：[`zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66`](https://zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66)
+> 原文：[`zh.annas-archive.org/md5/7289a66790cbfec1c8bb1a2cb27941dd`](https://zh.annas-archive.org/md5/7289a66790cbfec1c8bb1a2cb27941dd)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 

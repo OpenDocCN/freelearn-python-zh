@@ -1,6 +1,6 @@
-# Go 编程蓝图
+# Python Selenium 测试工具学习指南
 
-> 原文：[`zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66`](https://zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66)
+> 原文：[`zh.annas-archive.org/md5/ec9c269b5bb6049f13670061a906eb22`](https://zh.annas-archive.org/md5/ec9c269b5bb6049f13670061a906eb22)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 
