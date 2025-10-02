@@ -1,3 +1,4 @@
++   [Python 高级编程](docs/adv-py-prog/README.md)
 +   [AutoIt 秘籍](docs/autoit-rcp/README.md)
 +   [成为 Django 企业级开发者](docs/bcm-entp-dj-dev/README.md)
 +   [Django2 Web 应用构建指南](docs/bd-dj20-webapp/README.md)
