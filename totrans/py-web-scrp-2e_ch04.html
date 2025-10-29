@@ -1,0 +1,405 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xmlns:m="http://www.w3.org/1998/Math/MathML" xmlns:pls="http://www.w3.org/2005/01/pronunciation-lexicon" xmlns:ssml="http://www.w3.org/2001/10/synthesis">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Concurrent Downloading</title>
+  <link type="text/css" rel="stylesheet" media="all" href="style.css"/>
+  <link type="text/css" rel="stylesheet" media="all" href="core.css"/>
+</head>
+<body>
+  <div id="sbo-rt-content"><section>
+
+            <header>
+                <h1 class="header-title">Concurrent Downloading</h1>
+            </header>
+
+            <article>
+                
+<p>In the previous chapters, our crawlers downloaded web pages sequentially, waiting for each download to complete before starting the next one. Sequential downloading is fine for the relatively small example website but quickly becomes impractical for larger crawls. To crawl a large website of one million web pages at an average of one web page per second would take over 11 days of continuous downloading. This time can be significantly improved by downloading multiple web pages simultaneously.</p>
+<p>This chapter will cover downloading web pages with multiple threads and processes and comparing the performance with sequential downloading.</p>
+<p>In this chapter, we will cover the following topics:</p>
+<ul>
+<li>One million web pages</li>
+<li>Sequential crawler</li>
+<li>Threaded crawler</li>
+<li>Multiprocessing crawler</li>
+</ul>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+            <header>
+                <h1 class="header-title">One million web pages</h1>
+            </header>
+
+            <article>
+                
+<p>To test the performance of concurrent downloading, it would be preferable to have a larger target website. For this reason, we will use the Alexa list, which tracks the top one million most popular websites according to users who have installed the Alexa Toolbar. Only a small percentage of people use this browser plugin, so the data is not authoritative, but it's fine for our purposes and gives us a larger list to crawl.</p>
+<p>These top one million web pages can be browsed on the Alexa website at <a href="http://www.alexa.com/topsites" target="_blank"><span class="URLPACKT">http://www.alexa.com/topsites</span></a>. Additionally, a compressed spreadsheet of this list is available at <a href="http://s3.amazonaws.com/alexa-static/top-1m.csv.zip" target="_blank"><span class="URLPACKT">http://s3.amazonaws.com/alexa-static/top-1m.csv.zip</span></a>, so scraping Alexa is not necessary.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+            <header>
+                <h1 class="header-title">Parsing the Alexa list</h1>
+            </header>
+
+            <article>
+                
+<p>The Alexa list is provided in a spreadsheet with columns for the rank and domain:</p>
+<div class="CDPAlignCenter CDPAlign"><img class="image-border" src="images/4364OS_04_01.png"/></div>
+<p>Extracting this data requires a number of steps, as follows:</p>
+<ol>
+<li>Download the <kbd>.zip</kbd> file.</li>
+<li>Extract the CSV file from the&#160;<kbd>.zip</kbd> file.</li>
+<li>Parse the CSV file.</li>
+<li>Iterate each row of the CSV file to extract the domain.</li>
+</ol>
+<p>Here is an implementation to achieve this:</p>
+<pre>import csv <br/>from zipfile import ZipFile <br/>from io import BytesIO, TextIOWrapper <br/>import requests<br/><br/>resp = requests.get('http://s3.amazonaws.com/alexa-static/top-1m.csv.zip', stream=True) <br/>urls = [] # top 1 million URL's will be stored in this list <br/>with ZipFile(BytesIO(resp.content)) as zf:<br/>    csv_filename = zf.namelist()[0]<br/>    with zf.open(csv_filename) as csv_file:<br/>        for _, website in csv.reader(TextIOWrapper(csv_file)):<br/>            urls.append('http://' + website)
+</pre>
+<p>You may have noticed that the downloaded zipped data is wrapped with the <kbd>BytesIO</kbd>&#160;class and passed to <kbd>ZipFile</kbd>. This is necessary because <kbd>ZipFile</kbd> expects a file-like interface rather than a raw byte object. We also utilize <kbd>stream=True</kbd>, which helps speed up the request.&#160;Next, the CSV filename is extracted from the filename list. The <kbd>.zip</kbd> file only contains a single file, so the first filename is selected. Then, the CSV file is read using a&#160;<kbd>TextIOWrapper</kbd> to help handle encoding and read issues. This file is then&#160;iterated, and the domain in the second column is added to the URL list. The <kbd>http://</kbd> protocol is prepended to each&#160;domain to make them valid URLs.</p>
+<p>To reuse this function with the crawlers developed earlier, it needs to be modified to an easily callable class:</p>
+<pre>class AlexaCallback:<br/>    def __init__(self, max_urls=500):<br/>        self.max_urls = max_urls<br/>        self.seed_url = 'http://s3.amazonaws.com/alexa-static/top-1m.csv.zip'<br/>        self.urls = []<br/><br/>    def __call__(self):<br/>        resp = requests.get(self.seed_url, stream=True)<br/>        with ZipFile(BytesIO(resp.content)) as zf:<br/>            csv_filename = zf.namelist()[0]<br/>            with zf.open(csv_filename) as csv_file:<br/>                for _, website in csv.reader(TextIOWrapper(csv_file)):<br/>                    self.urls.append('http://' + website)<br/>                    if len(self.urls) == self.max_urls:<br/>                        break
+</pre>
+<p>A new input argument was added here, called <kbd>max_urls</kbd>, which sets the number of URLs to extract from the Alexa file. By default, this is set to 500 URLs because downloading a million web pages takes a long time (as mentioned in the chapter introduction, more than&#160;11 days when downloaded sequentially).</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+            <header>
+                <h1 class="header-title">Sequential crawler</h1>
+            </header>
+
+            <article>
+                
+<p>We can now&#160;use <kbd>AlexaCallback</kbd> with a slightly modified version of the link crawler we developed earlier to download the top 500 Alexa URLs sequentially. To update the link crawler, it will now take either a start URL or a list of start URLs:</p>
+<pre># In link_crawler function<br/><br/>if isinstance(start_url, list):<br/>    crawl_queue = start_url<br/>else:<br/>    crawl_queue = [start_url]
+</pre>
+<p>We also need to update the way the&#160;<kbd>robots.txt</kbd> is handled for each site. We use a simple dictionary to store the parsers per domain (see: <a href="https://github.com/kjam/wswp/blob/master/code/chp4/advanced_link_crawler.py#L53-L72">https://github.com/kjam/wswp/blob/master/code/chp4/advanced_link_crawler.py#L53-L72</a>). We also need to handle the fact that not every URL we encounter will be relative, and some of them aren't even URLs we can visit, such as e-mail addresses with&#160;<kbd>mailto:</kbd> or&#160;<kbd>javascript:</kbd> event commands. Additionally, due to some sites not having the&#160;<kbd>robots.txt</kbd> files and other poorly formed URLs, there are some additional error-handling sections added and a new <kbd>no_robots</kbd> variable, which allows us to continue crawling if we cannot, in good faith, find a&#160;<kbd>robots.txt</kbd> file. Finally, we added a&#160;<kbd>socket.setdefaulttimeout(60)</kbd> to handle timeouts for the&#160;<kbd>robotparser</kbd> and some additional&#160;<kbd>timeout</kbd> arguments for the&#160;<kbd>Downloader</kbd> class in&#160;<a href="py-web-scrp-2e_ch03.html" target="_blank">Chapter 3</a><span>,&#160;</span><em>Caching Downloads</em><span>,</span>.&#160;</p>
+<p>The primary code to handle these cases is available at <a href="https://github.com/kjam/wswp/blob/master/code/chp4/advanced_link_crawler.py">https://github.com/kjam/wswp/blob/master/code/chp4/advanced_link_crawler.py</a>. <span class="URLPACKT">The new crawler&#160;can then be used directly with the&#160;<kbd>AlexaCallback</kbd></span>&#160;and run from the command line as follows:</p>
+<pre><strong>python chp4/advanced_link_crawler.py</strong><br/><strong>...</strong><br/><strong>Total time: 1349.7983705997467s</strong>
+</pre>
+<p>Taking a look at the code that runs in the <kbd>__main__</kbd> section of the file, we use <kbd>'$^'</kbd> as our pattern to&#160;avoid&#160;collecting links from each page. You can also try to crawl all links on every page using <kbd>'.'</kbd> to match everything. (Warning: This will take a long time, potentially days!)&#160;</p>
+<p>The time for only crawling the first page is as expected for sequential downloading, with an average of ~2.7 seconds per URL (this includes the time to test the <kbd>robots.txt</kbd> file). Depending on your ISP speeds, and if you run the script on a server in the cloud, you might see much faster results.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+            <header>
+                <h1 class="header-title">Threaded crawler</h1>
+            </header>
+
+            <article>
+                
+<p>Now we will extend the sequential crawler to download the web pages in parallel. Note that, if misused, a threaded crawler could request content too quickly and overload a web server or cause your IP address to be blocked.</p>
+<p>To avoid this, our crawlers will have a <kbd>delay</kbd> flag to set the minimum number of seconds between requests to the same domain.</p>
+<p>The Alexa list example used in this chapter covers one million separate domains, so this particular problem does not apply here. However, a delay of at least one second between downloads should be considered when crawling many web pages from a single domain in the future.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+            <header>
+                <h1 class="header-title">How threads and processes work</h1>
+            </header>
+
+            <article>
+                
+<p>Here is a diagram of a process containing multiple threads of execution:</p>
+<div class="CDPAlignCenter CDPAlign"><img height="227" width="239" class="image-border" src="images/4364OS_04_02.png"/></div>
+<p>When a Python script or any other computer program is run, a process is created, containing the code and state, as well as the stack. These processes are executed by the CPU&#160;cores&#160;of a computer. However, each core&#160;can only execute a single thread&#160;at a time and will quickly switch between them to give the impression that multiple programs are running simultaneously. Similarly, within a process, the program execution can switch between multiple threads, with each thread executing different parts of the program.</p>
+<p>This means that when one thread is waiting for a web page to download, the process can switch and execute another thread to avoid wasting CPU cycles. So, using all the compute resources on our computer to download data as fast as possible requires distributing our downloads across multiple threads and processes.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+            <header>
+                <h1 class="header-title">Implementing a multithreaded crawler</h1>
+            </header>
+
+            <article>
+                
+<p>Fortunately, Python makes threading relatively straightforward. This means we can keep a similar queuing structure to the link crawler developed in <a href="py-web-scrp-2e_ch01.html" target="_blank"><span class="ChapterrefPACKT">Chapter 1</span></a>, <em>Introduction to Web Scraping</em>, but start the crawl loop in multiple threads to download these links in parallel. Here is a modified version of the start of the link crawler with the <kbd>crawl</kbd> loop moved into a function:</p>
+<pre>import time <br/>import threading <br/>...<br/>SLEEP_TIME = 1 <br/><br/>def threaded_crawler(..., max_threads=10, scraper_callback=None): <br/>    ...<br/><br/>    def process_queue(): <br/>        while crawl_queue: <br/>            ... 
+</pre>
+<p>Here is the remainder of the <kbd>threaded_crawler</kbd> function to start <kbd>process_queue</kbd> in multiple threads and wait until they have completed:</p>
+<pre>threads = [] <br/>    while threads or crawl_queue: <br/>        # the crawl is still active <br/>        for thread in threads: <br/>            if not thread.is_alive(): <br/>                # remove the stopped threads <br/>                threads.remove(thread) <br/>        while len(threads) &lt; max_threads and crawl_queue: <br/>            # can start some more threads <br/>            thread = threading.Thread(target=process_queue) <br/>            # set daemon so main thread can exit when receives ctrl-c <br/>            thread.setDaemon(True) <br/>            thread.start() <br/>            threads.append(thread) <br/>        # all threads have been processed # sleep temporarily so CPU can focus execution elsewhere <br/>        for thread in threads:<br/>            thread.join()        <br/>        time.sleep(SLEEP_TIME))
+</pre>
+<p>The loop in the preceding code will keep creating threads while there are URLs to crawl until it reaches the maximum number of threads set. During the crawl, threads may also prematurely shut down when there are currently no more URLs in the queue. For example, consider a situation when there are two threads and two URLs to download. When the first thread finishes its download, the crawl queue is empty so this thread exits. However, the second thread may then complete its download and discover additional URLs to download. The <kbd>thread</kbd> loop will then notice that there are still more URLs to download, and the maximum number of threads has not been reached, so it will create a new download thread.</p>
+<p>We might also want to add parsing to this threaded crawler later. To do so, we can add a section for a function callback using the returned HTML. We likely want to return even more links from this logic or extraction, so we need to also expand the links we parse in the later&#160;<kbd>for</kbd> loop:</p>
+<pre>html = D(url, num_retries=num_retries)<br/>if not html:<br/>    continue<br/>if scraper_callback:<br/>    links = scraper_callback(url, html) or []<br/>else:<br/>    links = []<br/># filter for links matching our regular expression<br/>for link in get_links(html) + links:<br/>    ...
+</pre>
+<p>The fully updated code can be viewed at <a href="https://github.com/kjam/wswp/blob/master/code/chp4/threaded_crawler.py">https://github.com/kjam/wswp/blob/master/code/chp4/threaded_crawler.py.</a> To have a fair test, you will also need to flush your <kbd>RedisCache</kbd> or use a different default database. If you have the <kbd>redis-cli</kbd> installed, you can do so easily from your command line:</p>
+<pre><strong>$ redis-cli</strong><br/><strong>127.0.0.1:6379&gt; FLUSHALL</strong><br/><strong>OK</strong><br/><strong>127.0.0.1:6379&gt;</strong>
+</pre>
+<p>To exit, use your normal program exit (usually <em>Ctrl</em> + <em>C</em> or c<em>md</em> + <em>C</em>). Now, let's test the performance of this multi-threaded version of the link crawler with the following command:</p>
+<pre><strong>$ python code/chp4/threaded_crawler.py</strong><br/><strong>...</strong><br/><strong>Total time: 361.50403571128845s</strong>
+</pre>
+<p>If you take a look at the <kbd>__main__</kbd> section of this crawler, you will note that you can easily pass arguments to this script including&#160;<kbd>max_threads</kbd> and&#160;<kbd>url_pattern</kbd>. In the previous example, we are using the defaults of&#160;<kbd>max_threads=5</kbd> and&#160;<kbd>url_pattern='$^'</kbd>.&#160;</p>
+<p>Since there are five threads, downloading is nearly four times faster! Again, your results might vary depending on your ISP or if you run the script from a server. Further analysis of thread performance will be covered in the <em>Performance</em> section.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+            <header>
+                <h1 class="header-title">Multiprocessing crawler</h1>
+            </header>
+
+            <article>
+                
+<p>To improve the performance further, the threaded example can be extended to support multiple processes. Currently, the crawl queue is held in local memory, which means other processes cannot contribute to the same crawl. To address this, the crawl queue will be transferred to Redis. Storing the queue independently means that even crawlers on separate servers could collaborate on the same crawl.</p>
+<p>For more robust queuing, a dedicated distributed task&#160;tool, such as Celery, should be considered; however,&#160;Redis&#160;will be reused here to minimize the number of technologies and dependencies introduced. Here is an implementation of the new Redis-backed queue:</p>
+<pre># Based loosely on the Redis Cookbook FIFO Queue:<br/># http://www.rediscookbook.org/implement_a_fifo_queue.html<br/>from redis import StrictRedis<br/><br/><br/>class RedisQueue:<br/>    """ RedisQueue helps store urls to crawl to Redis<br/>        Initialization components:<br/>        client: a Redis client connected to the key-value database for<br/>                the web crawling cache (if not set, a localhost:6379<br/>                default connection is used).<br/>        db (int): which database to use for Redis<br/>        queue_name (str): name for queue (default: wswp)<br/>    """<br/><br/>    def __init__(self, client=None, db=0, queue_name='wswp'):<br/>        self.client = (StrictRedis(host='localhost', port=6379, db=db)<br/>                       if client is None else client)<br/>        self.name = "queue:%s" % queue_name<br/>        self.seen_set = "seen:%s" % queue_name<br/>        self.depth = "depth:%s" % queue_name<br/><br/>    def __len__(self):<br/>        return self.client.llen(self.name)<br/><br/>    def push(self, element):<br/>        """Push an element to the tail of the queue"""<br/>        if isinstance(element, list):<br/>            element = [e for e in element if not self.already_seen(e)]<br/>            self.client.lpush(self.name, *element)<br/>            self.client.sadd(self.seen_set, *element)<br/>        elif not self.client.already_seen(element):<br/>            self.client.lpush(self.name, element)<br/>            self.client.sadd(self.seen_set, element)<br/><br/>    def pop(self):<br/>        """Pop an element from the head of the queue"""<br/>        return self.client.rpop(self.name)<br/><br/>    def already_seen(self, element):<br/>       """ determine if an element has already been seen """<br/>       return self.client.sismember(self.seen_set, element)<br/><br/>    def set_depth(self, element, depth):<br/>        """ Set the seen hash and depth """<br/>        self.client.hset(self.depth, element, depth)<br/><br/>    def get_depth(self, element):<br/>        """ Get the seen hash and depth """<br/>        return self.client.hget(self.depth, element)
+</pre>
+<p>We can see in the preceding&#160;<kbd>RedisQueue</kbd> class that we are maintaining a few different data types. First, we have the expected Redis list type, which is handled via the&#160;<kbd>lpush</kbd> and&#160;<kbd>rpop</kbd> commands, and the name of the queue is stored in the&#160;<kbd>self.name</kbd> attribute.</p>
+<p>Next&#160;we have a Redis set, which functions similarly to a Python set with a unique membership. The set name is stored in&#160;<kbd>self.seen_set</kbd> and is managed via the&#160;<kbd>sadd</kbd> and&#160;<kbd>sismember</kbd> methods (to add new keys and test membership).</p>
+<p>Finally, we have moved the depth functionality to the&#160;<kbd>set_depth</kbd> and&#160;<kbd>get_depth</kbd>&#160;methods, which use a normal Redis hash table with the name stored in <kbd>self.depth</kbd>&#160;and each URL as the key with&#160;the depth as the value. One useful addition to the code&#160;would be&#160;to set the last time a domain was accessed so we can make a more efficient&#160;<kbd>delay</kbd> functionality for our&#160;<kbd>Downloader</kbd> class. This is left as an exercise for the reader.</p>
+<div class="packt_infobox">If you want a queue with more functionality but with the same availability as Redis, I recommend looking at <span><span><kbd>python-rq</kbd>&#160;</span></span>&#160;(<a href="http://python-rq.org/">http://python-rq.org/</a>), which is an easy-to-use-and-install Python job queue similar to Celery but with less functionality and dependencies.</div>
+<p>Continuing with our current <kbd>RedisQueue</kbd> implementation, we need to make a few updates&#160;to the threaded crawler to support the new queue type, which are highlighted here:</p>
+<pre>def threaded_crawler_rq(...): <br/>    ... <br/>    # the queue of URL's that still need to be crawled <br/>    crawl_queue = RedisQueue() <br/>    crawl_queue.push(seed_url) <br/><br/>    def process_queue(): <br/>        while len(crawl_queue):<br/>            url = crawl_queue.pop()<br/>        ...
+</pre>
+<p>The first change is replacing our Python list&#160;with the new Redis-based queue, named <kbd>Redis</kbd><kbd>Queue</kbd>. This queue handles duplicate URLs internally, so the <kbd>seen</kbd> variable is no longer required. Finally, the <kbd>RedisQueue</kbd>&#160;<kbd>len</kbd>&#160;method is called to determine if there are still URLs in the queue. Further logic changes to handle the depth and seen functionality&#160;are&#160;shown here:</p>
+<pre>## inside process_queue<br/>if no_robots or rp.can_fetch(user_agent, url):<br/>    depth = crawl_queue.get_depth(url) or 0<br/>    if depth == max_depth:<br/>        print('Skipping %s due to depth' % url)<br/>        continue<br/>    html = D(url, num_retries=num_retries)<br/>    if not html:<br/>        continue<br/>    if scraper_callback:<br/>        links = scraper_callback(url, html) or []<br/>    else:<br/>        links = []<br/>    # filter for links matching our regular expression<br/>    for link in get_links(html, link_regex) + links:<br/>        if 'http' not in link:<br/>            link = clean_link(url, domain, link)<br/>        crawl_queue.push(link)<br/>        crawl_queue.set_depth(link, depth + 1)
+</pre>
+<p>The full code can be seen at <a href="http://github.com/kjam/wswp/blob/master/code/chp4/threaded_crawler_with_queue.py">http://github.com/kjam/wswp/blob/master/code/chp4/threaded_crawler_with_queue.py</a>.</p>
+<p>This updated version of the threaded crawler can then be started using multiple processes with this snippet:</p>
+<pre>import multiprocessing <br/><br/>def mp_threaded_crawler(args, **kwargs): <br/>    num_procs = kwargs.pop('num_procs')<br/>    if not num_procs:<br/>        num_cpus = multiprocessing.cpu_count() <br/>    processes = [] <br/>    for i in range(num_procs): <br/>        proc = multiprocessing.Process(<br/>            target=threaded_crawler_rq, args=args,                    <br/>            kwargs=kwargs) <br/>        proc.start() <br/>        processes.append(proc) <br/>    # wait for processes to complete <br/>    for proc in processes: <br/>        proc.join()
+</pre>
+<p>This structure might look familiar because the multiprocessing module follows a similar interface to the threading module used earlier in the chapter. This code either utilizes&#160;the number of CPUs available (eight on my machine) or the &#160;<kbd>num_procs</kbd> as passed via&#160;arguments when starting the script. Then, each process&#160;starts the threaded crawler and waits for all the processes to complete execution.</p>
+<p>Now, let's test the performance of this multiprocess version of the link crawler using the following command. The code for&#160;<kbd>mp_threaded</kbd><kbd>_crawler</kbd>&#160;is available at <a href="http://github.com/kjam/wswp/blob/master/code/chp4/threaded_crawler_with_queue.py">http://github.com/kjam/wswp/blob/master/code/chp4/threaded_crawler_with_queue.py</a>:</p>
+<pre><strong>    $ python threaded_crawler_with_queue.py</strong><br/><strong>    ...</strong><br/><strong>    Total time: 197.0864086151123s</strong>
+</pre>
+<p>As detected by the script, my machine has eight CPUs (four physical cores and four virtual cores), and the default setting for threads is five. &#160;To use a different combination, you can see the arguments expected by using the <kbd>-h</kbd> command, as follows:</p>
+<pre>$ python threaded_crawler_with_queue.py -h<br/>usage: threaded_crawler_with_queue.py [-h]<br/> [max_threads] [num_procs] [url_pattern]<br/><br/>Multiprocessing threaded link crawler<br/><br/>positional arguments:<br/> max_threads maximum number of threads<br/> num_procs number of processes<br/> url_pattern regex pattern for url matching<br/><br/>optional arguments:<br/> -h, --help show this help message and exit
+</pre>
+<div class="packt_infobox">The <kbd>-h</kbd>&#160;command is also available for testing different values in the <kbd>threaded_crawler.py</kbd> script.</div>
+<p>For the default options with eight processes and five threads per process, the running time is ~1.8X faster than that of the previous threaded crawler using a single process. In the next section, we will further investigate the relative performances of these three approaches.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+            <header>
+                <h1 class="header-title">Performance</h1>
+            </header>
+
+            <article>
+                
+<p>To further understand how increasing the number of threads and processes affects the time required when downloading, here is a table of results for crawling 500 web pages:</p>
+<table class="table">
+<tbody>
+<tr>
+<td><strong>Script</strong></td>
+<td><strong>Number of threads</strong></td>
+<td><strong>Number of processes</strong></td>
+<td><strong>Time</strong></td>
+<td><strong>Comparison with sequential</strong></td>
+<td><strong>Errors Seen?</strong></td>
+</tr>
+<tr>
+<td>Sequential</td>
+<td>1</td>
+<td>1</td>
+<td>1349.798s</td>
+<td>1</td>
+<td>N</td>
+</tr>
+<tr>
+<td>Threaded</td>
+<td>5</td>
+<td>1</td>
+<td>361.504s</td>
+<td>3.73</td>
+<td>N</td>
+</tr>
+<tr>
+<td>Threaded</td>
+<td>10</td>
+<td>1</td>
+<td>275.492s</td>
+<td>4.9</td>
+<td>N</td>
+</tr>
+<tr>
+<td>Threaded</td>
+<td>20</td>
+<td>1</td>
+<td>298.168s</td>
+<td>4.53</td>
+<td>Y</td>
+</tr>
+<tr>
+<td>Processes</td>
+<td>2</td>
+<td>2</td>
+<td>726.899s</td>
+<td>1.86</td>
+<td>N</td>
+</tr>
+<tr>
+<td>Processes</td>
+<td>2</td>
+<td>4</td>
+<td>559.93s</td>
+<td>2.41</td>
+<td>N</td>
+</tr>
+<tr>
+<td>Processes</td>
+<td>2</td>
+<td>8</td>
+<td>451.772s</td>
+<td>2.99</td>
+<td>Y</td>
+</tr>
+<tr>
+<td>Processes</td>
+<td>5</td>
+<td>2</td>
+<td><span>383.438s</span></td>
+<td><span>3.52</span></td>
+<td>N</td>
+</tr>
+<tr>
+<td>Processes</td>
+<td>5</td>
+<td>4</td>
+<td>156.389s</td>
+<td>8.63</td>
+<td>Y</td>
+</tr>
+<tr>
+<td>Processes</td>
+<td>5</td>
+<td>8</td>
+<td>296.610s</td>
+<td>4.55</td>
+<td>Y</td>
+</tr>
+</tbody>
+</table>
+<p>The fifth&#160;column shows the proportion of time in comparison to the base case of sequential downloading. We can see that the increase in performance is not linearly proportional to the number of threads and processes but appears logarithmic, that is, until adding more threads actually decreases performance. For example, one process and five threads lead to 4X better performance, but 10 threads only leads to 5X better performance, and using 20 threads actually decreases performance. Depending on your system, these performance gains and losses&#160;may vary; however, it's well known that each extra thread helps expedite&#160;execution but is less effective than the previously added thread (that is, it is not a linear speedup). This is to be expected, considering the process has to switch between more threads and can devote less time to each.</p>
+<p>Additionally, the amount of bandwidth available for downloading is limited, so eventually adding additional threads will not lead to a faster&#160;download speed. If you run these yourself, you may notice errors, such as&#160;<kbd>urlopen error [Errno 101] Network is unreachable</kbd>, sprinkled throughout your testing, particularly when using high numbers of threads or processes. This is obviously suboptimal and leads to more frequent downloading errors than you would experience when choosing a lower number of threads. Of course, network constraints will be different if you are running this on a more distributed setup or in a cloud server environment. The final column in the preceding table tracks the errors experienced in these trials from my single laptop using a normal ISP cable connection.</p>
+<p>Your results may vary, and this chart was built using a&#160;laptop rather than a server (which would have better bandwidth and fewer background processes); so, I challenge you to build a similar chart for your computer and/or servers. Once you discover the bounds of your machine(s), achieving greater performance would require distributing the crawl across multiple servers, all pointing to the same Redis instance.</p>
+<h3 id="sigil_toc_id_1">Python multiprocessing and the GIL</h3>
+<p>For a longer performance review of Python's threads and processes, one must first understand the <strong>Global Interpreter Lock</strong> (<strong>GIL</strong>). The GIL&#160;is a mechanism used by the Python interpreter to execute code using only one thread at a time, meaning Python code will only&#160;execute linearly (even when using multiprocessing and multiple cores). This design decision was made so Python could run quickly but still be thread-safe.</p>
+<div class="packt_infobox">If you haven't already seen it, I recommend watching David Beazley's&#160; <span>Understanding the GIL talk from<br/>
+PyCon 2010 (<a href="https://www.youtube.com/watch?v=Obt-vMVdM8s">https://www.youtube.com/watch?v=Obt-vMVdM8s</a>). Beazley also has&#160;numerous write-ups on his blog and some interesting talks on the GILectomy (attempting&#160;to remove the GIL from Python for speedier multiprocessing).</span></div>
+<p><span>The GIL puts an extra&#160;performance burden on high I/O operations, like what we are doing with our web scraper.&#160;There are also ways to utilize Python's multiprocessing library for better shared data across&#160;processes and threads.</span></p>
+<p><span>We could have written our scraper as a map with a worker pool or&#160;queue to compare Python's own multiprocessing internals with our Redis-based system. We&#160;could also use asynchronous programming to better thread performance and higher&#160;network utilization. Asynchronous libraries, such as async, tornado, or even NodeJS,&#160;allow rograms to execute in a non-blocking manner, meaning processes can switch to a&#160;different thread when waiting for responses from the web server. It is likely some of these&#160;implementations might be faster for our use case.</span></p>
+<p><span>Additionally, we can use projects such as&#160;PyPy (<a href="https://pypy.org/">https://pypy.org/</a>) to help increase threading and&#160;multiprocessing speed. That said, measure your performance and evaluate your needs&#160;before implementing optimizations (don't optimize prematurely). It is a good rule to ask just how important&#160;speed is over clarity and how correct intuition is over actual observation. Remember the&#160;Zen of Python and proceed accordingly!<br/></span></p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+            <header>
+                <h1 class="header-title">Summary</h1>
+            </header>
+
+            <article>
+                
+<p>This chapter covered why sequential downloading creates performance bottlenecks. We looked at how to download large numbers of web pages efficiently across multiple threads and processes and compared when optimizations or increasing threads and processes might&#160;be useful and when they could be harmful. We also implemented a new Redis queue which we can use across several machines or processes.</p>
+<p>In the next chapter, we will cover how to scrape content from web pages which&#160;load their&#160;content dynamically using JavaScript.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </div>
+</body>
+</html>

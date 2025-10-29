@@ -1,0 +1,404 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xmlns:m="http://www.w3.org/1998/Math/MathML" xmlns:pls="http://www.w3.org/2005/01/pronunciation-lexicon" xmlns:ssml="http://www.w3.org/2001/10/synthesis">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Solving CAPTCHA</title>
+  <link type="text/css" rel="stylesheet" media="all" href="style.css"/>
+  <link type="text/css" rel="stylesheet" media="all" href="core.css"/>
+</head>
+<body>
+  <div id="sbo-rt-content"><section>
+
+            <header>
+                <h1 class="header-title">Solving CAPTCHA</h1>
+            </header>
+
+            <article>
+                
+<p><strong>CAPTCHA</strong> stands for <strong>Completely Automated Public Turing test to tell Computers and Humans Apart</strong>. As the acronym suggests, it is a test to determine whether the user is human or not. A typical CAPTCHA consists of distorted text, which a computer program will find difficult to interpret but a human can (hopefully) still read.</p>
+<p>Many websites use CAPTCHA to prevent bots from interacting with their website. For example, my bank website forces me to pass a CAPTCHA everytime I log in, which is a pain. This chapter will cover how to solve CAPTCHAs automatically, first through <strong>Optical Character Recognition</strong> (<strong>OCR</strong>) and then with a CAPTCHA solving API.</p>
+<p>In this chapter, we will cover the following topics:</p>
+<ul>
+<li>Solving CAPTCHAs</li>
+<li>Using a CAPTCHA service</li>
+<li>Machine learning and CAPTCHAs</li>
+<li>Reporting errors</li>
+</ul>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+            <header>
+                <h1 class="header-title">Registering an account</h1>
+            </header>
+
+            <article>
+                
+<p>In&#160;<a href="py-web-scrp-2e_ch06.html" target="_blank">chapter 6</a>, <em>Interacting with forms</em>, we logged in to the example website using a manually created account, but we skipped the account creation part because the registration form requires passing a CAPTCHA:</p>
+<div class="CDPAlignCenter CDPAlign"><img height="364" width="388" class="aligncenter size-full wp-image-923 image-border" src="images/5679_07_01.jpg"/></div>
+<p>Note that each time the form is loaded, a different CAPTCHA image will be shown. To understand what the form requires, we can reuse the <kbd>parse_form()</kbd> function developed in the preceding chapter.</p>
+<pre><strong>&gt;&gt;&gt; import requests</strong><br/><strong>&gt;&gt;&gt; REGISTER_URL = 'http://example.webscraping.com/user/register' </strong><br/><strong>&gt;&gt;&gt; session = requests.Session() </strong><br/><strong>&gt;&gt;&gt; html = session.get(REGISTER_URL)</strong><br/><strong>&gt;&gt;&gt; form = parse_form(html.content) </strong><br/><strong>&gt;&gt;&gt; form</strong><br/><strong>{'_formkey': '1ed4e4c4-fbc6-4d82-a0d3-771d289f8661', </strong><br/><strong> '_formname': 'register', </strong><br/><strong> '_next': '/', </strong><br/><strong> 'email': '', </strong><br/><strong> 'first_name': '', </strong><br/><strong> 'last_name': '', </strong><br/><strong> 'password': '', </strong><br/><strong> 'password_two': None, </strong><br/><strong> 'recaptcha_response_field': None}</strong> 
+</pre>
+<p>All of the fields shown in the preceding code are straightforward, except for <kbd>recaptcha_response_field</kbd>, which, in this case, requires extracting <span class="packt_screen">strange</span> from the image shown in our initial page view.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+            <header>
+                <h1 class="header-title">Loading the CAPTCHA image</h1>
+            </header>
+
+            <article>
+                
+<p>Before the CAPTCHA image can be analyzed, it needs to be extracted from the form. Our browser developer tools&#160;show that the data for this image is embedded in the web page rather than being loaded from a separate URL:</p>
+<div class="CDPAlignCenter CDPAlign"><img height="472" width="831" class="aligncenter size-full wp-image-929 image-border" src="images/5679_07_02.jpg"/></div>
+<p>To work with images in Python, we will use the <kbd>Pillow</kbd> package, which can be installed via <kbd>pip</kbd> using this command:</p>
+<pre><strong>pip install Pillow</strong>
+</pre>
+<p>Alternative ways to install <kbd>Pillow</kbd> are covered at&#160;<a href="http://pillow.readthedocs.io/en/latest/installation.html" target="_blank">http://pillow.readthedocs.io/en/latest/installation.html</a>.</p>
+<p><kbd>Pillow</kbd> provides a convenient <kbd>Image</kbd> class with a number of high-level methods, which can be used to manipulate the CAPTCHA images. Here's a function that takes the HTML of the registration page and returns the CAPTCHA image in an <kbd>Image</kbd> object:</p>
+<pre>from io import BytesIO<br/>from lxml.html import fromstring<br/>from PIL import Image<br/>import base64<br/><br/>def get_captcha_img(html):<br/>    tree = fromstring(html)<br/>    img_data = tree.cssselect('div#recaptcha img')[0].get('src')<br/>    img_data = img_data.partition(',')[-1]<br/>    binary_img_data = base64.b64decode(img_data)<br/>    img = Image.open(BytesIO(binary_img_data))<br/>    return img
+</pre>
+<p>The first few lines here use <kbd>lxml</kbd> to extract the image data from the form. This image data is prepended with a header defining the data type. In this case, it is a PNG image encoded in Base64, which is a format used to represent binary data in ASCII. This header is removed by partitioning on the first comma. Then the image data needs to be decoded from Base64 into the original binary format. To load an image, <kbd>PIL</kbd> expects a file-like interface, so this binary data is wrapped with <kbd>BytesIO</kbd> and then passed to the <kbd>Image</kbd> class.</p>
+<p>Now that we have the CAPTCHA image in a more useful format, we are ready to attempt extracting the text.</p>
+<div class="packt_infobox"><span class="packt_screen">Pillow vs PIL<br/></span><kbd>Pillow</kbd> is a fork of the better known <strong>Python Image Library</strong> (<strong>PIL</strong>), which hasn't been updated since 2009. It uses the same interface as the original <kbd>PIL</kbd> package and is well documented at <a href="http://pillow.readthedocs.org"><span class="URLPACKT">http://pillow.readthedocs.org</span></a>.&#160;<kbd>Pillow</kbd> supports Python3 (unlike&#160;<kbd>PIL</kbd>), so we will focus on using it in this book.</div>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+            <header>
+                <h1 class="header-title">Optical character recognition</h1>
+            </header>
+
+            <article>
+                
+<p><strong>Optical character recognition</strong> (<strong>OCR</strong>) is a process to extract text from images. In this section, we will use the open source Tesseract OCR engine, which was originally developed at HP and now primarily at Google. Installation instructions for Tesseract are available at <a href="https://github.com/tesseract-ocr/tesseract/wiki" target="_blank">https://github.com/tesseract-ocr/tesseract/wiki</a>. The <kbd>pytesseract</kbd> Python wrapper can be installed with <kbd>pip</kbd>:</p>
+<pre><strong>pip install pytesseract</strong>
+</pre>
+<p>If the original CAPTCHA image is passed to <kbd>pytesseract</kbd>, the results are terrible:</p>
+<pre><strong>&gt;&gt;&gt; import pytesseract </strong><br/><strong>&gt;&gt;&gt; img = get_captcha_img(html.content) </strong><br/><strong>&gt;&gt;&gt; pytesseract.image_to_string(img) </strong><br/><strong>''</strong> 
+</pre>
+<p>An empty string was returned, which means Tesseract failed to extract any characters from the input image. Tesseract was designed to extract more typical text, such as book pages with a consistent background. If we want to use Tesseract effectively, we will need to first modify the CAPTCHA images to remove the background noise and isolate the text.</p>
+<p>To better understand the CAPTCHA system we are dealing with, here are some more samples:</p>
+<div class="CDPAlignCenter CDPAlign"><img height="232" width="208" class=" image-border" src="images/image_07_001.jpg"/></div>
+<p>The samples in the previous image&#160;show that the CAPTCHA text is always black while the background is lighter, so this text can be isolated by checking each pixel and only keeping the black ones, a process known as <strong>thresholding</strong>. This process is straightforward to achieve with <kbd>Pillow</kbd>:</p>
+<pre><strong>&gt;&gt;&gt; img.save('captcha_original.png') </strong><br/><strong>&gt;&gt;&gt; gray = img.convert('L') </strong><br/><strong>&gt;&gt;&gt; gray.save('captcha_gray.png') </strong><br/><strong>&gt;&gt;&gt; bw = gray.point(lambda x: 0 if x &lt; 1 else 255, '1') </strong><br/><strong>&gt;&gt;&gt; bw.save('captcha_thresholded.png')</strong> 
+</pre>
+<p>First, we converted the image to grayscale using the <kbd>convert</kbd> method. Then, we mapped the image over a <kbd>lambda</kbd>function using the <kbd>point</kbd> command, which will iterate over every pixel in the image.&#160;In the <kbd>lambda</kbd>&#160;function, a threshold of less than <kbd>1</kbd>&#160;is used, which will&#160;only keep completely black pixels. This snippet saved three images--the original CAPTCHA image, the image in&#160;grayscale, and the image after thresholding.</p>
+<p>The text in the final image is much clearer and is ready to be passed to Tesseract:</p>
+<pre><strong>&gt;&gt;&gt; pytesseract.image_to_string(bw) </strong><br/><strong>'strange' </strong>
+</pre>
+<p>Success! The CAPTCHA text has been successfully extracted. In my test of 100 images, this approach correctly interpreted the CAPTCHA image 82 times.</p>
+<p>Since the sample text is always lowercase ASCII characters, the performance can be improved further by restricting the result to these characters:</p>
+<pre><strong>&gt;&gt;&gt; import string </strong><br/><strong>&gt;&gt;&gt; word = pytesseract.image_to_string(bw) </strong><br/><strong>&gt;&gt;&gt; ascii_word = ''.join(c for c in word.lower() if c in string.ascii_lowercase)</strong>
+</pre>
+<p>In my test on the same sample images, this improved the performance to 88 times out of 100.</p>
+<p>Here is the full code of the registration script so far:</p>
+<pre>import requests<br/>import string<br/>import pytesseract<br/>from lxml.html import fromstring<br/>from chp6.login import parse_form<br/>from chp7.image_processing import get_captcha_img, img_to_bw<br/><br/>REGISTER_URL = 'http://example.webscraping.com/user/register'<br/><br/><br/>def register(first_name, last_name, email, password):<br/>    session = requests.Session()<br/>    html = session.get(REGISTER_URL)<br/>    form = parse_form(html.content)<br/>    form['first_name'] = first_name<br/>    form['last_name'] = last_name<br/>    form['email'] = email<br/>    form['password'] = form['password_two'] = password<br/>    img = get_captcha_img(html.content)<br/>    captcha = ocr(img)<br/>    form['recaptcha_response_field'] = captcha<br/>    resp = session.post(html.url, form)<br/>    success = '/user/register' not in resp.url<br/>    if not success:<br/>        form_errors = fromstring(resp.content).cssselect('div.error')<br/>        print('Form Errors:')<br/>        print('n'.join(<br/>              (' {}: {}'.format(f.get('id'), f.text) for f in form_errors)))<br/>    return success<br/><br/><br/>def ocr(img):<br/>    bw = img_to_bw(img)<br/>    captcha = pytesseract.image_to_string(bw)<br/>    cleaned = ''.join(c for c in captcha.lower() if c in string.ascii_lowercase)<br/>    if len(cleaned) != len(captcha):<br/>        print('removed bad characters: {}'.format(set(captcha) - set(cleaned)))<br/>    return cleaned
+</pre>
+<p>The <kbd>register()</kbd> function downloads the registration page and scrapes the form as usual, where the desired name, e-mail, and password for the new account are set. The CAPTCHA image is then extracted, passed to the OCR function, and the result is added to the form. This form data is then submitted, and the response URL is checked to see whether the registration was successful.</p>
+<p>If it fails (by not being properly redirected to the homepage), the form errors are printed as we may need to use a longer password, a different e-mail, or the CAPTCHA might have been unsuccessful. We also print out characters we removed in order to help debug how to make our CAPTCHA parser even better. These logs may help us identify common OCR errors, such as mistaking l for 1, and similar errors, which&#160;require fine distinction between similarly drawn characters.</p>
+<p>Now, to register an account, we simply need to call the <kbd>register()</kbd> function with the new account details:</p>
+<pre><strong>&gt;&gt;&gt; register(first_name, last_name, email, password) </strong><br/><strong>True</strong> 
+</pre>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+            <header>
+                <h1 class="header-title">Further improvements</h1>
+            </header>
+
+            <article>
+                
+<p>To improve the CAPTCHA OCR performance further, there are a number of possibilities, as follows:</p>
+<ul>
+<li>Experimenting with different threshold levels</li>
+<li>Eroding the thresholded text to emphasize the shape of characters</li>
+<li>Resizing the image (sometimes increasing the image size helps)</li>
+<li>Training the OCR tool on the CAPTCHA font</li>
+<li>Restricting results to dictionary words</li>
+</ul>
+<p>If you are interested in experimenting to improve performance, the sample data used is available at <a href="http://github.com/kjam/wswp/blob/master/data/captcha_samples">http://github.com/kjam/wswp/blob/master/data/captcha_samples</a>. There is also a script to test the accuracy at <a href="http://github.com/kjam/wswp/blob/master/code/chp7/test_samples.py">http://github.com/kjam/wswp/blob/master/code/chp7/test_samples.py</a>. However, the current 88 percent accuracy is sufficient for our purposes of registering an account because actual users will also make mistakes when entering CAPTCHA text. Even 10 per cent accuracy would be sufficient because the script could be run many times until successful, though this would be rather impolite to the server and may lead to your IP being blocked.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+            <header>
+                <h1 class="header-title">Solving complex CAPTCHAs</h1>
+            </header>
+
+            <article>
+                
+<p>The CAPTCHA system tested so far was relatively straightforward to solve -- the black font color meant that the text could easily be distinguished from the background, and additionally, the text was level and did not need to be rotated for Tesseract to interpret it accurately. Often, you will find websites using simple custom CAPTCHA systems similar to this, and in these cases, an OCR solution is practical. However, if a website uses a more complex system, such as Google's reCAPTCHA, OCR will take a lot more effort and may become impractical.</p>
+<p>In these examples, the text is placed at different angles and with different fonts and colors, so plenty more work needs to be done to clean and preprocess the image before OCR is accurate. These advanced CAPTCHAs can sometimes even be&#160;difficult for people to interpret, making it that much more difficult to do so with a simple script.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+            <header>
+                <h1 class="header-title">Using a CAPTCHA solving service</h1>
+            </header>
+
+            <article>
+                
+<p><span>To solve for these more complex images, we will make use of a CAPTCHA solving service. There are many CAPTCHA solving services available, such as</span> <a href="https://2captcha.com"><span class="URLPACKT">2captcha.com</span></a> <span>and</span> <a href="https://de-captcher.com/" target="_blank"><span>https://de-captcher.com/</span></a><span>, and the rates vary from $0.50 to $2 for around 1000 CAPTCHAs. When a CAPTCHA image is passed to a CAPTCHA-solving API, a person will then manually examine the image and provide the parsed text in an HTTP response, typically within 30 seconds.</span></p>
+<p><span>For the examples in this section, we will use the service at</span> <a href="https://9kw.eu"><span class="URLPACKT">9kw.eu</span></a><span>, which does not provide the cheapest per CAPTCHA rate or the best designed API. However, on the positive side, it is possible to use the API without spending money. This is because</span> <a href="https://9kw.eu"><span class="URLPACKT">9kw.eu</span></a> <span>allows users to manually solve CAPTCHAs to build up credit, which can then be spent on testing the API with our own CAPTCHAs.</span></p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+            <header>
+                <h1 class="header-title">Getting started with 9kw</h1>
+            </header>
+
+            <article>
+                
+<p>To start using 9kw, you will need to first create an account at <span class="URLPACKT"><a href="https://www.9kw.eu/register.html">https://www.9kw.eu/register.html</a>.</span></p>
+<p>Then, follow the account confirmation instructions, and when logged in, navigate to <span class="URLPACKT"><a href="https://www.9kw.eu/usercaptcha.html">https://www.9kw.eu/usercaptcha.html</a>.</span></p>
+<p>On this page, you can solve other people's CAPTCHAs to build up credit to use later on&#160;API calls. After solving a few CAPTCHAs, navigate to <a href="https://www.9kw.eu/index.cgi?action=userapinew&amp;source=api"><span class="URLPACKT">https://www.9kw.eu/index.cgi?action=userapinew&amp;source=api</span></a> to create an API key.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+            <header>
+                <h1 class="header-title">The 9kw CAPTCHA API</h1>
+            </header>
+
+            <article>
+                
+<p>The 9kw API is documented at <a href="https://www.9kw.eu/api.html#apisubmit-tab"><span class="URLPACKT">https://www.9kw.eu/api.html#apisubmit-tab</span></a>. The important parts for our purpose to submit a CAPTCHA and check the result are summarized here:</p>
+<p>To submit a CAPTCHA to solve, you can use this API method and parameters:</p>
+<p><strong>URL</strong>: <span class="URLPACKT">https://www.9kw.eu/index.cgi</span> (POST)</p>
+<p><strong>&#160; &#160; apikey</strong>: your API key</p>
+<p><strong>&#160; &#160; action</strong>: must be set to "usercaptchaupload"</p>
+<p><strong>&#160; &#160; file-upload-01</strong>: the image to solve (either a file, url or string)</p>
+<p><strong>&#160; &#160; base64</strong>: set to "1" if the input is Base64 encoded</p>
+<p><strong>&#160; &#160; maxtimeout</strong>: the maximum time to wait for a solution (must be between 60 - 3999 seconds)</p>
+<p><strong>&#160; &#160; selfsolve</strong>: set to "1" to solve this CAPTCHA yourself</p>
+<p><strong>&#160; &#160; json:</strong> set to "1" to receive responses in JSON format</p>
+<p><strong>API return value</strong>: ID of this CAPTCHA</p>
+<p>To request the result of submitted captcha, you need to use a different API method with different parameters:</p>
+<p><strong>URL</strong>: <span class="URLPACKT">https://www.9kw.eu/index.cgi</span> (GET)</p>
+<p><strong>&#160; &#160; apikey</strong>: your API key</p>
+<p><strong>&#160; &#160; action</strong>: must be set to "usercaptchacorrectdata"</p>
+<p><strong>&#160; &#160; id</strong>: ID of CAPTCHA to check</p>
+<p><strong>&#160; &#160; info</strong>: set to "1" to return "NO DATA" when there is not yet a solution (by default, returns nothing)</p>
+<p><strong>&#160; &#160; json:</strong> set to "1" to receive responses in JSON format</p>
+<p><strong>API return value</strong>: Text of the solved CAPTCHA or an error code</p>
+<p>The API also has several error codes:</p>
+<p><strong>0001</strong> API key doesn't exist</p>
+<p><strong>0002</strong> API key not found</p>
+<p><strong>0003</strong> Active API key not found</p>
+<p>...</p>
+<p><strong>0031</strong> An account is not yet 24 hours in the system.</p>
+<p><strong>0032</strong> An account does not have the full rights.</p>
+<p><strong>0033</strong> Plugin needs an update.</p>
+<p>Here is an initial implementation to send a CAPTCHA image to this API:</p>
+<pre>import requests<br/><br/>API_URL = 'https://www.9kw.eu/index.cgi' <br/><br/>def send_captcha(api_key, img_data): <br/>    data = { <br/>        'action': 'usercaptchaupload', <br/>        'apikey': api_key, <br/>        'file-upload-01': img_data, <br/>        'base64': '1', <br/>        'selfsolve': '1', <br/>        'maxtimeout': '60',<br/>        'json': '1', <br/>    } <br/>    response = requests.post(API_URL, data) <br/>    return response.content
+</pre>
+<p>This structure should hopefully be looking familiar by now -- first, build a dictionary with&#160;the required parameters, encode them, and then submit the data in the body of your request. Note that the <kbd>selfsolve</kbd> option is set to <kbd>'1'</kbd>: this means that if we are currently solving CAPTCHAs at the 9kw&#160;web interface, this CAPTCHA image will be passed to us to solve, which saves us credit. If not logged in, the CAPTCHA image is passed to another user to solve.</p>
+<p>Here is the code to fetch the result of a solved CAPTCHA image:</p>
+<pre>def get_captcha_text(api_key, captcha_id): <br/>    data = { <br/>        'action': 'usercaptchacorrectdata', <br/>        'id': captcha_id, <br/>        'apikey': api_key,<br/>        'json': '1', <br/>    } <br/>    response = requests.get(API_URL, data)  <br/>    return response.content
+</pre>
+<p>One drawback with the 9kw API is that the&#160;error messages are sent in the same&#160;JSON field as the results, which makes distinguishing them more complex. For example, if no user is available to solve the CAPTCHA image in time, the <kbd>ERROR NO USER</kbd> string is returned. Hopefully, the CAPTCHA image we submit never includes this text!</p>
+<p>Another difficulty is the <kbd>get_captcha_text()</kbd> function will return error messages until another user has had the time to manually examine the CAPTCHA image, as mentioned earlier, typically 30 seconds later.</p>
+<p>To make our implementation friendlier, we will add a wrapper function to submit the CAPTCHA image and wait until the result is ready. Here is an expanded version that wraps this functionality in a reusable class, as well as checking for error messages:</p>
+<pre>import base64<br/>import re<br/>import time<br/>import requests<br/>from io import BytesIO<br/><br/><br/>class CaptchaAPI:<br/>    def __init__(self, api_key, timeout=120):<br/>        self.api_key = api_key<br/>        self.timeout = timeout<br/>        self.url = 'https://www.9kw.eu/index.cgi'<br/><br/>    def solve(self, img):<br/>        """Submit CAPTCHA and return result when ready"""<br/>        img_buffer = BytesIO()<br/>        img.save(img_buffer, format="PNG")<br/>        img_data = img_buffer.getvalue()<br/>        captcha_id = self.send(img_data)<br/>        start_time = time.time()<br/>        while time.time() &lt; start_time + self.timeout:<br/>            try:<br/>                resp = self.get(captcha_id)<br/>            except CaptchaError:<br/>                pass # CAPTCHA still not ready<br/>            else:<br/>                if resp.get('answer') != 'NO DATA':<br/>                    if resp.get('answer') == 'ERROR NO USER':<br/>                        raise CaptchaError(<br/>                            'Error: no user available to solve CAPTCHA')<br/>                    else:<br/>                        print('CAPTCHA solved!')<br/>                        return captcha_id, resp.get('answer')<br/>            print('Waiting for CAPTCHA ...')<br/>            time.sleep(1)<br/>        raise CaptchaError('Error: API timeout')<br/><br/>    def send(self, img_data):<br/>        """Send CAPTCHA for solving """<br/>        print('Submitting CAPTCHA')<br/>        data = {<br/>            'action': 'usercaptchaupload',<br/>            'apikey': self.api_key,<br/>            'file-upload-01': base64.b64encode(img_data),<br/>            'base64': '1',<br/>            'selfsolve': '1',<br/>            'json': '1',<br/>            'maxtimeout': str(self.timeout)<br/>        }<br/>        result = requests.post(self.url, data)<br/>        self.check(result.text)<br/>        return result.json()<br/><br/>    def get(self, captcha_id):<br/>        """Get result of solved CAPTCHA """<br/>        data = {<br/>            'action': 'usercaptchacorrectdata',<br/>            'id': captcha_id,<br/>            'apikey': self.api_key,<br/>            'info': '1',<br/>            'json': '1',<br/>        }<br/>        result = requests.get(self.url, data)<br/>        self.check(result.text)<br/>        return result.json()<br/><br/>    def check(self, result):<br/>        """Check result of API and raise error if error code"""<br/>        if re.match('00dd w+', result):<br/>            raise CaptchaError('API error: ' + result)<br/><br/>    def report(self, captcha_id, correct):<br/>        """ Report back whether captcha was correct or not"""<br/>        data = {<br/>            'action': 'usercaptchacorrectback',<br/>            'id': captcha_id,<br/>            'apikey': self.api_key,<br/>            'correct': (lambda c: 1 if c else 2)(correct),<br/>            'json': '1',<br/>        }<br/>        resp = requests.get(self.url, data)<br/>        return resp.json()<br/><br/><br/>class CaptchaError(Exception):<br/>    pass
+</pre>
+<p>The source for the <kbd>CaptchaAPI</kbd> class is also available at <a href="http://github.com/kjam/wswp/blob/master/code/chp7/captcha_api.py">http://github.com/kjam/wswp/blob/master/code/chp7/captcha_api.py</a>, which will be kept updated if 9kw.eu modifies their API. This class is instantiated with your API key and a timeout, by default, set to 120 seconds. The <kbd>solve()</kbd> method then submits a CAPTCHA image to the API and keeps requesting the solution until either the CAPTCHA image is solved or a timeout is reached.</p>
+<p>To check for error messages in the API response, the <kbd>check()</kbd> method examines whether the initial characters follow the expected format of four digits for the error code before the error message. For more robust use of this API, this method could be expanded to cover each of the 34 error types.</p>
+<p>Here is an example of solving a CAPTCHA image with the <kbd>CaptchaAPI</kbd> class:</p>
+<pre><strong>&gt;&gt;&gt; API_KEY = ... </strong><br/><strong>&gt;&gt;&gt; captcha = CaptchaAPI(API_KEY) </strong><br/><strong>&gt;&gt;&gt; img = Image.open('captcha.png') </strong><br/><strong>&gt;&gt;&gt; captcha_id, text = captcha.solve(img) </strong><br/><strong>Submitting CAPTCHA </strong><br/><strong>Waiting for CAPTCHA ... </strong><br/><strong>Waiting for CAPTCHA ... </strong><br/><strong>Waiting for CAPTCHA ... </strong><br/><strong>Waiting for CAPTCHA ... </strong><br/><strong>Waiting for CAPTCHA ... </strong><br/><strong>Waiting for CAPTCHA ... </strong><br/><strong>Waiting for CAPTCHA ... </strong><br/><strong>Waiting for CAPTCHA ... </strong><br/><strong>Waiting for CAPTCHA ... </strong><br/><strong>Waiting for CAPTCHA ... </strong><br/><strong>Waiting for CAPTCHA ... </strong><br/><strong>CAPTCHA solved! </strong><br/><strong>&gt;&gt;&gt; text </strong><br/><strong>juxhvgy</strong> 
+</pre>
+<p>This is the correct solution for the first complex CAPTCHA image shown earlier in this chapter. If the same CAPTCHA image is submitted again soon after, the cached result is returned immediately, and no additional credit is used:</p>
+<pre><strong>&gt;&gt;&gt; captcha_id, text = captcha.solve(img_data) </strong><br/><strong>Submitting CAPTCHA </strong><br/><strong>&gt;&gt;&gt; text </strong><br/><strong>juxhvgy</strong> 
+</pre>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+            <header>
+                <h1 class="header-title">Reporting errors</h1>
+            </header>
+
+            <article>
+                
+<p>Most CAPTCHA-solving services, such as&#160;9kw.eu, offer the ability to report issues with solved CAPTCHAs and&#160;give feedback as to whether the text worked properly on the site or not. You may have already noticed that we have a&#160;<kbd>report</kbd>&#160;method on our&#160;<kbd>CaptchaAPI</kbd> class, which allows us to pass the CAPTCHA ID along with a boolean to determine whether the CAPTCHA was correct or not. It will then send the data to an endpoint used just for reporting CAPTCHA correctness. For our use case, we can determine if the CAPTCHA was correct by determining if our registration form succeeds or fails.&#160;</p>
+<p>Depending on what API you use, you may get returned credits when you report incorrect CAPTCHAs, which is useful if you are paying for the service. Of course, this could also be abused, so there is usually an upper limit on error reports for each day. Regardless of the return, reporting both correct and incorrect CAPTCHA solutions can help improve the service and allow you to not pay extra for invalid solutions.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+            <header>
+                <h1 class="header-title">Integrating with registration</h1>
+            </header>
+
+            <article>
+                
+<p>Now that we have a working CAPTCHA API solution, we can integrate it with the previous form. Here is a modified version of the <kbd>register</kbd> function, which&#160;now&#160;utilizes the&#160;<kbd>CaptchaAPI</kbd> class:</p>
+<pre>from configparser import ConfigParser<br/>import requests<br/><br/>from lxml.html import fromstring<br/>from chp6.login import parse_form<br/>from chp7.image_processing import get_captcha_img<br/>from chp7.captcha_api import CaptchaAPI<br/><br/>REGISTER_URL = 'http://example.webscraping.com/user/register'<br/><br/><br/>def get_api_key():<br/>    config = ConfigParser()<br/>    config.read('../config/api.cfg')<br/>    return config.get('captcha_api', 'key')<br/><br/><br/>def register(first_name, last_name, email, password):<br/>    session = requests.Session()<br/>    html = session.get(REGISTER_URL)<br/>    form = parse_form(html.content)<br/>    form['first_name'] = first_name<br/>    form['last_name'] = last_name<br/>    form['email'] = email<br/>    form['password'] = form['password_two'] = password<br/>    api_key = get_api_key()<br/>    img = get_captcha_img(html.content)<br/>    api = CaptchaAPI(api_key)<br/>    captcha_id, captcha = api.solve(img)<br/>    form['recaptcha_response_field'] = captcha<br/>    resp = session.post(html.url, form)<br/>    success = '/user/register' not in resp.url<br/>    if success:<br/>        api.report(captcha_id, 1)<br/>    else:<br/>        form_errors = fromstring(resp.content).cssselect('div.error')<br/>        print('Form Errors:')<br/><br/>        print('n'.join(<br/>            (' {}: {}'.format(f.get('id'), f.text) for f in form_errors)))<br/>        if 'invalid' in [f.text for f in form_errors]:<br/>            api.report(captcha_id, 0)<br/>    return success
+</pre>
+<p>As you can see from the preceding code, we are utilizing the new&#160;<kbd>CaptchaAPI</kbd> and ensuring we are reporting errors and success to the API. We also utilize&#160;<kbd>ConfigParser</kbd>, so our API key is never saved in the repository and is, instead, referenced in a config file. To see an example of the configuration file, check the repository (<a href="http://github.com/kjam/wswp/blob/master/code/example_config.cfg">http://github.com/kjam/wswp/blob/master/code/example_config.cfg</a>). You could also store the API key in the environment variables or a safe storage on your computer or server.</p>
+<p>We can now try our new register function:</p>
+<pre><strong>&gt;&gt;&gt; register(first_name, last_name, email, password) </strong><br/><strong>Submitting CAPTCHA </strong><br/><strong>Waiting for CAPTCHA ... </strong><br/><strong>Waiting for CAPTCHA ... </strong><br/><strong>Waiting for CAPTCHA ... </strong><br/><strong>Waiting for CAPTCHA ... </strong><br/><strong>Waiting for CAPTCHA ... </strong><br/><strong>Waiting for CAPTCHA ... </strong><br/><strong>Waiting for CAPTCHA ... </strong><br/><strong>True</strong> 
+</pre>
+<p>It worked! The CAPTCHA image was successfully extracted from the form, submitted to the 9kw API, solved manually by another user, and the result was successfully submitted to the web server to register a new account.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+            <header>
+                <h1 class="header-title">CAPTCHAs and machine learning</h1>
+            </header>
+
+            <article>
+                
+<p>With advances in deep learning and image recognition, computers are getting better at properly identifying text and objects in images. There have been several interesting papers and projects applying these deep learning image recognition methods to CAPTCHAs. One Python-based project (<a href="https://github.com/arunpatala/captcha" target="_blank">https://github.com/arunpatala/captcha</a>) uses PyTorch to train a solver model on a large dataset of CAPTCHAs.&#160;In<span>&#160;June 2012, Claudia Cruz, Fernando Uceda, and Leobardo Reyes (a group of students from Mexico) published a paper with an 82% solving accuracy&#160;on reCAPTCHA images (<a href="http://dl.acm.org/citation.cfm?id=2367894" target="_blank">http://dl.acm.org/citation.cfm?id=2367894</a>). There have been several other research and hacking attempts, especially those targeting the often-included audio components of the CAPTCHA images (which are included for accessibility purposes).</span></p>
+<p>It's unlikely that you'll need more than your OCR or API-based CAPTCHA-service to solve CAPTCHAs for the web scraping you encounter, but if you are curious to try and train your own model for fun, you will first need to find or create a large dataset of properly decoded CAPTCHAs. Deep learning and computer vision are rapidly-advancing fields, and it's likely that even more research and projects have been published since this book has been written!</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+            <header>
+                <h1 class="header-title">Summary</h1>
+            </header>
+
+            <article>
+                
+<p>This chapter showed how to solve CAPTCHAs, first by using OCR, and then with an external API. For simple CAPTCHAs, or for when you need to solve a large amount of CAPTCHAs, investing time in an OCR solution can be worthwhile. Otherwise, using a CAPTCHA-solving API can prove to be a cost-effective alternative.</p>
+<p>In the next chapter, we will introduce Scrapy, which is a popular high-level framework used to build scraping applications.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </div>
+</body>
+</html>

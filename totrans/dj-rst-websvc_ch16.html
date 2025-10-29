@@ -1,0 +1,1677 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xmlns:m="http://www.w3.org/1998/Math/MathML" xmlns:pls="http://www.w3.org/2005/01/pronunciation-lexicon" xmlns:ssml="http://www.w3.org/2001/10/synthesis">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Working with Advanced Relationships and Serialization</title>
+  <link type="text/css" rel="stylesheet" media="all" href="style.css"/>
+  <link type="text/css" rel="stylesheet" media="all" href="core.css"/>
+</head>
+<body>
+  <div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Working with Advanced Relationships and Serialization</h1>
+                </header>
+            
+            <article>
+                
+<p>In this chapter, we will create a complex RESTful Web Service that will persist data in a PostgreSQL database. We will work with different types of relationships between the resources and we will take advantage of generic classes and generic views provided by the Django REST framework to reduce the amount of boilerplate code. We will gain an understanding of:</p>
+<ul>
+<li>Defining the requirements for a complex RESTful Web Service</li>
+<li>Creating a new app with Django</li>
+<li>Configuring a new web service</li>
+<li>Defining many-to-one relationships with models.ForeignKey</li>
+<li>Installing PostgreSQL</li>
+<li>Running migrations that generate relationships</li>
+<li>Analyzing the database</li>
+<li>Configuring serialization and deserialization with relationships</li>
+<li>Defining hyperlinks with serializers.HyperlinkedModelSerializer</li>
+<li>Working with class-based views</li>
+<li>Taking advantage of generic classes and generic views</li>
+<li>Generalizing and mixing behavior</li>
+<li>Working with routing and endpoints</li>
+<li>Making requests that interact with resources that have relationships</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Defining the requirements for a complex RESTful Web Service</h1>
+                </header>
+            
+            <article>
+                
+<p>So far, our RESTful Web Service performed CRUD operations on a single database table. Now, we want to create a more complex RESTful Web Service with the Django REST framework to interact with a complex database model.</p>
+<p>A drone is an <strong>IoT</strong> (short for <strong>Internet of Things</strong>) device that interacts with many sensors and actuators, including digital electronic speed controllers linked to engines, propellers, and sensors. A drone is also known as an <strong>Unnamed Aerial Vehicle</strong> (<strong>UAV</strong>). We will code a RESTful Web Service that will allow us to register competitions for drones that are grouped into drone categories. In our previous RESTful Web Service, we had toys grouped in toy categories and we used a string field to specify the toy category for a toy. In this case, we want to be able to easily retrieve all the drones that belong to a specific drone category. Thus, we will have a relationship between a drone and a drone category.</p>
+<p>We must be able to perform CRUD operations on diverse resources and resource collections. Many resources have relationships with other resources, and therefore, we won't work with simple models. We will learn how to establish different kinds of relationships between the models.</p>
+<p>The following list enumerates the resources and the model name we will use to represent them in a Django REST framework:</p>
+<ul>
+<li>Drone categories (<kbd>DroneCategory</kbd> model)</li>
+<li>Drones (<kbd>Drone</kbd> model)</li>
+<li>Pilots (<kbd>Pilot</kbd> model)</li>
+<li>Competitions (<kbd>Competition</kbd> model)</li>
+</ul>
+<p>The drone category (<kbd>DroneCategory</kbd> model) just requires a name.</p>
+<p>We need the following data for a drone (<kbd>Drone</kbd> model):</p>
+<ul>
+<li>A foreign key to a drone category (<kbd>DroneCategory</kbd> model)</li>
+<li>A name</li>
+<li>A manufacturing date</li>
+<li>A bool value indicating whether the drone participated in at least one competition or not</li>
+<li>A timestamp with the date and time in which the drone was inserted in the database</li>
+</ul>
+<p>We need the following data for a pilot (<kbd>Pilot</kbd> model):</p>
+<ul>
+<li>A name</li>
+<li>A gender value</li>
+<li>An integer value with the number of races in which the pilot participated</li>
+<li>A timestamp with the date and time in which the pilot was inserted in the database</li>
+</ul>
+<p>We need the following data for the competition (<kbd>Competition</kbd> model):</p>
+<ul>
+<li>A foreign key to a pilot (<kbd>Pilot</kbd> model)</li>
+<li>A foreign key to a drone (<kbd>Drone</kbd> model)</li>
+<li>A distance value (measured in feet)</li>
+<li>A date in which the drone controlled by the pilot reached the specified distance value</li>
+</ul>
+<p>We will use diverse options that the Django REST framework provides us to materialize the relationship between resources. This way, we will be able to analyze different configurations that will make it possible for us to know which is the best option based on the specific requirements of new web services that we will develop in the future.</p>
+<p>The following table shows the HTTP verbs, the scope and the semantics for the methods that our new RESTful Web Service must support. Each method is composed by an HTTP verb and a scope. All the methods have well-defined meanings for all the resources and resource collections. In this case, we will implement the PATCH HTTP verb for all the resources:</p>
+<table class="table">
+<tbody>
+<tr>
+<td>
+<p><strong>HTTP verb</strong></p>
+</td>
+<td>
+<p><strong>Scope</strong></p>
+</td>
+<td>
+<p><strong>Semantics</strong></p>
+</td>
+</tr>
+<tr>
+<td>
+<p>GET</p>
+</td>
+<td>
+<p>Drone category</p>
+</td>
+<td>
+<p>Retrieve a single drone category. The drone category must include a list of URLs for each drone resource that belongs to the drone category.</p>
+</td>
+</tr>
+<tr>
+<td>
+<p>GET</p>
+</td>
+<td>
+<p>Collection of drone categories</p>
+</td>
+<td>
+<p>Retrieve all the stored drone categories in the collection, sorted by their name in ascending order. Each drone category must include a list of URLs for each drone resource that belongs to the drone category.</p>
+</td>
+</tr>
+<tr>
+<td>
+<p>POST</p>
+</td>
+<td>
+<p>Collection of drone categories</p>
+</td>
+<td>
+<p>Create a new drone category in the collection.</p>
+</td>
+</tr>
+<tr>
+<td>
+<p>PUT</p>
+</td>
+<td>
+<p>Drone category</p>
+</td>
+<td>
+<p>Update an existing drone category.</p>
+</td>
+</tr>
+<tr>
+<td>
+<p>PATCH</p>
+</td>
+<td>
+<p>Drone category</p>
+</td>
+<td>
+<p>Update one or more fields of an existing drone category.</p>
+</td>
+</tr>
+<tr>
+<td>
+<p>DELETE</p>
+</td>
+<td>
+<p>Drone category</p>
+</td>
+<td>
+<p>Delete an existing drone category.</p>
+</td>
+</tr>
+<tr>
+<td>
+<p>GET</p>
+</td>
+<td>
+<p>Drone</p>
+</td>
+<td>
+<p>Retrieve a single drone. The drone must include its drone category description.</p>
+</td>
+</tr>
+<tr>
+<td>
+<p>GET</p>
+</td>
+<td>
+<p>Collection of drones</p>
+</td>
+<td>
+<p>Retrieve all the stored drones in the collection, sorted by their name in ascending order. Each drone must include its drone category description.</p>
+</td>
+</tr>
+<tr>
+<td>
+<p>POST</p>
+</td>
+<td>
+<p>Collection of drones</p>
+</td>
+<td>
+<p>Create a new drone in the collection.</p>
+</td>
+</tr>
+<tr>
+<td>
+<p>PUT</p>
+</td>
+<td>
+<p>Drone</p>
+</td>
+<td>
+<p>Update an existing drone.</p>
+</td>
+</tr>
+<tr>
+<td>
+<p>PATCH</p>
+</td>
+<td>
+<p>Drone</p>
+</td>
+<td>
+<p>Update one or more fields of an existing drone.</p>
+</td>
+</tr>
+<tr>
+<td>
+<p>DELETE</p>
+</td>
+<td>
+<p>Drone</p>
+</td>
+<td>
+<p>Delete an existing drone.</p>
+</td>
+</tr>
+<tr>
+<td>
+<p>GET</p>
+</td>
+<td>
+<p>Pilot</p>
+</td>
+<td>
+<p>Retrieve a single pilot. The pilot must include a list of the registered competitions, sorted by distance in descending order. The list must include all the details for the competition in which the pilots and his related drone participated.</p>
+</td>
+</tr>
+<tr>
+<td>
+<p>GET</p>
+</td>
+<td>
+<p>Collection of pilots</p>
+</td>
+<td>
+<p>Retrieve all the stored pilots in the collection, sorted by their name in ascending order. Each pilot must include a list of the registered competitions, sorted by distance in descending order. The list must include all the details for the competition in which the pilot and his related drone participated.</p>
+</td>
+</tr>
+<tr>
+<td>
+<p>POST</p>
+</td>
+<td>
+<p>Collection of pilots</p>
+</td>
+<td>
+<p>Create a new pilot in the collection.</p>
+</td>
+</tr>
+<tr>
+<td>
+<p>PUT</p>
+</td>
+<td>
+<p>Pilot</p>
+</td>
+<td>
+<p>Update an existing pilot.</p>
+</td>
+</tr>
+<tr>
+<td>
+<p>PATCH</p>
+</td>
+<td>
+<p>Pilot</p>
+</td>
+<td>
+<p>Update one or more fields of an existing pilot.</p>
+</td>
+</tr>
+<tr>
+<td>
+<p>DELETE</p>
+</td>
+<td>
+<p>Pilot</p>
+</td>
+<td>
+<p>Delete an existing pilot.</p>
+</td>
+</tr>
+<tr>
+<td>
+<p>GET</p>
+</td>
+<td>
+<p>Competition</p>
+</td>
+<td>
+<p>Retrieve a single competition. The competition must include the pilot's name that made the drone reach a specific distance and the drone's name.</p>
+</td>
+</tr>
+<tr>
+<td>
+<p>GET</p>
+</td>
+<td>
+<p>Collection of competitions</p>
+</td>
+<td>
+<p>Retrieve all the stored competitions in the collection, sorted by distance in descending order. Each competition must include the pilot's name that made the drone reach a specific distance and the drone's name.</p>
+</td>
+</tr>
+<tr>
+<td>
+<p>POST</p>
+</td>
+<td>
+<p>Collection of competitions</p>
+</td>
+<td>
+<p>Create a new competition in the collection. The competition must be related to an existing pilot and an existing drone.</p>
+</td>
+</tr>
+<tr>
+<td>
+<p>PUT</p>
+</td>
+<td>
+<p>Competition</p>
+</td>
+<td>
+<p>Update an existing competition.</p>
+</td>
+</tr>
+<tr>
+<td>
+<p>PATCH</p>
+</td>
+<td>
+<p>Competition</p>
+</td>
+<td>
+<p>Update one or more fields of an existing competition.</p>
+</td>
+</tr>
+<tr>
+<td>
+<p>DELETE</p>
+</td>
+<td>
+<p>Competition</p>
+</td>
+<td>
+<p>Delete an existing competition.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p>&#160;</p>
+<p>In the previous table, we have a huge number of methods and scopes. The following table enumerates the URIs for each scope mentioned in the previous table, where <kbd>{id}</kbd> has to be replaced with the numeric <kbd>id</kbd> or primary key of the resource:</p>
+<table class="MsoTableGrid">
+<tbody>
+<tr>
+<td>
+<p><strong>Scope</strong></p>
+</td>
+<td>
+<p><strong>URI</strong></p>
+</td>
+</tr>
+<tr>
+<td>
+<p>Collection of drone categories</p>
+</td>
+<td>
+<p><kbd>/drone-categories/</kbd></p>
+</td>
+</tr>
+<tr>
+<td>
+<p>Drone category</p>
+</td>
+<td>
+<p><kbd>/drone-category/{id}</kbd></p>
+</td>
+</tr>
+<tr>
+<td>
+<p>Collection of drones</p>
+</td>
+<td>
+<p><kbd>/drones/</kbd></p>
+</td>
+</tr>
+<tr>
+<td>
+<p>Drone</p>
+</td>
+<td>
+<p><kbd>/drone/{id}</kbd></p>
+</td>
+</tr>
+<tr>
+<td>
+<p>Collection of pilots</p>
+</td>
+<td>
+<p><kbd>/pilots/</kbd></p>
+</td>
+</tr>
+<tr>
+<td>
+<p>Pilot</p>
+</td>
+<td>
+<p><kbd>/pilot/{id}</kbd></p>
+</td>
+</tr>
+<tr>
+<td>
+<p>Collection of competitions</p>
+</td>
+<td>
+<p><kbd>/competitions/</kbd></p>
+</td>
+</tr>
+<tr>
+<td>
+<p>Competition</p>
+</td>
+<td>
+<p><kbd>/competition/{id}</kbd></p>
+</td>
+</tr>
+</tbody>
+</table>
+<p>&#160;</p>
+<p>Let's consider that <kbd>http://localhost:8000/</kbd> is the URL for the RESTful Web Service running on Django's development server. We have to compose and send an HTTP request with the following HTTP verb (<kbd>GET</kbd>) and request URL (<kbd>http://localhost:8000/competitions/</kbd>) to retrieve all the stored competitions in the collection.</p>
+<pre>GET http://localhost:8000/competitions/ </pre>
+<p>Our RESTful Web Service must be able to update a single field for an existing resource. In order to make this possible, we will implement the <kbd>PATCH</kbd> method. Remember that the <kbd>PUT</kbd> method is meant to replace an entire resource and the <kbd>PATCH</kbd> method is meant to apply a delta to an existing resource, that is, to update one or more fields for an existing resource.</p>
+<p>We definitely want our RESTful Web Serice to support the <kbd>OPTIONS</kbd> method for all the resources and collections of resources. This way, we will provide a consistent web service.</p>
+<p>We will use the <strong>ORM</strong> (short for <strong>Object-Relational Mapping</strong>) included in Django. In addition, we will take advantage of many features and reusable elements included in the latest version of the Django REST framework to make it easy to build our web service without writing a huge amount of code.</p>
+<p>In this case, we will work with a PostgreSQL database. However, in case you don't want to spend time installing PostgreSQL, you can skip the changes we make in the Django REST framework ORM configuration and continue working with the default SQLite database, as we did with our first RESTful Web Service.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Creating a new app with Django</h1>
+                </header>
+            
+            <article>
+                
+<p>Now, we will create a new app with Django. We will follow the same steps we learned in <a href="dj-rst-websvc_ch11.html">Chapter 1</a>, <em>Installing the Required Software and Tools</em>, in the <em>Creating an app with Django</em> section. However, in order to avoid repeating many steps, we will use the same <kbd>restful01</kbd> project we had created in that chapter. Hence, we will just add a new app to an existing project.</p>
+<p>Make sure you quit Django's development server. Remember that you just need to press <em><span class="KeyPACKT">Ctrl</span></em> + <em><span class="KeyPACKT">C</span></em> in the terminal or command-prompt window in which it is running. In case you weren't running Django's development server, make sure the virtual environment in which we have been working in the previous chapter is activated. Then, go to the <kbd>restful01</kbd> folder within the <kbd>01</kbd> folder (the root folder for our virtual environment). The following commands use the default paths to go to this folder. In case you have used a different path for your virtual environment, make sure you replace the base path with the appropriate one.</p>
+<p>In Linux or macOS, enter the following command:</p>
+<pre><strong>cd ~/HillarDjangoREST/01/restful01</strong></pre>
+<p>If you prefer the Command Prompt, run the following command in the Windows command line:</p>
+<pre><strong>cd /d %USERPROFILE%\HillarDjangoREST\01\restful01</strong></pre>
+<p>If you prefer Windows PowerShell, run the following command in Windows PowerShell:</p>
+<pre><strong>cd /d $env:USERPROFILE\HillarDjangoREST\01\restful01</strong>
+  </pre>
+<p>Then, run the following command to create a new Django app named <kbd>drones</kbd> within the <kbd>restful01</kbd> Django project. The command won't produce any output:</p>
+<pre>    <strong>python manage.py startapp drones</strong></pre>
+<p>The previous command creates a new <kbd>restful01/drones</kbd> sub-folder, with the following files:</p>
+<ul>
+<li><kbd>views.py</kbd></li>
+<li><kbd>tests.py</kbd></li>
+<li><kbd>models.py</kbd></li>
+<li><kbd>apps.py</kbd></li>
+<li><kbd>admin.py</kbd></li>
+<li><kbd>__init__.py</kbd></li>
+</ul>
+<p>In addition, the <kbd>restful01/drones</kbd> folder will have a <kbd>migrations</kbd> sub-folder with an <kbd>__init__.py</kbd> Python script. The structure is the same as the one we analyzed in <a href="dj-rst-websvc_ch11.html">Chapter 1</a><em>, Installing the Required Software and Tools</em>, in the <em>Understanding Django folders, files and configurations</em> section.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Configuring a new web service</h1>
+                </header>
+            
+            <article>
+                
+<p>We added a new Django app to our existing Django project. Use your favorite editor or IDE to check the Python code in the <kbd>apps.py</kbd> file within the <kbd>restful01/drones</kbd> folder (<kbd>restful01\drones</kbd> in Windows). The following lines show the code for this file:</p>
+<pre>from django.apps import AppConfig 
+ 
+ 
+class DronesConfig(AppConfig): 
+    name = 'drones'</pre>
+<p>The code declares the <kbd>DronesConfig</kbd> class as a subclass of the <kbd>django.apps.AppConfig</kbd> class that represents a Django application and its configuration. The <kbd>DronesConfig</kbd> class just defines the <kbd>name</kbd> class attribute and sets its value to <kbd>'drones'</kbd>.</p>
+<p>Now, we have to add <kbd>drones.apps.DronesConfig</kbd> as one of the installed apps in the <kbd>restful01/settings.py</kbd> file that configures settings for the <kbd>restful01</kbd> Django project. I built the previous string by concatenating many values as follows: app name + <kbd>.apps.</kbd> + class name, which is, <kbd>drones</kbd> + <kbd>.apps.</kbd> + <kbd>DronesConfig</kbd>.</p>
+<div class="packt_tip">We already added the <kbd>rest_framework</kbd> app to make it possible for us to use the Django REST framework in the <kbd>restful01/settings.py</kbd> file. However, in case you decided to create a new Django project from scratch by following all the steps we learned in <a href="dj-rst-websvc_ch11.html" target="_blank">Chapter 1</a>, <em>Installing the Required Software and Tools</em>, make sure you don't forget to add the <kbd>rest_framework</kbd> app.</div>
+<p>Open the <kbd>restful01/settings.py</kbd> file that declares module-level variables that define the configuration of Django for the <kbd>restful01</kbd> project. We will make some changes to this Django settings file. Locate the lines that assign a strings list to <kbd>INSTALLED_APPS</kbd> to declare the installed apps.</p>
+<p>Remove the following line from the <kbd>INSTALLED_APPS</kbd> strings list. This way, Django won't consider this app anymore:</p>
+<pre>'toys.apps.ToysConfig', </pre>
+<p>Add the following string to the <kbd>INSTALLED_APPS</kbd> strings list and save the changes to the <kbd>restful01/settings.py</kbd> file:</p>
+<pre>'drones.apps.DronesConfig',</pre>
+<p>The following lines show the new code that declares the <kbd>INSTALLED_APPS</kbd> strings list with the added line highlighted and with comments to understand what each added string means. The code file for the sample is included in the <kbd>hillar_django_restful_06_01</kbd> folder, in the <kbd>restful01/settings.py</kbd> file:</p>
+<pre>INSTALLED_APPS = [ 
+    'django.contrib.admin', 
+    'django.contrib.auth', 
+    'django.contrib.contenttypes', 
+    'django.contrib.sessions', 
+    'django.contrib.messages', 
+    'django.contrib.staticfiles', 
+    # Django REST framework 
+    'rest_framework', 
+    # Drones application 
+<strong>    'drones.apps.DronesConfig',</strong> 
+] </pre>
+<p>This way, we have added the <kbd>drones</kbd> application to our initial Django project named <kbd>restful01</kbd>.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Defining many-to-one relationships with models.ForeignKey</h1>
+                </header>
+            
+            <article>
+                
+<p>Now, we will create the models that we will use to represent and persist the drone categories, drones, pilots, and competitions, and their relationships. Open the <kbd>drones/models.py</kbd> file and replace its contents with the following code. The lines that declare fields related to other models are highlighted in the code listing. The code file for the sample is included in the <kbd>hillar_django_restful_06_01</kbd> folder, in the <kbd>restful01/drones/models.py</kbd> file.</p>
+<pre>from django.db import models <br/> <br/> <br/>class DroneCategory(models.Model): <br/>    name = models.CharField(max_length=250) <br/> <br/>    class Meta: <br/>        ordering = ('name',) <br/> <br/>    def __str__(self): <br/>        return self.name <br/> <br/> <br/>class Drone(models.Model): <br/>    name = models.CharField(max_length=250) <br/>    drone_category = models.ForeignKey( <br/>        DroneCategory, <br/>        related_name='drones', <br/>        on_delete=models.CASCADE) <br/>    manufacturing_date = models.DateTimeField() <br/>    has_it_competed = models.BooleanField(default=False) <br/>    inserted_timestamp = models.DateTimeField(auto_now_add=True) <br/> <br/>    class Meta: <br/>        ordering = ('name',) <br/> <br/>    def __str__(self): <br/>        return self.name <br/> <br/> <br/>class Pilot(models.Model): <br/>    MALE = 'M' <br/>    FEMALE = 'F' <br/>    GENDER_CHOICES = ( <br/>        (MALE, 'Male'), <br/>        (FEMALE, 'Female'), <br/>    ) <br/>    name = models.CharField(max_length=150, blank=False, default='') <br/>    gender = models.CharField( <br/>        max_length=2, <br/>        choices=GENDER_CHOICES, <br/>        default=MALE, <br/>    ) <br/>    races_count = models.IntegerField() <br/>    inserted_timestamp = models.DateTimeField(auto_now_add=True) <br/> <br/>    class Meta: <br/>        ordering = ('name',) <br/> <br/>    def __str__(self): <br/>        return self.name <br/> <br/> <br/>class Competition(models.Model): <br/>    pilot = models.ForeignKey( <br/>        Pilot, <br/>        related_name='competitions', <br/>        on_delete=models.CASCADE) <br/>    drone = models.ForeignKey( <br/>        Drone, <br/>        on_delete=models.CASCADE) <br/>    distance_in_feet = models.IntegerField() <br/>    distance_achievement_date = models.DateTimeField() <br/> <br/>    class Meta: <br/>        # Order by distance in descending order <br/>        ordering = ('-distance_in_feet',)</pre>
+<p>The code declares the following four models, specifically, four classes that are subclasses of the <kbd>django.db.models.Model</kbd> class:</p>
+<ul>
+<li><kbd>DroneCategory</kbd></li>
+<li><kbd>Drone</kbd></li>
+<li><kbd>Pilot</kbd></li>
+<li><kbd>Competition</kbd></li>
+</ul>
+<p>Django automatically adds an auto-increment integer primary key column named <kbd>id</kbd> when it creates the database table related to each model. We specify the field types, maximum lengths,&#160;and defaults for many attributes.</p>
+<p>Each class declares a <kbd>Meta</kbd> inner class that declares an ordering attribute. The <kbd>Meta</kbd> inner class declared within the <kbd>Competition</kbd> class specifies <kbd>'-distance_in_feet'</kbd> as the value of the <kbd>ordering</kbd> tuple, with a dash as a prefix of the field name to order by <kbd>distance_in_feet</kbd> in descending order, instead of the default ascending order.</p>
+<p>The <kbd>DroneCategory</kbd>, <kbd>Drone</kbd>, and <kbd>Pilot</kbd> classes declare a&#160;<kbd>__str__</kbd> method that returns the contents of the <kbd>name</kbd> attribute that provides the name or title for each of these models. This way, whenever Django needs to provide a human readable representation for the model, it will call this method and return its result.</p>
+<p>The <kbd>Drone</kbd> model declares the <kbd>drone_category</kbd> field with the following line:</p>
+<pre>drone_category = models.ForeignKey( 
+    DroneCategory,  
+    related_name='drones',  
+    on_delete=models.CASCADE) </pre>
+<p>The previous line uses the <kbd>django.db.models.ForeignKey</kbd> class to provide a many-to-one relationship to the <kbd>DroneCategory</kbd> model. The <kbd>'drones'</kbd> value specified for the <kbd>related_name</kbd> argument creates a backwards relation from the <kbd>DroneCategory</kbd> model to the <kbd>Drone</kbd> model. This value indicates the name to use for the relation from the related <kbd>DroneCategory</kbd> object back to a Drone object.</p>
+<p>This way, we will be able to easily access all the drones that belong to a specific drone category. Whenever we delete a drone category, we want all the drones that belong to this category to be deleted, too, and therefore, we specified the <kbd>models.CASCADE</kbd> value for the <kbd>on_delete</kbd> argument.</p>
+<p>The <kbd>Competition</kbd> model declares the <kbd>pilot</kbd> field with the following line:</p>
+<pre>pilot = models.ForeignKey( 
+    Pilot,  
+    related_name='competitions',  
+    on_delete=models.CASCADE) </pre>
+<p>The previous line uses the <kbd>django.db.models.ForeignKey</kbd> class to provide a many-to-one relationship to the <kbd>Pilot</kbd> model. The <kbd>'competitions'</kbd> value specified for the <kbd>related_name</kbd> argument creates a backwards relation from the <kbd>Pilot</kbd> model to the <kbd>Competition</kbd> model. This value indicates the name to use for the relation from the related Pilot object back to a Competition object.</p>
+<p>This way, we will be able to easily access all the competitions in which a specific pilot participated with his drone. Whenever we delete a pilot, we want all the competitions in which this pilot participated to be deleted, too, and therefore, we specified the <kbd>models.CASCADE</kbd> value for the <kbd>on_delete</kbd> argument.</p>
+<p>The <kbd>Competition</kbd> model declares the <kbd>drone</kbd> field with the following line:</p>
+<pre>drone = models.ForeignKey( 
+    Drone,  
+    on_delete=models.CASCADE) </pre>
+<p>The previous line uses the <kbd>django.db.models.ForeignKey</kbd> class to provide a many-to-one relationship to the <kbd>Drone</kbd> model. In this case, we don't create a backwards relation because we don't need it. Thus, we don't specify a value for the <kbd>related_name</kbd> argument. Whenever we delete a drone, we want all the competitions in which the drone participated to be deleted too, and therefore, we specified the <kbd>models.CASCADE</kbd> value for the <kbd>on_delete</kbd> argument.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Installing PostgreSQL</h1>
+                </header>
+            
+            <article>
+                
+<p>In order to work with this example, you have to download and install PostgreSQL, in case you aren't already running it in your development computer or in a development server. PostgreSQL is available on multiple platforms and offers versions for Linux, macOS and Windows, among other operating systems. You can download and install this relational database management system from the <span class="packt_screen">Download</span> section of its web page: <a href="http://www.postgresql.org">http://www.postgresql.org</a>.</p>
+<p>The next samples that work with a PostgreSQL database have been tested in PostgreSQL versions 9.6.x and PostgreSQL 10.x. Make sure you work with any of these versions.</p>
+<p>There are interactive installers built by EnterpriseDB and BigSQL for macOS and Windows. In case you are working with macOS, Postgres.app provides a really easy way to install and use PostgreSQL on this operating system. You can read more about Postgres.app and download it from its web page: <a href="http://postgresapp.com"><span class="Hyperlink0">http://postgresapp.com</span></a>.</p>
+<p>After you finish the installation process, you have to make sure that the PostgreSQL <kbd>bin</kbd> folder is included in the PATH environmental variable. You should be able to execute the psql command-line utility from your current Linux or macOS terminal, the Windows command prompt, or Windows PowerShell.</p>
+<div class="packt_tip">In case the <kbd>bin</kbd> folder isn't included in the PATH, you will receive an error indicating that the <kbd>pg_config</kbd> file cannot be found when trying to install the psycopg2 Python package. In addition, you will have to use the full path to each of the PostgreSQL command-line tools that we will use in the next steps.</div>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Running migrations that generate relationships</h1>
+                </header>
+            
+            <article>
+                
+<p>We must create the initial migration for the new models we recently coded. We just need to run the following Python scripts and we will also synchronize the database for the first time. As we learned from our previous RESTful Web Service sample, by default, Django uses an SQLite database.</p>
+<p>In this new example, we will be working with a PostgreSQL database. However, in case you want to use an SQLite, you can skip all the next steps related to PostgreSQL, its configuration in Django, and jump to the migrations generation command. You will also have to use the SQLite utilities instead of the PostgreSQL tools to analyze the database.</p>
+<p>We will use the PostgreSQL command-line tools to create a new database named <kbd>toys</kbd>. In case you already have a PostgreSQL database with this name, make sure that you use another name in all the commands and configurations. You can perform the same tasks with any PostgreSQL GUI tool or any database administration tool that supports PostgreSQL.</p>
+<p>In case you are developing in Linux, it is necessary to run the commands as the <kbd>postgres</kbd> user. Run the following command in Windows or macOS to create a new database named <kbd>drones</kbd>. Notice that the command won't produce any output and that you must have the <kbd>bin</kbd> folder for PostgreSQL command-line tools in your path:</p>
+<pre><strong>createdb drones</strong></pre>
+<p>In Linux, run the following command to use the <kbd>postgres</kbd> user:</p>
+<pre><strong>sudo -u postgres createdb drones</strong>  </pre>
+<p>Now, we will use the psql command-line tool to run some SQL statements to create a specific user that we will use in Django and assign the necessary roles for it. In Windows or macOS, run the following command to launch the psql tool:</p>
+<pre><strong>psql</strong>  </pre>
+<p>In macOS, you might need to run the following command to launch psql with the <kbd>postgres</kbd> user in case the previous command doesn't work, as it will depend on the way in which you installed and configured PostgreSQL:</p>
+<pre><strong>sudo -u postgres psql</strong>  </pre>
+<p>In Linux, run the following command to start psql with the <kbd>postgres</kbd> user:</p>
+<pre><strong>sudo -u psql</strong> </pre>
+<p>Then, run the following SQL statements and finally enter <kbd>\q</kbd> to exit the psql command-line tool.</p>
+<p>Replace the username with your desired username to use in the new database, and password with your chosen password. We will specify the selected username and password in the Django settings for our web service.</p>
+<p>You don't need to run the steps in case you are already working with a specific user in PostgreSQL and you have already granted privileges to the database for the user:</p>
+<pre><strong>CREATE ROLE username WITH LOGIN PASSWORD 'password';</strong>
+<strong>GRANT ALL PRIVILEGES ON DATABASE drones TO username;</strong>
+<strong>ALTER USER username CREATEDB;</strong>
+<strong>\q</strong>  </pre>
+<p>You will see the following output for the previous commands:</p>
+<pre><strong>CREATE ROLE</strong>
+<strong>GRANT</strong>
+<strong>ALTER ROLE</strong>  </pre>
+<p>The default SQLite database engine and the database file name are specified in the <kbd>restful01/settings.py</kbd> Python file. The following lines show the default lines that configure the database:</p>
+<pre>DATABASES = { 
+    'default': { 
+        'ENGINE': 'django.db.backends.sqlite3', 
+        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'), 
+    } 
+} </pre>
+<p>We will work with PostgreSQL instead of SQLite for this example, and therefore, we must replace the declaration of the <kbd>DATABASES</kbd> dictionary with the following lines. The nested dictionary maps the database named <kbd>default</kbd> with the <kbd>django.db.backends.postgresql</kbd> database engine, the desired database name and its settings. In this case, we will create a database named <kbd>drones</kbd>. Make sure you specify the desired database name in the value for the <kbd>'NAME'</kbd> key and that you configure the user, password, host, and port based on your PostgreSQL configuration. In case you followed the previously explained steps to configure the PostgreSQL database, use the settings specified in these steps. The code file for the sample is included in the <kbd>hillar_django_restful_06_01</kbd> folder, in the <kbd>restful01/settings.py</kbd> file:</p>
+<pre>DATABASES = { 
+    'default': { 
+        'ENGINE': 'django.db.backends.postgresql', 
+        # Replace drones with your desired database name 
+        'NAME': 'drones', 
+        # Replace username with your desired user name 
+        'USER': 'username', 
+        # Replace password with your desired password 
+        'PASSWORD': 'password', 
+        # Replace 127.0.0.1 with the PostgreSQL host 
+        'HOST': '127.0.0.1', 
+        # Replace 5432 with the PostgreSQL configured port 
+        # in case you aren't using the default port 
+        'PORT': '5432', 
+    } 
+}</pre>
+<div class="packt_tip">In case you decided to continue working with SQLite, you don't need to make the previous changes and you can continue using the default configuration.</div>
+<p>We don't want the migrations process to take into account our models related to toys from the previous web service, and therefore, we will make changes to the code in the <kbd>urls.py</kbd> file in the <kbd>restful01</kbd> folder, specifically, the <kbd>restful01/urls.py</kbd> file. The file defines the root URL configurations, and therefore, we must remove the URL patterns declared in the <kbd>toys/urls.py</kbd> file. The following lines show the new code for the <kbd>restful01/urls.py</kbd> file. The code file for the sample is included in the <kbd>hillar_django_restful_06_01</kbd> folder, in the <kbd>restful01/urls.py</kbd> file:</p>
+<pre>from django.conf.urls import url, include 
+ 
+urlpatterns = [ 
+] </pre>
+<p>In order to use PostgreSQL, it is necessary to install a Python-PostgreSQL Database Adapter that Django will use to interact with a PostgreSQL database: the Psycopg2 package (psycopg2).</p>
+<p>In macOS, we have to make sure that the PostgreSQL <kbd>bin</kbd> folder is included in the <kbd>PATH</kbd> environmental variable. For example, in case the path to the <kbd>bin</kbd> folder is <kbd>/Applications/Postgres.app/Contents/Versions/latest/bin</kbd>, we must execute the following command to add this folder to the <kbd>PATH</kbd> environmental variable:</p>
+<pre><strong>export PATH=$PATH:/Applications/Postgres.app/Contents/Versions/latest/bin</strong>  </pre>
+<p>Once we make sure that the PostgreSQL <kbd>bin</kbd> folder is included in the <kbd>PATH</kbd> environmental variable, we just need to run the following command to install this package. Make sure the virtual environment is activated before running the command:</p>
+<pre><strong>pip install psycopg2</strong>  </pre>
+<p>The last lines for the output will indicate that the psycopg2 package has been successfully installed:</p>
+<pre><strong>Collecting psycopg2</strong>
+<strong>Installing collected packages: psycopg2</strong>
+<strong>Successfully installed psycopg2-2.7.3.2</strong>  </pre>
+<p>Now, run the following Python script to generate the migrations that will allow us to synchronize the PostgreSQL database for the first time. We will run the migrations for the <kbd>drones</kbd> application:</p>
+<pre><strong>python manage.py makemigrations drones</strong>  </pre>
+<p>The following lines show the output generated after running the previous command:</p>
+<pre><strong>Migrations for 'drones':<br/>drones/migrations/0001_initial.py<br/>- Create model Competition<br/>- Create model Drone<br/>- Create model DroneCategory<br/>- Create model Pilot<br/>- Add field drone_category to drone<br/>- Add field drone to competition<br/>- Add field pilot to competition<br/></strong></pre>
+<p>The output indicates that the <kbd>restful01/drones/migrations/0001_initial.py</kbd> file includes the code to create the <kbd>Competition</kbd>, <kbd>Drone</kbd>, <kbd>DroneCategory</kbd>, and <kbd>Pilot</kbd> models. The following lines show the code for this file that was automatically generated by Django. The code file for the sample is included in the <kbd>hillar_django_restful_06_01</kbd> folder, in the <kbd>restful01/drones/migrations/0001_initial.py</kbd> file:</p>
+<pre># -*- coding: utf-8 -*- 
+# Generated by Django 1.11.5 on 2017-11-02 02:55 
+from __future__ import unicode_literals 
+ 
+from django.db import migrations, models 
+import django.db.models.deletion 
+ 
+ 
+class Migration(migrations.Migration): 
+ 
+    initial = True 
+ 
+    dependencies = [ 
+    ] 
+ 
+    operations = [ 
+        migrations.CreateModel( 
+            name='Competition', 
+            fields=[ 
+                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')), 
+                ('distance_in_feet', models.IntegerField()), 
+                ('distance_achievement_date', models.DateTimeField()), 
+            ], 
+            options={ 
+                'ordering': ('-distance_in_feet',), 
+            }, 
+        ), 
+        migrations.CreateModel( 
+            name='Drone', 
+            fields=[ 
+                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')), 
+                ('name', models.CharField(max_length=250)), 
+                ('manufacturing_date', models.DateTimeField()), 
+                ('has_it_competed', models.BooleanField(default=False)), 
+                ('inserted_timestamp', models.DateTimeField(auto_now_add=True)), 
+            ], 
+            options={ 
+                'ordering': ('name',), 
+            }, 
+        ), 
+        migrations.CreateModel( 
+            name='DroneCategory', 
+            fields=[ 
+                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')), 
+                ('name', models.CharField(max_length=250)), 
+            ], 
+            options={ 
+                'ordering': ('name',), 
+            }, 
+        ), 
+        migrations.CreateModel( 
+            name='Pilot', 
+            fields=[ 
+                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')), 
+                ('name', models.CharField(default='', max_length=50)), 
+                ('gender', models.CharField(choices=[('M', 'Male'), ('F', 'Female')], default='M', max_length=2)), 
+                ('races_count', models.IntegerField()), 
+                ('inserted_timestamp', models.DateTimeField(auto_now_add=True)), 
+            ], 
+            options={ 
+                'ordering': ('name',), 
+            }, 
+        ), 
+        migrations.AddField( 
+            model_name='drone', 
+            name='drone_category', 
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='drones', to='drones.DroneCategory'), 
+        ), 
+        migrations.AddField( 
+            model_name='competition', 
+            name='drone', 
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='drones.Drone'), 
+        ), 
+        migrations.AddField( 
+            model_name='competition', 
+            name='pilot', 
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='competitions', to='drones.Pilot'), 
+        ), 
+    ] </pre>
+<p>The code defines a subclass of the <kbd>django.db.migrations.Migration</kbd> class named <kbd>Migration</kbd> that defines an <kbd>operations</kbd> list with many calls to <kbd>migrations.CreateModel</kbd>. Each <kbd>migrations.CreateModel</kbd> call will create the table for each of the related models.</p>
+<p>Notice that Django has automatically added an <kbd>id</kbd> field for each of the models. The <kbd>operations</kbd> are executed in the same order in which they are displayed in the list. The code creates <kbd>Competition</kbd>, <kbd>Drone</kbd>, <kbd>DroneCategory</kbd>, <kbd>Pilot</kbd> and finally adds the following fields with foreign keys:</p>
+<ul>
+<li>The <kbd>drone_category</kbd> field to the <kbd>Drone</kbd> model with the foreign key to the <kbd>DroneCategory</kbd> model</li>
+<li>The <kbd>drone</kbd> field to the <kbd>Competition</kbd> model with the foreign key to the <kbd>Drone</kbd> model</li>
+<li>The <kbd>pilot</kbd> field to the <kbd>Competition</kbd> model with the foreign key to the <kbd>Pilot</kbd> model</li>
+</ul>
+<p>Now, run the following python script to apply all the generated migrations:</p>
+<pre><strong>python manage.py migrate</strong></pre>
+<p>The following lines show the output generated after running the previous command:</p>
+<pre><strong>Operations to perform:</strong>
+<strong>Apply all migrations: admin, auth, contenttypes, drones, sessions</strong>
+    <strong>Running migrations:</strong>
+    <strong>  Applying contenttypes.0001_initial... OK</strong>
+    <strong>  Applying auth.0001_initial... OK</strong>
+    <strong>  Applying admin.0001_initial... OK</strong>
+    <strong>  Applying admin.0002_logentry_remove_auto_add... OK</strong>
+    <strong>  Applying contenttypes.0002_remove_content_type_name... OK</strong>
+    <strong>  Applying auth.0002_alter_permission_name_max_length... OK</strong>
+    <strong>  Applying auth.0003_alter_user_email_max_length... OK</strong>
+    <strong>  Applying auth.0004_alter_user_username_opts... OK</strong>
+    <strong>  Applying auth.0005_alter_user_last_login_null... OK</strong>
+    <strong>  Applying auth.0006_require_contenttypes_0002... OK</strong>
+    <strong>  Applying auth.0007_alter_validators_add_error_messages... OK</strong>
+    <strong>  Applying auth.0008_alter_user_username_max_length... OK</strong>
+    <strong>  Applying drones.0001_initial... OK</strong>
+    <strong>  Applying sessions.0001_initial... OK</strong>
+  </pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Analyzing the database</h1>
+                </header>
+            
+            <article>
+                
+<p>After we have run the previous command, we can use the PostgreSQL command-line tools or any other application that allows us to easily check the contents of a PostreSQL database, to check the tables that Django generated. <strong>If you decided to continue working with SQLite, we already learned how to check the tables in the previous chapters.</strong></p>
+<p>Run the following command to list the generated tables:</p>
+<pre><strong>psql --username=username --dbname=drones --command="\dt"</strong></pre>
+<p>The following lines show the output with all the generated table names:</p>
+<pre>    <strong>                   List of relations</strong>
+    <strong> Schema |            Name            | Type  |  Owner   </strong>
+    <strong>--------+----------------------------+-------+----------</strong>
+    <strong> public | auth_group                 | table | username</strong>
+    <strong> public | auth_group_permissions     | table | username</strong>
+    <strong> public | auth_permission            | table | username</strong>
+    <strong> public | auth_user                  | table | username</strong>
+    <strong> public | auth_user_groups           | table | username</strong>
+    <strong> public | auth_user_user_permissions | table | username</strong>
+    <strong> public | django_admin_log           | table | username</strong>
+    <strong> public | django_content_type        | table | username</strong>
+    <strong> public | django_migrations          | table | username</strong>
+    <strong> public | django_session             | table | username</strong>
+    <strong> public | drones_competition         | table | username</strong>
+    <strong> public | drones_drone               | table | username</strong>
+    <strong> public | drones_dronecategory       | table | username</strong>
+    <strong> public | drones_pilot               | table | username</strong>
+    <strong>(14 rows)</strong>
+  </pre>
+<p>In our previous example, Django used the <kbd>toys_</kbd> prefix for the table related to the <kbd>toys</kbd> application we had created. In this case, the application name is <kbd>drones</kbd>, and therefore, Django uses the <kbd>drones_</kbd> prefix for the following four tables that are related to the application:</p>
+<ul>
+<li><kbd>drones_drone</kbd>: This table persists the <kbd>Drone</kbd> model</li>
+<li><kbd>drones_dronecategory</kbd>: This table persists the <kbd>DroneCategory</kbd> model</li>
+<li><kbd>drones_pilot</kbd>: This table persists the <kbd>Pilot</kbd> model</li>
+<li><kbd>drones_competition</kbd>: This table persists the <kbd>Competition</kbd> model</li>
+</ul>
+<p>Django's integrated ORM generated these tables and the foreign keys based on the information included in our models and the code generated during the migrations process.</p>
+<p>The following commands will allow you to check the contents of the four tables after we compose and send different HTTP requests to the RESTful Web Service, and these calls end up making CRUD operations to the four tables. The commands assume that you are running PostgreSQL on the same computer in which you are running the command:</p>
+<pre>    <strong>psql --username=username --dbname=drones --command="SELECT * FROM drones_dronecategory;"</strong>
+    <strong>psql --username=username --dbname=drones --command="SELECT * FROM drones_drone;"</strong>
+    <strong>psql --username=username --dbname=drones --command="SELECT * FROM drones_pilot;"</strong>
+    <strong>psql --username=username --dbname=drones --command="SELECT * FROM drones_competition;"</strong></pre>
+<div class="packt_tip">Instead of working with the PostgreSQL command-line utility, you can use a GUI tool to check the contents of the PostgreSQL database. You can use also the database tools included in your favorite IDE to check the contents for the SQLite database.</div>
+<p>As happened in our previous example, Django generated additional tables that it requires to support the web framework and the authentication features that we will use later.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Configuring serialization and deserialization with relationships</h1>
+                </header>
+            
+            <article>
+                
+<p>The new RESTful Web Service must be able to serialize the <kbd>DroneCategory</kbd>, <kbd>Drone</kbd>, <kbd>Pilot</kbd>, and <kbd>Competition</kbd> instances into JSON representations and vice versa. In this case, we must pay special attention to the relationships between the different models when we create the serializer classes to manage serialization to JSON and deserialization from JSON.</p>
+<p>In our last version of the previous RESTful Web Service, we created a subclass of the <kbd>rest_framework.serializers.ModelSerializer</kbd> class to make it easier to generate a serializer and reduce boilerplate code. In this case, we will also declare one class that inherits from <kbd>ModelSerializer</kbd>. The other three classes will inherit from the <kbd>rest_framework.serializers.HyperlinkedModelSerializer</kbd> class.</p>
+<p>The <kbd>HyperlinkedModelSerializer</kbd> is a type of <kbd>ModelSerializer</kbd> that uses hyperlinked relationships instead of primary key relationships, and therefore, it represents the relationships to other model instances with hyperlinks instead of primary key values. In addition, the <kbd>HyperlinkedModelSerializer</kbd> generates a field named <kbd>url</kbd> with the URL for the resource as its value. As happens with <kbd>ModelSerializer</kbd>, the <kbd>HyperlinkedModelSerializer</kbd> class provides default implementations for the <kbd>create</kbd> and <kbd>update</kbd> methods.</p>
+<p>Now, go to the <kbd>restful01/drones</kbd> folder and create a new Python code file named <kbd>serializers.py</kbd>. The following lines show the code that declares the new <kbd>DroneCategorySerializer</kbd> class. Notice that we will add more classes to this file later. The code file for the sample is included in the <kbd>hillar_django_restful_06_01</kbd> folder in the <kbd>restful01/drones/serializers.py</kbd> file:</p>
+<pre>from rest_framework import serializers 
+from drones.models import DroneCategory 
+from drones.models import Drone 
+from drones.models import Pilot 
+from drones.models import Competition 
+import drones.views 
+ 
+ 
+class DroneCategorySerializer(serializers.HyperlinkedModelSerializer): 
+    drones = serializers.HyperlinkedRelatedField( 
+        many=True, 
+        read_only=True, 
+        view_name='drone-detail') 
+ 
+    class Meta: 
+        model = DroneCategory 
+        fields = ( 
+            'url', 
+            'pk', 
+            'name', 
+            'drones') </pre>
+<p>The <kbd>DroneCategorySerializer</kbd> class is a subclass of the <kbd>HyperlinkedModelSerializer</kbd> class. The <kbd>DroneCategorySerializer</kbd> class declares a <kbd>drones</kbd> attribute that holds an instance of <kbd>serializers.HyperlinkedRelatedField</kbd> with <kbd>many</kbd> and <kbd>read_only</kbd> equal to <kbd>True</kbd>. This way, the code defines a one-to-many relationship that is read-only.</p>
+<p>The code uses the <kbd>drones</kbd> name that we specified as the <kbd>related_name</kbd> string value when we created the <kbd>drone_category</kbd> field as a <kbd>models.ForeignKey</kbd> instance in the <kbd>Drone</kbd> model. This way, the <kbd>drones</kbd> field will provide us with an array of hyperlinks to each drone that belongs to the drone category.</p>
+<div class="packt_tip">The <kbd>view_name</kbd> value is <kbd>'drone-detail'</kbd> to indicate the browsable API feature to use the drone detail view to render the hyperlink when the user clicks or taps on it. This way, we make it possible for the browsable API to allow us to browse between related models.</div>
+<p>The <kbd>DroneCategorySerializer</kbd> class declares a <kbd>Meta</kbd> inner class that declares the following two attributes:</p>
+<ul>
+<li><kbd>model</kbd>: This attribute specifies the model related to the serializer, that is, the <kbd>DroneCategory</kbd> class.</li>
+<li><kbd>fields</kbd>: This attribute specifies a tuple of string whose values indicate the field names that we want to include in the serialization from the model related to the serializer, that is, the <kbd>DroneCategory</kbd> class. We want to include both the primary key and the URL, and therefore, the code specified both <kbd>'pk'</kbd> and <kbd>'url'</kbd> as members of the tuple. In addition, we want to include the name and the field that provides hyperlinks to each drone that belongs to the drone category. Thus, the code also specifies <kbd>'name'</kbd> and <kbd>'drones'</kbd> as members of the tuple.</li>
+</ul>
+<p>There is no need to override either the <kbd>create</kbd> or <kbd>update</kbd> methods because the generic behavior will be enough in this case. The <kbd>HyperlinkedModelSerializer</kbd> superclass provides implementations for both methods.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Defining hyperlinks with serializers.HyperlinkedModelSerializer</h1>
+                </header>
+            
+            <article>
+                
+<p>Now, add the following code to the <kbd>serializers.py</kbd> file to declare the <kbd>DroneSerializer</kbd> class. The code file for the sample is included in the <kbd>hillar_django_restful_06_01</kbd> folder in the <kbd>restful01/drones/serializers.py</kbd> file:</p>
+<pre>class DroneSerializer(serializers.HyperlinkedModelSerializer): 
+    # Display the category name 
+    drone_category = serializers.SlugRelatedField(queryset=DroneCategory.objects.all(), slug_field='name') 
+ 
+    class Meta: 
+        model = Drone 
+        fields = ( 
+            'url', 
+            'name', 
+            'drone_category', 
+            'manufacturing_date', 
+            'has_it_competed', 
+            'inserted_timestamp') </pre>
+<p>The <kbd>DroneSerializer</kbd> class is a subclass of the <kbd>HyperlinkedModelSerializer</kbd> class. The <kbd>DroneSerializer</kbd> class declares a <kbd>drone_category</kbd> attribute that holds an instance of <kbd>serializers.SlugRelatedField</kbd> with its <kbd>queryset</kbd> argument set to <kbd>DroneCategory.objects.all()</kbd> and its <kbd>slug_field</kbd> argument set to <kbd>'name'</kbd>.</p>
+<p>A <kbd>SlugRelatedField</kbd> is a read-write field that represents the target of the relationship by a unique slug attribute, that is, the description. In the Drone model, we created the <kbd>drone_category</kbd> field as a <kbd>models.ForeignKey</kbd> instance.</p>
+<p>We want to display the drone category name as the description (slug field) for the related <kbd>DroneCategory</kbd>, and therefore, we specified <kbd>'name'</kbd> as the value for the <kbd>slug_field</kbd> argument. The browsable API has to display the possible options for the related drone category in a dropdown field in a form, and Django will use the expression specified in the <kbd>queryset</kbd> argument to retrieve all the possible instances and display their specified slug field.</p>
+<p>The <kbd>DroneSerializer</kbd> class declares a <kbd>Meta</kbd> inner class that declares two attributes:</p>
+<ul>
+<li><kbd>model</kbd>: The <kbd>Drone</kbd> class.</li>
+<li><kbd>fields</kbd>. In this case, we don't want to include the primary key, and therefore, the tuple doesn't include the <kbd>'pk'</kbd> string. The <kbd>drone_category</kbd> field will render the <kbd>name</kbd> field for the related <kbd>DroneCategory</kbd>.</li>
+</ul>
+<p>Now, add the following code to the <kbd>serializers.py</kbd> file to declare the <kbd>CompetitionSerializer</kbd> class. The code file for the sample is included in the <kbd>hillar_django_restful_06_01</kbd> folder in the <kbd>restful01/drones/serializers.py</kbd> file.</p>
+<pre>class CompetitionSerializer(serializers.HyperlinkedModelSerializer):<br/>    # Display all the details for the related drone<br/>    drone = DroneSerializer()<br/>    class Meta:<br/>        model = Competition<br/>        fields = (<br/>            'url',<br/>            'pk',<br/>            'distance_in_feet',<br/>            'distance_achievement_date',<br/>            'drone')</pre>
+<p>The <kbd>CompetitionSerializer</kbd> class is a subclass of the <kbd>HyperlinkedModelSerializer</kbd> class. We will use the <kbd>CompetitionSerializer</kbd> class to serialize <kbd>Competition</kbd> instances related to a <kbd>Pilot</kbd>, that is, to display all the competitions in which a specific <kbd>Pilot</kbd> has participated when we serialize a <kbd>Pilot</kbd>. We want to display all the details for the related <kbd>Drone</kbd>, but we don't include the related <kbd>Pilot</kbd> because the <kbd>Pilot</kbd> will use this <kbd>CompetitionSerializer</kbd> serializer.</p>
+<p>The <kbd>CompetitionSerializer</kbd> class declares a <kbd>drone</kbd> attribute that holds an instance of the previously coded <kbd>DroneSerializer</kbd> class. We created the <kbd>drone</kbd> field as a <kbd>models.ForeignKey</kbd> instance in the <kbd>Competition</kbd> model and we want to serialize the same data for the drone that we coded in the <kbd>DroneSerializer</kbd> class.</p>
+<p>The <kbd>CompetitionSerializer</kbd> class declares a <kbd>Meta</kbd> inner class that declares two attributes: <kbd>model</kbd> and <kbd>fields</kbd>. The <kbd>model</kbd> attribute specifies the model related to the serializer, that is, the <kbd>Competition</kbd> class. As previously explained, we don't include the <kbd>'Pilot'</kbd> field name in the <kbd>fields</kbd> tuple of string to avoid serializing the Pilot again. We will use a <kbd>PilotSerializer</kbd> as a master and the <kbd>CompetitionSerializer</kbd> as the detail.</p>
+<p>Now, add the following code to the <kbd>serializers.py</kbd> file to declare the <kbd>PilotSerializer</kbd> class. The code file for the sample is included in the <kbd>hillar_django_restful_06_01</kbd> folder in the <kbd>restful01/drones/serializers.py</kbd> file:</p>
+<pre>class PilotSerializer(serializers.HyperlinkedModelSerializer): 
+    competitions = CompetitionSerializer(many=True, read_only=True) 
+    gender = serializers.ChoiceField( 
+        choices=Pilot.GENDER_CHOICES) 
+    gender_description = serializers.CharField( 
+        source='get_gender_display',  
+        read_only=True) 
+ 
+    class Meta: 
+        model = Pilot 
+        fields = ( 
+            'url', 
+            'name', 
+            'gender', 
+            'gender_description', 
+            'races_count', 
+            'inserted_timestamp', 
+            'competitions') </pre>
+<p>The <kbd>PilotSerializer</kbd> class is a subclass of the <kbd>HyperlinkedModelSerializer</kbd> class. We will use the <kbd>PilotSerializer</kbd> class to serialize <kbd>Pilot</kbd> instances and we will use the perviously coded <kbd>CompetitionSerializer</kbd> class to serialize all the <kbd>Competition</kbd> instances related to the <kbd>Pilot</kbd>.</p>
+<p>The <kbd>PilotSerializer</kbd> class declares a <kbd>competitions</kbd> attribute that holds and instance of the previously coded <kbd>CompetitionSerializer</kbd> class. The <kbd>many</kbd> argument is set to <kbd>True</kbd> because it is a one-to-many relationship (one <kbd>Pilot</kbd> has many related <kbd>Competition</kbd> instances).</p>
+<p>We use the <kbd>competitions</kbd> name that we specified as the <kbd>related_name</kbd> string value when we created the <kbd>Pilot</kbd> field as a <kbd>models.ForeignKey</kbd> instance in the <kbd>Competition</kbd> model. This way, the <kbd>competitions</kbd> field will render each <kbd>Competition</kbd> that belongs to the <kbd>Pilot</kbd> by using the previously declared <kbd>CompetitionSerializer</kbd>.</p>
+<p>The <kbd>Pilot</kbd> model declared <kbd>gender</kbd> as an instance of <kbd>models.CharField</kbd> with the <kbd>choices</kbd> attribute set to the <kbd>Pilot.GENDER_CHOICES</kbd> string tuple. The <kbd>PilotSerializer</kbd> class declares a <kbd>gender</kbd> attribute that holds an instance of <kbd>serializers.ChoiceField</kbd> with the <kbd>choices</kbd> argument set to the <kbd>Pilot.GENDER_CHOICES</kbd> string tuple.</p>
+<p>In addition, the class declares a <kbd>gender_description</kbd> attribute with <kbd>read_only</kbd> set to <kbd>True</kbd> and the <kbd>source</kbd> argument set to <kbd>'get_gender_display'</kbd>. The <kbd>source</kbd> string is built with the <kbd>get_</kbd> prefix followed by the field name, <kbd>gender</kbd>, and the <kbd>_display</kbd> suffix. This way, the read-only <kbd>gender_description</kbd> attribute will render the description for the gender choices instead of the single char stored values.</p>
+<p>The <kbd>PilotSerializer</kbd> class declares a <kbd>Meta</kbd> inner class that declares two attributes: <kbd>model</kbd> and <kbd>fields</kbd>. The <kbd>model</kbd> attribute specifies the model related to the serializer, that is, the <kbd>Pilot</kbd> class. We will use the <kbd>PilotSerializer</kbd> class as a master and the <kbd>CompetitionSerializer</kbd> class as the detail. As happened with the previous serializers, the fields attribute specifies a tuple of string whose values indicate the field names that we want to include in the serialization from the related model.</p>
+<p>Finally, add the following code to the <kbd>serializers.py</kbd> file to declare the <kbd>PilotCompetitionSerializer</kbd> class. The code file for the sample is included in the <kbd>hillar_django_restful_06_01</kbd> folder in the <kbd>restful01/drones/serializers.py</kbd> file:</p>
+<pre>class PilotCompetitionSerializer(serializers.ModelSerializer): 
+    # Display the pilot's name 
+    pilot = serializers.SlugRelatedField(queryset=Pilot.objects.all(), slug_field='name') 
+    # Display the drone's name 
+    drone = serializers.SlugRelatedField(queryset=Drone.objects.all(), slug_field='name') 
+ 
+    class Meta: 
+        model = Competition 
+        fields = ( 
+            'url', 
+            'pk', 
+            'distance_in_feet', 
+            'distance_achievement_date', 
+            'pilot', 
+            'drone') </pre>
+<p>The <kbd>PilotCompetitionSerializer</kbd> class is a subclass of the <kbd>ModelSerializer</kbd> class. We will use the <kbd>CompetitionSerializer</kbd> class to serialize <kbd>Competition</kbd> instances. Previously, we created the <kbd>CompetitionSerializer</kbd> class to serialize <kbd>Competition</kbd> instances as the detail of a <kbd>Pilot</kbd>. We will use the new <kbd>PilotCompetitionSerializer</kbd> class whenever we want to display the related <kbd>Pilot</kbd> name and the related <kbd>Drone</kbd> name.</p>
+<p>In the other serializer class, the <kbd>CompetitionSerializer</kbd> class, we didn't include any information related to the <kbd>Pilot</kbd> and we included all the details for the drone. This new class is an example of the flexibility that we have when we declare more than one serializer for the same model.</p>
+<p>The <kbd>PilotCompetitionSerializer</kbd> class declares a <kbd>pilot</kbd> attribute that holds an instance of <kbd>serializers.SlugRelatedField</kbd> with its <kbd>queryset</kbd> argument set to <kbd>Pilot.objects.all()</kbd> and its <kbd>slug_field</kbd> argument set to <kbd>'name'</kbd>. We created the <kbd>pilot</kbd> field as a <kbd>models.ForeignKey</kbd> instance in the <kbd>Competition</kbd> model and we want to display the Pilot's name as the description (slug field) for the related <kbd>Pilot</kbd>. Thus, we specified <kbd>'name'</kbd> as the <kbd>slug_field</kbd>. When the browsable API has to display the possible options for the related pilot in a dropdown in a form, Django will use the expression specified in the <kbd>queryset</kbd> argument to retrieve all the possible pilots and display their specified slug field.</p>
+<p>The <kbd>PilotCompetitionSerializer</kbd> class declares a <kbd>drone</kbd> attribute that holds an instance of <kbd>serializers.SlugRelatedField</kbd> with its <kbd>queryset</kbd> argument set to <kbd>Drone.objects.all()</kbd> and its <kbd>slug_field</kbd> argument set to <kbd>'name'</kbd>. We created the <kbd>drone</kbd> field as a <kbd>models.ForeignKey</kbd> instance in the <kbd>Competition</kbd> model and we want to display the drone's name as the description (slug field) for the related <kbd>Drone</kbd>.</p>
+<p>We have coded all the necessary serializers for our new RESTful Web Service. The following table summarizes the serializers we have. Notice that we have two different serializers for the <kbd>Competition</kbd> model:</p>
+<table class="MsoTableGrid">
+<tbody>
+<tr>
+<td>
+<p><strong>Serializer class name</strong></p>
+</td>
+<td>
+<p><strong>Superclass</strong></p>
+</td>
+<td>
+<p><strong>Related model</strong></p>
+</td>
+</tr>
+<tr>
+<td>
+<p><kbd>DroneCategorySerializer</kbd></p>
+</td>
+<td>
+<p><kbd>HyperlinkedModelSerializer</kbd></p>
+</td>
+<td>
+<p><kbd>DroneCategory</kbd></p>
+</td>
+</tr>
+<tr>
+<td>
+<p><kbd>DroneSerializer</kbd></p>
+</td>
+<td>
+<p><kbd>HyperlinkedModelSerializer</kbd></p>
+</td>
+<td>
+<p><kbd>Drone</kbd></p>
+</td>
+</tr>
+<tr>
+<td>
+<p><kbd>CompetitionSerializer</kbd></p>
+</td>
+<td>
+<p><kbd>HyperlinkedModelSerializer</kbd></p>
+</td>
+<td>
+<p><kbd>Competition</kbd></p>
+</td>
+</tr>
+<tr>
+<td>
+<p><kbd>PilotSerializer</kbd></p>
+</td>
+<td>
+<p><kbd>HyperlinkedModelSerializer</kbd></p>
+</td>
+<td>
+<p><kbd>Pilot</kbd></p>
+</td>
+</tr>
+<tr>
+<td>
+<p><kbd>PilotCompetitionSerializer</kbd></p>
+</td>
+<td>
+<p><kbd>ModelSerializer</kbd></p>
+</td>
+<td>
+<p><kbd>Competition</kbd></p>
+</td>
+</tr>
+</tbody>
+</table>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Working with class-based views</h1>
+                </header>
+            
+            <article>
+                
+<p>We will write our RESTful Web Service by coding class-based views. We will take advantage of a set of generic views that we can use as our base classes for our class-based views to reduce the required code to the minimum and reuse the behavior that has been generalized in the Django REST framework.</p>
+<p>We will create subclasses of the two following generic class views declared in the <kbd>rest_framework.generics</kbd> module:</p>
+<ul>
+<li><kbd>ListCreateAPIView</kbd>: This class view implements the <kbd>get</kbd> method that retrieves a listing of a queryset and the <kbd>post</kbd> method that creates a model instance</li>
+<li><kbd>RetrieveUpdateDestroyAPIView</kbd>: This class view implements the <kbd>get</kbd>, <kbd>delete</kbd>, <kbd>put</kbd>, and <kbd>patch</kbd> methods to retrieve, delete, completely update, or partially update a model instance</li>
+</ul>
+<p>Those two generic views are composed by combining reusable bits of behavior in the Django REST framework implemented as mixin classes declared in the <kbd>rest_framework.mixins</kbd> module. We can create a class that uses multiple inheritance and combine the features provided by many of these mixin classes.</p>
+<p>The following line shows the declaration of the <kbd>ListCreateAPIView</kbd> class as the composition of <kbd>ListModelMixin</kbd>, <kbd>CreateModelMixin</kbd>, and <kbd>rest_framework.generics.GenericAPIView</kbd>:</p>
+<pre>class ListCreateAPIView(mixins.ListModelMixin, 
+                        mixins.CreateModelMixin, 
+                        GenericAPIView): </pre>
+<p>The following line shows the declaration of the <kbd>RetrieveUpdateDestroyAPIView</kbd> class as the composition of <kbd>RetrieveModelMixin</kbd>, <kbd>UpdateModelMixin</kbd>, <kbd>DestroyModelMixin</kbd>, and <kbd>rest_framework.generics.GenericAPIView</kbd>:</p>
+<pre>class RetrieveUpdateDestroyAPIView(mixins.RetrieveModelMixin, 
+                                   mixins.UpdateModelMixin, 
+                                   mixins.DestroyModelMixin, 
+                                   GenericAPIView): </pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Taking advantage of generic classes and viewsets</h1>
+                </header>
+            
+            <article>
+                
+<p>Now, we will create many Django class-based views that will use the previously explained generic classes combined with the serializer classes to return JSON representations for each HTTP request that our RESTful Web Service will handle.</p>
+<p>We will just have to specify a queryset that retrieves all the objects in the <kbd>queryset</kbd> attribute and the serializer class in the <kbd>serializer_class</kbd> attribute for each subclass that we declare. The behavior coded in the generic classes will do the rest for us. In addition, we will declare a <kbd>name</kbd> attribute with the string name we will use to identify the view.</p>
+<p>Go to the <kbd>restful01/drones</kbd> folder and open the <kbd>views.py</kbd> file. Replace the code in this file with the following code that declares the required imports and the class-based views for our web service. We will add more classes to this file later. The code file for the sample is included in the <kbd>hillar_django_restful_06_01</kbd> folder in the <kbd>restful01/drones/views.py</kbd> file:</p>
+<pre>from django.shortcuts import render 
+from rest_framework import generics 
+from rest_framework.response import Response 
+from rest_framework.reverse import reverse 
+from drones.models import DroneCategory 
+from drones.models import Drone 
+from drones.models import Pilot 
+from drones.models import Competition 
+from drones.serializers import DroneCategorySerializer 
+from drones.serializers import DroneSerializer 
+from drones.serializers import PilotSerializer 
+from drones.serializers import PilotCompetitionSerializer 
+ 
+ 
+class DroneCategoryList(generics.ListCreateAPIView): 
+    queryset = DroneCategory.objects.all() 
+    serializer_class = DroneCategorySerializer 
+    name = 'dronecategory-list' 
+ 
+ 
+class DroneCategoryDetail(generics.RetrieveUpdateDestroyAPIView): 
+    queryset = DroneCategory.objects.all() 
+    serializer_class = DroneCategorySerializer 
+    name = 'dronecategory-detail' 
+ 
+ 
+class DroneList(generics.ListCreateAPIView): 
+    queryset = Drone.objects.all() 
+    serializer_class = DroneSerializer 
+    name = 'drone-list' 
+ 
+ 
+class DroneDetail(generics.RetrieveUpdateDestroyAPIView): 
+    queryset = Drone.objects.all() 
+    serializer_class = DroneSerializer 
+    name = 'drone-detail' 
+ 
+ 
+class PilotList(generics.ListCreateAPIView): 
+    queryset = Pilot.objects.all() 
+    serializer_class = PilotSerializer 
+    name = 'pilot-list' 
+ 
+ 
+class PilotDetail(generics.RetrieveUpdateDestroyAPIView): 
+    queryset = Pilot.objects.all() 
+    serializer_class = PilotSerializer 
+    name = 'pilot-detail' 
+ 
+ 
+class CompetitionList(generics.ListCreateAPIView): 
+    queryset = Competition.objects.all() 
+    serializer_class = PilotCompetitionSerializer 
+    name = 'competition-list' 
+ 
+ 
+class CompetitionDetail(generics.RetrieveUpdateDestroyAPIView): 
+    queryset = Competition.objects.all() 
+    serializer_class = PilotCompetitionSerializer 
+    name = 'competition-detail' </pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Generalizing and mixing behavior</h1>
+                </header>
+            
+            <article>
+                
+<p>The previous classes took advantage of generalized behavior. Each of the superclasses for the classes mixed different generalized behaviors. The following table summarizes the HTTP verbs that each class-based view is going to process and the scope to which it applies. Notice that we can execute the <kbd>OPTIONS</kbd> HTTP verb on any of the scopes:</p>
+<table class="table">
+<tbody>
+<tr>
+<td>
+<p><strong>Scope</strong></p>
+</td>
+<td>
+<p><strong>Class-based view name</strong></p>
+</td>
+<td>
+<p><strong>HTTP verbs that it will process</strong></p>
+</td>
+</tr>
+<tr>
+<td>
+<p>Collection of drone categories: <kbd>/drone-categories/</kbd></p>
+</td>
+<td>
+<p><kbd>DroneCategoryList</kbd></p>
+</td>
+<td>
+<p>GET, POST, and OPTIONS</p>
+</td>
+</tr>
+<tr>
+<td>
+<p>Drone category: /drone-<kbd>category/{id}</kbd></p>
+</td>
+<td>
+<p><kbd>DroneCategoryDetail</kbd></p>
+</td>
+<td>
+<p>GET, PUT, PATCH, DELETE, and OPTIONS</p>
+</td>
+</tr>
+<tr>
+<td>
+<p>Collection of drones: <kbd>/drones/</kbd></p>
+</td>
+<td>
+<p><kbd>DroneList</kbd></p>
+</td>
+<td>
+<p>GET, POST, and OPTIONS</p>
+</td>
+</tr>
+<tr>
+<td>
+<p>Drone: <kbd>/drone/{id</kbd>}</p>
+</td>
+<td>
+<p><kbd>DroneDetail</kbd></p>
+</td>
+<td>
+<p>GET, PUT, PATCH, DELETE, and OPTIONS</p>
+</td>
+</tr>
+<tr>
+<td>
+<p>Collection of Pilots: <kbd>/pilots/</kbd></p>
+</td>
+<td>
+<p><kbd>PilotList</kbd></p>
+</td>
+<td>
+<p>GET, POST and OPTIONS</p>
+</td>
+</tr>
+<tr>
+<td>
+<p>Pilot: <kbd>/Pilot/{id}</kbd></p>
+</td>
+<td>
+<p><kbd>PilotDetail</kbd></p>
+</td>
+<td>
+<p>GET, PUT, PATCH, DELETE and OPTIONS</p>
+</td>
+</tr>
+<tr>
+<td>
+<p>Collection of competitions: <kbd>/competitions/</kbd></p>
+</td>
+<td>
+<p><kbd>CompetitionList</kbd></p>
+</td>
+<td>
+<p>GET, POST and OPTIONS</p>
+</td>
+</tr>
+<tr>
+<td>
+<p>Score: <kbd>/competition/{id}</kbd></p>
+</td>
+<td>
+<p><kbd>CompetitionDetail</kbd></p>
+</td>
+<td>
+<p>GET, PUT, PATCH, DELETE and OPTIONS</p>
+</td>
+</tr>
+</tbody>
+</table>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Working with routing and endpoints</h1>
+                </header>
+            
+            <article>
+                
+<p>We want to create an endpoint for the root of our web service to make it easy to browse the resource collections and resources provided by our web service with the browsable API feature and understand how everything works. Add the following code to the <kbd>views.py</kbd> file in the <kbd>restful01/drones</kbd> folder to declare the <kbd>ApiRoot</kbd> class as a subclass of the <kbd>generics.GenericAPIView</kbd> class. The code file for the sample is included in the <kbd>hillar_django_restful_06_01</kbd> folder in the <kbd>restful01/drones/views.py</kbd> file:</p>
+<pre>class ApiRoot(generics.GenericAPIView): 
+    name = 'api-root' 
+    def get(self, request, *args, **kwargs): 
+        return Response({ 
+            'drone-categories': reverse(DroneCategoryList.name, request=request), 
+            'drones': reverse(DroneList.name, request=request), 
+            'pilots': reverse(PilotList.name, request=request), 
+            'competitions': reverse(CompetitionList.name, request=request) 
+            }) </pre>
+<p>The <kbd>ApiRoot</kbd> class is a subclass of the <kbd>rest_framework.generics.GenericAPIView</kbd> class and declares the <kbd>get</kbd> method. The <kbd>GenericAPIView</kbd> class is the base class for all the other generic views we have previousy analyzed.</p>
+<p>The <kbd>ApiRoot</kbd> class defines the <kbd>get</kbd> method that returns a <kbd>Response</kbd> object with key/value pairs of strings that provide a descriptive name for the view and its URL, generated with the <kbd>rest_framework.reverse.reverse</kbd> function. This URL resolver function returns a fully qualified URL for the view.</p>
+<p>Go to the <kbd>restful01/drones</kbd> folder and create a new file named <kbd>urls.py</kbd>. Write the following code in this new file. The following lines show the code for this file that defines the URL patterns that specifies the regular expressions that have to be matched in the request to run a specific method for a class-based view defined in the <kbd>views.py</kbd> file.</p>
+<p>In the previous example, we specified a function that represented a view. In this case, we call the <kbd>as_view</kbd> method for each appropriate class-based view. The code file for the sample is included in the <kbd>hillar_django_restful_06_01</kbd> folder in the <kbd>restful01/drones/urls.py</kbd> file:</p>
+<pre>from django.conf.urls import url 
+from drones import views 
+ 
+ 
+urlpatterns = [ 
+    url(r'^drone-categories/$',  
+        views.DroneCategoryList.as_view(),  
+        name=views.DroneCategoryList.name), 
+    url(r'^drone-categories/(?P&lt;pk&gt;[0-9]+)$',  
+        views.DroneCategoryDetail.as_view(), 
+        name=views.DroneCategoryDetail.name), 
+    url(r'^drones/$',  
+        views.DroneList.as_view(), 
+        name=views.DroneList.name), 
+    url(r'^drones/(?P&lt;pk&gt;[0-9]+)$',  
+        views.DroneDetail.as_view(), 
+        name=views.DroneDetail.name), 
+    url(r'^pilots/$',  
+        views.PilotList.as_view(), 
+        name=views.PilotList.name), 
+    url(r'^pilots/(?P&lt;pk&gt;[0-9]+)$',  
+        views.PilotDetail.as_view(), 
+        name=views.PilotDetail.name), 
+    url(r'^competitions/$',  
+        views.CompetitionList.as_view(), 
+        name=views.CompetitionList.name), 
+    url(r'^competitions/(?P&lt;pk&gt;[0-9]+)$',  
+        views.CompetitionDetail.as_view(), 
+        name=views.CompetitionDetail.name), 
+    url(r'^$', 
+        views.ApiRoot.as_view(), 
+        name=views.ApiRoot.name), 
+    ]</pre>
+<p>Now, we have to replace the code in the <kbd>urls.py</kbd> file in the <kbd>restful01</kbd> folder, specifically, the <kbd>restful01/urls.py</kbd> file. The file defines the root URL configurations, and therefore, we must include the URL patterns declared in the previously coded <kbd>drones/urls.py</kbd> file. The following lines show the new code for the <kbd>restful01/urls.py</kbd> file. The code file for the sample is included in the <kbd>hillar_django_restful_06_01</kbd> folder, in the <kbd>restful01/urls.py</kbd> file:</p>
+<pre>from django.conf.urls import url, include
+ 
+urlpatterns = [
+    url(r'^', include('drones.urls')),
+]</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Making requests that interact with resources that have relationships</h1>
+                </header>
+            
+            <article>
+                
+<p>Now, we will use the HTTP command or its curl equivalents to compose and send HTTP requests to the recently coded RESTful Web Service that allows us to work with drone categories, drones, pilots, and competitions. We will use JSON for the requests that require additional data. Remember that you can perform the same tasks with your favorite GUI- based tool or with the browsable API.</p>
+<p>Launch Django's development server to compose and send HTTP requests to our new unsecure Web service. We will definitely add security later. In case you don't remember how to start Django's development server, check the instructions in <a href="dj-rst-websvc_ch13.html" target="_blank">Chapter 3</a>, <em>Creating API Views</em>, in the <em>Launching Django's development server</em> section.</p>
+<p>First, we will compose and send an HTTP <kbd>POST</kbd> request to create a new drone category:</p>
+<pre><strong>http POST :8000/drone-categories/ name="Quadcopter"</strong></pre>
+<p>The following is the equivalent curl command:</p>
+<pre><strong>curl -iX POST -H "Content-Type: application/json" -d '{"name":"Quadcopter"}' localhost:8000/drone-categories/</strong>  </pre>
+<p>The previous command will compose and send a <kbd>POST</kbd> HTTP request with the specified JSON key/value pair. The request specifies <kbd>/drone-categories/</kbd>, and therefore, it will match the <kbd>'^drone-categories/$'</kbd> regular expression and run the <kbd>post</kbd> method for the <kbd>views.DroneCategoryList</kbd> class based view. Remember that the method is defined in the <kbd>ListCreateAPIView</kbd> superclass and it ends up calling the <kbd>create</kbd> method defined in <kbd>mixins.CreateModelMixin</kbd>.</p>
+<p>If the new <kbd>DroneCategory</kbd> instance was successfully persisted in the database, the call to the method will return an <kbd>HTTP 201 Created</kbd> status code and the recently persisted <kbd>DroneCategory</kbd> serialized to JSON in the response body. The following line shows a sample response for the HTTP request with the new <kbd>DroneCategory</kbd> object in the JSON response. Notice that the response body includes both the primary key, <kbd>pk</kbd>, and the URL, <kbd>url</kbd>, for the created category. The <kbd>drones</kbd> array is empty because there aren't drones related to the recently created drone category yet. The response doesn't include the header to focus on the body:</p>
+<pre><strong>{</strong>
+    <strong> "drones": [], </strong>
+    <strong> "name": "Quadcopter", </strong>
+    <strong> "pk": 1, </strong>
+    <strong> "url": "http://localhost:8000/drone-categories/1"</strong>
+<strong>}</strong></pre>
+<p>Now, we will compose and send HTTP requests to create two drones that belong to the drone category we recently created: <kbd>Quadcopter</kbd>. We specify the <kbd>drone_category</kbd> value with the name of the desired drone category. The database table that persists the <kbd>Drone</kbd> model (the <kbd>drones_drone</kbd> table) will save the value of the primary key of the related <kbd>DroneCategory</kbd> whose name value matches the one we provide:</p>
+<pre>    <strong>http POST :8000/drones/ name="WonderDrone" drone_category="Quadcopter" manufacturing_date="2017-07-20T02:02:00.716312Z" has_it_competed=false </strong>
+    <strong>http POST :8000/drones/ name="Atom" drone_category="Quadcopter" manufacturing_date="2017-08-18T02:02:00.716312Z" has_it_competed=false</strong>
+  </pre>
+<p>The following are the equivalent curl commands:</p>
+<pre>    <strong>curl -iX POST -H "Content-Type: application/json" -d '{"name":"WonderDrone", "drone_category":"Quadcopter", "manufacturing_date": "2017-07-20T02:02:00.716312Z", "has_it_competed": "false"}' localhost:8000/drones/</strong>
+    <strong>curl -iX POST -H "Content-Type: application/json" -d '{"name":"Atom", "drone_category":"Quadcopter", "manufacturing_date": "2017-08-18T02:02:00.716312Z", "has_it_competed": "false"}' localhost:8000/drones/</strong>
+  </pre>
+<p>The previous commands will compose and send two <kbd>POST</kbd> HTTP requests with the specified JSON key/value pairs. The request specifies <kbd>/toys/</kbd>, and therefore, it will match the <kbd>'^toys/$'</kbd> regular expression and run the <kbd>post</kbd> method for the <kbd>views.DroneList</kbd> class based view.</p>
+<p>The following lines show sample responses for the two HTTP requests with the new <kbd>Drone</kbd> objects in the JSON responses. Notice that the response includes only the URL, <kbd>url</kbd>, for the created drones and doesn't include the primary key. The value for <kbd>drone_category</kbd> is the <kbd>name</kbd> for the related <kbd>DroneCategory</kbd>:</p>
+<pre>    <strong>{</strong>
+    <strong>    "drone_category": "Quadcopter", </strong>
+    <strong>    "has_it_competed": false, </strong>
+    <strong>    "inserted_timestamp": "2017-11-03T01:58:49.135737Z", </strong>
+    <strong>    "manufacturing_date": "2017-07-20T02:02:00.716312Z", </strong>
+    <strong>    "name": "WonderDrone", </strong>
+    <strong>    "url": "http://localhost:8000/drones/1"</strong>
+    <strong>}</strong>
+    <strong>{</strong>
+    <strong>    "drone_category": "Quadcopter", </strong></pre>
+<pre>    <strong>    "has_it_competed": false, </strong>
+    <strong>    "inserted_timestamp": "2017-11-03T01:59:31.108031Z", </strong>
+    <strong>    "manufacturing_date": "2017-08-18T02:02:00.716312Z", </strong>
+    <strong>    "name": "Atom", </strong>
+    <strong>    "url": "http://localhost:8000/drones/2"</strong>
+    <strong>}</strong>  </pre>
+<p>We can run the commands explained in the <em>Analyzing the database</em> section to check the rows that were inserted in the tables that Django created in the PostgreSQL database to persist the models. The <kbd>drone_category_id</kbd> column for the <kbd>drones_drone</kbd> table saves the value of the primary key of the related row in the <kbd>drones_drone_category</kbd> table. The <kbd>DroneSerializer</kbd> class uses the <kbd>SlugRelatedField</kbd> to display the <kbd>name</kbd> value for the related <kbd>DroneCategory</kbd>. The following screenshot uses the psql command-line utility to query the contents for the <kbd>drones_drone_category</kbd> and the <kbd>drones_drone</kbd> table in a PostgreSQL database after running the HTTP requests:</p>
+<div class="CDPAlignCenter CDPAlign"><img src="images/2a5cb57b-0975-4e63-a8a5-e42b7ad348a4.png"/></div>
+<p>Now, we will compose and send an HTTP request to retrieve the drone category that contains the two drones we created. Don't forget to replace <kbd>1</kbd> with the primary key value of the drone category whose name is equal to <kbd>'Quadcopter'</kbd> in your configuration:</p>
+<pre><strong>http :8000/drone-categories/1</strong></pre>
+<p>The following is the equivalent curl command:</p>
+<pre><strong>curl -iX GET localhost:8000/drone-categories/1</strong>  </pre>
+<p>The previous commands will compose and send the following HTTP request: <kbd>GET http://localhost:8000/drone-categories/1</kbd>. The request has a number after <kbd>/drone-categories/</kbd>, and therefore, it will match the <kbd>'^drone-categories/(?P&lt;pk&gt;[0-9]+)$'</kbd> regular expression and run the <kbd>get</kbd> method for the <kbd>views.DroneCategoryDetail</kbd> class-based view.</p>
+<p>Remember that the method is defined in the <kbd>RetrieveUpdateDestroyAPIView</kbd> superclass and it ends up calling the <kbd>retrieve</kbd> method defined in <kbd>mixins.RetrieveModelMixin</kbd>. The following lines show a sample response for the HTTP request, with the <kbd>DroneCategory</kbd> object and the hyperlinks of the related drones in the JSON response:</p>
+<pre>    <strong>HTTP/1.0 200 OK</strong>
+    <strong>Allow: GET, PUT, PATCH, DELETE, HEAD, OPTIONS</strong>
+    <strong>Content-Length: 154</strong>
+    <strong>Content-Type: application/json</strong>
+    <strong>Date: Fri, 03 Nov 2017 02:58:33 GMT</strong>
+    <strong>Server: WSGIServer/0.2 CPython/3.6.2</strong>
+    <strong>Vary: Accept, Cookie</strong>
+    <strong>X-Frame-Options: SAMEORIGIN</strong>
+    
+    <strong>{</strong>
+    <strong>    "drones": [</strong>
+    <strong>        "http://localhost:8000/drones/2", </strong>
+    <strong>        "http://localhost:8000/drones/1"</strong>
+    <strong>    ], </strong>
+    <strong>    "name": "Quadcopter", </strong>
+    <strong>    "pk": 1, </strong>
+    <strong>    "url": "http://localhost:8000/drone-categories/1"</strong>
+    <strong>}</strong>  </pre>
+<p>The <kbd>DroneCategorySerializer</kbd> class defined the <kbd>drones</kbd> attribute as a <kbd>HyperlinkedRelatedField</kbd>, and therefore, the serializer renders the URL for each related <kbd>Drone</kbd> instance in the value for the <kbd>drones</kbd> array. Later, we will display the results in a web browser through the browsable API and we will be able to click or tap on the hyperlink to see the details for each drone.</p>
+<p>Now, we will compose and send an HTTP <kbd>POST</kbd> request to create a drone related to a drone category name that doesn't exist: <kbd>'Octocopter'</kbd>:</p>
+<pre>    <strong>http POST :8000/drones/ name="Noisy Drone" drone_category="Octocopter" manufacturing_date="2017-10-23T02:03:00.716312Z" has_it_competed=false </strong>  </pre>
+<p>The following is the equivalent <kbd>curl</kbd> command:</p>
+<pre>    <strong>curl -iX POST -H "Content-Type: application/json" -d '{"name":"Noisy Drone", "drone_category":"Octocopter", "manufacturing_date": "2017-10-23T02:03:00.716312Z", "has_it_competed": "false"}' localhost:8000/drones/</strong></pre>
+<p>Django won't be able to retrieve a <kbd>DroneCategory</kbd> instance whose <kbd>name</kbd> is equal to the specified value: <kbd>Octocopter</kbd>. Hence, as a result of the previous request, we will receive a <kbd>400 Bad Request</kbd> status code in the response header and a message related to the value specified for the <kbd>drone_category</kbd> key in the JSON body. The following lines show a sample response:</p>
+<pre>    <strong>HTTP/1.0 400 Bad Request</strong>
+    <strong>Allow: GET, POST, HEAD, OPTIONS</strong>
+    <strong>Content-Length: 66</strong>
+    <strong>Content-Type: application/json</strong>
+    <strong>Date: Fri, 03 Nov 2017 03:15:07 GMT</strong>
+    <strong>Server: WSGIServer/0.2 CPython/3.6.2</strong>
+    <strong>Vary: Accept, Cookie</strong>
+    <strong>X-Frame-Options: SAMEORIGIN</strong>
+    
+    <strong>{</strong>
+    <strong>    "drone_category": [</strong>
+    <strong>        "Object with name=Octocopter does not exist."</strong>
+    <strong>    ]</strong>
+    <strong>}</strong></pre>
+<p>Now, we will compose and send HTTP requests to create two pilots:</p>
+<pre><strong>http POST :8000/pilots/ name="Penelope Pitstop" gender="F" races_count=0</strong>
+<strong>http POST :8000/pilots/ name="Peter Perfect" gender="M" races_count=0</strong> </pre>
+<p>The following are the equivalent curl commands:</p>
+<pre><strong>curl -iX POST -H "Content-Type: application/json" -d '{"name":"Penelope Pitstop", "gender":"F", "races_count": 0}' localhost:8000/pilots/</strong>
+    <strong>curl -iX POST -H "Content-Type: application/json" -d '{"name":"Peter Perfect", "gender":"M", "races_count": 0}' localhost:8000/pilots/</strong>  </pre>
+<p>The previous commands will compose and send two HTTP <kbd>POST</kbd> requests with the specified JSON key/value pairs. The request specifies <kbd>/pilots/</kbd>, and therefore, it will match the <kbd>'^Pilots/$'</kbd> regular expression and run the <kbd>post</kbd> method for the <kbd>views.PilotList</kbd> class-based view.</p>
+<p>The following lines show sample responses for the two HTTP requests with the new <kbd>Pilot</kbd> objects in the JSON responses. Notice that the response includes only the url, <kbd>url</kbd>, for the created pilots and doesn't include the primary key. The value for <kbd>gender_description</kbd> is the choice description for the <kbd>gender</kbd> char. The <kbd>competitions</kbd> array is empty because there aren't competitions related to each new <kbd>Pilot</kbd> yet. The responses don't include the headers:</p>
+<pre>    <strong>{</strong>
+    <strong>    "url": "http://localhost:8000/pilots/1",</strong>
+    <strong>    "name": "Penelope Pitstop",</strong>
+    <strong>    "gender": "F",</strong>
+    <strong>    "gender_description": "Female",</strong>
+    <strong>    "races_count": 0,</strong>
+    <strong>    "inserted_timestamp":"2017-11-03T03:22:36.399433Z", </strong>
+    <strong>    "competitions":[]</strong>
+    <strong>}</strong>
+    <strong>{</strong>
+    <strong>    "url": "http://localhost:8000/pilots/2",</strong>
+    <strong>    "name": "Peter Perfect",</strong>
+    <strong>    "gender": "M",</strong>
+    <strong>    "gender_description": "Male",</strong>
+    <strong>    "races_count": 0,</strong>
+    <strong>    "inserted_timestamp": "2017-11-03T03:23:02.276186Z",</strong>
+    <strong>    "competitions": []</strong>
+    <strong>}</strong></pre>
+<p>Now, we will compose and send many HTTP <kbd>POST</kbd> requests to create three competitions:</p>
+<pre>    <strong>http POST :8000/competitions/ distance_in_feet=800 distance_achievement_date="2017-10-20T05:03:20.776594Z" pilot="Penelope Pitstop" drone="Atom"</strong>
+    <strong>http POST :8000/competitions/ distance_in_feet=2800 distance_achievement_date="2017-10-21T06:02:23.776594Z" pilot="Penelope Pitstop" drone="WonderDrone"</strong>
+    <strong>http POST :8000/competitions/ distance_in_feet=790 distance_achievement_date="2017-10-20T05:43:20.776594Z" pilot="Peter Perfect" drone="Atom"</strong>  </pre>
+<p>The following are the equivalent curl commands:</p>
+<pre>    <strong>curl -iX POST -H "Content-Type: application/json" -d '{"distance_in_feet":"800", "distance_achievement_date":"2017-10-20T05:03:20.776594Z", "pilot":"Penelope Pitstop", "drone":"Atom"}' localhost:8000/competitions/</strong>
+    <strong>curl -iX POST -H "Content-Type: application/json" -d '{"distance_in_feet":"2800", "distance_achievement_date":"2017-10-21T06:02:23.776594Z", "pilot":"Penelope Pitstop", "drone":"WonderDrone"}' localhost:8000/competitions/</strong>
+    <strong>curl -iX POST -H "Content-Type: application/json" -d '{"distance_in_feet":"790", "distance_achievement_date":"2017-10-20T05:43:20.776594Z", "pilot":"Peter Perfect", "drone":"Atom"}' localhost:8000/competitions/</strong>  </pre>
+<p>The previous commands will compose and send three HTTP <kbd>POST</kbd> requests with the specified JSON key/value pairs. The request specifies <kbd>/competitions/</kbd>, and therefore, it will match the <kbd>'^competitions/$'</kbd> regular expression and run the <kbd>post</kbd> method for the <kbd>views.CompetitionList</kbd> class based view.</p>
+<p>The following lines show sample responses for the three HTTP requests with the new <kbd>Competition</kbd> objects in the JSON responses. Django REST framework uses the <kbd>PilotCompetitionSerializer</kbd> class to generate the JSON response. Hence, the value for <kbd>drone</kbd> is the name for the related <kbd>Drone</kbd> instance and the value for <kbd>Pilot</kbd> is the name for the related <kbd>Pilot</kbd> instance. The <kbd>PilotCompetitionSerializer</kbd> class used <kbd>SlugRelatedField</kbd> for both fields, and therefore, we can specify the names as the values for both the <kbd>drone</kbd> and <kbd>pilot</kbd> keys. The responses don't include the headers:</p>
+<pre>    <strong>{</strong>
+    <strong>    "distance_achievement_date": "2017-10-20T05:03:20.776594Z", </strong>
+    <strong>    "distance_in_feet": 800, </strong>
+    <strong>    "drone": "Atom", </strong>
+    <strong>    "pilot": "Penelope Pitstop", </strong>
+    <strong>    "pk": 1, </strong>
+    <strong>    "url": "http://localhost:8000/competitions/1"</strong>
+    <strong>}</strong>
+    <strong>{</strong>
+    <strong>    "distance_achievement_date": "2017-10-21T06:02:23.776594Z", </strong>
+    <strong>    "distance_in_feet": 2800, </strong>
+    <strong>    "drone": "WonderDrone", </strong>
+    <strong>    "pilot": "Penelope Pitstop", </strong>
+    <strong>    "pk": 2, </strong>
+    <strong>    "url": "http://localhost:8000/competitions/2"</strong>
+    <strong>}</strong>
+    <strong>{</strong>
+    <strong>    "distance_achievement_date": "2017-10-20T05:43:20.776594Z", </strong>
+    <strong>    "distance_in_feet": 790, </strong>
+    <strong>    "drone": "Atom", </strong>
+    <strong>    "pilot": "Peter Perfect", </strong>
+    <strong>    "pk": 3, </strong>
+    <strong>    "url": "http://localhost:8000/competitions/3"</strong>
+    <strong>}</strong></pre>
+<p>We can run the commands explained in the <em>Analyzing the database</em> section to check the rows that were inserted in the tables that Django created in the PostgreSQL database to persist the models. The <kbd>drone_id</kbd> column for the <kbd>drones_competition</kbd> table saves the value of the primary key of the related row in the <kbd>drones_drone</kbd> table. In addition, the <kbd>pilot_id</kbd> column for the <kbd>drones_competition</kbd> table saves the value of the primary key of the related row in the <kbd>drones_pilot</kbd> table. The following screenshot uses the <kbd>psql</kbd> command-line utility to query the contents for the <kbd>drones_drone_category</kbd>, <kbd>drones_drone</kbd>, <kbd>drones_pilot</kbd>, and <kbd>drones_competition</kbd> tables in a PostgreSQL database after running the HTTP requests:</p>
+<div class="CDPAlignCenter CDPAlign"><img height="310" width="597" src="images/6506be8a-b1f8-4cad-9293-0cf7393115da.png"/></div>
+<p>Now, we will compose and send an HTTP <kbd>GET</kbd> request to retrieve a specific pilot that participated in two competitions, that is, the pilot resource whose id or primary key is equal to <kbd>1</kbd>. Don't forget to replace <kbd>1</kbd> with the primary key value of the Pilot whose name is equal to <kbd>'Penelope Pitstop'</kbd> in your configuration:</p>
+<pre>    <strong>http :8000/pilots/1</strong></pre>
+<p>The following is the equivalent curl command:</p>
+<pre>    <strong>curl -iX GET localhost:8000/Pilots/1</strong></pre>
+<p>The previous commands will compose and send the following HTTP request: <kbd>GET http://localhost:8000/Pilots/1</kbd>. The request has a number after <kbd>/pilots/</kbd>, and therefore, it will match the <kbd>'^Pilots/(?P&lt;pk&gt;[0-9]+)$'</kbd> regular expression and run the <kbd>get</kbd> method for the <kbd>views.PilotDetail</kbd> class-based view.</p>
+<p>Remember that the <kbd>get</kbd> method is defined in the <kbd>RetrieveUpdateDestroyAPIView</kbd> superclass and it ends up calling the <kbd>retrieve</kbd> method defined in <kbd>mixins.RetrieveModelMixin</kbd>. The following lines show a sample response for the HTTP request, with the <kbd>Pilot</kbd> object, the related <kbd>Competition</kbd> objects and the <kbd>Drone</kbd> object related to each <kbd>Competition</kbd> object in the JSON response:</p>
+<pre>    <strong>HTTP/1.0 200 OK</strong>
+    <strong>Allow: GET, PUT, PATCH, DELETE, HEAD, OPTIONS</strong>
+    <strong>Content-Length: 909</strong>
+    <strong>Content-Type: application/json</strong>
+    <strong>Date: Fri, 03 Nov 2017 04:40:43 GMT</strong>
+    <strong>Server: WSGIServer/0.2 CPython/3.6.2</strong>
+    <strong>Vary: Accept, Cookie</strong>
+    <strong>X-Frame-Options: SAMEORIGIN</strong>
+    
+    <strong>{</strong>
+    <strong>    "competitions": [</strong>
+    <strong>        {</strong>
+    <strong>            "distance_achievement_date": "2017-10-<br/>                 21T06:02:23.776594Z", </strong>
+    <strong>            "distance_in_feet": 2800, </strong>
+    <strong>            "drone": {</strong>
+    <strong>                "drone_category": "Quadcopter", </strong>
+    <strong>                "has_it_competed": false, </strong>
+    <strong>                "inserted_timestamp": "2017-11-<br/>                     03T01:58:49.135737Z", </strong>
+    <strong>                "manufacturing_date": "2017-07-<br/>                     20T02:02:00.716312Z", </strong>
+    <strong>                "name": "WonderDrone", </strong>
+    <strong>                "url": "http://localhost:8000/drones/1"</strong>
+    <strong>            }, </strong>
+    <strong>            "pk": 2, </strong>
+    <strong>            "url": "http://localhost:8000/competitions/2"</strong>
+    <strong>        }, </strong>
+    <strong>        {</strong>
+    <strong>            "distance_achievement_date": "2017-10-<br/>                  20T05:03:20.776594Z", </strong>
+    <strong>            "distance_in_feet": 800, </strong>
+    <strong>            "drone": {</strong>
+    <strong>                "drone_category": "Quadcopter", </strong>
+    <strong>                "has_it_competed": false, </strong>
+    <strong>                "inserted_timestamp": "2017-11-<br/>                      03T01:59:31.108031Z", </strong>
+    <strong>                "manufacturing_date": "2017-08-<br/>                     18T02:02:00.716312Z", </strong>
+    <strong>                "name": "Atom", </strong>
+    <strong>                "url": "http://localhost:8000/drones/2"</strong>
+    <strong>            }, </strong>
+    <strong>            "pk": 1, </strong>
+    <strong>            "url": "http://localhost:8000/competitions/1"</strong>
+    <strong>        }</strong>
+    <strong>    ], </strong>
+    <strong>    "gender": "F", </strong>
+    <strong>    "gender_description": "Female", </strong>
+    <strong>    "inserted_timestamp": "2017-11-03T03:22:36.399433Z", </strong>
+    <strong>    "name": "Penelope Pitstop", </strong>
+    <strong>    "races_count": 0, </strong>
+    <strong>    "url": "http://localhost:8000/pilots/1"</strong>
+    <strong>}</strong></pre>
+<p>The <kbd>PilotSerializer</kbd> class defined the <kbd>competitions</kbd> attribute as a <kbd>CompetitionSerializer</kbd> instance with the <kbd>many</kbd> argument equal to <kbd>True</kbd>. Hence, this serializer renders each <kbd>Competition</kbd> related to the <kbd>Pilot</kbd>. The <kbd>CompetitionSerializer</kbd> class defined the <kbd>drone</kbd> attribute as a <kbd>DroneSerializer</kbd>, and therefore, this serializer renders each drone related to the competition.</p>
+<p>Later, we will render the results in a web browser through the browsable API and we will be able to click or tap on the hyperlink of each of the related resources. However, in this case, we also see all their details without having to follow the hyperlink in the JSON response body.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Test your knowledge</h1>
+                </header>
+            
+            <article>
+                
+<p>Let's see whether you can answer the following questions correctly.</p>
+<ol>
+<li>The <kbd>related_name</kbd> argument for the <kbd>django.db.models.ForeignKey</kbd> class initializer specifies:
+<ol>
+<li>The name to use for the relation from the related object back to this object</li>
+<li>The related model class name</li>
+<li>The related model primary key attribute name</li>
+</ol>
+</li>
+</ol>
+<ol start="2">
+<li>If we use the following line to declare the <kbd>pilot</kbd> field in the <kbd>Competition</kbd> model: <kbd>pilot = models.ForeignKey(Pilot, related_name='competitions', on_delete=models.CASCADE)</kbd>. What will Django's ORM do whenever we delete a specific Pilot?
+<ol>
+<li>All the related competitions in which this <kbd>Pilot</kbd> participated will remain without changes in the database</li>
+<li>All the related competitions in which this <kbd>Pilot</kbd> participated will be deleted too</li>
+<li>All the related pilots that are related to the Competition will be deleted too</li>
+</ol>
+</li>
+</ol>
+<ol start="3">
+<li>The <kbd>rest_framework.serializers.HyperlinkedModelSerializer</kbd> class is a type of <kbd>ModelSerializer</kbd> that represents the relationships to other model instances with:
+<ol>
+<li>Primary key values</li>
+<li>Foreign key values</li>
+<li>Hyperlinks</li>
+</ol>
+</li>
+<li>Which of the following attributes defined in the Meta inner class for a class that inherits from <kbd>ModelSerializer</kbd> specifies the model related to the serializer that is being declared:
+<ol>
+<li>related-model</li>
+<li>model</li>
+<li>main-model</li>
+</ol>
+</li>
+<li>Which of the following attributes defined in the Meta inner class for a class that inherits from ModelSerializer specifies the tuple of string whose values indicate the field names that we want to include in the serialization from the model related to the serializer:<br/>
+<ol>
+<li>included-fields</li>
+<li>fields</li>
+<li>serialized-fields</li>
+</ol>
+</li>
+</ol>
+<p>The rights answers are included in the <a href="https://cdp.packtpub.com/django_restful_web_services__/wp-admin/post.php?post=44&amp;action=edit#post_454" target="_blank">Appendix</a><span>,&#160;</span><em>Solutions</em><span>.</span></p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Summary</h1>
+                </header>
+            
+            <article>
+                
+<p>In this chapter, we defined the requirements for a complex RESTful Web Service in which we needed to work with drone categories, drones, pilots, and competitions. We created a new app with Django and configured the new web service.</p>
+<p>We defined many-to-one relationships between the models with <kbd>models.ForeignKey</kbd>. We configured Django to work with a PostgreSQL database. We executed migrations that generated tables with relationships between them. We analyzed the generated database and we configured serialization and deserialization for the models. We declared two serializers for a single model to understand the flexibility we have with Django and the Django REST framework.</p>
+<p>We defined hyperlinks with the help of the <kbd>HyperlinkedModelSerializer</kbd> class and we worked with class-based views. In this case, we took advantage of generic classes and generic views that generalize and mix predefined behaviors. We worked with routings and endpoints and we prepared our RESTful Web Service to work with the browsable API. We made many different HTTP requests to create and retrieve resources that have relationships between them. We did everything without writing a huge amount of code.</p>
+<p>Now that we understand how to work with class-based views, and to take advantage of generalized behaviors and materialize complex relationships, we will add constraints, filtering, searching, ordering, and pagination features to our RESTful Web Service. We will cover these topics in the next chapter.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+</body>
+</html>

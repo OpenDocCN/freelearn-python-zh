@@ -1,0 +1,558 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xmlns:m="http://www.w3.org/1998/Math/MathML" xmlns:pls="http://www.w3.org/2005/01/pronunciation-lexicon" xmlns:ssml="http://www.w3.org/2001/10/synthesis">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Caching Downloads</title>
+  <link type="text/css" rel="stylesheet" media="all" href="style.css"/>
+  <link type="text/css" rel="stylesheet" media="all" href="core.css"/>
+</head>
+<body>
+  <div id="sbo-rt-content"><section>
+
+            <header>
+                <h1 class="header-title">Caching Downloads</h1>
+            </header>
+
+            <article>
+                
+<p>In the previous chapter, we learned how to scrape data from crawled web pages and save the results to a CSV file. What if we now want to scrape an additional field, such as the flag URL? To scrape additional fields, we would need to download the entire website again. This is not a significant obstacle for our small example website; however, other websites can have millions of web pages, which could take weeks to recrawl. One way scrapers avoid these problems is by caching crawled web pages from the beginning, so they only need to be downloaded once.<br/>
+In this chapter, we will cover a few ways to do this using our web crawler.</p>
+<p>In this chapter, we will cover the following topics:</p>
+<ul>
+<li>When to use caching</li>
+<li>Adding cache support to the link crawler</li>
+<li>Testing the cache</li>
+<li>Using requests - cache</li>
+<li>Redis&#160;cache implementation</li>
+</ul>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+            <header>
+                <h1 class="header-title">When to use caching?</h1>
+            </header>
+
+            <article>
+                
+<p>To cache, or not to cache? This is a question many programmers, data scientists, and web scrapers need to answer. In this chapter, we will show you how to use caching for your web crawlers; but should you use caching?</p>
+<p>If you need to perform a large crawl, which may be interrupted due to an error or exception, caching can help by not forcing you to recrawl all the pages you might have already covered. Caching can also help you by allowing you to access those pages while offline (for your own data analysis or development purposes).</p>
+<p>However, if having the most up-to-date and current information from the site is your highest priority, then caching might not make sense. In addition, if you don't plan large or repeated crawls, you might just want to scrape the page each time.</p>
+<p>You may want to outline how often the pages you are scraping change or how often you should scrape new pages and clear the cache before implementing it; but first, let's learn how to use caching!</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+            <header>
+                <h1 class="header-title">Adding cache support to the link crawler</h1>
+            </header>
+
+            <article>
+                
+<p>To support caching, the <kbd>download</kbd> function developed in <a href="py-web-scrp-2e_ch01.html"><span class="ChapterrefPACKT">Chapter 1</span></a>, <em>Introduction to Web Scraping</em>, needs to be modified to check the cache before downloading a URL. We also need to move throttling inside this function and only throttle when a download is made, and not when loading from a cache. To avoid the need to pass various parameters for every download, we will take this opportunity to refactor the <kbd>download</kbd> function into a class so parameters can be set in the constructor and reused numerous&#160;times. Here is the updated implementation to support this:</p>
+<pre>from chp1.throttle import Throttle<br/>from random import choice<br/>import requests<br/><br/><br/>class Downloader:<br/>    def __init__(self, delay=5, user_agent='wswp', proxies=None, cache={}):<br/>        self.throttle = Throttle(delay)<br/>        self.user_agent = user_agent<br/>        self.proxies = proxies<br/>        self.num_retries = None  # we will set this per request<br/>        self.cache = cache<br/><br/>    def __call__(self, url, num_retries=2):<br/>        self.num_retries = num_retries<br/>        try:<br/>             result = self.cache[url]<br/>             print('Loaded from cache:', url)<br/>        except KeyError:<br/>             result = None<br/>        if result and self.num_retries and 500 &lt;= result['code'] &lt; 600:<br/>            # server error so ignore result from cache<br/>            # and re-download<br/>            result = None<br/>        if result is None:<br/>             # result was not loaded from cache<br/>             # so still need to download<br/>             self.throttle.wait(url)<br/>             proxies = choice(self.proxies) if self.proxies else None<br/>             headers = {'User-Agent': self.user_agent}<br/>             result = self.download(url, headers, proxies)<br/>             if self.cache:<br/>                 # save result to cache<br/>                 self.cache[url] = result<br/>        return result['html']<br/><br/><br/>    def download(self, url, headers, proxies, num_retries): <br/>        ... <br/>        return {'html': html, 'code': resp.status_code } 
+</pre>
+<div class="packt_infobox">The full source code for the Download class is available at <a href="https://github.com/kjam/wswp/blob/master/code/chp3/downloader.py">https://github.com/kjam/wswp/blob/master/code/chp3/downloader.py</a>.</div>
+<p>The interesting part of the <kbd>Download</kbd> class used in the preceding code is in the <kbd>__call__</kbd> special method, where the cache is checked before downloading. This method first checks whether this URL was previously put&#160;in the cache. By default, the cache is a Python dictionary. If the URL is cached, it checks whether a server error was encountered in the previous download. Finally, if no server error was encountered, the cached result can be used. If any of these checks fails, the URL needs to be downloaded as usual, and the result will be added to the cache.</p>
+<p>The <kbd>download</kbd> method of this class is almost the same&#160;as the previous <kbd>download</kbd> function, except now it returns the HTTP status code so the error codes can be stored in the cache. In addition, instead of calling itself and testing <kbd>num_retries</kbd>, it must first decrease the <kbd>self.num_retries</kbd> and then recursively&#160;use&#160;<kbd>self.download</kbd> if there are still retries left. If you just want a simple download without throttling or caching, this method can be used instead of <kbd>__call__</kbd>.</p>
+<p>The <kbd>cache</kbd> class is used here by calling <kbd>result = cache[url]</kbd>&#160;to load from <kbd>cache</kbd> and <kbd>cache[url] = result</kbd> to save to <kbd>cache</kbd>, which is a convenient interface from Python's built-in dictionary data type. To support this interface, our <kbd>cache</kbd> class will need to define the <kbd>__getitem__()</kbd> and <kbd>__setitem__()</kbd> special class methods.</p>
+<p>The link crawler also needs to be slightly updated to support caching by adding the <kbd>cache</kbd> parameter, removing the throttle, and replacing the <kbd>download</kbd> function with the new class, as shown in the following code:</p>
+<pre>def link_crawler(..., num_retries=2, cache={}): <br/>    crawl_queue = [seed_url] <br/>    seen = {seed_url: 0}  <br/>    rp = get_robots(seed_url) <br/>    D = Downloader(delay=delay, user_agent=user_agent, proxies=proxies, cache=cache) <br/><br/>    while crawl_queue: <br/>        url = crawl_queue.pop() <br/>        # check url passes robots.txt restrictions <br/>        if rp.can_fetch(user_agent, url): <br/>            depth = seen.get(url, 0)<br/>            if depth == max_depth: <br/>                continue<br/>            html = D(url, num_retries=num_retries)<br/>            if not html:<br/>                continue<br/>            ...
+</pre>
+<p>You'll notice that <kbd>num_retries</kbd> is now linked to our call. This allows us to utilize the number of request retries on a per-URL basis. If we simply use the same number of retries without ever resetting the <kbd>self.num_retries</kbd> value, we will run out of retries&#160;if we reach a&#160;<kbd>500</kbd> error from one page.</p>
+<p>You can check the full code again at the book repository (<a href="https://github.com/kjam/wswp/blob/master/code/chp3/advanced_link_crawler.py">https://github.com/kjam/wswp/blob/master/code/chp3/advanced_link_crawler.py</a>). Now, our web scraping infrastructure is prepared, and we can start building the actual cache.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+            <header>
+                <h1 class="header-title">Disk Cache</h1>
+            </header>
+
+            <article>
+                
+<p>To cache downloads, we will first try the obvious solution and save web pages to the filesystem. To do this, we will need a way to map URLs to a safe cross-platform filename. The following table lists limitations for some popular filesystems:</p>
+<table style="width: 871px;height: 262px" class="table">
+<tbody>
+<tr>
+<td><strong>Operating system</strong></td>
+<td><strong>Filesystem</strong></td>
+<td><strong>Invalid filename characters</strong></td>
+<td><strong>Maximum filename length</strong></td>
+</tr>
+<tr>
+<td>Linux</td>
+<td>Ext3/Ext4</td>
+<td>/ and \0</td>
+<td>255 bytes</td>
+</tr>
+<tr>
+<td>OS X</td>
+<td>HFS Plus</td>
+<td>: and \0</td>
+<td>255 UTF-16 code units</td>
+</tr>
+<tr>
+<td>Windows</td>
+<td>NTFS</td>
+<td>\, /, ?, :, *, ", &gt;, &lt;, and |</td>
+<td>255 characters</td>
+</tr>
+</tbody>
+</table>
+<p>To keep our file path safe across these filesystems, it needs to be restricted to numbers, letters, and basic punctuation, and it should replace all other characters with an underscore, as shown in the following code:</p>
+<pre><strong>&gt;&gt;&gt; import re </strong><br/><strong>&gt;&gt;&gt; url = 'http://example.webscraping.com/default/view/Australia-1' </strong><br/><strong>&gt;&gt;&gt; re.sub('[^/0-9a-zA-Z\-.,;_ ]', '_', url) </strong><br/><strong>'http_//example.webscraping.com/default/view/Australia-1'</strong> 
+</pre>
+<p>Additionally, the filename and the parent directories need to be restricted to 255 characters (as shown in the following code) to meet the length limitations described in the preceding table:</p>
+<pre><strong>&gt;&gt;&gt; filename = re.sub('[^/0-9a-zA-Z\-.,;_ ]', '_', url)</strong><br/><strong>&gt;&gt;&gt; filename = '/'.join(segment[:255] for segment in filename.split('/'))</strong><br/><strong>&gt;&gt;&gt; print(filename)</strong><br/><strong>'http_//example.webscraping.com/default/view/Australia-1'</strong> 
+</pre>
+<p>Here, no sections of our URL are longer than 255; so our file path hasn't changed. There is also an edge case, which&#160;should be considered, where the URL path ends with a slash (<kbd>/</kbd>), and the empty string after this slash would be an invalid filename. However, removing this slash to use the parent for the filename would prevent saving other URLs. Consider the following URLs:</p>
+<ul>
+<li><span class="URLPACKT">http://example.webscraping.com/index/</span></li>
+<li><span class="URLPACKT">http://example.webscraping.com/index/1</span></li>
+</ul>
+<p>If you need to save these, the index needs to be a directory to save the child page with filename 1. The solution our disk cache will use is appending <kbd>index.html</kbd> to the filename when the URL path ends with a slash. The same applies when the URL path is empty. To parse the URL, we will use the <kbd>urlsplit</kbd>&#160;function, which splits a URL into its components:</p>
+<pre><strong>&gt;&gt;&gt; from urllib.parse import urlsplit </strong><br/><strong>&gt;&gt;&gt; components = urlsplit('http://example.webscraping.com/index/') </strong><br/><strong>&gt;&gt;&gt; print(components) </strong><br/><strong>SplitResult(scheme='http', netloc='example.webscraping.com', path='/index/', query='', fragment='') </strong><br/><strong>&gt;&gt;&gt; print(components.path) </strong><br/><strong>'/index/'</strong> 
+</pre>
+<p>This function provides a convenient interface to parse and manipulate URLs. Here is an example using this module to append <kbd>index.html</kbd> for this edge case:</p>
+<pre><strong>&gt;&gt;&gt; path = components.path </strong><br/><strong>&gt;&gt;&gt; if not path: </strong><br/><strong>&gt;&gt;&gt;     path = '/index.html' </strong><br/><strong>&gt;&gt;&gt; elif path.endswith('/'): </strong><br/><strong>&gt;&gt;&gt;     path += 'index.html' </strong><br/><strong>&gt;&gt;&gt; filename = components.netloc + path + components.query </strong><br/><strong>&gt;&gt;&gt; filename </strong><br/><strong>'example.webscraping.com/index/index.html'</strong> 
+</pre>
+<p>Depending on the site you are scraping, you may want to modify this edge case handling. For example, some sites will append&#160;<kbd>/</kbd> on every URL due to the way the web server expects the URL to be sent. For these sites, you might be safe simply stripping the trailing forward slash for every URL. Again, evaluate and update the code for your web crawler to best fit the site(s) you intend to scrape.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+            <header>
+                <h1 class="header-title">Implementing DiskCache</h1>
+            </header>
+
+            <article>
+                
+<p>In the previous section, we covered the limitations of file systems that need to be considered when building a disk-based cache, namely the restriction on which characters can be used, the filename length, and ensuring&#160;a file and directory are not created in the same location. Combining this code with&#160;logic to map a URL to a filename will form the main part of the disk cache. Here is an initial implementation of the <kbd>DiskCache</kbd> class:</p>
+<pre>import os <br/>import re <br/>from urllib.parse import urlsplit <br/><br/>class DiskCache: <br/>    def __init__(self, cache_dir='cache', max_len=255): <br/>        self.cache_dir = cache_dir <br/>        self.max_len = max_len <br/><br/>    def url_to_path(self, url): <br/>        """ Return file system path string for given URL""" <br/>        components = urlsplit(url) <br/>        # append index.html to empty paths <br/>        path = components.path <br/>        if not path: <br/>            path = '/index.html' <br/>        elif path.endswith('/'): <br/>            path += 'index.html' <br/>        filename = components.netloc + path + components.query <br/>        # replace invalid characters <br/>        filename = re.sub('[^/0-9a-zA-Z\-.,;_ ]', '_', filename) <br/>        # restrict maximum number of characters <br/>        filename = '/'.join(seg[:self.max_len] for seg in filename.split('/')) <br/>        return os.path.join(self.cache_dir, filename) 
+</pre>
+<p>The class constructor shown in the preceding code takes a parameter to set the location of the cache, and then the <kbd>url_to_path</kbd> method applies the filename restrictions that have been discussed so far. Now we just need methods to load and save the data with this filename.</p>
+<p>Here is an implementation of these missing methods:</p>
+<pre>import json <br/>class DiskCache: <br/>    ... <br/>    def __getitem__(self, url): <br/>        """Load data from disk for given URL""" <br/>        path = self.url_to_path(url) <br/>        if os.path.exists(path): <br/>            return json.load(path)<br/>        else: <br/>            # URL has not yet been cached <br/>            raise KeyError(url + ' does not exist') <br/><br/>    def __setitem__(self, url, result): <br/>        """Save data to disk for given url""" <br/>        path = self.url_to_path(url) <br/>        folder = os.path.dirname(path) <br/>        if not os.path.exists(folder): <br/>            os.makedirs(folder) <br/>        json.dump(result, path) 
+</pre>
+<p>In <kbd>__setitem__()</kbd>, the URL is mapped to a safe filename using <kbd>url_to_path()</kbd>, and then the parent directory is created, if necessary. The <kbd>json</kbd>&#160;module is used to serialize&#160;the Python and then save it to disk. Also, in <kbd>__getitem__()</kbd>, the URL is mapped to a safe filename. If the filename exists, the content is loaded using <kbd>json</kbd>&#160;to restore the original data type. If the filename does not exist (that is, there is no data in the cache for this URL), a <kbd>KeyError</kbd> exception is raised.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+            <header>
+                <h1 class="header-title">Testing the cache</h1>
+            </header>
+
+            <article>
+                
+<p>Now we are ready to try <kbd>DiskCache</kbd> with our crawler by passing it to the <kbd>cache</kbd>&#160;keyword argument. The source code for this class is available at <span class="URLPACKT"><a href="https://github.com/kjam/wswp/blob/master/code/chp3/diskcache.py">https://github.com/kjam/wswp/blob/master/code/chp3/diskcache.py</a>,</span>&#160;and the cache can be tested in any Python interpreter.</p>
+<div class="packt_infobox"><span>IPython comes with a great set of tools for writing and interpreting Python, especially Python debugging, using</span> <a href="https://ipython.org/ipython-doc/3/interactive/magics.html">IPython magic commands</a><span>. You can install IPython using pip or conda (<kbd>pip install ipython</kbd>).</span></div>
+<p>Here, we use <a href="https://ipython.org/">IPython</a> to help time our request to test its performance:</p>
+<pre><strong>In [1]: from chp3.diskcache import DiskCache</strong><br/><br/><strong>In [2]: from chp3.advanced_link_crawler import link_crawler</strong><br/><br/><strong>In [3]: %time link_crawler('http://example.webscraping.com/', '/(index|view)', cache=DiskCache())</strong><br/><strong>Downloading: http://example.webscraping.com/</strong><br/><strong>Downloading: http://example.webscraping.com/index/1</strong><br/><strong>Downloading: http://example.webscraping.com/index/2</strong><br/><strong>...</strong><br/><strong>Downloading: http://example.webscraping.com/view/Afghanistan-1</strong><br/><strong>CPU times: user 300 ms, sys: 16 ms, total: 316 ms</strong><br/><strong>Wall time: 1min 44s</strong>
+</pre>
+<p>The first time this command is run, the cache is empty, so all the web pages are downloaded normally. However, when we run this script a second time, the pages will be loaded from the cache, so the crawl should be completed more quickly, as shown here:</p>
+<pre><strong>In [4]: %time link_crawler('http://example.webscraping.com/', '/(index|view)', cache=DiskCache())</strong><br/><strong>Loaded from cache: http://example.webscraping.com/</strong><br/><strong>Loaded from cache: http://example.webscraping.com/index/1</strong><br/><strong>Loaded from cache: http://example.webscraping.com/index/2</strong><br/><strong>...</strong><br/><strong>Loaded from cache: http://example.webscraping.com/view/Afghanistan-1</strong><br/><strong>CPU times: user 20 ms, sys: 0 ns, total: 20 ms</strong><br/><strong>Wall time: 1.1 s</strong>
+</pre>
+<p>As expected, this time the crawl completed much faster. While downloading with an empty cache on my computer, the crawler took over a minute; the second time, with a full cache, it took just 1.1 seconds (about 95 times faster!).</p>
+<p>The exact time on your computer will differ depending on the speed of your hardware and Internet connection. However, the disk cache will undoubtedly be faster than downloading via HTTP.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+            <header>
+                <h1 class="header-title">Saving disk space</h1>
+            </header>
+
+            <article>
+                
+<p>To minimize the amount of disk space required for our cache, we can compress the downloaded HTML file. This is straightforward to implement by compressing the pickled string with <kbd>zlib</kbd> before saving to disk. Using our current implementation has the benefit of having human readable files. I can look at any of the cache pages and see the dictionary in JSON form. I could also reuse these files, if needed, and move them to different operating systems for use with non-Python code. Adding compression will make these files no longer readable just by opening them and might introduce some encoding&#160;issues if we are using the downloaded pages with other coding languages. To allow compression to be turned on and off, we can add it to our constructor along with the file encoding, which we will default to UTF-8:</p>
+<pre>class DiskCache:<br/>    def __init__(self, cache_dir='../data/cache', max_len=255, compress=True, <br/>                 encoding='utf-8'):<br/>        ...<br/>        self.compress = compress<br/>        self.encoding = encoding
+</pre>
+<p>Then, the&#160;<kbd>__getitem__</kbd> and&#160;<kbd>__setitem__</kbd> methods should be updated:</p>
+<pre># in __getitem__ method for DiskCache class<br/>mode = ('rb' if self.compress else 'r')<br/>with open(path, mode) as fp:<br/>    if self.compress:<br/>        data = zlib.decompress(fp.read()).decode(self.encoding)<br/>        return json.loads(data)<br/>    return json.load(fp)
+</pre>
+<pre># in __setitem__ method for DiskCache class<br/>mode = ('wb' if self.compress else 'w')<br/>with open(path, mode) as fp:<br/>    if self.compress:<br/>        data = bytes(json.dumps(result), self.encoding)<br/>        fp.write(zlib.compress(data))<br/> else:<br/> json.dump(result, fp)
+</pre>
+<p>With this addition of compressing each web page, the cache is reduced from 416 KB to 156&#160;KB and takes 260&#160;milliseconds to crawl the cached example website on my computer. &#160;</p>
+<p>Depending on your operating system and Python installation, the wait time may be slightly longer with the uncompressed cache (mine was actually shorter). Depending on the prioritization of your constraints (speed versus memory, ease of debugging, and so on), make informed and measured decisions about whether to use compression or not for your crawler.</p>
+<p>You can see the updated disk cache code in the book's code repository (<a href="https://github.com/kjam/wswp/blob/master/code/chp3/diskcache.py">https://github.com/kjam/wswp/<span>blob/master/</span>code/chp3/diskcache.py</a>).</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+            <header>
+                <h1 class="header-title">Expiring stale data</h1>
+            </header>
+
+            <article>
+                
+<p>Our current version of the disk cache will save a value to disk for a key and then return it whenever this key is requested in the future. This functionality may not be ideal when caching web pages because of online content changes, so the data in our cache will&#160;become out of date. In this section, we will add an expiration time to our cached data so the crawler knows when to download a fresh copy of the web page. To support storing the timestamp of when each web page was cached is straightforward.</p>
+<p>Here is an implementation of this:</p>
+<pre>from datetime import datetime, timedelta <br/><br/>class DiskCache:<br/>     def __init__(..., expires=timedelta(days=30)):<br/>         ...<br/>         self.expires = expires
+</pre>
+<pre>## in __getitem___ for DiskCache class<br/>with open(path, mode) as fp:<br/>    if self.compress:<br/>        data = zlib.decompress(fp.read()).decode(self.encoding)<br/>        data = json.loads(data)<br/>    else:<br/>        data = json.load(fp)<br/>    exp_date = data.get('expires')<br/>    if exp_date and datetime.strptime(exp_date,<br/>                                      '%Y-%m-%dT%H:%M:%S') &lt;= datetime.utcnow():<br/>        print('Cache expired!', exp_date)<br/>        raise KeyError(url + ' has expired.')<br/>    return data
+</pre>
+<pre>## in __setitem___ for DiskCache class<br/>result['expires'] = (datetime.utcnow() + self.expires).isoformat(timespec='seconds')
+</pre>
+<p>In the constructor, the default expiration time is set to 30 days with a <kbd>timedelta</kbd> object. Then, the <kbd>__set__</kbd> method saves the expiration timestamp as a key in the <kbd>result</kbd>&#160;dictionary, and the <kbd>__get__</kbd> method compares the current UTC time to the expiration time. To test this expiration, we can try a short timeout of 5 seconds, as shown here:</p>
+<pre><strong> &gt;&gt;&gt; cache = DiskCache(expires=timedelta(seconds=5)) </strong><br/><strong> &gt;&gt;&gt; url = 'http://example.webscraping.com' </strong><br/><strong> &gt;&gt;&gt; result = {'html': '...'} </strong><br/><strong> &gt;&gt;&gt; cache[url] = result </strong><br/><strong> &gt;&gt;&gt; cache[url] </strong><br/><strong> {'html': '...'} </strong><br/><strong> &gt;&gt;&gt; import time; time.sleep(5) </strong><br/><strong> &gt;&gt;&gt; cache[url] </strong><br/><strong> Traceback (most recent call last): </strong><br/><strong> ... </strong><br/><strong> KeyError: 'http://example.webscraping.com has expired'</strong> 
+</pre>
+<p>As expected, the cached result is initially available, and then, after sleeping for five seconds, calling the same key raises a <kbd>KeyError</kbd>&#160;to show this cached download has expired.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+            <header>
+                <h1 class="header-title">Drawbacks of DiskCache</h1>
+            </header>
+
+            <article>
+                
+<p>Our disk-based caching system was relatively simple to implement, does not depend on installing additional modules, and the results are viewable in our file manager. However, it has the drawback of depending on the limitations of the local filesystem. Earlier in this chapter, we applied various restrictions to map URLs to safe filenames, but an unfortunate consequence of this system is that some URLs will map to the same filename. For example, replacing unsupported characters in the following URLs will map them all to the same filename:</p>
+<ul>
+<li>http://example.com/?a+b</li>
+<li>http://example.com/?a*b</li>
+<li>http://example.com/?a=b</li>
+<li>http://example.com/?a!b</li>
+</ul>
+<p>This means that, if one of these URLs were cached, it would look like the other three URLs were cached as well&#160;because they map to the same filename. Alternatively, if some long URLs only differed after the 255<sup>th</sup> character, the shortened&#160;versions would also map to the same filename. This is a particularly important problem since there is no defined limit on the maximum length of a URL. However, in practice, URLs over 2,000 characters are rare, and older versions of Internet Explorer did not support over 2,083 characters.</p>
+<p>One&#160;potential solution to avoid these limitations is to take the hash of the URL and use the hash as the filename. This may be an improvement; however, we will eventually face a larger problem many filesystems have, that is, a limit on the number of files allowed per volume and per directory. If this cache is used in a FAT32 filesystem, the maximum number of files allowed per directory is just 65,535. This limitation could be avoided by splitting the cache across multiple directories; however, filesystems can also limit the total number of files. My current <kbd>ext4</kbd> partition supports a little over 31&#160;million files, whereas a large website may have excess of 100 million web pages. Unfortunately, the <kbd>DiskCache</kbd> approach has too many limitations to be of general use. What we need instead is to combine multiple cached web pages into a single file and index them with a<kbd>B+</kbd><kbd>tree</kbd> or a similar data structure. Instead of implementing our own, we will use existing key-value store in the next section.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+            <header>
+                <h1 class="header-title">Key-value storage cache</h1>
+            </header>
+
+            <article>
+                
+<p>To avoid the anticipated limitations to our disk-based cache, we will now build our cache on top of an existing key-value storage&#160;system. When crawling, we may need to cache massive amounts of data and will not need any complex joins, so we will use high availability key-value storage, which is easier to scale than a traditional relational database or even most NoSQL databases. Specifically, our cache will use Redis, which is a very popular key-value store.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+            <header>
+                <h1 class="header-title">What is key-value storage?</h1>
+            </header>
+
+            <article>
+                
+<p><strong>Key-value storage</strong>&#160;is very similar to a Python dictionary, in that each element in the storage has a key and a value.&#160;When designing the <kbd>DiskCache</kbd>, a key-value model lent itself well to the problem. Redis, in fact, stands for&#160;<span>REmote DIctionary Server. Redis was first released in 2009, and the API supports clients in many different languages (including Python). It differentiates itself from some of the more simple key-value stores, such as memcache, because the values can be several different structured data types. Redis can scale easily via clusters and is used by large companies, such as Twitter, for massive cache storage (such as&#160;one Twitter BTree with around 65TB allocated heap memory (<a href="http://highscalability.com/blog/2014/9/8/how-twitter-uses-redis-to-scale-105tb-ram-39mm-qps-10000-ins.html" target="_blank">highscalability.com/blog/2014/9/8/how-twitter-uses-redis-to-scale-105tb-ram-39mm-qps-10000-ins.html</a>)).</span></p>
+<p>For your scraping and crawling needs, there might be instances where you need more information for each document or need to be able to search and select based on the data in the document. For these instances, I recommend a document-based database, such as ElasticSearch or MongoDB. Both key-value stores and document-based databases are able to scale and quickly query non-relational data in a clearer and easier way than a traditional SQL database with schemas (such as PostgreSQL and MySQL).&#160;</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+            <header>
+                <h1 class="header-title">Installing Redis</h1>
+            </header>
+
+            <article>
+                
+<p>Redis can be installed by compiling the latest source as per the instructions on the Redis site (<a href="https://redis.io/topics/quickstart">https://redis.io/topics/quickstart</a>). If you are running Windows, you will need to use MSOpenTech's project (<a href="https://github.com/MSOpenTech/redis">https://github.com/MSOpenTech/redis</a>) or simply install Redis via a VirtualMachine (using Vagrant) or a docker instance. The Python client then needs to be installed separately using this command:</p>
+<pre>    <strong>pip install redis</strong>
+</pre>
+<p>To test whether the installation is working, start Redis&#160;locally (or on your virtual machine or container) using this command:</p>
+<pre>    <strong>$ redis-server</strong>
+</pre>
+<p>You should see some text with the version number and the Redis symbol. At the end of the text, you will see a message like this:</p>
+<pre>1212:M 18 Feb 20:24:44.590 * The server is now ready to accept connections on port 6379
+</pre>
+<p>Most likely, your Redis server will be using the same port, which is the default port (6379). To test our Python client and connect to Redis, we&#160;can use a Python interpreter (in the following code, I am using IPython), as follows:</p>
+<pre><strong>In [1]: import redis</strong><br/><br/><strong>In [2]: r = redis.StrictRedis(host='localhost', port=6379, db=0)</strong><br/><br/><strong>In [3]: r.set('test', 'answer')</strong><br/><strong>Out[3]: True</strong><br/><br/><strong>In [4]: r.get('test')</strong><br/><strong>Out[4]: b'answer'</strong>
+</pre>
+<p>In the preceding code, we were able to easily connect to our Redis server and then <kbd>set</kbd> a record with the key <kbd>'test'</kbd> and value <kbd>'answer'</kbd>. We were able to easily retrieve that record using the&#160;<kbd>get</kbd> command.&#160;</p>
+<div class="packt_infobox">To see more options on how to set up Redis to run as a background process, I recommend using the official Redis Quick Start&#160;(<a href="https://redis.io/topics/quickstart" target="_blank">https://redis.io/topics/quickstart</a>) or looking up specific instructions for your particular operating system or installation using your favorite search engine.</div>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+            <header>
+                <h1 class="header-title">Overview of Redis</h1>
+            </header>
+
+            <article>
+                
+<p>Here is an example of how to save some example website data in Redis&#160;and then load it:</p>
+<pre><strong>In [5]: url = 'http://example.webscraping.com/view/United-Kingdom-239' </strong><br/><br/><strong>In [6]: html = '...'</strong><br/><br/><strong>In [7]: results = {'html': html, 'code': 200}</strong><br/><br/><strong>In [8]: r.set(url, results)</strong><br/><strong>Out[8]: True</strong><br/><br/><strong>In [9]: r.get(url)</strong><br/><strong>Out[9]: b"{'html': '...', 'code': 200}"</strong>
+</pre>
+<p>We can see with the&#160;<kbd>get</kbd> output, that we will receive&#160;<kbd>bytes</kbd> back from our Redis storage, even if we have inserted a dictionary, or a string. We can manage these serializations the same way we did for our&#160;<kbd>DiskCache</kbd> class, by using the&#160;<kbd>json</kbd> module.&#160;</p>
+<p>What happens if we need to update the content of a URL?</p>
+<pre><strong>In [10]: r.set(url, {'html': 'new html!', 'code': 200})</strong><br/><strong>Out[10]: True</strong><br/><br/><strong>In [11]: r.get(url)</strong><br/><strong>Out[11]: b"{'html': 'new html!', 'code': 200}"</strong>
+</pre>
+<p>We can see from the above output that the&#160;<kbd>set</kbd> command in Redis will simply overwrite the previous value, which makes it great for simple storage such as our web crawler. For our needs, we only want one set of content for each URL, so it maps well to key-value stores.</p>
+<p>Let's take a look at what is in our storage, and clean up what we don't want:</p>
+<pre><strong>In [12]: r.keys()</strong><br/><strong>Out[12]: [b'test', b'http://example.webscraping.com/view/United-Kingdom-239']</strong><br/><br/><strong>In [13]: r.delete('test')</strong><br/><strong>Out[13]: 1</strong><br/><br/><strong>In [14]: r.keys()</strong><br/><strong>Out[14]: [b'http://example.webscraping.com/view/United-Kingdom-239']</strong>
+</pre>
+<p>The&#160;<kbd>keys</kbd> method returns a list of all available keys, and the&#160;<kbd>delete</kbd> method allows us to pass one (or more) keys and delete them from our store. We can also delete all keys:</p>
+<pre><strong>In [15]: r.flushdb()</strong><br/><strong>Out[15]: True</strong><br/><br/><strong>In [16]: r.keys()</strong><br/><strong>Out[16]: []</strong>
+</pre>
+<p>There are many more commands and utilizations for Redis, so feel free to read further in the documentation. For now, we should have all we need to create a cache with a Redis backend for our web crawler.</p>
+<div class="packt_infobox">The Python Redis client <a href="https://github.com/andymccurdy/redis-py" target="_blank">https://github.com/andymccurdy/redis-py</a> provides great documentation and several use cases for using Python with Redis (such as a PubSub pipeline, or as a large connection pool). The official Redis documentation&#160;<a href="https://redis.io/documentation" target="_blank">https://redis.io/documentation</a> has a long list of tutorials, books, references, and use cases; so if you'd like to learn more about how to scale, secure, and&#160;deploy Redis, I recommend starting there. And if you are using Redis in the cloud or on a server, don't forget to implement security for your Redis instance (<a href="https://redis.io/topics/security">https://redis.io/topics/security</a>)!</div>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+            <header>
+                <h1 class="header-title">Redis cache implementation</h1>
+            </header>
+
+            <article>
+                
+<p>Now we are ready to build our cache on Redis&#160;using the same class interface as the earlier <kbd>DiskCache</kbd> class:</p>
+<pre>import json<br/>from datetime import timedelta <br/>from redis import StrictRedis<br/><br/>class RedisCache: <br/>    def __init__(self, client=None, expires=timedelta(days=30), encoding='utf-8'): <br/>        # if a client object is not passed then try <br/>        # connecting to redis at the default localhost port <br/>        self.client = StrictRedis(host='localhost', port=6379, db=0) <br/>            if client is None else client <br/>        self.expires = expires<br/>        self.encoding = encoding<br/><br/>    def __getitem__(self, url): <br/>        """Load value from Redis for the given URL""" <br/>        record = self.client.get(url) <br/>        if record: <br/>            return json.loads(record.decode(self.encoding))<br/>        else: <br/>            raise KeyError(url + ' does not exist') <br/><br/>    def __setitem__(self, url, result): <br/>        """Save value in Redis for the given URL""" <br/>        data = bytes(json.dumps(result), self.encoding)<br/>        self.client.setex(url, self.expires, data)
+</pre>
+<p>The <kbd>__getitem__</kbd> and <kbd>__setitem__</kbd> methods here should be familiar to you from the discussion on how to get and set keys in Redis&#160;in the previous section, with the exception that we are using the <kbd>json</kbd> module to control serialization and the&#160;<kbd>setex</kbd> method, which allows us to set a key and value with an expiration time.&#160;<kbd>setex</kbd> will accept either a&#160;<kbd>datetime.timedelta</kbd> or a number of seconds.&#160;This is a handy Redis&#160;feature that will automatically delete records in a specified number of seconds. This means we do not need to manually check whether a record is within our expiration guidelines, as in the <kbd>DiskCache</kbd> class. Let's try it out in IPython (or the interpreter of your choice) using a timedelta of 20 seconds, so we can see the cache expire:</p>
+<pre><strong>In [1]: from chp3.rediscache import RedisCache</strong><br/><br/><strong>In [2]: from datetime import timedelta</strong><br/><br/><strong>In [3]: cache = RedisCache(expires=timedelta(seconds=20))</strong><br/><br/><strong>In [4]: cache['test'] = {'html': '...', 'code': 200}</strong><br/><br/><strong>In [5]: cache['test']</strong><br/><strong>Out[5]: {'code': 200, 'html': '...'}</strong><br/><br/><strong>In [6]: import time; time.sleep(20)</strong><br/><br/><strong>In [7]: cache['test']</strong><br/><strong>---------------------------------------------------------------------------</strong><br/><strong>KeyError Traceback (most recent call last)</strong><br/><strong>...</strong><br/><strong>KeyError: 'test does not exist'</strong>
+</pre>
+<p>The results show that our cache is working as intended and able to serialize and deserialize between JSON, dictionaries and the Redis key-value store and expire results.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+            <header>
+                <h1 class="header-title">Compression</h1>
+            </header>
+
+            <article>
+                
+<p>To make this cache feature complete compared with&#160;the original disk cache, we need to add one final feature: <strong>compression</strong>. This can be achieved in a similar way <span>to</span>&#160;the disk cache by serializing the data&#160;and then compressing it with <kbd>zlib</kbd>, as follows:</p>
+<pre>import zlib <br/>from bson.binary import Binary <br/><br/>class RedisCache:<br/>    def __init__(..., compress=True):<br/>        ...<br/>        self.compress = compress<br/><br/>    def __getitem__(self, url): <br/>        record = self.client.get(url)<br/>        if record:<br/>            if self.compress:<br/>                record = zlib.decompress(record)<br/>            return json.loads(record.decode(self.encoding))<br/>        else: <br/>            raise KeyError(url + ' does not exist') <br/><br/>    def __setitem__(self, url, result): <br/>        data = bytes(json.dumps(result), self.encoding)<br/>        if self.compress:<br/>            data = zlib.compress(data)<br/>        self.client.setex(url, self.expires, data)
+</pre>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+            <header>
+                <h1 class="header-title">Testing the cache</h1>
+            </header>
+
+            <article>
+                
+<p>The source code for the&#160;<kbd>RedisCache</kbd> class is available at <a href="https://github.com/kjam/wswp/blob/master/code/chp3/rediscache.py"><span class="URLPACKT">https://github.com/kjam/wswp/<span>blob/master/</span>code/chp3/rediscache.py</span></a> and, as with <kbd>DiskCache</kbd>, the cache can be tested with the link crawler&#160;in any Python interpreter. Here, we use IPython to employ the&#160;<kbd>%time</kbd> command:</p>
+<pre><strong>In [1]: from chp3.advanced_link_crawler import link_crawler</strong><br/><br/><strong>In [2]: from chp3.rediscache import RedisCache</strong><br/><br/><strong>In [3]: %time link_crawler('http://example.webscraping.com/', '/(index|view)', cache=RedisCache())</strong><br/><strong>Downloading: http://example.webscraping.com/</strong><br/><strong>Downloading: http://example.webscraping.com/index/1</strong><br/><strong>Downloading: http://example.webscraping.com/index/2</strong><br/><strong>...</strong><br/><strong>Downloading: http://example.webscraping.com/view/Afghanistan-1</strong><br/><strong>CPU times: user 352 ms, sys: 32 ms, total: 384 ms</strong><br/><strong>Wall time: 1min 42s</strong><br/><br/><strong>In [4]: %time link_crawler('http://example.webscraping.com/', '/(index|view)', cache=RedisCache())</strong><br/><strong>Loaded from cache: http://example.webscraping.com/</strong><br/><strong>Loaded from cache: http://example.webscraping.com/index/1</strong><br/><strong>Loaded from cache: http://example.webscraping.com/index/2</strong><br/><strong>...</strong><br/><strong>Loaded from cache: http://example.webscraping.com/view/Afghanistan-1</strong><br/><strong>CPU times: user 24 ms, sys: 8 ms, total: 32 ms</strong><br/><strong>Wall time: 282 ms</strong>
+</pre>
+<p>The time taken here is about the same as our&#160;<kbd>DiskCache</kbd> for the first iteration. However,&#160;the speed of Redis is really seen once the cache is loaded, with a more than 3X speed increase versus our non-compressed disk cache system. The increased readability of our caching code and the ability to scale our Redis cluster to a high availability big data solution is just the icing on the cake!</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+            <header>
+                <h1 class="header-title">Exploring requests-cache</h1>
+            </header>
+
+            <article>
+                
+<p>Occasionally, you might want to cache a library that uses&#160;<kbd>requests</kbd>&#160;internally or maybe you don't want to&#160;manage the cache classes and handling yourself. If this is the case,&#160;<kbd>requests-cache</kbd> (<a href="https://github.com/reclosedev/requests-cache" target="_blank">https://github.com/reclosedev/requests-cache</a>) is a great library that implements a few different backend options for creating a cache for the <kbd>requests</kbd> library. When using&#160;<kbd>requests-cache</kbd>, all&#160;<kbd>get</kbd> requests to&#160;access a URL via the&#160;<kbd>requests</kbd> library will first check the cache and only request the page if it's not found.&#160;</p>
+<p><kbd>requests-cache</kbd> supports several backends including Redis, MongoDB (a NoSQL database), SQLite (a lightweight relational database), and memory (which is not persistent, and therefore not recommended). Since we already have Redis set up, we can use it as our backend. To get started, we first need to install the library:</p>
+<pre><strong>pip install requests-cache</strong>
+</pre>
+<p>Now we can simply install and test&#160;<span>our cache</span> using a few simple commands in IPython:</p>
+<pre><strong>In [1]: import requests_cache</strong><br/><br/><strong>In [2]: import requests</strong><br/><br/><strong>In [3]: requests_cache.install_cache(backend='redis')</strong><br/><br/><strong>In [4]: requests_cache.clear()</strong><br/><br/><strong>In [5]: url = 'http://example.webscraping.com/view/United-Kingdom-239'</strong><br/><br/><strong>In [6]: resp = requests.get(url)</strong><br/><br/><strong>In [7]: resp.from_cache</strong><br/><strong>Out[7]: False</strong><br/><br/><strong>In [8]: resp = requests.get(url)</strong><br/><br/><strong>In [9]: resp.from_cache</strong><br/><strong>Out[9]: True</strong>
+</pre>
+<p>If we were to use this instead of our own cache class, we would only need to instantiate the cache using the&#160;<kbd>install_cache</kbd> command and then every request (provided we are utilizing the&#160;<kbd>requests</kbd> library) would be maintained in our Redis backend. We can also set expiry using a few simple commands:</p>
+<pre><span class="n">from datetime import timedelta<br/></span><span class="n">requests_cache</span><span class="o">.</span><span class="n">install_cache</span><span class="p">(backend='redis', </span><span class="n">expire_after</span><span class="o">=</span><span class="n">timedelta(days=30</span><span class="p">))</span>
+</pre>
+<p>To test the speed of using&#160;<kbd>requests-cache</kbd> compared to our own implementation, we have built a new downloader and link crawler to use. This downloader also implements the suggested&#160;<kbd>requests</kbd> hook to allow for throttling, as documented in the&#160;<kbd>requests-cache</kbd> User Guide:&#160;<a href="https://requests-cache.readthedocs.io/en/latest/user_guide.html" target="_blank">https://requests-cache.readthedocs.io/en/latest/user_guide.html</a>.</p>
+<p>To see the full code, check out the new downloader (<a href="https://github.com/kjam/wswp/blob/master/code/chp3/downloader_requests_cache.py">https://github.com/kjam/wswp/blob/master/code/chp3/downloader_requests_cache.py</a>)and link crawler (<a href="https://github.com/kjam/wswp/blob/master/code/chp3/requests_cache_link_crawler.py" target="_blank">https://github.com/kjam/wswp/blob/master/code/chp3/requests_cache_link_crawler.py)</a>. We can test them using IPython to compare the performance:</p>
+<pre><strong>In [1]: from chp3.requests_cache_link_crawler import link_crawler</strong><br/><strong>...</strong><br/><strong>In [3]: %time link_crawler('http://example.webscraping.com/', '/(index|view)')</strong><br/><strong>Returning from cache: http://example.webscraping.com/</strong><br/><strong>Returning from cache: http://example.webscraping.com/index/1</strong><br/><strong>Returning from cache: http://example.webscraping.com/index/2</strong><br/><strong>...</strong><br/><strong>Returning from cache: http://example.webscraping.com/view/Afghanistan-1</strong><br/><strong>CPU times: user 116 ms, sys: 12 ms, total: 128 ms</strong><br/><strong>Wall time: 359 ms</strong><br/><br/>
+</pre>
+<p>We see the&#160;<kbd>requests-cache</kbd> solution is slightly less performant from our own Redis solution, but it also took fewer lines of code and was still quite fast (and still much faster than our DiskCache solution). Especially if you are using another library where&#160;<kbd>requests</kbd> might be managed internally, the&#160;<kbd>requests-cache</kbd> implementation is a great tool to have.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </div>
+
+
+  <div id="sbo-rt-content"><section>
+
+            <header>
+                <h1 class="header-title">Summary</h1>
+            </header>
+
+            <article>
+                
+<p>In this chapter, we learned that caching downloaded web pages will save time and minimize bandwidth when recrawling a website. However, caching pages&#160;takes up disk space, some of which can be alleviated through compression. Additionally, building on top of an existing storage&#160;system, such as Redis, can be useful to avoid speed, memory, and filesystem limitations.</p>
+<p>In the next chapter, we will add further functionalities to our crawler so we can download web pages concurrently and crawl the web even faster.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </div>
+</body>
+</html>
