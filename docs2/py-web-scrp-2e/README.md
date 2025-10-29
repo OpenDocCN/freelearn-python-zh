@@ -1,6 +1,6 @@
-# Go 编程蓝图
+# Python Web 爬虫第二版
 
-> 原文：[`zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66`](https://zh.annas-archive.org/md5/AC9839247134C458206EE3BE6D404A66)
+> 原文：[`zh.annas-archive.org/md5/6a000c0999be6315e25bfc56422d4e9d`](https://zh.annas-archive.org/md5/6a000c0999be6315e25bfc56422d4e9d)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 
