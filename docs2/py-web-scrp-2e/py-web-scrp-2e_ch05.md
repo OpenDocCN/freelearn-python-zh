@@ -1,4 +1,4 @@
-# 动态内容
+# 第五章：动态内容
 
 根据联合国 2006 年的一项研究，73%的主要网站依赖于 JavaScript 来实现重要功能（参考[`www.un.org/esa/socdev/enable/documents/execsumnomensa.doc`](http://www.un.org/esa/socdev/enable/documents/execsumnomensa.doc)）。在 JavaScript 中，如 React、AngularJS、Ember、Node 等模型-视图-控制器（MVC）框架的增长和普及，进一步增加了 JavaScript 作为网页内容主要引擎的重要性。
 

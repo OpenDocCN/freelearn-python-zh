@@ -1,4 +1,4 @@
-# 创建 API 视图
+# 第三章：创建 API 视图
 
 在本章中，我们必须运行由 Django 驱动的第一个版本的 RESTful Web 服务。我们将编写 API 视图来处理不同的 HTTP 请求，并使用命令行和 GUI 工具执行 HTTP 请求。我们将分析 Django 和 Django REST framework 如何处理每个 HTTP 请求。我们将了解：
 

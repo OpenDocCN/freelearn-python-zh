@@ -1,4 +1,4 @@
-# 解决 CAPTCHA
+# 第七章：解决 CAPTCHA
 
 **CAPTCHA** 代表 **Completely Automated Public Turing test to tell Computers and Humans Apart**。正如缩写所暗示的，这是一个测试，用来确定用户是否为人类。典型的 CAPTCHA 由扭曲的文本组成，计算机程序将难以解释，但人类（希望）仍然可以阅读。
 
