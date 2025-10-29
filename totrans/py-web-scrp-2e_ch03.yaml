@@ -1,0 +1,687 @@
+- en: Caching Downloads
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapter, we learned how to scrape data from crawled web pages
+    and save the results to a CSV file. What if we now want to scrape an additional
+    field, such as the flag URL? To scrape additional fields, we would need to download
+    the entire website again. This is not a significant obstacle for our small example
+    website; however, other websites can have millions of web pages, which could take
+    weeks to recrawl. One way scrapers avoid these problems is by caching crawled
+    web pages from the beginning, so they only need to be downloaded once.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we will cover a few ways to do this using our web crawler.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: When to use caching
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Adding cache support to the link crawler
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Testing the cache
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using requests - cache
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Redis cache implementation
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: When to use caching?
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: To cache, or not to cache? This is a question many programmers, data scientists,
+    and web scrapers need to answer. In this chapter, we will show you how to use
+    caching for your web crawlers; but should you use caching?
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you need to perform a large crawl, which may be interrupted due to an error
+    or exception, caching can help by not forcing you to recrawl all the pages you
+    might have already covered. Caching can also help you by allowing you to access
+    those pages while offline (for your own data analysis or development purposes).
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, if having the most up-to-date and current information from the site
+    is your highest priority, then caching might not make sense. In addition, if you
+    don't plan large or repeated crawls, you might just want to scrape the page each
+    time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You may want to outline how often the pages you are scraping change or how often
+    you should scrape new pages and clear the cache before implementing it; but first,
+    let's learn how to use caching!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Adding cache support to the link crawler
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'To support caching, the `download` function developed in [Chapter 1](py-web-scrp-2e_ch01.html),
+    *Introduction to Web Scraping*, needs to be modified to check the cache before
+    downloading a URL. We also need to move throttling inside this function and only
+    throttle when a download is made, and not when loading from a cache. To avoid
+    the need to pass various parameters for every download, we will take this opportunity
+    to refactor the `download` function into a class so parameters can be set in the
+    constructor and reused numerous times. Here is the updated implementation to support
+    this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: The full source code for the Download class is available at [https://github.com/kjam/wswp/blob/master/code/chp3/downloader.py](https://github.com/kjam/wswp/blob/master/code/chp3/downloader.py).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The interesting part of the `Download` class used in the preceding code is in
+    the `__call__` special method, where the cache is checked before downloading.
+    This method first checks whether this URL was previously put in the cache. By
+    default, the cache is a Python dictionary. If the URL is cached, it checks whether
+    a server error was encountered in the previous download. Finally, if no server
+    error was encountered, the cached result can be used. If any of these checks fails,
+    the URL needs to be downloaded as usual, and the result will be added to the cache.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `download` method of this class is almost the same as the previous `download`
+    function, except now it returns the HTTP status code so the error codes can be
+    stored in the cache. In addition, instead of calling itself and testing `num_retries`,
+    it must first decrease the `self.num_retries` and then recursively use `self.download`
+    if there are still retries left. If you just want a simple download without throttling
+    or caching, this method can be used instead of `__call__`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `cache` class is used here by calling `result = cache[url]` to load from
+    `cache` and `cache[url] = result` to save to `cache`, which is a convenient interface
+    from Python's built-in dictionary data type. To support this interface, our `cache`
+    class will need to define the `__getitem__()` and `__setitem__()` special class
+    methods.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The link crawler also needs to be slightly updated to support caching by adding
+    the `cache` parameter, removing the throttle, and replacing the `download` function
+    with the new class, as shown in the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: You'll notice that `num_retries` is now linked to our call. This allows us to
+    utilize the number of request retries on a per-URL basis. If we simply use the
+    same number of retries without ever resetting the `self.num_retries` value, we
+    will run out of retries if we reach a `500` error from one page.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can check the full code again at the book repository ([https://github.com/kjam/wswp/blob/master/code/chp3/advanced_link_crawler.py](https://github.com/kjam/wswp/blob/master/code/chp3/advanced_link_crawler.py)).
+    Now, our web scraping infrastructure is prepared, and we can start building the
+    actual cache.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Disk Cache
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'To cache downloads, we will first try the obvious solution and save web pages
+    to the filesystem. To do this, we will need a way to map URLs to a safe cross-platform
+    filename. The following table lists limitations for some popular filesystems:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Operating system** | **Filesystem** | **Invalid filename characters** |
+    **Maximum filename length** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Linux | Ext3/Ext4 | / and \0 | 255 bytes |'
+  prefs: []
+  type: TYPE_TB
+- en: '| OS X | HFS Plus | : and \0 | 255 UTF-16 code units |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Windows | NTFS | \, /, ?, :, *, ", >, <, and &#124; | 255 characters |'
+  prefs: []
+  type: TYPE_TB
+- en: 'To keep our file path safe across these filesystems, it needs to be restricted
+    to numbers, letters, and basic punctuation, and it should replace all other characters
+    with an underscore, as shown in the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Additionally, the filename and the parent directories need to be restricted
+    to 255 characters (as shown in the following code) to meet the length limitations
+    described in the preceding table:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here, no sections of our URL are longer than 255; so our file path hasn''t
+    changed. There is also an edge case, which should be considered, where the URL
+    path ends with a slash (`/`), and the empty string after this slash would be an
+    invalid filename. However, removing this slash to use the parent for the filename
+    would prevent saving other URLs. Consider the following URLs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: http://example.webscraping.com/index/
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: http://example.webscraping.com/index/1
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'If you need to save these, the index needs to be a directory to save the child
+    page with filename 1\. The solution our disk cache will use is appending `index.html`
+    to the filename when the URL path ends with a slash. The same applies when the
+    URL path is empty. To parse the URL, we will use the `urlsplit` function, which
+    splits a URL into its components:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This function provides a convenient interface to parse and manipulate URLs.
+    Here is an example using this module to append `index.html` for this edge case:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: Depending on the site you are scraping, you may want to modify this edge case
+    handling. For example, some sites will append `/` on every URL due to the way
+    the web server expects the URL to be sent. For these sites, you might be safe
+    simply stripping the trailing forward slash for every URL. Again, evaluate and
+    update the code for your web crawler to best fit the site(s) you intend to scrape.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing DiskCache
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In the previous section, we covered the limitations of file systems that need
+    to be considered when building a disk-based cache, namely the restriction on which
+    characters can be used, the filename length, and ensuring a file and directory
+    are not created in the same location. Combining this code with logic to map a
+    URL to a filename will form the main part of the disk cache. Here is an initial
+    implementation of the `DiskCache` class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: The class constructor shown in the preceding code takes a parameter to set the
+    location of the cache, and then the `url_to_path` method applies the filename
+    restrictions that have been discussed so far. Now we just need methods to load
+    and save the data with this filename.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is an implementation of these missing methods:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: In `__setitem__()`, the URL is mapped to a safe filename using `url_to_path()`,
+    and then the parent directory is created, if necessary. The `json` module is used
+    to serialize the Python and then save it to disk. Also, in `__getitem__()`, the
+    URL is mapped to a safe filename. If the filename exists, the content is loaded
+    using `json` to restore the original data type. If the filename does not exist
+    (that is, there is no data in the cache for this URL), a `KeyError` exception
+    is raised.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Testing the cache
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Now we are ready to try `DiskCache` with our crawler by passing it to the `cache` keyword
+    argument. The source code for this class is available at [https://github.com/kjam/wswp/blob/master/code/chp3/diskcache.py](https://github.com/kjam/wswp/blob/master/code/chp3/diskcache.py), and
+    the cache can be tested in any Python interpreter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: IPython comes with a great set of tools for writing and interpreting Python,
+    especially Python debugging, using [IPython magic commands](https://ipython.org/ipython-doc/3/interactive/magics.html).
+    You can install IPython using pip or conda (`pip install ipython`).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here, we use [IPython](https://ipython.org/) to help time our request to test
+    its performance:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The first time this command is run, the cache is empty, so all the web pages
+    are downloaded normally. However, when we run this script a second time, the pages
+    will be loaded from the cache, so the crawl should be completed more quickly,
+    as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: As expected, this time the crawl completed much faster. While downloading with
+    an empty cache on my computer, the crawler took over a minute; the second time,
+    with a full cache, it took just 1.1 seconds (about 95 times faster!).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The exact time on your computer will differ depending on the speed of your hardware
+    and Internet connection. However, the disk cache will undoubtedly be faster than
+    downloading via HTTP.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Saving disk space
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'To minimize the amount of disk space required for our cache, we can compress
+    the downloaded HTML file. This is straightforward to implement by compressing
+    the pickled string with `zlib` before saving to disk. Using our current implementation
+    has the benefit of having human readable files. I can look at any of the cache
+    pages and see the dictionary in JSON form. I could also reuse these files, if
+    needed, and move them to different operating systems for use with non-Python code.
+    Adding compression will make these files no longer readable just by opening them
+    and might introduce some encoding issues if we are using the downloaded pages
+    with other coding languages. To allow compression to be turned on and off, we
+    can add it to our constructor along with the file encoding, which we will default
+    to UTF-8:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, the `__getitem__` and `__setitem__` methods should be updated:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: With this addition of compressing each web page, the cache is reduced from 416
+    KB to 156 KB and takes 260 milliseconds to crawl the cached example website on
+    my computer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Depending on your operating system and Python installation, the wait time may
+    be slightly longer with the uncompressed cache (mine was actually shorter). Depending
+    on the prioritization of your constraints (speed versus memory, ease of debugging,
+    and so on), make informed and measured decisions about whether to use compression
+    or not for your crawler.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can see the updated disk cache code in the book's code repository ([https://github.com/kjam/wswp/blob/master/code/chp3/diskcache.py](https://github.com/kjam/wswp/blob/master/code/chp3/diskcache.py)).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Expiring stale data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Our current version of the disk cache will save a value to disk for a key and
+    then return it whenever this key is requested in the future. This functionality
+    may not be ideal when caching web pages because of online content changes, so
+    the data in our cache will become out of date. In this section, we will add an
+    expiration time to our cached data so the crawler knows when to download a fresh
+    copy of the web page. To support storing the timestamp of when each web page was
+    cached is straightforward.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is an implementation of this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the constructor, the default expiration time is set to 30 days with a `timedelta`
+    object. Then, the `__set__` method saves the expiration timestamp as a key in
+    the `result` dictionary, and the `__get__` method compares the current UTC time
+    to the expiration time. To test this expiration, we can try a short timeout of
+    5 seconds, as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: As expected, the cached result is initially available, and then, after sleeping
+    for five seconds, calling the same key raises a `KeyError` to show this cached
+    download has expired.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Drawbacks of DiskCache
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Our disk-based caching system was relatively simple to implement, does not
+    depend on installing additional modules, and the results are viewable in our file
+    manager. However, it has the drawback of depending on the limitations of the local
+    filesystem. Earlier in this chapter, we applied various restrictions to map URLs
+    to safe filenames, but an unfortunate consequence of this system is that some
+    URLs will map to the same filename. For example, replacing unsupported characters
+    in the following URLs will map them all to the same filename:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: http://example.com/?a+b
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: http://example.com/?a*b
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: http://example.com/?a=b
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: http://example.com/?a!b
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: This means that, if one of these URLs were cached, it would look like the other
+    three URLs were cached as well because they map to the same filename. Alternatively,
+    if some long URLs only differed after the 255^(th) character, the shortened versions
+    would also map to the same filename. This is a particularly important problem
+    since there is no defined limit on the maximum length of a URL. However, in practice,
+    URLs over 2,000 characters are rare, and older versions of Internet Explorer did
+    not support over 2,083 characters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One potential solution to avoid these limitations is to take the hash of the
+    URL and use the hash as the filename. This may be an improvement; however, we
+    will eventually face a larger problem many filesystems have, that is, a limit
+    on the number of files allowed per volume and per directory. If this cache is
+    used in a FAT32 filesystem, the maximum number of files allowed per directory
+    is just 65,535\. This limitation could be avoided by splitting the cache across
+    multiple directories; however, filesystems can also limit the total number of
+    files. My current `ext4` partition supports a little over 31 million files, whereas
+    a large website may have excess of 100 million web pages. Unfortunately, the `DiskCache`
+    approach has too many limitations to be of general use. What we need instead is
+    to combine multiple cached web pages into a single file and index them with a`B+``tree`
+    or a similar data structure. Instead of implementing our own, we will use existing
+    key-value store in the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Key-value storage cache
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: To avoid the anticipated limitations to our disk-based cache, we will now build
+    our cache on top of an existing key-value storage system. When crawling, we may
+    need to cache massive amounts of data and will not need any complex joins, so
+    we will use high availability key-value storage, which is easier to scale than
+    a traditional relational database or even most NoSQL databases. Specifically,
+    our cache will use Redis, which is a very popular key-value store.
+  prefs: []
+  type: TYPE_NORMAL
+- en: What is key-value storage?
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '**Key-value storage** is very similar to a Python dictionary, in that each
+    element in the storage has a key and a value. When designing the `DiskCache`,
+    a key-value model lent itself well to the problem. Redis, in fact, stands for REmote
+    DIctionary Server. Redis was first released in 2009, and the API supports clients
+    in many different languages (including Python). It differentiates itself from
+    some of the more simple key-value stores, such as memcache, because the values
+    can be several different structured data types. Redis can scale easily via clusters
+    and is used by large companies, such as Twitter, for massive cache storage (such
+    as one Twitter BTree with around 65TB allocated heap memory ([highscalability.com/blog/2014/9/8/how-twitter-uses-redis-to-scale-105tb-ram-39mm-qps-10000-ins.html](http://highscalability.com/blog/2014/9/8/how-twitter-uses-redis-to-scale-105tb-ram-39mm-qps-10000-ins.html))).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: For your scraping and crawling needs, there might be instances where you need
+    more information for each document or need to be able to search and select based
+    on the data in the document. For these instances, I recommend a document-based
+    database, such as ElasticSearch or MongoDB. Both key-value stores and document-based
+    databases are able to scale and quickly query non-relational data in a clearer
+    and easier way than a traditional SQL database with schemas (such as PostgreSQL
+    and MySQL).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Installing Redis
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Redis can be installed by compiling the latest source as per the instructions
+    on the Redis site ([https://redis.io/topics/quickstart](https://redis.io/topics/quickstart)).
+    If you are running Windows, you will need to use MSOpenTech''s project ([https://github.com/MSOpenTech/redis](https://github.com/MSOpenTech/redis))
+    or simply install Redis via a VirtualMachine (using Vagrant) or a docker instance.
+    The Python client then needs to be installed separately using this command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To test whether the installation is working, start Redis locally (or on your
+    virtual machine or container) using this command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You should see some text with the version number and the Redis symbol. At the
+    end of the text, you will see a message like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Most likely, your Redis server will be using the same port, which is the default
+    port (6379). To test our Python client and connect to Redis, we can use a Python
+    interpreter (in the following code, I am using IPython), as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: In the preceding code, we were able to easily connect to our Redis server and
+    then `set` a record with the key `'test'` and value `'answer'`. We were able to
+    easily retrieve that record using the `get` command.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To see more options on how to set up Redis to run as a background process, I
+    recommend using the official Redis Quick Start ([https://redis.io/topics/quickstart](https://redis.io/topics/quickstart))
+    or looking up specific instructions for your particular operating system or installation
+    using your favorite search engine.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Overview of Redis
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Here is an example of how to save some example website data in Redis and then
+    load it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can see with the `get` output, that we will receive `bytes` back from our
+    Redis storage, even if we have inserted a dictionary, or a string. We can manage
+    these serializations the same way we did for our `DiskCache` class, by using the `json`
+    module.
+  prefs: []
+  type: TYPE_NORMAL
+- en: What happens if we need to update the content of a URL?
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can see from the above output that the `set` command in Redis will simply
+    overwrite the previous value, which makes it great for simple storage such as
+    our web crawler. For our needs, we only want one set of content for each URL,
+    so it maps well to key-value stores.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s take a look at what is in our storage, and clean up what we don''t want:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `keys` method returns a list of all available keys, and the `delete` method
+    allows us to pass one (or more) keys and delete them from our store. We can also
+    delete all keys:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: There are many more commands and utilizations for Redis, so feel free to read
+    further in the documentation. For now, we should have all we need to create a
+    cache with a Redis backend for our web crawler.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Python Redis client [https://github.com/andymccurdy/redis-py](https://github.com/andymccurdy/redis-py)
+    provides great documentation and several use cases for using Python with Redis
+    (such as a PubSub pipeline, or as a large connection pool). The official Redis
+    documentation [https://redis.io/documentation](https://redis.io/documentation)
+    has a long list of tutorials, books, references, and use cases; so if you'd like
+    to learn more about how to scale, secure, and deploy Redis, I recommend starting
+    there. And if you are using Redis in the cloud or on a server, don't forget to
+    implement security for your Redis instance ([https://redis.io/topics/security](https://redis.io/topics/security))!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Redis cache implementation
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Now we are ready to build our cache on Redis using the same class interface
+    as the earlier `DiskCache` class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `__getitem__` and `__setitem__` methods here should be familiar to you
+    from the discussion on how to get and set keys in Redis in the previous section,
+    with the exception that we are using the `json` module to control serialization
+    and the `setex` method, which allows us to set a key and value with an expiration
+    time. `setex` will accept either a `datetime.timedelta` or a number of seconds. This
+    is a handy Redis feature that will automatically delete records in a specified
+    number of seconds. This means we do not need to manually check whether a record
+    is within our expiration guidelines, as in the `DiskCache` class. Let''s try it
+    out in IPython (or the interpreter of your choice) using a timedelta of 20 seconds,
+    so we can see the cache expire:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: The results show that our cache is working as intended and able to serialize
+    and deserialize between JSON, dictionaries and the Redis key-value store and expire
+    results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Compression
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'To make this cache feature complete compared with the original disk cache,
+    we need to add one final feature: **compression**. This can be achieved in a similar
+    way to the disk cache by serializing the data and then compressing it with `zlib`,
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: Testing the cache
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The source code for the `RedisCache` class is available at [https://github.com/kjam/wswp/blob/master/code/chp3/rediscache.py](https://github.com/kjam/wswp/blob/master/code/chp3/rediscache.py)
+    and, as with `DiskCache`, the cache can be tested with the link crawler in any
+    Python interpreter. Here, we use IPython to employ the `%time` command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: The time taken here is about the same as our `DiskCache` for the first iteration.
+    However, the speed of Redis is really seen once the cache is loaded, with a more
+    than 3X speed increase versus our non-compressed disk cache system. The increased
+    readability of our caching code and the ability to scale our Redis cluster to
+    a high availability big data solution is just the icing on the cake!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Exploring requests-cache
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Occasionally, you might want to cache a library that uses `requests` internally
+    or maybe you don't want to manage the cache classes and handling yourself. If
+    this is the case, `requests-cache` ([https://github.com/reclosedev/requests-cache](https://github.com/reclosedev/requests-cache))
+    is a great library that implements a few different backend options for creating
+    a cache for the `requests` library. When using `requests-cache`, all `get` requests
+    to access a URL via the `requests` library will first check the cache and only
+    request the page if it's not found.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`requests-cache` supports several backends including Redis, MongoDB (a NoSQL
+    database), SQLite (a lightweight relational database), and memory (which is not
+    persistent, and therefore not recommended). Since we already have Redis set up,
+    we can use it as our backend. To get started, we first need to install the library:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now we can simply install and test our cache using a few simple commands in
+    IPython:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If we were to use this instead of our own cache class, we would only need to
+    instantiate the cache using the `install_cache` command and then every request
+    (provided we are utilizing the `requests` library) would be maintained in our
+    Redis backend. We can also set expiry using a few simple commands:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: To test the speed of using `requests-cache` compared to our own implementation,
+    we have built a new downloader and link crawler to use. This downloader also implements
+    the suggested `requests` hook to allow for throttling, as documented in the `requests-cache`
+    User Guide: [https://requests-cache.readthedocs.io/en/latest/user_guide.html](https://requests-cache.readthedocs.io/en/latest/user_guide.html).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To see the full code, check out the new downloader ([https://github.com/kjam/wswp/blob/master/code/chp3/downloader_requests_cache.py](https://github.com/kjam/wswp/blob/master/code/chp3/downloader_requests_cache.py))and
+    link crawler ([https://github.com/kjam/wswp/blob/master/code/chp3/requests_cache_link_crawler.py)](https://github.com/kjam/wswp/blob/master/code/chp3/requests_cache_link_crawler.py).
+    We can test them using IPython to compare the performance:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: We see the `requests-cache` solution is slightly less performant from our own
+    Redis solution, but it also took fewer lines of code and was still quite fast
+    (and still much faster than our DiskCache solution). Especially if you are using
+    another library where `requests` might be managed internally, the `requests-cache`
+    implementation is a great tool to have.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we learned that caching downloaded web pages will save time
+    and minimize bandwidth when recrawling a website. However, caching pages takes
+    up disk space, some of which can be alleviated through compression. Additionally,
+    building on top of an existing storage system, such as Redis, can be useful to
+    avoid speed, memory, and filesystem limitations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we will add further functionalities to our crawler so we
+    can download web pages concurrently and crawl the web even faster.
+  prefs: []
+  type: TYPE_NORMAL
